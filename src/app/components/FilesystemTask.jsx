@@ -25,7 +25,7 @@ function isImage(path) {
 
 // ── Folder Tree ───────────────────────────────────────────────────────────────
 
-function FolderTreeNode({ fs, path, currentDir, onNavigate, depth = 0 }) {
+function FolderTreeNode({ fs, path, currentDir, onNavigate, onContextMenu, depth = 0 }) {
   const [expanded, setExpanded] = useState(depth === 0)
   const children = listChildren(fs, path).filter(p => p.endsWith('/'))
 
@@ -50,6 +50,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, depth = 0 }) {
           userSelect: 'none',
         }}
         onClick={() => onNavigate(path)}
+        onContextMenu={onContextMenu ? e => onContextMenu(e, path) : undefined}
       >
         <span
           style={{ width: 14, textAlign: 'center', opacity: hasChildren ? 1 : 0.25, fontSize: '0.7rem' }}
@@ -69,6 +70,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, depth = 0 }) {
           path={child}
           currentDir={currentDir}
           onNavigate={onNavigate}
+          onContextMenu={onContextMenu}
           depth={depth + 1}
         />
       ))}
@@ -78,7 +80,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, depth = 0 }) {
 
 // ── File Grid ─────────────────────────────────────────────────────────────────
 
-function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown }) {
+function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu }) {
   const children = listChildren(fs, currentDir)
   const renameRef = useRef(null)
 
@@ -106,6 +108,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.85rem', fontFamily: 'var(--font-body)' }}
         onDragOver={handleDragOver}
         onDrop={handleDropOnGrid}
+        onContextMenu={onContextMenu ? e => onContextMenu(e, null) : undefined}
       >
         Folder is empty
       </div>
@@ -117,6 +120,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
       style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start', gap: 8, padding: 12, overflowY: 'auto', flex: 1 }}
       onDragOver={handleDragOver}
       onDrop={handleDropOnGrid}
+      onContextMenu={onContextMenu ? e => { if (e.target === e.currentTarget) onContextMenu(e, null) } : undefined}
     >
       {children.map(path => {
         const isDirectory = path.endsWith('/')
@@ -133,6 +137,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
             onDragStart={e => handleDragStart(e, path)}
             onClick={() => onSelect(path)}
             onDoubleClick={() => isDirectory ? onNavigate(path) : onSelect(path)}
+            onContextMenu={onContextMenu ? e => onContextMenu(e, path) : undefined}
             style={{
               width: 80,
               display: 'flex',
@@ -188,6 +193,51 @@ function InlineNameInput({ placeholder, onCommit, onCancel }) {
   )
 }
 
+// ── Context Menu ─────────────────────────────────────────────────────────────
+
+function ContextMenu({ x, y, items, onClose }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    function handle(e) { if (ref.current && !ref.current.contains(e.target)) onClose() }
+    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('mousedown', handle)
+    document.addEventListener('keydown', handleKey)
+    return () => { document.removeEventListener('mousedown', handle); document.removeEventListener('keydown', handleKey) }
+  }, [onClose])
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'fixed', left: x, top: y, zIndex: 1000,
+        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 160,
+        padding: '4px 0', fontFamily: 'var(--font-body)',
+      }}
+    >
+      {items.map((item, i) =>
+        item === null ? (
+          <div key={i} style={{ height: 1, background: '#e5e7eb', margin: '3px 0' }} />
+        ) : (
+          <button
+            key={i}
+            onClick={() => { item.onClick(); onClose() }}
+            disabled={item.disabled}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '6px 14px', background: 'none', border: 'none',
+              cursor: item.disabled ? 'default' : 'pointer',
+              fontSize: '0.82rem', fontFamily: 'var(--font-body)',
+              color: item.danger ? '#dc2626' : item.disabled ? '#9ca3af' : 'var(--colour-text)',
+            }}
+          >
+            {item.label}
+          </button>
+        )
+      )}
+    </div>
+  )
+}
+
 // ── Address Bar ───────────────────────────────────────────────────────────────
 
 function AddressBar({ currentDir, onNavigate }) {
@@ -223,6 +273,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
   const [openFile, setOpenFile] = useState(null)
   const [creating, setCreating] = useState(null) // 'file' | 'folder'
   const [renamingPath, setRenamingPath] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null) // { x, y, targetPath }
 
   // Keep currentDir valid if it gets deleted
   useEffect(() => {
@@ -268,12 +319,58 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
     setSelected(newPath)
   }
 
+  function handleDeletePath(path) {
+    if (!window.confirm(`Delete "${entryName(path)}"?`)) return
+    onFsChange(deleteEntry(fs, path))
+    if (selected === path) { setSelected(null); setOpenFile(null) }
+  }
+
   function handleDelete() {
     if (!selected) return
-    if (!window.confirm(`Delete "${entryName(selected)}"?`)) return
-    onFsChange(deleteEntry(fs, selected))
-    setSelected(null)
-    setOpenFile(null)
+    handleDeletePath(selected)
+  }
+
+  function openContextMenu(e, targetPath) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (targetPath) setSelected(targetPath)
+    setContextMenu({ x: e.clientX, y: e.clientY, targetPath: targetPath ?? null })
+  }
+
+  function buildContextMenuItems(targetPath) {
+    const isDir = targetPath?.endsWith('/')
+    const isRoot = targetPath === '/'
+
+    if (!targetPath) {
+      return [
+        { label: '📁 New Folder', onClick: () => setCreating('folder') },
+        { label: '📄 New File', onClick: () => setCreating('file') },
+      ]
+    }
+
+    if (isDir) {
+      const items = [
+        {
+          label: '📄 New File here',
+          onClick: () => { setCurrentDir(targetPath); setSelected(null); setOpenFile(null); setRenamingPath(null); setCreating('file') },
+        },
+        {
+          label: '📁 New Folder here',
+          onClick: () => { setCurrentDir(targetPath); setSelected(null); setOpenFile(null); setRenamingPath(null); setCreating('folder') },
+        },
+      ]
+      if (!isRoot) {
+        items.push(null)
+        items.push({ label: '✏️ Rename', onClick: () => setRenamingPath(targetPath) })
+        items.push({ label: '🗑 Delete', onClick: () => handleDeletePath(targetPath), danger: true })
+      }
+      return items
+    }
+
+    return [
+      { label: '✏️ Rename', onClick: () => setRenamingPath(targetPath) },
+      { label: '🗑 Delete', onClick: () => handleDeletePath(targetPath), danger: true },
+    ]
   }
 
   function handleRenameCommit(path, newName) {
@@ -393,6 +490,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
             path="/"
             currentDir={currentDir}
             onNavigate={navigate}
+            onContextMenu={disabled ? undefined : openContextMenu}
             depth={0}
           />
         </div>
@@ -409,6 +507,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
             renamingPath={renamingPath}
             onRenameCommit={handleRenameCommit}
             onRenameKeyDown={handleRenameKeyDown}
+            onContextMenu={disabled ? undefined : openContextMenu}
           />
 
           {/* File viewer */}
@@ -444,6 +543,14 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
           )}
         </div>
       </div>
+      {contextMenu && !disabled && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={buildContextMenuItems(contextMenu.targetPath)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }

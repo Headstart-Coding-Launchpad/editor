@@ -61,7 +61,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
       </div>
       <div style={s.fields}>
         <Field label="Lesson type">
-          <div style={s.typeBadge}>{isPython ? 'Python' : isScratch ? 'Scratch' : 'Web'}</div>
+          <div style={s.typeBadge}>{isPython ? 'Python' : isScratch ? 'Scratch' : isFilesystem ? 'Files & Folders' : 'Web'}</div>
         </Field>
 
         <Field label="Lesson ID" hint="e.g. python-intro">
