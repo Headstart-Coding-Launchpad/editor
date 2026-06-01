@@ -443,6 +443,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         targetBlocks = stage?.blocks ?? task.starterBlocks ?? null
       }
       setScratchExternalState(targetBlocks)
+    } else if (lesson.type === 'filesystem') {
+      const targetFs = action === 'complete'
+        ? (task.completeFs ?? task.starterFs ?? DEFAULT_FS)
+        : (task.starterFs ?? DEFAULT_FS)
+      setFsState(targetFs)
+      resetCheckFeedback()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
@@ -1035,6 +1041,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     if (task?.check) applyCheckFeedback(passed, suggestion)
     if (!teacherPresentation) {
       saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+    }
+    if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
+      writeStudentRun(effectiveIdentity.anonymousId, {
+        code: JSON.stringify(newFs),
+        status: task?.check ? (passed ? 'success' : 'error') : null,
+        checkPassed: passed,
+      })
     }
   }
 

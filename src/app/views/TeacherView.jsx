@@ -18,6 +18,8 @@ import TeacherCodeTabs from '../components/TeacherCodeTabs'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
+import FilesystemTask from '../components/FilesystemTask'
+import { DEFAULT_FS } from '../../shared/filesystem'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { cloneFiles, cloneScratchState } from '../../shared/workspaceData'
 import { buildStudentLivePayload } from '../teacherLivePayload'
@@ -362,7 +364,7 @@ export default function TeacherView({ lessonId }) {
         </aside>
 
         {/* Centre — Teacher Editor */}
-        <main style={{ ...s.centre, ...(isInformationTask || lesson.type === 'html' || lesson.type === 'scratch' ? { overflow: 'hidden' } : {}) }}>
+        <main style={{ ...s.centre, ...(isInformationTask || lesson.type === 'html' || lesson.type === 'scratch' || lesson.type === 'filesystem' ? { overflow: 'hidden' } : {}) }}>
           {task?.explainer && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
             <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
           )}
@@ -446,6 +448,26 @@ export default function TeacherView({ lessonId }) {
                     setScratchState(state)
                     if (isInSandbox) sandboxDraftRef.current.scratchState = cloneScratchState(state)
                   }}
+                />
+              </div>
+            </div>
+          ) : lesson.type === 'filesystem' ? (
+            <div style={s.codeWorkspaceStack}>
+              <TeacherCodeTabs
+                activeTab={teacherCodeTab}
+                stages={[]}
+                onStarter={() => setTeacherCodeTab('starter')}
+                onComplete={task?.completeFs ? () => setTeacherCodeTab('complete') : undefined}
+                onSendToAll={handleSendStageToAll}
+                hasStudents={students.length > 0}
+                starterLabel="Starter folders"
+                completeLabel="Complete folders"
+              />
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <FilesystemTask
+                  key={`teacher-fs-${displayTaskId}-${teacherCodeTab}`}
+                  fs={showingComplete ? (task?.completeFs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
+                  disabled
                 />
               </div>
             </div>

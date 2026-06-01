@@ -151,6 +151,12 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
         ) : (
           <pre style={s.snippet}>{(student.currentOutput ?? '').split('\n').slice(0, 3).join('\n') || <span style={{ color: '#9ca3af' }}>No output yet</span>}</pre>
         )
+      ) : lesson?.type === 'filesystem' ? (
+        <div style={s.iframeThumb}>
+          <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
+            {student.currentCode ? 'Filesystem project' : 'No changes yet'}
+          </span>
+        </div>
       ) : (
         <div style={s.iframeThumb}>
           {student.currentFiles
