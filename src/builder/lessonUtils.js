@@ -64,6 +64,26 @@ export function validateLesson(lesson) {
           errors.push(`Task ${n} is a short-answer quiz with a check enabled but no check value.`)
         }
       }
+    } else if (task.taskType !== 'information' && type === 'filesystem') {
+      if (task.check) {
+        const checks = normalizeChecks(task.check)
+        if (checks.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
+          errors.push(`Task ${n} has a filesystem check but no path`)
+        }
+        if (checks.some(c => c.type === 'fs_content_contains' && !c.value?.trim())) {
+          errors.push(`Task ${n} has a file content check but no expected value`)
+        }
+        if (checks.some(c => c.type === 'fs_content_equals' && !c.value?.trim())) {
+          errors.push(`Task ${n} has a file equals check but no expected value`)
+        }
+        if (checks.some(c => c.type === 'fs_file_in_dir' && !c.dir?.trim())) {
+          errors.push(`Task ${n} has a file-in-dir check but no parent folder`)
+        }
+      }
+      const carryFsFrom = task.carryFsFrom ?? null
+      if (carryFsFrom != null && !flat.some(t => t.id === carryFsFrom)) {
+        errors.push(`Task ${n} references task ${carryFsFrom} for carry-through but that task does not exist`)
+      }
     } else if (task.taskType !== 'information' && type === 'html') {
       if (!task.starterFiles || task.starterFiles.length === 0) errors.push(`Task ${n} has no files`)
       else {
@@ -93,7 +113,7 @@ export function validateLesson(lesson) {
         if (task.check?.type === 'block_used' && !task.check.opcode) {
           errors.push(`Task ${n} block-used check is missing a block opcode`)
         }
-      } else if (task.check) {
+      } else if (task.check && type !== 'filesystem') {
         const checks = normalizeChecks(task.check)
         if (task.interactionMode === 'submit' && checks.some(check => !checkAllowedForSubmit(check))) {
           errors.push(`Task ${n} uses submit mode but has a check that requires running the code`)
@@ -122,7 +142,7 @@ export function validateLesson(lesson) {
       }
     }
 
-    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information'
+    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || type === 'filesystem'
       ? null
       : type === 'scratch' ? task.carryBlocksFrom : task.carryCodeFrom
     if (carryFrom != null && !flat.some(candidate => candidate.id === carryFrom)) {
@@ -137,8 +157,10 @@ export function validateLesson(lesson) {
           ? !!task.starterCode
           : type === 'scratch'
             ? !!task.starterBlocks
-            : task.starterFiles?.some(file => file.content.trim())
-    if (!hasStarter) warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
+            : type === 'filesystem'
+              ? !!task.starterFs
+              : task.starterFiles?.some(file => file.content.trim())
+    if (!hasStarter && type !== 'filesystem') warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
 
     const checkHasValue = task.taskType === 'information'
       ? false
@@ -146,7 +168,9 @@ export function validateLesson(lesson) {
         ? quizHasCheckValue(task)
         : type === 'scratch'
           ? !!task.check
-          : normalizeChecks(task.check).some(check => ['code_no_error', 'output_not_empty', 'output_empty', 'element_exists', 'element_attribute', 'element_style_property', 'variable_exists'].includes(check.type) || check.value)
+          : type === 'filesystem'
+            ? !!task.check
+            : normalizeChecks(task.check).some(check => ['code_no_error', 'output_not_empty', 'output_empty', 'element_exists', 'element_attribute', 'element_style_property', 'variable_exists'].includes(check.type) || check.value)
     if (checkHasValue && !task._checkTested) {
       warnings.push(`Task ${n} has a completion check that hasn't been tested — run the task to verify it`)
     }

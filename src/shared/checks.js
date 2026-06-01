@@ -1,3 +1,5 @@
+import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem.js'
+
 export function normalizeChecks(check) {
   if (!check) return []
   if (Array.isArray(check)) return check.filter(c => c?.type)
@@ -41,6 +43,7 @@ export const CHECK_TYPES = {
     'code_not_equals',
     'code_matches_regex',
   ],
+  FS: FS_CHECK_TYPES,
 }
 
 export function checkRequiresRun(check) {
@@ -59,6 +62,10 @@ export function filterChecksForInteraction(check, interactionMode) {
 
 export function evaluateSingleCheck(check, output, context = {}) {
   if (!check?.type) return false
+
+  if (FS_CHECK_TYPES.includes(check.type)) {
+    return evaluateFsCheck(check, context.fs)
+  }
 
   if (check.type === 'code_no_error') {
     return context.status === 'success'

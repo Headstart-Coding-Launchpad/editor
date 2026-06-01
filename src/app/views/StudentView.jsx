@@ -18,11 +18,13 @@ import OutputPanel from '../components/OutputPanel'
 import CollapsibleIframePreview from '../components/CollapsibleIframePreview'
 import ScratchWorkspace from '../components/ScratchWorkspace'
 import QuizTask from '../components/QuizTask'
+import FilesystemTask from '../components/FilesystemTask'
 import CheckFeedbackBanner from '../components/CheckFeedbackBanner'
 import LiveActivityToast from '../components/LiveActivityToast'
 import SplitPane from '../../shared/SplitPane'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile } from '../studentStorage'
+import { DEFAULT_FS } from '../../shared/filesystem'
+import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
 import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getQuizSuggestion } from '../studentQuizContent'
@@ -63,6 +65,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
+  const [fsState, setFsState] = useState(DEFAULT_FS)
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
@@ -478,6 +481,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     } else if (lesson.type === 'scratch') {
       setFiles([])
       setActiveFile('')
+    } else if (lesson.type === 'filesystem') {
+      const carryId = task.carryFsFrom ?? null
+      const saved = carryId != null
+        ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId)
+        : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
+      setFsState(saved ?? task.starterFs ?? DEFAULT_FS)
+      resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
         tasks: lesson.tasks,
@@ -1017,6 +1027,17 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
+  function handleFsChange(newFs) {
+    setFsState(newFs)
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const passed = task?.check ? evaluateCheck(task.check, null, { fs: newFs }) : false
+    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, { fs: newFs }) : '')
+    if (task?.check) applyCheckFeedback(passed, suggestion)
+    if (!teacherPresentation) {
+      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+    }
+  }
+
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   if (phase === 'loading' || (!soloMode && sessionLoading) || lessonLoading || (!teacherPresentation && !identityLoaded)) {
@@ -1300,6 +1321,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               checkPassed={checkPassed}
               disabled={isViewingPrev}
               showResult={false}
+            />
+          ) : lesson.type === 'filesystem' ? (
+            <FilesystemTask
+              fs={fsState}
+              onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
+              disabled={isViewingPrev || isForcedTeacherLive}
             />
           ) : lesson.type === 'scratch' ? (() => {
             const personalSandboxScratchState = inPersonalSandbox

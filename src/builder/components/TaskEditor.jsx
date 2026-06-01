@@ -20,6 +20,7 @@ import { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThr
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { CopyButtons, IncorrectCheckResultsDisplay, formatCheckFailure, formatCheckFailureDetail, CheckListEditor } from './task-editor/CheckEditors'
 import { ScratchToolboxPicker, ScratchCheckListEditor, VariableManager } from './task-editor/ScratchEditors'
+import { FsTreeEditor, FsCheckListEditor } from './task-editor/FilesystemEditors'
 
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
@@ -46,8 +47,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const iframeRef = React.useRef(null)
   const appendOutputRef = React.useRef(null)
 
-  const isPython  = lesson.type === 'python'
-  const isScratch = lesson.type === 'scratch'
+  const isPython     = lesson.type === 'python'
+  const isScratch    = lesson.type === 'scratch'
+  const isFilesystem = lesson.type === 'filesystem'
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
   const [quizSelectedAnswer, setQuizSelectedAnswer] = useState('')
@@ -1376,6 +1378,29 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             </Field>
           )}
         </>
+      )}
+      {isFilesystem && !isQuiz && !isInformation && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <FsTreeEditor
+            label="Starter filesystem"
+            fs={task.starterFs}
+            onFsChange={newFs => onUpdate({ starterFs: newFs })}
+          />
+          <FsTreeEditor
+            label="Complete filesystem (reference solution)"
+            fs={task.completeFs}
+            onFsChange={newFs => onUpdate({ completeFs: newFs })}
+          />
+          <div>
+            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', marginBottom: 6 }}>
+              Completion checks
+            </div>
+            <FsCheckListEditor
+              checks={task.check}
+              onChange={newCheck => onUpdate({ check: newCheck, _checkTested: false })}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
