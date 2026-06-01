@@ -4,6 +4,7 @@ import { useAssets } from '../../../shared/useAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
 import { createSpriteFromPreset, normalizeSpritePresets, SPRITE_PRESETS_PATH } from '../../spritePresets'
+import { DEFAULT_FS } from '../../../shared/filesystem'
 
 function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
   return (
@@ -80,13 +81,13 @@ function Modal({ title, children, onClose }) {
   )
 }
 
-function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython }) {
+function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFilesystem }) {
   const taskIndex = lesson.tasks.findIndex(t => t.id === task.id)
   const prevTask = taskIndex > 0 ? lesson.tasks[taskIndex - 1] : null
   const otherTasks = lesson.tasks.filter(t => t.id !== task.id)
 
-  const carryField = isScratch ? 'carryBlocksFrom' : 'carryCodeFrom'
-  const carryFrom = isScratch ? task.carryBlocksFrom : task.carryCodeFrom
+  const carryField = isScratch ? 'carryBlocksFrom' : isFilesystem ? 'carryFsFrom' : 'carryCodeFrom'
+  const carryFrom = isScratch ? task.carryBlocksFrom : isFilesystem ? task.carryFsFrom : task.carryCodeFrom
 
   const mode = carryFrom == null
     ? 'new'
@@ -98,6 +99,8 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython }) {
       updates.starterCode = sourceTask.completeCode ?? sourceTask.starterCode ?? ''
     } else if (isScratch) {
       updates.starterBlocks = sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null
+    } else if (isFilesystem) {
+      updates.starterFs = sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS
     } else {
       updates.starterFiles = (sourceTask.completeFiles ?? sourceTask.starterFiles ?? []).map(f => ({ ...f }))
       const newEntry = sourceTask.completeEntryFile ?? sourceTask.entryFile
@@ -112,6 +115,8 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython }) {
       updates.starterCode = ''
     } else if (isScratch) {
       updates.starterBlocks = null
+    } else if (isFilesystem) {
+      updates.starterFs = DEFAULT_FS
     } else {
       updates.starterFiles = (task.starterFiles ?? []).map(f => ({ ...f, content: '' }))
     }
@@ -126,7 +131,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython }) {
   const radioName = `carry-${task.id}`
 
   return (
-    <Field label={isScratch ? 'Carry blocks from task' : 'Carry code from task'}>
+    <Field label={isScratch ? 'Carry blocks from task' : isFilesystem ? 'Carry filesystem from task' : 'Carry code from task'}>
       <div className="te-carry-radio-group">
         <label className={`te-option-choice-card${mode === 'last' ? ' te-option-choice-card--active' : ''}${!prevTask ? ' te-option-choice-card--disabled' : ''}`}>
           <input

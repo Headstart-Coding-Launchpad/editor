@@ -717,7 +717,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
 
             {optionsOpen && (
               <div className="te-options-section__body">
-                <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} isScratch={isScratch} isPython={isPython} />
+                <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} isScratch={isScratch} isPython={isPython} isFilesystem={isFilesystem} />
 
                 {!isScratch && !isFilesystem && (
                   <Field label="Student interaction">
