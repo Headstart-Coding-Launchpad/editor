@@ -109,7 +109,18 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
   const [dragOverPath, setDragOverPath] = useState(null)
 
   useEffect(() => {
-    if (renameRef.current) renameRef.current.focus()
+    if (!renameRef.current) return
+    renameRef.current.focus()
+    const value = renameRef.current.value
+    const isDir = renamingPath?.endsWith('/')
+    if (!isDir) {
+      const dotIdx = value.lastIndexOf('.')
+      if (dotIdx > 0) {
+        renameRef.current.setSelectionRange(0, dotIdx)
+        return
+      }
+    }
+    renameRef.current.select()
   }, [renamingPath])
 
   function handleDragStart(e, path) {
