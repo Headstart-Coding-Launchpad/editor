@@ -117,6 +117,29 @@ export function moveEntry(fs, srcPath, destDirPath) {
   return next
 }
 
+export function copyEntry(fs, srcPath, destDirPath) {
+  const destDir = normaliseDirPath(destDirPath)
+  if (!fs[destDir]) return fs
+  if (destDir === srcPath || destDir.startsWith(srcPath)) return fs
+
+  const name = entryName(srcPath)
+  const isDirectory = srcPath.endsWith('/')
+  const newPath = isDirectory
+    ? normaliseDirPath(destDir + name)
+    : normaliseFilePath(destDir + name)
+  if (fs[newPath]) return fs
+
+  const additions = {}
+  for (const [key, value] of Object.entries(fs)) {
+    if (key === srcPath) {
+      additions[newPath] = { ...value }
+    } else if (isDirectory && key.startsWith(srcPath)) {
+      additions[newPath + key.slice(srcPath.length)] = { ...value }
+    }
+  }
+  return { ...fs, ...additions }
+}
+
 export function updateFileContent(fs, path, content) {
   if (!fs[path] || fs[path].type !== 'file') return fs
   return { ...fs, [path]: { type: 'file', content } }

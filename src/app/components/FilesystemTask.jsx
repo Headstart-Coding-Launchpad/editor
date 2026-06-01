@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { CodeEditor } from '../../shared/CodeEditor.jsx'
 import {
   DEFAULT_FS,
   listChildren,
@@ -7,6 +6,7 @@ import {
   deleteEntry,
   renameEntry,
   moveEntry,
+  copyEntry,
   updateFileContent,
   entryName,
   parentPath,
@@ -25,12 +25,30 @@ function isImage(path) {
 
 // ── Folder Tree ───────────────────────────────────────────────────────────────
 
-function FolderTreeNode({ fs, path, currentDir, onNavigate, onContextMenu, depth = 0 }) {
+function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMenu, depth = 0 }) {
   const [expanded, setExpanded] = useState(depth === 0)
+  const [dragOver, setDragOver] = useState(false)
   const children = listChildren(fs, path).filter(p => p.endsWith('/'))
 
   const isActive = currentDir === path
   const hasChildren = children.length > 0
+
+  function handleDragOver(e) {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  function handleDragLeave() {
+    setDragOver(false)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+    const src = e.dataTransfer.getData('text/plain')
+    if (src && onDrop) onDrop(src, path)
+  }
 
   return (
     <div>
@@ -43,14 +61,18 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onContextMenu, depth
           paddingLeft: 8 + depth * 16,
           cursor: 'pointer',
           borderRadius: 4,
-          background: isActive ? 'var(--colour-primary)' : 'transparent',
-          color: isActive ? '#fff' : 'var(--colour-text)',
+          background: dragOver ? 'rgba(98,34,204,0.18)' : isActive ? 'var(--colour-primary)' : 'transparent',
+          color: isActive && !dragOver ? '#fff' : 'var(--colour-text)',
           fontFamily: 'var(--font-body)',
           fontSize: '0.82rem',
           userSelect: 'none',
+          outline: dragOver ? '2px dashed var(--colour-primary)' : 'none',
         }}
         onClick={() => onNavigate(path)}
         onContextMenu={onContextMenu ? e => onContextMenu(e, path) : undefined}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <span
           style={{ width: 14, textAlign: 'center', opacity: hasChildren ? 1 : 0.25, fontSize: '0.7rem' }}
@@ -70,6 +92,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onContextMenu, depth
           path={child}
           currentDir={currentDir}
           onNavigate={onNavigate}
+          onDrop={onDrop}
           onContextMenu={onContextMenu}
           depth={depth + 1}
         />
@@ -80,7 +103,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onContextMenu, depth
 
 // ── File Grid ─────────────────────────────────────────────────────────────────
 
-function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu }) {
+function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu, cutPath }) {
   const children = listChildren(fs, currentDir)
   const renameRef = useRef(null)
 
@@ -129,6 +152,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
         const icon = isDirectory ? ICON_DIR : img ? ICON_IMG : ICON_FILE
         const isSelected = selected === path
         const isRenaming = renamingPath === path
+        const isCut = cutPath === path
 
         return (
           <div
@@ -150,6 +174,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
               border: isSelected ? '1.5px solid var(--colour-primary)' : '1.5px solid transparent',
               cursor: 'pointer',
               userSelect: 'none',
+              opacity: isCut ? 0.45 : 1,
             }}
           >
             <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>{icon}</span>
@@ -274,6 +299,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
   const [creating, setCreating] = useState(null) // 'file' | 'folder'
   const [renamingPath, setRenamingPath] = useState(null)
   const [contextMenu, setContextMenu] = useState(null) // { x, y, targetPath }
+  const [clipboard, setClipboard] = useState(null) // { path, mode: 'copy' | 'cut' }
 
   // Keep currentDir valid if it gets deleted
   useEffect(() => {
@@ -323,11 +349,31 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
     if (!window.confirm(`Delete "${entryName(path)}"?`)) return
     onFsChange(deleteEntry(fs, path))
     if (selected === path) { setSelected(null); setOpenFile(null) }
+    if (clipboard?.path === path) setClipboard(null)
   }
 
   function handleDelete() {
     if (!selected) return
     handleDeletePath(selected)
+  }
+
+  function handleCopy(path) {
+    setClipboard({ path, mode: 'copy' })
+  }
+
+  function handleCut(path) {
+    setClipboard({ path, mode: 'cut' })
+  }
+
+  function handlePaste() {
+    if (!clipboard) return
+    const { path: srcPath, mode } = clipboard
+    if (mode === 'copy') {
+      onFsChange(copyEntry(fs, srcPath, currentDir))
+    } else {
+      onFsChange(moveEntry(fs, srcPath, currentDir))
+      setClipboard(null)
+    }
   }
 
   function openContextMenu(e, targetPath) {
@@ -342,10 +388,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
     const isRoot = targetPath === '/'
 
     if (!targetPath) {
-      return [
+      const items = [
         { label: '📁 New Folder', onClick: () => setCreating('folder') },
         { label: '📄 New File', onClick: () => setCreating('file') },
       ]
+      if (clipboard) {
+        items.push(null)
+        items.push({ label: '📋 Paste', onClick: handlePaste })
+      }
+      return items
     }
 
     if (isDir) {
@@ -359,7 +410,14 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
           onClick: () => { setCurrentDir(targetPath); setSelected(null); setOpenFile(null); setRenamingPath(null); setCreating('folder') },
         },
       ]
+      if (clipboard) {
+        items.push(null)
+        items.push({ label: '📋 Paste', onClick: handlePaste })
+      }
       if (!isRoot) {
+        items.push(null)
+        items.push({ label: '📄 Copy', onClick: () => handleCopy(targetPath) })
+        items.push({ label: '✂️ Cut', onClick: () => handleCut(targetPath) })
         items.push(null)
         items.push({ label: '✏️ Rename', onClick: () => setRenamingPath(targetPath) })
         items.push({ label: '🗑 Delete', onClick: () => handleDeletePath(targetPath), danger: true })
@@ -367,10 +425,17 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
       return items
     }
 
-    return [
-      { label: '✏️ Rename', onClick: () => setRenamingPath(targetPath) },
-      { label: '🗑 Delete', onClick: () => handleDeletePath(targetPath), danger: true },
+    const items = [
+      { label: '📄 Copy', onClick: () => handleCopy(targetPath) },
+      { label: '✂️ Cut', onClick: () => handleCut(targetPath) },
     ]
+    if (clipboard) {
+      items.push({ label: '📋 Paste', onClick: handlePaste })
+    }
+    items.push(null)
+    items.push({ label: '✏️ Rename', onClick: () => setRenamingPath(targetPath) })
+    items.push({ label: '🗑 Delete', onClick: () => handleDeletePath(targetPath), danger: true })
+    return items
   }
 
   function handleRenameCommit(path, newName) {
@@ -421,6 +486,18 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
       e.preventDefault()
       handleDelete()
     }
+    if (e.ctrlKey && e.key === 'c' && selected && !renamingPath) {
+      e.preventDefault()
+      handleCopy(selected)
+    }
+    if (e.ctrlKey && e.key === 'x' && selected && !renamingPath) {
+      e.preventDefault()
+      handleCut(selected)
+    }
+    if (e.ctrlKey && e.key === 'v' && clipboard && !renamingPath) {
+      e.preventDefault()
+      handlePaste()
+    }
   }
 
   const openEntry = openFile ? fs[openFile] : null
@@ -469,6 +546,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
             >
               🗑 Delete
             </button>
+            {clipboard && (
+              <button
+                className="btn-ghost-outline"
+                style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+                onClick={handlePaste}
+              >
+                📋 Paste {clipboard.mode === 'cut' ? '(move)' : '(copy)'}
+              </button>
+            )}
             {creating && (
               <InlineNameInput
                 placeholder={creating === 'folder' ? 'Folder name…' : 'File name…'}
@@ -490,6 +576,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
             path="/"
             currentDir={currentDir}
             onNavigate={navigate}
+            onDrop={disabled ? undefined : handleDrop}
             onContextMenu={disabled ? undefined : openContextMenu}
             depth={0}
           />
@@ -508,6 +595,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
             onRenameCommit={handleRenameCommit}
             onRenameKeyDown={handleRenameKeyDown}
             onContextMenu={disabled ? undefined : openContextMenu}
+            cutPath={clipboard?.mode === 'cut' ? clipboard.path : null}
           />
 
           {/* File viewer */}
@@ -526,14 +614,26 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
                 </button>
               </div>
               {showEditor ? (
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <CodeEditor
-                    value={openEntry.content ?? ''}
-                    onChange={handleFileContentChange}
-                    language="text"
-                    readOnly={disabled}
-                  />
-                </div>
+                <textarea
+                  value={openEntry.content ?? ''}
+                  onChange={e => handleFileContentChange(e.target.value)}
+                  readOnly={disabled}
+                  spellCheck={false}
+                  style={{
+                    flex: 1,
+                    resize: 'none',
+                    border: 'none',
+                    outline: 'none',
+                    padding: '8px 12px',
+                    fontFamily: 'var(--font-code)',
+                    fontSize: '0.85rem',
+                    lineHeight: 1.5,
+                    background: '#fafafa',
+                    color: 'var(--colour-text)',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                  }}
+                />
               ) : (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Image preview not available in virtual filesystem</span>
