@@ -106,6 +106,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMen
 function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu, cutPath }) {
   const children = listChildren(fs, currentDir)
   const renameRef = useRef(null)
+  const [dragOverPath, setDragOverPath] = useState(null)
 
   useEffect(() => {
     if (renameRef.current) renameRef.current.focus()
@@ -123,6 +124,24 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
     e.preventDefault()
     const src = e.dataTransfer.getData('text/plain')
     if (src) onDrop(src, currentDir)
+  }
+
+  function handleDirDragOver(e, path) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverPath(path)
+  }
+
+  function handleDirDragLeave() {
+    setDragOverPath(null)
+  }
+
+  function handleDirDrop(e, path) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverPath(null)
+    const src = e.dataTransfer.getData('text/plain')
+    if (src && src !== path && onDrop) onDrop(src, path)
   }
 
   if (children.length === 0) {
@@ -154,11 +173,15 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
         const isRenaming = renamingPath === path
         const isCut = cutPath === path
 
+        const isDragTarget = isDirectory && dragOverPath === path
         return (
           <div
             key={path}
             draggable
             onDragStart={e => handleDragStart(e, path)}
+            onDragOver={isDirectory ? e => handleDirDragOver(e, path) : undefined}
+            onDragLeave={isDirectory ? handleDirDragLeave : undefined}
+            onDrop={isDirectory ? e => handleDirDrop(e, path) : undefined}
             onClick={() => onSelect(path)}
             onDoubleClick={() => isDirectory ? onNavigate(path) : onSelect(path)}
             onContextMenu={onContextMenu ? e => onContextMenu(e, path) : undefined}
@@ -170,8 +193,8 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
               gap: 4,
               padding: '8px 4px',
               borderRadius: 6,
-              background: isSelected ? 'rgba(98,34,204,0.12)' : 'transparent',
-              border: isSelected ? '1.5px solid var(--colour-primary)' : '1.5px solid transparent',
+              background: isDragTarget ? 'rgba(98,34,204,0.18)' : isSelected ? 'rgba(98,34,204,0.12)' : 'transparent',
+              border: isDragTarget ? '1.5px dashed var(--colour-primary)' : isSelected ? '1.5px solid var(--colour-primary)' : '1.5px solid transparent',
               cursor: 'pointer',
               userSelect: 'none',
               opacity: isCut ? 0.45 : 1,
