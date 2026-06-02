@@ -280,7 +280,7 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
             value={check.value ?? ''}
             onChange={e => onChange({ ...check, value: e.target.value })}
             placeholder={
-              operator === 'value_matches_regex' ? 'Regular expression, e.g. ^\\d+$  (matched case-insensitively)'
+              operator === 'value_matches_regex' ? 'Regular expression, e.g. ^\\d+$  (case-sensitive)'
               : operator === 'value_equals'        ? 'Exact text or input value...'
               : operator === 'value_not_contains'  ? 'Text that must NOT be present...'
               : operator === 'value_not_equals'    ? 'Value it must NOT equal...'
@@ -372,7 +372,7 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
         value={check.value ?? ''}
         onChange={e => onChange({ ...check, value: e.target.value })}
         placeholder={
-          operator === 'matches_regex' ? 'Regular expression, e.g. ^\\d+$  (matched against lowercased output)'
+          operator === 'matches_regex' ? 'Regular expression, e.g. ^\\d+$  (case-sensitive)'
           : operator === 'equals'       ? 'Exact expected value...'
           : operator === 'not_equals'   ? 'Value it must NOT equal...'
           : operator === 'not_contains' ? 'String that must NOT be present...'

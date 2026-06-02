@@ -276,7 +276,7 @@ function ShortAnswerBuilder({ task, onUpdate, lessonType = null }) {
               lessonType={lessonType}
             />
             <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#6b7280', lineHeight: 1.5 }}>
-              Matching is case-insensitive. Test by typing an answer in the student preview below.
+              Text matching is case-insensitive. Regular expressions are case-sensitive. Test by typing an answer in the student preview below.
             </p>
           </>
         )}

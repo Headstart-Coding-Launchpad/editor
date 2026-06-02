@@ -70,12 +70,6 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
 | `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, and session action controls |
 | `TeacherCodeTabs.jsx` | Starter/stage/complete tab strip shown above teacher code editors; includes "Send to all" action |
-<<<<<<< HEAD
-| `TeacherPreviewBanner.jsx` | Status banner shown when the teacher previews a task without moving students |
-| `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
-| `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
-=======
->>>>>>> refactor/teacher-code-tabs-component
 | `TeacherPreviewBanner.jsx` | Status banner shown when the teacher previews a task without moving students |
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
 | `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
