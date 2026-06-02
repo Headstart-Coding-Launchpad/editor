@@ -150,8 +150,17 @@ export function updateFileContent(fs, path, content) {
 // ── check evaluation ──────────────────────────────────────────────────────────
 
 export function evaluateFsCheck(check, fs, context = {}) {
-  if (!fs) return false
   const { type, path, dir, value } = check
+
+  // These checks only read context, not fs — evaluate before the null-fs guard
+  if (type === 'fs_dir_opened')
+    return normaliseDirPath(path) === normaliseDirPath(context.currentDir ?? '/')
+  if (type === 'fs_file_opened') {
+    if (!context.openFile) return false
+    return normaliseFilePath(path) === normaliseFilePath(context.openFile)
+  }
+
+  if (!fs) return false
 
   switch (type) {
     case 'fs_file_exists': {
@@ -183,10 +192,6 @@ export function evaluateFsCheck(check, fs, context = {}) {
       const expectedDir = normaliseDirPath(dir ?? '/')
       return parentPath(p) === expectedDir
     }
-    case 'fs_dir_opened':
-      return normaliseDirPath(path) === normaliseDirPath(context.currentDir ?? '/')
-    case 'fs_file_opened':
-      return normaliseFilePath(path) === normaliseFilePath(context.openFile ?? '/')
     default:
       return false
   }

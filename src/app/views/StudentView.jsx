@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
@@ -1051,33 +1051,35 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
-  function handleFsChange(newFs) {
-    setFsState(newFs)
+  function applyFsCheckAndPublish(context) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const context = { fs: newFs, ...fsInteractionRef.current }
     const passed = task?.check ? evaluateCheck(task.check, null, context) : false
     const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
     if (task?.check) applyCheckFeedback(passed, suggestion)
-    if (!teacherPresentation && !previewMode) {
-      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
-    }
     if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
-        code: JSON.stringify(newFs),
+        code: JSON.stringify(context.fs),
         status: task?.check ? (passed ? 'success' : 'error') : null,
         checkPassed: passed,
       })
     }
   }
 
-  function handleFsInteraction(interaction) {
-    setFsInteraction(interaction)
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const context = { fs: fsStateRef.current, ...interaction }
-    const passed = task?.check ? evaluateCheck(task.check, null, context) : false
-    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
-    if (task?.check) applyCheckFeedback(passed, suggestion)
+  function handleFsChange(newFs) {
+    setFsState(newFs)
+    if (!teacherPresentation && !previewMode) {
+      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+    }
+    applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
   }
+
+  const handleFsInteraction = useCallback((interaction) => {
+    setFsInteraction(interaction)
+    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction })
+  // applyFsCheckAndPublish reads lesson/currentTaskId/phase/effectiveIdentity via closure;
+  // listing them here keeps navigate (which deps on handleFsInteraction) stable between renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity])
 
   // ─── Render helpers ────────────────────────────────────────────────────────
 

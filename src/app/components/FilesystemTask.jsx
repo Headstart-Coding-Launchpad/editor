@@ -363,7 +363,6 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   }, [onInteraction])
 
   function handleGoUp() {
-    if (currentDir === '/') return
     navigate(parentPath(currentDir))
   }
 
@@ -372,12 +371,14 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
     setRenamingPath(null)
     if (!path.endsWith('/') && !isImage(path)) {
       setOpenFile(path)
+      onInteraction?.({ currentDir, openFile: path })
     } else if (path.endsWith('/')) {
       setOpenFile(null)
+      onInteraction?.({ currentDir, openFile: null })
     } else {
       setOpenFile(path) // image
+      onInteraction?.({ currentDir, openFile: path })
     }
-    if (!path.endsWith('/')) onInteraction?.({ currentDir, openFile: path })
   }
 
   function handleNewFolder(name) {
@@ -666,7 +667,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
                   {entryName(openFile)}
                 </span>
                 <button
-                  onClick={() => setOpenFile(null)}
+                  onClick={() => { setOpenFile(null); onInteraction?.({ currentDir, openFile: null }) }}
                   style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1rem', lineHeight: 1 }}
                   aria-label="Close file"
                 >
