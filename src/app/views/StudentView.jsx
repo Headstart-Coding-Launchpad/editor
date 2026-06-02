@@ -1167,6 +1167,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const currentTask = flatTasks.find(t => t.id === currentTaskId)
   const currentTaskIsAutoEvaluated = currentTask?.taskType === 'quiz' && (currentTask?.quizType === 'match' || currentTask?.quizType === 'fill_blank')
   const canAdvanceSolo = (!currentTask?.check && !currentTaskIsAutoEvaluated) || currentTask?.taskType === 'information' || checkPassed
+  const canNavigateNextSolo = allowUnrestrictedTaskNavigation || canAdvanceSolo
   const hasCompleteSolution = lesson.type === 'python'
     ? !!task?.completeCode
     : lesson.type === 'scratch'
@@ -1639,13 +1640,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               className={`btn-secondary${checkPassed && currentIndex < flatTasks.length - 1 ? ' btn-next-success' : ''}`}
               style={{
                 ...styles.soloNavBtn,
-                ...(canAdvanceSolo && currentIndex < flatTasks.length - 1
+                ...(canNavigateNextSolo && currentIndex < flatTasks.length - 1
                   ? { fontSize: 18, padding: '14px 36px' }
                   : {}),
               }}
-              disabled={currentIndex >= flatTasks.length - 1 || !canAdvanceSolo}
+              disabled={currentIndex >= flatTasks.length - 1 || !canNavigateNextSolo}
               onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
-              title={!canAdvanceSolo ? 'Pass the completion check before moving on' : 'Next task'}
+              title={!canNavigateNextSolo ? 'Pass the completion check before moving on' : 'Next task'}
             >
               Next
             </button>
