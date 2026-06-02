@@ -4,7 +4,7 @@ import { useSession, decodeFileKey } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
 import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
 import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
-import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint } from '../../shared/checks'
+import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../shared/checks'
 import { flattenTasks, findTaskById, filterTasksByMode } from '../../shared/taskUtils'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -53,6 +53,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const [output, setOutput]             = useState('')
   const [runStatus, setRunStatus]       = useState(null)
   const [running, setRunning]           = useState(false)
+  const [runningTests, setRunningTests]  = useState(false)
+  const [testResults, setTestResults]    = useState(null) // null | [{id, name, passed}]
   const [pyodideStatus, setPyodideStatus] = useState('idle') // idle | loading | ready
   const [iframeSrc, setIframeSrc]         = useState(null)
   const [teacherLiveIframeSrc, setTeacherLiveIframeSrc] = useState(null)
@@ -133,6 +135,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     setCheckAttempted(false)
     setCheckSuggestion('')
     setRepeatedSuggestionCount(0)
+    setTestResults(null)
   }
 
   function applyCheckFeedback(passed, suggestion = '') {
@@ -730,6 +733,62 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
+  async function handleRunTests() {
+    const actor = effectiveIdentity
+    if (!actor || runningTests) return
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    if (!task?.tests?.length) return
+    const isWatched = session?.activeStudentView === actor.anonymousId
+
+    setRunningTests(true)
+    setOutput('')
+    setRunStatus(null)
+    setTestResults(null)
+    resetCheckFeedback()
+
+    if (!isPyodideReady()) {
+      setPyodideStatus('loading')
+      await initPyodide()
+      setPyodideStatus('ready')
+    }
+
+    const results = []
+    for (const test of task.tests) {
+      const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
+      let accumulated = ''
+      const result = await runPython(code, {
+        onOutput: text => { accumulated += text },
+        onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
+      })
+      const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
+      const checks = normalizeChecks(resolvedCheck)
+      const checkContext = { status: result.status, code, variables: result.variables ?? {} }
+      const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
+      results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed })
+      if (result.status === 'stopped') break
+    }
+
+    const allPassed = results.length > 0 && results.every(r => r.passed)
+    setTestResults(results)
+    setRunStatus('success')
+    applyCheckFeedback(allPassed)
+
+    if (canPublishTeacherLive()) {
+      publishTeacherLive({ runStatus: 'success', checkPassed: allPassed, checkAttempted: true })
+    }
+    if (!teacherPresentation) {
+      if (inPersonalSandboxRef.current) {
+        savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
+      } else {
+        saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: '', runStatus: 'success' })
+      }
+    }
+    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
+      await writeStudentRun(actor.anonymousId, { code, output: '', status: 'success', checkPassed: allPassed })
+    }
+    setRunningTests(false)
+  }
+
   async function handleRun() {
     const actor = effectiveIdentity
     if (!actor || running) return
@@ -739,6 +798,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     setRunning(true)
     setOutput('')
     setRunStatus(null)
+    setTestResults(null)
     resetCheckFeedback()
 
     if (lesson.type === 'python') {
@@ -765,13 +825,14 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setRunStatus(status)
 
       const checkContext = { status, code, variables: result.variables ?? {} }
-      const passed = evaluateCheck(task?.check, accumulated, checkContext)
-      const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
-      const suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, accumulated, checkContext)) : ''
-      if (task?.check) applyCheckFeedback(passed, suggestion)
+      const hasTests = task?.tests?.length > 0
+      const passed = hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext)
+      const incorrectHint = (!passed && !hasTests && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
+      const suggestion = (!hasTests && task?.check) ? (incorrectHint || getFirstFailedCheckHint(task.check, accumulated, checkContext)) : ''
+      if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !!task?.check, checkSuggestion: suggestion })
+        publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !hasTests && !!task?.check, checkSuggestion: suggestion })
       }
       if (!teacherPresentation) {
         if (inPersonalSandboxRef.current) {
@@ -1431,14 +1492,26 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                         Submit
                       </button>
                     ) : (
-                      <button
-                        className={running ? 'btn-danger' : 'btn-primary'}
-                        style={styles.studentEditorPrimaryBtn}
-                        onClick={running ? handleStop : handleRun}
-                        disabled={!running && pyodideStatus === 'loading'}
-                      >
-                        {running ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
-                      </button>
+                      <>
+                        <button
+                          className={running ? 'btn-danger' : 'btn-primary'}
+                          style={styles.studentEditorPrimaryBtn}
+                          onClick={running ? handleStop : handleRun}
+                          disabled={(!running && pyodideStatus === 'loading') || runningTests}
+                        >
+                          {running ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
+                        </button>
+                        {task?.tests?.length > 0 && (
+                          <button
+                            className="btn-primary"
+                            style={styles.studentEditorPrimaryBtn}
+                            onClick={runningTests ? undefined : handleRunTests}
+                            disabled={running || pyodideStatus === 'loading' || runningTests}
+                          >
+                            {runningTests ? 'Running tests…' : 'Run Tests'}
+                          </button>
+                        )}
+                      </>
                     )}
                     <button
                       className="btn-ghost-outline"
@@ -1478,9 +1551,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                       inputPrompt={inputPrompt}
                       onInputSubmit={handleInputSubmit}
                       checkPassed={checkPassed}
-                      hasCheck={!!task?.check}
-                      running={running}
+                      hasCheck={!!task?.check || task?.tests?.length > 0}
+                      running={running || runningTests}
                     />
+                    {testResults !== null && (
+                      <div style={styles.testResultsPanel}>
+                        {testResults.map((r, i) => (
+                          <span key={r.id ?? i} style={{ ...styles.testResultBadge, background: r.passed ? '#dcfce7' : '#fef3c7', color: r.passed ? '#15803d' : '#b45309' }}>
+                            {r.passed ? '✓' : '✗'} {r.name || `Test ${i + 1}`}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )
               )}
@@ -1997,5 +2079,21 @@ const styles = {
     padding: '3px 10px',
     fontSize: '0.82rem',
     fontWeight: 700,
+  },
+  testResultsPanel: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    padding: '8px 12px',
+    background: '#f9fafb',
+    borderTop: '1px solid #e5e7eb',
+  },
+  testResultBadge: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    fontWeight: 600,
+    borderRadius: 999,
+    padding: '3px 10px',
+    border: '1px solid transparent',
   },
 }

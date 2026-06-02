@@ -10,6 +10,8 @@ import {
   filterChecksForInteraction,
   getFirstFailedCheckHint,
   getIncorrectCheckHint,
+  substituteTestInputs,
+  resolveTestCheck,
 } from '../checks.js'
 
 // ─── normalizeChecks ──────────────────────────────────────────────────────────
@@ -570,5 +572,84 @@ describe('evaluateSingleCheck — guard conditions', () => {
 
   it('returns false when check.value is null for output_equals', () => {
     expect(evaluateSingleCheck({ type: 'output_equals' }, 'hello')).toBe(false)
+  })
+})
+
+// ─── substituteTestInputs ─────────────────────────────────────────────────────
+
+describe('substituteTestInputs', () => {
+  const inputs = [
+    { name: 'username', value: 'Alice' },
+    { name: 'age', value: '30' },
+  ]
+
+  it('replaces a single placeholder', () => {
+    expect(substituteTestInputs('Hello {username}', inputs)).toBe('Hello Alice')
+  })
+
+  it('replaces multiple different placeholders', () => {
+    expect(substituteTestInputs('{username} is {age}', inputs)).toBe('Alice is 30')
+  })
+
+  it('replaces all occurrences of the same placeholder', () => {
+    expect(substituteTestInputs('{username} and {username}', inputs)).toBe('Alice and Alice')
+  })
+
+  it('returns the string unchanged when no placeholders match', () => {
+    expect(substituteTestInputs('no placeholder here', inputs)).toBe('no placeholder here')
+  })
+
+  it('returns the original value when inputs is empty', () => {
+    expect(substituteTestInputs('Hello {username}', [])).toBe('Hello {username}')
+  })
+
+  it('returns the original value when inputs is undefined', () => {
+    expect(substituteTestInputs('Hello {username}', undefined)).toBe('Hello {username}')
+  })
+
+  it('returns non-string values unchanged', () => {
+    expect(substituteTestInputs(42, inputs)).toBe(42)
+  })
+
+  it('skips inputs with no name', () => {
+    expect(substituteTestInputs('Hello {username}', [{ name: '', value: 'X' }, { name: 'username', value: 'Bob' }])).toBe('Hello Bob')
+  })
+})
+
+// ─── resolveTestCheck ─────────────────────────────────────────────────────────
+
+describe('resolveTestCheck', () => {
+  const inputs = [{ name: 'username', value: 'Alice' }]
+
+  it('substitutes value in a single check', () => {
+    const result = resolveTestCheck({ type: 'output_contains', value: 'Hello {username}' }, inputs)
+    expect(result.value).toBe('Hello Alice')
+  })
+
+  it('substitutes value in each check of an array', () => {
+    const checks = [
+      { type: 'output_contains', value: 'Hello {username}' },
+      { type: 'code_contains', value: 'print' },
+    ]
+    const result = resolveTestCheck(checks, inputs)
+    expect(result[0].value).toBe('Hello Alice')
+    expect(result[1].value).toBe('print')
+  })
+
+  it('does not mutate non-string value fields', () => {
+    const check = { type: 'output_line_count', value: 3 }
+    const result = resolveTestCheck(check, inputs)
+    expect(result.value).toBe(3)
+  })
+
+  it('returns null/undefined unchanged', () => {
+    expect(resolveTestCheck(null, inputs)).toBeNull()
+    expect(resolveTestCheck(undefined, inputs)).toBeUndefined()
+  })
+
+  it('returns check unchanged when inputs is empty', () => {
+    const check = { type: 'output_contains', value: 'Hello {username}' }
+    const result = resolveTestCheck(check, [])
+    expect(result.value).toBe('Hello {username}')
   })
 })

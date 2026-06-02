@@ -129,6 +129,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor` |
 | `ScratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor` |
 | `FilesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` (visual starter/complete FS editor) and `FsCheckListEditor` (filesystem check builder) |
+| `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 
 ---
 
