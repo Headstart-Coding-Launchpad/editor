@@ -394,33 +394,39 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setCheckResults(null)
     setIncorrectCheckResults(null)
 
-    if (!isPyodideReady()) {
-      setPyodideStatus('loading')
-      await initPyodide(msg => setPyodideStatus(msg))
-      setPyodideStatus('ready')
-    }
-
     const results = []
-    for (const test of tests) {
-      const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
-      let accumulated = ''
-      const result = await runPython(activePythonCode, {
-        onOutput: text => { accumulated += text },
-        onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
-      })
-      const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
-      const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
-      const checks = normalizeChecks(resolvedCheck)
-      const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
-      results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated })
-      if (result.status === 'stopped') break
-    }
+    try {
+      if (!isPyodideReady()) {
+        setPyodideStatus('loading')
+        await initPyodide(msg => setPyodideStatus(msg))
+        setPyodideStatus('ready')
+      }
 
-    setTestResults(results)
-    const lastOutput = results[results.length - 1]?.output ?? ''
-    setOutput(lastOutput)
-    setRunStatus(results.length > 0 ? 'success' : null)
-    setRunningTests(false)
+      for (const test of tests) {
+        const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
+        let accumulated = ''
+        const result = await runPython(activePythonCode, {
+          onOutput: text => { accumulated += text },
+          onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
+        })
+        const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
+        const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
+        const checks = normalizeChecks(resolvedCheck)
+        const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
+        results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
+        if (result.status === 'stopped') break
+      }
+
+      setTestResults(results)
+      const displayedOutput = results.find(r => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
+      setOutput(displayedOutput)
+      setRunStatus(results.some(r => r.status === 'error') ? 'error' : results.some(r => r.status === 'stopped') ? 'stopped' : 'success')
+    } catch {
+      stopPython()
+      setRunStatus('error')
+    } finally {
+      setRunningTests(false)
+    }
   }
 
   async function handleRun() {
@@ -1017,15 +1023,15 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               <div className="te-run-row">
                 <button
                   className="btn-primary"
-                  onClick={running ? handleStop : handleRun}
-                  disabled={(!running && pyodideStatus === 'loading') || runningTests}
+                  onClick={running || runningTests ? handleStop : handleRun}
+                  disabled={!running && !runningTests && pyodideStatus === 'loading'}
                   style={{
                     padding: '10px 28px',
                     fontSize: 15,
-                    ...(running ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : {}),
+                    ...(running || runningTests ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : {}),
                   }}
                 >
-                  {running ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}
+                  {running || runningTests ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}
                 </button>
                 {(task.tests?.length > 0) && (
                   <button

@@ -3,7 +3,11 @@ import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem.js'
 export function substituteTestInputs(value, inputs) {
   if (typeof value !== 'string' || !inputs?.length) return value
   return inputs.reduce(
-    (v, { name, value: val }) => name ? v.replace(new RegExp(`\\{${name}\\}`, 'g'), val ?? '') : v,
+    (v, { name, value: val }) => {
+      if (!name) return v
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return v.replace(new RegExp(`\\{${escapedName}\\}`, 'g'), () => val ?? '')
+    },
     value,
   )
 }

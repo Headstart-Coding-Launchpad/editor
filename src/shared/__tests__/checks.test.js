@@ -614,6 +614,14 @@ describe('substituteTestInputs', () => {
   it('skips inputs with no name', () => {
     expect(substituteTestInputs('Hello {username}', [{ name: '', value: 'X' }, { name: 'username', value: 'Bob' }])).toBe('Hello Bob')
   })
+
+  it('treats regex metacharacters in input names literally', () => {
+    expect(substituteTestInputs('{user[0]} {a.b}', [{ name: 'user[0]', value: 'Alice' }, { name: 'a.b', value: 'exact' }])).toBe('Alice exact')
+  })
+
+  it('treats replacement patterns in input values literally', () => {
+    expect(substituteTestInputs('Hello {username}', [{ name: 'username', value: '$& dollars' }])).toBe('Hello $& dollars')
+  })
 })
 
 // ─── resolveTestCheck ─────────────────────────────────────────────────────────

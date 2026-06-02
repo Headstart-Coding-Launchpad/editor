@@ -227,9 +227,9 @@ export function useSession(lessonId) {
   async function writeStudentRun(anonymousId, { code, files, output, answer, status, checkPassed }) {
     const updates = {
       lastRunStatus: status,
-      checkPassed:   checkPassed ?? false,
       lastRunAt:     Date.now(),
     }
+    if (checkPassed !== undefined) updates.checkPassed = checkPassed
     if (code  != null) updates.currentCode   = code
     if (files != null) updates.currentFiles  = encodeFileKeys(files)
     if (output != null) updates.currentOutput = output
