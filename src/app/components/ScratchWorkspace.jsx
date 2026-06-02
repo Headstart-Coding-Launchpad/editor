@@ -785,19 +785,6 @@ export default function ScratchWorkspace({
     finishRun(signal)
   }
 
-  async function runHatForAll(eventType, option = null) {
-    if (statusRef.current !== 'ready' || runningRef.current) return
-    stopAll()
-    lastCheckRef.current = null
-    runningRef.current = true
-    setRunning(true)
-    setCheckAttempted(false)
-    const signal = createSignal()
-    signalRef.current = signal
-    try { await runAllSpritesEvent(buildSpriteWorkspaces(), eventType, signal, option) } catch {}
-    finishRun(signal)
-  }
-
   // Fires key-press hats concurrently with any running green-flag script.
   // At most one run per key at a time — a new keydown stops the previous run for that key.
   async function fireKeyEvent(key) {
@@ -808,6 +795,7 @@ export default function ScratchWorkspace({
     keySignalsRef.current.set(key, signal)
     try { await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key) } catch {}
     if (keySignalsRef.current.get(key) === signal) keySignalsRef.current.delete(key)
+    if (!runningRef.current) finishRun(signal)
   }
 
   function handleStop() {
@@ -957,15 +945,11 @@ export default function ScratchWorkspace({
         event.preventDefault()
       }
       inputStateRef.current.keysPressed.add(key)
-      if (signalRef.current) signalRef.current.keysPressed.add(key)
-      for (const s of keySignalsRef.current.values()) s.keysPressed.add(key)
       fireKeyEvent(key)
     }
     function onKeyUp(event) {
       const key = normalizeKey(event.key)
       if (key) inputStateRef.current.keysPressed.delete(key)
-      if (key && signalRef.current) signalRef.current.keysPressed.delete(key)
-      if (key) for (const s of keySignalsRef.current.values()) s.keysPressed.delete(key)
     }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
