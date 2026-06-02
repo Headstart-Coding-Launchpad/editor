@@ -550,6 +550,8 @@ or an array:
 
 When `check` is an array, every check must pass.
 
+Regex check types are case-sensitive. Non-regex string comparison and containment checks remain case-insensitive.
+
 ## Python and HTML Check Types
 
 | Check type | Fields | Run mode | Submit mode | Python | HTML | Behaviour |

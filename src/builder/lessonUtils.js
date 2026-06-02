@@ -16,6 +16,19 @@ export function copyScratchSpriteStateToStarters(sprites, spriteStates) {
   })
 }
 
+export function copyStarterToComplete(task, lessonType) {
+  if (lessonType === 'python') {
+    return { completeCode: task.starterCode ?? '' }
+  }
+  if (lessonType === 'html') {
+    return {
+      completeFiles: (task.starterFiles ?? []).map(file => ({ ...file })),
+      completeEntryFile: task.entryFile ?? 'index.html',
+    }
+  }
+  return {}
+}
+
 export function validateLesson(lesson) {
   const errors = []
   const warnings = []

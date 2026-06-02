@@ -60,6 +60,7 @@ export default function TeacherView({ lessonId }) {
   const [activeCompleteFile, setActiveCompleteFile] = useState('')
   const [editorActivity, setEditorActivity] = useState(null)
   const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null })
+  const presentationWindowRef = useRef(null)
 
   // Load lesson JSON
   useEffect(() => {
@@ -235,6 +236,8 @@ export default function TeacherView({ lessonId }) {
 
   async function handleEndSession(goHome) {
     await endSession()
+    presentationWindowRef.current?.close()
+    presentationWindowRef.current = null
     setShowEndModal(false)
     if (goHome) navigate('/')
   }
@@ -277,7 +280,7 @@ export default function TeacherView({ lessonId }) {
 
   function handleOpenPresentationWindow() {
     const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
-    window.open(`${base}?teacher=true&present=true`, `headstart-present-${lessonId}`, 'popup=yes,width=1280,height=800')
+    presentationWindowRef.current = window.open(`${base}?teacher=true&present=true`, `headstart-present-${lessonId}`, 'popup=yes,width=1280,height=800')
   }
 
   const isSandbox = session?.state === 'sandbox'

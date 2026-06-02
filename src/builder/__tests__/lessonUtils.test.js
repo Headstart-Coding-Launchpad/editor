@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { copyScratchSpriteStateToStarters, normalizeTasksForExport, quizHasCheckValue, quizHasStarter, validateLesson } from '../lessonUtils'
+import { copyScratchSpriteStateToStarters, copyStarterToComplete, normalizeTasksForExport, quizHasCheckValue, quizHasStarter, validateLesson } from '../lessonUtils'
 
 function lesson(type, tasks) {
   return { id: 'test-lesson', title: 'Test lesson', type, tasks }
@@ -86,6 +86,28 @@ describe('copyScratchSpriteStateToStarters', () => {
       },
       { id: 'star', name: 'Star', type: 'star', x: 5 },
     ])
+  })
+})
+
+describe('copyStarterToComplete', () => {
+  it('copies Python starter code into complete code', () => {
+    expect(copyStarterToComplete({ starterCode: 'print("hello")' }, 'python')).toEqual({
+      completeCode: 'print("hello")',
+    })
+  })
+
+  it('clones HTML starter files and entry file into complete content', () => {
+    const task = {
+      entryFile: 'home.html',
+      starterFiles: [{ name: 'home.html', type: 'html', content: '<h1>Hello</h1>' }],
+    }
+    const result = copyStarterToComplete(task, 'html')
+
+    expect(result).toEqual({
+      completeEntryFile: 'home.html',
+      completeFiles: [{ name: 'home.html', type: 'html', content: '<h1>Hello</h1>' }],
+    })
+    expect(result.completeFiles[0]).not.toBe(task.starterFiles[0])
   })
 })
 

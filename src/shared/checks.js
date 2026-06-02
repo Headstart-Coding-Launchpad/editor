@@ -130,7 +130,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'answer_matches_regex') {
-    try { return new RegExp(check.value, 'i').test(String(context.answer ?? output)) } catch { return false }
+    try { return new RegExp(check.value).test(String(context.answer ?? output)) } catch { return false }
   }
 
   if (check.type === 'output_equals') {
@@ -146,7 +146,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'output_matches_regex') {
-    try { return new RegExp(check.value).test(normalizeOutput(output)) } catch { return false }
+    try { return new RegExp(check.value).test(normalizeRegexOutput(output)) } catch { return false }
   }
 
   if (check.type === 'output_line_count') {
@@ -175,7 +175,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'code_matches_regex') {
-    try { return new RegExp(check.value).test(normalizeCode(context.code ?? '')) } catch { return false }
+    try { return new RegExp(check.value).test(normalizeRegexCode(context.code ?? '')) } catch { return false }
   }
 
   if (check.type === 'element_count') {
@@ -230,7 +230,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
     try {
       const el = context.iframeDoc.querySelector(check.selector)
       if (!el) return false
-      return new RegExp(check.value).test(normalizeOutput(getElementText(el)))
+      return new RegExp(check.value).test(normalizeRegexOutput(getElementText(el)))
     } catch { return false }
   }
 
@@ -433,6 +433,10 @@ function normalizeOutput(value) {
   return String(value ?? '').replace(/\r\n?/g, '\n').trim().toLowerCase()
 }
 
+function normalizeRegexOutput(value) {
+  return String(value ?? '').replace(/\r\n?/g, '\n').trim()
+}
+
 // Normalizes CSS property values for comparison: reduces url(...) to just the
 // filename so that a teacher's check value like url('cat.png') matches a
 // computed value like url("https://cdn.example.com/cat.png").
@@ -448,7 +452,15 @@ function normalizeExactOutput(value) {
 }
 
 function normalizeCode(value) {
-  const code = String(value ?? '').replace(/\r\n?/g, '\n').toLowerCase()
+  return normalizeCodeWhitespace(value).toLowerCase()
+}
+
+function normalizeRegexCode(value) {
+  return normalizeCodeWhitespace(value)
+}
+
+function normalizeCodeWhitespace(value) {
+  const code = String(value ?? '').replace(/\r\n?/g, '\n')
   let normalized = ''
   let quote = null
   let escaped = false

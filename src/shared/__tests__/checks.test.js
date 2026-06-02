@@ -215,6 +215,11 @@ describe('evaluateSingleCheck — code_matches_regex', () => {
     const check = { type: 'code_matches_regex', value: '^total=count\\+1$' }
     expect(evaluateSingleCheck(check, '', { code: ' total=count + 1\n' })).toBe(true)
   })
+
+  it('preserves case when matching code', () => {
+    const check = { type: 'code_matches_regex', value: '^Total=count\\+1$' }
+    expect(evaluateSingleCheck(check, '', { code: ' total=count + 1\n' })).toBe(false)
+  })
 })
 
 // ─── output_matches_regex ─────────────────────────────────────────────────────
@@ -233,6 +238,18 @@ describe('evaluateSingleCheck — output_matches_regex', () => {
   it('returns false for an invalid regex pattern', () => {
     const check = { type: 'output_matches_regex', value: '[invalid' }
     expect(evaluateSingleCheck(check, 'anything')).toBe(false)
+  })
+
+  it('preserves case when matching output', () => {
+    const check = { type: 'output_matches_regex', value: '^Hello$' }
+    expect(evaluateSingleCheck(check, 'hello')).toBe(false)
+  })
+})
+
+describe('evaluateSingleCheck - answer_matches_regex', () => {
+  it('preserves case when matching short answers', () => {
+    const check = { type: 'answer_matches_regex', value: '^Paris$' }
+    expect(evaluateSingleCheck(check, '', { answer: 'paris' })).toBe(false)
   })
 })
 

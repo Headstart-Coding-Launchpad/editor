@@ -32,7 +32,7 @@ import TaskSlideTransition from '../components/TaskSlideTransition'
 import StudentEditorHeader from '../components/StudentEditorHeader'
 import LoadingScreen from '../components/LoadingScreen'
 
-export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, initialTaskId = null }) {
+export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, initialTaskId = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
   const {
     session, loading: sessionLoading, registerPresence, joinSession,
@@ -339,6 +339,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     setPhase('lesson')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionLoading, identityLoaded, lessonLoading, session?.state, session?.createdAt, session?.currentTaskId, soloMode, teacherPresentation])
+
+  useEffect(() => {
+    if (teacherPresentation && session?.state === 'ended') window.close()
+  }, [teacherPresentation, session?.state])
 
   // React to teacher moving to a new task
   useEffect(() => {
@@ -661,7 +665,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
     if (!identity) return
     const currentTask = findTaskById(lesson?.tasks, currentTaskId)
-    if (phase === 'solo') {
+    if (phase === 'solo' && !allowUnrestrictedTaskNavigation) {
       const targetIdx = flatTasks.findIndex(t => t.id === taskId)
       const currIdx = flatTasks.findIndex(t => t.id === currentTaskId)
       if (targetIdx > currIdx) {
@@ -1244,7 +1248,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         canSelectTask={id => {
           if (!isSolo) return true
           const idIdx = flatTasks.findIndex(t => t.id === id)
-          return idIdx <= currentIndex || (idIdx === currentIndex + 1 && canAdvanceSolo)
+          return allowUnrestrictedTaskNavigation || idIdx <= currentIndex || (idIdx === currentIndex + 1 && canAdvanceSolo)
         }}
         onDotClick={id => {
           if (isSolo) {
@@ -1501,16 +1505,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                   assets={lesson.assets}
                 />
               </div>
-              <div style={styles.htmlMobilePreview}>
-                <CollapsibleIframePreview
-                  src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
-                  iframeRef={iframeRef}
-                  fill
-                  collapsed={htmlPreviewCollapsed}
-                  onToggle={() => setHtmlPreviewCollapsed(v => !v)}
-                  animate
-                />
-              </div>
+              {task?.interactionMode !== 'submit' && (
+                <div style={styles.htmlMobilePreview}>
+                  <CollapsibleIframePreview
+                    src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
+                    iframeRef={iframeRef}
+                    fill
+                    collapsed={htmlPreviewCollapsed}
+                    onToggle={() => setHtmlPreviewCollapsed(v => !v)}
+                    animate
+                  />
+                </div>
+              )}
               {displayRunStatus === 'submitted' && !task?.check && (
                 <div style={styles.submitBanner}>Code submitted</div>
               )}
@@ -1519,14 +1525,17 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             <>
             <SplitPane
               style={styles.htmlSplitPane}
-              rightCollapsed={htmlPreviewCollapsed}
+              rightCollapsed={task?.interactionMode === 'submit' || htmlPreviewCollapsed}
+              collapsedRightWidth={task?.interactionMode === 'submit' ? 0 : 44}
               collapsedRight={
-                <CollapsibleIframePreview
-                  src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
-                  iframeRef={iframeRef}
-                  collapsed
-                  onToggle={() => setHtmlPreviewCollapsed(false)}
-                />
+                task?.interactionMode === 'submit' ? null : (
+                  <CollapsibleIframePreview
+                    src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
+                    iframeRef={iframeRef}
+                    collapsed
+                    onToggle={() => setHtmlPreviewCollapsed(false)}
+                  />
+                )
               }
               left={
                 <div style={styles.htmlLeft}>

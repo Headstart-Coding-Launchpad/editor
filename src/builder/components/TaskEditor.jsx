@@ -15,7 +15,7 @@ import QuizTask from '../../app/components/QuizTask'
 import InformationTask from '../../app/components/InformationTask'
 import { DEFAULT_SPRITES } from '../../shared/scratch'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { copyScratchSpriteStateToStarters } from '../lessonUtils'
+import { copyScratchSpriteStateToStarters, copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThroughPicker, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { CopyButtons, IncorrectCheckResultsDisplay, formatCheckFailure, formatCheckFailureDetail, CheckListEditor } from './task-editor/CheckEditors'
@@ -514,6 +514,17 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     if (task.check || typeof passedOverride === 'boolean') set('_checkTested', true)
   }
 
+  function handleResetCompleteToStarter() {
+    if (!window.confirm('Replace the complete code with the starter code?')) return
+    const updates = copyStarterToComplete(task, lesson.type)
+    onUpdate({ ...task, ...updates })
+    if (lesson.type === 'html') {
+      setSelectedCompleteFile(updates.completeEntryFile ?? updates.completeFiles?.[0]?.name ?? '')
+      setIframeSrc(null)
+      setHtmlPreviewOpen(false)
+    }
+  }
+
   return (
     <div className="te-wrap">
       {parentGroup ? (
@@ -877,6 +888,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               stages={codeStages}
               onAddStage={handleAddStage}
               onRemoveStage={handleRemoveStage}
+              rightAction={isCompleteTab ? (
+                <button type="button" className="btn-ghost te-secondary-btn" onClick={handleResetCompleteToStarter}>
+                  Reset to starter code
+                </button>
+              ) : null}
             />
             {isStageTab && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0 }}>
@@ -1204,15 +1220,22 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               onAddStage={handleAddStage}
               onRemoveStage={handleRemoveStage}
               rightAction={
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={task.interactionMode === 'submit' ? handleTestChecks : handleRun}
-                  disabled={task.interactionMode === 'submit' ? !task.check : running}
-                  style={{ padding: '7px 18px', fontSize: 13 }}
-                >
-                  {task.interactionMode === 'submit' ? 'Test checks' : running ? 'Running...' : 'Run'}
-                </button>
+                <>
+                  {isCompleteTab && (
+                    <button type="button" className="btn-ghost te-secondary-btn" onClick={handleResetCompleteToStarter}>
+                      Reset to starter code
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={task.interactionMode === 'submit' ? handleTestChecks : handleRun}
+                    disabled={task.interactionMode === 'submit' ? !task.check : running}
+                    style={{ padding: '7px 18px', fontSize: 13 }}
+                  >
+                    {task.interactionMode === 'submit' ? 'Test checks' : running ? 'Running...' : 'Run'}
+                  </button>
+                </>
               }
             />
             {isStageTab && (
@@ -1292,7 +1315,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                 </div>
               }
               right={
-                htmlPreviewOpen ? (
+                task.interactionMode !== 'submit' && htmlPreviewOpen ? (
                   <div className="te-builder-preview-pane">
                     <IframePreview
                       src={iframeSrc}
@@ -1349,16 +1372,18 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                         <div className="te-no-file">Select or add a file to edit.</div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      className="te-preview-rail"
-                      onClick={() => setHtmlPreviewOpen(true)}
-                      title="Show Preview"
-                      aria-label="Show Preview"
-                    >
-                      <span className="te-preview-rail__icon">{'<'}</span>
-                      <span className="te-preview-rail__label">Preview</span>
-                    </button>
+                    {task.interactionMode !== 'submit' && (
+                      <button
+                        type="button"
+                        className="te-preview-rail"
+                        onClick={() => setHtmlPreviewOpen(true)}
+                        title="Show Preview"
+                        aria-label="Show Preview"
+                      >
+                        <span className="te-preview-rail__icon">{'<'}</span>
+                        <span className="te-preview-rail__label">Preview</span>
+                      </button>
+                    )}
                   </div>
                 )
               }
