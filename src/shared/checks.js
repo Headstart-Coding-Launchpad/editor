@@ -434,6 +434,10 @@ function normalizeOutput(value, caseSensitive = false) {
   return caseSensitive ? s : s.toLowerCase()
 }
 
+function normalizeRegexOutput(value) {
+  return String(value ?? '').replace(/\r\n?/g, '\n').trim()
+}
+
 // Normalizes CSS property values for comparison: reduces url(...) to just the
 // filename so that a teacher's check value like url('cat.png') matches a
 // computed value like url("https://cdn.example.com/cat.png").

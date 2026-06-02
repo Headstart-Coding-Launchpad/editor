@@ -531,6 +531,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     </button>
   ) : null
 
+
   return (
     <div className="te-wrap">
       {parentGroup ? (

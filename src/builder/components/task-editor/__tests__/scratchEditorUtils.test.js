@@ -59,4 +59,19 @@ describe('parseScratchToolboxXml', () => {
     const parsed = parseScratchToolboxXml(xml)
     expect(parsed).toEqual(['event_whenflagclicked', 'motion_movesteps'])
   })
+
+  it('includes all blocks that are defined in scratch.js and exposed via the builder picker', () => {
+    const types = parseScratchToolboxXml(null)
+    const expected = [
+      'motion_glidesecstoxy',
+      'motion_xposition',
+      'motion_yposition',
+      'motion_direction',
+      'motion_setrotationstyle',
+      'sensing_touchingobject',
+    ]
+    for (const type of expected) {
+      expect(types).toContain(type)
+    }
+  })
 })
