@@ -20,9 +20,9 @@
           "id": 2,
           "taskType": "information",
           "title": "Recap - 1",
-          "leftContent": "# Last Lesson\n\n1. What does a `python:for` loop do?\n2. What does `python:range(5)` give to the loop?\n3. Why does the code inside a loop need to be indented?",
           "explainer": "# For Loops\n\nA `python:for` loop repeats code a fixed number of times.\n\nWe used `python:range()` to tell the loop how many times to repeat:\n\n```python\nfor i in range(5):\n  print(\"Hello\")\n```\n\nToday we will learn how to control the numbers that `python:range()` gives to the loop.",
-          "informationType": "recap"
+          "informationType": "recap",
+          "leftContent": "# Last Lesson\n\n1. What does a `python:for` loop do?\n2. What does `python:range(5)` give to the loop?\n3. Why does the code inside a loop need to be indented?"
         },
         {
           "id": 3,
@@ -91,32 +91,6 @@
         {
           "id": 5,
           "title": "Recap - 4",
-          "explainer": "# Write a `python:for` Loop\n\nStart from an empty editor.\n\nWrite a `python:for` loop that prints `python:\"Looping\"` **4 times**.",
-          "starterCode": "",
-          "carryCodeFrom": null,
-          "completeCode": "for i in range(4):\n  print(\"Looping\")",
-          "check": [
-            {
-              "type": "output_line_count",
-              "value": 4,
-              "hint": "Use `python:range(4)` to repeat 4 times."
-            },
-            {
-              "type": "output_contains",
-              "value": "Looping",
-              "hint": "Print `python:\"Looping\"` inside the loop."
-            },
-            {
-              "type": "code_contains",
-              "value": "for",
-              "hint": "Start with the `python:for` keyword."
-            }
-          ],
-          "estimatedMinutes": 4
-        },
-        {
-          "id": 6,
-          "title": "Recap - 5",
           "explainer": "# Count Sheep\n\nRun the code and check that it counts **5 sheep**.\n\nThe loop variable `python:i` changes each time the loop repeats.",
           "starterCode": "for i in range(5):\n  print(i, \"sheep\")",
           "carryCodeFrom": null,
@@ -136,11 +110,11 @@
           "estimatedMinutes": 2
         },
         {
-          "id": 7,
-          "title": "Recap - 6",
+          "id": 6,
+          "title": "Recap - 5",
           "explainer": "# Count More Sheep\n\nChange the loop so it counts **20 sheep** instead of `python:5`.\n\nOnly the `python:range()` number needs to change.",
           "starterCode": "for i in range(5):\n  print(i, \"sheep\")",
-          "carryCodeFrom": 6,
+          "carryCodeFrom": 5,
           "completeCode": "for i in range(20):\n  print(i, \"sheep\")",
           "check": [
             {
@@ -152,6 +126,32 @@
               "type": "output_contains",
               "value": "sheep",
               "hint": "Keep printing the sheep message inside the loop."
+            }
+          ],
+          "estimatedMinutes": 2
+        },
+        {
+          "id": 7,
+          "title": "Recap - 6",
+          "explainer": "# Write a `python:for` Loop\n\nStart from an empty editor.\n\nWrite a `python:for` loop that prints `python:\"Looping\"` **4 times**.",
+          "starterCode": "",
+          "carryCodeFrom": null,
+          "completeCode": "for i in range(4):\n  print(\"Looping\")",
+          "check": [
+            {
+              "type": "output_line_count",
+              "value": 4,
+              "hint": "Use `python:range(4)` to repeat 4 times."
+            },
+            {
+              "type": "output_contains",
+              "value": "Looping",
+              "hint": "Print `python:\"Looping\"` inside the loop."
+            },
+            {
+              "type": "code_contains",
+              "value": "for",
+              "hint": "Start with the `python:for` keyword."
             }
           ],
           "estimatedMinutes": 3
@@ -227,7 +227,7 @@
               "hint": "Use `python:range(3)` for three repeats."
             }
           ],
-          "estimatedMinutes": 3
+          "estimatedMinutes": 2
         },
         {
           "id": 12,
@@ -307,7 +307,7 @@
               "hint": "Use `python:range(5, 10)`."
             }
           ],
-          "estimatedMinutes": 5
+          "estimatedMinutes": 3
         },
         {
           "id": 16,
@@ -361,7 +361,7 @@
               "hint": "Keep using `python:range(start, stop, step)`."
             }
           ],
-          "estimatedMinutes": 3
+          "estimatedMinutes": 2
         },
         {
           "id": 19,
@@ -382,7 +382,7 @@
               "hint": "Start at `python:2`, stop before `python:11`, and step by `python:2`."
             }
           ],
-          "estimatedMinutes": 5
+          "estimatedMinutes": 3
         }
       ]
     },
@@ -453,7 +453,7 @@
               "hint": "Use a negative step to count backwards."
             }
           ],
-          "estimatedMinutes": 4
+          "estimatedMinutes": 3
         }
       ]
     },
@@ -471,7 +471,7 @@
           "hint": "The stop value is excluded. What stop value would let the loop use `python:10`?"
         }
       ],
-      "estimatedMinutes": 3
+      "estimatedMinutes": 2
     },
     {
       "id": 24,
@@ -512,7 +512,7 @@
       "id": 25,
       "title": "Level-Up Counter",
       "explainer": "# Independent Challenge\n\nCreate a level-up counter for a game.\n\nIt should print:\n\n```text\nLevel 3\nLevel 6\nLevel 9\nLevel 12\nLevel 15\n```\n\nChoose the right **start**, **stop**, and **step** values.",
-      "starterCode": "for level in range(3, 6, 3):\n  print(\"Level\", level)",
+      "starterCode": "for level in range():\n  print(\"Level\", level)",
       "carryCodeFrom": null,
       "completeCode": "for level in range(3, 16, 3):\n  print(\"Level\", level)",
       "check": [
@@ -533,7 +533,7 @@
       "id": 26,
       "title": "Sleep Timer Challenge",
       "explainer": "# Final Code Challenge\n\nCreate a sleep timer that prints the odd numbers counting down from `python:9` to `python:1`, then prints `python:\"Dream time!\"`.\n\nThe output should be:\n\n```text\n9\n7\n5\n3\n1\nDream time!\n```",
-      "starterCode": "for number in range(9, 0, -1):\n  print(number)\n\nprint(\"Dream time!\")",
+      "starterCode": "for number in range():\n  print(number)\n\nprint(\"Dream time!\")",
       "carryCodeFrom": null,
       "completeCode": "for number in range(9, 0, -2):\n  print(number)\n\nprint(\"Dream time!\")",
       "check": [

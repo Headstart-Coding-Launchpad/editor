@@ -1,0 +1,220 @@
+{
+  "id": "lessons-folders-1-build-project-folder",
+  "type": "filesystem",
+  "title": "Build Your Project Folder",
+  "description": "Set up an organised folder for a game idea, write notes, and move a file into the right place.",
+  "level": 1,
+  "sandboxStarterFs": {
+    "/": { "type": "dir" }
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "taskType": "information",
+      "informationType": "introduction",
+      "title": "Your Digital Workspace",
+      "explainer": ""
+    },
+    {
+      "id": 2,
+      "taskType": "information",
+      "informationType": "standard",
+      "title": "Files and Folders",
+      "explainer": "## Files Hold Work, Folders Organise Work\n\nA **file** stores a piece of work. For example, `game-ideas.txt` can hold your written ideas.\n\nA **folder** organises files and other folders. For example, a `Pictures` folder can hold image files.\n\nClear names make your work easier to find later.\n\nA **path** is the route to an item:\n\n```text\n/Game Project/Notes/game-ideas.txt\n```\n\nTo follow this path, open `Game Project`, then `Notes`, then `game-ideas.txt`."
+    },
+    {
+      "id": 3,
+      "taskType": "quiz",
+      "quizType": "match",
+      "title": "File or Folder?",
+      "explainer": "Match each item to the correct type.",
+      "pairs": [
+        { "id": "1", "prompt": "`story.txt`", "answer": "File" },
+        { "id": "2", "prompt": "`Pictures`", "answer": "Folder" },
+        { "id": "3", "prompt": "`avatar.png`", "answer": "File" },
+        { "id": "4", "prompt": "`Game Project`", "answer": "Folder" }
+      ],
+      "check": { "type": "quiz_result" }
+    },
+    {
+      "id": "g-create-project",
+      "type": "group",
+      "title": "Create Your Project",
+      "subtasks": [
+        {
+          "id": 4,
+          "title": "Create Your Project - 1",
+          "explainer": "## Create a Project Folder\n\nCreate a folder called **Game Project** in the root folder. This will keep all of your game work together.",
+          "estimatedMinutes": 4,
+          "starterFs": {
+            "/": { "type": "dir" }
+          },
+          "completeFs": {
+            "/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" }
+          },
+          "carryFsFrom": null,
+          "hints": [
+            "Create a folder to keep all of your game work together.",
+            "Work in the root folder and choose the new-folder action.",
+            "Name the folder exactly `Game Project`."
+          ],
+          "check": { "type": "fs_dir_exists", "path": "/Game Project/" }
+        },
+        {
+          "id": 5,
+          "title": "Create Your Project - 2",
+          "explainer": "## Add an Ideas File\n\nInside `Game Project`, create a text file called `game-ideas.txt`.\n\nThe `.txt` ending is a **file extension**. It tells you that this is a plain text file.",
+          "estimatedMinutes": 4,
+          "carryFsFrom": 4,
+          "completeFs": {
+            "/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" },
+            "/Game Project/game-ideas.txt": { "type": "file", "content": "" }
+          },
+          "hints": [
+            "Open your `Game Project` folder first.",
+            "Choose the new-file action.",
+            "Name the file exactly `game-ideas.txt`."
+          ],
+          "check": { "type": "fs_file_exists", "path": "/Game Project/game-ideas.txt" }
+        },
+        {
+          "id": 6,
+          "title": "Create Your Project - 3",
+          "explainer": "## Write Your Game Idea\n\nOpen `game-ideas.txt` and write one sentence about a maze game. Your sentence must include the word **maze**.",
+          "estimatedMinutes": 4,
+          "carryFsFrom": 5,
+          "completeFs": {
+            "/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" },
+            "/Game Project/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." }
+          },
+          "hints": [
+            "Open the text file so you can edit its contents.",
+            "Write your own sentence about a game.",
+            "Make sure your sentence includes the word `maze`."
+          ],
+          "check": {
+            "type": "fs_content_contains",
+            "path": "/Game Project/game-ideas.txt",
+            "value": "maze"
+          }
+        },
+        {
+          "id": 7,
+          "title": "Create Your Project - 4",
+          "explainer": "## Add a Notes Folder\n\nInside `Game Project`, create a folder called **Notes**.\n\nA folder stored inside another folder is sometimes called a **nested folder**.",
+          "estimatedMinutes": 4,
+          "carryFsFrom": 6,
+          "completeFs": {
+            "/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" },
+            "/Game Project/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." },
+            "/Game Project/Notes/": { "type": "dir" }
+          },
+          "hints": [
+            "Open your `Game Project` folder.",
+            "Create a new folder inside it.",
+            "Name the folder exactly `Notes`."
+          ],
+          "check": { "type": "fs_dir_exists", "path": "/Game Project/Notes/" }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "taskType": "information",
+      "informationType": "standard",
+      "title": "Moving a File",
+      "explainer": "## Move Work with Cut and Paste\n\nYour ideas file is useful, but it now belongs inside `Notes`.\n\n- **Cut** selects an item to move.\n- **Paste** places it in a new location.\n- After a successful move, the file should no longer remain in its old location.\n\nCutting is not the same as deleting. The file and its contents are still available after you paste it."
+    },
+    {
+      "id": 9,
+      "taskType": "quiz",
+      "quizType": "multiple_choice",
+      "title": "Predict the Move",
+      "explainer": "You cut `game-ideas.txt` from `Game Project` and paste it into `Notes`. Where should the file be afterwards?",
+      "options": [
+        { "id": "a", "text": "Only inside `Notes`" },
+        { "id": "b", "text": "In both `Game Project` and `Notes`", "feedback": "That would describe copying. Cut and paste moves the original item." },
+        { "id": "c", "text": "Nowhere, because cutting always deletes a file", "feedback": "Cut prepares an item to move. Pasting places it in the new location." }
+      ],
+      "check": { "type": "answer_equals", "value": "a" }
+    },
+    {
+      "id": 10,
+      "title": "Move the Ideas File",
+      "explainer": "## Put the File in the Right Place\n\nCut `/Game Project/game-ideas.txt` and paste it into `/Game Project/Notes/`.\n\nCheck that the file has moved and that your maze idea is still inside it.",
+      "estimatedMinutes": 5,
+      "carryFsFrom": 7,
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Game Project/": { "type": "dir" },
+        "/Game Project/Notes/": { "type": "dir" },
+        "/Game Project/Notes/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." }
+      },
+      "hints": [
+        "Select `game-ideas.txt` before choosing cut.",
+        "Open the `Notes` folder, then choose paste.",
+        "The old path `/Game Project/game-ideas.txt` should disappear."
+      ],
+      "check": [
+        {
+          "type": "fs_file_in_dir",
+          "path": "/Game Project/Notes/game-ideas.txt",
+          "dir": "/Game Project/Notes/"
+        },
+        { "type": "fs_not_exists", "path": "/Game Project/game-ideas.txt" },
+        {
+          "type": "fs_content_contains",
+          "path": "/Game Project/Notes/game-ideas.txt",
+          "value": "maze"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Add a Design Folder",
+      "explainer": "## Independent Challenge\n\nInside `Game Project`, create a folder called `Designs`. Inside `Designs`, create a text file called `character.txt`.",
+      "estimatedMinutes": 5,
+      "carryFsFrom": 10,
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Game Project/": { "type": "dir" },
+        "/Game Project/Notes/": { "type": "dir" },
+        "/Game Project/Notes/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." },
+        "/Game Project/Designs/": { "type": "dir" },
+        "/Game Project/Designs/character.txt": { "type": "file", "content": "" }
+      },
+      "hints": [
+        "Create one new folder and one new text file.",
+        "The new folder belongs inside `Game Project`.",
+        "The new file belongs inside `Designs`."
+      ],
+      "check": [
+        { "type": "fs_dir_exists", "path": "/Game Project/Designs/" },
+        { "type": "fs_file_exists", "path": "/Game Project/Designs/character.txt" }
+      ]
+    },
+    {
+      "id": 12,
+      "taskType": "quiz",
+      "quizType": "fill_blank",
+      "title": "Finish the Sentence",
+      "explainer": "Complete the summary.",
+      "text": "A ___ stores a piece of work. A ___ organises items. Cut and paste will ___ an item.",
+      "mode": "drag",
+      "blanks": [
+        { "id": "1", "answer": "file" },
+        { "id": "2", "answer": "folder" },
+        { "id": "3", "answer": "move" }
+      ],
+      "distractors": [
+        { "id": "4", "text": "copy" },
+        { "id": "5", "text": "delete" }
+      ],
+      "check": { "type": "quiz_result" }
+    }
+  ]
+}

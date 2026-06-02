@@ -1,0 +1,303 @@
+{
+  "id": "lessons-folders-2-organise-and-clean-up",
+  "type": "filesystem",
+  "title": "Organise, Copy, Move, and Clean Up",
+  "description": "Organise a game project by choosing when to copy, move, edit, and delete files and folders.",
+  "level": 1,
+  "sandboxStarterFs": {
+    "/": { "type": "dir" },
+    "/Practice/": { "type": "dir" },
+    "/Practice/keep-me.txt": { "type": "file", "content": "Try copying and moving this file." },
+    "/Practice/delete-me.txt": { "type": "file", "content": "Try deleting this file." },
+    "/Destination/": { "type": "dir" }
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "taskType": "information",
+      "informationType": "recap",
+      "title": "What Did We Build?",
+      "leftContent": "## Remember\n\n- Files hold work.\n- Folders organise work.\n- A path tells you where an item is stored.",
+      "explainer": "## Last Lesson\n\n- Cut and paste moves a file.\n- Moving a file should keep its contents.\n- Clear names make work easier to find."
+    },
+    {
+      "id": 2,
+      "taskType": "quiz",
+      "quizType": "match",
+      "title": "Match the Vocabulary",
+      "explainer": "Match each term to its meaning.",
+      "pairs": [
+        { "id": "1", "prompt": "File", "answer": "A saved piece of work" },
+        { "id": "2", "prompt": "Folder", "answer": "A container used to organise items" },
+        { "id": "3", "prompt": "Cut and paste", "answer": "Move an item" },
+        { "id": "4", "prompt": "Path", "answer": "The route to an item" }
+      ],
+      "check": { "type": "quiz_result" }
+    },
+    {
+      "id": 3,
+      "taskType": "information",
+      "informationType": "standard",
+      "title": "Copy or Cut?",
+      "explainer": "## Choose the Right Operation\n\n**Copy and paste** creates another version while keeping the original.\n\n**Cut and paste** moves the original to a new location.\n\n```text\nBefore:\n/Downloads/banner.txt\n\nAfter copy and paste:\n/Downloads/banner.txt\n/Game Project/Assets/banner.txt\n\nAfter cut and paste:\n/Game Project/Assets/banner.txt\n```\n\nAsk yourself: **Do I want the original item to stay where it is?**\n\n- If yes, use **copy and paste**.\n- If no, use **cut and paste**."
+    },
+    {
+      "id": 4,
+      "taskType": "quiz",
+      "quizType": "multiple_choice",
+      "title": "Choose the Operation",
+      "explainer": "You want to use the same banner in two projects. The original banner must stay in `Downloads`. Which operation should you use?",
+      "options": [
+        { "id": "a", "text": "Copy and paste" },
+        { "id": "b", "text": "Cut and paste", "feedback": "Cut and paste would move the banner away from `Downloads`." },
+        { "id": "c", "text": "Delete and recreate the file", "feedback": "Deleting would remove useful work. Copying is the quicker and safer choice here." }
+      ],
+      "check": { "type": "answer_equals", "value": "a" }
+    },
+    {
+      "id": "g-set-up-project",
+      "type": "group",
+      "title": "Set Up the Project",
+      "subtasks": [
+        {
+          "id": 5,
+          "title": "Set Up the Project - 1",
+          "explainer": "## Create Project Folders\n\nThe workspace is untidy. Inside `Game Project`, create two folders:\n\n- `Assets`\n- `Notes`",
+          "estimatedMinutes": 4,
+          "starterFs": {
+            "/": { "type": "dir" },
+            "/Downloads/": { "type": "dir" },
+            "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+            "/Downloads/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+            "/Downloads/old-notes.txt": { "type": "file", "content": "Unused draft" },
+            "/Downloads/Temporary/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" }
+          },
+          "completeFs": {
+            "/": { "type": "dir" },
+            "/Downloads/": { "type": "dir" },
+            "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+            "/Downloads/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+            "/Downloads/old-notes.txt": { "type": "file", "content": "Unused draft" },
+            "/Downloads/Temporary/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" },
+            "/Game Project/Assets/": { "type": "dir" },
+            "/Game Project/Notes/": { "type": "dir" }
+          },
+          "carryFsFrom": null,
+          "hints": [
+            "Open `Game Project` before creating the folders.",
+            "Create two folders in the same location.",
+            "Name them exactly `Assets` and `Notes`."
+          ],
+          "check": [
+            { "type": "fs_dir_exists", "path": "/Game Project/Assets/" },
+            { "type": "fs_dir_exists", "path": "/Game Project/Notes/" }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Set Up the Project - 2",
+          "explainer": "## Add a Readme File\n\nInside `Game Project`, create a text file called `readme.txt`.\n\nOpen it and write a sentence containing the words **Pixel Quest**. A readme file gives someone quick information about a project.",
+          "estimatedMinutes": 4,
+          "carryFsFrom": 5,
+          "completeFs": {
+            "/": { "type": "dir" },
+            "/Downloads/": { "type": "dir" },
+            "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+            "/Downloads/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+            "/Downloads/old-notes.txt": { "type": "file", "content": "Unused draft" },
+            "/Downloads/Temporary/": { "type": "dir" },
+            "/Game Project/": { "type": "dir" },
+            "/Game Project/Assets/": { "type": "dir" },
+            "/Game Project/Notes/": { "type": "dir" },
+            "/Game Project/readme.txt": { "type": "file", "content": "Pixel Quest is a maze adventure game." }
+          },
+          "hints": [
+            "Create the file directly inside `Game Project`.",
+            "Open `readme.txt` so you can edit it.",
+            "Make sure the text includes `Pixel Quest`."
+          ],
+          "check": [
+            { "type": "fs_file_exists", "path": "/Game Project/readme.txt" },
+            {
+              "type": "fs_content_contains",
+              "path": "/Game Project/readme.txt",
+              "value": "Pixel Quest"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Copy the Reusable Banner",
+      "explainer": "## Keep the Original Banner\n\nCopy `/Downloads/banner.txt` and paste it into `/Game Project/Assets/`.\n\nThe original must stay in `Downloads` because the banner might be useful for another project.",
+      "estimatedMinutes": 4,
+      "carryFsFrom": 6,
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Downloads/": { "type": "dir" },
+        "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Downloads/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+        "/Downloads/old-notes.txt": { "type": "file", "content": "Unused draft" },
+        "/Downloads/Temporary/": { "type": "dir" },
+        "/Game Project/": { "type": "dir" },
+        "/Game Project/Assets/": { "type": "dir" },
+        "/Game Project/Assets/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Game Project/Notes/": { "type": "dir" },
+        "/Game Project/readme.txt": { "type": "file", "content": "Pixel Quest is a maze adventure game." }
+      },
+      "hints": [
+        "The banner should exist in two places after this task.",
+        "Choose copy for `/Downloads/banner.txt`.",
+        "Open `/Game Project/Assets/`, then choose paste."
+      ],
+      "check": [
+        { "type": "fs_file_exists", "path": "/Downloads/banner.txt" },
+        {
+          "type": "fs_file_in_dir",
+          "path": "/Game Project/Assets/banner.txt",
+          "dir": "/Game Project/Assets/"
+        },
+        {
+          "type": "fs_content_equals",
+          "path": "/Game Project/Assets/banner.txt",
+          "value": "Pixel Quest banner"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "taskType": "quiz",
+      "quizType": "multiple_choice",
+      "title": "Predict the Move",
+      "explainer": "The research notes belong in the project. You do not need a second copy in `Downloads`. What should you do?",
+      "options": [
+        { "id": "a", "text": "Cut the notes and paste them into `Game Project/Notes`" },
+        { "id": "b", "text": "Copy the notes and leave another copy in `Downloads`", "feedback": "That would leave an unnecessary duplicate. The original does not need to stay in `Downloads`." },
+        { "id": "c", "text": "Delete the notes because `Downloads` is messy", "feedback": "The notes are still useful. Move them into the project instead." }
+      ],
+      "check": { "type": "answer_equals", "value": "a" }
+    },
+    {
+      "id": 9,
+      "title": "Move the Research Notes",
+      "explainer": "## Move Useful Notes\n\nCut `/Downloads/research.txt` and paste it into `/Game Project/Notes/`.\n\nThe notes should leave `Downloads`, but their useful contents must stay intact.",
+      "estimatedMinutes": 4,
+      "carryFsFrom": 7,
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Downloads/": { "type": "dir" },
+        "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Downloads/old-notes.txt": { "type": "file", "content": "Unused draft" },
+        "/Downloads/Temporary/": { "type": "dir" },
+        "/Game Project/": { "type": "dir" },
+        "/Game Project/Assets/": { "type": "dir" },
+        "/Game Project/Assets/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Game Project/Notes/": { "type": "dir" },
+        "/Game Project/Notes/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+        "/Game Project/readme.txt": { "type": "file", "content": "Pixel Quest is a maze adventure game." }
+      },
+      "hints": [
+        "The research notes should exist in only one place after this task.",
+        "Choose cut for `/Downloads/research.txt`.",
+        "Open `/Game Project/Notes/`, then choose paste."
+      ],
+      "check": [
+        {
+          "type": "fs_file_in_dir",
+          "path": "/Game Project/Notes/research.txt",
+          "dir": "/Game Project/Notes/"
+        },
+        { "type": "fs_not_exists", "path": "/Downloads/research.txt" },
+        {
+          "type": "fs_content_contains",
+          "path": "/Game Project/Notes/research.txt",
+          "value": "clear goal"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "taskType": "information",
+      "informationType": "standard",
+      "title": "Delete Carefully",
+      "explainer": "## Delete Only What You Do Not Need\n\nDeleting removes an item. Before you delete anything, check:\n\n1. Is this the correct item?\n2. Do I still need it?\n3. Is there another copy if the work matters?\n\nMoving keeps an item available in a new location. Deleting removes it."
+    },
+    {
+      "id": 11,
+      "title": "Clean Up Downloads",
+      "explainer": "## Remove Unwanted Items\n\nDelete these two items from `Downloads`:\n\n- `old-notes.txt`\n- `Temporary`\n\nOnly delete items you are sure you do not need.",
+      "estimatedMinutes": 4,
+      "carryFsFrom": 9,
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Downloads/": { "type": "dir" },
+        "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Game Project/": { "type": "dir" },
+        "/Game Project/Assets/": { "type": "dir" },
+        "/Game Project/Assets/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Game Project/Notes/": { "type": "dir" },
+        "/Game Project/Notes/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+        "/Game Project/readme.txt": { "type": "file", "content": "Pixel Quest is a maze adventure game." }
+      },
+      "hints": [
+        "Both unwanted items are inside `Downloads`.",
+        "Delete the old text file and the empty temporary folder.",
+        "Keep `banner.txt` because it is still useful."
+      ],
+      "check": [
+        { "type": "fs_not_exists", "path": "/Downloads/old-notes.txt" },
+        { "type": "fs_not_exists", "path": "/Downloads/Temporary/" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Finish the Organisation",
+      "explainer": "## Independent Challenge\n\nFinish organising the project:\n\n1. Inside `Game Project`, create a folder called `Designs`.\n2. Inside `Designs`, create a text file called `level-one.txt`.\n3. Open `level-one.txt` and write a sentence containing the word **maze**.\n4. Check that the copied banner still exists in both locations.",
+      "estimatedMinutes": 6,
+      "carryFsFrom": 11,
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Downloads/": { "type": "dir" },
+        "/Downloads/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Game Project/": { "type": "dir" },
+        "/Game Project/Assets/": { "type": "dir" },
+        "/Game Project/Assets/banner.txt": { "type": "file", "content": "Pixel Quest banner" },
+        "/Game Project/Notes/": { "type": "dir" },
+        "/Game Project/Notes/research.txt": { "type": "file", "content": "Maze games need a clear goal." },
+        "/Game Project/readme.txt": { "type": "file", "content": "Pixel Quest is a maze adventure game." },
+        "/Game Project/Designs/": { "type": "dir" },
+        "/Game Project/Designs/level-one.txt": { "type": "file", "content": "The first maze will include a hidden key." }
+      },
+      "hints": [
+        "Work inside `Game Project` and create one new folder.",
+        "Create and edit `level-one.txt` inside the new `Designs` folder.",
+        "Your sentence must include `maze`. Do not move or delete either banner file."
+      ],
+      "check": [
+        { "type": "fs_dir_exists", "path": "/Game Project/Designs/" },
+        { "type": "fs_file_exists", "path": "/Game Project/Designs/level-one.txt" },
+        {
+          "type": "fs_content_contains",
+          "path": "/Game Project/Designs/level-one.txt",
+          "value": "maze"
+        },
+        { "type": "fs_file_exists", "path": "/Downloads/banner.txt" },
+        { "type": "fs_file_exists", "path": "/Game Project/Assets/banner.txt" }
+      ]
+    },
+    {
+      "id": 13,
+      "taskType": "quiz",
+      "quizType": "short_answer",
+      "title": "Explain the Choice",
+      "explainer": "When should you use copy and paste instead of cut and paste?",
+      "check": {
+        "type": "answer_matches_regex",
+        "value": "(keep|stay|remain|original|another|second|both)"
+      }
+    }
+  ]
+}
