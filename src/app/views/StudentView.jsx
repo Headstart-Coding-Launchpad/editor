@@ -341,8 +341,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   }, [sessionLoading, identityLoaded, lessonLoading, session?.state, session?.createdAt, session?.currentTaskId, soloMode, teacherPresentation])
 
   useEffect(() => {
-    if (teacherPresentation && session?.state === 'ended') window.close()
-  }, [teacherPresentation, session?.state])
+    if (teacherPresentation && !sessionLoading && session?.state === 'ended') window.close()
+  }, [teacherPresentation, sessionLoading, session?.state])
 
   // React to teacher moving to a new task
   useEffect(() => {

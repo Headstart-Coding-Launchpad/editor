@@ -146,7 +146,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'output_matches_regex') {
-    try { return new RegExp(check.value).test(normalizeRegexOutput(output)) } catch { return false }
+    try { return new RegExp(check.value).test(normalizeOutput(output, true)) } catch { return false }
   }
 
   if (check.type === 'output_line_count') {
@@ -175,7 +175,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'code_matches_regex') {
-    try { return new RegExp(check.value).test(normalizeRegexCode(context.code ?? '')) } catch { return false }
+    try { return new RegExp(check.value).test(normalizeCode(context.code ?? '', true)) } catch { return false }
   }
 
   if (check.type === 'element_count') {
@@ -429,12 +429,9 @@ function wildcardEquals(text, pattern) {
   return new RegExp(`^${escaped}$`).test(text)
 }
 
-function normalizeOutput(value) {
-  return String(value ?? '').replace(/\r\n?/g, '\n').trim().toLowerCase()
-}
-
-function normalizeRegexOutput(value) {
-  return String(value ?? '').replace(/\r\n?/g, '\n').trim()
+function normalizeOutput(value, caseSensitive = false) {
+  const s = String(value ?? '').replace(/\r\n?/g, '\n').trim()
+  return caseSensitive ? s : s.toLowerCase()
 }
 
 // Normalizes CSS property values for comparison: reduces url(...) to just the
@@ -451,12 +448,9 @@ function normalizeExactOutput(value) {
   return String(value ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').toLowerCase()
 }
 
-function normalizeCode(value) {
-  return normalizeCodeWhitespace(value).toLowerCase()
-}
-
-function normalizeRegexCode(value) {
-  return normalizeCodeWhitespace(value)
+function normalizeCode(value, caseSensitive = false) {
+  const s = normalizeCodeWhitespace(value)
+  return caseSensitive ? s : s.toLowerCase()
 }
 
 function normalizeCodeWhitespace(value) {

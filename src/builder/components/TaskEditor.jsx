@@ -525,6 +525,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     }
   }
 
+  const resetToStarterBtn = isCompleteTab ? (
+    <button type="button" className="btn-ghost te-secondary-btn" onClick={handleResetCompleteToStarter}>
+      Reset to starter code
+    </button>
+  ) : null
+
   return (
     <div className="te-wrap">
       {parentGroup ? (
@@ -888,11 +894,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               stages={codeStages}
               onAddStage={handleAddStage}
               onRemoveStage={handleRemoveStage}
-              rightAction={isCompleteTab ? (
-                <button type="button" className="btn-ghost te-secondary-btn" onClick={handleResetCompleteToStarter}>
-                  Reset to starter code
-                </button>
-              ) : null}
+              rightAction={resetToStarterBtn}
             />
             {isStageTab && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0 }}>
@@ -1221,11 +1223,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               onRemoveStage={handleRemoveStage}
               rightAction={
                 <>
-                  {isCompleteTab && (
-                    <button type="button" className="btn-ghost te-secondary-btn" onClick={handleResetCompleteToStarter}>
-                      Reset to starter code
-                    </button>
-                  )}
+                  {resetToStarterBtn}
                   <button
                     type="button"
                     className="btn-primary"
