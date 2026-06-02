@@ -501,8 +501,9 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
       const newPath = destDirNorm === '/' ? '/' + name : destDirNorm + name
       setOpenFile(newPath)
       setSelected(newPath)
+    } else {
+      setSelected(null)
     }
-    setSelected(null)
   }
 
   function handleFileContentChange(content) {
@@ -624,7 +625,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
             selected={selected}
             onSelect={handleSelect}
             onNavigate={navigate}
-            onDrop={handleDrop}
+            onDrop={disabled ? undefined : handleDrop}
             renamingPath={renamingPath}
             onRenameCommit={handleRenameCommit}
             onRenameKeyDown={handleRenameKeyDown}

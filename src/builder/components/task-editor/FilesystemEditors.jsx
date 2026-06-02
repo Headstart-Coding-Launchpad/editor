@@ -281,17 +281,17 @@ export function FsCheckListEditor({ checks, onChange }) {
   function handleChange(i, updated) {
     const next = [...safeChecks]
     next[i] = updated
-    onChange(next.length === 1 ? next[0] : next)
+    onChange(next)
   }
 
   function handleRemove(i) {
     const next = safeChecks.filter((_, idx) => idx !== i)
-    onChange(next.length === 0 ? null : next.length === 1 ? next[0] : next)
+    onChange(next.length === 0 ? null : next)
   }
 
   function handleAdd() {
     const next = [...safeChecks, { type: 'fs_file_exists', path: '' }]
-    onChange(next.length === 1 ? next[0] : next)
+    onChange(next)
   }
 
   return (

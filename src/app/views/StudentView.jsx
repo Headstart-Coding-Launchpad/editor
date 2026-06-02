@@ -97,6 +97,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   editorActivityRef.current = editorActivity
   const inPersonalSandboxRef = useRef(inPersonalSandbox)
   inPersonalSandboxRef.current = inPersonalSandbox
+  const fsStateRef = useRef(fsState)
+  fsStateRef.current = fsState
 
   function currentTeacherLivePayload(extra = {}) {
     const filesMap = Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
@@ -171,6 +173,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       })
     } else if (currentLesson.type === 'html') {
       filesRef.current.forEach(f => saveFile(lessonId, taskId, f.name, id.anonymousId, f.content))
+    } else if (currentLesson.type === 'filesystem') {
+      saveFsState(lessonId, taskId, id.anonymousId, fsStateRef.current)
     }
     // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
   }
@@ -489,9 +493,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setActiveFile('')
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
-      const saved = carryId != null
-        ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId)
-        : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
+      const ownSaved = loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
+      const saved = ownSaved ?? (carryId != null ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null)
       setFsState(saved ?? task.starterFs ?? DEFAULT_FS)
       resetCheckFeedback()
     } else {
@@ -709,6 +712,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setScratchExternalState(completeBlocks)
       applyCheckFeedback(true)
       if (completeBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: completeBlocks })
+    } else if (lesson.type === 'filesystem') {
+      const completeFs = task.completeFs ?? DEFAULT_FS
+      setFsState(completeFs)
+      applyCheckFeedback(true)
+      saveFsState(lessonId, currentTaskId, identity.anonymousId, completeFs)
     }
   }
 
@@ -1159,6 +1167,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!task?.completeCode
     : lesson.type === 'scratch'
     ? !!task?.completeBlocks
+    : lesson.type === 'filesystem'
+    ? !!task?.completeFs
     : (task?.completeFiles?.length > 0)
   const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && repeatedSuggestionCount >= 2
   const hasPersonalSandbox = lesson.type === 'python'

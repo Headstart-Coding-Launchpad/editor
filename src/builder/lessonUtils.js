@@ -236,6 +236,7 @@ export function normalizeTasksForExport(tasks) {
     if (exported.taskMode === 'both') delete exported.taskMode
     if (exported.carryCodeFrom != null) exported.carryCodeFrom = idMap[exported.carryCodeFrom] ?? exported.carryCodeFrom
     if (exported.carryBlocksFrom != null) exported.carryBlocksFrom = idMap[exported.carryBlocksFrom] ?? exported.carryBlocksFrom
+    if (exported.carryFsFrom != null) exported.carryFsFrom = idMap[exported.carryFsFrom] ?? exported.carryFsFrom
     if (Array.isArray(exported.check)) exported.check = exported.check.map(normalizeCheckForExport)
     else if (exported.check) exported.check = normalizeCheckForExport(exported.check)
     if (Array.isArray(exported.options)) {
