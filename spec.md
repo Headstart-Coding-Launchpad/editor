@@ -157,6 +157,8 @@ File object: `{ name: string, type: "html"|"css"|"javascript", content: string }
 
 Carry-through is per-file matched by filename. Files not present in the carried task load from `starterFiles`.
 
+`interactionMode: "submit"` replaces Run with Submit and hides the iframe preview; checks evaluate against source text only.
+
 ## 9. Scratch Code Tasks
 
 ```json
@@ -555,6 +557,7 @@ Separate from `activeStudentView`. Broadcasts to **all** students simultaneously
 - Source can be teacher's own work or a pinned student's stream
 - Broadcast code views include streamed selection/cursor plus copy, paste, and editor-click activity notices
 - `onDisconnect` clears `teacherLive` automatically; only one broadcast at a time
+- Ending the teacher session closes the presentation window
 
 ## 29. Remote Reset
 
@@ -579,6 +582,7 @@ Mechanism: teacher writes `remoteResetAction` + `remoteResetPushedAt` to student
 
 **Live session:** teacher-controlled. Student cannot advance past current task.  
 **Solo mode:** free navigation; can move one task ahead if current check has passed (or has no check).  
+**Builder preview:** unrestricted task navigation so teachers can inspect any task without completing checks.
 Previously visited tasks: viewable in read-only mode (red editor tint), but re-runnable in solo mode.
 
 ## 32. Completion Checks
@@ -745,6 +749,7 @@ Supports all task types: code (Python/HTML/Scratch), information, quiz (all 4 su
 Task type switching (`taskType`, `quizType`) clears incompatible fields. Interaction mode switching (`run` / `submit`) filters checks to only compatible types.
 Each task accepts optional estimated minutes; the task-list header shows their lesson-wide total.
 Markdown entry fields provide searchable topic-library insertion and prompt authors to link recognised topic terms.
+Complete-code tabs for Python and HTML can be reset from the current starter content.
 
 Quiz builders:
 - Multiple choice: options list with text inputs and correct-answer radio

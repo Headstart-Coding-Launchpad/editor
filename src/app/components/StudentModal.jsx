@@ -281,10 +281,11 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
                   )}
                 </div>
               </div>
-              {/* Right: iframe preview */}
-              <div style={s.iframePane}>
-                <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
-              </div>
+              {task?.interactionMode !== 'submit' && (
+                <div style={s.iframePane}>
+                  <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
+                </div>
+              )}
             </>
           )}
         </div>
