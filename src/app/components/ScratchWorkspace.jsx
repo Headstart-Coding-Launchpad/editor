@@ -60,17 +60,7 @@ function initSpriteStates(sprites) {
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 
-function drawSpriteShape(ctx, s, type) {
-  const cx = toCanvasX(s.x)
-  const cy = toCanvasY(s.y)
-  const r  = Math.max(4, (s.size / 100) * 24)
-  const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
-  const rs  = s.rotationStyle ?? 'all around'
-  const rot = rs === "don't rotate" ? 0 : rs === 'left-right' ? (dir > 90 && dir < 270 ? Math.PI : 0) : (dir - 90) * (Math.PI / 180)
-
-  ctx.save()
-  ctx.translate(cx, cy)
-  ctx.rotate(rot)
+function drawScratchSpriteAtOrigin(ctx, type, r) {
   switch (type) {
     case 'ball':
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
@@ -120,6 +110,19 @@ function drawSpriteShape(ctx, s, type) {
       break
     }
   }
+}
+
+function drawSpriteShape(ctx, s, type) {
+  const cx = toCanvasX(s.x)
+  const cy = toCanvasY(s.y)
+  const r  = Math.max(4, (s.size / 100) * 24)
+  const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
+  const rs  = s.rotationStyle ?? 'all around'
+  const rot = rs === "don't rotate" ? 0 : rs === 'left-right' ? (dir > 90 && dir < 270 ? Math.PI : 0) : (dir - 90) * (Math.PI / 180)
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(rot)
+  drawScratchSpriteAtOrigin(ctx, type, r)
   ctx.restore()
 }
 
@@ -206,55 +209,7 @@ function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
   }
 
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
-  switch (sprite.type ?? 'cat') {
-    case 'ball':
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = '#4C97FF'; ctx.fill()
-      ctx.strokeStyle = '#2244aa'; ctx.lineWidth = 1.5; ctx.stroke()
-      break
-    case 'star': {
-      ctx.beginPath()
-      for (let i = 0; i < 10; i++) {
-        const a = (i * Math.PI) / 5 - Math.PI / 2
-        const rad = i % 2 === 0 ? r : r * 0.42
-        i === 0 ? ctx.moveTo(Math.cos(a) * rad, Math.sin(a) * rad) : ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad)
-      }
-      ctx.closePath(); ctx.fillStyle = '#FFD700'; ctx.fill()
-      ctx.strokeStyle = '#CC9900'; ctx.lineWidth = 1.5; ctx.stroke()
-      break
-    }
-    case 'arrow':
-      ctx.beginPath()
-      ctx.moveTo(0, -r); ctx.lineTo(r * 0.65, r * 0.5); ctx.lineTo(0, r * 0.1); ctx.lineTo(-r * 0.65, r * 0.5)
-      ctx.closePath(); ctx.fillStyle = '#9966FF'; ctx.fill()
-      ctx.strokeStyle = '#6633cc'; ctx.lineWidth = 1.5; ctx.stroke()
-      break
-    case 'bat':
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2)
-      ctx.fillStyle = '#374151'; ctx.fill()
-      ctx.beginPath(); ctx.ellipse(-r * 0.9, -r * 0.1, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2)
-      ctx.fillStyle = '#374151'; ctx.fill()
-      ctx.beginPath(); ctx.ellipse(r * 0.9, -r * 0.1, r * 0.55, r * 0.3, 0.3, 0, Math.PI * 2)
-      ctx.fillStyle = '#374151'; ctx.fill()
-      break
-    case 'parrot':
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = '#22c55e'; ctx.fill()
-      ctx.strokeStyle = '#166534'; ctx.lineWidth = 1.5; ctx.stroke()
-      ctx.beginPath(); ctx.moveTo(r * 0.3, -r * 0.1); ctx.lineTo(r * 0.8, r * 0.1); ctx.lineTo(r * 0.3, r * 0.25)
-      ctx.closePath(); ctx.fillStyle = '#FBA504'; ctx.fill()
-      break
-    default: {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = '#FFA500'; ctx.fill(); ctx.strokeStyle = '#cc6600'; ctx.lineWidth = 1.5; ctx.stroke()
-      const er = Math.max(2, r * 0.18)
-      ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.2, er, 0, Math.PI * 2); ctx.arc(r * 0.3, -r * 0.2, er, 0, Math.PI * 2)
-      ctx.fillStyle = '#222'; ctx.fill()
-      ctx.beginPath(); ctx.arc(0, r * 0.15, r * 0.35, 0, Math.PI)
-      ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5; ctx.stroke()
-      break
-    }
-  }
+  drawScratchSpriteAtOrigin(ctx, sprite.type ?? 'cat', r)
   ctx.restore()
 }
 
@@ -338,9 +293,6 @@ export default function ScratchWorkspace({
   const sprites = task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
   const backdrops = task?.backdrops?.length > 0 ? task.backdrops : []
   const variables = task?.variables ?? []
-  setSpriteContext(sprites)
-  setBackdropContext(backdrops)
-  setVariableContext(variables)
 
   const normInitStates  = normaliseInitialStates(initialStates ?? initialState, sprites)
   const normExtStates   = externalStates ?? (externalState ? normaliseInitialStates(externalState, sprites) : null)
@@ -361,6 +313,7 @@ export default function ScratchWorkspace({
   const onCheckResultRef    = useRef(onCheckResult)
   const askResolveRef       = useRef(null)
   const inputStateRef       = useRef({ keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0 })
+  const keySignalsRef       = useRef(new Map()) // normalizedKey → active signal (at most one per key)
   const isDraggingRef       = useRef(false)
   const dragStartRef        = useRef(null)
   const dragMovedRef        = useRef(false)
@@ -375,7 +328,6 @@ export default function ScratchWorkspace({
     if (controlledSpriteId !== null) onSpriteSelect?.(id)
     else setInternalSelectedSpriteId(id)
   }
-  setCostumeContext((sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? [])
 
   const [status, setStatus]         = useState('loading')
   const [running, setRunning]       = useState(false)
@@ -399,6 +351,19 @@ export default function ScratchWorkspace({
   onStateChangeRef.current = onStateChange
   onSpriteStatesChangeRef.current = onSpriteStatesChange
   onCheckResultRef.current = onCheckResult
+
+  // ── Sync Blockly context globals (lazy — only read when dropdowns open) ──────
+  useEffect(() => {
+    setSpriteContext(sprites)
+    setBackdropContext(backdrops)
+    setVariableContext(variables)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprites, backdrops, variables])
+
+  useEffect(() => {
+    setCostumeContext((sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprites, selectedSpriteId])
 
   // ── Draw stage ──────────────────────────────────────────────────────────────
   const drawStage = useCallback((states) => {
@@ -640,7 +605,9 @@ export default function ScratchWorkspace({
     return () => {
       cancelled = true
       clearTimeout(syncTimerRef.current)
-      signalRef.current && (signalRef.current.stopped = true)
+      if (signalRef.current) signalRef.current.stopped = true
+      for (const s of keySignalsRef.current.values()) s.stopped = true
+      keySignalsRef.current.clear()
       for (const ws of Object.values(workspaceRefs.current)) ws?.dispose?.()
       workspaceRefs.current = {}
     }
@@ -783,10 +750,17 @@ export default function ScratchWorkspace({
     }
   }
 
+  // ── Stop all active runs (green flag + key events) ────────────────────────────
+  function stopAll() {
+    if (signalRef.current) signalRef.current.stopped = true
+    for (const s of keySignalsRef.current.values()) s.stopped = true
+    keySignalsRef.current.clear()
+  }
+
   // ── Run / Stop ────────────────────────────────────────────────────────────────
   async function handleRun() {
     if (status !== 'ready') return
-    if (signalRef.current) signalRef.current.stopped = true
+    stopAll()
     lastCheckRef.current = null
     runningRef.current = true
     setRunning(true)
@@ -799,7 +773,7 @@ export default function ScratchWorkspace({
 
   async function runClickedBlock(block, spriteId) {
     if (runningRef.current || statusRef.current !== 'ready') return
-    if (signalRef.current) signalRef.current.stopped = true
+    stopAll()
     lastCheckRef.current = null
     runningRef.current = true
     setRunning(true)
@@ -813,7 +787,7 @@ export default function ScratchWorkspace({
 
   async function runHatForAll(eventType, option = null) {
     if (statusRef.current !== 'ready' || runningRef.current) return
-    if (signalRef.current) signalRef.current.stopped = true
+    stopAll()
     lastCheckRef.current = null
     runningRef.current = true
     setRunning(true)
@@ -824,8 +798,20 @@ export default function ScratchWorkspace({
     finishRun(signal)
   }
 
+  // Fires key-press hats concurrently with any running green-flag script.
+  // At most one run per key at a time — a new keydown stops the previous run for that key.
+  async function fireKeyEvent(key) {
+    if (statusRef.current !== 'ready') return
+    const prev = keySignalsRef.current.get(key)
+    if (prev) prev.stopped = true
+    const signal = createSignal()
+    keySignalsRef.current.set(key, signal)
+    try { await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key) } catch {}
+    if (keySignalsRef.current.get(key) === signal) keySignalsRef.current.delete(key)
+  }
+
   function handleStop() {
-    if (signalRef.current) signalRef.current.stopped = true
+    stopAll()
     runningRef.current = false
     setRunning(false)
     setAskPrompt(null)
@@ -834,7 +820,12 @@ export default function ScratchWorkspace({
   }
 
   function handleResetStage() {
-    handleStop()
+    stopAll()
+    runningRef.current = false
+    setRunning(false)
+    setAskPrompt(null)
+    askResolveRef.current?.('')
+    askResolveRef.current = null
     const reset = initSpriteStates(sprites)
     commitSpriteStates(reset)
     const defaultBackdrop = backdrops[0]?.name ?? null
@@ -967,12 +958,14 @@ export default function ScratchWorkspace({
       }
       inputStateRef.current.keysPressed.add(key)
       if (signalRef.current) signalRef.current.keysPressed.add(key)
-      runHatForAll('event_whenkeypressed', key)
+      for (const s of keySignalsRef.current.values()) s.keysPressed.add(key)
+      fireKeyEvent(key)
     }
     function onKeyUp(event) {
       const key = normalizeKey(event.key)
       if (key) inputStateRef.current.keysPressed.delete(key)
       if (key && signalRef.current) signalRef.current.keysPressed.delete(key)
+      if (key) for (const s of keySignalsRef.current.values()) s.keysPressed.delete(key)
     }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)

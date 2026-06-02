@@ -33,6 +33,10 @@ const SCRATCH_TOOLBOX_GROUPS = [
       ['motion_changexby', 'change x'],
       ['motion_changeyby', 'change y'],
       ['motion_setrotationstyle', 'set rotation style'],
+      ['motion_glidesecstoxy', 'glide secs to x/y'],
+      ['motion_xposition', 'x position'],
+      ['motion_yposition', 'y position'],
+      ['motion_direction', 'direction'],
     ],
   },
   {
@@ -75,6 +79,7 @@ const SCRATCH_TOOLBOX_GROUPS = [
       ['sensing_keypressed', 'key pressed?'],
       ['sensing_mousedown', 'mouse down?'],
       ['sensing_touchingedge', 'touching edge?'],
+      ['sensing_touchingobject', 'touching object?'],
     ],
   },
   {

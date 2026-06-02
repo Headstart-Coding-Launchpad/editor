@@ -946,7 +946,19 @@ async function runBlock(block, context) {
       stopAllSounds()
       break
 
-    case 'event_broadcast':
+    case 'event_broadcast': {
+      const msg = stringValue(block, 'BROADCAST_INPUT', context)
+      context.signal.onBroadcast?.(msg)
+      const targets = context.allSprites ?? [{ workspace: context.workspace, state: context.state, onUpdate: context.onUpdate }]
+      // fire-and-forget: receivers run concurrently, sender continues immediately
+      Promise.all(targets.map(sp => {
+        const ctx = createRunContext(sp.workspace, sp.state, sp.onUpdate, context.signal, context.allSprites, sp.costumes ?? [])
+        const hats = sp.workspace.getBlocksByType('event_whenbroadcastreceived', false)
+          .filter(hat => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(msg ?? ''))
+        return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), ctx)))
+      })).catch(() => {})
+      break
+    }
     case 'event_broadcastandwait': {
       const msg = stringValue(block, 'BROADCAST_INPUT', context)
       context.signal.onBroadcast?.(msg)
