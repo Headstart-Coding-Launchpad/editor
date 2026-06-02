@@ -825,13 +825,15 @@ The `filesystem` lesson type presents a virtual Windows Explorer-style file mana
 ### Filesystem state model
 
 All state is a **flat path map**. Directories end with `/`; files do not. Root `/` always exists.
+Text files store editable `content`. Image files may store a static lesson-asset path in `src`; the explorer also falls back to a lesson asset with the same basename.
 
 ```json
 {
   "/":                          { "type": "dir" },
   "/Documents/":                { "type": "dir" },
   "/Documents/notes.txt":       { "type": "file", "content": "Hello!" },
-  "/Pictures/":                 { "type": "dir" }
+  "/Pictures/":                 { "type": "dir" },
+  "/Pictures/avatar.png":       { "type": "file", "src": "avatar.png" }
 }
 ```
 
@@ -870,6 +872,8 @@ Checks evaluate automatically after each student operation — there is no Run b
 | `fs_content_contains` | `path`, `value` | File content contains `value` (case-insensitive) |
 | `fs_content_equals` | `path`, `value` | File content equals `value` (trimmed, case-insensitive) |
 | `fs_file_in_dir` | `path`, `dir` | File exists and its direct parent equals `dir` |
+| `fs_dir_opened` | `path` | Student navigated to the folder at `path` |
+| `fs_file_opened` | `path` | Student opened the file at `path` |
 
 ### Minimal filesystem lesson example
 

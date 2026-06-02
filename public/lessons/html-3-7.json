@@ -1,4 +1,4 @@
-﻿{
+{
   "id": "html-3-7",
   "type": "html",
   "title": "Background Shorthand and Gradients",
@@ -6,6 +6,7 @@
   "level": "Level 3",
   "assetsPath": "/assets/html-3-7/",
   "assets": [
+    "car.png",
     "skiing.jpg"
   ],
   "sandboxStarterFiles": [
@@ -24,9 +25,9 @@
     {
       "id": 1,
       "taskType": "information",
-      "informationType": "introduction",
       "title": "Introduction",
-      "explainer": ""
+      "explainer": "",
+      "informationType": "introduction"
     },
     {
       "id": "g-1830003701000",
@@ -36,9 +37,9 @@
         {
           "id": 2,
           "taskType": "information",
-          "informationType": "recap",
           "title": "Background Image Recap - 1",
-          "explainer": "Background images sit **behind** content.\n\nThey do not take up page space like an `<img>` element. Instead, they decorate the background of an element such as a `div`, card, button, or page section.\n\nToday we will start with background image properties you already know, then make them shorter with shorthand."
+          "explainer": "![Image](https://headstart-coding-launchpad.github.io/editor/assets/html-3-7/car.png)\n\nBackground images sit **behind** content.\n\nThey do not take up page space like an `<img>` element. Instead, they decorate the background of an element such as a `div`, card, button, or page section.\n\nToday we will start with background image properties you already know, then make them shorter with shorthand.",
+          "informationType": "recap"
         },
         {
           "id": 3,
@@ -253,9 +254,9 @@
     {
       "id": 8,
       "taskType": "information",
-      "informationType": "recap",
       "title": "Learning Objectives",
-      "explainer": "Today we will learn how to:\n\n- combine background image settings with the `background` shorthand\n- create `radial-gradient()` backgrounds\n- create `linear-gradient()` backgrounds\n- control gradient direction with keywords and angles\n\nThe key shorthand pattern is:\n\n```css\nbackground: url(\"image.jpg\") no-repeat center/cover;\n```"
+      "explainer": "Today we will learn how to:\n\n- combine background image settings with the `background` shorthand\n- create `radial-gradient()` backgrounds\n- create `linear-gradient()` backgrounds\n- control gradient direction with keywords and angles\n\nThe key shorthand pattern is:\n\n```css\nbackground: url(\"image.jpg\") no-repeat center/cover;\n```",
+      "informationType": "recap"
     },
     {
       "id": "g-1830003702000",
@@ -557,39 +558,7 @@
         },
         {
           "id": 18,
-          "taskType": "quiz",
-          "quizType": "multiple_choice",
           "title": "Linear Gradients - 3",
-          "explainer": "Which value makes a linear gradient move from left to right?",
-          "options": [
-            {
-              "id": "a",
-              "text": "`linear-gradient(to right, red, yellow)`"
-            },
-            {
-              "id": "b",
-              "text": "`linear-gradient(right, red, yellow)`",
-              "feedback": "Direction keywords usually start with `to`."
-            },
-            {
-              "id": "c",
-              "text": "`radial-gradient(to right, red, yellow)`",
-              "feedback": "`radial-gradient()` spreads outward. This question asks about a straight line."
-            },
-            {
-              "id": "d",
-              "text": "`background-position: right;`",
-              "feedback": "That places a background image. It does not set the gradient direction."
-            }
-          ],
-          "check": {
-            "type": "answer_equals",
-            "value": "a"
-          }
-        },
-        {
-          "id": 19,
-          "title": "Linear Gradients - 4",
           "explainer": "# Direction Keyword\n\nChange the `.rectangle` gradient so it moves from left to right.\n\nStart the gradient arguments with `to right`:\n\n```css\nbackground-image: linear-gradient(to right, red, yellow);\n```",
           "entryFile": "index.html",
           "completeEntryFile": "index.html",
@@ -633,6 +602,38 @@
           "estimatedMinutes": 4
         },
         {
+          "id": 19,
+          "taskType": "quiz",
+          "quizType": "multiple_choice",
+          "title": "Linear Gradients - 4",
+          "explainer": "Which value makes a linear gradient move from left to right?",
+          "options": [
+            {
+              "id": "a",
+              "text": "`linear-gradient(to right, red, yellow)`"
+            },
+            {
+              "id": "b",
+              "text": "`linear-gradient(right, red, yellow)`",
+              "feedback": "Direction keywords usually start with `to`."
+            },
+            {
+              "id": "c",
+              "text": "`radial-gradient(to right, red, yellow)`",
+              "feedback": "`radial-gradient()` spreads outward. This question asks about a straight line."
+            },
+            {
+              "id": "d",
+              "text": "`background-position: right;`",
+              "feedback": "That places a background image. It does not set the gradient direction."
+            }
+          ],
+          "check": {
+            "type": "answer_equals",
+            "value": "a"
+          }
+        },
+        {
           "id": 20,
           "taskType": "information",
           "title": "Linear Gradients - 5",
@@ -644,7 +645,7 @@
           "explainer": "# Use an Angle\n\nChange the `.rectangle` gradient to use an angle.\n\nUse `45deg`, or choose a different degree value if you want to experiment.",
           "entryFile": "index.html",
           "completeEntryFile": "index.html",
-          "carryCodeFrom": 19,
+          "carryCodeFrom": 18,
           "starterFiles": [
             {
               "name": "index.html",
@@ -789,9 +790,9 @@
         {
           "id": 24,
           "taskType": "information",
-          "informationType": "recap",
           "title": "Recap - 1",
-          "explainer": "- `background` is shorthand for several background settings.\n- `center/cover` means the position is `center` and the size is `cover`.\n- `radial-gradient()` spreads out from a point.\n- `linear-gradient()` changes colour along a line.\n- `deg` controls a gradient angle."
+          "explainer": "- `background` is shorthand for several background settings.\n- `center/cover` means the position is `center` and the size is `cover`.\n- `radial-gradient()` spreads out from a point.\n- `linear-gradient()` changes colour along a line.\n- `deg` controls a gradient angle.",
+          "informationType": "recap"
         },
         {
           "id": 25,
@@ -868,4 +869,3 @@
     }
   ]
 }
-

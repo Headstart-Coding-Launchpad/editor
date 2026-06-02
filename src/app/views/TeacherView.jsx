@@ -468,9 +468,11 @@ export default function TeacherView({ lessonId }) {
               />
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <FilesystemTask
-                  key={`teacher-fs-${displayTaskId}-${teacherCodeTab}`}
-                  fs={showingComplete ? (task?.completeFs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
-                  disabled
+                   key={`teacher-fs-${displayTaskId}-${teacherCodeTab}`}
+                   fs={showingComplete ? (task?.completeFs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
+                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
+                   assets={lesson.assets}
+                   disabled
                 />
               </div>
             </div>
