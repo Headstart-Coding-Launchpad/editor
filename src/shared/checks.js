@@ -64,7 +64,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   if (!check?.type) return false
 
   if (FS_CHECK_TYPES.includes(check.type)) {
-    return evaluateFsCheck(check, context.fs)
+    return evaluateFsCheck(check, context.fs, context)
   }
 
   if (check.type === 'code_no_error') {

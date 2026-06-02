@@ -7,6 +7,8 @@ export const FS_CHECK_TYPES = [
   'fs_content_contains',
   'fs_content_equals',
   'fs_file_in_dir',
+  'fs_dir_opened',
+  'fs_file_opened',
 ]
 
 // ── path helpers ─────────────────────────────────────────────────────────────
@@ -147,7 +149,7 @@ export function updateFileContent(fs, path, content) {
 
 // ── check evaluation ──────────────────────────────────────────────────────────
 
-export function evaluateFsCheck(check, fs) {
+export function evaluateFsCheck(check, fs, context = {}) {
   if (!fs) return false
   const { type, path, dir, value } = check
 
@@ -181,6 +183,10 @@ export function evaluateFsCheck(check, fs) {
       const expectedDir = normaliseDirPath(dir ?? '/')
       return parentPath(p) === expectedDir
     }
+    case 'fs_dir_opened':
+      return normaliseDirPath(path) === normaliseDirPath(context.currentDir ?? '/')
+    case 'fs_file_opened':
+      return normaliseFilePath(path) === normaliseFilePath(context.openFile ?? '/')
     default:
       return false
   }

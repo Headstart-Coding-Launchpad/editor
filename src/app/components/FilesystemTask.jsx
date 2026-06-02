@@ -12,6 +12,7 @@ import {
   parentPath,
   normaliseDirPath,
 } from '../../shared/filesystem.js'
+import { resolveAssetFileUrl } from '../../shared/assetPaths.js'
 
 const ICON_DIR = '📁'
 const ICON_FILE = '📄'
@@ -21,6 +22,13 @@ const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp']
 function isImage(path) {
   const lower = path.toLowerCase()
   return IMAGE_EXTS.some(ext => lower.endsWith(ext))
+}
+
+function imagePreviewSrc(path, entry, assetsPath, assets) {
+  if (entry?.src) return resolveAssetFileUrl(assetsPath, entry.src)
+  const name = entryName(path)
+  const asset = assets.find(assetPath => assetPath === name || assetPath.endsWith('/' + name))
+  return asset ? resolveAssetFileUrl(assetsPath, asset) : ''
 }
 
 // ── Folder Tree ───────────────────────────────────────────────────────────────
@@ -326,7 +334,7 @@ function AddressBar({ currentDir, onNavigate }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled = false }) {
+export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false }) {
   const [currentDir, setCurrentDir] = useState('/')
   const [selected, setSelected] = useState(null)
   const [openFile, setOpenFile] = useState(null)
@@ -351,7 +359,13 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
     setOpenFile(null)
     setCreating(null)
     setRenamingPath(null)
-  }, [])
+    onInteraction?.({ currentDir: path, openFile: null })
+  }, [onInteraction])
+
+  function handleGoUp() {
+    if (currentDir === '/') return
+    navigate(parentPath(currentDir))
+  }
 
   function handleSelect(path) {
     setSelected(path)
@@ -363,6 +377,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
     } else {
       setOpenFile(path) // image
     }
+    if (!path.endsWith('/')) onInteraction?.({ currentDir, openFile: path })
   }
 
   function handleNewFolder(name) {
@@ -538,6 +553,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
   const openEntry = openFile ? fs[openFile] : null
   const showEditor = openEntry && openEntry.type === 'file' && !isImage(openFile)
   const showImage = openEntry && isImage(openFile)
+  const previewSrc = showImage ? imagePreviewSrc(openFile, openEntry, assetsPath, assets) : ''
 
   return (
     <div
@@ -547,6 +563,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
     >
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#f8f5ff', borderBottom: '1px solid var(--ui-border)', flexWrap: 'wrap' }}>
+        <button
+          className="btn-ghost-outline"
+          style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+          onClick={handleGoUp}
+          disabled={currentDir === '/'}
+          aria-label="Go up one folder"
+        >
+          Up
+        </button>
         {!disabled && (
           <>
             <button
@@ -671,7 +696,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, disabled =
                 />
               ) : (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Image preview not available in virtual filesystem</span>
+                  {previewSrc ? (
+                    <img
+                      src={previewSrc}
+                      alt={entryName(openFile)}
+                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>No preview source configured for this image</span>
+                  )}
                 </div>
               )}
             </div>

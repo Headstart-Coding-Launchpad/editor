@@ -283,6 +283,24 @@ describe('evaluateFsCheck', () => {
     })
   })
 
+  describe('fs_dir_opened', () => {
+    it('passes when the student navigated to the expected folder', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, { currentDir: '/Documents/' })).toBe(true)
+    })
+    it('fails when the student is viewing a different folder', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, { currentDir: '/Pictures/' })).toBe(false)
+    })
+  })
+
+  describe('fs_file_opened', () => {
+    it('passes when the student opened the expected file', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, { openFile: '/Documents/notes.txt' })).toBe(true)
+    })
+    it('fails when the student opened a different file', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, { openFile: '/Documents/other.txt' })).toBe(false)
+    })
+  })
+
   it('returns false for null fs', () => {
     expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/x.txt' }, null)).toBe(false)
   })
