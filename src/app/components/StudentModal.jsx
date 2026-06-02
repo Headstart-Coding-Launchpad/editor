@@ -3,6 +3,7 @@ import { CodeEditor } from '../../shared/CodeEditor'
 import OutputPanel from './OutputPanel'
 import IframePreview from './IframePreview'
 import ScratchWorkspace from './ScratchWorkspace'
+import FilesystemTask from './FilesystemTask'
 import { buildIframeSrc } from '../../shared/iframe'
 import { decodeFileKey } from '../hooks/useSession'
 import QuizTask from './QuizTask'
@@ -11,6 +12,7 @@ import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { findTaskById } from '../../shared/taskUtils'
+import { DEFAULT_FS } from '../../shared/filesystem'
 
 function parseSpriteState(raw) {
   if (!raw) return null
@@ -26,15 +28,19 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
 
-  const isPython  = lesson?.type === 'python'
-  const isScratch = lesson?.type === 'scratch'
+  const isPython     = lesson?.type === 'python'
+  const isScratch    = lesson?.type === 'scratch'
+  const isFilesystem = lesson?.type === 'filesystem'
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task      = findTaskById(lesson?.tasks, session?.currentTaskId)
   const isQuiz    = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
-  const iframeSrc = !isPython && !isScratch && !isQuiz && files.length
+  const studentFs = isFilesystem
+    ? (() => { try { return student.currentCode ? JSON.parse(student.currentCode) : DEFAULT_FS } catch { return DEFAULT_FS } })()
+    : null
+  const iframeSrc = !isPython && !isScratch && !isFilesystem && !isQuiz && files.length
     ? buildIframeSrc(files, task?.entryFile ?? 'index.html')
     : null
 
@@ -56,13 +62,15 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
     ? !!task?.completeCode
     : isScratch
     ? !!task?.completeBlocks
+    : isFilesystem
+    ? !!task?.completeFs
     : (task?.completeFiles?.length > 0)
 
   const codeStages = !isQuiz ? (task?.codeStages ?? []) : []
 
   function buildStageOptions() {
-    const starterLabel = isScratch ? 'Starter blocks' : 'Starter code'
-    const completeLabel = isScratch ? 'Complete blocks' : 'Complete code'
+    const starterLabel = isScratch ? 'Starter blocks' : isFilesystem ? 'Starter folders' : 'Starter code'
+    const completeLabel = isScratch ? 'Complete blocks' : isFilesystem ? 'Complete folders' : 'Complete code'
     const opts = [{ value: 'starter', label: starterLabel }]
     codeStages.forEach((stage, i) => {
       opts.push({ value: `stage_${i}`, label: stage.label || `Stage ${i + 1}` })
@@ -190,7 +198,7 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
         </div>
 
         {/* Content */}
-        <div style={isInformation ? s.bodyInformation : isQuiz ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : s.bodyHtml}>
+        <div style={isInformation ? s.bodyInformation : isQuiz ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
           {isInformation ? (
             <ExplainerPanel title={task?.title} content={task?.explainer ?? ''} collapsible={false} fill topicType={lesson?.type} />
           ) : isQuiz ? (
@@ -237,6 +245,8 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
               externalState={scratchState}
               initialSpriteState={spriteState}
             />
+          ) : isFilesystem ? (
+            <FilesystemTask fs={studentFs} disabled />
           ) : (
             <>
               {/* Left: tabbed file editor */}
@@ -362,6 +372,12 @@ const s = {
     display: 'flex',
     flexDirection: 'row',
     gap: 0,
+  },
+  bodyFilesystem: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
   bodyScratch: {
     flex: 1,

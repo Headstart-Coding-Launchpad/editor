@@ -9,6 +9,7 @@ const blankLesson = type => ({
   title: '',
   description: '',
   tasks: [],
+  ...(type === 'filesystem' ? { sandboxStarterFs: { '/': { type: 'dir' } } } : {}),
 })
 
 export default function BuilderApp() {
@@ -169,6 +170,10 @@ function LessonTypeChooser({ onChoose, onUpload }) {
               <span style={s.choiceName}>Scratch</span>
               <span style={s.choiceDescription}>Block-based tasks with a Scratch workspace, stage, toolbox limits, and block checks.</span>
             </button>
+            <button style={s.choiceButton} onClick={() => onChoose('filesystem')}>
+              <span style={s.choiceName}>Files/Folders</span>
+              <span style={s.choiceDescription}>Virtual filesystem tasks — create, rename, move, and organise files and folders.</span>
+            </button>
           </div>
           <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
             Upload existing JSON
@@ -193,7 +198,7 @@ const s = {
     borderRadius: 12,
     boxShadow: '0 8px 30px rgba(98, 34, 204, 0.18), 0 4px 10px rgba(0, 0, 0, 0.06)',
   },
-  choiceCard: { width: 620 },
+  choiceCard: { width: 740 },
   cardHeader: {
     background: 'var(--colour-primary)',
     padding: '20px 24px 16px',

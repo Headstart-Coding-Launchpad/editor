@@ -130,6 +130,7 @@ Both apps import from `src/shared/`. Never duplicate this logic.
 | `iframe.js` | `buildIframeSrc(files, entryFile, options)`, `waitForIframeText(timeout)` |
 | `markdown.jsx` | `MarkdownRenderer({content, title, style})`, `InlineMarkdown({content})` — supports `img` via standard Markdown image syntax |
 | `pyodide.js` | `initPyodide()`, `runPython(code, {onOutput?, onInputRequired?})`, `stopPython()`, `provideInput(value)` |
+| `filesystem.js` | Virtual FS engine: flat path-map state, CRUD ops, `evaluateFsCheck`, `FS_CHECK_TYPES` — shared by classroom app and builder |
 | `pyodide.worker.js` | Web Worker: Pyodide loader, async `input()` AST transform, stdout/stderr streaming |
 | `scratch.js` | Block definitions, interpreter, `createRunContext()`, `createSpriteState()`, `createRunSignal()` |
 | `taskUtils.js` | `flattenTasks(tasks)`, duration total/format helpers, `getProgressItems(tasks)`, `updateSubtaskTitles(tasks)` |

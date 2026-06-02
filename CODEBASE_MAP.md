@@ -80,6 +80,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
 | `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow |
+| `FilesystemTask.jsx` | Student-facing Windows Explorer-style virtual filesystem UI: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor |
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
 | `TaskSlideTransition.jsx` | Animated slide transition wrapper used when switching between tasks |
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
@@ -133,6 +134,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor` |
 | `ScratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor` |
+| `FilesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` (visual starter/complete FS editor) and `FsCheckListEditor` (filesystem check builder) |
 
 ---
 
@@ -149,7 +151,8 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `useAssets.js` | Hook for fetching and caching `public/assets/manifest.json`; exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` |
 | `topicLibrary.js` | Topic-library JSON loader plus type-filtered search, wiki-link expansion, and author suggestion helpers |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
-| `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants |
+| `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
+| `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database reference) |
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |

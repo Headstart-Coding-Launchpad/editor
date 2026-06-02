@@ -27,7 +27,7 @@ Every lesson can contain code tasks plus `information` and `quiz` tasks.
 | Field | Required | Type | Applies to | Notes |
 |---|---:|---|---|---|
 | `id` | Yes | string | all lessons | Lowercase slug used in URLs and export filename. |
-| `type` | Yes | string | all lessons | One of `python`, `html`, or `scratch`. |
+| `type` | Yes | string | all lessons | One of `python`, `html`, `scratch`, or `filesystem`. |
 | `title` | Yes | string | all lessons | Display title. |
 | `description` | Yes | string | all lessons | Short entry screen summary. |
 | `level` | No | number | all lessons | Difficulty level shown as a badge in the TopBar. |
@@ -63,6 +63,7 @@ These fields can appear on tasks unless noted otherwise.
 | `python` | Python editor and output panel | Supported | Supported |
 | `html` | Multi-file HTML/CSS/JS editor and iframe | Supported | Supported |
 | `scratch` | Scratch blocks and stage | Supported | Supported |
+| `filesystem` | Virtual file manager (Windows Explorer-style) | Supported | Supported |
 
 `information` and `quiz` tasks ignore lesson-specific code fields such as `starterCode`, `starterFiles`, `starterBlocks`, and carry-through fields.
 
@@ -797,6 +798,102 @@ Make the star count to five.
 ```
 
 For Scratch toolbox XML, use fenced `xml` code blocks only when documenting the lesson file itself. In student-facing explainers, describe the blocks by name instead of pasting XML.
+
+## Filesystem Lesson Type
+
+The `filesystem` lesson type presents a virtual Windows Explorer-style file manager. Students create, rename, move, and delete files and folders; checks evaluate the resulting structure automatically (no Run button).
+
+### Lesson envelope
+
+```json
+{
+  "id": "files-and-folders-basics",
+  "type": "filesystem",
+  "title": "Files and Folders",
+  "description": "Learn to organise files and folders.",
+  "sandboxStarterFs": { "/": { "type": "dir" } },
+  "tasks": []
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `sandboxStarterFs` | No | Initial filesystem for sandbox mode. Flat path map (see below). |
+
+### Filesystem state model
+
+All state is a **flat path map**. Directories end with `/`; files do not. Root `/` always exists.
+
+```json
+{
+  "/":                          { "type": "dir" },
+  "/Documents/":                { "type": "dir" },
+  "/Documents/notes.txt":       { "type": "file", "content": "Hello!" },
+  "/Pictures/":                 { "type": "dir" }
+}
+```
+
+### Filesystem code task fields
+
+```json
+{
+  "id": 1,
+  "title": "Create a Documents folder",
+  "explainer": "Inside the root folder, create a new folder called **Documents**.",
+  "starterFs": { "/": { "type": "dir" } },
+  "completeFs": {
+    "/": { "type": "dir" },
+    "/Documents/": { "type": "dir" }
+  },
+  "carryFsFrom": null,
+  "check": { "type": "fs_dir_exists", "path": "/Documents/" }
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `starterFs` | No | Initial filesystem state when no carry-through exists. Defaults to `{ "/": { type: "dir" } }`. |
+| `completeFs` | No | Reference solution filesystem used in the builder. |
+| `carryFsFrom` | No | Previous task ID to carry the saved filesystem state from. |
+
+### Filesystem check types
+
+Checks evaluate automatically after each student operation — there is no Run button.
+
+| Check type | Fields | Behaviour |
+|---|---|---|
+| `fs_file_exists` | `path` | File at `path` exists |
+| `fs_dir_exists` | `path` | Directory at `path` exists |
+| `fs_not_exists` | `path` | Path (file or dir) does not exist |
+| `fs_content_contains` | `path`, `value` | File content contains `value` (case-insensitive) |
+| `fs_content_equals` | `path`, `value` | File content equals `value` (trimmed, case-insensitive) |
+| `fs_file_in_dir` | `path`, `dir` | File exists and its direct parent equals `dir` |
+
+### Minimal filesystem lesson example
+
+```json
+{
+  "id": "filesystem-minimal",
+  "type": "filesystem",
+  "title": "Filesystem Minimal",
+  "description": "Organise your files.",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Create a Documents folder",
+      "explainer": "Create a folder called **Documents** in the root folder.",
+      "starterFs": { "/": { "type": "dir" } },
+      "completeFs": {
+        "/": { "type": "dir" },
+        "/Documents/": { "type": "dir" }
+      },
+      "check": { "type": "fs_dir_exists", "path": "/Documents/" }
+    }
+  ]
+}
+```
+
+---
 
 ## Validation Rules to Keep in Mind
 

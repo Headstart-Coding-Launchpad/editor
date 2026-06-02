@@ -20,6 +20,8 @@ import { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThr
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { CopyButtons, IncorrectCheckResultsDisplay, formatCheckFailure, formatCheckFailureDetail, CheckListEditor } from './task-editor/CheckEditors'
 import { ScratchToolboxPicker, ScratchCheckListEditor, VariableManager } from './task-editor/ScratchEditors'
+import { FsTreeEditor, FsCheckListEditor } from './task-editor/FilesystemEditors'
+import { DEFAULT_FS } from '../../shared/filesystem'
 
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
@@ -46,8 +48,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const iframeRef = React.useRef(null)
   const appendOutputRef = React.useRef(null)
 
-  const isPython  = lesson.type === 'python'
-  const isScratch = lesson.type === 'scratch'
+  const isPython     = lesson.type === 'python'
+  const isScratch    = lesson.type === 'scratch'
+  const isFilesystem = lesson.type === 'filesystem'
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
   const [quizSelectedAnswer, setQuizSelectedAnswer] = useState('')
@@ -270,6 +273,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       ? { starterCode: task.starterCode ?? '', carryCodeFrom: task.carryCodeFrom ?? null }
       : lesson.type === 'scratch'
       ? { toolbox: task.toolbox ?? '', starterBlocks: task.starterBlocks ?? null, carryBlocksFrom: task.carryBlocksFrom ?? null }
+      : lesson.type === 'filesystem'
+      ? { starterFs: task.starterFs ?? DEFAULT_FS }
       : {
           starterFiles: task.starterFiles?.length ? task.starterFiles : [{ name: 'index.html', type: 'html', content: '<!DOCTYPE html>\n<html>\n<body>\n\n</body>\n</html>' }],
           entryFile: task.entryFile ?? 'index.html',
@@ -712,9 +717,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
 
             {optionsOpen && (
               <div className="te-options-section__body">
-                <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} isScratch={isScratch} isPython={isPython} />
+                <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} isScratch={isScratch} isPython={isPython} isFilesystem={isFilesystem} />
 
-                {!isScratch && (
+                {!isScratch && !isFilesystem && (
                   <Field label="Student interaction">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div className="te-option-choice-grid">
@@ -758,6 +763,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                       onChange={e => set('check', e.target.checked
                         ? (isScratch
                           ? [{ type: 'block_used', evaluation: 'after_run', opcode: 'motion_movesteps' }]
+                          : isFilesystem
+                          ? [{ type: 'fs_file_exists', path: '' }]
                           : task.interactionMode === 'submit'
                             ? [{ type: 'code_contains', value: '' }]
                             : isPython
@@ -777,6 +784,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                       onChange={checks => set('check', checks)}
                       sprites={task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES}
                     />
+                  ) : task.check && isFilesystem ? (
+                    <FsCheckListEditor
+                      checks={task.check}
+                      onChange={checks => onUpdate({ ...task, check: checks, _checkTested: false })}
+                    />
                   ) : task.check && (
                     <CheckListEditor
                       checks={normalizeChecks(task.check)}
@@ -792,7 +804,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                   )}
                 </Field>
 
-                {task.check && !isScratch && (
+                {task.check && !isScratch && !isFilesystem && (
                   <Field label="Incorrect checks">
                     <p className="te-option-note">
                       When the completion check fails, these detect specific mistakes and show a targeted hint in the feedback banner. Each check passes when it detects a particular wrong pattern.
@@ -1169,6 +1181,19 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             </Modal>
           )}
         </>
+      ) : isFilesystem ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <FsTreeEditor
+            label="Starter filesystem"
+            fs={task.starterFs}
+            onFsChange={newFs => onUpdate({ ...task, starterFs: newFs })}
+          />
+          <FsTreeEditor
+            label="Complete filesystem (reference solution)"
+            fs={task.completeFs}
+            onFsChange={newFs => onUpdate({ ...task, completeFs: newFs })}
+          />
+        </div>
       ) : (
         <>
           <div className="te-code-workspace-stack">

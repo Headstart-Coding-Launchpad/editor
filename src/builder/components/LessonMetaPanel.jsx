@@ -8,6 +8,7 @@ import { DEFAULT_SPRITES } from '../../shared/scratch'
 import { useAssets } from '../../shared/useAssets'
 import AssetBrowser from '../../shared/AssetBrowser'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { FsTreeEditor } from './task-editor/FilesystemEditors'
 
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
@@ -41,10 +42,12 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
 
   const isPython = lesson.type === 'python'
   const isScratch = lesson.type === 'scratch'
+  const isFilesystem = lesson.type === 'filesystem'
   const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
     ? (lesson.sandboxStarter ?? '').split('\n').length
     : 0
   const sandboxFileCount = lesson.sandboxStarterFiles?.length ?? 0
+  const sandboxFsCount = lesson.sandboxStarterFs ? Object.keys(lesson.sandboxStarterFs).length - 1 : 0 // subtract root
 
   return (
     <div style={s.panel}>
@@ -58,7 +61,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
       </div>
       <div style={s.fields}>
         <Field label="Lesson type">
-          <div style={s.typeBadge}>{isPython ? 'Python' : isScratch ? 'Scratch' : 'Web'}</div>
+          <div style={s.typeBadge}>{isPython ? 'Python' : isScratch ? 'Scratch' : isFilesystem ? 'Files & Folders' : 'Web'}</div>
         </Field>
 
         <Field label="Lesson ID" hint="e.g. python-intro">
@@ -124,7 +127,9 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
                 ? (sandboxLineCount ? `${sandboxLineCount} lines configured` : 'No sandbox starter code set.')
                 : isScratch
                   ? (lesson.sandboxStarter ? 'Scratch sandbox starter configured.' : 'No Scratch sandbox starter set.')
-                  : (sandboxFileCount ? `${sandboxFileCount} starter files configured` : 'No sandbox starter files set.')}
+                  : isFilesystem
+                    ? (sandboxFsCount ? `${sandboxFsCount} items configured` : 'No sandbox filesystem set.')
+                    : (sandboxFileCount ? `${sandboxFileCount} starter files configured` : 'No sandbox starter files set.')}
             </p>
           </div>
           <button className="btn-ghost" style={s.secondaryBtn} onClick={() => setSandboxOpen(true)}>
@@ -157,6 +162,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
                 onSpritesChange={sprites => set('sandboxSprites', sprites)}
                 onBackdropsChange={backdrops => set('sandboxBackdrops', backdrops)}
               />
+            ) : isFilesystem ? (
+              <div style={{ padding: '12px 0' }}>
+                <FsTreeEditor
+                  label="Sandbox starting filesystem"
+                  fs={lesson.sandboxStarterFs ?? { '/': { type: 'dir' } }}
+                  onFsChange={newFs => set('sandboxStarterFs', newFs)}
+                />
+              </div>
             ) : (
               <SandboxStarterFiles
                 files={lesson.sandboxStarterFiles ?? []}

@@ -18,11 +18,13 @@ import OutputPanel from '../components/OutputPanel'
 import CollapsibleIframePreview from '../components/CollapsibleIframePreview'
 import ScratchWorkspace from '../components/ScratchWorkspace'
 import QuizTask from '../components/QuizTask'
+import FilesystemTask from '../components/FilesystemTask'
 import CheckFeedbackBanner from '../components/CheckFeedbackBanner'
 import LiveActivityToast from '../components/LiveActivityToast'
 import SplitPane from '../../shared/SplitPane'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile } from '../studentStorage'
+import { DEFAULT_FS } from '../../shared/filesystem'
+import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
 import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getQuizSuggestion } from '../studentQuizContent'
@@ -63,6 +65,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
+  const [fsState, setFsState] = useState(DEFAULT_FS)
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
@@ -94,6 +97,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   editorActivityRef.current = editorActivity
   const inPersonalSandboxRef = useRef(inPersonalSandbox)
   inPersonalSandboxRef.current = inPersonalSandbox
+  const fsStateRef = useRef(fsState)
+  fsStateRef.current = fsState
 
   function currentTeacherLivePayload(extra = {}) {
     const filesMap = Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
@@ -168,6 +173,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       })
     } else if (currentLesson.type === 'html') {
       filesRef.current.forEach(f => saveFile(lessonId, taskId, f.name, id.anonymousId, f.content))
+    } else if (currentLesson.type === 'filesystem') {
+      saveFsState(lessonId, taskId, id.anonymousId, fsStateRef.current)
     }
     // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
   }
@@ -440,6 +447,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         targetBlocks = stage?.blocks ?? task.starterBlocks ?? null
       }
       setScratchExternalState(targetBlocks)
+    } else if (lesson.type === 'filesystem') {
+      const targetFs = action === 'complete'
+        ? (task.completeFs ?? task.starterFs ?? DEFAULT_FS)
+        : (task.starterFs ?? DEFAULT_FS)
+      setFsState(targetFs)
+      resetCheckFeedback()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
@@ -478,6 +491,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     } else if (lesson.type === 'scratch') {
       setFiles([])
       setActiveFile('')
+    } else if (lesson.type === 'filesystem') {
+      const carryId = task.carryFsFrom ?? null
+      const ownSaved = loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
+      const saved = ownSaved ?? (carryId != null ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null)
+      setFsState(saved ?? task.starterFs ?? DEFAULT_FS)
+      resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
         tasks: lesson.tasks,
@@ -693,6 +712,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setScratchExternalState(completeBlocks)
       applyCheckFeedback(true)
       if (completeBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: completeBlocks })
+    } else if (lesson.type === 'filesystem') {
+      const completeFs = task.completeFs ?? DEFAULT_FS
+      setFsState(completeFs)
+      applyCheckFeedback(true)
+      saveFsState(lessonId, currentTaskId, identity.anonymousId, completeFs)
     }
   }
 
@@ -1017,6 +1041,24 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
+  function handleFsChange(newFs) {
+    setFsState(newFs)
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const passed = task?.check ? evaluateCheck(task.check, null, { fs: newFs }) : false
+    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, { fs: newFs }) : '')
+    if (task?.check) applyCheckFeedback(passed, suggestion)
+    if (!teacherPresentation) {
+      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+    }
+    if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
+      writeStudentRun(effectiveIdentity.anonymousId, {
+        code: JSON.stringify(newFs),
+        status: task?.check ? (passed ? 'success' : 'error') : null,
+        checkPassed: passed,
+      })
+    }
+  }
+
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   if (phase === 'loading' || (!soloMode && sessionLoading) || lessonLoading || (!teacherPresentation && !identityLoaded)) {
@@ -1125,6 +1167,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!task?.completeCode
     : lesson.type === 'scratch'
     ? !!task?.completeBlocks
+    : lesson.type === 'filesystem'
+    ? !!task?.completeFs
     : (task?.completeFiles?.length > 0)
   const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && repeatedSuggestionCount >= 2
   const hasPersonalSandbox = lesson.type === 'python'
@@ -1300,6 +1344,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               checkPassed={checkPassed}
               disabled={isViewingPrev}
               showResult={false}
+            />
+          ) : lesson.type === 'filesystem' ? (
+            <FilesystemTask
+              fs={fsState}
+              onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
+              disabled={isViewingPrev || isForcedTeacherLive}
             />
           ) : lesson.type === 'scratch' ? (() => {
             const personalSandboxScratchState = inPersonalSandbox
