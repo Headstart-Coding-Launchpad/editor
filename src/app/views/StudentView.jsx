@@ -504,9 +504,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
-      const saved = ownSaved ?? (!previewMode && carryId != null ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null)
-      setFsState(saved ?? task.starterFs ?? DEFAULT_FS)
-      setFsInteraction({ currentDir: '/', openFile: null })
+      const savedFromCarry = (!previewMode && carryId != null) ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null
+      const carryTask = carryId != null ? findTaskById(lesson?.tasks, carryId) : null
+      const carryFallback = carryTask?.completeFs ?? carryTask?.starterFs ?? null
+      setFsState(ownSaved ?? savedFromCarry ?? task.starterFs ?? carryFallback ?? DEFAULT_FS)
+      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? '/') : '/', openFile: null })
       resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
@@ -1112,11 +1114,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
-  function applyFsCheckAndPublish(context) {
+  function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const passed = task?.check ? evaluateCheck(task.check, null, context) : false
     const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
-    if (task?.check) applyCheckFeedback(passed, suggestion)
+    if (task?.check && (passed || !suppressFailFeedback)) applyCheckFeedback(passed, suggestion)
     if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
@@ -1136,7 +1138,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const handleFsInteraction = useCallback((interaction) => {
     setFsInteraction(interaction)
-    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction })
+    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction }, { suppressFailFeedback: true })
   // applyFsCheckAndPublish reads lesson/currentTaskId/phase/effectiveIdentity via closure;
   // listing them here keeps navigate (which deps on handleFsInteraction) stable between renders
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1432,6 +1434,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           ) : lesson.type === 'filesystem' ? (
             <FilesystemTask
               key={`filesystem-${viewingTaskId ?? currentTaskId}`}
+              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? '/') : '/'}
               fs={fsState}
               onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
               onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : handleFsInteraction}
