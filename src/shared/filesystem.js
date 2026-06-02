@@ -7,6 +7,8 @@ export const FS_CHECK_TYPES = [
   'fs_content_contains',
   'fs_content_equals',
   'fs_file_in_dir',
+  'fs_dir_opened',
+  'fs_file_opened',
 ]
 
 // ── path helpers ─────────────────────────────────────────────────────────────
@@ -147,9 +149,18 @@ export function updateFileContent(fs, path, content) {
 
 // ── check evaluation ──────────────────────────────────────────────────────────
 
-export function evaluateFsCheck(check, fs) {
-  if (!fs) return false
+export function evaluateFsCheck(check, fs, context = {}) {
   const { type, path, dir, value } = check
+
+  // These checks only read context, not fs — evaluate before the null-fs guard
+  if (type === 'fs_dir_opened')
+    return normaliseDirPath(path) === normaliseDirPath(context.currentDir ?? '/')
+  if (type === 'fs_file_opened') {
+    if (!context.openFile) return false
+    return normaliseFilePath(path) === normaliseFilePath(context.openFile)
+  }
+
+  if (!fs) return false
 
   switch (type) {
     case 'fs_file_exists': {

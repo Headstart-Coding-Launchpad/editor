@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
@@ -32,7 +32,7 @@ import TaskSlideTransition from '../components/TaskSlideTransition'
 import StudentEditorHeader from '../components/StudentEditorHeader'
 import LoadingScreen from '../components/LoadingScreen'
 
-export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, initialTaskId = null }) {
+export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
   const {
     session, loading: sessionLoading, registerPresence, joinSession,
@@ -66,6 +66,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
   const [fsState, setFsState] = useState(DEFAULT_FS)
+  const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
@@ -99,6 +100,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   inPersonalSandboxRef.current = inPersonalSandbox
   const fsStateRef = useRef(fsState)
   fsStateRef.current = fsState
+  const fsInteractionRef = useRef(fsInteraction)
+  fsInteractionRef.current = fsInteraction
 
   function currentTeacherLivePayload(extra = {}) {
     const filesMap = Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
@@ -173,7 +176,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       })
     } else if (currentLesson.type === 'html') {
       filesRef.current.forEach(f => saveFile(lessonId, taskId, f.name, id.anonymousId, f.content))
-    } else if (currentLesson.type === 'filesystem') {
+    } else if (currentLesson.type === 'filesystem' && !previewMode) {
       saveFsState(lessonId, taskId, id.anonymousId, fsStateRef.current)
     }
     // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
@@ -497,9 +500,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setActiveFile('')
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
-      const ownSaved = loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
-      const saved = ownSaved ?? (carryId != null ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null)
+      const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
+      const saved = ownSaved ?? (!previewMode && carryId != null ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null)
       setFsState(saved ?? task.starterFs ?? DEFAULT_FS)
+      setFsInteraction({ currentDir: '/', openFile: null })
       resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
@@ -680,6 +684,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       saveCode(lessonId, currentTaskId, identity.anonymousId, { code, output, runStatus })
     } else if (lesson?.type === 'html') {
       files.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
+    } else if (lesson?.type === 'filesystem' && !previewMode) {
+      saveFsState(lessonId, currentTaskId, identity.anonymousId, fsState)
     }
     // scratch: blocks are saved incrementally via handleScratchChange
     setViewingTaskId(null)
@@ -720,7 +726,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       const completeFs = task.completeFs ?? DEFAULT_FS
       setFsState(completeFs)
       applyCheckFeedback(true)
-      saveFsState(lessonId, currentTaskId, identity.anonymousId, completeFs)
+      if (!previewMode) saveFsState(lessonId, currentTaskId, identity.anonymousId, completeFs)
     }
   }
 
@@ -1045,23 +1051,35 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
-  function handleFsChange(newFs) {
-    setFsState(newFs)
+  function applyFsCheckAndPublish(context) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const passed = task?.check ? evaluateCheck(task.check, null, { fs: newFs }) : false
-    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, { fs: newFs }) : '')
+    const passed = task?.check ? evaluateCheck(task.check, null, context) : false
+    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
     if (task?.check) applyCheckFeedback(passed, suggestion)
-    if (!teacherPresentation) {
-      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
-    }
     if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
-        code: JSON.stringify(newFs),
+        code: JSON.stringify(context.fs),
         status: task?.check ? (passed ? 'success' : 'error') : null,
         checkPassed: passed,
       })
     }
   }
+
+  function handleFsChange(newFs) {
+    setFsState(newFs)
+    if (!teacherPresentation && !previewMode) {
+      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+    }
+    applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
+  }
+
+  const handleFsInteraction = useCallback((interaction) => {
+    setFsInteraction(interaction)
+    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction })
+  // applyFsCheckAndPublish reads lesson/currentTaskId/phase/effectiveIdentity via closure;
+  // listing them here keeps navigate (which deps on handleFsInteraction) stable between renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity])
 
   // ─── Render helpers ────────────────────────────────────────────────────────
 
@@ -1352,8 +1370,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             />
           ) : lesson.type === 'filesystem' ? (
             <FilesystemTask
+              key={`filesystem-${viewingTaskId ?? currentTaskId}`}
               fs={fsState}
               onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
+              onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : handleFsInteraction}
+              assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
+              assets={lesson.assets}
               disabled={isViewingPrev || isForcedTeacherLive}
             />
           ) : lesson.type === 'scratch' ? (() => {

@@ -246,7 +246,12 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
               initialSpriteState={spriteState}
             />
           ) : isFilesystem ? (
-            <FilesystemTask fs={studentFs} disabled />
+            <FilesystemTask
+              fs={studentFs}
+              assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+              assets={lesson?.assets}
+              disabled
+            />
           ) : (
             <>
               {/* Left: tabbed file editor */}

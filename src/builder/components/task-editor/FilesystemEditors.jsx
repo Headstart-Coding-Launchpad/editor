@@ -195,6 +195,8 @@ const FS_CHECK_TYPE_OPTIONS = [
   { value: 'fs_content_contains', label: 'File content contains', fields: ['path', 'value'] },
   { value: 'fs_content_equals', label: 'File content equals', fields: ['path', 'value'] },
   { value: 'fs_file_in_dir', label: 'File is inside folder', fields: ['path', 'dir'] },
+  { value: 'fs_dir_opened', label: 'Student opened folder', fields: ['path'] },
+  { value: 'fs_file_opened', label: 'Student opened file', fields: ['path'] },
 ]
 
 function FsSingleCheckEditor({ check, onChange, onRemove }) {
