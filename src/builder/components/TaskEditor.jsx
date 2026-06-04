@@ -1146,6 +1146,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                               backdrops={task.backdrops?.length > 0 ? task.backdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
                               onChange={backdrops => set('backdrops', backdrops)}
                               assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                              storageAssets={lesson.storageAssets ?? []}
                               lessonId={lesson.id}
                               lessonType={lesson.type}
                             />
@@ -1200,6 +1201,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                             hideAdd
                             onChange={handleStarterSpritesChange}
                             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                            storageAssets={lesson.storageAssets ?? []}
                             lessonId={lesson.id}
                             lessonType={lesson.type}
                           />

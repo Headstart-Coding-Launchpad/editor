@@ -23,7 +23,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
     onUpdate(prev => ({ ...prev, [field]: value }))
   }
 
-  // Auto-populate assetsPath when lesson ID changes
+  // Keep assetsPath in sync with lesson ID for relative costume/backdrop resolution
   useEffect(() => {
     if (!lesson.id) return
     const newPath = `/assets/${lesson.id}/`
@@ -107,19 +107,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
           />
         </Field>
 
-        <Field label="Assets path" hint="e.g. /assets/scratch-intro/">
-          <input
-            style={s.input}
-            value={lesson.assetsPath ?? ''}
-            onChange={e => {
-              const v = e.target.value
-              set('assetsPath', v || undefined)
-            }}
-            placeholder="/assets/lesson-id/"
-          />
-        </Field>
-
-        <AssetSummary lessonId={lesson.id} lessonType={lesson.type} assets={lesson.assets} assetsPath={resolveAssetsPath(lesson.assetsPath)} />
+        <AssetSummary lessonId={lesson.id} lessonType={lesson.type} assets={lesson.assets} assetsPath={resolveAssetsPath(lesson.assetsPath)} storageAssets={lesson.storageAssets ?? []} />
 
         {role === 'admin' && (
           <StorageAssetUploader
@@ -167,6 +155,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
                 sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : DEFAULT_SPRITES}
                 backdrops={lesson.sandboxBackdrops?.length > 0 ? lesson.sandboxBackdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
                 assetsPath={lesson.assetsPath ?? ''}
+                storageAssets={lesson.storageAssets ?? []}
                 lessonId={lesson.id}
                 lessonType={lesson.type}
                 onChange={state => set('sandboxStarter', state ? JSON.stringify(state) : undefined)}
@@ -210,7 +199,7 @@ function cloneScratchStarter(value) {
   return JSON.parse(JSON.stringify(value))
 }
 
-function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath, lessonId, lessonType, onChange, onToolboxChange, onSpritesChange, onBackdropsChange }) {
+function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath, storageAssets, lessonId, lessonType, onChange, onToolboxChange, onSpritesChange, onBackdropsChange }) {
   const [activeTab, setActiveTab] = useState('starter')
   const [testBlocks, setTestBlocks] = useState(() => cloneScratchStarter(parseScratchStarter(value)))
   const [syncNowKey, setSyncNowKey] = useState(0)
@@ -271,6 +260,7 @@ function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath,
                 sprites={sprites}
                 onChange={onSpritesChange}
                 assetsPath={resolvedAssets}
+                storageAssets={storageAssets}
                 lessonId={lessonId}
                 lessonType={lessonType}
               />
@@ -281,6 +271,7 @@ function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath,
                 backdrops={backdrops}
                 onChange={onBackdropsChange}
                 assetsPath={resolvedAssets}
+                storageAssets={storageAssets}
                 lessonId={lessonId}
                 lessonType={lessonType}
               />
@@ -455,7 +446,7 @@ function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
   )
 }
 
-function AssetSummary({ lessonId, lessonType, assets, assetsPath }) {
+function AssetSummary({ lessonId, lessonType, assets, assetsPath, storageAssets }) {
   const { loading, error } = useAssets()
   const count = assets?.length ?? 0
 
@@ -473,14 +464,17 @@ function AssetSummary({ lessonId, lessonType, assets, assetsPath }) {
     text = `No assets found. Add files to public/${folderPart} to populate this field automatically.`
   }
 
+  const showBrowser = (count > 0 && assetsPath) || storageAssets?.length > 0
+
   return (
     <div style={s.assetSummary}>
       <span style={s.fieldLabel}>Asset files</span>
       <p style={s.summaryText}>{text}</p>
-      {count > 0 && assetsPath && (
+      {showBrowser && (
         <AssetBrowser
           assetsPath={assetsPath}
           assets={assets}
+          storageAssets={storageAssets}
           copyMode="relative"
           style={s.assetBrowserInPanel}
         />
