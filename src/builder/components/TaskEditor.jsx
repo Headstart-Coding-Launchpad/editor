@@ -3,7 +3,7 @@ import SplitPane from '../../shared/SplitPane'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
 import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
-import { evaluateSingleCheck, filterChecksForInteraction, normalizeChecks } from '../../shared/checks'
+import { evaluateSingleCheck, filterChecksForInteraction, normalizeChecks, resolveTestCheck } from '../../shared/checks'
 import AssetBrowser from '../../shared/AssetBrowser'
 import ExplainerEditor from './ExplainerEditor'
 import FileManager from './FileManager'
@@ -21,6 +21,7 @@ import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder
 import { CopyButtons, IncorrectCheckResultsDisplay, formatCheckFailure, formatCheckFailureDetail, CheckListEditor } from './task-editor/CheckEditors'
 import { ScratchToolboxPicker, ScratchCheckListEditor, VariableManager } from './task-editor/ScratchEditors'
 import { FsTreeEditor, FsCheckListEditor } from './task-editor/FilesystemEditors'
+import TestsEditor from './task-editor/TestsEditor'
 import { DEFAULT_FS } from '../../shared/filesystem'
 
 // Re-export for backward compatibility
@@ -44,6 +45,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [checkResult, setCheckResult]   = useState(null)  // scratch only
   const [checkResults, setCheckResults] = useState(null)  // python/html: null | [{type,value,passed}]
   const [incorrectCheckResults, setIncorrectCheckResults] = useState(null) // null | [{type,value,passed,hint}]
+  const [testResults, setTestResults] = useState(null) // null | [{id, name, passed, output}]
+  const [runningTests, setRunningTests] = useState(false)
   const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false)
   const iframeRef = React.useRef(null)
   const appendOutputRef = React.useRef(null)
@@ -140,6 +143,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setCheckResult(null)
     setCheckResults(null)
     setIncorrectCheckResults(null)
+    setTestResults(null)
     setIframeSrc(null)
     setHtmlPreviewOpen(false)
 
@@ -379,6 +383,46 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setScratchModalTab('starter')
   }
 
+  async function handleRunTests() {
+    if (runningTests) return
+    const tests = task.tests ?? []
+    if (tests.length === 0) return
+    setRunningTests(true)
+    setTestResults(null)
+    setOutput('')
+    setRunStatus(null)
+    setCheckResults(null)
+    setIncorrectCheckResults(null)
+
+    if (!isPyodideReady()) {
+      setPyodideStatus('loading')
+      await initPyodide(msg => setPyodideStatus(msg))
+      setPyodideStatus('ready')
+    }
+
+    const results = []
+    for (const test of tests) {
+      const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
+      let accumulated = ''
+      const result = await runPython(activePythonCode, {
+        onOutput: text => { accumulated += text },
+        onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
+      })
+      const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
+      const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
+      const checks = normalizeChecks(resolvedCheck)
+      const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
+      results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated })
+      if (result.status === 'stopped') break
+    }
+
+    setTestResults(results)
+    const lastOutput = results[results.length - 1]?.output ?? ''
+    setOutput(lastOutput)
+    setRunStatus(results.length > 0 ? 'success' : null)
+    setRunningTests(false)
+  }
+
   async function handleRun() {
     if (running) return
     setRunning(true)
@@ -387,6 +431,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setCheckResult(null)
     setCheckResults(null)
     setIncorrectCheckResults(null)
+    setTestResults(null)
     setIframeSrc(null)
 
     if (isPython) {
@@ -840,6 +885,14 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                     />
                   </Field>
                 )}
+
+                {isPython && (task.interactionMode ?? 'run') !== 'submit' && (
+                  <TestsEditor
+                    tests={task.tests ?? []}
+                    onChange={tests => set('tests', tests.length > 0 ? tests : undefined)}
+                    lessonType={lesson.type}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -965,7 +1018,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                 <button
                   className="btn-primary"
                   onClick={running ? handleStop : handleRun}
-                  disabled={!running && pyodideStatus === 'loading'}
+                  disabled={(!running && pyodideStatus === 'loading') || runningTests}
                   style={{
                     padding: '10px 28px',
                     fontSize: 15,
@@ -974,6 +1027,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                 >
                   {running ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}
                 </button>
+                {(task.tests?.length > 0) && (
+                  <button
+                    className="btn-primary"
+                    onClick={runningTests ? undefined : handleRunTests}
+                    disabled={running || pyodideStatus === 'loading' || runningTests}
+                    style={{ padding: '10px 28px', fontSize: 15 }}
+                  >
+                    {runningTests ? 'Running tests...' : 'Run Tests'}
+                  </button>
+                )}
                 {pyodideStatus === 'loading' && (
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-primary)' }}>
                     Getting Python ready...
@@ -984,11 +1047,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               <BuilderOutputPanel
                 output={output}
                 runStatus={runStatus}
-                running={running}
+                running={running || runningTests}
                 inputPrompt={inputPrompt}
                 onInputSubmit={v => { appendOutputRef.current?.(v + '\n'); setInputPrompt(null); provideInput(v) }}
-                checkResults={checkResults}
-                incorrectCheckResults={incorrectCheckResults}
+                checkResults={testResults !== null ? null : checkResults}
+                incorrectCheckResults={testResults !== null ? null : incorrectCheckResults}
+                testResults={testResults}
               />
             </>
           )}

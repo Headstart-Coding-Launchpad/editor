@@ -155,6 +155,20 @@ export function validateLesson(lesson) {
       }
     }
 
+    if (task.tests?.length > 0 && type === 'python' && task.taskType !== 'information' && task.taskType !== 'quiz') {
+      task.tests.forEach((test, ti) => {
+        const tn = ti + 1
+        if (!test.inputs?.length) {
+          warnings.push(`Task ${n} test ${tn} has no inputs — consider adding at least one input`)
+        } else if (test.inputs.some(inp => !inp.name?.trim())) {
+          warnings.push(`Task ${n} test ${tn} has an input with no name — it can still run, but {placeholder} substitution won't work`)
+        }
+        if (!test.check) {
+          errors.push(`Task ${n} test ${tn} has no check — add an output check for this test case`)
+        }
+      })
+    }
+
     const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || type === 'filesystem'
       ? null
       : type === 'scratch' ? task.carryBlocksFrom : task.carryCodeFrom

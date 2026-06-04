@@ -17,6 +17,7 @@ export default function BuilderOutputPanel({
   onInputSubmit,
   checkResults = null,          // null | [{type, value?, passed}]
   incorrectCheckResults = null, // null | [{type, value?, passed, hint?}]
+  testResults = null,           // null | [{id, name, passed, output}]
   running = false,
 }) {
   const [inputValue, setInputValue] = useState('')
@@ -160,6 +161,27 @@ export default function BuilderOutputPanel({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Test results */}
+      {!isCollapsed && testResults !== null && (
+        <div style={{ ...s.checkResult, background: testResults.every(r => r.passed) ? '#f0fdf4' : '#fffbeb', borderColor: testResults.every(r => r.passed) ? '#bbf7d0' : '#fde68a' }}>
+          <div style={{ fontWeight: 700, marginBottom: testResults.length > 0 ? 6 : 0 }}>Test results:</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {testResults.map((r, i) => (
+              <div key={r.id ?? i}>
+                {r.passed
+                  ? <span>✅ <strong>{r.name || `Test ${i + 1}`}</strong> passed.</span>
+                  : <span>⚠️ <strong>{r.name || `Test ${i + 1}`}</strong> did not pass.</span>}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 6, borderTop: '1px solid', borderColor: testResults.every(r => r.passed) ? '#bbf7d0' : '#fde68a', paddingTop: 6, fontWeight: 700 }}>
+            {testResults.every(r => r.passed)
+              ? `✅ All ${testResults.length} test${testResults.length !== 1 ? 's' : ''} pass — students will be able to complete the task.`
+              : `⚠️ ${testResults.filter(r => !r.passed).length}/${testResults.length} test${testResults.length !== 1 ? 's' : ''} did not pass.`}
+          </div>
         </div>
       )}
 

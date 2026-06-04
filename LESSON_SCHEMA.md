@@ -93,6 +93,7 @@ These fields can appear on tasks unless noted otherwise.
 | `codeStages` | No | stage array | Optional intermediate stages between starter and complete. Each stage has a `label` and `code`. Teacher can send any stage to students. |
 | `carryCodeFrom` | No | integer or null | Previous task ID to load saved code from. |
 | `interactionMode` | No | string | Omit or use `run` for Run button. Use `submit` for code-only checks without running. |
+| `tests` | No | test array | Automated test cases with pre-set inputs. See **Task Tests** section below. |
 
 Supported combinations:
 
@@ -102,6 +103,64 @@ Supported combinations:
 - Both `carryCodeFrom` and `starterCode`: load previous saved code if available, otherwise starter code.
 - `interactionMode: "run"` or omitted: Run executes Python and checks against output/code/status.
 - `interactionMode: "submit"`: Submit checks code text only; use only submit-compatible checks.
+- `tests` present: a **Run Tests** button appears alongside **Run**. Only **Run Tests** sets `checkPassed`. Plain **Run** stays interactive but does not gate task completion.
+
+## Task Tests
+
+Python run-mode tasks can define automated test cases. Each test case provides pre-set inputs to `input()` calls and checks the resulting output. When tests are defined, students must use **Run Tests** to complete the task — plain **Run** is interactive only and does not count for completion.
+
+```json
+{
+  "id": 1,
+  "title": "Greet the user",
+  "explainer": "Ask for a name and print `Hello <name>`.",
+  "starterCode": "name = input('What is your name? ')\nprint('Hello', name)\n",
+  "tests": [
+    {
+      "id": "t1",
+      "name": "Greet Alice",
+      "inputs": [
+        { "name": "username", "value": "Alice" }
+      ],
+      "check": {
+        "type": "output_contains",
+        "value": "Hello {username}"
+      }
+    },
+    {
+      "id": "t2",
+      "name": "Greet Bob",
+      "inputs": [
+        { "name": "username", "value": "Bob" }
+      ],
+      "check": {
+        "type": "output_contains",
+        "value": "Hello {username}"
+      }
+    }
+  ]
+}
+```
+
+Test object:
+
+| Field | Required | Type | Notes |
+|---|---:|---|---|
+| `id` | Yes | string | Stable ID, e.g. `"t1"`. |
+| `name` | No | string | Display name shown in the builder and student test-results badge. |
+| `inputs` | Yes | input array | Ordered list of values provided to each `input()` call. |
+| `check` | Yes | check object or array | Output check evaluated after the test run. Supports all non-DOM check types. |
+
+Input object:
+
+| Field | Required | Type | Notes |
+|---|---:|---|---|
+| `name` | No | string | Label used for `{name}` placeholder substitution in `check.value`. |
+| `value` | Yes | string | String provided to the matching `input()` call. |
+
+**Placeholder substitution:** Any `{name}` pattern in a check's `value` field is replaced with the corresponding input's `value` before evaluation. In the example above, `"Hello {username}"` becomes `"Hello Alice"` when the test runs with `username = "Alice"`.
+
+All tests must pass for the task to be complete. If the program calls `input()` more times than the test has entries, excess calls receive an empty string.
 
 ## HTML/CSS/JS Code Tasks
 
