@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { fetchLessonList } from '../shared/lessonService'
@@ -17,6 +18,8 @@ const blankLesson = type => ({
 })
 
 export default function BuilderApp() {
+  const [searchParams] = useSearchParams()
+  const loadIdOnMount = useRef(searchParams.get('load'))
   const [lesson, setLesson] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [restorePrompt, setRestorePrompt] = useState(false)
@@ -24,8 +27,7 @@ export default function BuilderApp() {
 
   // On mount - check for ?load=<id> (from admin "Edit" link), then localStorage.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const loadId = params.get('load')
+    const loadId = loadIdOnMount.current
     if (loadId) {
       getDoc(doc(firestore, 'lessons', loadId))
         .then(snap => {

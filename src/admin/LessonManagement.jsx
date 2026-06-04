@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { deleteDoc, doc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { fetchLessonList } from '../shared/lessonService'
 
-const BUILDER_BASE = import.meta.env.BASE_URL + 'builder/'
-
 export default function LessonManagement() {
+  const navigate = useNavigate()
   const [lessons, setLessons] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -43,9 +43,9 @@ export default function LessonManagement() {
           <button className="btn-ghost" style={s.actionBtn} onClick={load} disabled={loading}>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
-          <a href={BUILDER_BASE} target="_blank" rel="noopener noreferrer" style={s.newLessonLink}>
+          <button style={s.newLessonLink} onClick={() => navigate('/builder')}>
             New lesson (Builder)
-          </a>
+          </button>
         </div>
       </div>
 
@@ -73,14 +73,12 @@ export default function LessonManagement() {
                 <span style={{ flex: 1, fontSize: '0.85rem' }}>{lesson.type ?? '—'}</span>
                 <span style={{ width: 60, textAlign: 'center', fontSize: '0.85rem' }}>{taskCount}</span>
                 <div style={{ width: 120, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                  <a
-                    href={`${BUILDER_BASE}?load=${lesson.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
                     style={s.editLink}
+                    onClick={() => navigate(`/builder?load=${lesson.id}`)}
                   >
                     Edit
-                  </a>
+                  </button>
                   <button
                     style={s.deleteBtn}
                     onClick={() => handleDelete(lesson)}

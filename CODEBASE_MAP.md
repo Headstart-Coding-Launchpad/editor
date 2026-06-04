@@ -10,11 +10,10 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `src/main.jsx` | Classroom app DOM entry — renders App into #root |
-| `src/App.jsx` | Classroom router (HashRouter): `/lesson/:lessonId` and fallback to LandingPage |
+| `src/main.jsx` | App DOM entry — renders App into #root |
+| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
-| `src/builder/main.jsx` | Lesson builder DOM entry |
-| `src/builder/App.jsx` | Builder root: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
+| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
 | `src/builder/spritePresets.js` | Pure reusable Scratch sprite preset validation and unique lesson-sprite creation helpers |
 
 ---
