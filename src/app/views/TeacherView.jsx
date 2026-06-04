@@ -37,7 +37,7 @@ export default function TeacherView({ lessonId }) {
   const {
     session, loading,
     createSession, restartSession, startSession, endSession,
-    setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles,
+    setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent,
   } = useSession(lessonId)
 
@@ -200,9 +200,17 @@ export default function TeacherView({ lessonId }) {
     setSandboxStaging(false)
   }
 
-  async function handlePushScratchSandbox() {
-    sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
-    await pushSandboxCode(JSON.stringify(scratchState ?? {}))
+  async function handlePushSandbox() {
+    if (lesson.type === 'python') {
+      sandboxDraftRef.current.code = code
+      await pushSandboxCode(code)
+    } else if (lesson.type === 'scratch') {
+      sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
+      await pushSandboxCode(JSON.stringify(scratchState ?? {}))
+    } else {
+      sandboxDraftRef.current.files = cloneFiles(files)
+      await pushSandboxFiles(files)
+    }
   }
 
   async function handleResetSandboxStarter() {
@@ -384,12 +392,14 @@ export default function TeacherView({ lessonId }) {
           {isInSandbox && (
             <TeacherSandboxBanner
               staging={sandboxStaging}
-              isScratch={lesson.type === 'scratch'}
               onCancel={handleCancelSandbox}
               onReset={handleResetSandboxStarter}
               onGoLive={handleGoLiveSandbox}
-              onPushScratch={handlePushScratchSandbox}
+              onPush={handlePushSandbox}
               onDeactivate={handleDeactivateSandbox}
+              sandboxExplainer={session?.sandboxExplainer ?? ''}
+              onPushExplainer={pushSandboxExplainer}
+              lessonType={lesson.type}
             />
           )}
 
