@@ -34,7 +34,10 @@ Both are static React apps deployed to GitHub Pages. No backend server exists or
 | Framework | React (functional components + hooks only — no class components) |
 | Build tool | Vite |
 | Hosting | GitHub Pages |
-| Real-time sync | Firebase Realtime Database (free tier) — classroom app only |
+| Real-time sync | Firebase Realtime Database — classroom app session state |
+| Auth | Firebase Authentication (email/password) — teachers and admins only; students remain login-less |
+| Database | Firebase Firestore — lesson content (`lessons/`) and user accounts (`users/`) |
+| Cloud Functions | Firebase Cloud Functions (Blaze) — account management with custom claims |
 | Python execution | Pyodide (WASM) in a Web Worker — classroom app AND lesson builder |
 | Web output | Sandboxed iframe with Blob URL virtual filesystem — classroom app AND lesson builder |
 | Scratch blocks | Custom scratch-blocks (Blockly fork) with hand-rolled interpreter — classroom app only |
@@ -52,7 +55,8 @@ Do not add any other major dependencies without confirming with the user.
 These rules are absolute — do not deviate regardless of context:
 
 - Do not add a backend server or API
-- Do not add authentication beyond `?teacher=true` — note this means anyone with the URL pattern can act as teacher; do not add features that assume otherwise
+- Teachers and admins authenticate via Firebase Auth (email/password) — `?teacher=true` is now a redirect hint to `/login`, not direct access
+- Students remain entirely login-less — do not require Firebase Auth for student operations
 - Do not use `sessionStorage` for the Anonymous ID — use `localStorage`
 - Do not write student code to Firebase per keystroke unless `activeStudentView` matches
 - Do not re-render the iframe per keystroke during live view — only on Run
@@ -241,13 +245,15 @@ Both apps import from `src/shared/`. Never duplicate this logic.
 | URL | Behaviour |
 |---|---|
 | `/` | Landing page — student enters lesson ID |
+| `/login` | Email/password sign-in page for teachers and admins; reads `?redirect` param |
+| `/admin` | Admin portal — account management (admin role required) |
 | `/lesson/:lessonId` | Solo student mode |
 | `/lesson/:lessonId?live=true` | Live student mode (joins Firebase session) |
-| `/lesson/:lessonId?teacher=true` | Teacher view |
-| `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation (StudentView watching teacherLive) |
+| `/lesson/:lessonId?teacher=true` | Teacher view — requires Firebase Auth (teacher or admin role); redirects to `/login` if unauthenticated |
+| `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation (StudentView watching teacherLive) — also requires auth |
 | `/builder` | Lesson builder |
 
-No room IDs. One session per lesson. `?teacher=true` is the only auth mechanism.
+No room IDs. One session per lesson. `?teacher=true` is a redirect hint — Firebase Auth enforces access.
 
 ---
 

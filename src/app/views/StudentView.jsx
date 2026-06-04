@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
+import { firestore } from '../../shared/firebase'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
@@ -193,10 +195,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setLessonLoading(false)
       return
     }
-    const base = import.meta.env.BASE_URL
-    fetch(`${base}lessons/${lessonId}.json`)
-      .then(r => r.json())
-      .then(data => { setLesson(data); setLessonLoading(false) })
+    getDoc(doc(firestore, 'lessons', lessonId))
+      .then(snap => {
+        if (snap.exists()) setLesson(snap.data())
+        setLessonLoading(false)
+      })
       .catch(() => setLessonLoading(false))
   }, [lessonId, lessonProp])
 

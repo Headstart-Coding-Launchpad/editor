@@ -19,12 +19,32 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 ---
 
+## Auth (`src/auth/`)
+
+| File | Role |
+|---|---|
+| `AuthContext.jsx` | `AuthProvider` — `onAuthStateChanged` listener; provides `{ user, role, loading }` via React context |
+| `useAuth.js` | `useAuth()` hook — thin re-export of `AuthContext` |
+| `ProtectedRoute.jsx` | Route guard — shows loading screen, then redirects to `/login?redirect=…` if unauthenticated or wrong role |
+
+---
+
+## Admin Portal (`src/admin/`)
+
+| File | Role |
+|---|---|
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, renders AccountManagement |
+| `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
+
+---
+
 ## Classroom Views (`src/app/views/`)
 
 | File | Role |
 |---|---|
 | `LandingPage.jsx` | Entry screen: student types lesson ID to navigate to `/lesson/:lessonId` |
-| `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params, routes to TeacherView or StudentView |
+| `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
+| `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView |
 | `StudentView.jsx` | Main student experience: all phases (loading → waiting → name-entry → lesson/sandbox/solo → ended) |
 | `TeacherView.jsx` | Teacher dashboard: collapsible 3-panel layout, session lifecycle controls, student grid |
 
@@ -149,7 +169,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
-| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database reference) |
+| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions` |
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
@@ -167,7 +187,34 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | Path | Role |
 |---|---|
-| `lessons/` | Static JSON lesson files — add new lessons here; referenced by ID in URLs |
+| `public/lessons/` | Static JSON lesson files (kept for reference; lesson content now served from Firestore `lessons/` collection) |
+
+---
+
+## Cloud Functions (`functions/`)
+
+| File | Role |
+|---|---|
+| `functions/index.js` | HTTPS callable functions: `createAccount`, `setUserRole`, `disableAccount`, `enableAccount`, `deleteAccount` |
+| `functions/package.json` | Cloud Functions Node.js package (firebase-admin, firebase-functions) |
+
+---
+
+## Scripts (`scripts/`)
+
+| File | Role |
+|---|---|
+| `scripts/migrate-lessons.mjs` | One-off Admin SDK migration: writes all lesson JSON files to Firestore `lessons/` collection |
+
+---
+
+## Firebase Config
+
+| File | Role |
+|---|---|
+| `firebase.json` | Firebase project config: Firestore rules file and Cloud Functions source |
+| `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
+| `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
 
 ---
 
