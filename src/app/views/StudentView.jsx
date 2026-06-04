@@ -1432,9 +1432,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             />
           )}
           {isSandbox && session?.sandboxExplainer && (
-            <div className="sandbox-explainer-banner">
-              {session.sandboxExplainer}
-            </div>
+            <ExplainerPanel title="Instructions" content={session.sandboxExplainer} topicType={lesson.type} />
           )}
           {!isSandbox && isInformationTask ? (
             <InformationTask task={task} lesson={lesson} fill />

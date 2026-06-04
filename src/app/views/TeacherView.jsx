@@ -399,6 +399,7 @@ export default function TeacherView({ lessonId }) {
               onDeactivate={handleDeactivateSandbox}
               sandboxExplainer={session?.sandboxExplainer ?? ''}
               onPushExplainer={pushSandboxExplainer}
+              lessonType={lesson.type}
             />
           )}
 
