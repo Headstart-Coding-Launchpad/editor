@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
+import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
@@ -62,12 +64,10 @@ export default function TeacherView({ lessonId }) {
   const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null })
   const presentationWindowRef = useRef(null)
 
-  // Load lesson JSON
+  // Load lesson from Firestore
   useEffect(() => {
-    const base = import.meta.env.BASE_URL
-    fetch(`${base}lessons/${lessonId}.json`)
-      .then(r => r.json())
-      .then(data => { setLesson(data); setLessonLoading(false) })
+    getDoc(doc(firestore, 'lessons', lessonId))
+      .then(snap => { if (snap.exists()) setLesson(snap.data()); setLessonLoading(false) })
       .catch(() => setLessonLoading(false))
   }, [lessonId])
 

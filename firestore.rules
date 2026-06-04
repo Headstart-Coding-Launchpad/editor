@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Lessons: public read so unauthenticated students can fetch lesson content.
+    // Writes are handled only by Cloud Functions (Admin SDK bypasses rules).
+    match /lessons/{lessonId} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.role == 'admin';
+    }
+
+    // Users: mirrors the Firebase Auth user list.
+    // Admins can read all; teachers can only read their own document.
+    // Writes are exclusively via Cloud Functions (Admin SDK).
+    match /users/{uid} {
+      allow read: if request.auth != null
+                  && (request.auth.token.role == 'admin'
+                      || request.auth.uid == uid);
+      allow write: if false;
+    }
+  }
+}
