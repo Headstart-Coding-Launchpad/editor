@@ -1278,16 +1278,16 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!(lesson.sandboxStarterCode != null)
     : false
   const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && displayCheckPassed && !inPersonalSandbox && !isForcedTeacherLive
-  const taskContentStyle = isQuizTask
+  const taskContentStyle = (!isSandbox && isQuizTask)
     ? styles.taskContentQuiz
-    : isInformationTask
+    : (!isSandbox && isInformationTask)
     ? styles.taskContentInfo
     : lesson.type === 'python' || lesson.type === 'html'
     ? styles.taskContentScroll
     : styles.taskContent
-  const editorAreaStyle = isQuizTask
+  const editorAreaStyle = (!isSandbox && isQuizTask)
     ? styles.editorAreaQuiz
-    : isInformationTask
+    : (!isSandbox && isInformationTask)
     ? styles.editorAreaInfo
     : lesson.type === 'scratch'
     ? styles.editorAreaScratch
@@ -1412,7 +1412,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         </div>
       )}
 
-      <div style={isSolo && (isQuizTask || isInformationTask) ? { ...styles.body, overflow: 'hidden' } : styles.body}>
+      <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...styles.body, overflow: 'hidden' } : styles.body}>
         <TaskSlideTransition
           transitionKey={`${phase}-${inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`}
           style={taskContentStyle}
@@ -1431,9 +1431,9 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               onGoPersonalSandbox={canOfferPersonalSandbox ? handleEnterPersonalSandbox : undefined}
             />
           )}
-          {isInformationTask ? (
+          {!isSandbox && isInformationTask ? (
             <InformationTask task={task} lesson={lesson} fill />
-          ) : task?.taskType === 'quiz' ? (
+          ) : !isSandbox && task?.taskType === 'quiz' ? (
             <QuizTask
               task={task}
               showQuestion
