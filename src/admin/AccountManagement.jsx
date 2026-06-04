@@ -21,11 +21,14 @@ export default function AccountManagement() {
   const [formError, setFormError] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
   const [actionError, setActionError] = useState(null)
+  const [snapshotError, setSnapshotError] = useState(null)
 
   useEffect(() => {
-    return onSnapshot(collection(firestore, 'users'), (snap) => {
-      setAccounts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    })
+    return onSnapshot(
+      collection(firestore, 'users'),
+      (snap) => { setSnapshotError(null); setAccounts(snap.docs.map(d => ({ id: d.id, ...d.data() }))) },
+      (err) => setSnapshotError(err.message),
+    )
   }, [])
 
   async function handleCreate(e) {
@@ -106,6 +109,7 @@ export default function AccountManagement() {
         </form>
       )}
 
+      {snapshotError && <p style={s.error}>Could not load accounts: {snapshotError}</p>}
       {actionError && <p style={s.error}>{actionError}</p>}
 
       <table style={s.table}>

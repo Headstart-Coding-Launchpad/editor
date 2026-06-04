@@ -11,16 +11,22 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Force-refresh ensures we pick up custom claim changes (e.g. after setUserRole)
-        const tokenResult = await getIdTokenResult(firebaseUser, true)
-        setUser(firebaseUser)
-        setRole(tokenResult.claims.role ?? null)
-      } else {
+      try {
+        if (firebaseUser) {
+          // Force-refresh ensures we pick up custom claim changes (e.g. after setUserRole)
+          const tokenResult = await getIdTokenResult(firebaseUser, true)
+          setUser(firebaseUser)
+          setRole(tokenResult.claims.role ?? null)
+        } else {
+          setUser(null)
+          setRole(null)
+        }
+      } catch {
         setUser(null)
         setRole(null)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     })
   }, [])
 

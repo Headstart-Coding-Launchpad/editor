@@ -196,7 +196,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       return
     }
     getDoc(doc(firestore, 'lessons', lessonId))
-      .then(snap => { if (snap.exists()) setLesson(snap.data()); setLessonLoading(false) })
+      .then(snap => {
+        if (snap.exists()) setLesson(snap.data())
+        setLessonLoading(false)
+      })
       .catch(() => setLessonLoading(false))
   }, [lessonId, lessonProp])
 

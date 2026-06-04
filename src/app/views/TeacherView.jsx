@@ -45,6 +45,7 @@ export default function TeacherView({ lessonId }) {
 
   const [lesson, setLesson]             = useState(null)
   const [lessonLoading, setLessonLoading] = useState(true)
+  const [lessonError, setLessonError]     = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId]   = useState(null)
@@ -67,8 +68,15 @@ export default function TeacherView({ lessonId }) {
   // Load lesson from Firestore
   useEffect(() => {
     getDoc(doc(firestore, 'lessons', lessonId))
-      .then(snap => { if (snap.exists()) setLesson(snap.data()); setLessonLoading(false) })
-      .catch(() => setLessonLoading(false))
+      .then(snap => {
+        if (snap.exists()) {
+          setLesson(snap.data())
+        } else {
+          setLessonError(true)
+        }
+        setLessonLoading(false)
+      })
+      .catch(() => { setLessonError(true); setLessonLoading(false) })
   }, [lessonId])
 
   // Create session only if none exists — don't auto-restart an ended session
@@ -307,8 +315,11 @@ export default function TeacherView({ lessonId }) {
     await Promise.all(studentIds.map(id => pushResetToStudent(id, action)))
   }
 
-  if (lessonLoading || !lesson) {
+  if (lessonLoading) {
     return <div style={s.centre}><p>Loading…</p></div>
+  }
+  if (lessonError || !lesson) {
+    return <div style={s.centre}><p>Lesson &ldquo;{lessonId}&rdquo; not found.</p></div>
   }
 
   return (

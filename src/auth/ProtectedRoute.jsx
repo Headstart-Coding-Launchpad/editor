@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
   if (loading) return <LoadingScreen message="Checking sign-in…" />
 
-  if (!user || (requiredRole && role !== requiredRole)) {
+  if (!user || (requiredRole && role !== requiredRole && role !== 'admin')) {
     const redirect = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }

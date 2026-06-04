@@ -19,6 +19,7 @@ const app = initializeApp(firebaseConfig)
 export const db        = getDatabase(app)
 export const auth      = getAuth(app)
 export const firestore = getFirestore(app)
-export const functions = getFunctions(app, import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'us-central1')
+export const functions = getFunctions(app, import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'europe-west1')
 
 setPersistence(auth, browserLocalPersistence)
+  .catch(err => console.warn('Auth: localStorage unavailable, falling back to session persistence.', err))
