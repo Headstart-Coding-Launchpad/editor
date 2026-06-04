@@ -504,9 +504,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
-      const saved = ownSaved ?? (!previewMode && carryId != null ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null)
-      setFsState(saved ?? task.starterFs ?? DEFAULT_FS)
-      setFsInteraction({ currentDir: '/', openFile: null })
+      const savedFromCarry = (!previewMode && carryId != null) ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null
+      const carryTask = carryId != null ? findTaskById(lesson?.tasks, carryId) : null
+      const carryFallback = carryTask?.completeFs ?? carryTask?.starterFs ?? null
+      setFsState(ownSaved ?? savedFromCarry ?? task.starterFs ?? carryFallback ?? DEFAULT_FS)
+      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? '/') : '/', openFile: null })
       resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
@@ -676,7 +678,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       const targetIdx = flatTasks.findIndex(t => t.id === taskId)
       const currIdx = flatTasks.findIndex(t => t.id === currentTaskId)
       if (targetIdx > currIdx) {
-        const canAdvance = !currentTask?.check || currentTask?.taskType === 'information' || checkPassed
+        const hasCompletion = !!currentTask?.check || currentTask?.tests?.length > 0
+        const canAdvance = !hasCompletion || currentTask?.taskType === 'information' || checkPassed
         if (!canAdvance || targetIdx > currIdx + 1) return
       }
     }
@@ -746,47 +749,58 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     setTestResults(null)
     resetCheckFeedback()
 
-    if (!isPyodideReady()) {
-      setPyodideStatus('loading')
-      await initPyodide()
-      setPyodideStatus('ready')
-    }
-
     const results = []
-    for (const test of task.tests) {
-      const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
-      let accumulated = ''
-      const result = await runPython(code, {
-        onOutput: text => { accumulated += text },
-        onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
-      })
-      const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
-      const checks = normalizeChecks(resolvedCheck)
-      const checkContext = { status: result.status, code, variables: result.variables ?? {} }
-      const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
-      results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed })
-      if (result.status === 'stopped') break
-    }
-
-    const allPassed = results.length > 0 && results.every(r => r.passed)
-    setTestResults(results)
-    setRunStatus('success')
-    applyCheckFeedback(allPassed)
-
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ runStatus: 'success', checkPassed: allPassed, checkAttempted: true })
-    }
-    if (!teacherPresentation) {
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
-      } else {
-        saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: '', runStatus: 'success' })
+    try {
+      if (!isPyodideReady()) {
+        setPyodideStatus('loading')
+        await initPyodide()
+        setPyodideStatus('ready')
       }
+
+      for (const test of task.tests) {
+        const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
+        let accumulated = ''
+        const result = await runPython(code, {
+          onOutput: text => { accumulated += text },
+          onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
+        })
+        const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
+        const checks = normalizeChecks(resolvedCheck)
+        const checkContext = { status: result.status, code, variables: result.variables ?? {} }
+        const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
+        results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
+        if (result.status === 'stopped') break
+      }
+
+      const allPassed = results.length > 0 && results.every(r => r.passed)
+      const finalStatus = results.some(r => r.status === 'error')
+        ? 'error'
+        : results.some(r => r.status === 'stopped') ? 'stopped' : 'success'
+      const displayedOutput = results.find(r => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
+      setTestResults(results)
+      setOutput(displayedOutput)
+      setRunStatus(finalStatus)
+      if (finalStatus !== 'stopped') applyCheckFeedback(allPassed)
+
+      if (canPublishTeacherLive()) {
+        publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
+      }
+      if (!teacherPresentation) {
+        if (inPersonalSandboxRef.current) {
+          savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
+        } else {
+          saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: displayedOutput, runStatus: finalStatus })
+        }
+      }
+      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
+        await writeStudentRun(actor.anonymousId, { code, output: displayedOutput, status: finalStatus, checkPassed: allPassed })
+      }
+    } catch {
+      stopPython()
+      setRunStatus('error')
+    } finally {
+      setRunningTests(false)
     }
-    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-      await writeStudentRun(actor.anonymousId, { code, output: '', status: 'success', checkPassed: allPassed })
-    }
-    setRunningTests(false)
   }
 
   async function handleRun() {
@@ -842,7 +856,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         }
       }
       if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code, output: accumulated, status, checkPassed: passed })
+        await writeStudentRun(actor.anonymousId, { code, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
       }
       setRunning(false)
       return
@@ -1112,11 +1126,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   }
 
-  function applyFsCheckAndPublish(context) {
+  function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const passed = task?.check ? evaluateCheck(task.check, null, context) : false
     const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
-    if (task?.check) applyCheckFeedback(passed, suggestion)
+    if (task?.check && (passed || !suppressFailFeedback)) applyCheckFeedback(passed, suggestion)
     if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
@@ -1136,7 +1150,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const handleFsInteraction = useCallback((interaction) => {
     setFsInteraction(interaction)
-    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction })
+    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction }, { suppressFailFeedback: true })
   // applyFsCheckAndPublish reads lesson/currentTaskId/phase/effectiveIdentity via closure;
   // listing them here keeps navigate (which deps on handleFsInteraction) stable between renders
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1245,7 +1259,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isInformationTask = task?.taskType === 'information'
   const currentTask = flatTasks.find(t => t.id === currentTaskId)
   const currentTaskIsAutoEvaluated = currentTask?.taskType === 'quiz' && (currentTask?.quizType === 'match' || currentTask?.quizType === 'fill_blank')
-  const canAdvanceSolo = (!currentTask?.check && !currentTaskIsAutoEvaluated) || currentTask?.taskType === 'information' || checkPassed
+  const currentTaskHasCompletion = !!currentTask?.check || currentTask?.tests?.length > 0 || currentTaskIsAutoEvaluated
+  const canAdvanceSolo = !currentTaskHasCompletion || currentTask?.taskType === 'information' || checkPassed
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || canAdvanceSolo
   const hasCompleteSolution = lesson.type === 'python'
     ? !!task?.completeCode
@@ -1432,6 +1447,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           ) : lesson.type === 'filesystem' ? (
             <FilesystemTask
               key={`filesystem-${viewingTaskId ?? currentTaskId}`}
+              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? '/') : '/'}
               fs={fsState}
               onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
               onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : handleFsInteraction}
@@ -1494,12 +1510,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                     ) : (
                       <>
                         <button
-                          className={running ? 'btn-danger' : 'btn-primary'}
+                          className={running || runningTests ? 'btn-danger' : 'btn-primary'}
                           style={styles.studentEditorPrimaryBtn}
-                          onClick={running ? handleStop : handleRun}
-                          disabled={(!running && pyodideStatus === 'loading') || runningTests}
+                          onClick={running || runningTests ? handleStop : handleRun}
+                          disabled={!running && !runningTests && pyodideStatus === 'loading'}
                         >
-                          {running ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
+                          {running || runningTests ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
                         </button>
                         {task?.tests?.length > 0 && (
                           <button
