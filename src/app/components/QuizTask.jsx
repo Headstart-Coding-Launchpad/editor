@@ -179,6 +179,7 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
   const revealAnswers = showCorrectAnswer && submitted && disabled
   const [draggingTile, setDraggingTile] = useState(null)
   const [dragOverSlot, setDragOverSlot] = useState(null)
+  const [touchSelectedTile, setTouchSelectedTile] = useState(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const shuffledAnswers = useMemo(() => [...pairs].sort((a, b) => stableHash(a.answer) - stableHash(b.answer)), [JSON.stringify(pairs)])
@@ -206,6 +207,7 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
 
   function handleDragStart(event, pairId) {
     if (blocked) return
+    setTouchSelectedTile(null)
     writeDraggedTileId(event, pairId)
     setLiftedDragImage(event, pairs.find(p => p.id === pairId)?.answer ?? '')
     setDraggingTile(pairId)
@@ -214,6 +216,27 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
   function handleDragEnd() {
     setDraggingTile(null)
     setDragOverSlot(null)
+  }
+
+  function handleTileClick(pairId) {
+    if (blocked) return
+    setTouchSelectedTile(prev => prev === pairId ? null : pairId)
+  }
+
+  function handleSlotClick(promptId) {
+    if (blocked) return
+    if (touchSelectedTile) {
+      const next = removeTileFromState(state, touchSelectedTile)
+      next[promptId] = touchSelectedTile
+      setTouchSelectedTile(null)
+      publishState(next)
+    } else {
+      const placedId = state[promptId]
+      if (placedId) {
+        setTouchSelectedTile(placedId)
+        publishState(removeTileFromState(state, placedId))
+      }
+    }
   }
 
   function handleSlotDragOver(event, promptId) {
@@ -261,7 +284,10 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
             const placedId = state[pair.id]
             const placedPair = placedId ? pairs.find(p => p.id === placedId) : null
             const isOccupied = !!placedId
-            const canReceive = draggingTile && draggingTile !== placedId
+            const activeId = draggingTile || touchSelectedTile
+            const canReceive = !!(activeId && activeId !== placedId)
+            const isDragHighlight = canReceive && dragOverSlot === pair.id && !blocked
+            const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
             const isSlotCorrect = revealAnswers && placedId === pair.id
             const isSlotWrong = revealAnswers && isOccupied && placedId !== pair.id
             const correctPair = revealAnswers && !isSlotCorrect ? pair : null
@@ -281,19 +307,20 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
                       ...(isOccupied ? sm.slotFilled : sm.slotEmpty),
                       ...(isSlotCorrect ? sm.slotCorrect : {}),
                       ...(isSlotWrong ? sm.slotWrong : {}),
-                      ...(canReceive && dragOverSlot === pair.id && !blocked ? sm.slotHighlight : {}),
-                      cursor: blocked ? 'default' : isOccupied ? 'grab' : 'copy',
+                      ...((isDragHighlight || isTapHighlight) ? sm.slotHighlight : {}),
+                      cursor: blocked ? 'default' : (isTapHighlight || isOccupied) ? 'pointer' : 'copy',
                     }}
                     onDragOver={event => handleSlotDragOver(event, pair.id)}
                     onDragLeave={() => setDragOverSlot(null)}
                     onDrop={event => handleSlotDrop(event, pair.id)}
+                    onClick={() => handleSlotClick(pair.id)}
                     draggable={isOccupied && !blocked}
                     onDragStart={event => isOccupied && handleDragStart(event, placedId)}
                     onDragEnd={handleDragEnd}
                   >
                     {placedPair?.answer
                       ? <InlineMarkdown content={placedPair.answer} />
-                      : (canReceive && !blocked ? 'Drop here' : '—')}
+                      : (canReceive && !blocked ? (touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here') : '—')}
                   </div>
                   {correctPair && (
                     <div style={sm.correctAnswerHint}>
@@ -315,11 +342,12 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
                 type="button"
                 style={{
                   ...sm.tile,
-                  ...(draggingTile === pair.id ? sm.tileSelected : {}),
+                  ...((draggingTile === pair.id || touchSelectedTile === pair.id) ? sm.tileSelected : {}),
                 }}
                 draggable={!blocked}
                 onDragStart={event => handleDragStart(event, pair.id)}
                 onDragEnd={handleDragEnd}
+                onClick={() => handleTileClick(pair.id)}
                 disabled={blocked}
               >
                 <InlineMarkdown content={pair.answer} />
@@ -395,6 +423,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
   const text = task?.text ?? ''
   const [draggingTile, setDraggingTile] = useState(null)
   const [dragOverBlank, setDragOverBlank] = useState(null)
+  const [touchSelectedTile, setTouchSelectedTile] = useState(null)
 
   const distractors = task?.distractors ?? []
 
@@ -438,6 +467,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
 
   function handleDragStart(event, tileId) {
     if (blocked) return
+    setTouchSelectedTile(null)
     writeDraggedTileId(event, tileId)
     setLiftedDragImage(event, tilePool.find(t => t.id === tileId)?.text ?? '')
     setDraggingTile(tileId)
@@ -446,6 +476,27 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
   function handleDragEnd() {
     setDraggingTile(null)
     setDragOverBlank(null)
+  }
+
+  function handleTileClick(tileId) {
+    if (blocked || mode !== 'drag') return
+    setTouchSelectedTile(prev => prev === tileId ? null : tileId)
+  }
+
+  function handleBlankClick(blankId) {
+    if (blocked || mode !== 'drag') return
+    if (touchSelectedTile) {
+      const next = removeTileFromState(state, touchSelectedTile)
+      next[blankId] = touchSelectedTile
+      setTouchSelectedTile(null)
+      publishState(next)
+    } else {
+      const placedTileId = state[blankId]
+      if (placedTileId) {
+        setTouchSelectedTile(placedTileId)
+        publishState(removeTileFromState(state, placedTileId))
+      }
+    }
   }
 
   function handleBlankDragOver(event, blankId) {
@@ -518,7 +569,10 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
             const blank = blanks.find(b => b.id === blankId)
             const placedTileId = state[blankId]
             const placedText = tilePool.find(t => t.id === placedTileId)?.text
-            const canReceive = mode === 'drag' && draggingTile && draggingTile !== placedTileId
+            const activeId = draggingTile || touchSelectedTile
+            const canReceive = mode === 'drag' && !!(activeId && activeId !== placedTileId)
+            const isDragHighlight = canReceive && dragOverBlank === blankId && !blocked
+            const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
 
             const isBlankCorrect = revealAnswers && placedTileId && (
               mode === 'drag'
@@ -552,12 +606,13 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
                   ...(placedTileId ? sm.fillBlankFilled : sm.fillBlankEmpty),
                   ...(isBlankCorrect ? sm.fillBlankCorrect : {}),
                   ...(isBlankWrong ? sm.fillBlankWrong : {}),
-                  ...(canReceive && dragOverBlank === blankId && !blocked ? sm.fillBlankHighlight : {}),
-                  cursor: blocked ? 'default' : placedTileId ? 'grab' : 'copy',
+                  ...((isDragHighlight || isTapHighlight) ? sm.fillBlankHighlight : {}),
+                  cursor: blocked ? 'default' : (isTapHighlight || placedTileId) ? 'pointer' : 'copy',
                 }}
                 onDragOver={event => handleBlankDragOver(event, blankId)}
                 onDragLeave={() => setDragOverBlank(null)}
                 onDrop={event => handleBlankDrop(event, blankId)}
+                onClick={() => handleBlankClick(blankId)}
                 draggable={!!placedTileId && !blocked}
                 onDragStart={event => placedTileId && handleDragStart(event, placedTileId)}
                 onDragEnd={handleDragEnd}
@@ -565,7 +620,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
               >
                 {placedText
                   ? <span style={sm.fillBlankMarkdown}><InlineMarkdown content={placedText} /></span>
-                  : (canReceive && !blocked ? 'Drop here' : '___')}
+                  : (canReceive && !blocked ? (touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here') : '___')}
               </span>
             )
           })}
@@ -579,13 +634,14 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
                 <button
                   key={t.id}
                   type="button"
-                  style={{ ...sm.tile, ...(draggingTile === t.id ? sm.tileSelected : {}) }}
+                  style={{ ...sm.tile, ...((draggingTile === t.id || touchSelectedTile === t.id) ? sm.tileSelected : {}) }}
                   draggable={!blocked}
                   onDragStart={event => handleDragStart(event, t.id)}
                   onDragEnd={handleDragEnd}
+                  onClick={() => handleTileClick(t.id)}
                   disabled={blocked}
                 >
-                  <span style={draggingTile === t.id ? sm.selectedTileMarkdown : undefined}>
+                  <span style={(draggingTile === t.id || touchSelectedTile === t.id) ? sm.selectedTileMarkdown : undefined}>
                     <InlineMarkdown content={t.text} />
                   </span>
                 </button>
