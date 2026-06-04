@@ -33,8 +33,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with sign-out, renders AccountManagement |
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tabbed navigation (Lessons / Accounts) |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
+| `LessonManagement.jsx` | Firestore `lessons` list; delete lessons; link to open/edit in Builder |
 
 ---
 
@@ -169,7 +170,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
-| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions` |
+| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
@@ -212,9 +213,10 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `firebase.json` | Firebase project config: Firestore rules file and Cloud Functions source |
+| `firebase.json` | Firebase project config: Firestore rules, Storage rules, and Cloud Functions source |
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
+| `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
 
 ---
 

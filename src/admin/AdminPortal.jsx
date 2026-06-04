@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import AccountManagement from './AccountManagement'
+import LessonManagement from './LessonManagement'
 
 export default function AdminPortal() {
   const { user } = useAuth()
+  const [tab, setTab] = useState('lessons')
 
   async function handleLogout() {
     await signOut(auth)
@@ -23,8 +25,24 @@ export default function AdminPortal() {
         </div>
       </header>
 
+      <div style={s.tabs}>
+        <button
+          style={{ ...s.tab, ...(tab === 'lessons' ? s.tabActive : {}) }}
+          onClick={() => setTab('lessons')}
+        >
+          Lessons
+        </button>
+        <button
+          style={{ ...s.tab, ...(tab === 'accounts' ? s.tabActive : {}) }}
+          onClick={() => setTab('accounts')}
+        >
+          Accounts
+        </button>
+      </div>
+
       <main style={s.main}>
-        <AccountManagement />
+        {tab === 'lessons' && <LessonManagement />}
+        {tab === 'accounts' && <AccountManagement />}
       </main>
     </div>
   )
@@ -45,6 +63,30 @@ const s = {
     alignItems: 'center',
     justifyContent: 'space-between',
     flexShrink: 0,
+  },
+  tabs: {
+    background: '#fff',
+    borderBottom: '1px solid #e5e7eb',
+    padding: '0 32px',
+    display: 'flex',
+    gap: 0,
+    flexShrink: 0,
+  },
+  tab: {
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    padding: '12px 16px',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.9rem',
+    color: '#6b7280',
+    cursor: 'pointer',
+    marginBottom: -1,
+  },
+  tabActive: {
+    color: 'var(--colour-primary)',
+    borderBottomColor: 'var(--colour-primary)',
   },
   brand: {
     fontFamily: 'var(--font-title)',

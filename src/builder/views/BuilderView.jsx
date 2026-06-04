@@ -3,6 +3,7 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
+import { doc, setDoc } from 'firebase/firestore'
 import LessonMetaPanel from '../components/LessonMetaPanel'
 import TaskList from '../components/TaskList'
 import TaskEditor from '../components/TaskEditor'
@@ -10,6 +11,8 @@ import PreviewView from './PreviewView'
 import { HTML_ONLY } from '../components/FileManager'
 import { flattenTasks, findGroupForTask, updateTaskInTasks, updateSubtaskTitles } from '../../shared/taskUtils'
 import { normalizeTasksForExport, validateLesson } from '../lessonUtils'
+import { firestore } from '../../shared/firebase'
+import { useAuth } from '../../auth/useAuth'
 
 // ─── Group editor panel ───────────────────────────────────────────────────────
 
@@ -390,6 +393,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const [selectedGroupId, setSelectedGroupId] = useState(null)
   const [previewing, setPreviewing] = useState(false)
   const [metaOpen, setMetaOpen] = useState(false)
+  const [publishStatus, setPublishStatus] = useState(null) // null | 'publishing' | 'done' | 'error'
+  const { role } = useAuth()
 
   function handleLessonUpdate(updater) {
     if (typeof updater === 'function') {
@@ -476,6 +481,35 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     a.click()
     URL.revokeObjectURL(url)
     onMarkSaved()
+  }
+
+  async function handlePublish() {
+    const { errors, warnings } = validateLesson(lesson)
+    if (errors.length) {
+      alert('Cannot publish — please fix these errors:\n\n' + errors.join('\n'))
+      return
+    }
+    if (warnings.length) {
+      const ok = confirm('Warnings:\n\n' + warnings.join('\n') + '\n\nPublish anyway?')
+      if (!ok) return
+    }
+    if (!lesson.id) {
+      alert('Cannot publish — lesson ID is required.')
+      return
+    }
+    setPublishStatus('publishing')
+    try {
+      const exported = { ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }
+      await setDoc(doc(firestore, 'lessons', lesson.id), exported)
+      setPublishStatus('done')
+      onMarkSaved()
+      setTimeout(() => setPublishStatus(null), 3000)
+    } catch (err) {
+      console.error('Publish failed:', err)
+      setPublishStatus('error')
+      alert('Failed to publish: ' + err.message)
+      setPublishStatus(null)
+    }
   }
 
   function handlePrint() {
@@ -727,6 +761,16 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
           >
             Download JSON
           </button>
+          {role === 'admin' && (
+            <button
+              className="btn-primary"
+              style={{ fontSize: 13, padding: '5px 14px', background: publishStatus === 'done' ? '#16a34a' : undefined }}
+              onClick={handlePublish}
+              disabled={errors.length > 0 || publishStatus === 'publishing'}
+            >
+              {publishStatus === 'publishing' ? 'Publishing…' : publishStatus === 'done' ? 'Published ✓' : 'Publish to Firestore'}
+            </button>
+          )}
         </div>
       </header>
 

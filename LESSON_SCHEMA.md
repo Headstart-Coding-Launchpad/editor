@@ -38,6 +38,7 @@ Every lesson can contain code tasks plus `information` and `quiz` tasks.
 | `sandboxBackdrops` | No | backdrop array | Scratch | Backdrops to use in sandbox mode. |
 | `assetsPath` | No | string | all lessons | Base URL path for asset resolution (backdrops, costumes, AssetBrowser). |
 | `assets` | No | string array | all lessons | List of asset file paths shown in the AssetBrowser. |
+| `storageAssets` | No | `{name, url}[]` | all lessons | Files uploaded to Firebase Storage for this lesson. Each entry has a `name` (filename) and `url` (full Firebase Storage download URL). Managed via the builder's Lesson Details panel (admin only). |
 | `tasks` | Yes | array | all lessons | Ordered task list. IDs should be sequential integers starting at `1`. May also contain group objects. |
 
 ## Common Task Fields

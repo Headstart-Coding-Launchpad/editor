@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import SplitPane from '../../shared/SplitPane'
 import { CodeEditor } from '../../shared/CodeEditor'
 import FileManager from './FileManager'
@@ -9,11 +10,14 @@ import { useAssets } from '../../shared/useAssets'
 import AssetBrowser from '../../shared/AssetBrowser'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { FsTreeEditor } from './task-editor/FilesystemEditors'
+import { storage } from '../../shared/firebase'
+import { useAuth } from '../../auth/useAuth'
 
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const lastAutoKeyRef = useRef('')
+  const { role } = useAuth()
 
   function set(field, value) {
     onUpdate(prev => ({ ...prev, [field]: value }))
@@ -116,6 +120,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
         </Field>
 
         <AssetSummary lessonId={lesson.id} lessonType={lesson.type} assets={lesson.assets} assetsPath={resolveAssetsPath(lesson.assetsPath)} />
+
+        {role === 'admin' && (
+          <StorageAssetUploader
+            lessonId={lesson.id}
+            storageAssets={lesson.storageAssets ?? []}
+            onUpdate={items => onUpdate(prev => ({ ...prev, storageAssets: items }))}
+          />
+        )}
 
         <div style={s.divider} />
 
@@ -347,6 +359,102 @@ function SandboxStarterFiles({ files, onChange }) {
   )
 }
 
+function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
+  const [uploads, setUploads] = useState({}) // filename → { progress, error }
+
+  function handleFileSelect() {
+    if (!lessonId) { alert('Set a lesson ID before uploading assets.'); return }
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.multiple = true
+    input.accept = 'image/*,application/pdf,.svg'
+    input.onchange = e => {
+      for (const file of e.target.files) {
+        uploadFile(file)
+      }
+    }
+    input.click()
+  }
+
+  function uploadFile(file) {
+    const storageRef = ref(storage, `lessons/${lessonId}/assets/${file.name}`)
+    const task = uploadBytesResumable(storageRef, file)
+    setUploads(prev => ({ ...prev, [file.name]: { progress: 0, error: null } }))
+    task.on(
+      'state_changed',
+      snap => {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
+        setUploads(prev => ({ ...prev, [file.name]: { progress: pct, error: null } }))
+      },
+      err => {
+        setUploads(prev => ({ ...prev, [file.name]: { progress: 0, error: err.message } }))
+      },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref)
+        setUploads(prev => {
+          const next = { ...prev }
+          delete next[file.name]
+          return next
+        })
+        onUpdate([...storageAssets.filter(a => a.name !== file.name), { name: file.name, url }])
+      }
+    )
+  }
+
+  async function handleDelete(asset) {
+    if (!confirm(`Delete "${asset.name}" from Firebase Storage?`)) return
+    try {
+      await deleteObject(ref(storage, `lessons/${lessonId}/assets/${asset.name}`))
+    } catch (err) {
+      if (err.code !== 'storage/object-not-found') {
+        alert('Could not delete: ' + err.message)
+        return
+      }
+    }
+    onUpdate(storageAssets.filter(a => a.name !== asset.name))
+  }
+
+  const activeUploads = Object.entries(uploads)
+
+  return (
+    <div style={s.storageSection}>
+      <div style={s.storageTitleRow}>
+        <span style={s.fieldLabel}>Firebase Storage assets</span>
+        <button className="btn-ghost" style={s.uploadAssetBtn} onClick={handleFileSelect}>
+          Upload file
+        </button>
+      </div>
+      {storageAssets.length === 0 && activeUploads.length === 0 && (
+        <p style={s.summaryText}>No files uploaded. Use "Upload file" to add images or PDFs.</p>
+      )}
+      {activeUploads.map(([name, info]) => (
+        <div key={name} style={s.storageRow}>
+          <span style={s.assetPath}>{name}</span>
+          {info.error
+            ? <span style={{ color: '#ef4444', fontSize: '0.78rem' }}>Error: {info.error}</span>
+            : <span style={{ color: '#6b7280', fontSize: '0.78rem' }}>{info.progress}%</span>
+          }
+        </div>
+      ))}
+      {storageAssets.map(asset => (
+        <div key={asset.name} style={s.storageRow}>
+          <a href={asset.url} target="_blank" rel="noopener noreferrer" style={s.assetPath} title={asset.url}>
+            {asset.name}
+          </a>
+          <button
+            style={s.copyUrlBtn}
+            onClick={() => navigator.clipboard.writeText(asset.url).catch(() => {})}
+            title="Copy URL"
+          >
+            Copy URL
+          </button>
+          <button style={s.removeBtn} onClick={() => handleDelete(asset)} title="Delete">×</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AssetSummary({ lessonId, lessonType, assets, assetsPath }) {
   const { loading, error } = useAssets()
   const count = assets?.length ?? 0
@@ -530,6 +638,47 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
+  },
+  storageSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    padding: '10px 12px',
+    background: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    borderRadius: 8,
+  },
+  storageTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  uploadAssetBtn: {
+    color: '#16a34a',
+    border: '1px solid #16a34a',
+    padding: '4px 10px',
+    fontSize: '0.78rem',
+    whiteSpace: 'nowrap',
+  },
+  storageRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: 5,
+    padding: '4px 8px',
+  },
+  copyUrlBtn: {
+    flexShrink: 0,
+    background: 'none',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    color: '#6b7280',
+    fontSize: '0.72rem',
+    cursor: 'pointer',
+    padding: '2px 6px',
   },
   assetBrowserInPanel: {
     maxHeight: 180,
