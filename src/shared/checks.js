@@ -1,5 +1,24 @@
 import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem.js'
 
+export function substituteTestInputs(value, inputs) {
+  if (typeof value !== 'string' || !inputs?.length) return value
+  return inputs.reduce(
+    (v, { name, value: val }) => {
+      if (!name) return v
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return v.replace(new RegExp(`\\{${escapedName}\\}`, 'g'), () => val ?? '')
+    },
+    value,
+  )
+}
+
+export function resolveTestCheck(check, inputs) {
+  if (!check || !inputs?.length) return check
+  if (Array.isArray(check)) return check.map(c => resolveTestCheck(c, inputs))
+  if (typeof check.value === 'string') return { ...check, value: substituteTestInputs(check.value, inputs) }
+  return check
+}
+
 export function normalizeChecks(check) {
   if (!check) return []
   if (Array.isArray(check)) return check.filter(c => c?.type)

@@ -111,7 +111,7 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMen
 
 // ── File Grid ─────────────────────────────────────────────────────────────────
 
-function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu, cutPath }) {
+function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu, cutPath, creating, onCreateCommit, onCreateCancel }) {
   const children = listChildren(fs, currentDir)
   const renameRef = useRef(null)
   const [dragOverPath, setDragOverPath] = useState(null)
@@ -163,7 +163,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
     if (src && src !== path && onDrop) onDrop(src, path)
   }
 
-  if (children.length === 0) {
+  if (children.length === 0 && !creating) {
     return (
       <div
         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.85rem', fontFamily: 'var(--font-body)' }}
@@ -183,6 +183,29 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
       onDrop={handleDropOnGrid}
       onContextMenu={onContextMenu ? e => { if (e.target === e.currentTarget) onContextMenu(e, null) } : undefined}
     >
+      {creating && (
+        <div
+          style={{
+            width: 80, display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 4, padding: '8px 4px', borderRadius: 6,
+            border: '1.5px solid var(--colour-primary)',
+            background: 'rgba(98,34,204,0.06)',
+          }}
+        >
+          <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>{creating === 'folder' ? ICON_DIR : ICON_FILE}</span>
+          <input
+            autoFocus
+            placeholder={creating === 'folder' ? 'Folder name…' : 'File name…'}
+            style={{ width: 72, fontSize: '0.72rem', textAlign: 'center', border: '1px solid var(--colour-primary)', borderRadius: 3, padding: '1px 3px', fontFamily: 'var(--font-body)' }}
+            onClick={e => e.stopPropagation()}
+            onBlur={e => { if (e.target.value.trim()) onCreateCommit(e.target.value.trim()); else onCreateCancel() }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && e.target.value.trim()) onCreateCommit(e.target.value.trim())
+              if (e.key === 'Escape') onCreateCancel()
+            }}
+          />
+        </div>
+      )}
       {children.map(path => {
         const isDirectory = path.endsWith('/')
         const name = entryName(path)
@@ -334,8 +357,8 @@ function AddressBar({ currentDir, onNavigate }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false }) {
-  const [currentDir, setCurrentDir] = useState('/')
+export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false, initialDir = '/' }) {
+  const [currentDir, setCurrentDir] = useState(initialDir)
   const [selected, setSelected] = useState(null)
   const [openFile, setOpenFile] = useState(null)
   const [creating, setCreating] = useState(null) // 'file' | 'folder'
@@ -616,13 +639,6 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
                 📋 Paste {clipboard.mode === 'cut' ? '(move)' : '(copy)'}
               </button>
             )}
-            {creating && (
-              <InlineNameInput
-                placeholder={creating === 'folder' ? 'Folder name…' : 'File name…'}
-                onCommit={name => creating === 'folder' ? handleNewFolder(name) : handleNewFile(name)}
-                onCancel={() => setCreating(null)}
-              />
-            )}
           </>
         )}
         <AddressBar currentDir={currentDir} onNavigate={navigate} />
@@ -657,6 +673,9 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
             onRenameKeyDown={handleRenameKeyDown}
             onContextMenu={disabled ? undefined : openContextMenu}
             cutPath={clipboard?.mode === 'cut' ? clipboard.path : null}
+            creating={disabled ? null : creating}
+            onCreateCommit={name => creating === 'folder' ? handleNewFolder(name) : handleNewFile(name)}
+            onCreateCancel={() => setCreating(null)}
           />
 
           {/* File viewer */}
