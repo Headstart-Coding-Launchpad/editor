@@ -2,10 +2,10 @@ import React, { useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import AssetBrowser from '../../shared/AssetBrowser'
 
-export default function HtmlEditor({ files = [], activeFile, onTabChange, onFileChange, onSelectionChange, onActivity, remoteSelection, readOnly = false, assetsPath, assets, attachedTop = false }) {
+export default function HtmlEditor({ files = [], activeFile, onTabChange, onFileChange, onSelectionChange, onActivity, remoteSelection, readOnly = false, assetsPath, assets, storageAssets, attachedTop = false }) {
   const [showAssets, setShowAssets] = useState(false)
   const current = files.find(f => f.name === activeFile) ?? files[0]
-  const hasAssets = !!(assetsPath && assets?.length)
+  const hasAssets = !!(assetsPath && assets?.length) || storageAssets?.length > 0
 
   return (
     <div style={s.wrap}>
@@ -42,7 +42,7 @@ export default function HtmlEditor({ files = [], activeFile, onTabChange, onFile
       {/* Asset panel */}
       {showAssets && hasAssets && (
         <div style={s.assetPanel}>
-          <AssetBrowser assetsPath={assetsPath} assets={assets} copyMode="relative" />
+          <AssetBrowser assetsPath={assetsPath} assets={assets} storageAssets={storageAssets} copyMode="relative" />
         </div>
       )}
 

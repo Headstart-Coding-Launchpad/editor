@@ -387,7 +387,7 @@ function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
           delete next[file.name]
           return next
         })
-        onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url }])
+        onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url, showInEditor: false }])
       }
     )
   }
@@ -432,6 +432,14 @@ function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
           <a href={asset.url} target="_blank" rel="noopener noreferrer" style={s.assetPath} title={asset.url}>
             {asset.name}
           </a>
+          <label style={s.showInEditorLabel}>
+            <input
+              type="checkbox"
+              checked={!!asset.showInEditor}
+              onChange={e => onUpdate(prev => prev.map(a => a.name === asset.name ? { ...a, showInEditor: e.target.checked } : a))}
+            />
+            Web editor
+          </label>
           <button
             style={s.copyUrlBtn}
             onClick={() => navigator.clipboard.writeText(asset.url).catch(() => {})}
@@ -663,6 +671,16 @@ const s = {
     border: '1px solid #e5e7eb',
     borderRadius: 5,
     padding: '4px 8px',
+  },
+  showInEditorLabel: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: '0.72rem',
+    color: '#374151',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   copyUrlBtn: {
     flexShrink: 0,

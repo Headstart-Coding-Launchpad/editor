@@ -218,6 +218,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     setTeacherLiveIframeSrc(buildIframeSrc(liveFiles, liveTask?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
+      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])
@@ -870,6 +871,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     const src = buildIframeSrc(files, task?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
+      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
     })
     setIframeSrc(src)
     setRunStatus('success')
@@ -1632,6 +1634,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                   readOnly={isViewingPrev || isForcedTeacherLive}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                   assets={lesson.assets}
+                  storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                 />
               </div>
               {task?.interactionMode !== 'submit' && (
@@ -1688,6 +1691,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                     readOnly={isViewingPrev || isForcedTeacherLive}
                     assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                     assets={lesson.assets}
+                    storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                   />
                 </div>
               }

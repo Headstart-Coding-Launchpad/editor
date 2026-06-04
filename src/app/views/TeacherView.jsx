@@ -525,6 +525,7 @@ export default function TeacherView({ lessonId }) {
                   readOnly={showingComplete || isShowingStage || !isInSandbox}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                   assets={lesson.assets}
+                  storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                   attachedTop={!isInSandbox}
                 />
               </div>

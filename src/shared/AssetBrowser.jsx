@@ -77,13 +77,15 @@ function FileNode({ name, path, assetsPath, copyMode, mode, onSelect, depth }) {
   )
 }
 
-function StorageFileNode({ name, url, mode, onSelect }) {
+function StorageFileNode({ name, url, copyMode, mode, onSelect }) {
   const [copied, setCopied] = React.useState(false)
   const rowRef = useRef(null)
   const { preview, showPreview, hidePreview } = useImagePreview()
 
+  const copyValue = copyMode === 'relative' ? name : url
+
   function handleCopy() {
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard.writeText(copyValue).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })
@@ -98,9 +100,9 @@ function StorageFileNode({ name, url, mode, onSelect }) {
     >
       <span style={s.itemLabel}>{isImageFile(name) ? '🖼' : '📄'} {name}</span>
       {mode === 'select' ? (
-        <button style={s.actionBtn} onClick={() => onSelect?.(url)}>Select</button>
+        <button style={s.actionBtn} onClick={() => onSelect?.(copyMode === 'relative' ? name : url)}>Select</button>
       ) : (
-        <button style={s.actionBtn} onClick={handleCopy}>{copied ? '✓' : 'Copy URL'}</button>
+        <button style={s.actionBtn} onClick={handleCopy}>{copied ? '✓' : copyMode === 'relative' ? 'Copy' : 'Copy URL'}</button>
       )}
       <ImagePreviewTooltip preview={preview} />
     </div>
@@ -136,7 +138,7 @@ export default function AssetBrowser({ assetsPath, assets, storageAssets, copyMo
         <>
           {hasStatic && <div style={s.storageDivider}><span style={s.storageDividerLabel}>Firebase Storage</span></div>}
           {storageAssets.map(asset => (
-            <StorageFileNode key={asset.name} name={asset.name} url={asset.url} mode={mode} onSelect={onSelect} />
+            <StorageFileNode key={asset.name} name={asset.name} url={asset.url} copyMode={copyMode} mode={mode} onSelect={onSelect} />
           ))}
         </>
       )}
