@@ -2,7 +2,7 @@
 
 Quick-reference guide for Claude Code and Codex sessions. Read this at the start of every session.
 
-For full detail: **SPEC.md**. For file roles: **CODEBASE_MAP.md**. For lesson JSON: **LESSON_SCHEMA.md**. For feature list: **FEATURES.md**.
+For full detail: **SPEC.md**. For file roles: **CODEBASE_MAP.md**. For lesson JSON: **LESSON_SCHEMA.md**. For topic library JSON: **TOPIC_LIBRARY_SCHEMA.md**. For feature list: **FEATURES.md**.
 
 ## Session Start Checklist
 

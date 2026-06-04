@@ -170,6 +170,14 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 ---
 
+## Static Data Files
+
+| Path | Role |
+|---|---|
+| `public/assets/topic-library.json` | Topic library — reference cards for coding concepts shown in hover previews and the Topic Library dialog; schema documented in `TOPIC_LIBRARY_SCHEMA.md` |
+
+---
+
 ## Config & Build
 
 | File | Role |
