@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
+import { fetchLessonList } from '../shared/lessonService'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
 
@@ -21,8 +22,23 @@ export default function BuilderApp() {
   const [restorePrompt, setRestorePrompt] = useState(false)
   const [ready, setReady] = useState(false)
 
-  // On mount - check localStorage for in-progress lesson.
+  // On mount - check for ?load=<id> (from admin "Edit" link), then localStorage.
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const loadId = params.get('load')
+    if (loadId) {
+      getDoc(doc(firestore, 'lessons', loadId))
+        .then(snap => {
+          if (snap.exists()) {
+            setLesson(snap.data())
+          } else {
+            alert(`Lesson "${loadId}" not found in Firestore.`)
+          }
+        })
+        .catch(err => alert('Could not load lesson: ' + err.message))
+        .finally(() => setReady(true))
+      return
+    }
     const raw = localStorage.getItem(LS_KEY)
     if (raw) {
       try {
@@ -207,12 +223,8 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
   const [loadingId, setLoadingId] = useState(null)
 
   useEffect(() => {
-    getDocs(collection(firestore, 'lessons'))
-      .then(snap => {
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
-        setLessons(items)
-      })
+    fetchLessonList()
+      .then(items => setLessons(items))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])

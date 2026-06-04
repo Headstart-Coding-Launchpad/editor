@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
+import { deleteDoc, doc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
+import { fetchLessonList } from '../shared/lessonService'
+
+const BUILDER_BASE = import.meta.env.BASE_URL + 'builder/'
 
 export default function LessonManagement() {
   const [lessons, setLessons] = useState(null)
@@ -11,12 +14,8 @@ export default function LessonManagement() {
   function load() {
     setLoading(true)
     setError(null)
-    getDocs(collection(firestore, 'lessons'))
-      .then(snap => {
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
-        setLessons(items)
-      })
+    fetchLessonList()
+      .then(items => setLessons(items))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }
@@ -36,8 +35,6 @@ export default function LessonManagement() {
     }
   }
 
-  const builderBase = window.location.href.replace(/#.*$/, '').replace(/\/[^/]*$/, '/builder/')
-
   return (
     <section style={s.section}>
       <div style={s.header}>
@@ -46,7 +43,7 @@ export default function LessonManagement() {
           <button className="btn-ghost" style={s.actionBtn} onClick={load} disabled={loading}>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
-          <a href={builderBase} target="_blank" rel="noopener noreferrer" style={s.newLessonLink}>
+          <a href={BUILDER_BASE} target="_blank" rel="noopener noreferrer" style={s.newLessonLink}>
             New lesson (Builder)
           </a>
         </div>
@@ -77,7 +74,7 @@ export default function LessonManagement() {
                 <span style={{ width: 60, textAlign: 'center', fontSize: '0.85rem' }}>{taskCount}</span>
                 <div style={{ width: 120, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                   <a
-                    href={`${builderBase}?load=${lesson.id}`}
+                    href={`${BUILDER_BASE}?load=${lesson.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={s.editLink}

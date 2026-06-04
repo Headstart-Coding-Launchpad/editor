@@ -459,7 +459,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function handleDownload() {
-    const { errors, warnings } = validateLesson(lesson)
     if (errors.length) {
       alert('Cannot download — please fix these errors:\n\n' + errors.join('\n'))
       return
@@ -484,7 +483,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   }
 
   async function handlePublish() {
-    const { errors, warnings } = validateLesson(lesson)
     if (errors.length) {
       alert('Cannot publish — please fix these errors:\n\n' + errors.join('\n'))
       return
@@ -507,8 +505,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     } catch (err) {
       console.error('Publish failed:', err)
       setPublishStatus('error')
+      setTimeout(() => setPublishStatus(null), 3000)
       alert('Failed to publish: ' + err.message)
-      setPublishStatus(null)
     }
   }
 
@@ -764,11 +762,11 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
           {role === 'admin' && (
             <button
               className="btn-primary"
-              style={{ fontSize: 13, padding: '5px 14px', background: publishStatus === 'done' ? '#16a34a' : undefined }}
+              style={{ fontSize: 13, padding: '5px 14px', background: publishStatus === 'done' ? '#16a34a' : publishStatus === 'error' ? '#ef4444' : undefined }}
               onClick={handlePublish}
               disabled={errors.length > 0 || publishStatus === 'publishing'}
             >
-              {publishStatus === 'publishing' ? 'Publishing…' : publishStatus === 'done' ? 'Published ✓' : 'Publish to Firestore'}
+              {publishStatus === 'publishing' ? 'Publishing…' : publishStatus === 'done' ? 'Published ✓' : publishStatus === 'error' ? 'Publish failed ✕' : 'Publish to Firestore'}
             </button>
           )}
         </div>

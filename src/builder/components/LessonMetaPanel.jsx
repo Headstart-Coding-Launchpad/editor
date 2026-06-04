@@ -125,7 +125,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
           <StorageAssetUploader
             lessonId={lesson.id}
             storageAssets={lesson.storageAssets ?? []}
-            onUpdate={items => onUpdate(prev => ({ ...prev, storageAssets: items }))}
+            onUpdate={updater => onUpdate(prev => ({ ...prev, storageAssets: typeof updater === 'function' ? updater(prev.storageAssets ?? []) : updater }))}
           />
         )}
 
@@ -396,7 +396,7 @@ function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
           delete next[file.name]
           return next
         })
-        onUpdate([...storageAssets.filter(a => a.name !== file.name), { name: file.name, url }])
+        onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url }])
       }
     )
   }
@@ -411,7 +411,7 @@ function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
         return
       }
     }
-    onUpdate(storageAssets.filter(a => a.name !== asset.name))
+    onUpdate(prev => prev.filter(a => a.name !== asset.name))
   }
 
   const activeUploads = Object.entries(uploads)

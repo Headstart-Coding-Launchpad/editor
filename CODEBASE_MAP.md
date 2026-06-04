@@ -179,6 +179,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratchChecks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES` |
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
+| `lessonService.js` | Shared Firestore helper: `fetchLessonList()` — fetches and sorts the `lessons/` collection |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 
