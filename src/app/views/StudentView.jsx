@@ -1422,7 +1422,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           )}
 
         <div style={editorAreaStyle} className={isForcedTeacherLive ? 'live-view-active' : undefined}>
-          {!inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted && (
+          {!isSandbox && !inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted && (
             <CheckFeedbackBanner
               passed={displayCheckPassed}
               failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
@@ -1430,6 +1430,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               onShowCompleteCode={canOfferCompleteSolution ? handleShowCompleteCode : undefined}
               onGoPersonalSandbox={canOfferPersonalSandbox ? handleEnterPersonalSandbox : undefined}
             />
+          )}
+          {isSandbox && session?.sandboxExplainer && (
+            <div className="sandbox-explainer-banner">
+              {session.sandboxExplainer}
+            </div>
           )}
           {!isSandbox && isInformationTask ? (
             <InformationTask task={task} lesson={lesson} fill />
