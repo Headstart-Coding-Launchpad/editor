@@ -719,6 +719,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             inlineCodeLanguages={explainerInlineCodeLanguages}
             assets={lesson.assets ?? []}
             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+            storageAssets={lesson.storageAssets ?? []}
           />
         </div>
       )}
@@ -747,6 +748,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               inlineCodeLanguages={explainerInlineCodeLanguages}
               assets={lesson.assets ?? []}
               assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+              storageAssets={lesson.storageAssets ?? []}
             />
           )}
         </div>

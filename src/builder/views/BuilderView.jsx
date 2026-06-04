@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkBreaks from 'remark-breaks'
@@ -395,6 +396,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const [metaOpen, setMetaOpen] = useState(false)
   const [publishStatus, setPublishStatus] = useState(null) // null | 'publishing' | 'done' | 'error'
   const { role } = useAuth()
+  const navigate = useNavigate()
 
   function handleLessonUpdate(updater) {
     if (typeof updater === 'function') {
@@ -501,7 +503,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       await setDoc(doc(firestore, 'lessons', lesson.id), exported)
       setPublishStatus('done')
       onMarkSaved()
-      setTimeout(() => setPublishStatus(null), 3000)
+      setTimeout(() => navigate('/admin'), 1500)
     } catch (err) {
       console.error('Publish failed:', err)
       setPublishStatus('error')
@@ -731,6 +733,11 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         <span style={s.logo}>Headstart Coding - LaunchPad | Lesson Builder</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {dirty && <span style={s.dirtyDot} title="Unsaved changes" />}
+          {role === 'admin' && (
+            <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 12px' }} onClick={() => navigate('/admin')}>
+              Back to Admin
+            </button>
+          )}
           <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 12px' }} onClick={onNew}>New</button>
           <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 12px' }} onClick={handleUpload}>Upload</button>
           <button

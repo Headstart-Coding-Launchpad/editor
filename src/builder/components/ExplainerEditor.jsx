@@ -92,7 +92,7 @@ const SCRATCH_BLOCK_CATEGORIES = [
   },
 ]
 
-export default function ExplainerEditor({ title, value, onChange, lessonType, inlineCodeLanguages, assets, assetsPath }) {
+export default function ExplainerEditor({ title, value, onChange, lessonType, inlineCodeLanguages, assets, assetsPath, storageAssets }) {
   return (
     <MarkdownFieldEditor
       title={title}
@@ -107,6 +107,7 @@ export default function ExplainerEditor({ title, value, onChange, lessonType, in
       inlineCodeLanguages={inlineCodeLanguages}
       assets={assets}
       assetsPath={assetsPath}
+      storageAssets={storageAssets}
     />
   )
 }
@@ -124,6 +125,7 @@ export function MarkdownFieldEditor({
   inlineCodeLanguages = null,
   assets = null,
   assetsPath = '',
+  storageAssets = null,
 }) {
   const [tab, setTab] = useState('entry')
   const textareaRef = useRef(null)
@@ -234,6 +236,12 @@ export function MarkdownFieldEditor({
       newVal = before + toInsert + after
       cursorStart = start + toInsert.length
       cursorEnd = cursorStart
+    } else if (action.startsWith('image-url:')) {
+      const url = action.slice('image-url:'.length)
+      const toInsert = `![Image](${url})`
+      newVal = before + toInsert + after
+      cursorStart = start + toInsert.length
+      cursorEnd = cursorStart
     } else if (action.startsWith('image:')) {
       const path = action.slice('image:'.length)
       const base = assetsPath ? assetsPath.replace(/\/$/, '') : ''
@@ -291,12 +299,13 @@ export function MarkdownFieldEditor({
       {tab === 'entry' && (
         <MarkdownToolbar
           lessonType={lessonType}
-           inlineCodeLanguages={inlineCodeLanguages}
-           onAction={applyFormat}
-           imageAssets={(assets ?? []).filter(p => IMAGE_EXTS.has(p.split('.').pop().toLowerCase()))}
-           topics={topics}
-         />
-       )}
+          inlineCodeLanguages={inlineCodeLanguages}
+          onAction={applyFormat}
+          imageAssets={(assets ?? []).filter(p => IMAGE_EXTS.has(p.split('.').pop().toLowerCase()))}
+          storageImageAssets={(storageAssets ?? []).filter(a => IMAGE_EXTS.has(a.name.split('.').pop().toLowerCase()))}
+          topics={topics}
+        />
+      )}
 
       {tab === 'entry' && topicSuggestion && (
         <div style={s.topicSuggestion}>
@@ -331,7 +340,7 @@ export function MarkdownFieldEditor({
   )
 }
 
-function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, imageAssets = [], topics = [] }) {
+function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, imageAssets = [], storageImageAssets = [], topics = [] }) {
   const [openDropdown, setOpenDropdown] = useState(null)
   const [topicQuery, setTopicQuery] = useState('')
   const toolbarRef = useRef(null)
@@ -603,8 +612,8 @@ function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, imageAsset
         </>
       )}
 
-      {/* Image assets — only when the lesson has image assets */}
-      {imageAssets.length > 0 && (
+      {/* Image assets — shown when the lesson has static or Firebase Storage image assets */}
+      {(imageAssets.length > 0 || storageImageAssets.length > 0) && (
         <>
           <span style={s.sep} />
           <div style={s.toolbarGroup}>
@@ -621,6 +630,9 @@ function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, imageAsset
             </button>
             {openDropdown === 'image' && (
               <div style={{ ...s.dropdown, width: 220, maxHeight: 260, overflowY: 'auto' }}>
+                {imageAssets.length > 0 && storageImageAssets.length > 0 && (
+                  <div style={s.dropdownCategory}>Local assets</div>
+                )}
                 {imageAssets.map(path => {
                   const name = path.split('/').pop()
                   return (
@@ -638,6 +650,23 @@ function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, imageAsset
                     </button>
                   )
                 })}
+                {storageImageAssets.length > 0 && (
+                  <div style={s.dropdownCategory}>Firebase Storage</div>
+                )}
+                {storageImageAssets.map(asset => (
+                  <button
+                    key={asset.url}
+                    type="button"
+                    style={s.dropdownItem}
+                    onMouseDown={e => {
+                      e.preventDefault()
+                      onAction('image-url:' + asset.url)
+                      setOpenDropdown(null)
+                    }}
+                  >
+                    {asset.name}
+                  </button>
+                ))}
               </div>
             )}
           </div>
