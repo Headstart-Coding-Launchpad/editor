@@ -24,6 +24,11 @@ export default function TeacherSandboxBanner({
     onGoLive()
   }
 
+  function handlePushAll() {
+    onPush()
+    onPushExplainer(explainerDraft)
+  }
+
   return (
     <div className="teacher-sandbox-banner" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -47,10 +52,10 @@ export default function TeacherSandboxBanner({
             </>
           ) : (
             <>
-              <button className="btn-primary teacher-sandbox-banner__btn" onClick={onPush}>
+              <button className="btn-primary teacher-sandbox-banner__btn" onClick={handlePushAll}>
                 Push to All
               </button>
-              <button className="btn-ghost teacher-sandbox-banner__btn" onClick={onReset}>
+              <button className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn" onClick={onReset}>
                 Reset to Sandbox Starter
               </button>
               <button className="btn-danger teacher-sandbox-banner__btn" onClick={onDeactivate}>
@@ -70,16 +75,6 @@ export default function TeacherSandboxBanner({
           minHeight={140}
           lessonType={lessonType}
         />
-        {!staging && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              className="btn-ghost teacher-sandbox-banner__btn"
-              onClick={() => onPushExplainer(explainerDraft)}
-            >
-              Push Explainer
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

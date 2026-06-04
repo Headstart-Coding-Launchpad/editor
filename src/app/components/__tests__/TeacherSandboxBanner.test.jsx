@@ -33,11 +33,10 @@ describe('TeacherSandboxBanner — staging mode', () => {
     expect(screen.getByRole('button', { name: /Go Live/i })).toBeInTheDocument()
   })
 
-  it('does not render Deactivate, Push to All or Push Explainer in staging mode', () => {
+  it('does not render Deactivate or Push to All in staging mode', () => {
     renderBanner({ staging: true })
     expect(screen.queryByRole('button', { name: 'Deactivate Sandbox' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Push to All' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Push Explainer' })).not.toBeInTheDocument()
   })
 
   it('renders the explainer editor in staging mode', () => {
@@ -87,25 +86,31 @@ describe('TeacherSandboxBanner — live mode', () => {
 
   it('calls onPush, onReset and onDeactivate', () => {
     const props = renderBanner({ staging: false })
-    fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
     fireEvent.click(screen.getByRole('button', { name: 'Reset to Sandbox Starter' }))
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate Sandbox' }))
-    expect(props.onPush).toHaveBeenCalledOnce()
     expect(props.onReset).toHaveBeenCalledOnce()
     expect(props.onDeactivate).toHaveBeenCalledOnce()
   })
 
-  it('renders explainer editor and Push Explainer button', () => {
+  it('renders explainer editor but no Push Explainer button', () => {
     renderBanner({ staging: false })
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Push Explainer' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Push Explainer' })).not.toBeInTheDocument()
   })
 
-  it('calls onPushExplainer with typed text', () => {
+  it('Push to All calls both onPush and onPushExplainer with current explainer text', () => {
     const props = renderBanner({ staging: false })
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Try printing a list!' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Push Explainer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
+    expect(props.onPush).toHaveBeenCalledOnce()
     expect(props.onPushExplainer).toHaveBeenCalledWith('Try printing a list!')
+  })
+
+  it('Push to All calls onPushExplainer with empty string when no explainer is set', () => {
+    const props = renderBanner({ staging: false, sandboxExplainer: '' })
+    fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
+    expect(props.onPush).toHaveBeenCalledOnce()
+    expect(props.onPushExplainer).toHaveBeenCalledWith('')
   })
 })
