@@ -3,11 +3,16 @@ import { signOut } from 'firebase/auth'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import AccountManagement from './AccountManagement'
-import LessonManagement from './LessonManagement'
+import LessonPanel from './LessonPanel'
+
+const TABS = [
+  { id: 'lessons', label: 'Lessons' },
+  { id: 'accounts', label: 'Accounts' },
+]
 
 export default function AdminPortal() {
   const { user } = useAuth()
-  const [tab, setTab] = useState('lessons')
+  const [activeTab, setActiveTab] = useState('lessons')
 
   async function handleLogout() {
     await signOut(auth)
@@ -25,24 +30,23 @@ export default function AdminPortal() {
         </div>
       </header>
 
-      <div style={s.tabs}>
-        <button
-          style={{ ...s.tab, ...(tab === 'lessons' ? s.tabActive : {}) }}
-          onClick={() => setTab('lessons')}
-        >
-          Lessons
-        </button>
-        <button
-          style={{ ...s.tab, ...(tab === 'accounts' ? s.tabActive : {}) }}
-          onClick={() => setTab('accounts')}
-        >
-          Accounts
-        </button>
-      </div>
+      <nav style={s.nav}>
+        <div style={s.tabs}>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              style={{ ...s.tab, ...(activeTab === tab.id ? s.tabActive : {}) }}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <main style={s.main}>
-        {tab === 'lessons' && <LessonManagement />}
-        {tab === 'accounts' && <AccountManagement />}
+        {activeTab === 'lessons' && <LessonPanel />}
+        {activeTab === 'accounts' && <AccountManagement />}
       </main>
     </div>
   )
@@ -64,30 +68,6 @@ const s = {
     justifyContent: 'space-between',
     flexShrink: 0,
   },
-  tabs: {
-    background: '#fff',
-    borderBottom: '1px solid #e5e7eb',
-    padding: '0 32px',
-    display: 'flex',
-    gap: 0,
-    flexShrink: 0,
-  },
-  tab: {
-    background: 'none',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    padding: '12px 16px',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    color: '#6b7280',
-    cursor: 'pointer',
-    marginBottom: -1,
-  },
-  tabActive: {
-    color: 'var(--colour-primary)',
-    borderBottomColor: 'var(--colour-primary)',
-  },
   brand: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
@@ -107,6 +87,34 @@ const s = {
   logoutBtn: {
     padding: '5px 14px',
     fontSize: '0.82rem',
+  },
+  nav: {
+    background: '#fff',
+    borderBottom: '1px solid #e5e7eb',
+    padding: '0 32px',
+    flexShrink: 0,
+  },
+  tabs: {
+    display: 'flex',
+    gap: 0,
+    maxWidth: 1100,
+    margin: '0 auto',
+  },
+  tab: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.88rem',
+    padding: '12px 20px',
+    border: 'none',
+    borderBottom: '3px solid transparent',
+    background: 'none',
+    color: '#6b7280',
+    cursor: 'pointer',
+    transition: 'color 0.15s, border-color 0.15s',
+  },
+  tabActive: {
+    color: 'var(--colour-primary)',
+    borderBottomColor: 'var(--colour-primary)',
   },
   main: {
     flex: 1,

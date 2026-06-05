@@ -6,7 +6,7 @@ import { fetchLessonList } from '../shared/lessonService'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
 
-const LS_KEY = 'headstart_builder_current'
+export const LS_KEY = 'headstart_builder_current'
 
 const blankLesson = type => ({
   id: '',

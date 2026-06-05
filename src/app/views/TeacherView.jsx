@@ -4,6 +4,7 @@ import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
+import { getLessonLinks } from '../../shared/lessonLinks'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import PythonEditor from '../components/PythonEditor'
@@ -279,16 +280,8 @@ export default function TeacherView({ lessonId }) {
     await setActiveStudentView(null)
   }
 
-  function getLessonLinks() {
-    const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
-    return {
-      live: `${base}?live=true`,
-      solo: base,
-    }
-  }
-
   async function handleCopyLink(type) {
-    const url = getLessonLinks()[type]
+    const url = getLessonLinks(lessonId)[type]
     await navigator.clipboard.writeText(url).catch(() => {})
     setCopiedLink(type)
     setTimeout(() => setCopiedLink(null), 2000)
@@ -342,7 +335,7 @@ export default function TeacherView({ lessonId }) {
             isInSandbox={isInSandbox}
             displayIndex={displayIndex}
             taskCount={flatTasks.length}
-            links={getLessonLinks()}
+            links={getLessonLinks(lessonId)}
             copiedLink={copiedLink}
             showSharePanel={showSharePanel}
             onPreviousTask={() => {

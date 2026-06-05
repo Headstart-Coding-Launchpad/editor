@@ -32,9 +32,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tabbed navigation (Lessons / Accounts) |
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons and Accounts panels |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
-| `LessonManagement.jsx` | Firestore `lessons` list; delete lessons; link to open/edit in Builder |
+| `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
 
 ---
 
@@ -177,6 +177,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratch.js` | Custom Scratch interpreter: 62 block definitions, multi-sprite state, broadcast, sounds; re-exports from sub-modules |
 | `scratchChecks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES` |
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
+| `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
 | `lessonService.js` | Shared Firestore helper: `fetchLessonList()` — fetches and sorts the `lessons/` collection |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
