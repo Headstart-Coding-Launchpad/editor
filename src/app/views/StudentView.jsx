@@ -509,9 +509,23 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       const carryId = task.carryFsFrom ?? null
       const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
       const savedFromCarry = (!previewMode && carryId != null) ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null
-      const carryTask = carryId != null ? findTaskById(lesson?.tasks, carryId) : null
-      const carryFallback = carryTask?.completeFs ?? carryTask?.starterFs ?? null
-      setFsState(ownSaved ?? savedFromCarry ?? task.starterFs ?? carryFallback ?? DEFAULT_FS)
+      // Walk the carry chain to find the nearest ancestor with a completeFs or starterFs,
+      // so that carry works even when intermediate tasks have no FS of their own.
+      let carryFallback = null
+      if (carryId != null) {
+        let resolveId = carryId
+        while (resolveId != null) {
+          const resolveTask = findTaskById(lesson.tasks, resolveId)
+          if (!resolveTask) break
+          const fs = resolveTask.completeFs ?? resolveTask.starterFs
+          if (fs) { carryFallback = fs; break }
+          resolveId = resolveTask.carryFsFrom ?? null
+        }
+      }
+      const initialFs = carryId != null
+        ? (ownSaved ?? savedFromCarry ?? carryFallback ?? task.starterFs ?? DEFAULT_FS)
+        : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
+      setFsState(initialFs)
       const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
       setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
       resetCheckFeedback()

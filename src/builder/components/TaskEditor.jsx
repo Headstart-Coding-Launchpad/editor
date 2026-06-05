@@ -278,7 +278,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       : lesson.type === 'scratch'
       ? { toolbox: task.toolbox ?? '', starterBlocks: task.starterBlocks ?? null, carryBlocksFrom: task.carryBlocksFrom ?? null }
       : lesson.type === 'filesystem'
-      ? { starterFs: task.starterFs ?? DEFAULT_FS }
+      ? { starterFs: task.starterFs ?? DEFAULT_FS, carryFsFrom: task.carryFsFrom ?? null }
       : {
           starterFiles: task.starterFiles?.length ? task.starterFiles : [{ name: 'index.html', type: 'html', content: '<!DOCTYPE html>\n<html>\n<body>\n\n</body>\n</html>' }],
           entryFile: task.entryFile ?? 'index.html',
@@ -575,6 +575,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       setIframeSrc(null)
       setHtmlPreviewOpen(false)
     }
+  }
+
+  function handleCopyStarterToComplete() {
+    if (!window.confirm('Replace the complete filesystem with the starter filesystem?')) return
+    onUpdate({ ...task, completeFs: task.starterFs ?? DEFAULT_FS })
   }
 
   const resetToStarterBtn = isCompleteTab ? (
@@ -1297,6 +1302,17 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '4px 0 0' }}>
               Directory the student's explorer opens in. Leave blank to start at the root.
             </p>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn-ghost te-secondary-btn"
+              onClick={handleCopyStarterToComplete}
+              disabled={!task.starterFs}
+              title="Copy the starter filesystem into the complete filesystem"
+            >
+              ↓ Copy starter to complete
+            </button>
           </div>
           <FsTreeEditor
             label="Complete filesystem (reference solution)"
