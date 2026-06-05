@@ -13,6 +13,7 @@ function renderBanner(overrides = {}) {
     onDeactivate: vi.fn(),
     sandboxExplainer: '',
     onPushExplainer: vi.fn(),
+    lessonType: 'python',
     ...overrides,
   }
   render(<TeacherSandboxBanner {...props} />)
@@ -38,6 +39,11 @@ describe('TeacherSandboxBanner — staging mode', () => {
     expect(screen.queryByRole('button', { name: 'Push to All' })).not.toBeInTheDocument()
   })
 
+  it('renders the explainer editor in staging mode', () => {
+    renderBanner({ staging: true })
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+  })
+
   it('calls onCancel, onReset and onGoLive', () => {
     const props = renderBanner({ staging: true })
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -45,6 +51,22 @@ describe('TeacherSandboxBanner — staging mode', () => {
     fireEvent.click(screen.getByRole('button', { name: /Go Live/i }))
     expect(props.onCancel).toHaveBeenCalledOnce()
     expect(props.onReset).toHaveBeenCalledOnce()
+    expect(props.onGoLive).toHaveBeenCalledOnce()
+  })
+
+  it('pushes explainer draft and calls onGoLive when going live with content', () => {
+    const props = renderBanner({ staging: true })
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Try using a for loop!' } })
+    fireEvent.click(screen.getByRole('button', { name: /Go Live/i }))
+    expect(props.onPushExplainer).toHaveBeenCalledWith('Try using a for loop!')
+    expect(props.onGoLive).toHaveBeenCalledOnce()
+  })
+
+  it('does not call onPushExplainer when going live with empty explainer', () => {
+    const props = renderBanner({ staging: true, sandboxExplainer: '' })
+    fireEvent.click(screen.getByRole('button', { name: /Go Live/i }))
+    expect(props.onPushExplainer).not.toHaveBeenCalled()
     expect(props.onGoLive).toHaveBeenCalledOnce()
   })
 })
@@ -55,7 +77,7 @@ describe('TeacherSandboxBanner — live mode', () => {
     expect(screen.getByText(/Sandbox is LIVE/)).toBeInTheDocument()
   })
 
-  it('renders Push to All, Reset and Deactivate buttons', () => {
+  it('renders Push to All, Reset and Deactivate buttons for all lesson types', () => {
     renderBanner({ staging: false })
     expect(screen.getByRole('button', { name: 'Push to All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reset to Sandbox Starter' })).toBeInTheDocument()
@@ -64,25 +86,31 @@ describe('TeacherSandboxBanner — live mode', () => {
 
   it('calls onPush, onReset and onDeactivate', () => {
     const props = renderBanner({ staging: false })
-    fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
     fireEvent.click(screen.getByRole('button', { name: 'Reset to Sandbox Starter' }))
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate Sandbox' }))
-    expect(props.onPush).toHaveBeenCalledOnce()
     expect(props.onReset).toHaveBeenCalledOnce()
     expect(props.onDeactivate).toHaveBeenCalledOnce()
   })
 
-  it('renders explainer textarea and Push Explainer button', () => {
+  it('renders explainer editor but no Push Explainer button', () => {
     renderBanner({ staging: false })
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Push Explainer' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Push Explainer' })).not.toBeInTheDocument()
   })
 
-  it('calls onPushExplainer with typed text', async () => {
+  it('Push to All calls both onPush and onPushExplainer with current explainer text', () => {
     const props = renderBanner({ staging: false })
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Try printing a list!' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Push Explainer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
+    expect(props.onPush).toHaveBeenCalledOnce()
     expect(props.onPushExplainer).toHaveBeenCalledWith('Try printing a list!')
+  })
+
+  it('Push to All calls onPushExplainer with empty string when no explainer is set', () => {
+    const props = renderBanner({ staging: false, sandboxExplainer: '' })
+    fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
+    expect(props.onPush).toHaveBeenCalledOnce()
+    expect(props.onPushExplainer).toHaveBeenCalledWith('')
   })
 })

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { MarkdownFieldEditor } from '../../shared/MarkdownFieldEditor'
 
 export default function TeacherSandboxBanner({
   staging,
@@ -9,6 +10,7 @@ export default function TeacherSandboxBanner({
   onDeactivate,
   sandboxExplainer,
   onPushExplainer,
+  lessonType,
 }) {
   const [explainerDraft, setExplainerDraft] = useState(sandboxExplainer ?? '')
 
@@ -16,6 +18,16 @@ export default function TeacherSandboxBanner({
   useEffect(() => {
     setExplainerDraft(sandboxExplainer ?? '')
   }, [sandboxExplainer])
+
+  function handleGoLive() {
+    if (explainerDraft) onPushExplainer(explainerDraft)
+    onGoLive()
+  }
+
+  function handlePushAll() {
+    onPush()
+    onPushExplainer(explainerDraft)
+  }
 
   return (
     <div className="teacher-sandbox-banner" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
@@ -34,16 +46,16 @@ export default function TeacherSandboxBanner({
               <button className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn" onClick={onReset}>
                 Reset to Sandbox Starter
               </button>
-              <button className="btn-primary teacher-sandbox-banner__btn" onClick={onGoLive}>
+              <button className="btn-primary teacher-sandbox-banner__btn" onClick={handleGoLive}>
                 Go Live &amp; Send to Students
               </button>
             </>
           ) : (
             <>
-              <button className="btn-primary teacher-sandbox-banner__btn" onClick={onPush}>
+              <button className="btn-primary teacher-sandbox-banner__btn" onClick={handlePushAll}>
                 Push to All
               </button>
-              <button className="btn-ghost teacher-sandbox-banner__btn" onClick={onReset}>
+              <button className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn" onClick={onReset}>
                 Reset to Sandbox Starter
               </button>
               <button className="btn-danger teacher-sandbox-banner__btn" onClick={onDeactivate}>
@@ -53,24 +65,17 @@ export default function TeacherSandboxBanner({
           )}
         </div>
       </div>
-      {!staging && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <textarea
-            className="sandbox-explainer-input"
-            placeholder="Optional: type an explainer or instruction for students…"
-            value={explainerDraft}
-            onChange={e => setExplainerDraft(e.target.value)}
-            rows={2}
-          />
-          <button
-            className="btn-ghost teacher-sandbox-banner__btn"
-            style={{ flexShrink: 0 }}
-            onClick={() => onPushExplainer(explainerDraft)}
-          >
-            Push Explainer
-          </button>
-        </div>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <MarkdownFieldEditor
+          value={explainerDraft}
+          onChange={setExplainerDraft}
+          ariaLabel="Sandbox explainer editor"
+          placeholder="Optional: write an instruction or explainer for students…"
+          height={180}
+          minHeight={140}
+          lessonType={lessonType}
+        />
+      </div>
     </div>
   )
 }
