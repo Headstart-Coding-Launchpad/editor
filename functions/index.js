@@ -22,13 +22,19 @@ exports.createAccount = onCall({ region: 'europe-west1', invoker: 'public', serv
   }
   const user = await getAuth().createUser({ email, password, displayName: displayName ?? '' })
   await getAuth().setCustomUserClaims(user.uid, { role })
-  await getFirestore().collection('users').doc(user.uid).set({
-    email,
-    displayName: displayName ?? '',
-    role,
-    disabled: false,
-    createdAt: FieldValue.serverTimestamp(),
-  })
+  try {
+    await getFirestore().collection('users').doc(user.uid).set({
+      email,
+      displayName: displayName ?? '',
+      role,
+      disabled: false,
+      createdAt: FieldValue.serverTimestamp(),
+    })
+  } catch (err) {
+    // Roll back the Auth user so state stays consistent and the admin can retry.
+    await getAuth().deleteUser(user.uid).catch(() => {})
+    throw new HttpsError('internal', 'Failed to write user record to Firestore; Auth account has been rolled back.')
+  }
   return { uid: user.uid }
 })
 
