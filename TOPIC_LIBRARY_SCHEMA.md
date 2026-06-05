@@ -1,25 +1,10 @@
 # Topic Library Schema
 
-This document describes the `topic-library.json` format. The file lives at `public/assets/topic-library.json` and is fetched at runtime by the classroom app and lesson builder whenever a lesson explainer or topic-library dialog needs it.
+The topic library lives in the Firestore `topicLibrary` collection. Each document's ID is the topic `id`; the document fields mirror the topic object below. It is edited via the **Topic Library** tab in the Admin Portal (`/admin`).
+
+The static file `public/assets/topic-library.json` is kept for reference and can be seeded to Firestore using `scripts/migrate-topic-library.mjs`.
 
 The library provides reference cards for coding concepts, functions, and language features. Cards are shown as hover-previews on `[[wiki-links]]` in Markdown and in the full Topic Library dialog.
-
----
-
-## File Structure
-
-The file is a JSON object with a single `topics` array:
-
-```json
-{
-  "topics": [
-    { ... },
-    { ... }
-  ]
-}
-```
-
-A bare JSON array (without the `topics` wrapper) is also accepted by the loader.
 
 ---
 
