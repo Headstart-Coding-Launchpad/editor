@@ -637,15 +637,31 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
             >
               🗑 Delete
             </button>
-            {clipboard && (
-              <button
-                className="btn-ghost-outline"
-                style={{ fontSize: '0.78rem', padding: '3px 10px' }}
-                onClick={handlePaste}
-              >
-                📋 Paste {clipboard.mode === 'cut' ? '(move)' : '(copy)'}
-              </button>
-            )}
+            <div style={{ width: 1, background: 'var(--ui-border)', alignSelf: 'stretch', margin: '0 2px' }} />
+            <button
+              className="btn-ghost-outline"
+              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              disabled={!selected || selected === '/'}
+              onClick={() => handleCopy(selected)}
+            >
+              📄 Copy
+            </button>
+            <button
+              className="btn-ghost-outline"
+              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              disabled={!selected || selected === '/'}
+              onClick={() => handleCut(selected)}
+            >
+              ✂️ Cut
+            </button>
+            <button
+              className="btn-ghost-outline"
+              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              disabled={!clipboard}
+              onClick={handlePaste}
+            >
+              📋 Paste{clipboard ? (clipboard.mode === 'cut' ? ' (move)' : ' (copy)') : ''}
+            </button>
           </>
         )}
         <AddressBar currentDir={currentDir} onNavigate={navigate} />
