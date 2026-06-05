@@ -77,27 +77,70 @@ function FileNode({ name, path, assetsPath, copyMode, mode, onSelect, depth }) {
   )
 }
 
-/**
- * Renders a tree of lesson assets.
- *
- * assetsPath  – fully resolved URL base, e.g. "/headstart-repl/assets/web-intro/"
- * assets      – array of relative paths, e.g. ["images/logo.png", "fonts/x.woff2"]
- * copyMode    – "relative" copies just the path; "full" copies assetsPath + path (browse mode only)
- * mode        – "browse" (default) shows Copy button; "select" shows Select button and calls onSelect
- * onSelect    – called with the relative asset path when mode="select" and user clicks Select
- * style       – optional style overrides on the outer panel
- */
-export default function AssetBrowser({ assetsPath, assets, copyMode = 'relative', mode = 'browse', onSelect, style }) {
-  if (!assetsPath || !assets?.length) return null
+function StorageFileNode({ name, url, copyMode, mode, onSelect }) {
+  const [copied, setCopied] = React.useState(false)
+  const rowRef = useRef(null)
+  const { preview, showPreview, hidePreview } = useImagePreview()
 
-  const tree = buildTree(assets)
+  const copyValue = copyMode === 'relative' ? name : url
+
+  function handleCopy() {
+    navigator.clipboard.writeText(copyValue).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <div
+      ref={rowRef}
+      style={{ ...s.fileRow, paddingLeft: 8 }}
+      onMouseEnter={isImageFile(name) ? () => showPreview(url, rowRef.current) : undefined}
+      onMouseLeave={isImageFile(name) ? hidePreview : undefined}
+    >
+      <span style={s.itemLabel}>{isImageFile(name) ? '🖼' : '📄'} {name}</span>
+      {mode === 'select' ? (
+        <button style={s.actionBtn} onClick={() => onSelect?.(copyMode === 'relative' ? name : url)}>Select</button>
+      ) : (
+        <button style={s.actionBtn} onClick={handleCopy}>{copied ? '✓' : copyMode === 'relative' ? 'Copy' : 'Copy URL'}</button>
+      )}
+      <ImagePreviewTooltip preview={preview} />
+    </div>
+  )
+}
+
+/**
+ * Renders a tree of lesson assets plus any Firebase Storage assets.
+ *
+ * assetsPath    – fully resolved URL base, e.g. "/headstart-repl/assets/web-intro/"
+ * assets        – array of relative paths, e.g. ["images/logo.png", "fonts/x.woff2"]
+ * storageAssets – array of {name, url} from Firebase Storage (absolute download URLs)
+ * copyMode      – "relative" copies just the path; "full" copies assetsPath + path (browse mode only)
+ * mode          – "browse" (default) shows Copy button; "select" shows Select button and calls onSelect
+ * onSelect      – called with the path/URL when mode="select" and user clicks Select
+ * style         – optional style overrides on the outer panel
+ */
+export default function AssetBrowser({ assetsPath, assets, storageAssets, copyMode = 'relative', mode = 'browse', onSelect, style }) {
+  const hasStatic = assetsPath && assets?.length > 0
+  const hasStorage = storageAssets?.length > 0
+  if (!hasStatic && !hasStorage) return null
+
+  const tree = hasStatic ? buildTree(assets) : {}
 
   return (
     <div style={{ ...s.panel, ...style }}>
-      {Object.entries(tree).map(([name, node]) =>
+      {hasStatic && Object.entries(tree).map(([name, node]) =>
         node._dir
           ? <DirNode key={name} name={name} children={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
           : <FileNode key={name} name={name} path={node._path} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
+      )}
+      {hasStorage && (
+        <>
+          {hasStatic && <div style={s.storageDivider}><span style={s.storageDividerLabel}>Firebase Storage</span></div>}
+          {storageAssets.map(asset => (
+            <StorageFileNode key={asset.name} name={asset.name} url={asset.url} copyMode={copyMode} mode={mode} onSelect={onSelect} />
+          ))}
+        </>
       )}
     </div>
   )
@@ -138,6 +181,18 @@ const s = {
   },
   arrow: { fontSize: '0.7rem', color: '#9ca3af', flexShrink: 0, width: 10 },
   itemLabel: { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  storageDivider: {
+    padding: '4px 8px',
+    borderTop: '1px solid #e5e7eb',
+    background: '#f0fdf4',
+  },
+  storageDividerLabel: {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: '#16a34a',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
   actionBtn: {
     flexShrink: 0,
     padding: '2px 8px',

@@ -5,6 +5,7 @@ import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
 import { createSpriteFromPreset, normalizeSpritePresets, SPRITE_PRESETS_PATH } from '../../spritePresets'
 import { DEFAULT_FS } from '../../../shared/filesystem'
+import { flattenTasks } from '../../../shared/taskUtils'
 
 function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
   return (
@@ -82,9 +83,10 @@ function Modal({ title, children, onClose }) {
 }
 
 function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFilesystem }) {
-  const taskIndex = lesson.tasks.findIndex(t => t.id === task.id)
-  const prevTask = taskIndex > 0 ? lesson.tasks[taskIndex - 1] : null
-  const otherTasks = lesson.tasks.filter(t => t.id !== task.id)
+  const flatTasks = flattenTasks(lesson.tasks)
+  const taskIndex = flatTasks.findIndex(t => t.id === task.id)
+  const prevTask = taskIndex > 0 ? flatTasks[taskIndex - 1] : null
+  const otherTasks = flatTasks.filter(t => t.id !== task.id)
 
   const carryField = isScratch ? 'carryBlocksFrom' : isFilesystem ? 'carryFsFrom' : 'carryCodeFrom'
   const carryFrom = isScratch ? task.carryBlocksFrom : isFilesystem ? task.carryFsFrom : task.carryCodeFrom
@@ -182,7 +184,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFil
             className="te-select"
             value={carryFrom ?? ''}
             onChange={e => {
-              const sourceTask = lesson.tasks.find(t => t.id === parseInt(e.target.value, 10))
+              const sourceTask = flatTasks.find(t => t.id === parseInt(e.target.value, 10))
               if (sourceTask) copyCompleteCode(sourceTask)
             }}
           >
@@ -279,7 +281,7 @@ function QuizTypeIcon({ type }) {
 
 const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))
 
-export function SpriteManager({ sprites, onChange, assetsPath = '', lessonId, lessonType, focusedSpriteId = null, hidePosition = false, hideAdd = false }) {
+export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hidePosition = false, hideAdd = false }) {
   const [expandedCostumes, setExpandedCostumes] = React.useState({})
   const [presets, setPresets] = React.useState([])
   const [selectedPresetId, setSelectedPresetId] = React.useState('')
@@ -398,6 +400,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', lessonId, le
             <CostumeManager
               costumes={sp.costumes ?? []}
               assetsPath={assetsPath}
+              storageAssets={storageAssets}
               lessonId={lessonId}
               lessonType={lessonType}
               onAdd={() => addCostume(sp.id)}
@@ -431,10 +434,11 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', lessonId, le
   )
 }
 
-function CostumeManager({ costumes, assetsPath, lessonId, lessonType, onAdd, onRemove, onUpdate }) {
+function CostumeManager({ costumes, assetsPath, storageAssets, lessonId, lessonType, onAdd, onRemove, onUpdate }) {
   const [browsingIdx, setBrowsingIdx] = React.useState(null)
   const { lessonAssets } = useAssets()
   const assets = lessonAssets(lessonId, lessonType)
+  const hasAnyAssets = assets.length > 0 || storageAssets?.length > 0
 
   return (
     <div className="te-costume-manager">
@@ -462,7 +466,7 @@ function CostumeManager({ costumes, assetsPath, lessonId, lessonType, onAdd, onR
                 onChange={e => onUpdate(idx, 'image', e.target.value)}
                 placeholder="e.g. sprites/cat1.png"
               />
-              {assets.length > 0 && (
+              {hasAnyAssets && (
                 <button
                   type="button"
                   className={isBrowsing ? 'te-browse-toggle-btn te-browse-toggle-btn--active' : 'te-browse-toggle-btn'}
@@ -488,11 +492,12 @@ function CostumeManager({ costumes, assetsPath, lessonId, lessonType, onAdd, onR
                 title="Remove costume"
               >✕</button>
             </div>
-            {isBrowsing && assetsPath && assets.length > 0 && (
+            {isBrowsing && hasAnyAssets && (
               <div className="te-inline-browser">
                 <AssetBrowser
                   assetsPath={assetsPath}
                   assets={assets}
+                  storageAssets={storageAssets}
                   mode="select"
                   onSelect={path => { onUpdate(idx, 'image', path); setBrowsingIdx(null) }}
                 />
@@ -508,10 +513,11 @@ function CostumeManager({ costumes, assetsPath, lessonId, lessonType, onAdd, onR
   )
 }
 
-export function BackdropManager({ backdrops, onChange, assetsPath, lessonId, lessonType }) {
+export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets, lessonId, lessonType }) {
   const [browsingId, setBrowsingId] = React.useState(null)
   const { lessonAssets } = useAssets()
   const assets = lessonAssets(lessonId, lessonType)
+  const hasAnyAssets = assets.length > 0 || storageAssets?.length > 0
 
   function add() {
     const next = backdrops.length + 1
@@ -563,7 +569,7 @@ export function BackdropManager({ backdrops, onChange, assetsPath, lessonId, les
                     onChange={e => update(b.id, { image: e.target.value })}
                     placeholder="e.g. backdrops/sky.png"
                   />
-                  {assets.length > 0 && (
+                  {hasAnyAssets && (
                     <button
                       type="button"
                       className={isBrowsing ? 'te-browse-toggle-btn te-browse-toggle-btn--active' : 'te-browse-toggle-btn'}
@@ -602,11 +608,12 @@ export function BackdropManager({ backdrops, onChange, assetsPath, lessonId, les
                 title="Remove backdrop"
               >✕</button>
             </div>
-            {isBrowsing && assetsPath && assets.length > 0 && (
+            {isBrowsing && hasAnyAssets && (
               <div className="te-inline-browser">
                 <AssetBrowser
                   assetsPath={assetsPath}
                   assets={assets}
+                  storageAssets={storageAssets}
                   mode="select"
                   onSelect={path => { update(b.id, { image: path }); setBrowsingId(null) }}
                 />

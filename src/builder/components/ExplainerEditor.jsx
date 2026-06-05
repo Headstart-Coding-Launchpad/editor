@@ -2,7 +2,7 @@ import React from 'react'
 export { MarkdownFieldEditor } from '../../shared/MarkdownFieldEditor'
 import { MarkdownFieldEditor } from '../../shared/MarkdownFieldEditor'
 
-export default function ExplainerEditor({ title, value, onChange, lessonType, inlineCodeLanguages, assets, assetsPath }) {
+export default function ExplainerEditor({ title, value, onChange, lessonType, inlineCodeLanguages, assets, assetsPath, storageAssets }) {
   return (
     <MarkdownFieldEditor
       title={title}
@@ -17,6 +17,7 @@ export default function ExplainerEditor({ title, value, onChange, lessonType, in
       inlineCodeLanguages={inlineCodeLanguages}
       assets={assets}
       assetsPath={assetsPath}
+      storageAssets={storageAssets}
     />
   )
 }

@@ -10,12 +10,32 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `src/main.jsx` | Classroom app DOM entry — renders App into #root |
-| `src/App.jsx` | Classroom router (HashRouter): `/lesson/:lessonId` and fallback to LandingPage |
+| `src/main.jsx` | App DOM entry — renders App into #root |
+| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
-| `src/builder/main.jsx` | Lesson builder DOM entry |
-| `src/builder/App.jsx` | Builder root: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
+| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
 | `src/builder/spritePresets.js` | Pure reusable Scratch sprite preset validation and unique lesson-sprite creation helpers |
+
+---
+
+## Auth (`src/auth/`)
+
+| File | Role |
+|---|---|
+| `AuthContext.jsx` | `AuthProvider` — `onAuthStateChanged` listener; provides `{ user, role, loading }` via React context |
+| `useAuth.js` | `useAuth()` hook — thin re-export of `AuthContext` |
+| `ProtectedRoute.jsx` | Route guard — shows loading screen, then redirects to `/login?redirect=…` if unauthenticated or wrong role |
+
+---
+
+## Admin Portal (`src/admin/`)
+
+| File | Role |
+|---|---|
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons and Accounts panels |
+| `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
+| `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
+| `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 
 ---
 
@@ -24,7 +44,8 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | File | Role |
 |---|---|
 | `LandingPage.jsx` | Entry screen: student types lesson ID to navigate to `/lesson/:lessonId` |
-| `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params, routes to TeacherView or StudentView |
+| `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
+| `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView |
 | `StudentView.jsx` | Main student experience: all phases (loading → waiting → name-entry → lesson/sandbox/solo → ended) |
 | `TeacherView.jsx` | Teacher dashboard: collapsible 3-panel layout, session lifecycle controls, student grid |
 
@@ -144,12 +165,12 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
 | `useAssets.js` | Hook for fetching and caching `public/assets/manifest.json`; exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` |
-| `topicLibrary.js` | Topic-library JSON loader plus type-filtered search, wiki-link expansion, and author suggestion helpers |
+| `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
-| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database reference) |
+| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
@@ -157,7 +178,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratch.js` | Custom Scratch interpreter: 62 block definitions, multi-sprite state, broadcast, sounds; re-exports from sub-modules |
 | `scratchChecks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES` |
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
+| `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
+| `lessonService.js` | Shared Firestore helper: `fetchLessonList()` — fetches and sorts the `lessons/` collection |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 
@@ -167,7 +190,36 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | Path | Role |
 |---|---|
-| `lessons/` | Static JSON lesson files — add new lessons here; referenced by ID in URLs |
+| `public/lessons/` | Static JSON lesson files (kept for reference; lesson content now served from Firestore `lessons/` collection) |
+
+---
+
+## Cloud Functions (`functions/`)
+
+| File | Role |
+|---|---|
+| `functions/index.js` | HTTPS callable functions: `createAccount`, `setUserRole`, `disableAccount`, `enableAccount`, `deleteAccount` |
+| `functions/package.json` | Cloud Functions Node.js package (firebase-admin, firebase-functions) |
+
+---
+
+## Scripts (`scripts/`)
+
+| File | Role |
+|---|---|
+| `scripts/migrate-lessons.mjs` | One-off Admin SDK migration: writes all lesson JSON files to Firestore `lessons/` collection |
+| `scripts/migrate-topic-library.mjs` | One-off Admin SDK migration: writes `public/assets/topic-library.json` topics to Firestore `topicLibrary/` collection |
+
+---
+
+## Firebase Config
+
+| File | Role |
+|---|---|
+| `firebase.json` | Firebase project config: Firestore rules, Storage rules, and Cloud Functions source |
+| `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
+| `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
+| `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
 
 ---
 
@@ -175,7 +227,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | Path | Role |
 |---|---|
-| `public/assets/topic-library.json` | Topic library — reference cards for coding concepts shown in hover previews and the Topic Library dialog; schema documented in `TOPIC_LIBRARY_SCHEMA.md` |
+| `public/assets/topic-library.json` | Topic library seed data — kept for reference and migration; live data now served from Firestore `topicLibrary/` collection |
 
 ---
 

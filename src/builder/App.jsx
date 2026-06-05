@@ -1,7 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { doc, getDoc } from 'firebase/firestore'
+import { firestore } from '../shared/firebase'
+import { fetchLessonList } from '../shared/lessonService'
+import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
 
-const LS_KEY = 'headstart_builder_current'
+export const LS_KEY = 'headstart_builder_current'
 
 const blankLesson = type => ({
   id: '',
@@ -13,13 +18,29 @@ const blankLesson = type => ({
 })
 
 export default function BuilderApp() {
+  const [searchParams] = useSearchParams()
+  const loadIdOnMount = useRef(searchParams.get('load'))
   const [lesson, setLesson] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [restorePrompt, setRestorePrompt] = useState(false)
   const [ready, setReady] = useState(false)
 
-  // On mount - check localStorage for in-progress lesson.
+  // On mount - check for ?load=<id> (from admin "Edit" link), then localStorage.
   useEffect(() => {
+    const loadId = loadIdOnMount.current
+    if (loadId) {
+      getDoc(doc(firestore, 'lessons', loadId))
+        .then(snap => {
+          if (snap.exists()) {
+            setLesson(snap.data())
+          } else {
+            alert(`Lesson "${loadId}" not found in Firestore.`)
+          }
+        })
+        .catch(err => alert('Could not load lesson: ' + err.message))
+        .finally(() => setReady(true))
+      return
+    }
     const raw = localStorage.getItem(LS_KEY)
     if (raw) {
       try {
@@ -124,6 +145,9 @@ export default function BuilderApp() {
 }
 
 function LessonTypeChooser({ onChoose, onUpload }) {
+  const { role } = useAuth()
+  const [firestoreOpen, setFirestoreOpen] = useState(false)
+
   function handleUpload() {
     const input = document.createElement('input')
     input.type = 'file'
@@ -175,13 +199,155 @@ function LessonTypeChooser({ onChoose, onUpload }) {
               <span style={s.choiceDescription}>Virtual filesystem tasks — create, rename, move, and organise files and folders.</span>
             </button>
           </div>
-          <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
-            Upload existing JSON
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
+              Upload existing JSON
+            </button>
+            {role === 'admin' && (
+              <button className="btn-ghost" style={s.uploadBtn} onClick={() => setFirestoreOpen(true)}>
+                Open from Firestore
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      {firestoreOpen && (
+        <FirestoreLessonPicker onLoad={onUpload} onClose={() => setFirestoreOpen(false)} />
+      )}
+    </div>
+  )
+}
+
+function FirestoreLessonPicker({ onLoad, onClose }) {
+  const [lessons, setLessons] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [loadingId, setLoadingId] = useState(null)
+
+  useEffect(() => {
+    fetchLessonList()
+      .then(items => setLessons(items))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleSelect(lessonId) {
+    setLoadingId(lessonId)
+    try {
+      const snap = await getDoc(doc(firestore, 'lessons', lessonId))
+      if (!snap.exists()) { alert('Lesson not found.'); return }
+      onLoad(snap.data())
+    } catch (err) {
+      alert('Could not load lesson: ' + err.message)
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  return (
+    <div style={fp.backdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={fp.modal} className="card">
+        <div style={fp.header}>
+          <span style={fp.title}>Open from Firestore</span>
+          <button style={fp.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <div style={fp.body}>
+          {loading && <p style={fp.hint}>Loading lessons…</p>}
+          {error && <p style={{ ...fp.hint, color: '#ef4444' }}>Error: {error}</p>}
+          {lessons && lessons.length === 0 && <p style={fp.hint}>No lessons found in Firestore.</p>}
+          {lessons && lessons.map(lesson => (
+            <button
+              key={lesson.id}
+              style={fp.row}
+              onClick={() => handleSelect(lesson.id)}
+              disabled={loadingId === lesson.id}
+            >
+              <span style={fp.rowTitle}>{lesson.title || lesson.id}</span>
+              <span style={fp.rowMeta}>{lesson.id} · {lesson.type}</span>
+              {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
+            </button>
+          ))}
         </div>
       </div>
     </div>
   )
+}
+
+const fp = {
+  backdrop: {
+    position: 'fixed', inset: 0, zIndex: 50,
+    background: 'rgba(17, 24, 39, 0.5)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  modal: {
+    width: 'min(560px, 92vw)',
+    maxHeight: '80vh',
+    background: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 24px 70px rgba(0,0,0,0.28)',
+  },
+  header: {
+    background: 'var(--colour-primary)',
+    padding: '14px 18px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexShrink: 0,
+  },
+  title: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    color: '#fff',
+    fontSize: '0.95rem',
+  },
+  closeBtn: {
+    background: 'none', border: 'none', color: '#fff',
+    fontSize: '1.3rem', cursor: 'pointer', lineHeight: 1, padding: '0 2px',
+  },
+  body: {
+    overflowY: 'auto',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  hint: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    color: '#6b7280',
+    margin: 0,
+  },
+  row: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    background: '#f9fafb',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    padding: '10px 14px',
+    cursor: 'pointer',
+    textAlign: 'left',
+    width: '100%',
+  },
+  rowTitle: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.92rem',
+    color: 'var(--colour-text)',
+  },
+  rowMeta: {
+    fontFamily: 'var(--font-code)',
+    fontSize: '0.78rem',
+    color: '#9ca3af',
+  },
+  rowLoading: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    color: 'var(--colour-primary)',
+  },
 }
 
 const s = {

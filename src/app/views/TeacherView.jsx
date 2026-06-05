@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
+import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
+import { getLessonLinks } from '../../shared/lessonLinks'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import PythonEditor from '../components/PythonEditor'
@@ -43,6 +46,7 @@ export default function TeacherView({ lessonId }) {
 
   const [lesson, setLesson]             = useState(null)
   const [lessonLoading, setLessonLoading] = useState(true)
+  const [lessonError, setLessonError]     = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId]   = useState(null)
@@ -62,13 +66,18 @@ export default function TeacherView({ lessonId }) {
   const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null })
   const presentationWindowRef = useRef(null)
 
-  // Load lesson JSON
+  // Load lesson from Firestore
   useEffect(() => {
-    const base = import.meta.env.BASE_URL
-    fetch(`${base}lessons/${lessonId}.json`)
-      .then(r => r.json())
-      .then(data => { setLesson(data); setLessonLoading(false) })
-      .catch(() => setLessonLoading(false))
+    getDoc(doc(firestore, 'lessons', lessonId))
+      .then(snap => {
+        if (snap.exists()) {
+          setLesson(snap.data())
+        } else {
+          setLessonError(true)
+        }
+        setLessonLoading(false)
+      })
+      .catch(() => { setLessonError(true); setLessonLoading(false) })
   }, [lessonId])
 
   // Create session only if none exists — don't auto-restart an ended session
@@ -271,16 +280,8 @@ export default function TeacherView({ lessonId }) {
     await setActiveStudentView(null)
   }
 
-  function getLessonLinks() {
-    const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
-    return {
-      live: `${base}?live=true`,
-      solo: base,
-    }
-  }
-
   async function handleCopyLink(type) {
-    const url = getLessonLinks()[type]
+    const url = getLessonLinks(lessonId)[type]
     await navigator.clipboard.writeText(url).catch(() => {})
     setCopiedLink(type)
     setTimeout(() => setCopiedLink(null), 2000)
@@ -315,8 +316,11 @@ export default function TeacherView({ lessonId }) {
     await Promise.all(studentIds.map(id => pushResetToStudent(id, action)))
   }
 
-  if (lessonLoading || !lesson) {
+  if (lessonLoading) {
     return <div style={s.centre}><p>Loading…</p></div>
+  }
+  if (lessonError || !lesson) {
+    return <div style={s.centre}><p>Lesson &ldquo;{lessonId}&rdquo; not found.</p></div>
   }
 
   return (
@@ -331,7 +335,7 @@ export default function TeacherView({ lessonId }) {
             isInSandbox={isInSandbox}
             displayIndex={displayIndex}
             taskCount={flatTasks.length}
-            links={getLessonLinks()}
+            links={getLessonLinks(lessonId)}
             copiedLink={copiedLink}
             showSharePanel={showSharePanel}
             onPreviousTask={() => {
@@ -515,6 +519,7 @@ export default function TeacherView({ lessonId }) {
                   readOnly={showingComplete || isShowingStage || !isInSandbox}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                   assets={lesson.assets}
+                  storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                   attachedTop={!isInSandbox}
                 />
               </div>

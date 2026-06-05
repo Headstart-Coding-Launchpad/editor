@@ -278,7 +278,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       : lesson.type === 'scratch'
       ? { toolbox: task.toolbox ?? '', starterBlocks: task.starterBlocks ?? null, carryBlocksFrom: task.carryBlocksFrom ?? null }
       : lesson.type === 'filesystem'
-      ? { starterFs: task.starterFs ?? DEFAULT_FS }
+      ? { starterFs: task.starterFs ?? DEFAULT_FS, carryFsFrom: task.carryFsFrom ?? null }
       : {
           starterFiles: task.starterFiles?.length ? task.starterFiles : [{ name: 'index.html', type: 'html', content: '<!DOCTYPE html>\n<html>\n<body>\n\n</body>\n</html>' }],
           entryFile: task.entryFile ?? 'index.html',
@@ -481,6 +481,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       const src = buildIframeSrc(activeFiles, activeEntryFile, {
         assets: lesson.assets ?? [],
         assetsPath: resolveAssetsPath(lesson.assetsPath),
+        storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
       })
       setIframeSrc(src)
       setRunStatus('success')
@@ -574,6 +575,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       setIframeSrc(null)
       setHtmlPreviewOpen(false)
     }
+  }
+
+  function handleCopyStarterToComplete() {
+    if (!window.confirm('Replace the complete filesystem with the starter filesystem?')) return
+    onUpdate({ ...task, completeFs: task.starterFs ?? DEFAULT_FS })
   }
 
   const resetToStarterBtn = isCompleteTab ? (
@@ -719,6 +725,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             inlineCodeLanguages={explainerInlineCodeLanguages}
             assets={lesson.assets ?? []}
             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+            storageAssets={lesson.storageAssets ?? []}
           />
         </div>
       )}
@@ -747,6 +754,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               inlineCodeLanguages={explainerInlineCodeLanguages}
               assets={lesson.assets ?? []}
               assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+              storageAssets={lesson.storageAssets ?? []}
             />
           )}
         </div>
@@ -1146,6 +1154,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                               backdrops={task.backdrops?.length > 0 ? task.backdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
                               onChange={backdrops => set('backdrops', backdrops)}
                               assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                              storageAssets={lesson.storageAssets ?? []}
                               lessonId={lesson.id}
                               lessonType={lesson.type}
                             />
@@ -1200,6 +1209,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                             hideAdd
                             onChange={handleStarterSpritesChange}
                             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                            storageAssets={lesson.storageAssets ?? []}
                             lessonId={lesson.id}
                             lessonType={lesson.type}
                           />
@@ -1276,11 +1286,39 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             label="Starter filesystem"
             fs={task.starterFs}
             onFsChange={newFs => onUpdate({ ...task, starterFs: newFs })}
+            storageAssets={lesson.storageAssets ?? []}
           />
+          <div>
+            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              Starts in (optional)
+              <input
+                className="te-input"
+                value={task.startsInDir ?? ''}
+                onChange={e => set('startsInDir', e.target.value || undefined)}
+                placeholder="e.g. /Documents/"
+                style={{ fontFamily: 'var(--font-code)' }}
+              />
+            </label>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '4px 0 0' }}>
+              Directory the student's explorer opens in. Leave blank to start at the root.
+            </p>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn-ghost te-secondary-btn"
+              onClick={handleCopyStarterToComplete}
+              disabled={!task.starterFs}
+              title="Copy the starter filesystem into the complete filesystem"
+            >
+              ↓ Copy starter to complete
+            </button>
+          </div>
           <FsTreeEditor
             label="Complete filesystem (reference solution)"
             fs={task.completeFs}
             onFsChange={newFs => onUpdate({ ...task, completeFs: newFs })}
+            storageAssets={lesson.storageAssets ?? []}
           />
         </div>
       ) : (
@@ -1485,11 +1523,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             })()}
           </div>
 
-          {lesson.assetsPath && lesson.assets?.length > 0 && (
+          {((lesson.assetsPath && lesson.assets?.length > 0) || lesson.storageAssets?.some(a => a.showInEditor)) && (
             <Field label="Asset browser (read-only - copy paths to use in starter code)">
               <AssetBrowser
                 assetsPath={resolveAssetsPath(lesson.assetsPath)}
                 assets={lesson.assets}
+                storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                 copyMode="relative"
               />
             </Field>

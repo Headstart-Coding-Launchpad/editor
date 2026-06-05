@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
+import { firestore } from '../../shared/firebase'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
@@ -23,7 +25,7 @@ import CheckFeedbackBanner from '../components/CheckFeedbackBanner'
 import LiveActivityToast from '../components/LiveActivityToast'
 import SplitPane from '../../shared/SplitPane'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { DEFAULT_FS } from '../../shared/filesystem'
+import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
 import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
 import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
@@ -193,10 +195,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setLessonLoading(false)
       return
     }
-    const base = import.meta.env.BASE_URL
-    fetch(`${base}lessons/${lessonId}.json`)
-      .then(r => r.json())
-      .then(data => { setLesson(data); setLessonLoading(false) })
+    getDoc(doc(firestore, 'lessons', lessonId))
+      .then(snap => {
+        if (snap.exists()) setLesson(snap.data())
+        setLessonLoading(false)
+      })
       .catch(() => setLessonLoading(false))
   }, [lessonId, lessonProp])
 
@@ -215,6 +218,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     setTeacherLiveIframeSrc(buildIframeSrc(liveFiles, liveTask?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
+      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])
@@ -505,10 +509,25 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       const carryId = task.carryFsFrom ?? null
       const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
       const savedFromCarry = (!previewMode && carryId != null) ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null
-      const carryTask = carryId != null ? findTaskById(lesson?.tasks, carryId) : null
-      const carryFallback = carryTask?.completeFs ?? carryTask?.starterFs ?? null
-      setFsState(ownSaved ?? savedFromCarry ?? task.starterFs ?? carryFallback ?? DEFAULT_FS)
-      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? '/') : '/', openFile: null })
+      // Walk the carry chain to find the nearest ancestor with a completeFs or starterFs,
+      // so that carry works even when intermediate tasks have no FS of their own.
+      let carryFallback = null
+      if (carryId != null) {
+        let resolveId = carryId
+        while (resolveId != null) {
+          const resolveTask = findTaskById(lesson.tasks, resolveId)
+          if (!resolveTask) break
+          const fs = resolveTask.completeFs ?? resolveTask.starterFs
+          if (fs) { carryFallback = fs; break }
+          resolveId = resolveTask.carryFsFrom ?? null
+        }
+      }
+      const initialFs = carryId != null
+        ? (ownSaved ?? savedFromCarry ?? carryFallback ?? task.starterFs ?? DEFAULT_FS)
+        : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
+      setFsState(initialFs)
+      const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
+      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
       resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
@@ -867,6 +886,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     const src = buildIframeSrc(files, task?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
+      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
     })
     setIframeSrc(src)
     setRunStatus('success')
@@ -1450,7 +1470,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           ) : lesson.type === 'filesystem' ? (
             <FilesystemTask
               key={`filesystem-${viewingTaskId ?? currentTaskId}`}
-              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? '/') : '/'}
+              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')) : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')}
               fs={fsState}
               onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
               onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : handleFsInteraction}
@@ -1627,6 +1647,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                   readOnly={isViewingPrev || isForcedTeacherLive}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                   assets={lesson.assets}
+                  storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                 />
               </div>
               {task?.interactionMode !== 'submit' && (
@@ -1683,6 +1704,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                     readOnly={isViewingPrev || isForcedTeacherLive}
                     assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                     assets={lesson.assets}
+                    storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                   />
                 </div>
               }

@@ -38,6 +38,7 @@ Every lesson can contain code tasks plus `information` and `quiz` tasks.
 | `sandboxBackdrops` | No | backdrop array | Scratch | Backdrops to use in sandbox mode. |
 | `assetsPath` | No | string | all lessons | Base URL path for asset resolution (backdrops, costumes, AssetBrowser). |
 | `assets` | No | string array | all lessons | List of asset file paths shown in the AssetBrowser. |
+| `storageAssets` | No | `{name, url, showInEditor?}[]` | all lessons | Files uploaded to Firebase Storage for this lesson. Each entry has a `name` (filename), `url` (full Firebase Storage download URL), and optional `showInEditor` boolean. When `showInEditor` is `true`, the asset appears in the web editor's asset panel and its filename is rewritten to the download URL when the student clicks Run. Managed via the builder's Lesson Details panel (admin only). |
 | `tasks` | Yes | array | all lessons | Ordered task list. IDs should be sequential integers starting at `1`. May also contain group objects. |
 
 ## Common Task Fields
@@ -918,6 +919,7 @@ Text files store editable `content`. Image files may store a static lesson-asset
 | `starterFs` | No | Initial filesystem state when no carry-through exists. Defaults to `{ "/": { type: "dir" } }`. |
 | `completeFs` | No | Reference solution filesystem used in the builder. |
 | `carryFsFrom` | No | Previous task ID to carry the saved filesystem state from. |
+| `startsInDir` | No | Directory path the student's explorer opens in on task load. Defaults to `/` (root). Must be a normalised dir path ending with `/`. If the path does not exist in the loaded filesystem, the explorer falls back to root. |
 
 ### Filesystem check types
 

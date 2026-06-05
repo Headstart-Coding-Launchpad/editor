@@ -365,10 +365,16 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   const [renamingPath, setRenamingPath] = useState(null)
   const [contextMenu, setContextMenu] = useState(null) // { x, y, targetPath }
   const [clipboard, setClipboard] = useState(null) // { path, mode: 'copy' | 'cut' }
+  // Tracks whether the user has explicitly navigated since mount. Guards the safety reset
+  // below from firing on the initial render when fsState is still stale (from the previous
+  // task) and initialDir hasn't loaded yet. Resets naturally when the component remounts.
+  const userNavigatedRef = useRef(false)
 
-  // Keep currentDir valid if it gets deleted
+  // Reset to root only after the user has navigated — prevents the stale-FS mount scenario
+  // where initialDir temporarily doesn't exist in the previous task's filesystem from
+  // incorrectly resetting currentDir to '/' before the correct FS has loaded.
   useEffect(() => {
-    if (!fs[normaliseDirPath(currentDir)]) setCurrentDir('/')
+    if (userNavigatedRef.current && !fs[normaliseDirPath(currentDir)]) setCurrentDir('/')
   }, [fs, currentDir])
 
   // Keep openFile valid
@@ -377,6 +383,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   }, [fs, openFile])
 
   const navigate = useCallback(path => {
+    userNavigatedRef.current = true
     setCurrentDir(path)
     setSelected(null)
     setOpenFile(null)
@@ -476,11 +483,11 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
       const items = [
         {
           label: '📄 New File here',
-          onClick: () => { setCurrentDir(targetPath); setSelected(null); setOpenFile(null); setRenamingPath(null); setCreating('file') },
+          onClick: () => { navigate(targetPath); setCreating('file') },
         },
         {
           label: '📁 New Folder here',
-          onClick: () => { setCurrentDir(targetPath); setSelected(null); setOpenFile(null); setRenamingPath(null); setCreating('folder') },
+          onClick: () => { navigate(targetPath); setCreating('folder') },
         },
       ]
       if (clipboard) {
