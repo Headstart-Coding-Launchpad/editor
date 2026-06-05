@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
-
-const BUILDER_LS_KEY = 'headstart_builder_current'
+import { LS_KEY as BUILDER_LS_KEY } from '../builder/App'
+import { getLessonLinks } from '../shared/lessonLinks'
 
 function makeBuilderUrl() {
   return `${window.location.origin}${window.location.pathname}builder/`
@@ -41,10 +41,6 @@ function makeTeacherUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
 }
 
-function makeStudentLinks(lessonId) {
-  const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
-  return { live: `${base}?live=true`, solo: base }
-}
 
 const TYPE_LABELS = { python: 'Python', scratch: 'Scratch', html: 'HTML', filesystem: 'Filesystem' }
 
@@ -55,6 +51,8 @@ export default function LessonPanel() {
   const [shareOpenId, setShareOpenId] = useState(null)
   const [copiedLink, setCopiedLink] = useState(null) // { id, type }
   const [deletingId, setDeletingId] = useState(null)
+  const [deletedIds, setDeletedIds] = useState(new Set())
+  const copyTimerRef = useRef(null)
 
   useEffect(() => {
     return onSnapshot(
@@ -73,6 +71,7 @@ export default function LessonPanel() {
     setDeletingId(lesson.id)
     try {
       await deleteDoc(doc(firestore, 'lessons', lesson.id))
+      setDeletedIds(prev => { const next = new Set(prev); next.add(lesson.id); return next })
     } catch (err) {
       alert('Failed to delete: ' + err.message)
     } finally {
@@ -86,7 +85,9 @@ export default function LessonPanel() {
       try {
         const saved = JSON.parse(existing)
         if (!confirm(`The builder has an unsaved lesson (${saved.title || saved.id || 'Untitled'}). Overwrite it to edit "${lesson.title || lesson.id}"?`)) return
-      } catch { /* corrupt data — safe to overwrite */ }
+      } catch {
+        if (!confirm(`The builder has unreadable data. Overwrite it to edit "${lesson.title || lesson.id}"?`)) return
+      }
     }
     localStorage.setItem(BUILDER_LS_KEY, JSON.stringify(lesson))
     window.open(makeBuilderUrl(), '_blank', 'noopener,noreferrer')
@@ -97,14 +98,18 @@ export default function LessonPanel() {
   }
 
   function handleCopyLink(lessonId, type) {
-    const url = makeStudentLinks(lessonId)[type]
+    const url = getLessonLinks(lessonId)[type]
     navigator.clipboard.writeText(url).then(() => {
       setCopiedLink({ id: lessonId, type })
-      setTimeout(() => setCopiedLink(prev => (prev?.id === lessonId && prev?.type === type ? null : prev)), 2000)
-    })
+      clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setCopiedLink(null), 2000)
+    }).catch(() => {})
   }
 
-  const groups = groupByTypeAndLevel(lessons)
+  const groups = useMemo(
+    () => groupByTypeAndLevel(lessons.filter(l => !deletedIds.has(l.id))),
+    [lessons, deletedIds],
+  )
 
   return (
     <section style={s.section}>
@@ -136,7 +141,7 @@ export default function LessonPanel() {
                       ? <span style={s.levelBadge}>{lesson.level}</span>
                       : <span style={s.dash}>—</span>}
                   </td>
-                  <td style={s.idCell}>{lesson.id}</td>
+                  <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
                   <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                     <div style={s.actions}>
                       <a
@@ -168,7 +173,7 @@ export default function LessonPanel() {
                                     <span className="teacher-share__type">
                                       {type === 'live' ? 'Live (with teacher)' : 'Solo (practice)'}
                                     </span>
-                                    <span className="teacher-share__url">{makeStudentLinks(lesson.id)[type]}</span>
+                                    <span className="teacher-share__url">{getLessonLinks(lesson.id)[type]}</span>
                                   </div>
                                   <button
                                     className="btn-secondary teacher-share__copy-btn"
@@ -192,7 +197,7 @@ export default function LessonPanel() {
                       <button
                         className="btn-danger"
                         style={s.actionBtn}
-                        disabled={deletingId === lesson.id}
+                        disabled={deletingId === lesson.id || deletedIds.has(lesson.id)}
                         onClick={() => handleDelete(lesson)}
                       >
                         {deletingId === lesson.id ? '…' : 'Delete'}
@@ -217,7 +222,6 @@ const s = {
   table:      { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
   th:         { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
   td:         { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
-  idCell:     { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle', fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' },
   levelBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: '#ede9fe', color: '#7c3aed' },
   dash:       { color: '#d1d5db' },
   actions:    { display: 'flex', gap: 6, alignItems: 'center' },

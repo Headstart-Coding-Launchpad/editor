@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import BuilderView from './views/BuilderView'
 
-const LS_KEY = 'headstart_builder_current'
+export const LS_KEY = 'headstart_builder_current'
 
 const blankLesson = type => ({
   id: '',
