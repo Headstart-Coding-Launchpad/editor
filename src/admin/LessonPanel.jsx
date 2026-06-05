@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
-import { LS_KEY as BUILDER_LS_KEY } from '../builder/App'
 import { getLessonLinks } from '../shared/lessonLinks'
 
-function makeBuilderUrl() {
-  return `${window.location.origin}${window.location.pathname}builder/`
+function makeBuilderUrl(lessonId) {
+  return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
 }
 
 const TYPE_ORDER = ['python', 'scratch', 'html', 'filesystem']
@@ -80,17 +79,7 @@ export default function LessonPanel() {
   }
 
   function handleEditInBuilder(lesson) {
-    const existing = localStorage.getItem(BUILDER_LS_KEY)
-    if (existing) {
-      try {
-        const saved = JSON.parse(existing)
-        if (!confirm(`The builder has an unsaved lesson (${saved.title || saved.id || 'Untitled'}). Overwrite it to edit "${lesson.title || lesson.id}"?`)) return
-      } catch {
-        if (!confirm(`The builder has unreadable data. Overwrite it to edit "${lesson.title || lesson.id}"?`)) return
-      }
-    }
-    localStorage.setItem(BUILDER_LS_KEY, JSON.stringify(lesson))
-    window.open(makeBuilderUrl(), '_blank', 'noopener,noreferrer')
+    window.open(makeBuilderUrl(lesson.id), '_blank', 'noopener,noreferrer')
   }
 
   function handleToggleShare(lessonId) {

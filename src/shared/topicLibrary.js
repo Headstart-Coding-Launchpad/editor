@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
+import { collection, getDocs } from 'firebase/firestore'
+import { firestore } from './firebase'
 
 let cachedTopics = null
 let fetchPromise = null
+
+export function clearTopicCache() {
+  cachedTopics = null
+  fetchPromise = null
+}
 
 function normalizedText(value) {
   return String(value ?? '').trim()
@@ -29,13 +36,10 @@ export function normalizeTopicLibrary(data) {
 function loadTopics() {
   if (cachedTopics) return Promise.resolve(cachedTopics)
   if (!fetchPromise) {
-    fetchPromise = fetch(`${import.meta.env.BASE_URL}assets/topic-library.json`)
-      .then(response => {
-        if (!response.ok) throw new Error(`topic library fetch failed: ${response.status}`)
-        return response.json()
-      })
-      .then(data => {
-        cachedTopics = normalizeTopicLibrary(data)
+    fetchPromise = getDocs(collection(firestore, 'topicLibrary'))
+      .then(snap => {
+        const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        cachedTopics = normalizeTopicLibrary(raw)
         return cachedTopics
       })
       .catch(error => {

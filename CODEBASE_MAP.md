@@ -35,6 +35,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons and Accounts panels |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
 | `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
+| `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 
 ---
 
@@ -164,7 +165,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
 | `useAssets.js` | Hook for fetching and caching `public/assets/manifest.json`; exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` |
-| `topicLibrary.js` | Topic-library JSON loader plus type-filtered search, wiki-link expansion, and author suggestion helpers |
+| `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
@@ -207,6 +208,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | File | Role |
 |---|---|
 | `scripts/migrate-lessons.mjs` | One-off Admin SDK migration: writes all lesson JSON files to Firestore `lessons/` collection |
+| `scripts/migrate-topic-library.mjs` | One-off Admin SDK migration: writes `public/assets/topic-library.json` topics to Firestore `topicLibrary/` collection |
 
 ---
 
@@ -225,7 +227,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | Path | Role |
 |---|---|
-| `public/assets/topic-library.json` | Topic library — reference cards for coding concepts shown in hover previews and the Topic Library dialog; schema documented in `TOPIC_LIBRARY_SCHEMA.md` |
+| `public/assets/topic-library.json` | Topic library seed data — kept for reference and migration; live data now served from Firestore `topicLibrary/` collection |
 
 ---
 

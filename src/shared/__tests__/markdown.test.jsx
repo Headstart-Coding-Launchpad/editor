@@ -3,6 +3,23 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MarkdownRenderer, InlineMarkdown } from '../markdown'
 
+const MOCK_TOPICS = [{
+  id: 'for-loop',
+  title: 'For loops',
+  types: ['python'],
+  category: 'Loop',
+  summary: 'Repeat code.',
+  description: 'Runs a **block** with `python:print()` again.',
+  syntax: 'Use `python:for i in range(3):`.',
+  aliases: ['for loop'],
+  related: [],
+}]
+
+vi.mock('../topicLibrary', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, useTopicLibrary: () => ({ topics: MOCK_TOPICS, allTopics: MOCK_TOPICS, loading: false, error: null }) }
+})
+
 describe('MarkdownRenderer', () => {
   it('renders without crashing on an empty string', () => {
     render(<MarkdownRenderer content="" />)
@@ -92,22 +109,6 @@ describe('MarkdownRenderer', () => {
   })
 
   it('opens a linked topic from its hover preview', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        topics: [{
-          id: 'for-loop',
-          title: 'For loops',
-          types: ['python'],
-          category: 'Loop',
-          summary: 'Repeat code.',
-          description: 'Runs a **block** with `python:print()` again.',
-          syntax: 'Use `python:for i in range(3):`.',
-          related: [],
-        }],
-      }),
-    }))
-
     render(<MarkdownRenderer content="Try [[for-loop]]." topicType="python" />)
     const topicLink = await screen.findByRole('button', { name: 'For loops' })
     fireEvent.mouseEnter(topicLink)
