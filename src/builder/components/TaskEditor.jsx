@@ -577,9 +577,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     }
   }
 
-  function handleCopyCompleteToStarter() {
-    if (!window.confirm('Replace the starter filesystem with the complete filesystem?')) return
-    onUpdate({ ...task, starterFs: task.completeFs ?? DEFAULT_FS })
+  function handleCopyStarterToComplete() {
+    if (!window.confirm('Replace the complete filesystem with the starter filesystem?')) return
+    onUpdate({ ...task, completeFs: task.starterFs ?? DEFAULT_FS })
   }
 
   const resetToStarterBtn = isCompleteTab ? (
@@ -1292,11 +1292,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             <button
               type="button"
               className="btn-ghost te-secondary-btn"
-              onClick={handleCopyCompleteToStarter}
-              disabled={!task.completeFs}
-              title="Copy the complete filesystem into the starter filesystem"
+              onClick={handleCopyStarterToComplete}
+              disabled={!task.starterFs}
+              title="Copy the starter filesystem into the complete filesystem"
             >
-              ↑ Copy complete to starter
+              ↓ Copy starter to complete
             </button>
           </div>
           <FsTreeEditor
