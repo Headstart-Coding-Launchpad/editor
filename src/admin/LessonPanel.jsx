@@ -41,8 +41,9 @@ function makeTeacherUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
 }
 
-function makeStudentUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?live=true`
+function makeStudentLinks(lessonId) {
+  const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
+  return { live: `${base}?live=true`, solo: base }
 }
 
 const TYPE_LABELS = { python: 'Python', scratch: 'Scratch', html: 'HTML', filesystem: 'Filesystem' }
@@ -51,7 +52,8 @@ export default function LessonPanel() {
   const [lessons, setLessons] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [copiedId, setCopiedId] = useState(null)
+  const [shareOpenId, setShareOpenId] = useState(null)
+  const [copiedLink, setCopiedLink] = useState(null) // { id, type }
   const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
@@ -90,10 +92,15 @@ export default function LessonPanel() {
     window.open(makeBuilderUrl(), '_blank', 'noopener,noreferrer')
   }
 
-  function handleCopyStudentLink(lessonId) {
-    navigator.clipboard.writeText(makeStudentUrl(lessonId)).then(() => {
-      setCopiedId(lessonId)
-      setTimeout(() => setCopiedId(prev => (prev === lessonId ? null : prev)), 2000)
+  function handleToggleShare(lessonId) {
+    setShareOpenId(prev => (prev === lessonId ? null : lessonId))
+  }
+
+  function handleCopyLink(lessonId, type) {
+    const url = makeStudentLinks(lessonId)[type]
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLink({ id: lessonId, type })
+      setTimeout(() => setCopiedLink(prev => (prev?.id === lessonId && prev?.type === type ? null : prev)), 2000)
     })
   }
 
@@ -141,13 +148,40 @@ export default function LessonPanel() {
                       >
                         Launch as Teacher
                       </a>
-                      <button
-                        className={copiedId === lesson.id ? 'btn-secondary' : 'btn-ghost-outline'}
-                        style={s.actionBtn}
-                        onClick={() => handleCopyStudentLink(lesson.id)}
-                      >
-                        {copiedId === lesson.id ? 'Copied!' : 'Copy Student Link'}
-                      </button>
+                      <div className="teacher-share" style={{ position: 'relative' }}>
+                        <button
+                          className="btn-ghost-outline"
+                          style={s.actionBtn}
+                          onClick={() => handleToggleShare(lesson.id)}
+                          aria-expanded={shareOpenId === lesson.id}
+                        >
+                          Share Links
+                        </button>
+                        {shareOpenId === lesson.id && (
+                          <>
+                            <div className="teacher-share__overlay" onClick={() => setShareOpenId(null)} />
+                            <div className="teacher-share__panel" style={{ right: 0, left: 'auto', minWidth: 320 }}>
+                              <span className="teacher-share__title">Share lesson links</span>
+                              {(['live', 'solo']).map(type => (
+                                <div key={type} className="teacher-share__row">
+                                  <div className="teacher-share__info">
+                                    <span className="teacher-share__type">
+                                      {type === 'live' ? 'Live (with teacher)' : 'Solo (practice)'}
+                                    </span>
+                                    <span className="teacher-share__url">{makeStudentLinks(lesson.id)[type]}</span>
+                                  </div>
+                                  <button
+                                    className="btn-secondary teacher-share__copy-btn"
+                                    onClick={() => handleCopyLink(lesson.id, type)}
+                                  >
+                                    {copiedLink?.id === lesson.id && copiedLink?.type === type ? 'Copied!' : 'Copy'}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
                       <button
                         className="btn-ghost-outline"
                         style={s.actionBtn}
