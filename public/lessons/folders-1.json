@@ -2,10 +2,17 @@
   "id": "lessons-folders-1-build-project-folder",
   "type": "filesystem",
   "title": "Build Your Project Folder",
-  "description": "Set up an organised folder for a game idea, write notes, and move a file into the right place.",
+  "description": "Explore files and folders, then set up an organised folder for a game idea and move a file into the right place.",
   "level": 1,
+  "assetsPath": "/assets/lessons-folders-1-build-project-folder/",
+  "assets": [
+    "holiday-photo.png",
+    "avatar.png"
+  ],
   "sandboxStarterFs": {
-    "/": { "type": "dir" }
+    "/": {
+      "type": "dir"
+    }
   },
   "tasks": [
     {
@@ -16,25 +23,525 @@
       "explainer": ""
     },
     {
-      "id": 2,
-      "taskType": "information",
-      "informationType": "standard",
-      "title": "Files and Folders",
-      "explainer": "## Files Hold Work, Folders Organise Work\n\nA **file** stores a piece of work. For example, `game-ideas.txt` can hold your written ideas.\n\nA **folder** organises files and other folders. For example, a `Pictures` folder can hold image files.\n\nClear names make your work easier to find later.\n\nA **path** is the route to an item:\n\n```text\n/Game Project/Notes/game-ideas.txt\n```\n\nTo follow this path, open `Game Project`, then `Notes`, then `game-ideas.txt`."
+      "id": "g-explore-files",
+      "type": "group",
+      "title": "Explore Files and Folders",
+      "subtasks": [
+        {
+          "id": 2,
+          "title": "Explore Files and Folders - 1",
+          "explainer": "## Open the Example Area\n\nOpen `Explore Here` to begin. A **folder** is a labelled container that can hold files and other folders.",
+          "starterFs": {
+            "/": {
+              "type": "dir"
+            },
+            "/Explore Here/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/maths-worksheet.txt": {
+              "type": "file",
+              "content": "Complete questions 1 to 10."
+            },
+            "/Explore Here/Everyday Files/Letters/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Letters/letter-to-friend.txt": {
+              "type": "file",
+              "content": "Dear friend, I hope you are well."
+            },
+            "/Explore Here/Everyday Files/Shopping/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Shopping/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            },
+            "/Explore Here/Everyday Files/Pictures/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Pictures/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Organised Game Project/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/game-ideas.txt": {
+              "type": "file",
+              "content": "Build a maze game with a clear goal."
+            },
+            "/Explore Here/Organised Game Project/Designs/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Designs/character.txt": {
+              "type": "file",
+              "content": "The hero explores the maze."
+            },
+            "/Explore Here/Organised Game Project/Images/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Images/avatar.png": {
+              "type": "file",
+              "src": "avatar.png"
+            },
+            "/Explore Here/Untidy Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Untidy Files/stuff.txt": {
+              "type": "file",
+              "content": "Remember to finish this."
+            },
+            "/Explore Here/Untidy Files/new.txt": {
+              "type": "file",
+              "content": "Draft notes."
+            },
+            "/Explore Here/Untidy Files/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Untidy Files/maths-final-new.txt": {
+              "type": "file",
+              "content": "Maths homework."
+            },
+            "/Explore Here/Untidy Files/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            }
+          },
+          "completeFs": {
+            "/": {
+              "type": "dir"
+            },
+            "/Explore Here/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/maths-worksheet.txt": {
+              "type": "file",
+              "content": "Complete questions 1 to 10."
+            },
+            "/Explore Here/Everyday Files/Letters/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Letters/letter-to-friend.txt": {
+              "type": "file",
+              "content": "Dear friend, I hope you are well."
+            },
+            "/Explore Here/Everyday Files/Shopping/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Shopping/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            },
+            "/Explore Here/Everyday Files/Pictures/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Pictures/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Organised Game Project/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/game-ideas.txt": {
+              "type": "file",
+              "content": "Build a maze game with a clear goal."
+            },
+            "/Explore Here/Organised Game Project/Designs/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Designs/character.txt": {
+              "type": "file",
+              "content": "The hero explores the maze."
+            },
+            "/Explore Here/Organised Game Project/Images/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Images/avatar.png": {
+              "type": "file",
+              "src": "avatar.png"
+            },
+            "/Explore Here/Untidy Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Untidy Files/stuff.txt": {
+              "type": "file",
+              "content": "Remember to finish this."
+            },
+            "/Explore Here/Untidy Files/new.txt": {
+              "type": "file",
+              "content": "Draft notes."
+            },
+            "/Explore Here/Untidy Files/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Untidy Files/maths-final-new.txt": {
+              "type": "file",
+              "content": "Maths homework."
+            },
+            "/Explore Here/Untidy Files/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            }
+          },
+          "carryFsFrom": null,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/"
+          }
+        },
+        {
+          "id": 3,
+          "title": "Explore Files and Folders - 2",
+          "explainer": "## Find Everyday Examples\n\nOpen `Everyday Files`. These folders organise familiar items such as homework, letters, shopping lists, and pictures.",
+          "carryFsFrom": 2,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/Everyday Files/"
+          }
+        },
+        {
+          "id": 4,
+          "title": "Explore Files and Folders - 3",
+          "explainer": "## Find the Shopping Folder\n\nOpen `Shopping`. A clear folder name helps you predict what you will find inside.",
+          "carryFsFrom": 3,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/Everyday Files/Shopping/"
+          }
+        },
+        {
+          "id": 5,
+          "title": "Explore Files and Folders - 4",
+          "explainer": "## Open a File\n\nOpen `shopping-list.txt`. A **file** stores a piece of work. The `.txt` ending is a **file extension** that identifies a text file.",
+          "carryFsFrom": 4,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_file_opened",
+            "path": "/Explore Here/Everyday Files/Shopping/shopping-list.txt"
+          }
+        },
+        {
+          "id": 6,
+          "title": "Explore Files and Folders - 5",
+          "explainer": "## Visit a Project\n\nOpen `Organised Game Project`. Project folders keep related work together.",
+          "carryFsFrom": 5,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/Organised Game Project/"
+          }
+        },
+        {
+          "id": 7,
+          "title": "Explore Files and Folders - 6",
+          "explainer": "## Find the Notes\n\nOpen `Notes`. Related written plans belong together.",
+          "carryFsFrom": 6,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/Organised Game Project/Notes/"
+          }
+        },
+        {
+          "id": 8,
+          "title": "Explore Files and Folders - 7",
+          "explainer": "## Follow a Path\n\nOpen `game-ideas.txt`.\n\nA **path** is a route to an item. You just followed:\n\n`/Explore Here/Organised Game Project/Notes/game-ideas.txt`",
+          "carryFsFrom": 7,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_file_opened",
+            "path": "/Explore Here/Organised Game Project/Notes/game-ideas.txt"
+          }
+        }
+      ]
     },
     {
-      "id": 3,
+      "id": 9,
       "taskType": "quiz",
       "quizType": "match",
       "title": "File or Folder?",
       "explainer": "Match each item to the correct type.",
       "pairs": [
-        { "id": "1", "prompt": "`story.txt`", "answer": "File" },
-        { "id": "2", "prompt": "`Pictures`", "answer": "Folder" },
-        { "id": "3", "prompt": "`avatar.png`", "answer": "File" },
-        { "id": "4", "prompt": "`Game Project`", "answer": "Folder" }
+        {
+          "id": "1",
+          "prompt": "`shopping-list.txt`",
+          "answer": "File"
+        },
+        {
+          "id": "2",
+          "prompt": "`Homework`",
+          "answer": "Folder"
+        },
+        {
+          "id": "3",
+          "prompt": "`holiday-photo.png`",
+          "answer": "File"
+        },
+        {
+          "id": "4",
+          "prompt": "`Letters`",
+          "answer": "Folder"
+        }
       ],
-      "check": { "type": "quiz_result" }
+      "check": {
+        "type": "quiz_result"
+      }
+    },
+    {
+      "id": "g-compare-folders",
+      "type": "group",
+      "title": "Compare Folder Structures",
+      "subtasks": [
+        {
+          "id": 10,
+          "title": "Compare Folder Structures - 1",
+          "explainer": "## Inspect an Untidy Folder\n\nOpen `/Explore Here/Untidy Files/`.\n\nNotice the mixed contents and vague names. A large pile of files makes work harder to find.",
+          "starterFs": {
+            "/": {
+              "type": "dir"
+            },
+            "/Explore Here/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/maths-worksheet.txt": {
+              "type": "file",
+              "content": "Complete questions 1 to 10."
+            },
+            "/Explore Here/Everyday Files/Letters/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Letters/letter-to-friend.txt": {
+              "type": "file",
+              "content": "Dear friend, I hope you are well."
+            },
+            "/Explore Here/Everyday Files/Shopping/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Shopping/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            },
+            "/Explore Here/Everyday Files/Pictures/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Pictures/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Organised Game Project/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/game-ideas.txt": {
+              "type": "file",
+              "content": "Build a maze game with a clear goal."
+            },
+            "/Explore Here/Organised Game Project/Designs/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Designs/character.txt": {
+              "type": "file",
+              "content": "The hero explores the maze."
+            },
+            "/Explore Here/Organised Game Project/Images/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Images/avatar.png": {
+              "type": "file",
+              "src": "avatar.png"
+            },
+            "/Explore Here/Untidy Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Untidy Files/stuff.txt": {
+              "type": "file",
+              "content": "Remember to finish this."
+            },
+            "/Explore Here/Untidy Files/new.txt": {
+              "type": "file",
+              "content": "Draft notes."
+            },
+            "/Explore Here/Untidy Files/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Untidy Files/maths-final-new.txt": {
+              "type": "file",
+              "content": "Maths homework."
+            },
+            "/Explore Here/Untidy Files/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            }
+          },
+          "completeFs": {
+            "/": {
+              "type": "dir"
+            },
+            "/Explore Here/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Homework/maths-worksheet.txt": {
+              "type": "file",
+              "content": "Complete questions 1 to 10."
+            },
+            "/Explore Here/Everyday Files/Letters/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Letters/letter-to-friend.txt": {
+              "type": "file",
+              "content": "Dear friend, I hope you are well."
+            },
+            "/Explore Here/Everyday Files/Shopping/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Shopping/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            },
+            "/Explore Here/Everyday Files/Pictures/": {
+              "type": "dir"
+            },
+            "/Explore Here/Everyday Files/Pictures/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Organised Game Project/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Notes/game-ideas.txt": {
+              "type": "file",
+              "content": "Build a maze game with a clear goal."
+            },
+            "/Explore Here/Organised Game Project/Designs/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Designs/character.txt": {
+              "type": "file",
+              "content": "The hero explores the maze."
+            },
+            "/Explore Here/Organised Game Project/Images/": {
+              "type": "dir"
+            },
+            "/Explore Here/Organised Game Project/Images/avatar.png": {
+              "type": "file",
+              "src": "avatar.png"
+            },
+            "/Explore Here/Untidy Files/": {
+              "type": "dir"
+            },
+            "/Explore Here/Untidy Files/stuff.txt": {
+              "type": "file",
+              "content": "Remember to finish this."
+            },
+            "/Explore Here/Untidy Files/new.txt": {
+              "type": "file",
+              "content": "Draft notes."
+            },
+            "/Explore Here/Untidy Files/holiday-photo.png": {
+              "type": "file",
+              "src": "holiday-photo.png"
+            },
+            "/Explore Here/Untidy Files/maths-final-new.txt": {
+              "type": "file",
+              "content": "Maths homework."
+            },
+            "/Explore Here/Untidy Files/shopping-list.txt": {
+              "type": "file",
+              "content": "Milk, bread, apples"
+            }
+          },
+          "carryFsFrom": null,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/Untidy Files/"
+          }
+        },
+        {
+          "id": 11,
+          "title": "Compare Folder Structures - 2",
+          "explainer": "## Compare an Organised Folder\n\nNow open `/Explore Here/Everyday Files/`.\n\nA useful structure groups related work, uses clear names, and avoids unnecessary layers.",
+          "carryFsFrom": 10,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Explore Here/Everyday Files/"
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "taskType": "quiz",
+      "quizType": "match",
+      "title": "Where Should It Go?",
+      "explainer": "Match each file to the most sensible folder.",
+      "pairs": [
+        {
+          "id": "1",
+          "prompt": "`maths-homework.txt`",
+          "answer": "`Homework`"
+        },
+        {
+          "id": "2",
+          "prompt": "`letter-to-friend.txt`",
+          "answer": "`Letters`"
+        },
+        {
+          "id": "3",
+          "prompt": "`birthday-photo.png`",
+          "answer": "`Pictures`"
+        },
+        {
+          "id": "4",
+          "prompt": "`shopping-list.txt`",
+          "answer": "`Shopping`"
+        }
+      ],
+      "check": {
+        "type": "quiz_result"
+      }
     },
     {
       "id": "g-create-project",
@@ -42,54 +549,102 @@
       "title": "Create Your Project",
       "subtasks": [
         {
-          "id": 4,
+          "id": 13,
           "title": "Create Your Project - 1",
           "explainer": "## Create a Project Folder\n\nCreate a folder called **Game Project** in the root folder. This will keep all of your game work together.",
-          "estimatedMinutes": 4,
           "starterFs": {
-            "/": { "type": "dir" }
+            "/": {
+              "type": "dir"
+            }
           },
           "completeFs": {
-            "/": { "type": "dir" },
-            "/Game Project/": { "type": "dir" }
+            "/": {
+              "type": "dir"
+            },
+            "/Game Project/": {
+              "type": "dir"
+            }
           },
           "carryFsFrom": null,
+          "estimatedMinutes": 3,
           "hints": [
             "Create a folder to keep all of your game work together.",
             "Work in the root folder and choose the new-folder action.",
             "Name the folder exactly `Game Project`."
           ],
-          "check": { "type": "fs_dir_exists", "path": "/Game Project/" }
+          "check": {
+            "type": "fs_dir_exists",
+            "path": "/Game Project/"
+          }
         },
         {
-          "id": 5,
+          "id": 14,
           "title": "Create Your Project - 2",
+          "explainer": "## Go to Your Project Folder\n\nOpen `Game Project`. Opening a folder shows the items stored inside it.",
+          "carryFsFrom": 13,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Game Project/"
+          }
+        },
+        {
+          "id": 15,
+          "title": "Create Your Project - 3",
           "explainer": "## Add an Ideas File\n\nInside `Game Project`, create a text file called `game-ideas.txt`.\n\nThe `.txt` ending is a **file extension**. It tells you that this is a plain text file.",
-          "estimatedMinutes": 4,
-          "carryFsFrom": 4,
+          "carryFsFrom": 14,
           "completeFs": {
-            "/": { "type": "dir" },
-            "/Game Project/": { "type": "dir" },
-            "/Game Project/game-ideas.txt": { "type": "file", "content": "" }
+            "/": {
+              "type": "dir"
+            },
+            "/Game Project/": {
+              "type": "dir"
+            },
+            "/Game Project/game-ideas.txt": {
+              "type": "file",
+              "content": ""
+            }
           },
+          "estimatedMinutes": 3,
           "hints": [
             "Open your `Game Project` folder first.",
             "Choose the new-file action.",
             "Name the file exactly `game-ideas.txt`."
           ],
-          "check": { "type": "fs_file_exists", "path": "/Game Project/game-ideas.txt" }
+          "check": {
+            "type": "fs_file_exists",
+            "path": "/Game Project/game-ideas.txt"
+          }
         },
         {
-          "id": 6,
-          "title": "Create Your Project - 3",
-          "explainer": "## Write Your Game Idea\n\nOpen `game-ideas.txt` and write one sentence about a maze game. Your sentence must include the word **maze**.",
-          "estimatedMinutes": 4,
-          "carryFsFrom": 5,
+          "id": 16,
+          "title": "Create Your Project - 4",
+          "explainer": "## Open Your Ideas File\n\nOpen `game-ideas.txt` so you can view and edit its contents.",
+          "carryFsFrom": 15,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_file_opened",
+            "path": "/Game Project/game-ideas.txt"
+          }
+        },
+        {
+          "id": 17,
+          "title": "Create Your Project - 5",
+          "explainer": "## Write Your Game Idea\n\nWrite one sentence about a maze game in `game-ideas.txt`. Your sentence must include the word **maze**.",
+          "carryFsFrom": 16,
           "completeFs": {
-            "/": { "type": "dir" },
-            "/Game Project/": { "type": "dir" },
-            "/Game Project/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." }
+            "/": {
+              "type": "dir"
+            },
+            "/Game Project/": {
+              "type": "dir"
+            },
+            "/Game Project/game-ideas.txt": {
+              "type": "file",
+              "content": "My maze game will have a hidden treasure."
+            }
           },
+          "estimatedMinutes": 3,
           "hints": [
             "Open the text file so you can edit its contents.",
             "Write your own sentence about a game.",
@@ -102,57 +657,103 @@
           }
         },
         {
-          "id": 7,
-          "title": "Create Your Project - 4",
+          "id": 18,
+          "title": "Create Your Project - 6",
           "explainer": "## Add a Notes Folder\n\nInside `Game Project`, create a folder called **Notes**.\n\nA folder stored inside another folder is sometimes called a **nested folder**.",
-          "estimatedMinutes": 4,
-          "carryFsFrom": 6,
+          "carryFsFrom": 17,
           "completeFs": {
-            "/": { "type": "dir" },
-            "/Game Project/": { "type": "dir" },
-            "/Game Project/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." },
-            "/Game Project/Notes/": { "type": "dir" }
+            "/": {
+              "type": "dir"
+            },
+            "/Game Project/": {
+              "type": "dir"
+            },
+            "/Game Project/game-ideas.txt": {
+              "type": "file",
+              "content": "My maze game will have a hidden treasure."
+            },
+            "/Game Project/Notes/": {
+              "type": "dir"
+            }
           },
+          "estimatedMinutes": 3,
           "hints": [
             "Open your `Game Project` folder.",
             "Create a new folder inside it.",
             "Name the folder exactly `Notes`."
           ],
-          "check": { "type": "fs_dir_exists", "path": "/Game Project/Notes/" }
+          "check": {
+            "type": "fs_dir_exists",
+            "path": "/Game Project/Notes/"
+          }
+        },
+        {
+          "id": 19,
+          "title": "Create Your Project - 7",
+          "explainer": "## Go to Your Notes Folder\n\nOpen `Notes`. You will move your ideas file here next.",
+          "carryFsFrom": 18,
+          "estimatedMinutes": 1,
+          "check": {
+            "type": "fs_dir_opened",
+            "path": "/Game Project/Notes/"
+          }
         }
       ]
     },
     {
-      "id": 8,
+      "id": 20,
       "taskType": "information",
       "informationType": "standard",
       "title": "Moving a File",
       "explainer": "## Move Work with Cut and Paste\n\nYour ideas file is useful, but it now belongs inside `Notes`.\n\n- **Cut** selects an item to move.\n- **Paste** places it in a new location.\n- After a successful move, the file should no longer remain in its old location.\n\nCutting is not the same as deleting. The file and its contents are still available after you paste it."
     },
     {
-      "id": 9,
+      "id": 21,
       "taskType": "quiz",
       "quizType": "multiple_choice",
       "title": "Predict the Move",
       "explainer": "You cut `game-ideas.txt` from `Game Project` and paste it into `Notes`. Where should the file be afterwards?",
       "options": [
-        { "id": "a", "text": "Only inside `Notes`" },
-        { "id": "b", "text": "In both `Game Project` and `Notes`", "feedback": "That would describe copying. Cut and paste moves the original item." },
-        { "id": "c", "text": "Nowhere, because cutting always deletes a file", "feedback": "Cut prepares an item to move. Pasting places it in the new location." }
+        {
+          "id": "a",
+          "text": "Only inside `Notes`"
+        },
+        {
+          "id": "b",
+          "text": "In both `Game Project` and `Notes`",
+          "feedback": "That would describe copying. Cut and paste moves the original item."
+        },
+        {
+          "id": "c",
+          "text": "Nowhere, because cutting always deletes a file",
+          "feedback": "Cut prepares an item to move. Pasting places it in the new location."
+        }
       ],
-      "check": { "type": "answer_equals", "value": "a" }
+      "check": {
+        "type": "answer_equals",
+        "value": "a"
+      }
     },
     {
-      "id": 10,
+      "id": 22,
       "title": "Move the Ideas File",
       "explainer": "## Put the File in the Right Place\n\nCut `/Game Project/game-ideas.txt` and paste it into `/Game Project/Notes/`.\n\nCheck that the file has moved and that your maze idea is still inside it.",
+      "carryFsFrom": 19,
       "estimatedMinutes": 5,
-      "carryFsFrom": 7,
       "completeFs": {
-        "/": { "type": "dir" },
-        "/Game Project/": { "type": "dir" },
-        "/Game Project/Notes/": { "type": "dir" },
-        "/Game Project/Notes/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." }
+        "/": {
+          "type": "dir"
+        },
+        "/Game Project/": {
+          "type": "dir"
+        },
+        "/Game Project/Notes/": {
+          "type": "dir"
+        },
+        "/Game Project/Notes/game-ideas.txt": {
+          "type": "file",
+          "content": "My maze game will have a hidden treasure."
+        }
       },
       "hints": [
         "Select `game-ideas.txt` before choosing cut.",
@@ -165,7 +766,10 @@
           "path": "/Game Project/Notes/game-ideas.txt",
           "dir": "/Game Project/Notes/"
         },
-        { "type": "fs_not_exists", "path": "/Game Project/game-ideas.txt" },
+        {
+          "type": "fs_not_exists",
+          "path": "/Game Project/game-ideas.txt"
+        },
         {
           "type": "fs_content_contains",
           "path": "/Game Project/Notes/game-ideas.txt",
@@ -174,18 +778,32 @@
       ]
     },
     {
-      "id": 11,
+      "id": 23,
       "title": "Add a Design Folder",
       "explainer": "## Independent Challenge\n\nInside `Game Project`, create a folder called `Designs`. Inside `Designs`, create a text file called `character.txt`.",
+      "carryFsFrom": 22,
       "estimatedMinutes": 5,
-      "carryFsFrom": 10,
       "completeFs": {
-        "/": { "type": "dir" },
-        "/Game Project/": { "type": "dir" },
-        "/Game Project/Notes/": { "type": "dir" },
-        "/Game Project/Notes/game-ideas.txt": { "type": "file", "content": "My maze game will have a hidden treasure." },
-        "/Game Project/Designs/": { "type": "dir" },
-        "/Game Project/Designs/character.txt": { "type": "file", "content": "" }
+        "/": {
+          "type": "dir"
+        },
+        "/Game Project/": {
+          "type": "dir"
+        },
+        "/Game Project/Notes/": {
+          "type": "dir"
+        },
+        "/Game Project/Notes/game-ideas.txt": {
+          "type": "file",
+          "content": "My maze game will have a hidden treasure."
+        },
+        "/Game Project/Designs/": {
+          "type": "dir"
+        },
+        "/Game Project/Designs/character.txt": {
+          "type": "file",
+          "content": ""
+        }
       },
       "hints": [
         "Create one new folder and one new text file.",
@@ -193,12 +811,25 @@
         "The new file belongs inside `Designs`."
       ],
       "check": [
-        { "type": "fs_dir_exists", "path": "/Game Project/Designs/" },
-        { "type": "fs_file_exists", "path": "/Game Project/Designs/character.txt" }
+        {
+          "type": "fs_dir_exists",
+          "path": "/Game Project/Designs/"
+        },
+        {
+          "type": "fs_file_exists",
+          "path": "/Game Project/Designs/character.txt"
+        }
       ]
     },
     {
-      "id": 12,
+      "id": 24,
+      "taskType": "information",
+      "informationType": "standard",
+      "title": "Explain Your Structure",
+      "explainer": "## Review Your Project\n\nLook at the folder structure you built.\n\n- Why does `game-ideas.txt` belong inside `Notes`?\n- Why is `Designs` a useful name?\n- What new folder might you add if you created image files later?\n\nA clear explanation might be: `game-ideas.txt` belongs in `Notes` because it contains written planning for the game."
+    },
+    {
+      "id": 25,
       "taskType": "quiz",
       "quizType": "fill_blank",
       "title": "Finish the Sentence",
@@ -206,15 +837,32 @@
       "text": "A ___ stores a piece of work. A ___ organises items. Cut and paste will ___ an item.",
       "mode": "drag",
       "blanks": [
-        { "id": "1", "answer": "file" },
-        { "id": "2", "answer": "folder" },
-        { "id": "3", "answer": "move" }
+        {
+          "id": "1",
+          "answer": "file"
+        },
+        {
+          "id": "2",
+          "answer": "folder"
+        },
+        {
+          "id": "3",
+          "answer": "move"
+        }
       ],
       "distractors": [
-        { "id": "4", "text": "copy" },
-        { "id": "5", "text": "delete" }
+        {
+          "id": "4",
+          "text": "copy"
+        },
+        {
+          "id": "5",
+          "text": "delete"
+        }
       ],
-      "check": { "type": "quiz_result" }
+      "check": {
+        "type": "quiz_result"
+      }
     }
   ]
 }
