@@ -919,6 +919,7 @@ Text files store editable `content`. Image files may store a static lesson-asset
 | `starterFs` | No | Initial filesystem state when no carry-through exists. Defaults to `{ "/": { type: "dir" } }`. |
 | `completeFs` | No | Reference solution filesystem used in the builder. |
 | `carryFsFrom` | No | Previous task ID to carry the saved filesystem state from. |
+| `startsInDir` | No | Directory path the student's explorer opens in on task load. Defaults to `/` (root). Must be a normalised dir path ending with `/`. If the path does not exist in the loaded filesystem, the explorer falls back to root. |
 
 ### Filesystem check types
 

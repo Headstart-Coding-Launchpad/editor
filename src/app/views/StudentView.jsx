@@ -25,7 +25,7 @@ import CheckFeedbackBanner from '../components/CheckFeedbackBanner'
 import LiveActivityToast from '../components/LiveActivityToast'
 import SplitPane from '../../shared/SplitPane'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { DEFAULT_FS } from '../../shared/filesystem'
+import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
 import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
 import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
@@ -512,7 +512,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       const carryTask = carryId != null ? findTaskById(lesson?.tasks, carryId) : null
       const carryFallback = carryTask?.completeFs ?? carryTask?.starterFs ?? null
       setFsState(ownSaved ?? savedFromCarry ?? task.starterFs ?? carryFallback ?? DEFAULT_FS)
-      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? '/') : '/', openFile: null })
+      const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
+      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
       resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
@@ -1457,7 +1458,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           ) : lesson.type === 'filesystem' ? (
             <FilesystemTask
               key={`filesystem-${viewingTaskId ?? currentTaskId}`}
-              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? '/') : '/'}
+              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')) : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')}
               fs={fsState}
               onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
               onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : handleFsInteraction}

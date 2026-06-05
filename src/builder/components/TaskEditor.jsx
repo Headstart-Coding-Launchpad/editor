@@ -1283,6 +1283,21 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             onFsChange={newFs => onUpdate({ ...task, starterFs: newFs })}
             storageAssets={lesson.storageAssets ?? []}
           />
+          <div>
+            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              Starts in (optional)
+              <input
+                className="te-input"
+                value={task.startsInDir ?? ''}
+                onChange={e => set('startsInDir', e.target.value || undefined)}
+                placeholder="e.g. /Documents/"
+                style={{ fontFamily: 'var(--font-code)' }}
+              />
+            </label>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '4px 0 0' }}>
+              Directory the student's explorer opens in. Leave blank to start at the root.
+            </p>
+          </div>
           <FsTreeEditor
             label="Complete filesystem (reference solution)"
             fs={task.completeFs}
