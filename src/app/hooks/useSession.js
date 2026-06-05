@@ -17,20 +17,30 @@ export function decodeFileKey(key) {
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
  */
-export function useSession(lessonId) {
+export function useSession(lessonId, { enabled = true } = {}) {
   const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(enabled)
   const [connected, setConnected] = useState(null)
   const sessionRef = useRef(null)
 
   useEffect(() => {
+    if (!enabled) {
+      setConnected(null)
+      return
+    }
     const connRef = ref(db, '.info/connected')
     const unsub = onValue(connRef, snap => setConnected(snap.val() === true))
     return () => unsub()
-  }, [])
+  }, [enabled])
 
   useEffect(() => {
-    if (!lessonId) return
+    if (!enabled || !lessonId) {
+      sessionRef.current = null
+      setSession(null)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
     const r = ref(db, `sessions/${lessonId}`)
     sessionRef.current = r
 
@@ -40,7 +50,7 @@ export function useSession(lessonId) {
     })
 
     return () => unsub()
-  }, [lessonId])
+  }, [enabled, lessonId])
 
   // ─── Teacher helpers ──────────────────────────────────────────────────────
 
