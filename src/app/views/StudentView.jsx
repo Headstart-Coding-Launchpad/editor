@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react'
-import { doc, getDoc } from 'firebase/firestore'
-import { firestore } from '../../shared/firebase'
 import { useIsMobile } from '../../shared/useIsMobile'
+import { fetchLessonById } from '../../shared/lessonService'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
 import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
@@ -36,11 +35,12 @@ import LoadingScreen from '../components/LoadingScreen'
 
 export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
+  const useRealtimeSession = !soloMode || teacherPresentation
   const {
     session, loading: sessionLoading, registerPresence, joinSession,
     writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent,
-  } = useSession(lessonId)
+  } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
@@ -189,18 +189,25 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   // Load lesson JSON (or use lessonProp directly when provided by builder preview)
   useEffect(() => {
+    let cancelled = false
     if (lessonProp != null) {
       setLesson(lessonProp)
       setCurrentTaskId(initialTaskId ?? flattenTasks(lessonProp.tasks)[0]?.id ?? 1)
       setLessonLoading(false)
-      return
+      return () => { cancelled = true }
     }
-    getDoc(doc(firestore, 'lessons', lessonId))
-      .then(snap => {
-        if (snap.exists()) setLesson(snap.data())
+    setLesson(null)
+    setLessonLoading(true)
+    fetchLessonById(lessonId)
+      .then(loadedLesson => {
+        if (cancelled) return
+        if (loadedLesson) setLesson(loadedLesson)
         setLessonLoading(false)
       })
-      .catch(() => setLessonLoading(false))
+      .catch(() => {
+        if (!cancelled) setLessonLoading(false)
+      })
+    return () => { cancelled = true }
   }, [lessonId, lessonProp])
 
   useEffect(() => {
@@ -254,7 +261,14 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       return
     }
 
-    // No session — go straight to solo or waiting depending on URL mode
+    // Solo URLs stay solo even when a live/waiting session exists for the lesson.
+    if (soloMode) {
+      if (phaseRef.current === 'solo') return
+      if (!identity) createIdentity('Solo', Date.now())
+      setPhase('solo')
+      return
+    }
+
     if (!session) {
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
         saveCurrentWorkSnapshot()
