@@ -39,7 +39,6 @@ export function useStudentCodeState({
   removeStudent,
   updateTeacherLive,
   setTeacherLive,
-  updateDisplayName,
 }) {
   const [code, setCode]                   = useState('')
   const [files, setFiles]                 = useState([])
@@ -87,6 +86,8 @@ export function useStudentCodeState({
   outputRef.current          = output
   const runStatusRef         = useRef(runStatus)
   runStatusRef.current       = runStatus
+  const sessionRef           = useRef(session)
+  sessionRef.current         = session
   const activeStudentViewRef = useRef(session?.activeStudentView)
   activeStudentViewRef.current = session?.activeStudentView
   const editorSelectionRef   = useRef(editorSelection)
@@ -97,15 +98,18 @@ export function useStudentCodeState({
   inPersonalSandboxRef.current = inPersonalSandbox
   const fsStateRef           = useRef(fsState)
   fsStateRef.current         = fsState
+  const activeFileRef        = useRef(activeFile)
+  activeFileRef.current      = activeFile
   const fsInteractionRef     = useRef(fsInteraction)
   fsInteractionRef.current   = fsInteraction
 
   // ─── Teacher live broadcast helpers ───────────────────────────────────────
 
   function canPublishTeacherLive() {
-    if (!session?.teacherLive?.active) return false
-    if (teacherPresentation) return session?.teacherLive?.source !== 'student'
-    return session.teacherLive.sourceStudentId === identityRef.current?.anonymousId
+    const s = sessionRef.current
+    if (!s?.teacherLive?.active) return false
+    if (teacherPresentation) return s?.teacherLive?.source !== 'student'
+    return s.teacherLive.sourceStudentId === identityRef.current?.anonymousId
   }
 
   function currentTeacherLivePayload(extra = {}) {
@@ -121,7 +125,7 @@ export function useStudentCodeState({
       lessonType: lessonRef.current?.type,
       code: codeRef.current,
       files: filesMap,
-      activeFile,
+      activeFile: activeFileRef.current,
       output: outputRef.current,
       runStatus: runStatusRef.current,
       checkPassed,
@@ -270,6 +274,7 @@ export function useStudentCodeState({
   function exitPersonalSandbox() {
     if (!inPersonalSandboxRef.current) return
     savePersonalSandboxSnapshot()
+    inPersonalSandboxRef.current = false
     setInPersonalSandbox(false)
     const id = identityRef.current
     if (id?.anonymousId) writeStudentPersonalSandbox(id.anonymousId, false)
@@ -976,7 +981,6 @@ export function useStudentCodeState({
     saveCurrentWork: saveCurrentWorkSnapshot,
     resetForTaskChange,
     exitPersonalSandbox,
-    loadTask: loadTaskContent,
     currentTeacherLivePayload,
     canPublishTeacherLive,
     publishTeacherLive: publishTeacherLive,

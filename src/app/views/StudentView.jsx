@@ -84,7 +84,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     writeStudentInteraction, writeStudentPersonalSandbox,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,
-    updateDisplayName,
   })
 
   // Wire phase callbacks to latest code-state functions each render
