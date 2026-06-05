@@ -11,8 +11,10 @@ function requireAdmin(auth) {
   }
 }
 
+const SA = 'firebase-adminsdk-fbsvc@headstartcoding-repl.iam.gserviceaccount.com'
+
 // Creates a new auth user, sets the custom role claim, and mirrors the account to Firestore.
-exports.createAccount = onCall({ region: 'europe-west1' }, async ({ data, auth }) => {
+exports.createAccount = onCall({ region: 'europe-west1', invoker: 'public', serviceAccount: SA }, async ({ data, auth }) => {
   requireAdmin(auth)
   const { email, password, role, displayName } = data
   if (!email || !password || password.length < 8 || !['teacher', 'admin'].includes(role)) {
@@ -20,18 +22,24 @@ exports.createAccount = onCall({ region: 'europe-west1' }, async ({ data, auth }
   }
   const user = await getAuth().createUser({ email, password, displayName: displayName ?? '' })
   await getAuth().setCustomUserClaims(user.uid, { role })
-  await getFirestore().collection('users').doc(user.uid).set({
-    email,
-    displayName: displayName ?? '',
-    role,
-    disabled: false,
-    createdAt: FieldValue.serverTimestamp(),
-  })
+  try {
+    await getFirestore().collection('users').doc(user.uid).set({
+      email,
+      displayName: displayName ?? '',
+      role,
+      disabled: false,
+      createdAt: FieldValue.serverTimestamp(),
+    })
+  } catch (err) {
+    // Roll back the Auth user so state stays consistent and the admin can retry.
+    await getAuth().deleteUser(user.uid).catch(() => {})
+    throw new HttpsError('internal', 'Failed to write user record to Firestore; Auth account has been rolled back.')
+  }
   return { uid: user.uid }
 })
 
 // Updates the custom role claim on an existing user and syncs Firestore.
-exports.setUserRole = onCall({ region: 'europe-west1' }, async ({ data, auth }) => {
+exports.setUserRole = onCall({ region: 'europe-west1', invoker: 'public', serviceAccount: SA }, async ({ data, auth }) => {
   requireAdmin(auth)
   const { uid, role } = data
   if (!uid || !['teacher', 'admin'].includes(role)) {
@@ -42,7 +50,7 @@ exports.setUserRole = onCall({ region: 'europe-west1' }, async ({ data, auth }) 
 })
 
 // Disables an auth account and marks it as disabled in Firestore.
-exports.disableAccount = onCall({ region: 'europe-west1' }, async ({ data, auth }) => {
+exports.disableAccount = onCall({ region: 'europe-west1', invoker: 'public', serviceAccount: SA }, async ({ data, auth }) => {
   requireAdmin(auth)
   const { uid } = data
   if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
@@ -54,7 +62,7 @@ exports.disableAccount = onCall({ region: 'europe-west1' }, async ({ data, auth 
 })
 
 // Re-enables a previously disabled account.
-exports.enableAccount = onCall({ region: 'europe-west1' }, async ({ data, auth }) => {
+exports.enableAccount = onCall({ region: 'europe-west1', invoker: 'public', serviceAccount: SA }, async ({ data, auth }) => {
   requireAdmin(auth)
   const { uid } = data
   if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
@@ -63,7 +71,7 @@ exports.enableAccount = onCall({ region: 'europe-west1' }, async ({ data, auth }
 })
 
 // Permanently deletes an auth account and its Firestore document.
-exports.deleteAccount = onCall({ region: 'europe-west1' }, async ({ data, auth }) => {
+exports.deleteAccount = onCall({ region: 'europe-west1', invoker: 'public', serviceAccount: SA }, async ({ data, auth }) => {
   requireAdmin(auth)
   const { uid } = data
   if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
