@@ -7,8 +7,11 @@
  *
  * Requires GOOGLE_APPLICATION_CREDENTIALS to be set to a service account JSON file,
  * or run inside the Firebase Cloud Shell where ADC is already configured.
+ * Uses FIREBASE_PROJECT_ID / GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT when set,
+ * otherwise falls back to the default project in .firebaserc.
  *
  *   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+ *   export FIREBASE_PROJECT_ID=headstartcoding-repl
  *   node scripts/migrate-topic-library.mjs --dry-run
  *   node scripts/migrate-topic-library.mjs
  */
@@ -22,16 +25,42 @@ import { getFirestore } from 'firebase-admin/firestore'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const isDryRun  = process.argv.includes('--dry-run')
 const srcPath   = join(__dirname, '..', 'public', 'assets', 'topic-library.json')
+const firebaseRcPath = join(__dirname, '..', '.firebaserc')
 
-try {
-  getApp()
-} catch {
-  initializeApp()
+async function resolveProjectId() {
+  const envProjectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.GCLOUD_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT
+
+  if (envProjectId) return envProjectId
+
+  try {
+    const raw = await readFile(firebaseRcPath, 'utf-8')
+    return JSON.parse(raw)?.projects?.default ?? null
+  } catch {
+    return null
+  }
 }
 
-const db = getFirestore()
-
 async function main() {
+  const projectId = await resolveProjectId()
+
+  try {
+    getApp()
+  } catch {
+    initializeApp(projectId ? { projectId } : undefined)
+  }
+
+  if (!projectId) {
+    console.warn(
+      'No Firebase project ID found. Set FIREBASE_PROJECT_ID or add a default project to .firebaserc.'
+    )
+  } else {
+    console.log(`Using Firebase project: ${projectId}`)
+  }
+
+  const db = getFirestore()
   const raw  = await readFile(srcPath, 'utf-8')
   const data = JSON.parse(raw)
   const topics = Array.isArray(data) ? data : data?.topics
