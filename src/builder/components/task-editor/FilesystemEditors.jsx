@@ -10,6 +10,15 @@ import {
   normaliseFilePath,
 } from '../../../shared/filesystem.js'
 
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+const TEXT_EXTS = new Set(['txt', 'md', 'csv'])
+
+function fileExt(path) {
+  const name = entryName(path)
+  const dot = name.lastIndexOf('.')
+  return dot !== -1 ? name.slice(dot + 1).toLowerCase() : ''
+}
+
 const s = {
   label: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)' },
   input: {
@@ -26,7 +35,7 @@ const s = {
 
 // ── Compact tree editor used in the builder ───────────────────────────────────
 
-function FsTreeEditorNode({ fs, path, onFsChange, depth = 0 }) {
+function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 }) {
   const [expanded, setExpanded] = useState(depth === 0)
   const [adding, setAdding] = useState(null) // 'file' | 'dir'
   const [renaming, setRenaming] = useState(false)
@@ -126,14 +135,18 @@ function FsTreeEditorNode({ fs, path, onFsChange, depth = 0 }) {
                 fs={fs}
                 path={childPath}
                 onFsChange={onFsChange}
+                storageAssets={storageAssets}
                 depth={depth + 1}
               />
             ) : (
               <FsFileRow
                 key={childPath}
                 path={childPath}
+                entry={fs[childPath]}
                 onRename={newName => onFsChange(renameEntry(fs, childPath, newName))}
                 onDelete={() => onFsChange(deleteEntry(fs, childPath))}
+                onUpdate={updatedEntry => onFsChange({ ...fs, [childPath]: updatedEntry })}
+                storageAssets={storageAssets}
               />
             )
           )}
@@ -143,10 +156,16 @@ function FsTreeEditorNode({ fs, path, onFsChange, depth = 0 }) {
   )
 }
 
-function FsFileRow({ path, onRename, onDelete }) {
+function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = [] }) {
   const [renaming, setRenaming] = useState(false)
+  const [editingContents, setEditingContents] = useState(false)
   const ref = useRef(null)
   useEffect(() => { if (renaming && ref.current) ref.current.focus() }, [renaming])
+
+  const ext = fileExt(path)
+  const isImage = IMAGE_EXTS.has(ext)
+  const isText = TEXT_EXTS.has(ext)
+  const hasContentsEditor = isImage || isText
 
   function commitRename(newName) {
     setRenaming(false)
@@ -154,33 +173,85 @@ function FsFileRow({ path, onRename, onDelete }) {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0', marginLeft: 30 }}>
-      <span style={{ fontSize: '0.85rem' }}>📄</span>
-      {renaming ? (
-        <input
-          ref={ref}
-          defaultValue={entryName(path)}
-          style={{ ...s.input, padding: '1px 4px', width: 140, fontSize: '0.8rem' }}
-          onBlur={e => commitRename(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') commitRename(e.target.value); if (e.key === 'Escape') setRenaming(false) }}
-        />
-      ) : (
-        <span style={{ fontSize: '0.82rem', fontFamily: 'var(--font-body)', flex: 1 }}>{entryName(path)}</span>
+    <div style={{ marginLeft: 30 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
+        <span style={{ fontSize: '0.85rem' }}>📄</span>
+        {renaming ? (
+          <input
+            ref={ref}
+            defaultValue={entryName(path)}
+            style={{ ...s.input, padding: '1px 4px', width: 140, fontSize: '0.8rem' }}
+            onBlur={e => commitRename(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') commitRename(e.target.value); if (e.key === 'Escape') setRenaming(false) }}
+          />
+        ) : (
+          <span style={{ fontSize: '0.82rem', fontFamily: 'var(--font-body)', flex: 1 }}>{entryName(path)}</span>
+        )}
+        {hasContentsEditor && (
+          <button
+            title={editingContents ? 'Hide contents' : 'Edit contents'}
+            style={{ ...s.smallBtn, color: editingContents ? 'var(--colour-primary)' : undefined }}
+            onClick={() => setEditingContents(v => !v)}
+          >
+            {editingContents ? '▲' : 'contents'}
+          </button>
+        )}
+        <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>✏️</button>
+        <button title="Delete" style={{ ...s.smallBtn, color: '#dc2626' }} onClick={() => { if (confirm(`Delete "${entryName(path)}"?`)) onDelete() }}>🗑</button>
+      </div>
+
+      {editingContents && isText && (
+        <div style={{ paddingLeft: 18, paddingBottom: 4 }}>
+          <textarea
+            value={entry?.content ?? ''}
+            onChange={e => onUpdate({ ...entry, content: e.target.value })}
+            placeholder="File contents…"
+            rows={3}
+            style={{ ...s.input, fontSize: '0.8rem', resize: 'vertical', minHeight: 52, fontFamily: 'var(--font-code)', padding: '4px 8px' }}
+          />
+        </div>
       )}
-      <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>✏️</button>
-      <button title="Delete" style={{ ...s.smallBtn, color: '#dc2626' }} onClick={() => { if (confirm(`Delete "${entryName(path)}"?`)) onDelete() }}>🗑</button>
+
+      {editingContents && isImage && (
+        <div style={{ paddingLeft: 18, paddingBottom: 4 }}>
+          {storageAssets.length > 0 ? (
+            <select
+              value={entry?.src ?? ''}
+              onChange={e => onUpdate({ type: 'file', ...(e.target.value ? { src: e.target.value } : {}) })}
+              style={{ ...s.input, fontSize: '0.8rem' }}
+            >
+              <option value="">— select from Firebase Storage —</option>
+              {storageAssets.map(a => (
+                <option key={a.url} value={a.url}>{a.name}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={entry?.src ?? ''}
+              onChange={e => onUpdate({ type: 'file', ...(e.target.value ? { src: e.target.value } : {}) })}
+              placeholder="Image URL or path…"
+              style={{ ...s.input, fontSize: '0.8rem' }}
+            />
+          )}
+          {!storageAssets.length && (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#9ca3af', marginTop: 3 }}>
+              Upload images via Lesson Details → Storage Assets to enable the picker.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-export function FsTreeEditor({ label, fs, onFsChange }) {
+export function FsTreeEditor({ label, fs, onFsChange, storageAssets = [] }) {
   const safeFsValue = fs && typeof fs === 'object' ? fs : DEFAULT_FS
 
   return (
     <div>
       <div style={{ ...s.label, marginBottom: 6 }}>{label}</div>
       <div style={{ border: '1px solid var(--ui-border)', borderRadius: 6, padding: '8px 10px', background: '#fbf9ff', maxHeight: 280, overflowY: 'auto' }}>
-        <FsTreeEditorNode fs={safeFsValue} path="/" onFsChange={onFsChange} depth={0} />
+        <FsTreeEditorNode fs={safeFsValue} path="/" onFsChange={onFsChange} storageAssets={storageAssets} depth={0} />
       </div>
     </div>
   )
