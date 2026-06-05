@@ -10,11 +10,10 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `src/main.jsx` | Classroom app DOM entry — renders App into #root |
-| `src/App.jsx` | Classroom router (HashRouter): `/lesson/:lessonId` and fallback to LandingPage |
+| `src/main.jsx` | App DOM entry — renders App into #root |
+| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
-| `src/builder/main.jsx` | Lesson builder DOM entry |
-| `src/builder/App.jsx` | Builder root: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
+| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
 | `src/builder/spritePresets.js` | Pure reusable Scratch sprite preset validation and unique lesson-sprite creation helpers |
 
 ---
@@ -33,8 +32,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with sign-out, renders AccountManagement |
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tabbed navigation (Lessons / Accounts) |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
+| `LessonManagement.jsx` | Firestore `lessons` list; delete lessons; link to open/edit in Builder |
 
 ---
 
@@ -169,7 +169,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
-| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions` |
+| `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
@@ -178,6 +178,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratchChecks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES` |
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
+| `lessonService.js` | Shared Firestore helper: `fetchLessonList()` — fetches and sorts the `lessons/` collection |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 
@@ -212,9 +213,10 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `firebase.json` | Firebase project config: Firestore rules file and Cloud Functions source |
+| `firebase.json` | Firebase project config: Firestore rules, Storage rules, and Cloud Functions source |
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
+| `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
 
 ---
 

@@ -481,6 +481,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       const src = buildIframeSrc(activeFiles, activeEntryFile, {
         assets: lesson.assets ?? [],
         assetsPath: resolveAssetsPath(lesson.assetsPath),
+        storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
       })
       setIframeSrc(src)
       setRunStatus('success')
@@ -719,6 +720,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             inlineCodeLanguages={explainerInlineCodeLanguages}
             assets={lesson.assets ?? []}
             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+            storageAssets={lesson.storageAssets ?? []}
           />
         </div>
       )}
@@ -747,6 +749,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               inlineCodeLanguages={explainerInlineCodeLanguages}
               assets={lesson.assets ?? []}
               assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+              storageAssets={lesson.storageAssets ?? []}
             />
           )}
         </div>
@@ -1146,6 +1149,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                               backdrops={task.backdrops?.length > 0 ? task.backdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
                               onChange={backdrops => set('backdrops', backdrops)}
                               assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                              storageAssets={lesson.storageAssets ?? []}
                               lessonId={lesson.id}
                               lessonType={lesson.type}
                             />
@@ -1200,6 +1204,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                             hideAdd
                             onChange={handleStarterSpritesChange}
                             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                            storageAssets={lesson.storageAssets ?? []}
                             lessonId={lesson.id}
                             lessonType={lesson.type}
                           />
@@ -1485,11 +1490,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             })()}
           </div>
 
-          {lesson.assetsPath && lesson.assets?.length > 0 && (
+          {((lesson.assetsPath && lesson.assets?.length > 0) || lesson.storageAssets?.some(a => a.showInEditor)) && (
             <Field label="Asset browser (read-only - copy paths to use in starter code)">
               <AssetBrowser
                 assetsPath={resolveAssetsPath(lesson.assetsPath)}
                 assets={lesson.assets}
+                storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
                 copyMode="relative"
               />
             </Field>

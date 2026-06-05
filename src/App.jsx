@@ -6,6 +6,7 @@ import LessonRoute from './app/views/LessonRoute'
 import LandingPage from './app/views/LandingPage'
 import LoginPage from './app/views/LoginPage'
 import AdminPortal from './admin/AdminPortal'
+import BuilderApp from './builder/App'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/builder" element={<BuilderApp />} />
           <Route path="*" element={<LandingPage />} />
         </Routes>
       </HashRouter>

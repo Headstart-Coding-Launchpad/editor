@@ -60,6 +60,7 @@ export function useSession(lessonId) {
       sandboxCodePushedAt:   null,
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
+      sandboxExplainer:      null,
       students:              {},
     })
   }
@@ -88,6 +89,7 @@ export function useSession(lessonId) {
       sandboxCodePushedAt:   null,
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
+      sandboxExplainer:      null,
       students:              null,
     })
     // When the teacher closes the tab, remove the session entirely so the
@@ -133,6 +135,7 @@ export function useSession(lessonId) {
       sandboxCodePushedAt:   null,
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
+      sandboxExplainer:      null,
     })
   }
 
@@ -148,6 +151,12 @@ export function useSession(lessonId) {
     await update(ref(db, `sessions/${lessonId}`), {
       sandboxFiles:          encodeFileKeys(filesMap),
       sandboxFilesUpdatedAt: Date.now(),
+    })
+  }
+
+  async function pushSandboxExplainer(text) {
+    await update(ref(db, `sessions/${lessonId}`), {
+      sandboxExplainer: text || null,
     })
   }
 
@@ -269,7 +278,7 @@ export function useSession(lessonId) {
     connected,
     // teacher
     createSession, restartSession, startSession, endSession,
-    setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles,
+    setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent,
     // student
     registerPresence, joinSession, writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,

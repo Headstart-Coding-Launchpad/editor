@@ -6,12 +6,13 @@ import TeacherSandboxBanner from '../TeacherSandboxBanner'
 function renderBanner(overrides = {}) {
   const props = {
     staging: true,
-    isScratch: false,
     onCancel: vi.fn(),
     onReset: vi.fn(),
     onGoLive: vi.fn(),
-    onPushScratch: vi.fn(),
+    onPush: vi.fn(),
     onDeactivate: vi.fn(),
+    sandboxExplainer: '',
+    onPushExplainer: vi.fn(),
     ...overrides,
   }
   render(<TeacherSandboxBanner {...props} />)
@@ -32,7 +33,7 @@ describe('TeacherSandboxBanner — staging mode', () => {
   })
 
   it('does not render Deactivate or Push to All in staging mode', () => {
-    renderBanner({ staging: true, isScratch: true })
+    renderBanner({ staging: true })
     expect(screen.queryByRole('button', { name: 'Deactivate Sandbox' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Push to All' })).not.toBeInTheDocument()
   })
@@ -54,27 +55,34 @@ describe('TeacherSandboxBanner — live mode', () => {
     expect(screen.getByText(/Sandbox is LIVE/)).toBeInTheDocument()
   })
 
-  it('renders Reset and Deactivate buttons', () => {
+  it('renders Push to All, Reset and Deactivate buttons', () => {
     renderBanner({ staging: false })
+    expect(screen.getByRole('button', { name: 'Push to All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reset to Sandbox Starter' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Deactivate Sandbox' })).toBeInTheDocument()
   })
 
-  it('shows Push to All only for Scratch', () => {
-    const { rerender } = render(<TeacherSandboxBanner staging={false} isScratch={false} onCancel={vi.fn()} onReset={vi.fn()} onGoLive={vi.fn()} onPushScratch={vi.fn()} onDeactivate={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Push to All' })).not.toBeInTheDocument()
-
-    rerender(<TeacherSandboxBanner staging={false} isScratch={true} onCancel={vi.fn()} onReset={vi.fn()} onGoLive={vi.fn()} onPushScratch={vi.fn()} onDeactivate={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Push to All' })).toBeInTheDocument()
-  })
-
-  it('calls onReset, onPushScratch and onDeactivate', () => {
-    const props = renderBanner({ staging: false, isScratch: true })
+  it('calls onPush, onReset and onDeactivate', () => {
+    const props = renderBanner({ staging: false })
     fireEvent.click(screen.getByRole('button', { name: 'Push to All' }))
     fireEvent.click(screen.getByRole('button', { name: 'Reset to Sandbox Starter' }))
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate Sandbox' }))
-    expect(props.onPushScratch).toHaveBeenCalledOnce()
+    expect(props.onPush).toHaveBeenCalledOnce()
     expect(props.onReset).toHaveBeenCalledOnce()
     expect(props.onDeactivate).toHaveBeenCalledOnce()
+  })
+
+  it('renders explainer textarea and Push Explainer button', () => {
+    renderBanner({ staging: false })
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Push Explainer' })).toBeInTheDocument()
+  })
+
+  it('calls onPushExplainer with typed text', async () => {
+    const props = renderBanner({ staging: false })
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Try printing a list!' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Push Explainer' }))
+    expect(props.onPushExplainer).toHaveBeenCalledWith('Try printing a list!')
   })
 })

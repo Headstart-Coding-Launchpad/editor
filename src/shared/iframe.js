@@ -25,15 +25,18 @@ let _lastLoadId = null
  *
  * Asset references (paths in `assets`) in HTML attributes or CSS url(...)
  * values are rewritten to their static server URL: `assetsPath + assetPath`.
+ * Storage asset names (entries in `storageAssets`) are rewritten to their
+ * Firebase Storage download URLs so students can reference them by filename.
  */
-export function buildIframeSrc(files, entryFile = 'index.html', { assets = [], assetsPath = '' } = {}) {
+export function buildIframeSrc(files, entryFile = 'index.html', { assets = [], assetsPath = '', storageAssets = [] } = {}) {
   if (!files || files.length === 0) return null
 
   const editableFileNames = new Set(files.map(file => file.name))
   const staticAssets = assets.filter(assetPath => !editableFileNames.has(assetPath))
+  const filteredStorageAssets = storageAssets.filter(a => !editableFileNames.has(a.name))
   const resolvedFiles = files.map(file => ({
     ...file,
-    content: rewriteAssetReferences(file, staticAssets, assetsPath),
+    content: rewriteAssetReferences(file, staticAssets, assetsPath, filteredStorageAssets),
   }))
 
   // Build filename → Blob URL map for editable files
@@ -70,31 +73,49 @@ export function buildIframeSrc(files, entryFile = 'index.html', { assets = [], a
   return URL.createObjectURL(rewrittenBlob)
 }
 
-function rewriteAssetReferences(file, assets, assetsPath) {
-  if (!assetsPath || assets.length === 0) return file.content
-
+function rewriteAssetReferences(file, assets, assetsPath, storageAssets = []) {
   const isHtml = file.type === 'html' || file.name.endsWith('.html')
   const isCss = file.type === 'css' || file.name.endsWith('.css')
   if (!isHtml && !isCss) return file.content
 
   let content = file.content
-  for (const assetPath of assets) {
-    const escaped = assetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const encodedAssetPath = assetPath.split('/').map(encodeURIComponent).join('/')
-    const staticUrl = assetsPath + encodedAssetPath
+
+  if (assetsPath && assets.length > 0) {
+    for (const assetPath of assets) {
+      const escaped = assetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const encodedAssetPath = assetPath.split('/').map(encodeURIComponent).join('/')
+      const staticUrl = assetsPath + encodedAssetPath
+
+      if (isHtml) {
+        content = content.replace(
+          new RegExp(`((?:href|src)\\s*=\\s*["'])${escaped}(["'])`, 'g'),
+          `$1${staticUrl}$2`,
+        )
+      }
+
+      content = content.replace(
+        new RegExp(`(url\\(\\s*["']?)${escaped}(["']?\\s*\\))`, 'g'),
+        `$1${staticUrl}$2`,
+      )
+    }
+  }
+
+  for (const { name, url } of storageAssets) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
     if (isHtml) {
       content = content.replace(
         new RegExp(`((?:href|src)\\s*=\\s*["'])${escaped}(["'])`, 'g'),
-        `$1${staticUrl}$2`,
+        `$1${url}$2`,
       )
     }
 
     content = content.replace(
       new RegExp(`(url\\(\\s*["']?)${escaped}(["']?\\s*\\))`, 'g'),
-      `$1${staticUrl}$2`,
+      `$1${url}$2`,
     )
   }
+
   return content
 }
 
@@ -134,7 +155,7 @@ function _injectSecurity(html, loadId) {
   // CSP blocks all outbound network requests (fetch, XHR, WebSocket).
   // blob: and 'unsafe-inline'/'unsafe-eval' are needed for the virtual filesystem
   // and typical student code patterns.
-    const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' blob:; connect-src 'self' ws://localhost:5173; img-src 'self' data: blob:;">`  // Text reporter: fires on DOMContentLoaded and posts body text to the parent.
+    const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' blob:; connect-src 'self' ws://localhost:5173; img-src 'self' data: blob: https://firebasestorage.googleapis.com;">`  // Text reporter: fires on DOMContentLoaded and posts body text to the parent.
   // The parent's waitForIframeText() listens for this message to run output_contains checks.
   const textReporter = `<script>(function(){var s=function(){try{window.parent.postMessage({type:'__hsc_text__',id:'${loadId}',text:document.body?document.body.innerText:''},'*')}catch(e){}};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s)}else{s()}})()</script>`
 
