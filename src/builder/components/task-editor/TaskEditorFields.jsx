@@ -5,6 +5,7 @@ import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
 import { createSpriteFromPreset, normalizeSpritePresets, SPRITE_PRESETS_PATH } from '../../spritePresets'
 import { DEFAULT_FS } from '../../../shared/filesystem'
+import { flattenTasks } from '../../../shared/taskUtils'
 
 function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
   return (
@@ -82,9 +83,10 @@ function Modal({ title, children, onClose }) {
 }
 
 function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFilesystem }) {
-  const taskIndex = lesson.tasks.findIndex(t => t.id === task.id)
-  const prevTask = taskIndex > 0 ? lesson.tasks[taskIndex - 1] : null
-  const otherTasks = lesson.tasks.filter(t => t.id !== task.id)
+  const flatTasks = flattenTasks(lesson.tasks)
+  const taskIndex = flatTasks.findIndex(t => t.id === task.id)
+  const prevTask = taskIndex > 0 ? flatTasks[taskIndex - 1] : null
+  const otherTasks = flatTasks.filter(t => t.id !== task.id)
 
   const carryField = isScratch ? 'carryBlocksFrom' : isFilesystem ? 'carryFsFrom' : 'carryCodeFrom'
   const carryFrom = isScratch ? task.carryBlocksFrom : isFilesystem ? task.carryFsFrom : task.carryCodeFrom
@@ -182,7 +184,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFil
             className="te-select"
             value={carryFrom ?? ''}
             onChange={e => {
-              const sourceTask = lesson.tasks.find(t => t.id === parseInt(e.target.value, 10))
+              const sourceTask = flatTasks.find(t => t.id === parseInt(e.target.value, 10))
               if (sourceTask) copyCompleteCode(sourceTask)
             }}
           >
