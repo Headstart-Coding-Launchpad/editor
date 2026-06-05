@@ -1,13 +1,16 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react'
-import { doc, getDoc } from 'firebase/firestore'
-import { firestore } from '../../shared/firebase'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
-import { useSession, decodeFileKey } from '../hooks/useSession'
+import { useSession } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
-import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
-import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
-import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../shared/checks'
+import { useLessonLoader } from '../hooks/useLessonLoader'
+import { useStudentPhase } from '../hooks/useStudentPhase'
+import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import { flattenTasks, findTaskById, filterTasksByMode } from '../../shared/taskUtils'
+import { resolveAssetsPath } from '../../shared/assetPaths'
+import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
+import { loadSavedCode, loadPersonalSandboxCode } from '../studentStorage'
+import { selectScratchInitialProject } from '../studentTaskContent'
+import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
@@ -24,18 +27,15 @@ import FilesystemTask from '../components/FilesystemTask'
 import CheckFeedbackBanner from '../components/CheckFeedbackBanner'
 import LiveActivityToast from '../components/LiveActivityToast'
 import SplitPane from '../../shared/SplitPane'
-import { resolveAssetsPath } from '../../shared/assetPaths'
-import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
-import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadSavedFs, saveFsState } from '../studentStorage'
-import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
-import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
-import { getQuizSuggestion } from '../studentQuizContent'
 import TaskSlideTransition from '../components/TaskSlideTransition'
 import StudentEditorHeader from '../components/StudentEditorHeader'
 import LoadingScreen from '../components/LoadingScreen'
 
 export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
+
+  // ─── Core hooks ───────────────────────────────────────────────────────────
+
   const {
     session, loading: sessionLoading, registerPresence, joinSession,
     writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
@@ -44,434 +44,55 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
-  const [lesson, setLesson]             = useState(null)
-  const [lessonLoading, setLessonLoading] = useState(true)
-  const [phase, setPhase]               = useState('loading') // loading | waiting | name-entry | lesson | sandbox | solo | ended
-  const [currentTaskId, setCurrentTaskId] = useState(initialTaskId ?? 1)
-  const [viewingTaskId, setViewingTaskId] = useState(null) // null = current task
-  const [code, setCode]                 = useState('')
-  const [files, setFiles]               = useState([])
-  const [activeFile, setActiveFile]     = useState('')
-  const [output, setOutput]             = useState('')
-  const [runStatus, setRunStatus]       = useState(null)
-  const [running, setRunning]           = useState(false)
-  const [runningTests, setRunningTests]  = useState(false)
-  const [testResults, setTestResults]    = useState(null) // null | [{id, name, passed}]
-  const [pyodideStatus, setPyodideStatus] = useState('idle') // idle | loading | ready
-  const [iframeSrc, setIframeSrc]         = useState(null)
-  const [teacherLiveIframeSrc, setTeacherLiveIframeSrc] = useState(null)
-  const [htmlPreviewCollapsed, setHtmlPreviewCollapsed] = useState(true)
-  const [inputPrompt, setInputPrompt]     = useState(null)
-  const [checkPassed, setCheckPassed]     = useState(false)
-  const [checkAttempted, setCheckAttempted] = useState(false)
-  const [checkSuggestion, setCheckSuggestion] = useState('')
-  const [repeatedSuggestionCount, setRepeatedSuggestionCount] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState('')
-  const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
-  const [scratchExternalState, setScratchExternalState] = useState(null)
-  const [fsState, setFsState] = useState(DEFAULT_FS)
-  const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
-  const [editorSelection, setEditorSelection] = useState(null)
-  const [editorActivity, setEditorActivity] = useState(null)
-  const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
+  const { lesson, lessonLoading, firstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
+
+  // ─── Stable callback refs wired to code-state after it initialises ─────────
+
+  const saveWorkRef = useRef(null)
+  const exitSandboxRef = useRef(null)
+  const onBeforeTaskChange = useCallback(() => saveWorkRef.current?.(), [])
+  const onPersonalSandboxExit = useCallback(() => exitSandboxRef.current?.(), [])
+
+  // ─── Phase state machine ───────────────────────────────────────────────────
+
+  const {
+    phase, setPhase,
+    currentTaskId, setCurrentTaskId,
+    viewingTaskId, setViewingTaskId,
+    handleNameSubmit, handleWaitForTeacher, handleGoSolo,
+  } = useStudentPhase({
+    session, sessionLoading,
+    identity, identityLoaded,
+    lessonId, lessonLoading,
+    soloMode, teacherPresentation,
+    firstTaskId,
+    onBeforeTaskChange,
+    onPersonalSandboxExit,
+    createIdentity, updateTimestamp, joinSession,
+  })
+
+  // ─── Code / editor state ───────────────────────────────────────────────────
+
+  const cs = useStudentCodeState({
+    lessonId, lesson, currentTaskId, viewingTaskId, phase,
+    effectiveIdentity, identity, session,
+    teacherPresentation, previewMode,
+    writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput,
+    writeStudentInteraction, writeStudentPersonalSandbox,
+    registerPresence, removeStudent,
+    updateTeacherLive, setTeacherLive,
+    updateDisplayName,
+  })
+
+  // Wire phase callbacks to latest code-state functions each render
+  saveWorkRef.current = cs.saveCurrentWork
+  exitSandboxRef.current = cs.exitPersonalSandbox
+
   const isMobile = useIsMobile()
-  const iframeRef = useRef(null)
-  const appendOutputRef = useRef(null)
-  const identityRef = useRef(identity)
-  identityRef.current = identity
-  const phaseRef = useRef(phase)
-  phaseRef.current = phase
-  // Live refs so the session-end effect can read current editor state without stale closures
-  const codeRef = useRef(code)
-  codeRef.current = code
-  const filesRef = useRef(files)
-  filesRef.current = files
-  const outputRef = useRef(output)
-  outputRef.current = output
-  const runStatusRef = useRef(runStatus)
-  runStatusRef.current = runStatus
-  const currentTaskIdRef = useRef(currentTaskId)
-  currentTaskIdRef.current = currentTaskId
-  const lessonRef = useRef(lesson)
-  lessonRef.current = lesson
-  const activeStudentViewRef = useRef(session?.activeStudentView)
-  activeStudentViewRef.current = session?.activeStudentView
-  const editorSelectionRef = useRef(editorSelection)
-  editorSelectionRef.current = editorSelection
-  const editorActivityRef = useRef(editorActivity)
-  editorActivityRef.current = editorActivity
-  const inPersonalSandboxRef = useRef(inPersonalSandbox)
-  inPersonalSandboxRef.current = inPersonalSandbox
-  const fsStateRef = useRef(fsState)
-  fsStateRef.current = fsState
-  const fsInteractionRef = useRef(fsInteraction)
-  fsInteractionRef.current = fsInteraction
 
-  function currentTeacherLivePayload(extra = {}) {
-    const filesMap = Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
-    const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
-    const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
-    return {
-      active: true,
-      source: teacherPresentation ? 'teacher' : 'student',
-      sourceStudentId,
-      sourceStudentName,
-      taskId: currentTaskIdRef.current,
-      lessonType: lessonRef.current?.type,
-      code: codeRef.current,
-      files: filesMap,
-      activeFile,
-      output: outputRef.current,
-      runStatus: runStatusRef.current,
-      checkPassed,
-      checkAttempted,
-      checkSuggestion,
-      selection: editorSelectionRef.current,
-      activity: editorActivityRef.current,
-      ...extra,
-    }
-  }
+  // ─── Cross-hook coordination ───────────────────────────────────────────────
 
-  function resetCheckFeedback() {
-    setCheckPassed(false)
-    setCheckAttempted(false)
-    setCheckSuggestion('')
-    setRepeatedSuggestionCount(0)
-    setTestResults(null)
-  }
-
-  function applyCheckFeedback(passed, suggestion = '') {
-    const nextSuggestion = passed ? '' : String(suggestion ?? '').trim()
-    setCheckPassed(passed)
-    setCheckAttempted(true)
-    setCheckSuggestion(nextSuggestion)
-    setRepeatedSuggestionCount(prev => {
-      if (passed || !nextSuggestion) return 0
-      return checkSuggestion === nextSuggestion ? prev + 1 : 1
-    })
-    return nextSuggestion
-  }
-
-  function canPublishTeacherLive() {
-    if (!session?.teacherLive?.active) return false
-    if (teacherPresentation) return session?.teacherLive?.source !== 'student'
-    return session.teacherLive.sourceStudentId === identityRef.current?.anonymousId
-  }
-
-  function publishTeacherLive(extra = {}) {
-    if (!canPublishTeacherLive()) return
-    updateTeacherLive(currentTeacherLivePayload(extra))
-  }
-
-  function saveCurrentWorkSnapshot() {
-    const id = identityRef.current
-    const currentLesson = lessonRef.current
-    const taskId = currentTaskIdRef.current
-    if (!id || teacherPresentation || !currentLesson) return
-    if (inPersonalSandboxRef.current) return // personal sandbox state is saved separately
-
-    const task = flattenTasks(currentLesson.tasks).find(t => t.id === taskId)
-    if (task?.taskType === 'quiz' || task?.taskType === 'information') return
-
-    if (currentLesson.type === 'python') {
-      saveCode(lessonId, taskId, id.anonymousId, {
-        code: codeRef.current,
-        output: outputRef.current,
-        runStatus: runStatusRef.current,
-      })
-    } else if (currentLesson.type === 'html') {
-      filesRef.current.forEach(f => saveFile(lessonId, taskId, f.name, id.anonymousId, f.content))
-    } else if (currentLesson.type === 'filesystem' && !previewMode) {
-      saveFsState(lessonId, taskId, id.anonymousId, fsStateRef.current)
-    }
-    // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
-  }
-
-  // Load lesson JSON (or use lessonProp directly when provided by builder preview)
-  useEffect(() => {
-    if (lessonProp != null) {
-      setLesson(lessonProp)
-      setCurrentTaskId(initialTaskId ?? flattenTasks(lessonProp.tasks)[0]?.id ?? 1)
-      setLessonLoading(false)
-      return
-    }
-    getDoc(doc(firestore, 'lessons', lessonId))
-      .then(snap => {
-        if (snap.exists()) setLesson(snap.data())
-        setLessonLoading(false)
-      })
-      .catch(() => setLessonLoading(false))
-  }, [lessonId, lessonProp])
-
-  useEffect(() => {
-    if (lesson?.type === 'html') setHtmlPreviewCollapsed(true)
-  }, [lesson?.type, currentTaskId])
-
-  useEffect(() => {
-    if (teacherPresentation || lesson?.type !== 'html' || !session?.teacherLive?.active || !session.teacherLive.files) {
-      setTeacherLiveIframeSrc(null)
-      return
-    }
-    const liveFiles = toTeacherLiveFiles(session.teacherLive.files)
-    const liveTask = flattenTasks(lesson.tasks).find(t => t.id === session.teacherLive.taskId)
-    setHtmlPreviewCollapsed(false)
-    setTeacherLiveIframeSrc(buildIframeSrc(liveFiles, liveTask?.entryFile ?? 'index.html', {
-      assets: lesson.assets ?? [],
-      assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
-    }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])
-
-  // Warm up Pyodide for Python lessons
-  useEffect(() => {
-    if (!lesson || lesson.type !== 'python' || isPyodideReady()) return
-    setPyodideStatus('loading')
-    initPyodide(msg => setPyodideStatus(msg))
-      .then(() => setPyodideStatus('ready'))
-      .catch(() => setPyodideStatus('error'))
-  }, [lesson])
-
-  // Determine phase once session + identity are loaded
-  useEffect(() => {
-    if ((!soloMode && sessionLoading) || (!teacherPresentation && !identityLoaded) || lessonLoading) return
-
-    if (teacherPresentation) {
-      if (!session) {
-        setPhase('waiting')
-        return
-      }
-      if (session.state === 'ended') {
-        setPhase('ended')
-        return
-      }
-      if (session.state === 'sandbox') {
-        setPhase('sandbox')
-        return
-      }
-      setCurrentTaskId(session.currentTaskId ?? 1)
-      setPhase('lesson')
-      return
-    }
-
-    // No session — go straight to solo or waiting depending on URL mode
-    if (!session) {
-      if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
-        saveCurrentWorkSnapshot()
-        setPhase('ended')
-        return
-      }
-      if (phaseRef.current === 'join-choice' || phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      if (phaseRef.current === 'loading') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      // Already solo — stay solo
-      if (!identity) createIdentity('Solo', Date.now())
-      setPhase('solo')
-      return
-    }
-
-    // Session ended — exit any join flow gracefully
-    if (session.state === 'ended') {
-      if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
-        saveCurrentWorkSnapshot()
-        setPhase('ended')
-        return
-      }
-      if (phaseRef.current === 'loading' || phaseRef.current === 'join-choice') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      if (!identity) createIdentity('Solo', Date.now())
-      setPhase('solo')
-      return
-    }
-
-    // Verify the session belongs to this lesson before proceeding
-    if (session.lessonId && session.lessonId !== lessonId) {
-      if (!identity) createIdentity('Solo', Date.now())
-      setPhase('solo')
-      return
-    }
-
-    // Solo mode is URL-determined — stay in current phase when session state changes
-    if (phaseRef.current === 'solo' || phaseRef.current === 'ended') return
-
-    // Don't interrupt the student while they're entering their name
-    if (phaseRef.current === 'name-entry') return
-
-    if (session.state === 'waiting') {
-      // Already in waiting room — check if they need to be prompted for name now
-      if (phaseRef.current === 'waiting') {
-        const alreadyRegistered = identity && identity.lastSessionTimestamp === session.createdAt
-        if (!alreadyRegistered) setPhase('name-entry')
-        return
-      }
-      // Fresh arrival in live mode → name entry
-      if (soloMode) return
-      setPhase('name-entry')
-      return
-    }
-
-    // Session is active or sandbox
-    const sessionTs = session.createdAt
-    const isReturning = identity && identity.lastSessionTimestamp === sessionTs
-
-    // Student was in the waiting room and the session just became active
-    if (phaseRef.current === 'waiting') {
-      if (isReturning) {
-        if (session.state === 'sandbox') { setPhase('sandbox'); return }
-        setCurrentTaskId(session.currentTaskId ?? 1)
-        setPhase('lesson')
-      } else {
-        setPhase('name-entry')
-      }
-      return
-    }
-
-    if (!identity || !isReturning) {
-      setPhase('name-entry')
-      return
-    }
-
-    // Returning student — update timestamp and drop in
-    updateTimestamp(sessionTs)
-
-    if (session.state === 'sandbox') { setPhase('sandbox'); return }
-    setCurrentTaskId(session.currentTaskId ?? 1)
-    setPhase('lesson')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionLoading, identityLoaded, lessonLoading, session?.state, session?.createdAt, session?.currentTaskId, soloMode, teacherPresentation])
-
-  useEffect(() => {
-    if (teacherPresentation && !sessionLoading && session?.state === 'ended') window.close()
-  }, [teacherPresentation, sessionLoading, session?.state])
-
-  // React to teacher moving to a new task
-  useEffect(() => {
-    if (!session?.currentTaskId || phase !== 'lesson') return
-    if (session.currentTaskId !== currentTaskId) {
-      // If student was in personal sandbox, save their sandbox state and pull them back to the lesson
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxSnapshot()
-        setInPersonalSandbox(false)
-        if (identity?.anonymousId) writeStudentPersonalSandbox(identity.anonymousId, false)
-      }
-      saveCurrentWorkSnapshot()
-      setCurrentTaskId(session.currentTaskId)
-      setViewingTaskId(null)
-      setOutput('')
-      setRunStatus(null)
-      resetCheckFeedback()
-      setSelectedAnswer('')
-      loadTaskContent(session.currentTaskId)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.currentTaskId])
-
-  // React to sandbox code pushes (Python)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'python' || !session?.sandboxCode) return
-    setCode(session.sandboxCode)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox block pushes (Scratch)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'scratch' || !session?.sandboxCode) return
-    try {
-      // sandboxCode is a JSON string of the Blockly workspace state
-      setScratchSandboxProject(JSON.parse(session.sandboxCode))
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox files pushes (HTML)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'html') return
-    if (session?.sandboxFiles) {
-      const decoded = Object.entries(session.sandboxFiles).map(([k, v]) => {
-        const name = decodeFileKey(k)
-        const type = name.endsWith('.html') ? 'html' : name.endsWith('.css') ? 'css' : 'js'
-        return { name, content: v, type }
-      })
-      setFiles(decoded)
-      if (decoded.length > 0) setActiveFile(decoded[0].name)
-    } else if (lesson?.sandboxStarterFiles?.length > 0) {
-      setFiles(lesson.sandboxStarterFiles)
-      setActiveFile(lesson.sandboxStarterFiles[0].name)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxFilesUpdatedAt])
-
-  // React to teacher remotely resetting or completing this student's code
-  const myStudentData = session?.students?.[identity?.anonymousId]
-  useEffect(() => {
-    if (!myStudentData?.remoteResetPushedAt || (phase !== 'lesson' && phase !== 'solo')) return
-    const action = myStudentData.remoteResetAction
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (!task || !action) return
-
-    if (lesson.type === 'python') {
-      let target
-      if (action === 'starter') target = task.starterCode ?? ''
-      else if (action === 'complete') target = task.completeCode ?? ''
-      else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        target = stage?.code ?? task.starterCode ?? ''
-      }
-      setCode(target)
-      setOutput('')
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'html') {
-      let targetFiles, targetEntry
-      if (action === 'starter') {
-        targetFiles = task.starterFiles ?? []
-        targetEntry = task.entryFile
-      } else if (action === 'complete') {
-        targetFiles = task.completeFiles ?? []
-        targetEntry = task.completeEntryFile ?? task.entryFile
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetFiles = stage?.files ?? task.starterFiles ?? []
-        targetEntry = stage?.entryFile ?? task.entryFile
-      }
-      setFiles(targetFiles.map(f => ({ ...f })))
-      setActiveFile(targetEntry ?? targetFiles[0]?.name ?? '')
-      setIframeSrc(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'scratch') {
-      let targetBlocks
-      if (action === 'starter') targetBlocks = task.starterBlocks ?? null
-      else if (action === 'complete') targetBlocks = task.completeBlocks ?? null
-      else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetBlocks = stage?.blocks ?? task.starterBlocks ?? null
-      }
-      setScratchExternalState(targetBlocks)
-    } else if (lesson.type === 'filesystem') {
-      const targetFs = action === 'complete'
-        ? (task.completeFs ?? task.starterFs ?? DEFAULT_FS)
-        : (task.starterFs ?? DEFAULT_FS)
-      setFsState(targetFs)
-      resetCheckFeedback()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myStudentData?.remoteResetPushedAt])
-
-  // Sync teacher rename back to local identity so TopBar updates immediately
+  // Sync identity rename from Firebase to local state
   useEffect(() => {
     if (!identity?.anonymousId || !session?.students) return
     const firebaseName = session.students[identity.anonymousId]?.displayName
@@ -481,201 +102,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.students?.[identity?.anonymousId]?.displayName])
 
-  function loadTaskContent(taskId) {
-    const activeIdentity = effectiveIdentity
-    if (!lesson || !activeIdentity) return
-    const task = flattenTasks(lesson.tasks).find(t => t.id === taskId)
-    if (!task) return
-    if (task.taskType === 'quiz' || task.taskType === 'information') {
-      setCode('')
-      setFiles([])
-      setActiveFile('')
-      setSelectedAnswer('')
-      resetCheckFeedback()
-      return
-    }
-    if (lesson.type === 'python') {
-      setCode(selectPythonTaskCode({
-        tasks: lesson.tasks,
-        task,
-        taskId,
-        phase,
-        readSavedCode: sourceTaskId => loadSavedCode(lessonId, sourceTaskId, activeIdentity.anonymousId),
-      }))
-    } else if (lesson.type === 'scratch') {
-      setFiles([])
-      setActiveFile('')
-    } else if (lesson.type === 'filesystem') {
-      const carryId = task.carryFsFrom ?? null
-      const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
-      const savedFromCarry = (!previewMode && carryId != null) ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null
-      // Walk the carry chain to find the nearest ancestor with a completeFs or starterFs,
-      // so that carry works even when intermediate tasks have no FS of their own.
-      let carryFallback = null
-      if (carryId != null) {
-        let resolveId = carryId
-        while (resolveId != null) {
-          const resolveTask = findTaskById(lesson.tasks, resolveId)
-          if (!resolveTask) break
-          const fs = resolveTask.completeFs ?? resolveTask.starterFs
-          if (fs) { carryFallback = fs; break }
-          resolveId = resolveTask.carryFsFrom ?? null
-        }
-      }
-      const initialFs = carryId != null
-        ? (ownSaved ?? savedFromCarry ?? carryFallback ?? task.starterFs ?? DEFAULT_FS)
-        : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
-      setFsState(initialFs)
-      const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
-      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
-      resetCheckFeedback()
-    } else {
-      const taskFiles = selectHtmlTaskFiles({
-        tasks: lesson.tasks,
-        task,
-        taskId,
-        phase,
-        readSavedFile: (sourceTaskId, filename) => loadSavedFile(lessonId, sourceTaskId, filename, activeIdentity.anonymousId),
-      })
-      setFiles(taskFiles)
-      setActiveFile(task.entryFile ?? taskFiles[0]?.name ?? '')
-    }
-  }
-
-  useEffect(() => {
-    if ((phase === 'lesson' || phase === 'solo') && effectiveIdentity && lesson) {
-      loadTaskContent(currentTaskId)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, currentTaskId, lesson, effectiveIdentity?.anonymousId])
-
-  useEffect(() => {
-    if (!canPublishTeacherLive()) return
-    updateTeacherLive(currentTeacherLivePayload())
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted])
-
-  // When phase leaves lesson/solo, exit personal sandbox silently
-  useEffect(() => {
-    if (phase === 'lesson' || phase === 'solo') return
-    if (!inPersonalSandboxRef.current) return
-    savePersonalSandboxSnapshot()
-    setInPersonalSandbox(false)
-    if (identity?.anonymousId) writeStudentPersonalSandbox(identity.anonymousId, false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
-
-  // Register Firebase presence so the teacher sees who is connected live
-  useEffect(() => {
-    if (teacherPresentation) return
-    if ((phase === 'lesson' || phase === 'sandbox') && identity?.anonymousId) {
-      registerPresence(identity.anonymousId)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
-
-  // Presentation windows must not appear as students, including when the
-  // teacher browser already has a previous student identity in localStorage.
-  useEffect(() => {
-    if (!teacherPresentation || !identity?.anonymousId || !session?.students?.[identity.anonymousId]) return
-    removeStudent(identity.anonymousId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, identity?.anonymousId, session?.students])
-
-  // When the teacher starts live-viewing this student, publish the current
-  // in-memory editor state immediately so the modal is not blank until typing.
-  useEffect(() => {
-    if (teacherPresentation) return
-    if (!identity?.anonymousId || session?.activeStudentView !== identity.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    if (!lesson || viewingTaskId !== null) return
-
-    if (lesson.type === 'python') {
-      writeStudentCode(identity.anonymousId, code)
-      writeStudentOutput(identity.anonymousId, output)
-    } else if (lesson.type === 'html') {
-      writeStudentFiles(identity.anonymousId, Object.fromEntries(files.map(f => [f.name, f.content])))
-    } else if (lesson.type === 'scratch') {
-      const saved = loadSavedCode(lessonId, currentTaskId, identity.anonymousId)
-      if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
-    }
-    writeStudentInteraction(identity.anonymousId, {
-      selection: editorSelectionRef.current,
-      activeFile: lesson.type === 'html' ? activeFile : undefined,
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.activeStudentView])
-
-  // ─── Personal sandbox ──────────────────────────────────────────────────────
-
-  function savePersonalSandboxSnapshot() {
-    const id = identityRef.current
-    if (!id || teacherPresentation || !lessonRef.current) return
-    if (lessonRef.current.type === 'python') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current })
-    } else if (lessonRef.current.type === 'html') {
-      filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content))
-    } else if (lessonRef.current.type === 'scratch') {
-      // Scratch saves incrementally via handleScratchChange so nothing to do here
-    }
-  }
-
-  function handleEnterPersonalSandbox() {
-    if (!identity || teacherPresentation || !lesson) return
-    const id = identity.anonymousId
-    if (lesson.type === 'python') {
-      const saved = loadPersonalSandboxCode(lessonId, id)
-      setCode(saved?.code ?? lesson.sandboxStarterCode ?? '')
-    } else if (lesson.type === 'html') {
-      const starterFiles = lesson.sandboxStarterFiles ?? []
-      const sandboxFiles = starterFiles.map(f => {
-        const savedContent = loadPersonalSandboxFile(lessonId, f.name, id)
-        return { ...f, content: savedContent ?? f.content }
-      })
-      const withContent = sandboxFiles.length > 0 ? sandboxFiles : starterFiles.map(f => ({ ...f }))
-      setFiles(withContent)
-      setActiveFile(withContent[0]?.name ?? '')
-    }
-    setOutput('')
-    setRunStatus(null)
-    setIframeSrc(null)
-    resetCheckFeedback()
-    setInPersonalSandbox(true)
-    if (session) writeStudentPersonalSandbox(id, true)
-  }
-
-  function handleLeavePersonalSandbox() {
-    if (!identity) return
-    savePersonalSandboxSnapshot()
-    setInPersonalSandbox(false)
-    if (session) writeStudentPersonalSandbox(identity.anonymousId, false)
-    setOutput('')
-    setRunStatus(null)
-    setIframeSrc(null)
-    resetCheckFeedback()
-    loadTaskContent(currentTaskId)
-  }
-
-  // ─── Event handlers ────────────────────────────────────────────────────────
-
-  async function handleNameSubmit(displayName) {
-    const sessionTs = session.createdAt
-    const id = createIdentity(displayName, sessionTs)
-    await joinSession(id.anonymousId, displayName)
-    if (session.state === 'waiting') { setPhase('waiting'); return }
-    if (session.state === 'sandbox') { setPhase('sandbox'); return }
-    setCurrentTaskId(session.currentTaskId ?? 1)
-    setPhase('lesson')
-  }
-
-  function handleWaitForTeacher() {
-    if (session && session.state === 'waiting') {
-      setPhase('name-entry')
-    } else {
-      // No session yet — go to waiting room; when session appears we'll prompt for name
-      setPhase('waiting')
-    }
-  }
+  // ─── Navigation handlers (cross-hook coordination) ─────────────────────────
 
   function handleSoloNavigate(taskId) {
     if (teacherPresentation) {
@@ -683,11 +110,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setTaskId(taskId)
       setCurrentTaskId(taskId)
       setViewingTaskId(null)
-      setOutput('')
-      setRunStatus(null)
-      resetCheckFeedback()
-      setSelectedAnswer('')
-      setIframeSrc(null)
+      cs.resetForTaskChange()
       updateTeacherLive({ taskId, output: '', runStatus: null, checkPassed: false, checkAttempted: false })
       return
     }
@@ -698,485 +121,26 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       const currIdx = flatTasks.findIndex(t => t.id === currentTaskId)
       if (targetIdx > currIdx) {
         const hasCompletion = !!currentTask?.check || currentTask?.tests?.length > 0
-        const canAdvance = !hasCompletion || currentTask?.taskType === 'information' || checkPassed
+        const canAdvance = !hasCompletion || currentTask?.taskType === 'information' || cs.checkPassed
         if (!canAdvance || targetIdx > currIdx + 1) return
       }
     }
-    // Persist current editing state before leaving the task
-    if (currentTask?.taskType === 'quiz' || currentTask?.taskType === 'information') {
-      // Quiz answers are not local editor work.
-    } else if (lesson?.type === 'python') {
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { code, output, runStatus })
-    } else if (lesson?.type === 'html') {
-      files.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
-    } else if (lesson?.type === 'filesystem' && !previewMode) {
-      saveFsState(lessonId, currentTaskId, identity.anonymousId, fsState)
-    }
-    // scratch: blocks are saved incrementally via handleScratchChange
+    cs.saveCurrentWork()
     setViewingTaskId(null)
-    setOutput('')
-    setRunStatus(null)
-    resetCheckFeedback()
-    setSelectedAnswer('')
-    setIframeSrc(null)
+    cs.resetForTaskChange()
     setCurrentTaskId(taskId)
   }
 
-  function handleShowCompleteCode() {
-    if (!identity) return
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (!task) return
-
-    if (lesson.type === 'python') {
-      const completeCode = task.completeCode ?? ''
-      setCode(completeCode)
-      setOutput('')
-      setRunStatus(null)
-      applyCheckFeedback(true)
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: completeCode, output: '', runStatus: null })
-    } else if (lesson.type === 'html') {
-      const completeFiles = (task.completeFiles ?? []).map(f => ({ ...f }))
-      setFiles(completeFiles)
-      setActiveFile(task.completeEntryFile ?? task.entryFile ?? completeFiles[0]?.name ?? '')
-      setIframeSrc(null)
-      setRunStatus(null)
-      applyCheckFeedback(true)
-      completeFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
-    } else if (lesson.type === 'scratch') {
-      const completeBlocks = task.completeBlocks ?? null
-      setScratchExternalState(completeBlocks)
-      applyCheckFeedback(true)
-      if (completeBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: completeBlocks })
-    } else if (lesson.type === 'filesystem') {
-      const completeFs = task.completeFs ?? DEFAULT_FS
-      setFsState(completeFs)
-      applyCheckFeedback(true)
-      if (!previewMode) saveFsState(lessonId, currentTaskId, identity.anonymousId, completeFs)
-    }
-  }
-
-  async function handleRunTests() {
-    const actor = effectiveIdentity
-    if (!actor || runningTests) return
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (!task?.tests?.length) return
-    const isWatched = session?.activeStudentView === actor.anonymousId
-
-    setRunningTests(true)
-    setOutput('')
-    setRunStatus(null)
-    setTestResults(null)
-    resetCheckFeedback()
-
-    const results = []
-    try {
-      if (!isPyodideReady()) {
-        setPyodideStatus('loading')
-        await initPyodide()
-        setPyodideStatus('ready')
-      }
-
-      for (const test of task.tests) {
-        const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
-        let accumulated = ''
-        const result = await runPython(code, {
-          onOutput: text => { accumulated += text },
-          onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
-        })
-        const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
-        const checks = normalizeChecks(resolvedCheck)
-        const checkContext = { status: result.status, code, variables: result.variables ?? {} }
-        const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
-        results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
-        if (result.status === 'stopped') break
-      }
-
-      const allPassed = results.length > 0 && results.every(r => r.passed)
-      const finalStatus = results.some(r => r.status === 'error')
-        ? 'error'
-        : results.some(r => r.status === 'stopped') ? 'stopped' : 'success'
-      const displayedOutput = results.find(r => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
-      setTestResults(results)
-      setOutput(displayedOutput)
-      setRunStatus(finalStatus)
-      if (finalStatus !== 'stopped') applyCheckFeedback(allPassed)
-
-      if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
-      }
-      if (!teacherPresentation) {
-        if (inPersonalSandboxRef.current) {
-          savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
-        } else {
-          saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: displayedOutput, runStatus: finalStatus })
-        }
-      }
-      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code, output: displayedOutput, status: finalStatus, checkPassed: allPassed })
-      }
-    } catch {
-      stopPython()
-      setRunStatus('error')
-    } finally {
-      setRunningTests(false)
-    }
-  }
-
-  async function handleRun() {
-    const actor = effectiveIdentity
-    if (!actor || running) return
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const isWatched = session?.activeStudentView === actor.anonymousId
-
-    setRunning(true)
-    setOutput('')
-    setRunStatus(null)
-    setTestResults(null)
-    resetCheckFeedback()
-
-    if (lesson.type === 'python') {
-      let accumulated = ''
-      const echoOutput = (text) => {
-        accumulated += text
-        setOutput(accumulated)
-        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
-        if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
-      }
-      appendOutputRef.current = echoOutput
-      const result = await runPython(code, {
-        onOutput: (text, _kind) => echoOutput(text),
-        onInputRequired: (prompt) => setInputPrompt(prompt),
-      })
-      setInputPrompt(null)
-
-      if (result.status === 'stopped') {
-        setRunning(false)
-        return
-      }
-
-      const status = result.status
-      setRunStatus(status)
-
-      const checkContext = { status, code, variables: result.variables ?? {} }
-      const hasTests = task?.tests?.length > 0
-      const passed = hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext)
-      const incorrectHint = (!passed && !hasTests && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
-      const suggestion = (!hasTests && task?.check) ? (incorrectHint || getFirstFailedCheckHint(task.check, accumulated, checkContext)) : ''
-      if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
-
-      if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !hasTests && !!task?.check, checkSuggestion: suggestion })
-      }
-      if (!teacherPresentation) {
-        if (inPersonalSandboxRef.current) {
-          savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
-        } else {
-          saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: accumulated, runStatus: status })
-        }
-      }
-      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
-      }
-      setRunning(false)
+  async function handleToggleTeacherLive() {
+    if (!teacherPresentation) return
+    if (session?.teacherLive?.active) {
+      await setTeacherLive(null)
       return
     }
-
-    // HTML — build iframe
-    setHtmlPreviewCollapsed(false)
-    const src = buildIframeSrc(files, task?.entryFile ?? 'index.html', {
-      assets: lesson.assets ?? [],
-      assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
-    })
-    setIframeSrc(src)
-    setRunStatus('success')
-
-    // Wait for the iframe to report its body text via postMessage, then run checks
-    waitForIframeText().then(text => {
-      const codeStr = files.map(f => f.content).join('\n')
-      const iframeDoc = iframeRef.current?.contentDocument ?? null
-      const passed = evaluateCheck(task?.check, text, { code: codeStr, iframeDoc })
-      const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, text, { code: codeStr, iframeDoc }) : ''
-      const suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, text, { code: codeStr, iframeDoc })) : ''
-      if (task?.check) applyCheckFeedback(passed, suggestion)
-      if (canPublishTeacherLive()) {
-        publishTeacherLive({ runStatus: 'success', checkPassed: passed, checkAttempted: !!task?.check, checkSuggestion: suggestion, files: Object.fromEntries(files.map(f => [f.name, f.content])) })
-      }
-      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        const filesMap = Object.fromEntries(files.map(f => [f.name, f.content]))
-        writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
-      }
-      if (!teacherPresentation) {
-        if (inPersonalSandboxRef.current) {
-          files.forEach(f => savePersonalSandboxFile(lessonId, f.name, actor.anonymousId, f.content))
-        } else {
-          files.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
-        }
-      }
-    })
-    setRunning(false)
+    await setTeacherLive(cs.currentTeacherLivePayload())
   }
 
-  function handleStop() {
-    stopPython()
-  }
-
-  function handleInputSubmit(value) {
-    appendOutputRef.current?.(value + '\n')
-    setInputPrompt(null)
-    provideInput(value)
-  }
-
-  function handleCodeChange(newCode) {
-    setCode(newCode)
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ code: newCode })
-    }
-    if (teacherPresentation) return
-    if (identity && lesson?.type === 'python') {
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxCode(lessonId, identity.anonymousId, { code: newCode })
-      } else {
-        saveCode(lessonId, currentTaskId, identity.anonymousId, { code: newCode, output, runStatus })
-      }
-    }
-    if (session?.activeStudentView === identity?.anonymousId) {
-      writeStudentCode(identity.anonymousId, newCode)
-    }
-  }
-
-  function handleEditorSelection(selection, filename = null) {
-    const nextSelection = {
-      ...selection,
-      ...(filename ? { file: filename } : {}),
-    }
-    editorSelectionRef.current = nextSelection
-    setEditorSelection(nextSelection)
-    if (canPublishTeacherLive()) publishTeacherLive({ selection: nextSelection })
-    if (!teacherPresentation && session?.activeStudentView === identity?.anonymousId) {
-      writeStudentInteraction(identity.anonymousId, { selection: nextSelection })
-    }
-  }
-
-  function handleEditorActivity(activity, filename = null) {
-    const nextActivity = {
-      ...activity,
-      ...(filename ? { file: filename } : {}),
-    }
-    editorActivityRef.current = nextActivity
-    setEditorActivity(nextActivity)
-    if (canPublishTeacherLive()) publishTeacherLive({ activity: nextActivity })
-    if (!teacherPresentation && session?.activeStudentView === identity?.anonymousId) {
-      writeStudentInteraction(identity.anonymousId, { activity: nextActivity })
-    }
-  }
-
-  function handleFileTabChange(filename) {
-    setActiveFile(filename)
-    editorSelectionRef.current = null
-    setEditorSelection(null)
-    if (canPublishTeacherLive()) publishTeacherLive({ activeFile: filename, selection: null })
-    if (!teacherPresentation && session?.activeStudentView === identity?.anonymousId) {
-      writeStudentInteraction(identity.anonymousId, { selection: null, activeFile: filename })
-    }
-  }
-
-  function handleFileChange(filename, content) {
-    const nextFiles = files.map(f => f.name === filename ? { ...f, content } : f)
-    setFiles(nextFiles)
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({
-        files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])),
-        activeFile: filename,
-      })
-    }
-    if (teacherPresentation) return
-    if (identity && lesson?.type === 'html') {
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxFile(lessonId, filename, identity.anonymousId, content)
-      } else {
-        saveFile(lessonId, currentTaskId, filename, identity.anonymousId, content)
-      }
-    }
-    if (session?.activeStudentView === identity?.anonymousId) {
-      const filesMap = Object.fromEntries(
-        files.map(f => [f.name, f.name === filename ? content : f.content])
-      )
-      writeStudentFiles(identity.anonymousId, filesMap)
-    }
-  }
-
-  function handleScratchChange(workspaceStates) {
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ code: JSON.stringify(workspaceStates) })
-    }
-    if (teacherPresentation) return
-    if (!identity) return
-    if (inPersonalSandboxRef.current) {
-      savePersonalSandboxCode(lessonId, identity.anonymousId, { state: workspaceStates })
-    } else {
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { state: workspaceStates })
-    }
-    if (activeStudentViewRef.current === identity.anonymousId) {
-      writeStudentCode(identity.anonymousId, JSON.stringify(workspaceStates))
-    }
-  }
-
-  function handleScratchCheck(passed, snapshot) {
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
-    const suggestion = passed ? '' : String(checks.find(c => c?.hint)?.hint ?? '').trim()
-    if (task?.check) applyCheckFeedback(passed, suggestion)
-    if (!identity || lesson?.type !== 'scratch') return
-    if (phase === 'lesson' || phase === 'sandbox' || activeStudentViewRef.current === identity.anonymousId) {
-      const states = snapshot?.workspaceStates ?? loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ?? null
-      writeStudentRun(identity.anonymousId, {
-        code: states ? JSON.stringify(states) : undefined,
-        output: snapshot?.spriteStates ? JSON.stringify(snapshot.spriteStates) : undefined,
-        status: 'success',
-        checkPassed: passed,
-      })
-    }
-  }
-
-  function handleResetCode() {
-    if (inPersonalSandboxRef.current) {
-      if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.')) return
-      if (lesson.type === 'python') {
-        setCode(lesson.sandboxStarterCode ?? '')
-        setOutput('')
-        setRunStatus(null)
-      } else if (lesson.type === 'html') {
-        const starterFiles = (lesson.sandboxStarterFiles ?? []).map(f => ({ ...f }))
-        setFiles(starterFiles)
-        setActiveFile(starterFiles[0]?.name ?? '')
-        setIframeSrc(null)
-        setRunStatus(null)
-      }
-      return
-    }
-    if (!window.confirm('Reset your code to the starter code? Your current work will be lost.')) return
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (lesson.type === 'python') {
-      setCode(task?.starterCode ?? '')
-      if (canPublishTeacherLive()) publishTeacherLive({ code: task?.starterCode ?? '', output: '', runStatus: null, checkPassed: false, checkAttempted: false })
-      setOutput('')
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'html') {
-      const taskFiles = (task?.starterFiles ?? []).map(f => ({ ...f }))
-      setFiles(taskFiles)
-      if (canPublishTeacherLive()) publishTeacherLive({ files: Object.fromEntries(taskFiles.map(f => [f.name, f.content])), output: '', runStatus: null, checkPassed: false, checkAttempted: false })
-      setActiveFile(task?.entryFile ?? taskFiles[0]?.name ?? '')
-      setIframeSrc(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'scratch') {
-      setScratchExternalState(task?.starterBlocks ?? null)
-    }
-  }
-
-  async function handleSubmit() {
-    const actor = effectiveIdentity
-    if (!actor) return
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const isHtml = lesson?.type === 'html'
-    const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code
-    const passed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck) : false
-    const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, '', { code: codeForCheck }) : ''
-    const suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, '', { code: codeForCheck })) : ''
-    if (task?.check) applyCheckFeedback(passed, suggestion)
-    setRunStatus('submitted')
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({
-        code: isHtml ? undefined : code,
-        files: isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : undefined,
-        output: isHtml ? undefined : '',
-        runStatus: 'submitted',
-        checkPassed: passed,
-        checkAttempted: !!task?.check,
-        checkSuggestion: suggestion,
-      })
-    }
-    if (!teacherPresentation && isHtml) {
-      files.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
-    } else if (!teacherPresentation) {
-      saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: '', runStatus: 'submitted' })
-    }
-    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-      const filesMap = isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : undefined
-      await writeStudentRun(actor.anonymousId, { code: isHtml ? undefined : code, files: filesMap, output: isHtml ? undefined : '', status: 'submitted', checkPassed: passed })
-    }
-  }
-
-  async function handleQuizSelect(answer, passedOverride) {
-    const actor = effectiveIdentity
-    if (!actor) return
-
-    // Intermediate state update (match/fill_blank tile placement in progress)
-    if (passedOverride === null) {
-      setSelectedAnswer(answer)
-      return
-    }
-
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const passed =
-      typeof passedOverride === 'boolean'
-        ? passedOverride
-        : task?.check
-          ? evaluateCheck(task.check, answer, { answer: typeof answer === 'string' ? answer : '' })
-          : task?.quizType === 'short_answer'
-            ? !!(typeof answer === 'string' ? answer.trim() : false)
-            : false
-    const suggestion = passed ? '' : getQuizSuggestion(task, answer)
-
-    setSelectedAnswer(answer)
-    applyCheckFeedback(passed, suggestion)
-    setRunStatus('submitted')
-    const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ answer: serializedAnswer, runStatus: 'submitted', checkPassed: passed, checkAttempted: true, checkSuggestion: suggestion })
-    }
-    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-      await writeStudentRun(actor.anonymousId, {
-        answer: serializedAnswer,
-        status: 'submitted',
-        checkPassed: passed,
-      })
-    }
-  }
-
-  function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const passed = task?.check ? evaluateCheck(task.check, null, context) : false
-    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
-    if (task?.check && (passed || !suppressFailFeedback)) applyCheckFeedback(passed, suggestion)
-    if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
-      writeStudentRun(effectiveIdentity.anonymousId, {
-        code: JSON.stringify(context.fs),
-        status: task?.check ? (passed ? 'success' : 'error') : null,
-        checkPassed: passed,
-      })
-    }
-  }
-
-  function handleFsChange(newFs) {
-    setFsState(newFs)
-    if (!teacherPresentation && !previewMode) {
-      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
-    }
-    applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
-  }
-
-  const handleFsInteraction = useCallback((interaction) => {
-    setFsInteraction(interaction)
-    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction }, { suppressFailFeedback: true })
-  // applyFsCheckAndPublish reads lesson/currentTaskId/phase/effectiveIdentity via closure;
-  // listing them here keeps navigate (which deps on handleFsInteraction) stable between renders
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity])
-
-  // ─── Render helpers ────────────────────────────────────────────────────────
+  // ─── Phase guards ──────────────────────────────────────────────────────────
 
   if (phase === 'loading' || (!soloMode && sessionLoading) || lessonLoading || (!teacherPresentation && !identityLoaded)) {
     return <LoadingScreen message="Loading…" />
@@ -1184,11 +148,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   if (!lesson) {
     return <LoadingScreen message={`Lesson "${lessonId}" not found.`} />
-  }
-
-  function handleGoSolo() {
-    createIdentity('Solo', Date.now())
-    setPhase('solo')
   }
 
   if (phase === 'name-entry') {
@@ -1233,6 +192,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     )
   }
 
+  // ─── Lesson / sandbox / solo render ───────────────────────────────────────
+
   const taskDisplayMode = phase === 'solo' ? 'solo' : phase === 'lesson' ? 'live' : null
   const visibleTasks = filterTasksByMode(lesson.tasks, taskDisplayMode)
   const flatTasks = flattenTasks(visibleTasks)
@@ -1260,15 +221,15 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     identityId: identity?.anonymousId,
     currentTaskId,
     viewingTaskId,
-    code,
-    files,
-    activeFile,
-    output,
-    runStatus,
-    checkPassed,
-    checkAttempted,
-    checkSuggestion,
-    editorActivity,
+    code: cs.code,
+    files: cs.files,
+    activeFile: cs.activeFile,
+    output: cs.output,
+    runStatus: cs.runStatus,
+    checkPassed: cs.checkPassed,
+    checkAttempted: cs.checkAttempted,
+    checkSuggestion: cs.checkSuggestion,
+    editorActivity: cs.editorActivity,
   })
   const task = flatTasks.find(t => t.id === displayedTaskId)
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
@@ -1280,7 +241,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const currentTask = flatTasks.find(t => t.id === currentTaskId)
   const currentTaskIsAutoEvaluated = currentTask?.taskType === 'quiz' && (currentTask?.quizType === 'match' || currentTask?.quizType === 'fill_blank')
   const currentTaskHasCompletion = !!currentTask?.check || currentTask?.tests?.length > 0 || currentTaskIsAutoEvaluated
-  const canAdvanceSolo = !currentTaskHasCompletion || currentTask?.taskType === 'information' || checkPassed
+  const canAdvanceSolo = !currentTaskHasCompletion || currentTask?.taskType === 'information' || cs.checkPassed
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || canAdvanceSolo
   const hasCompleteSolution = lesson.type === 'python'
     ? !!task?.completeCode
@@ -1289,7 +250,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     : lesson.type === 'filesystem'
     ? !!task?.completeFs
     : (task?.completeFiles?.length > 0)
-  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && repeatedSuggestionCount >= 2
+  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.repeatedSuggestionCount >= 2
   const hasPersonalSandbox = lesson.type === 'python'
     ? !!(lesson.sandboxStarterCode != null)
     : lesson.type === 'html'
@@ -1297,7 +258,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     : lesson.type === 'scratch'
     ? !!(lesson.sandboxStarterCode != null)
     : false
-  const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && displayCheckPassed && !inPersonalSandbox && !isForcedTeacherLive
+  const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? styles.taskContentQuiz
     : (!isSandbox && isInformationTask)
@@ -1316,15 +277,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       : styles.editorArea
 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
-
-  async function handleToggleTeacherLive() {
-    if (!teacherPresentation) return
-    if (session?.teacherLive?.active) {
-      await setTeacherLive(null)
-      return
-    }
-    await setTeacherLive(currentTeacherLivePayload())
-  }
 
   const topBarRight = teacherPresentation ? (
     <div style={styles.presentationControls}>
@@ -1419,13 +371,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         </div>
       )}
 
-      {inPersonalSandbox && (
+      {cs.inPersonalSandbox && (
         <div style={styles.personalSandboxBanner}>
           <span>Personal Sandbox — your lesson progress is saved</span>
           <button
             className="btn-secondary"
             style={{ marginLeft: 16, padding: '4px 12px', fontSize: 13 }}
-            onClick={handleLeavePersonalSandbox}
+            onClick={cs.handleLeavePersonalSandbox}
           >
             Close Sandbox
           </button>
@@ -1434,21 +386,21 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
       <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...styles.body, overflow: 'hidden' } : styles.body}>
         <TaskSlideTransition
-          transitionKey={`${phase}-${inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`}
+          transitionKey={`${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`}
           style={taskContentStyle}
         >
-          {task?.explainer && !isSandbox && !inPersonalSandbox && !isQuizTask && !isInformationTask && (
+          {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
             <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
           )}
 
         <div style={editorAreaStyle} className={isForcedTeacherLive ? 'live-view-active' : undefined}>
-          {!isSandbox && !inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted && (
+          {!isSandbox && !cs.inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted && (
             <CheckFeedbackBanner
               passed={displayCheckPassed}
               failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
               suggestion={displayCheckSuggestion}
-              onShowCompleteCode={canOfferCompleteSolution ? handleShowCompleteCode : undefined}
-              onGoPersonalSandbox={canOfferPersonalSandbox ? handleEnterPersonalSandbox : undefined}
+              onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
+              onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
             />
           )}
           {isSandbox && session?.sandboxExplainer && (
@@ -1460,41 +412,41 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             <QuizTask
               task={task}
               showQuestion
-              selectedAnswer={selectedAnswer}
-              onSelectAnswer={isViewingPrev ? undefined : handleQuizSelect}
-              submitted={runStatus === 'submitted'}
-              checkPassed={checkPassed}
+              selectedAnswer={cs.selectedAnswer}
+              onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
+              submitted={cs.runStatus === 'submitted'}
+              checkPassed={cs.checkPassed}
               disabled={isViewingPrev}
               showResult={false}
             />
           ) : lesson.type === 'filesystem' ? (
             <FilesystemTask
               key={`filesystem-${viewingTaskId ?? currentTaskId}`}
-              initialDir={task?.carryFsFrom ? (fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')) : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')}
-              fs={fsState}
-              onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFsChange}
-              onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : handleFsInteraction}
+              initialDir={task?.carryFsFrom ? (cs.fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')) : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')}
+              fs={cs.fsState}
+              onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsChange}
+              onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsInteraction}
               assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
               assets={lesson.assets}
               disabled={isViewingPrev || isForcedTeacherLive}
             />
           ) : lesson.type === 'scratch' ? (() => {
-            const personalSandboxScratchState = inPersonalSandbox
+            const personalSandboxScratchState = cs.inPersonalSandbox
               ? (loadPersonalSandboxCode(lessonId, identity?.anonymousId)?.state ?? lesson.sandboxStarterCode ?? null)
               : null
-            const initialProject = inPersonalSandbox ? null : selectScratchInitialProject({
+            const initialProject = cs.inPersonalSandbox ? null : selectScratchInitialProject({
               task,
               taskId: viewingTaskId ?? currentTaskId,
               readSavedCode: sourceTaskId => loadSavedCode(lessonId, sourceTaskId, identity?.anonymousId),
             })
             return (
               <>
-                {!isViewingPrev && !isSandbox && !inPersonalSandbox && !isForcedTeacherLive && (
+                {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && (
                   <div style={{ display: 'flex', flexShrink: 0, paddingBottom: 4 }}>
                     <button
                       className="btn-ghost-outline"
                       style={styles.resetBtn}
-                      onClick={handleResetCode}
+                      onClick={cs.handleResetCode}
                       title="Reset blocks to the starter blocks for this task"
                     >
                       Reset Blocks
@@ -1502,15 +454,15 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                   </div>
                 )}
                 <ScratchWorkspace
-                  key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : inPersonalSandbox ? 'personal-sandbox' : 'task'}`}
-                  task={inPersonalSandbox ? null : task}
+                  key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}`}
+                  task={cs.inPersonalSandbox ? null : task}
                   readOnly={isViewingPrev || isForcedTeacherLive}
-                  unrestricted={isSandbox || inPersonalSandbox}
+                  unrestricted={isSandbox || cs.inPersonalSandbox}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
                   initialState={initialProject}
-                  onStateChange={isViewingPrev || isForcedTeacherLive ? undefined : handleScratchChange}
-                  onCheckResult={isViewingPrev || isForcedTeacherLive || inPersonalSandbox ? undefined : handleScratchCheck}
-                  externalState={isSandbox ? scratchSandboxProject : inPersonalSandbox ? personalSandboxScratchState : scratchExternalState}
+                  onStateChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleScratchChange}
+                  onCheckResult={isViewingPrev || isForcedTeacherLive || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
+                  externalState={isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
                   syncNowKey={session?.activeStudentView === identity?.anonymousId ? session?.activeStudentView : null}
                 />
               </>
@@ -1526,28 +478,28 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                       <button
                         className="btn-primary"
                         style={styles.studentEditorPrimaryBtn}
-                        onClick={handleSubmit}
+                        onClick={cs.handleSubmit}
                       >
                         Submit
                       </button>
                     ) : (
                       <>
                         <button
-                          className={running || runningTests ? 'btn-danger' : 'btn-primary'}
+                          className={cs.running || cs.runningTests ? 'btn-danger' : 'btn-primary'}
                           style={styles.studentEditorPrimaryBtn}
-                          onClick={running || runningTests ? handleStop : handleRun}
-                          disabled={!running && !runningTests && pyodideStatus === 'loading'}
+                          onClick={cs.running || cs.runningTests ? cs.handleStop : cs.handleRun}
+                          disabled={!cs.running && !cs.runningTests && cs.pyodideStatus === 'loading'}
                         >
-                          {running || runningTests ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
+                          {cs.running || cs.runningTests ? 'Stop' : cs.pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
                         </button>
                         {task?.tests?.length > 0 && (
                           <button
                             className="btn-primary"
                             style={styles.studentEditorPrimaryBtn}
-                            onClick={runningTests ? undefined : handleRunTests}
-                            disabled={running || pyodideStatus === 'loading' || runningTests}
+                            onClick={cs.runningTests ? undefined : cs.handleRunTests}
+                            disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
                           >
-                            {runningTests ? 'Running tests…' : 'Run Tests'}
+                            {cs.runningTests ? 'Running tests…' : 'Run Tests'}
                           </button>
                         )}
                       </>
@@ -1555,8 +507,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                     <button
                       className="btn-ghost-outline"
                       style={styles.resetBtn}
-                      onClick={handleResetCode}
-                      disabled={running}
+                      onClick={cs.handleResetCode}
+                      disabled={cs.running}
                       title="Reset code to the starter code for this task"
                     >
                       Reset Code
@@ -1565,18 +517,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                 </div>
               )}
               <PythonEditor
-                code={isForcedTeacherLive ? displayCode : isViewingPrev ? (loadSavedCode(lessonId, viewingTaskId, identity?.anonymousId)?.code ?? '') : code}
+                code={isForcedTeacherLive ? displayCode : isViewingPrev ? (loadSavedCode(lessonId, viewingTaskId, identity?.anonymousId)?.code ?? '') : cs.code}
                 readOnly={isViewingPrev || isForcedTeacherLive}
-                onChange={isViewingPrev || isForcedTeacherLive ? undefined : handleCodeChange}
-                onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : handleEditorSelection}
-                onActivity={isViewingPrev || isForcedTeacherLive ? undefined : handleEditorActivity}
+                onChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleCodeChange}
+                onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
+                onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
                 remoteSelection={isForcedTeacherLive ? displaySelection : null}
-                pyodideStatus={pyodideStatus}
+                pyodideStatus={cs.pyodideStatus}
               />
               {!isViewingPrev && !isForcedTeacherLive && (
                 task?.interactionMode === 'submit' ? (
                   <>
-                    {runStatus === 'submitted' && (
+                    {cs.runStatus === 'submitted' && (
                       task?.check
                         ? null
                         : <div style={styles.submitBanner}>Code submitted</div>
@@ -1585,17 +537,17 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                 ) : (
                   <>
                     <OutputPanel
-                      output={output}
-                      runStatus={runStatus}
-                      inputPrompt={inputPrompt}
-                      onInputSubmit={handleInputSubmit}
-                      checkPassed={checkPassed}
+                      output={cs.output}
+                      runStatus={cs.runStatus}
+                      inputPrompt={cs.inputPrompt}
+                      onInputSubmit={cs.handleInputSubmit}
+                      checkPassed={cs.checkPassed}
                       hasCheck={!!task?.check || task?.tests?.length > 0}
-                      running={running || runningTests}
+                      running={cs.running || cs.runningTests}
                     />
-                    {testResults !== null && (
+                    {cs.testResults !== null && (
                       <div style={styles.testResultsPanel}>
-                        {testResults.map((r, i) => (
+                        {cs.testResults.map((r, i) => (
                           <span key={r.id ?? i} style={{ ...styles.testResultBadge, background: r.passed ? '#dcfce7' : '#fef3c7', color: r.passed ? '#15803d' : '#b45309' }}>
                             {r.passed ? '✓' : '✗'} {r.name || `Test ${i + 1}`}
                           </span>
@@ -1630,19 +582,19 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                 {!isViewingPrev && !isForcedTeacherLive && (
                   <StudentEditorHeader
                     task={task}
-                    running={running}
-                    onRun={handleRun}
-                    onSubmit={handleSubmit}
-                    onReset={handleResetCode}
+                    running={cs.running}
+                    onRun={cs.handleRun}
+                    onSubmit={cs.handleSubmit}
+                    onReset={cs.handleResetCode}
                   />
                 )}
                 <HtmlEditor
                   files={displayFiles}
                   activeFile={displayActiveFile}
-                  onTabChange={isForcedTeacherLive ? undefined : handleFileTabChange}
-                  onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFileChange}
-                  onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : handleEditorSelection}
-                  onActivity={isViewingPrev || isForcedTeacherLive ? undefined : handleEditorActivity}
+                  onTabChange={isForcedTeacherLive ? undefined : cs.handleFileTabChange}
+                  onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFileChange}
+                  onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
+                  onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
                   remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
                   readOnly={isViewingPrev || isForcedTeacherLive}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
@@ -1653,11 +605,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               {task?.interactionMode !== 'submit' && (
                 <div style={styles.htmlMobilePreview}>
                   <CollapsibleIframePreview
-                    src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
-                    iframeRef={iframeRef}
+                    src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+                    iframeRef={cs.iframeRef}
                     fill
-                    collapsed={htmlPreviewCollapsed}
-                    onToggle={() => setHtmlPreviewCollapsed(v => !v)}
+                    collapsed={cs.htmlPreviewCollapsed}
+                    onToggle={() => cs.setHtmlPreviewCollapsed(v => !v)}
                     animate
                   />
                 </div>
@@ -1670,15 +622,15 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             <>
             <SplitPane
               style={styles.htmlSplitPane}
-              rightCollapsed={task?.interactionMode === 'submit' || htmlPreviewCollapsed}
+              rightCollapsed={task?.interactionMode === 'submit' || cs.htmlPreviewCollapsed}
               collapsedRightWidth={task?.interactionMode === 'submit' ? 0 : 44}
               collapsedRight={
                 task?.interactionMode === 'submit' ? null : (
                   <CollapsibleIframePreview
-                    src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
-                    iframeRef={iframeRef}
+                    src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+                    iframeRef={cs.iframeRef}
                     collapsed
-                    onToggle={() => setHtmlPreviewCollapsed(false)}
+                    onToggle={() => cs.setHtmlPreviewCollapsed(false)}
                   />
                 )
               }
@@ -1687,19 +639,19 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                   {!isViewingPrev && !isForcedTeacherLive && (
                     <StudentEditorHeader
                       task={task}
-                      running={running}
-                      onRun={handleRun}
-                      onSubmit={handleSubmit}
-                      onReset={handleResetCode}
+                      running={cs.running}
+                      onRun={cs.handleRun}
+                      onSubmit={cs.handleSubmit}
+                      onReset={cs.handleResetCode}
                     />
                   )}
                   <HtmlEditor
                     files={displayFiles}
                     activeFile={displayActiveFile}
-                    onTabChange={isForcedTeacherLive ? undefined : handleFileTabChange}
-                    onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : handleFileChange}
-                    onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : handleEditorSelection}
-                    onActivity={isViewingPrev || isForcedTeacherLive ? undefined : handleEditorActivity}
+                    onTabChange={isForcedTeacherLive ? undefined : cs.handleFileTabChange}
+                    onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFileChange}
+                    onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
+                    onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
                     remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
                     readOnly={isViewingPrev || isForcedTeacherLive}
                     assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
@@ -1710,11 +662,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               }
               right={
                 <CollapsibleIframePreview
-                  src={isForcedTeacherLive ? teacherLiveIframeSrc : iframeSrc}
-                  iframeRef={iframeRef}
+                  src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+                  iframeRef={cs.iframeRef}
                   fill
                   collapsed={false}
-                  onToggle={() => setHtmlPreviewCollapsed(true)}
+                  onToggle={() => cs.setHtmlPreviewCollapsed(true)}
                   animate
                 />
               }
@@ -1753,7 +705,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       </div>
       {isSolo && (
         <div style={styles.soloNav}>
-          {!inPersonalSandbox && (
+          {!cs.inPersonalSandbox && (
             <button
               className="btn-secondary"
               style={styles.soloNavBtn}
@@ -1763,26 +715,26 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               Previous
             </button>
           )}
-          {inPersonalSandbox ? (
+          {cs.inPersonalSandbox ? (
             <span style={styles.soloNavLabel}>Personal Sandbox</span>
           ) : (
             <span style={styles.soloNavLabel}>
               Task {currentIndex + 1} of {flatTasks.length}
             </span>
           )}
-          {inPersonalSandbox ? null : hasPersonalSandbox && !isQuizTask && !isInformationTask && (
+          {cs.inPersonalSandbox ? null : hasPersonalSandbox && !isQuizTask && !isInformationTask && (
             <button
               className="btn-ghost-outline"
               style={{ ...styles.soloNavBtn, fontSize: 14 }}
-              onClick={handleEnterPersonalSandbox}
+              onClick={cs.handleEnterPersonalSandbox}
               title="Open your personal sandbox to experiment freely"
             >
               Open Sandbox
             </button>
           )}
-          {!inPersonalSandbox && (
+          {!cs.inPersonalSandbox && (
             <button
-              className={`btn-secondary${checkPassed && currentIndex < flatTasks.length - 1 ? ' btn-next-success' : ''}`}
+              className={`btn-secondary${cs.checkPassed && currentIndex < flatTasks.length - 1 ? ' btn-next-success' : ''}`}
               style={{
                 ...styles.soloNavBtn,
                 ...(canNavigateNextSolo && currentIndex < flatTasks.length - 1
