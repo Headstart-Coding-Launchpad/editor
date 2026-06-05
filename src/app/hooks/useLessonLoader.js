@@ -22,7 +22,7 @@ export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = nul
     setLessonLoading(true)
     getDoc(doc(firestore, 'lessons', lessonId))
       .then(snap => {
-        if (snap.exists()) setLesson(snap.data())
+        if (snap.exists()) setLesson({ id: snap.id, ...snap.data() })
         setLessonLoading(false)
       })
       .catch(() => setLessonLoading(false))

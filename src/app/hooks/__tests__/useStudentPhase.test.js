@@ -37,6 +37,7 @@ function defaultProps(overrides = {}) {
     firstTaskId: 1,
     onBeforeTaskChange: vi.fn(),
     onPersonalSandboxExit: vi.fn(),
+    onTaskReset: vi.fn(),
     createIdentity: vi.fn((displayName, ts) => ({ anonymousId: 'anon-1', displayName, lastSessionTimestamp: ts })),
     updateTimestamp: vi.fn(),
     joinSession: vi.fn().mockResolvedValue(undefined),
@@ -174,6 +175,87 @@ describe('useStudentPhase', () => {
 
       act(() => result.current.setViewingTaskId(3))
       expect(result.current.viewingTaskId).toBe(3)
+    })
+  })
+
+  describe('teacher-forced task change', () => {
+    it('calls onBeforeTaskChange, onPersonalSandboxExit, and onTaskReset when teacher advances task', async () => {
+      const onBeforeTaskChange = vi.fn()
+      const onPersonalSandboxExit = vi.fn()
+      const onTaskReset = vi.fn()
+      const identity = makeIdentity()
+      const session = makeSession({ state: 'active', currentTaskId: 1 })
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session, identity, onBeforeTaskChange, onPersonalSandboxExit, onTaskReset }) }
+      )
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+
+      rerender(defaultProps({
+        session: makeSession({ state: 'active', currentTaskId: 2 }),
+        identity,
+        onBeforeTaskChange,
+        onPersonalSandboxExit,
+        onTaskReset,
+      }))
+
+      await waitFor(() => expect(result.current.currentTaskId).toBe(2))
+      expect(onBeforeTaskChange).toHaveBeenCalled()
+      expect(onPersonalSandboxExit).toHaveBeenCalled()
+      expect(onTaskReset).toHaveBeenCalled()
+    })
+  })
+
+  describe('session-end callbacks', () => {
+    it('calls onPersonalSandboxExit when session disappears while in lesson phase', async () => {
+      const onPersonalSandboxExit = vi.fn()
+      const identity = makeIdentity()
+      const session = makeSession({ state: 'active', currentTaskId: 1 })
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session, identity, onPersonalSandboxExit }) }
+      )
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+
+      rerender(defaultProps({ session: null, identity, onPersonalSandboxExit }))
+
+      await waitFor(() => expect(result.current.phase).toBe('ended'))
+      expect(onPersonalSandboxExit).toHaveBeenCalled()
+    })
+
+    it('calls onPersonalSandboxExit when session state becomes ended while in lesson phase', async () => {
+      const onPersonalSandboxExit = vi.fn()
+      const identity = makeIdentity()
+      const session = makeSession({ state: 'active', currentTaskId: 1 })
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session, identity, onPersonalSandboxExit }) }
+      )
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+
+      rerender(defaultProps({ session: makeSession({ state: 'ended' }), identity, onPersonalSandboxExit }))
+
+      await waitFor(() => expect(result.current.phase).toBe('ended'))
+      expect(onPersonalSandboxExit).toHaveBeenCalled()
+    })
+  })
+
+  describe('firstTaskId correction', () => {
+    it('does not overwrite a session-driven currentTaskId when firstTaskId resolves', async () => {
+      const identity = makeIdentity()
+      const session = makeSession({ state: 'active', currentTaskId: 3 })
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session, identity, firstTaskId: null }) }
+      )
+      await waitFor(() => expect(result.current.currentTaskId).toBe(3))
+      expect(result.current.phase).toBe('lesson')
+
+      // firstTaskId resolves to 1 after lesson loads — must not overwrite task 3
+      rerender(defaultProps({ session, identity, firstTaskId: 1 }))
+
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+      expect(result.current.currentTaskId).toBe(3)
     })
   })
 

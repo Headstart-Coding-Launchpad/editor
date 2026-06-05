@@ -371,16 +371,6 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.activeStudentView])
 
-  // Sync teacher rename back to local identity so TopBar updates immediately
-  useEffect(() => {
-    if (!identity?.anonymousId || !session?.students) return
-    const firebaseName = session.students[identity.anonymousId]?.displayName
-    if (firebaseName && firebaseName !== identity.displayName) {
-      updateDisplayName(firebaseName)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.students?.[identity?.anonymousId]?.displayName])
-
   // React to sandbox code pushes (Python)
   useEffect(() => {
     if (phase !== 'sandbox' || lesson?.type !== 'python' || !session?.sandboxCode) return
@@ -606,8 +596,8 @@ export function useStudentCodeState({
           currentFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
         }
       }
+      setRunning(false)
     })
-    setRunning(false)
   }
 
   function handleStop() {

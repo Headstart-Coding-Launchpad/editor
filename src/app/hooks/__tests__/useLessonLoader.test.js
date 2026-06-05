@@ -24,8 +24,8 @@ const LESSON_PYTHON = {
   ],
 }
 
-function makeSnap(exists, data = null) {
-  return { exists: () => exists, data: () => data }
+function makeSnap(exists, data = null, id = '') {
+  return { exists: () => exists, data: () => data, id }
 }
 
 describe('useLessonLoader', () => {
@@ -59,7 +59,7 @@ describe('useLessonLoader', () => {
   })
 
   it('fetches from Firestore when no lessonProp is given', async () => {
-    getDoc.mockResolvedValue(makeSnap(true, LESSON_PYTHON))
+    getDoc.mockResolvedValue(makeSnap(true, LESSON_PYTHON, 'py-1'))
 
     const { result } = renderHook(() => useLessonLoader('py-1', null, null))
 
@@ -67,6 +67,17 @@ describe('useLessonLoader', () => {
 
     expect(result.current.lesson).toEqual(LESSON_PYTHON)
     expect(getDoc).toHaveBeenCalledTimes(1)
+  })
+
+  it('attaches snap.id to lesson when Firestore data has no id field', async () => {
+    const dataWithoutId = { type: 'python', title: 'Intro to Python', tasks: [] }
+    getDoc.mockResolvedValue(makeSnap(true, dataWithoutId, 'doc-id-from-firestore'))
+
+    const { result } = renderHook(() => useLessonLoader('doc-id-from-firestore', null, null))
+
+    await waitFor(() => expect(result.current.lessonLoading).toBe(false))
+
+    expect(result.current.lesson?.id).toBe('doc-id-from-firestore')
   })
 
   it('leaves lesson null when Firestore document does not exist', async () => {

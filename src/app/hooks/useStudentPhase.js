@@ -15,6 +15,7 @@ export function useStudentPhase({
   firstTaskId = null,
   onBeforeTaskChange,
   onPersonalSandboxExit,
+  onTaskReset,
   createIdentity,
   updateTimestamp,
   joinSession,
@@ -26,9 +27,10 @@ export function useStudentPhase({
   const phaseRef = useRef(phase)
   phaseRef.current = phase
 
-  // Sync currentTaskId when firstTaskId resolves (lesson prop loaded synchronously)
+  // Sync currentTaskId when firstTaskId resolves — only during loading phase to avoid
+  // overwriting a session-driven task that was already applied by the phase-determination effect
   useEffect(() => {
-    if (firstTaskId != null) setCurrentTaskId(firstTaskId)
+    if (firstTaskId != null && phaseRef.current === 'loading') setCurrentTaskId(firstTaskId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstTaskId])
 
@@ -58,6 +60,7 @@ export function useStudentPhase({
     // No session — go straight to solo or waiting depending on URL mode
     if (!session) {
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
+        onPersonalSandboxExit?.()
         onBeforeTaskChange?.()
         setPhase('ended')
         return
@@ -81,6 +84,7 @@ export function useStudentPhase({
     // Session ended — exit any join flow gracefully
     if (session.state === 'ended') {
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
+        onPersonalSandboxExit?.()
         onBeforeTaskChange?.()
         setPhase('ended')
         return
@@ -162,6 +166,7 @@ export function useStudentPhase({
     if (session.currentTaskId !== currentTaskId) {
       onPersonalSandboxExit?.()
       onBeforeTaskChange?.()
+      onTaskReset?.()
       setCurrentTaskId(session.currentTaskId)
       setViewingTaskId(null)
     }

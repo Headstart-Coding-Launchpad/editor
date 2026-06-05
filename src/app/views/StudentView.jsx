@@ -50,8 +50,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const saveWorkRef = useRef(null)
   const exitSandboxRef = useRef(null)
+  const resetForTaskRef = useRef(null)
   const onBeforeTaskChange = useCallback(() => saveWorkRef.current?.(), [])
   const onPersonalSandboxExit = useCallback(() => exitSandboxRef.current?.(), [])
+  const onTaskReset = useCallback(() => resetForTaskRef.current?.(), [])
 
   // ─── Phase state machine ───────────────────────────────────────────────────
 
@@ -68,6 +70,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     firstTaskId,
     onBeforeTaskChange,
     onPersonalSandboxExit,
+    onTaskReset,
     createIdentity, updateTimestamp, joinSession,
   })
 
@@ -87,6 +90,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   // Wire phase callbacks to latest code-state functions each render
   saveWorkRef.current = cs.saveCurrentWork
   exitSandboxRef.current = cs.exitPersonalSandbox
+  resetForTaskRef.current = cs.resetForTaskChange
 
   const isMobile = useIsMobile()
 
