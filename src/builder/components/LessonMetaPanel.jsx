@@ -169,6 +169,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
                   label="Sandbox starting filesystem"
                   fs={lesson.sandboxStarterFs ?? { '/': { type: 'dir' } }}
                   onFsChange={newFs => set('sandboxStarterFs', newFs)}
+                  storageAssets={lesson.storageAssets ?? []}
                 />
               </div>
             ) : (

@@ -1281,11 +1281,13 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             label="Starter filesystem"
             fs={task.starterFs}
             onFsChange={newFs => onUpdate({ ...task, starterFs: newFs })}
+            storageAssets={lesson.storageAssets ?? []}
           />
           <FsTreeEditor
             label="Complete filesystem (reference solution)"
             fs={task.completeFs}
             onFsChange={newFs => onUpdate({ ...task, completeFs: newFs })}
+            storageAssets={lesson.storageAssets ?? []}
           />
         </div>
       ) : (
