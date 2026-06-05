@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
+import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
+
+const BUILDER_LS_KEY = 'headstart_builder_current'
+
+function makeBuilderUrl() {
+  return `${window.location.origin}${window.location.pathname}builder/`
+}
 
 const TYPE_ORDER = ['python', 'scratch', 'html', 'filesystem']
 
@@ -46,6 +52,7 @@ export default function LessonPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     return onSnapshot(
@@ -58,6 +65,30 @@ export default function LessonPanel() {
       (err) => { setError(err.message); setLoading(false) },
     )
   }, [])
+
+  async function handleDelete(lesson) {
+    if (!confirm(`Delete lesson "${lesson.title || lesson.id}" from Firestore?\n\nThis cannot be undone.`)) return
+    setDeletingId(lesson.id)
+    try {
+      await deleteDoc(doc(firestore, 'lessons', lesson.id))
+    } catch (err) {
+      alert('Failed to delete: ' + err.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  function handleEditInBuilder(lesson) {
+    const existing = localStorage.getItem(BUILDER_LS_KEY)
+    if (existing) {
+      try {
+        const saved = JSON.parse(existing)
+        if (!confirm(`The builder has an unsaved lesson (${saved.title || saved.id || 'Untitled'}). Overwrite it to edit "${lesson.title || lesson.id}"?`)) return
+      } catch { /* corrupt data — safe to overwrite */ }
+    }
+    localStorage.setItem(BUILDER_LS_KEY, JSON.stringify(lesson))
+    window.open(makeBuilderUrl(), '_blank', 'noopener,noreferrer')
+  }
 
   function handleCopyStudentLink(lessonId) {
     navigator.clipboard.writeText(makeStudentUrl(lessonId)).then(() => {
@@ -116,6 +147,21 @@ export default function LessonPanel() {
                         onClick={() => handleCopyStudentLink(lesson.id)}
                       >
                         {copiedId === lesson.id ? 'Copied!' : 'Copy Student Link'}
+                      </button>
+                      <button
+                        className="btn-ghost-outline"
+                        style={s.actionBtn}
+                        onClick={() => handleEditInBuilder(lesson)}
+                      >
+                        Edit in Builder
+                      </button>
+                      <button
+                        className="btn-danger"
+                        style={s.actionBtn}
+                        disabled={deletingId === lesson.id}
+                        onClick={() => handleDelete(lesson)}
+                      >
+                        {deletingId === lesson.id ? '…' : 'Delete'}
                       </button>
                     </div>
                   </td>

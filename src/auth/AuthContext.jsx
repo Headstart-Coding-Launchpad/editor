@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true)
       try {
         if (firebaseUser) {
           // Force-refresh ensures we pick up custom claim changes (e.g. after setUserRole)
