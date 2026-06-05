@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
+import { collection, onSnapshot, deleteDoc, doc, setDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
 
@@ -95,6 +95,39 @@ export default function LessonPanel() {
     }).catch(() => {})
   }
 
+  function handleNewLesson() {
+    window.open(`${window.location.origin}${window.location.pathname}#/builder`, '_blank', 'noopener,noreferrer')
+  }
+
+  const uploadInputRef = useRef(null)
+
+  function handleUploadClick() {
+    uploadInputRef.current?.click()
+  }
+
+  async function handleUploadFile(e) {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    let parsed
+    try {
+      const text = await file.text()
+      parsed = JSON.parse(text)
+      if (!parsed.id || !parsed.tasks || !parsed.type) throw new Error('Missing required fields: id, type, tasks')
+    } catch (err) {
+      alert('Could not parse file: ' + err.message)
+      return
+    }
+    const lessonId = parsed.id
+    const exists = lessons.some(l => l.id === lessonId)
+    if (exists && !confirm(`A lesson with ID "${lessonId}" already exists in Firestore.\n\nOverwrite it?`)) return
+    try {
+      await setDoc(doc(firestore, 'lessons', lessonId), parsed)
+    } catch (err) {
+      alert('Failed to upload lesson: ' + err.message)
+    }
+  }
+
   const groups = useMemo(
     () => groupByTypeAndLevel(lessons.filter(l => !deletedIds.has(l.id))),
     [lessons, deletedIds],
@@ -102,7 +135,24 @@ export default function LessonPanel() {
 
   return (
     <section style={s.section}>
-      <h2 style={s.title}>Lessons</h2>
+      <div style={s.titleRow}>
+        <h2 style={s.title}>Lessons</h2>
+        <div style={s.headerActions}>
+          <button className="btn-primary" style={s.headerBtn} onClick={handleNewLesson}>
+            + New Lesson
+          </button>
+          <button className="btn-ghost-outline" style={s.headerBtn} onClick={handleUploadClick}>
+            Upload JSON
+          </button>
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleUploadFile}
+          />
+        </div>
+      </div>
 
       {loading && <p style={s.muted}>Loading lessons…</p>}
       {error && <p style={s.error}>Could not load lessons: {error}</p>}
@@ -204,8 +254,11 @@ export default function LessonPanel() {
 }
 
 const s = {
-  section:    { display: 'flex', flexDirection: 'column', gap: 24 },
-  title:      { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
+  section:      { display: 'flex', flexDirection: 'column', gap: 24 },
+  titleRow:     { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  title:        { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
+  headerActions:{ display: 'flex', gap: 8 },
+  headerBtn:    { padding: '6px 14px', fontSize: '0.85rem' },
   group:      { display: 'flex', flexDirection: 'column', gap: 0 },
   groupTitle: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--colour-primary)', margin: '0 0 8px', paddingBottom: 6, borderBottom: '2px solid var(--colour-primary)' },
   table:      { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
