@@ -2,6 +2,8 @@
 // check evaluation, and serialization helpers used by the app and builder.
 // Pure check/state helpers are in scratchChecks.js; persistence helpers are in scratchPersistence.js.
 // Re-exported here for backward compatibility.
+import * as Blockly from 'blockly'
+
 export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } from './scratchChecks'
 export { saveWorkspace, loadWorkspace, migrateBroadcastState, migrateVariableFields } from './scratchPersistence'
 
@@ -31,7 +33,7 @@ export function setVariableContext(variables) {
 
 export async function loadBlocklyModules() {
   if (!_Blockly) {
-    _Blockly = await import('blockly')
+    _Blockly = Blockly
     registerScratchFieldExtensions(_Blockly)
     _Blockly.common.defineBlocks(SCRATCH_BLOCK_DEFINITIONS)
   }
