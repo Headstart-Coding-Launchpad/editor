@@ -109,6 +109,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 |---|---|
 | `useIdentity.js` | Anonymous ID and display name management; localStorage persistence; session timestamp comparison |
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset |
+| `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
+| `useStudentPhase.js` | Student phase state machine (loading → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
+| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, Pyodide lifecycle, run/stop handlers, localStorage persistence |
 
 ---
 
