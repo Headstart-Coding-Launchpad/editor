@@ -36,11 +36,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   // ─── Core hooks ───────────────────────────────────────────────────────────
 
+  const useRealtimeSession = !soloMode || teacherPresentation
   const {
     session, loading: sessionLoading, registerPresence, joinSession,
     writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent,
-  } = useSession(lessonId)
+  } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 

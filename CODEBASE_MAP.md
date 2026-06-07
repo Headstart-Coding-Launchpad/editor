@@ -183,7 +183,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared Firestore helper: `fetchLessonList()` — fetches and sorts the `lessons/` collection |
+| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` with static JSON fallback, plus `fetchLessonList()` sorting the Firestore `lessons` collection |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 

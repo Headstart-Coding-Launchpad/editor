@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc } from 'firebase/firestore'
-import { firestore } from '../../shared/firebase'
+import { fetchLessonById } from '../../shared/lessonService'
 import { flattenTasks } from '../../shared/taskUtils'
 
 /**
- * Loads a lesson from Firestore (or uses lessonProp directly for builder preview).
+ * Loads a lesson via lessonService (or uses lessonProp directly for builder preview).
  * Returns { lesson, lessonLoading, firstTaskId }.
  */
 export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = null) {
@@ -13,19 +12,25 @@ export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = nul
   const [firstTaskId, setFirstTaskId] = useState(initialTaskId)
 
   useEffect(() => {
+    let cancelled = false
     if (lessonProp != null) {
       setLesson(lessonProp)
       setFirstTaskId(initialTaskId ?? flattenTasks(lessonProp.tasks)[0]?.id ?? 1)
       setLessonLoading(false)
-      return
+      return () => { cancelled = true }
     }
+    setLesson(null)
     setLessonLoading(true)
-    getDoc(doc(firestore, 'lessons', lessonId))
-      .then(snap => {
-        if (snap.exists()) setLesson({ ...snap.data(), id: snap.data().id ?? snap.id })
+    fetchLessonById(lessonId)
+      .then(loadedLesson => {
+        if (cancelled) return
+        if (loadedLesson) setLesson(loadedLesson)
         setLessonLoading(false)
       })
-      .catch(() => setLessonLoading(false))
+      .catch(() => {
+        if (!cancelled) setLessonLoading(false)
+      })
+    return () => { cancelled = true }
   }, [lessonId, lessonProp])
 
   return { lesson, lessonLoading, firstTaskId }

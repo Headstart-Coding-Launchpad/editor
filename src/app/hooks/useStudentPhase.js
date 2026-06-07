@@ -57,6 +57,14 @@ export function useStudentPhase({
       return
     }
 
+    // Solo URLs stay solo even when a live/waiting session exists for the lesson.
+    if (soloMode) {
+      if (phaseRef.current === 'solo') return
+      if (!identity) createIdentity('Solo', Date.now())
+      setPhase('solo')
+      return
+    }
+
     // No session — go straight to solo or waiting depending on URL mode
     if (!session) {
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
