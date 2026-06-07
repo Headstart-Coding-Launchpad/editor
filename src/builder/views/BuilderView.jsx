@@ -499,7 +499,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     }
     setPublishStatus('publishing')
     try {
-      const exported = { ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }
+      const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }))
       await setDoc(doc(firestore, 'lessons', lesson.id), exported)
       setPublishStatus('done')
       onMarkSaved()
