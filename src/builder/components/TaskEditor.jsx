@@ -152,7 +152,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         if (task.completeCode == null) {
           set('completeCode', task.starterCode ?? '')
         }
-      } else if (!isScratch) {
+      } else if (!isScratch && !isFilesystem) {
         if (!task.completeFiles?.length) {
           const initFiles = (task.starterFiles ?? []).map(f => ({ ...f }))
           onUpdate({ ...task, completeFiles: initFiles })
@@ -167,7 +167,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     if (stageMatch) {
       const idx = parseInt(stageMatch[1], 10)
       const stage = (task.codeStages ?? [])[idx]
-      if (stage && !isPython && !isScratch) {
+      if (stage && !isPython && !isScratch && !isFilesystem) {
         setSelectedFile(stage.files?.[0]?.name ?? '')
       }
     }
@@ -179,11 +179,13 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     const existing = task.codeStages ?? []
     const newStage = isPython
       ? { label: `Stage ${existing.length + 1}`, code: task.starterCode ?? '' }
+      : isFilesystem
+      ? { label: `Stage ${existing.length + 1}`, fs: task.starterFs ? { ...task.starterFs } : DEFAULT_FS }
       : { label: `Stage ${existing.length + 1}`, files: (task.starterFiles ?? []).map(f => ({ ...f })), entryFile: task.entryFile ?? 'index.html' }
     const updated = [...existing, newStage]
     onUpdate({ ...task, codeStages: updated })
     setCodeTab(`stage_${updated.length - 1}`)
-    if (!isPython && !isScratch) {
+    if (!isPython && !isScratch && !isFilesystem) {
       setSelectedFile(newStage.files?.[0]?.name ?? '')
     }
   }
@@ -1281,45 +1283,83 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           )}
         </>
       ) : isFilesystem ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <FsTreeEditor
-            label="Starter filesystem"
-            fs={task.starterFs}
-            onFsChange={newFs => onUpdate({ ...task, starterFs: newFs })}
-            storageAssets={lesson.storageAssets ?? []}
+        <div className="te-code-workspace-stack">
+          <CodeWorkspaceTabs
+            activeTab={codeTab}
+            onChange={handleCodeTabChange}
+            stages={codeStages}
+            onAddStage={handleAddStage}
+            onRemoveStage={handleRemoveStage}
+            rightAction={resetToStarterBtn}
+            starterLabel="Starter filesystem"
+            testLabel="Complete filesystem"
           />
-          <div>
-            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              Starts in (optional)
+          {isStageTab && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
               <input
                 className="te-input"
-                value={task.startsInDir ?? ''}
-                onChange={e => set('startsInDir', e.target.value || undefined)}
-                placeholder="e.g. /Documents/"
-                style={{ fontFamily: 'var(--font-code)' }}
+                style={{ width: 200, padding: '4px 8px', fontSize: '0.82rem' }}
+                value={activeStage?.label ?? ''}
+                onChange={e => updateStage(activeStageIndex, { label: e.target.value })}
+                placeholder={`Stage ${activeStageIndex + 1}`}
               />
-            </label>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '4px 0 0' }}>
-              Directory the student's explorer opens in. Leave blank to start at the root.
-            </p>
+            </div>
+          )}
+          <div style={{ padding: '12px 10px', overflowY: 'auto', flex: 1 }}>
+            {isStageTab ? (
+              <FsTreeEditor
+                label={`Stage filesystem: ${activeStage?.label ?? `Stage ${activeStageIndex + 1}`}`}
+                fs={activeStage?.fs}
+                onFsChange={newFs => updateStage(activeStageIndex, { fs: newFs })}
+                storageAssets={lesson.storageAssets ?? []}
+              />
+            ) : isCompleteTab ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                  <button
+                    type="button"
+                    className="btn-ghost te-secondary-btn"
+                    onClick={handleCopyStarterToComplete}
+                    disabled={!task.starterFs}
+                    title="Copy the starter filesystem into the complete filesystem"
+                  >
+                    ↓ Copy starter to complete
+                  </button>
+                </div>
+                <FsTreeEditor
+                  label="Complete filesystem (reference solution)"
+                  fs={task.completeFs}
+                  onFsChange={newFs => onUpdate({ ...task, completeFs: newFs })}
+                  storageAssets={lesson.storageAssets ?? []}
+                />
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <FsTreeEditor
+                  label="Starter filesystem"
+                  fs={task.starterFs}
+                  onFsChange={newFs => onUpdate({ ...task, starterFs: newFs })}
+                  storageAssets={lesson.storageAssets ?? []}
+                />
+                <div>
+                  <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    Starts in (optional)
+                    <input
+                      className="te-input"
+                      value={task.startsInDir ?? ''}
+                      onChange={e => set('startsInDir', e.target.value || undefined)}
+                      placeholder="e.g. /Documents/"
+                      style={{ fontFamily: 'var(--font-code)' }}
+                    />
+                  </label>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '4px 0 0' }}>
+                    Directory the student's explorer opens in. Leave blank to start at the root.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="btn-ghost te-secondary-btn"
-              onClick={handleCopyStarterToComplete}
-              disabled={!task.starterFs}
-              title="Copy the starter filesystem into the complete filesystem"
-            >
-              ↓ Copy starter to complete
-            </button>
-          </div>
-          <FsTreeEditor
-            label="Complete filesystem (reference solution)"
-            fs={task.completeFs}
-            onFsChange={newFs => onUpdate({ ...task, completeFs: newFs })}
-            storageAssets={lesson.storageAssets ?? []}
-          />
         </div>
       ) : (
         <>

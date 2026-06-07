@@ -1,5 +1,11 @@
 import { findTaskById } from '../shared/taskUtils'
 import { cloneFiles, cloneScratchState, decodeSessionFiles, parseScratchState } from '../shared/workspaceData'
+import { DEFAULT_FS } from '../shared/filesystem'
+
+function cloneFs(fs) {
+  if (!fs || typeof fs !== 'object') return DEFAULT_FS
+  return JSON.parse(JSON.stringify(fs))
+}
 
 function getTask(lesson, taskId) {
   return findTaskById(lesson?.tasks, taskId)
@@ -73,4 +79,27 @@ export function getSandboxConfiguredScratch({ lesson, taskId }) {
   const task = getTask(lesson, taskId)
   if (lesson?.sandboxStarter != null) return parseScratchState(lesson.sandboxStarter)
   return cloneScratchState(task?.starterBlocks ?? null)
+}
+
+export function getSandboxStarterFs({
+  lesson,
+  taskId,
+  session,
+  draftFs,
+  currentFs,
+  preferDraft = true,
+}) {
+  const task = getTask(lesson, taskId)
+  if (preferDraft && draftFs) return cloneFs(draftFs)
+  if (session?.state === 'sandbox' && session.sandboxCode != null) {
+    try { return JSON.parse(session.sandboxCode) } catch {}
+  }
+  if (currentFs) return cloneFs(currentFs)
+  return cloneFs(task?.starterFs ?? DEFAULT_FS)
+}
+
+export function getSandboxConfiguredFs({ lesson, taskId }) {
+  const task = getTask(lesson, taskId)
+  if (lesson?.sandboxStarterFs != null) return cloneFs(lesson.sandboxStarterFs)
+  return cloneFs(task?.starterFs ?? DEFAULT_FS)
 }

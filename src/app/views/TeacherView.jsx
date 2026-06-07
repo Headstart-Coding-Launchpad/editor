@@ -30,9 +30,11 @@ import {
   getSandboxConfiguredCode,
   getSandboxConfiguredFiles,
   getSandboxConfiguredScratch,
+  getSandboxConfiguredFs,
   getSandboxStarterCode,
   getSandboxStarterFiles,
   getSandboxStarterScratch,
+  getSandboxStarterFs,
 } from '../teacherSandboxContent'
 
 export default function TeacherView({ lessonId }) {
@@ -58,12 +60,13 @@ export default function TeacherView({ lessonId }) {
   const [activeFile, setActiveFile]     = useState('')
   const [sandboxStaging, setSandboxStaging] = useState(false)
   const [scratchState, setScratchState] = useState(null)
+  const [fsState, setFsState] = useState(DEFAULT_FS)
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
   const [showSharePanel, setShowSharePanel] = useState(false)
   const [copiedLink, setCopiedLink] = useState(null) // 'live' | 'solo' | null
   const [activeCompleteFile, setActiveCompleteFile] = useState('')
   const [editorActivity, setEditorActivity] = useState(null)
-  const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null })
+  const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null, fs: null })
   const presentationWindowRef = useRef(null)
 
   // Load lesson from Firestore
@@ -108,6 +111,8 @@ export default function TeacherView({ lessonId }) {
       setCode(task.starterCode ?? '')
     } else if (lesson.type === 'scratch') {
       setScratchState(task.starterBlocks ?? null)
+    } else if (lesson.type === 'filesystem') {
+      setFsState(task.starterFs ?? DEFAULT_FS)
     } else {
       const taskFiles = task.starterFiles ?? []
       setFiles(taskFiles)
@@ -135,6 +140,11 @@ export default function TeacherView({ lessonId }) {
       setScratchState(getSandboxStarterScratch({
         lesson, taskId: currentTaskId, session,
         draftState: sandboxDraftRef.current.scratchState, currentState: scratchState,
+      }))
+    } else if (lesson.type === 'filesystem') {
+      setFsState(getSandboxStarterFs({
+        lesson, taskId: currentTaskId, session,
+        draftFs: sandboxDraftRef.current.fs, currentFs: fsState,
       }))
     } else {
       const starterFiles = getSandboxStarterFiles({
@@ -179,6 +189,11 @@ export default function TeacherView({ lessonId }) {
         lesson, taskId: currentTaskId, session,
         draftState: sandboxDraftRef.current.scratchState, currentState: scratchState,
       }))
+    } else if (lesson.type === 'filesystem') {
+      setFsState(getSandboxStarterFs({
+        lesson, taskId: currentTaskId, session,
+        draftFs: sandboxDraftRef.current.fs, currentFs: fsState,
+      }))
     } else {
       const starterFiles = getSandboxStarterFiles({
         lesson, taskId: currentTaskId, session,
@@ -202,6 +217,9 @@ export default function TeacherView({ lessonId }) {
     } else if (lesson.type === 'scratch') {
       sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
       await enterSandbox({ code: JSON.stringify(scratchState ?? {}) })
+    } else if (lesson.type === 'filesystem') {
+      sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
+      await enterSandbox({ code: JSON.stringify(fsState) })
     } else {
       sandboxDraftRef.current.files = cloneFiles(files)
       await enterSandbox({ files })
@@ -216,6 +234,9 @@ export default function TeacherView({ lessonId }) {
     } else if (lesson.type === 'scratch') {
       sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
       await pushSandboxCode(JSON.stringify(scratchState ?? {}))
+    } else if (lesson.type === 'filesystem') {
+      sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
+      await pushSandboxCode(JSON.stringify(fsState))
     } else {
       sandboxDraftRef.current.files = cloneFiles(files)
       await pushSandboxFiles(files)
@@ -233,6 +254,11 @@ export default function TeacherView({ lessonId }) {
       sandboxDraftRef.current.scratchState = cloneScratchState(starterScratch)
       setScratchState(starterScratch)
       if (isSandbox) await pushSandboxCode(JSON.stringify(starterScratch ?? {}))
+    } else if (lesson.type === 'filesystem') {
+      const starterFs = getSandboxConfiguredFs({ lesson, taskId: currentTaskId })
+      sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(starterFs))
+      setFsState(starterFs)
+      if (isSandbox) await pushSandboxCode(JSON.stringify(starterFs))
     } else {
       const starterFiles = getSandboxConfiguredFiles({ lesson, taskId: currentTaskId })
       sandboxDraftRef.current.files = cloneFiles(starterFiles)
@@ -469,24 +495,31 @@ export default function TeacherView({ lessonId }) {
               </div>
             </div>
           ) : lesson.type === 'filesystem' ? (
-            <div style={s.codeWorkspaceStack}>
-              <TeacherCodeTabs
-                activeTab={teacherCodeTab}
-                stages={[]}
-                onStarter={() => setTeacherCodeTab('starter')}
-                onComplete={task?.completeFs ? () => setTeacherCodeTab('complete') : undefined}
-                onSendToAll={handleSendStageToAll}
-                hasStudents={students.length > 0}
-                starterLabel="Starter folders"
-                completeLabel="Complete folders"
-              />
+            <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
+              {!isInSandbox && (
+                <TeacherCodeTabs
+                  activeTab={teacherCodeTab}
+                  stages={taskCodeStages}
+                  onStarter={() => setTeacherCodeTab('starter')}
+                  onStage={i => setTeacherCodeTab(`stage_${i}`)}
+                  onComplete={task?.completeFs ? () => setTeacherCodeTab('complete') : undefined}
+                  onSendToAll={handleSendStageToAll}
+                  hasStudents={students.length > 0}
+                  starterLabel="Starter folders"
+                  completeLabel="Complete folders"
+                />
+              )}
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <FilesystemTask
-                   key={`teacher-fs-${displayTaskId}-${teacherCodeTab}`}
-                   fs={showingComplete ? (task?.completeFs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
-                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                   assets={lesson.assets}
-                   disabled
+                  key={`teacher-fs-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
+                  fs={isInSandbox ? fsState : showingComplete ? (task?.completeFs ?? DEFAULT_FS) : isShowingStage ? (activeTeacherStage?.fs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
+                  onFsChange={isInSandbox ? (newFs => {
+                    setFsState(newFs)
+                    sandboxDraftRef.current.fs = newFs
+                  }) : undefined}
+                  assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
+                  assets={lesson.assets}
+                  disabled={!isInSandbox}
                 />
               </div>
             </div>

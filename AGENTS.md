@@ -234,7 +234,7 @@ Both apps import from `src/shared/`. Never duplicate this logic.
 | `headstart_identity` | `{ anonymousId, displayName, lastSessionTimestamp }` |
 | `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code?, output?, runStatus?, state? }` — Python/Scratch |
 | `headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` | `{ content }` — HTML per-file |
-| `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code?, state? }` — personal sandbox Python/Scratch |
+| `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code?, state? }` — personal sandbox Python/Scratch; `{ fs }` — personal sandbox Filesystem |
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` — personal sandbox HTML per-file |
 | `headstart_builder_current` | Full lesson JSON object |
 
@@ -312,17 +312,18 @@ No room IDs. One session per lesson. `?teacher=true` is a redirect hint — Fire
 ### Remote reset
 - Teacher writes `remoteResetAction` ("starter", "complete", or "stage_N") + `remoteResetPushedAt` to student node
 - Student detects timestamp change and applies reset silently (no prompt)
-- `stage_N` actions resolve against `task.codeStages[N]` (Python: `.code`, HTML: `.files`/`.entryFile`, Scratch: `.blocks`)
+- `stage_N` actions resolve against `task.codeStages[N]` (Python: `.code`, HTML: `.files`/`.entryFile`, Scratch: `.blocks`, Filesystem: `.fs`)
 
 ### Sandbox mode
 - Student code saved to localStorage BEFORE editor clears on sandbox entry
 - Sandbox content discarded on return to lesson — never saved to localStorage
 - `sandboxCodePushedAt` / `sandboxFilesUpdatedAt` timestamps used as change triggers (not the values)
-- HTML sandbox: files stored with `__dot__` encoding in Firebase
+- HTML sandbox: files stored with `__dot__` encoding in Firebase via `sandboxFiles`
+- Filesystem sandbox: state stored as JSON string in `sandboxCode` (same channel as Python/Scratch)
 
 ### Personal sandbox
 - Separate from the teacher-forced `sandbox` session state — available in both `lesson` and `solo` phases
-- Uses `lesson.sandboxStarterCode` / `lesson.sandboxStarterFiles` as initial content on first entry; only offered when the lesson has these fields
+- Uses `lesson.sandboxStarterCode` / `lesson.sandboxStarterFiles` / `lesson.sandboxStarterFs` as initial content on first entry; only offered when the lesson has these fields
 - State persists in localStorage using a special pseudo-task-id key `personalsandbox` — survives task changes and teacher sandbox pushes
 - **Solo mode**: "Open Sandbox" button in the nav bar; "Close Sandbox" returns to the lesson task
 - **Live mode**: offered via `CheckFeedbackBanner` after a check passes; teacher moving to the next task automatically pulls the student back to the lesson
