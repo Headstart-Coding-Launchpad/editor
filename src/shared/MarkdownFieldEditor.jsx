@@ -111,6 +111,9 @@ export function MarkdownFieldEditor({
   const content = value ?? ''
   const { topics } = useTopicLibrary(lessonType)
   const topicSuggestion = findTopicSuggestion(content, topics)
+  const SUGGESTION_BANNER_HEIGHT = 34
+  const effectiveHeight = topicSuggestion ? height + SUGGESTION_BANNER_HEIGHT : height
+  const effectiveMinHeight = topicSuggestion ? minHeight + SUGGESTION_BANNER_HEIGHT : minHeight
 
   function applyFormat(action) {
     const el = textareaRef.current
@@ -245,7 +248,7 @@ export function MarkdownFieldEditor({
   }
 
   return (
-    <div style={{ ...s.wrap, height, minHeight }}>
+    <div style={{ ...s.wrap, height: effectiveHeight, minHeight: effectiveMinHeight }}>
       <div style={s.tabs} className="ui-tabs" role="tablist" aria-label={ariaLabel}>
         <button
           type="button"
