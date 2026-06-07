@@ -34,8 +34,18 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
       const rawRedirect = searchParams.get('redirect') ?? '/'
-      // Only follow same-origin redirects; navigation deferred to useEffect above
-      pendingRedirect.current = rawRedirect.startsWith('/') ? rawRedirect : '/'
+      const redirect = rawRedirect.startsWith('/') ? rawRedirect : '/'
+      if (user) {
+        // User context is already populated (persistent session re-login). The same
+        // user object reference won't trigger a state change in AuthContext, so the
+        // useEffect below won't re-run. Navigate directly — no race risk because
+        // user is already confirmed in context.
+        navigate(redirect, { replace: true })
+      } else {
+        // Fresh login — defer navigation until onAuthStateChanged confirms the
+        // sign-in, to avoid ProtectedRoute seeing user=null and bouncing back.
+        pendingRedirect.current = redirect
+      }
     } catch {
       setError('Incorrect email or password.')
     } finally {
