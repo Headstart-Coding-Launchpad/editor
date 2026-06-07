@@ -16,8 +16,7 @@ export function AuthProvider({ children }) {
       if (!initializedRef.current) setLoading(true)
       try {
         if (firebaseUser) {
-          // Force-refresh ensures we pick up custom claim changes (e.g. after setUserRole)
-          const tokenResult = await getIdTokenResult(firebaseUser, true)
+          const tokenResult = await getIdTokenResult(firebaseUser, false)
           setUser(firebaseUser)
           setRole(tokenResult.claims.role ?? null)
         } else {
