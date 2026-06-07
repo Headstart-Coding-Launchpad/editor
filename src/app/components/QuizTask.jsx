@@ -6,6 +6,8 @@ export function getQuizOptionText(task, answerId) {
   return task?.options?.find(option => option.id === answerId)?.text ?? ''
 }
 
+export const CONFIDENCE_COLOURS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
+
 const OPTION_COLOURS = [
   { background: '#dbeafe', border: '#2563eb', active: '#2563eb', text: '#1e3a8a' },
   { background: '#fee2e2', border: '#dc2626', active: '#dc2626', text: '#7f1d1d' },
@@ -96,6 +98,7 @@ export default function QuizTask({
   if (quizType === 'match') return <MatchQuiz {...props} />
   if (quizType === 'fill_blank') return <FillBlankQuiz {...props} />
   if (quizType === 'short_answer') return <ShortAnswerQuiz {...props} />
+  if (quizType === 'confidence') return <ConfidenceQuiz {...props} />
   return <MultipleChoiceQuiz {...props} />
 }
 
@@ -724,6 +727,55 @@ function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, submitted, chec
   )
 }
 
+// ─── Confidence ───────────────────────────────────────────────────────────────
+
+function ConfidenceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, disabled, showQuestion }) {
+  const blocked = disabled || submitted
+  return (
+    <div style={s.wrap}>
+      {showQuestion && <QuestionPanel task={task} />}
+      <div style={sc.wrap}>
+        <div style={sc.labelRow}>
+          <span style={sc.labelEdge}>Not confident</span>
+          <span style={sc.labelEdge}>Very confident</span>
+        </div>
+        <div style={sc.buttons}>
+          {CONFIDENCE_COLOURS.map((colour, i) => {
+            const level = i + 1
+            const isSelected = selectedAnswer === String(level)
+            return (
+              <button
+                key={level}
+                type="button"
+                style={{
+                  ...sc.btn,
+                  background: isSelected ? colour : '#f3f4f6',
+                  borderColor: colour,
+                  color: isSelected ? '#fff' : colour,
+                  opacity: blocked && !isSelected ? 0.35 : 1,
+                  boxShadow: isSelected ? `0 0 0 4px ${colour}38, 0 6px 18px ${colour}28` : undefined,
+                  transform: isSelected ? 'scale(1.08)' : undefined,
+                }}
+                onClick={() => !blocked && onSelectAnswer?.(String(level), true)}
+                disabled={blocked}
+                aria-pressed={isSelected}
+                title={`Confidence level ${level}`}
+              >
+                <span style={sc.btnNum}>{level}</span>
+              </button>
+            )
+          })}
+        </div>
+        {submitted && selectedAnswer && (
+          <div style={{ ...sc.result, borderColor: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1], color: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1], background: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1] + '18' }}>
+            You rated your confidence: <strong>{selectedAnswer} / 5</strong>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = {
@@ -1078,5 +1130,56 @@ const sm = {
     background: '#f9fafb',
     border: '1px solid #e5e7eb',
     borderRadius: 6,
+  },
+}
+
+const sc = {
+  wrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    flex: 1,
+  },
+  labelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    paddingBottom: 2,
+  },
+  labelEdge: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.82rem',
+    color: '#6b7280',
+  },
+  buttons: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, 1fr)',
+    gap: 12,
+  },
+  btn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '22px 0',
+    borderRadius: 12,
+    border: '3px solid',
+    cursor: 'pointer',
+    transition: 'background 0.12s, color 0.12s, transform 0.12s, box-shadow 0.12s',
+    fontFamily: 'var(--font-body)',
+  },
+  btnNum: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '2rem',
+    lineHeight: 1,
+  },
+  result: {
+    padding: '10px 14px',
+    borderRadius: 8,
+    border: '2px solid',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    textAlign: 'center',
   },
 }

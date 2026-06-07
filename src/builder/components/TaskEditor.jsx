@@ -548,6 +548,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     if (quizType === 'short_answer') {
       const existing = task.check?.type?.startsWith('answer_') ? task.check : null
       onUpdate({ ...task, quizType: 'short_answer', check: existing ?? null })
+      return
+    }
+    if (quizType === 'confidence') {
+      onUpdate({ ...task, quizType: 'confidence', options: undefined, pairs: undefined, blanks: undefined, text: undefined, check: null })
     }
   }
 
@@ -928,6 +932,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             <FillBlankBuilder task={task} onUpdate={onUpdate} lessonType={lesson.type} />
           ) : task.quizType === 'short_answer' ? (
             <ShortAnswerBuilder task={task} onUpdate={onUpdate} lessonType={lesson.type} />
+          ) : task.quizType === 'confidence' ? (
+            <div style={{ padding: '10px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: '#6b7280' }}>
+              Students rate their confidence 1–5 (red to green). No options or check needed — any rating counts as complete.
+            </div>
           ) : null}
           <div className="te-preview-panel">
             <div className="te-preview-header">
@@ -945,7 +953,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               const allPassed = checkResults.every(r => r.passed)
               return (
                 <div style={{ border: '1px solid', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: '0.88rem', lineHeight: 1.6, background: allPassed ? '#f0fdf4' : '#fffbeb', borderColor: allPassed ? '#bbf7d0' : '#fde68a' }}>
-                  {allPassed
+                  {task.quizType === 'confidence'
+                    ? 'Rating submitted — any confidence level completes this task.'
+                    : allPassed
                     ? 'Check passes — students will see the completion banner.'
                     : task.quizType === 'match' || task.quizType === 'fill_blank'
                       ? 'Check does not pass — try placing the correct answers in the preview.'

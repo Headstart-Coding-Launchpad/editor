@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { getQuizOptionText } from './QuizTask'
+import { getQuizOptionText, CONFIDENCE_COLOURS } from './QuizTask'
 import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById } from '../../shared/taskUtils'
 
@@ -20,18 +20,22 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
   const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
   const isShortAnswer = quizType === 'short_answer'
   const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
-  const quizAnswerText = isQuiz && !isShortAnswer && !isMatchOrFillBlank ? getQuizOptionText(currentTask, student.currentAnswer) : ''
+  const isConfidence = quizType === 'confidence'
+  const quizAnswerText = isQuiz && !isShortAnswer && !isMatchOrFillBlank && !isConfidence ? getQuizOptionText(currentTask, student.currentAnswer) : ''
   const quizSubmitted = isQuiz && student.lastRunStatus === 'submitted'
+  const confidenceLevel = isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
 
-  const statusColour =
-    quizSubmitted && student.checkPassed === true  ? '#22c55e' :
-    quizSubmitted && student.checkPassed === false  ? '#ef4444' :
-    student.lastRunStatus === 'success'   ? '#22c55e' :
-    student.lastRunStatus === 'error'     ? '#ef4444' :
-    student.lastRunStatus === 'submitted' ? '#3b82f6' : '#9ca3af'
+  const statusColour = isConfidence && confidenceLevel >= 1 && confidenceLevel <= 5
+    ? CONFIDENCE_COLOURS[confidenceLevel - 1]
+    : quizSubmitted && student.checkPassed === true  ? '#22c55e' :
+      quizSubmitted && student.checkPassed === false  ? '#ef4444' :
+      student.lastRunStatus === 'success'   ? '#22c55e' :
+      student.lastRunStatus === 'error'     ? '#ef4444' :
+      student.lastRunStatus === 'submitted' ? '#3b82f6' : '#9ca3af'
 
+  // Confidence tasks have no pass/fail check — teacher just sees the submitted level
   // For match/fill_blank quizzes, checkPassed comes from internal quiz logic rather than task.check
-  const hasCheck = currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null)
+  const hasCheck = !isConfidence && (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const checkPassed = hasCheck && student.checkPassed === true
   const checkFailed = hasCheck && checkAttempted && !checkPassed
@@ -119,7 +123,11 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
       ) : isQuiz ? (
         <div style={s.quizAnswer}>
           {hasAnswer ? (
-            isShortAnswer ? (
+            isConfidence ? (
+              <span style={{ ...s.confidenceBadge, background: confidenceLevel >= 1 && confidenceLevel <= 5 ? CONFIDENCE_COLOURS[confidenceLevel - 1] : '#9ca3af' }}>
+                {confidenceLevel}/5
+              </span>
+            ) : isShortAnswer ? (
               <span style={s.shortAnswerText}>{student.currentAnswer}</span>
             ) : isMatchOrFillBlank ? (
               <span style={s.matchSummaryText}>
@@ -381,6 +389,19 @@ const s = {
     lineHeight: 1.4,
     color: 'var(--colour-text)',
     fontWeight: 600,
+  },
+  confidenceBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    color: '#fff',
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '0.9rem',
+    flexShrink: 0,
   },
   expandBtn: {
     fontSize: 12,

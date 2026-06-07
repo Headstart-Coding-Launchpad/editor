@@ -269,6 +269,14 @@ function QuizTypeIcon({ type }) {
       <path d="M15 18l2 2 4-5" />
     </svg>
   )
+  if (type === 'confidence') return (
+    <svg {...common}>
+      <rect x="3" y="14" width="3" height="6" rx="1" />
+      <rect x="8" y="10" width="3" height="10" rx="1" />
+      <rect x="13" y="6" width="3" height="14" rx="1" />
+      <rect x="18" y="2" width="3" height="18" rx="1" />
+    </svg>
+  )
   return (
     <svg {...common}>
       <circle cx="7" cy="7" r="2" />

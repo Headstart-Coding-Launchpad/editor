@@ -414,7 +414,7 @@ Do not include code fields, carry fields, `interactionMode`, `options`, or `chec
 
 ## Quiz Tasks
 
-Quiz tasks work in every lesson type. There are four sub-types controlled by `quizType`.
+Quiz tasks work in every lesson type. There are five sub-types controlled by `quizType`.
 
 ### Multiple Choice
 
@@ -540,6 +540,31 @@ Open-ended example (no correct answer — teacher review only):
 ```
 
 Supported check types for short answer: `answer_equals`, `answer_contains`, `answer_not_contains`, `answer_matches_regex`.
+
+### Confidence Measurer
+
+Students rate their confidence on a scale of 1–5 (red to green). There is no correct answer — any rating completes the task. Teacher sees each student's submitted level in the student grid.
+
+```json
+{
+  "id": 8,
+  "taskType": "quiz",
+  "quizType": "confidence",
+  "taskMode": "live",
+  "title": "Confidence check",
+  "explainer": "How confident do you feel about **for loops** after today's task?"
+}
+```
+
+| Field | Required | Type | Notes |
+|---|---:|---|---|
+| `taskType` | Yes | string | Must be `quiz`. |
+| `quizType` | Yes | string | Must be `confidence`. |
+| `title` | Yes | string | Shown in progress UI. |
+| `explainer` | Yes | string | Context shown to students above the rating buttons. |
+| `taskMode` | Recommended | string | Use `live` to show only during live sessions; omit to show in all modes. |
+
+No `check`, `options`, `pairs`, `blanks`, or `text` fields. Any submitted rating marks the task as complete.
 
 Do not include code fields, carry fields, or `interactionMode` on any quiz task.
 
