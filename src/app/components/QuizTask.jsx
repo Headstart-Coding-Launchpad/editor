@@ -730,14 +730,14 @@ function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, submitted, chec
 // ─── Confidence ───────────────────────────────────────────────────────────────
 
 function ConfidenceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, disabled, showQuestion }) {
-  const blocked = disabled || submitted
+  const blocked = disabled
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
       <div style={sc.wrap}>
         <div style={sc.labelRow}>
-          <span style={sc.labelEdge}>Not confident</span>
-          <span style={sc.labelEdge}>Very confident</span>
+          <span style={sc.labelEdge}>👎 Not confident</span>
+          <span style={sc.labelEdge}>Very confident 👍</span>
         </div>
         <div style={sc.buttons}>
           {CONFIDENCE_COLOURS.map((colour, i) => {
@@ -762,6 +762,8 @@ function ConfidenceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, disab
                 title={`Confidence level ${level}`}
               >
                 <span style={sc.btnNum}>{level}</span>
+                {level === 1 && <span style={sc.btnIcon}>👎</span>}
+                {level === 5 && <span style={sc.btnIcon}>👍</span>}
               </button>
             )
           })}
@@ -1155,12 +1157,16 @@ const sc = {
     display: 'grid',
     gridTemplateColumns: 'repeat(5, 1fr)',
     gap: 12,
+    padding: '8px 6px',
+    overflow: 'visible',
   },
   btn: {
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '22px 0',
+    gap: 4,
+    padding: '16px 0',
     borderRadius: 12,
     border: '3px solid',
     cursor: 'pointer',
@@ -1171,6 +1177,10 @@ const sc = {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
     fontSize: '2rem',
+    lineHeight: 1,
+  },
+  btnIcon: {
+    fontSize: '1.3rem',
     lineHeight: 1,
   },
   result: {
