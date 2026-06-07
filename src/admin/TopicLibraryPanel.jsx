@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { collection, onSnapshot, setDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { clearTopicCache, normalizeTopicLibrary, searchTopics } from '../shared/topicLibrary'
 import { MarkdownFieldEditor } from '../builder/components/ExplainerEditor'
@@ -35,6 +35,8 @@ export default function TopicLibraryPanel() {
   const [deleting, setDeleting]   = useState(false)
   const [dirty, setDirty]         = useState(false)
   const [query, setQuery]         = useState('')
+  const [uploading, setUploading] = useState(false)
+  const uploadRef                 = useRef(null)
 
   useEffect(() => {
     return onSnapshot(
@@ -97,6 +99,58 @@ export default function TopicLibraryPanel() {
     }
   }
 
+  async function handleUploadJSON(e) {
+    const file = e.target.files[0]
+    uploadRef.current.value = ''
+    if (!file) return
+
+    let parsed
+    try {
+      const text = await file.text()
+      parsed = JSON.parse(text)
+    } catch (err) {
+      alert('Failed to parse JSON: ' + err.message)
+      return
+    }
+
+    const normalized = normalizeTopicLibrary(parsed)
+    if (normalized.length === 0) {
+      alert('No valid topics found in the file. The JSON must be an array of topic objects, or an object with a "topics" array. Each topic must have at least an "id" and "title".')
+      return
+    }
+
+    if (!confirm(
+      `This will replace all ${topics.length} existing topic${topics.length !== 1 ? 's' : ''} with ${normalized.length} topic${normalized.length !== 1 ? 's' : ''} from "${file.name}".\n\nThis cannot be undone. Continue?`
+    )) return
+
+    setUploading(true)
+    try {
+      const deleteRefs = topics.map(t => doc(firestore, 'topicLibrary', t.id))
+      for (let i = 0; i < deleteRefs.length; i += 500) {
+        const batch = writeBatch(firestore)
+        deleteRefs.slice(i, i + 500).forEach(ref => batch.delete(ref))
+        await batch.commit()
+      }
+
+      for (let i = 0; i < normalized.length; i += 500) {
+        const batch = writeBatch(firestore)
+        normalized.slice(i, i + 500).forEach(topic => {
+          batch.set(doc(firestore, 'topicLibrary', topic.id), topic)
+        })
+        await batch.commit()
+      }
+
+      clearTopicCache()
+      setSelectedId(null)
+      setEditing(null)
+      setDirty(false)
+    } catch (err) {
+      alert('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleDelete() {
     if (!confirm(`Delete topic "${editing.title || editing.id}"?\n\nThis cannot be undone.`)) return
     setDeleting(true)
@@ -120,9 +174,27 @@ export default function TopicLibraryPanel() {
           <h2 style={s.title}>Topic Library</h2>
           <p style={s.subtitle}>{topics.length} topic{topics.length !== 1 ? 's' : ''} · stored in Firestore</p>
         </div>
-        <button className="btn-primary" style={s.newBtn} onClick={handleNewTopic}>
-          + New Topic
-        </button>
+        <div style={s.headerBtns}>
+          <input
+            ref={uploadRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleUploadJSON}
+          />
+          <button
+            className="btn-ghost-outline"
+            style={s.uploadBtn}
+            onClick={() => uploadRef.current?.click()}
+            disabled={uploading}
+            title="Replace all topics by uploading a JSON file"
+          >
+            {uploading ? 'Uploading…' : 'Upload JSON'}
+          </button>
+          <button className="btn-primary" style={s.newBtn} onClick={handleNewTopic} disabled={uploading}>
+            + New Topic
+          </button>
+        </div>
       </div>
 
       <div style={s.body}>
@@ -397,6 +469,8 @@ const s = {
   header:        { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 },
   title:         { margin: 0, fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)' },
   subtitle:      { margin: '4px 0 0', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af' },
+  headerBtns:    { display: 'flex', gap: 8, alignItems: 'center' },
+  uploadBtn:     { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
   newBtn:        { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
   body:          { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 0, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', background: '#fff', minHeight: 600 },
   listPane:      { display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb', background: '#f9fafb', minHeight: 0 },
