@@ -45,15 +45,40 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 | `code_no_error` | Python | Run | Run completed without exception |
 | `output_contains` | Python, HTML | Run | Output includes value (case-insensitive) |
 | `output_equals` | Python, HTML | Run | Output exactly matches value (case-insensitive, trimmed) |
+| `output_not_contains` | Python, HTML | Run | Output does not include value |
+| `output_not_equals` | Python, HTML | Run | Output does not equal value |
+| `output_matches_regex` | Python, HTML | Run | Output matches regex pattern (case-sensitive) |
 | `output_line_count` | Python, HTML | Run | Output line count equals value |
 | `output_not_empty` | Python, HTML | Run | Output is not empty |
 | `output_empty` | Python, HTML | Run | Output is empty or whitespace-only |
 | `code_contains` | Python, HTML | Run + Submit | Source includes value |
 | `code_does_not_contain` | Python, HTML | Run + Submit | Source does not include value |
 | `code_equals` | Python, HTML | Run + Submit | Source equals value |
+| `code_not_equals` | Python, HTML | Run + Submit | Source does not equal value |
+| `code_matches_regex` | Python, HTML | Run + Submit | Source matches regex pattern (case-sensitive) |
 | `element_exists` | HTML | Run | CSS selector matches at least one element |
 | `element_count` | HTML | Run | Selector match count equals value |
-| `element_value` | HTML | Run | Element text/value contains value |
+| `element_value` | HTML | Run | Element text/value contains value (case-insensitive) |
+| `element_value_equals` | HTML | Run | Element text/value equals value |
+| `element_value_not_contains` | HTML | Run | Element text/value does not contain value |
+| `element_value_not_equals` | HTML | Run | Element text/value does not equal value |
+| `element_value_matches_regex` | HTML | Run | Element text/value matches regex (case-sensitive) |
+| `element_attribute` | HTML | Run | Element attribute equals value (or exists when value omitted) |
+| `element_style_property` | HTML | Run | Element computed CSS property equals value (or exists when value omitted) |
+
+### Variable (Python only, Run mode)
+
+| Type | Description |
+|---|---|
+| `variable_exists` | Named variable exists in Python scope |
+| `variable_type` | Variable type matches (`string`, `number`, `boolean`, `array`, `dictionary`) |
+| `variable_equals` | Variable value equals expected |
+| `variable_dict_contains` | Dictionary variable contains a value |
+| `variable_dict_equals` | Dictionary variable equals expected dict |
+| `variable_dict_key_value` | Dictionary variable key equals expected value |
+| `variable_array_contains` | List variable contains a value |
+| `variable_array_equals` | List variable equals expected list |
+| `variable_array_nth_item` | List variable N-th item (0-indexed) equals expected value |
 
 ### Scratch
 
@@ -69,6 +94,7 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 |---|---|
 | `answer_equals` | Selected answer ID matches value |
 | `answer_contains` | Free-text answer contains value |
+| `answer_not_contains` | Free-text answer does not contain value |
 | `answer_matches_regex` | Free-text answer matches regex pattern |
 | `quiz_result` | All pairs/blanks answered correctly |
 
@@ -156,7 +182,8 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 ### Completion Checks
 - Evaluated automatically on Run or Submit
 - Pass: green banner + Firebase `checkPassed` updated
-- Live session failures: hint shown after repeated identical failure; "Show complete code" unlocked after 2+
+- Fail: feedback banner shows the hint from the first failed check that carries a `hint` field; if the completion check fails and any `incorrectChecks` entry passes (detecting a specific wrong pattern), its hint is shown instead
+- "See complete code" unlocked in solo mode after the same hint appears 2+ times in a row, when `completeCode`/`completeFiles`/`completeBlocks` is defined on the task
 
 ### Code Editing
 - Python: CodeMirror with Pyodide status (loading → ready → error)

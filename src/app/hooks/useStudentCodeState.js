@@ -760,6 +760,9 @@ export function useStudentCodeState({
   function handleFileChange(filename, content) {
     const nextFiles = filesRef.current.map(f => f.name === filename ? { ...f, content } : f)
     setFiles(nextFiles)
+    if (canPublishTeacherLive()) {
+      publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
+    }
     if (teacherPresentation) return
     if (identity && lesson?.type === 'html') {
       if (inPersonalSandboxRef.current) {

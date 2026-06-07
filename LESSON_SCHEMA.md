@@ -53,8 +53,8 @@ These fields can appear on tasks unless noted otherwise.
 | `estimatedMinutes` | No | positive integer | Approximate duration; totaled in the builder and used for the teacher countdown. |
 | `taskMode` | No | string | Controls where the task is visible. Omit or use `both` (default) to show in all modes. Use `live` to show only during live sessions. Use `solo` to show only in solo mode. |
 | `taskType` | No | string | Omit for normal code tasks. Use `information` or `quiz` for non-code tasks. |
-| `hints` | No | string array | Optional hints shown by the hint panel. Empty strings are stripped on export. |
-| `check` | No | object or array | Completion check. Arrays require every check to pass. |
+| `check` | No | object or array | Completion check. Arrays require every check to pass. Each check object may carry an optional `hint` (Markdown string) shown in the feedback banner when that specific check fails. |
+| `incorrectChecks` | No | object or array | Checks that detect specific wrong patterns. Each must have a non-empty `hint`. Evaluated only when the completion check fails; the first that passes supplies the hint shown to the student. |
 | `_checkTested` | No | boolean | Builder-only validation flag. Export may include it if present. |
 
 ## Task Format Matrix
@@ -79,10 +79,10 @@ These fields can appear on tasks unless noted otherwise.
   "completeCode": "print('Hello Headstart')\n",
   "carryCodeFrom": null,
   "interactionMode": "run",
-  "hints": ["Use quotes inside the print brackets."],
   "check": {
     "type": "output_contains",
-    "value": "Hello"
+    "value": "Hello",
+    "hint": "Use `print()` to output text."
   }
 }
 ```
@@ -396,8 +396,7 @@ Information tasks work in every lesson type. They can render as a standard expla
   "taskType": "information",
   "informationType": "standard",
   "title": "How loops work",
-  "explainer": "A loop repeats code while a condition is true.",
-  "hints": ["Read the example carefully before moving on."]
+  "explainer": "A loop repeats code while a condition is true."
 }
 ```
 
@@ -408,7 +407,6 @@ Information tasks work in every lesson type. They can render as a standard expla
 | `title` | Yes | string | Shown in progress UI. |
 | `leftContent` | No | string | Markdown for the left pane. Only used when `informationType` is `recap`. |
 | `explainer` | Yes* | string | Markdown content. Required for `standard` and `recap` (right pane); optional for `introduction`, which renders lesson metadata. |
-| `hints` | No | string array | Optional, although information tasks normally do not need hints. |
 
 `standard` renders the explainer as before. `recap` (also called "Two Pane View" in the builder) renders two side-by-side markdown panes: a purple left pane using `leftContent` and a white right pane using `explainer`. `introduction` renders the lesson title, level, lesson type, and description from the lesson metadata on a purple background.
 
@@ -434,8 +432,7 @@ Quiz tasks work in every lesson type. There are four sub-types controlled by `qu
   "check": {
     "type": "answer_equals",
     "value": "a"
-  },
-  "hints": ["Look for the option with a fixed count."]
+  }
 }
 ```
 
@@ -447,7 +444,6 @@ Quiz tasks work in every lesson type. There are four sub-types controlled by `qu
 | `explainer` | Yes | string | Question text, rendered as Markdown. |
 | `options` | Yes (multiple_choice) | array | At least two options. |
 | `check` | Yes | object | `{ "type": "answer_equals", "value": "<option id>" }`. |
-| `hints` | No | string array | Optional. |
 
 Option object:
 
@@ -543,7 +539,7 @@ Open-ended example (no correct answer — teacher review only):
 }
 ```
 
-Supported check types for short answer: `answer_equals`, `answer_contains`, `answer_matches_regex`.
+Supported check types for short answer: `answer_equals`, `answer_contains`, `answer_not_contains`, `answer_matches_regex`.
 
 Do not include code fields, carry fields, or `interactionMode` on any quiz task.
 
@@ -612,32 +608,123 @@ When `check` is an array, every check must pass.
 
 Regex check types are case-sensitive. Non-regex string comparison and containment checks remain case-insensitive.
 
+### `hint` on check objects
+
+Each check object may carry an optional `hint` field (Markdown string). When that check fails, the hint is displayed in the student feedback banner instead of the default "Not quite, try again!" message. For check arrays, the hint from the first failing check that has a non-empty `hint` is shown.
+
+```json
+{
+  "type": "output_contains",
+  "value": "Hello Headstart",
+  "hint": "The output should say `Hello Headstart` — check your spelling and capitalisation."
+}
+```
+
+### `incorrectChecks`
+
+A task may carry an `incorrectChecks` field: an array (or single object) of check objects that detect specific wrong patterns. Each must have a non-empty `hint`. When the completion check fails, `incorrectChecks` are evaluated in order and the hint from the **first that passes** (i.e., the wrong pattern is present) is shown instead of the completion check hint. If none match, the completion check hint (if any) is shown.
+
+```json
+{
+  "check": { "type": "output_contains", "value": "Hello Headstart" },
+  "incorrectChecks": [
+    {
+      "type": "output_contains",
+      "value": "Hello World",
+      "hint": "You printed `Hello World` — change the message to `Hello Headstart`."
+    }
+  ]
+}
+```
+
+Incorrect checks may use any check type. They are only evaluated after the completion check fails and never affect pass/fail.
+
+### Wildcard values
+
+The `*` character acts as a wildcard in `value` for containment and equality checks, matching any sequence of characters including newlines.
+
+```json
+{ "type": "output_contains", "value": "Hello *!" }
+```
+
+### Multi-option values
+
+For `output_contains`, `code_contains`, `element_value`, and `answer_contains` checks, the `value` may list several alternatives in `"option1","option2"` format. The check passes when the actual value matches **any** of the options.
+
+```json
+{ "type": "output_contains", "value": "\"hello\",\"hi\",\"hey\"" }
+```
+
 ## Python and HTML Check Types
+
+### Output and code checks
 
 | Check type | Fields | Run mode | Submit mode | Python | HTML | Behaviour |
 |---|---|---:|---:|---:|---:|---|
 | `code_no_error` | `type` | Yes | No | Yes | No | Passes when Python run status is `success`. |
 | `output_contains` | `type`, `value` | Yes | No | Yes | Yes | Case-insensitive containment against stdout or iframe body text. |
 | `output_equals` | `type`, `value` | Yes | No | Yes | Yes | Case-insensitive exact output/body-text match after trimming trailing newlines. |
+| `output_not_contains` | `type`, `value` | Yes | No | Yes | Yes | Output/body text does not contain `value`. |
+| `output_not_equals` | `type`, `value` | Yes | No | Yes | Yes | Output/body text does not equal `value`. |
+| `output_matches_regex` | `type`, `value` | Yes | No | Yes | Yes | Output/body text matches regex `value` (case-sensitive). |
 | `output_line_count` | `type`, `value` | Yes | No | Yes | Yes | Output/body text must contain exactly this many lines. |
 | `output_not_empty` | `type` | Yes | No | Yes | Yes | Output/body text must not be empty. |
 | `output_empty` | `type` | Yes | No | Yes | Yes | Output/body text must be empty or whitespace-only. |
 | `code_contains` | `type`, `value` | Yes | Yes | Yes | Yes | Source code contains value, case-insensitive; ignores whitespace outside quoted text. |
 | `code_does_not_contain` | `type`, `value` | Yes | Yes | Yes | Yes | Source code does not contain value, case-insensitive; ignores whitespace outside quoted text. |
 | `code_equals` | `type`, `value` | Yes | Yes | Yes | Yes | Source code equals value, case-insensitive; ignores whitespace outside quoted text. |
-| `element_exists` | `type`, `selector` | Yes | No | No | Yes | At least one iframe element matches CSS selector. |
-| `element_count` | `type`, `selector`, `value` | Yes | No | No | Yes | Number of matching iframe elements equals `value`. |
-| `element_value` | `type`, `selector`, `value` | Yes | No | No | Yes | Matching element text/value contains `value`, case-insensitive. |
-| `answer_equals` | `type`, `value` | Quiz only | Quiz only | n/a | n/a | Selected answer ID (multiple choice) or text equals `value`. |
-| `answer_contains` | `type`, `value` | Quiz only | Quiz only | n/a | n/a | Free-text answer contains `value` (short answer). |
-| `answer_matches_regex` | `type`, `value` | Quiz only | Quiz only | n/a | n/a | Free-text answer matches regex pattern (short answer). |
-| `quiz_result` | `type` | Quiz only | Quiz only | n/a | n/a | All pairs/blanks correct (match, fill_blank). No `value` needed. |
+| `code_not_equals` | `type`, `value` | Yes | Yes | Yes | Yes | Source code does not equal value, case-insensitive; ignores whitespace outside quoted text. |
+| `code_matches_regex` | `type`, `value` | Yes | Yes | Yes | Yes | Source code matches regex `value` (case-sensitive; whitespace normalised). |
+
+### Element checks (HTML only)
+
+| Check type | Fields | Behaviour |
+|---|---|---|
+| `element_exists` | `type`, `selector` | At least one iframe element matches CSS selector. |
+| `element_count` | `type`, `selector`, `value` | Number of matching iframe elements equals `value`. |
+| `element_value` | `type`, `selector`, `value` | Matching element text/value contains `value`, case-insensitive. |
+| `element_value_equals` | `type`, `selector`, `value` | Matching element text/value equals `value`, case-insensitive. |
+| `element_value_not_contains` | `type`, `selector`, `value` | Matching element text/value does not contain `value`. |
+| `element_value_not_equals` | `type`, `selector`, `value` | Matching element text/value does not equal `value`. |
+| `element_value_matches_regex` | `type`, `selector`, `value` | Matching element text/value matches regex `value` (case-sensitive). |
+| `element_attribute` | `type`, `selector`, `attribute`, `value`? | Attribute exists on matching element; if `value` is provided, the attribute value must match (case-insensitive). |
+| `element_style_property` | `type`, `selector`, `property`, `value`? | Computed CSS property exists on matching element; if `value` is provided, must match (URL normalised to filename). |
+
+All element checks require a CSS `selector` field and are only valid in Run mode.
+
+### Variable checks (Python only)
+
+Evaluated after the Python run completes. Requires `name` (the variable name as a string). The `value` field accepts a JSON-encoded string (`"42"`, `"[1,2,3]"`, `"{\"a\": 1}"`) or a plain string; Python values `True`, `False`, and `None` are also recognised.
+
+| Check type | Extra fields | Behaviour |
+|---|---|---|
+| `variable_exists` | `name` | Variable with that name exists in Python scope. |
+| `variable_type` | `name`, `value` | Variable type matches `value`. Aliases: `str`/`string`, `int`/`float`/`number`, `bool`/`boolean`, `list`/`tuple`/`array`, `dict`/`dictionary`. |
+| `variable_equals` | `name`, `value` | Variable value equals `value`. |
+| `variable_dict_contains` | `name`, `value` | Dictionary variable contains `value` as a value (any key). |
+| `variable_dict_equals` | `name`, `value` | Dictionary variable deep-equals `value`. |
+| `variable_dict_key_value` | `name`, `key`, `value` | Dictionary variable's key `key` equals `value`. |
+| `variable_array_contains` | `name`, `value` | List variable contains `value`. |
+| `variable_array_equals` | `name`, `value` | List variable deep-equals `value`. |
+| `variable_array_nth_item` | `name`, `index`, `value` | List variable item at zero-based `index` equals `value`. |
+
+### Quiz check types
+
+| Check type | Fields | Behaviour |
+|---|---|---|
+| `answer_equals` | `type`, `value` | Selected answer ID (multiple choice) or text equals `value`. |
+| `answer_contains` | `type`, `value` | Free-text answer contains `value` (short answer). |
+| `answer_not_contains` | `type`, `value` | Free-text answer does not contain `value`. |
+| `answer_matches_regex` | `type`, `value` | Free-text answer matches regex pattern (short answer). |
+| `quiz_result` | `type` | All pairs/blanks correct (match, fill_blank). No `value` needed. |
 
 Submit mode accepts only:
 
 - `code_contains`
 - `code_does_not_contain`
 - `code_equals`
+- `code_not_equals`
+- `code_matches_regex`
 
 ## Scratch Check Types
 
@@ -973,7 +1060,7 @@ Checks evaluate automatically after each student operation — there is no Run b
 - `carryCodeFrom` and `carryBlocksFrom` must reference an existing task ID.
 - Submit mode cannot use run-required checks.
 - DOM checks need a CSS selector.
-- Checks that need a value must provide one, except `code_no_error`, `output_not_empty`, `output_empty`, and `element_exists`.
+- Checks that need a value must provide one, except `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, and `variable_exists`.
 - Scratch toolbox XML must parse if provided.
 - Scratch `sprite_property` checks need `property`, `operator`, and `value`.
 - Scratch `block_used` checks need `opcode`.
