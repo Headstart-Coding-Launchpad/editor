@@ -1,16 +1,31 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../shared/firebase'
+import { useAuth } from '../../auth/useAuth'
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState(null)
   const [loading, setLoading]   = useState(false)
+  const pendingRedirect         = useRef(null)
+
+  // Navigate only after onAuthStateChanged has confirmed the sign-in.
+  // Navigating immediately after signInWithEmailAndPassword races the auth
+  // state update and causes LessonRoute/ProtectedRoute to see user=null and
+  // redirect back to login before the user object is available.
+  useEffect(() => {
+    if (user && pendingRedirect.current) {
+      const redirect = pendingRedirect.current
+      pendingRedirect.current = null
+      navigate(redirect, { replace: true })
+    }
+  }, [user, navigate])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -19,9 +34,8 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
       const rawRedirect = searchParams.get('redirect') ?? '/'
-      // Only follow same-origin redirects
-      const redirect = rawRedirect.startsWith('/') ? rawRedirect : '/'
-      navigate(redirect, { replace: true })
+      // Only follow same-origin redirects; navigation deferred to useEffect above
+      pendingRedirect.current = rawRedirect.startsWith('/') ? rawRedirect : '/'
     } catch {
       setError('Incorrect email or password.')
     } finally {
