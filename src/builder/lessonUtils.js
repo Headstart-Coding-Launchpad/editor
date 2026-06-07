@@ -218,6 +218,7 @@ export function quizHasStarter(task) {
   if (quizType === 'match') return task.pairs?.some(pair => pair.prompt?.trim() || pair.answer?.trim())
   if (quizType === 'fill_blank') return !!task.text?.trim() || task.blanks?.some(blank => blank.answer?.trim())
   if (quizType === 'short_answer') return !!task.explainer?.trim()
+  if (quizType === 'confidence') return !!task.explainer?.trim()
   return false
 }
 
@@ -225,6 +226,7 @@ export function quizHasCheckValue(task) {
   const quizType = task.quizType ?? 'multiple_choice'
   if (quizType === 'match') return task.pairs?.length > 0 && task.pairs.every(pair => pair.prompt?.trim() && pair.answer?.trim())
   if (quizType === 'fill_blank') return task.blanks?.length > 0 && task.blanks.every(blank => blank.answer?.trim())
+  if (quizType === 'confidence') return true
   return !!task.check?.value
 }
 

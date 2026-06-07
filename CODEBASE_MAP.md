@@ -78,7 +78,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `ScratchWorkspace.jsx` | Full Scratch IDE: multi-sprite Blockly workspaces, stage canvas, sprite drag, check evaluation |
-| `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer |
+| `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
 | `CheckFeedbackBanner.jsx` | Pass/fail banner with optional hint and "see complete code" action |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message |
 | `JoinChoiceScreen.jsx` | Choice screen: Wait for Teacher or Work Solo (shown when no active session) |

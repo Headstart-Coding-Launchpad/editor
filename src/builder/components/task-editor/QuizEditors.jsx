@@ -9,6 +9,7 @@ function QuizTypePicker({ task, onQuizTypeChange }) {
     { value: 'match', label: 'Match', meta: 'Pair items', icon: 'match' },
     { value: 'fill_blank', label: 'Fill Blank', meta: 'Complete gaps', icon: 'blank' },
     { value: 'short_answer', label: 'Short Answer', meta: 'Typed response', icon: 'answer' },
+    { value: 'confidence', label: 'Confidence', meta: 'Rate 1–5', icon: 'confidence' },
   ]
   return (
     <Field label="Quiz type">
