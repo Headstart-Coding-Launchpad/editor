@@ -26,6 +26,7 @@ export function useStudentCodeState({
   effectiveIdentity,
   identity,
   session,
+  connected,
   teacherPresentation,
   previewMode,
   // Session write commands
@@ -340,14 +341,17 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
-  // Register Firebase presence so the teacher sees who is connected live
+  // Register Firebase presence so the teacher sees who is connected live.
+  // Also re-registers on reconnect (connected flips true) so the online key
+  // is restored after a temporary network drop without a page refresh.
   useEffect(() => {
     if (teacherPresentation) return
+    if (!connected) return
     if ((phase === 'lesson' || phase === 'sandbox') && identity?.anonymousId) {
       registerPresence(identity.anonymousId)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
+  }, [phase, identity?.anonymousId, teacherPresentation, connected])
 
   // Presentation windows must not appear as students
   useEffect(() => {
