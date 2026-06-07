@@ -549,9 +549,6 @@ const components = {
       if (langMatch) {
         return <InlineHighlightedCode lang={langMatch[1]} code={langMatch[2]} />
       }
-      if (categorize(text)) {
-        return <InlineScratchBlock text={text.trim()} />
-      }
       const inheritColor = React.useContext(MarkdownInheritColorContext)
       return (
         <code
