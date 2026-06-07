@@ -38,7 +38,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
-    session, loading: sessionLoading, registerPresence, joinSession,
+    session, loading: sessionLoading, connected, registerPresence, joinSession,
     writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
@@ -79,7 +79,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const cs = useStudentCodeState({
     lessonId, lesson, currentTaskId, viewingTaskId, phase,
-    effectiveIdentity, identity, session,
+    effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
     writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput,
     writeStudentInteraction, writeStudentPersonalSandbox,
