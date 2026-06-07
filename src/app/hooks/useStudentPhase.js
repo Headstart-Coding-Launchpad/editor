@@ -70,6 +70,7 @@ export function useStudentPhase({
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
         onPersonalSandboxExit?.()
         onBeforeTaskChange?.()
+        onTaskReset?.()
         setPhase('ended')
         return
       }
@@ -94,6 +95,7 @@ export function useStudentPhase({
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
         onPersonalSandboxExit?.()
         onBeforeTaskChange?.()
+        onTaskReset?.()
         setPhase('ended')
         return
       }
@@ -187,6 +189,7 @@ export function useStudentPhase({
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
     await joinSession(id.anonymousId, displayName)
+    if (!session || session.state === 'ended') { setPhase('waiting'); return }
     if (session.state === 'waiting') { setPhase('waiting'); return }
     if (session.state === 'sandbox') { setPhase('sandbox'); return }
     setCurrentTaskId(session.currentTaskId ?? 1)

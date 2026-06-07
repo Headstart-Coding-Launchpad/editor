@@ -328,7 +328,7 @@ export function useStudentCodeState({
     if (!canPublishTeacherLive()) return
     updateTeacherLive(currentTeacherLivePayload())
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted, fsState])
+  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
 
   // When phase leaves lesson/solo, exit personal sandbox silently
   useEffect(() => {
@@ -604,6 +604,7 @@ export function useStudentCodeState({
     setIframeSrc(src)
     setRunStatus('success')
 
+    const taskIdAtRunTime = currentTaskIdRef.current
     waitForIframeText().then(text => {
       const codeStr = currentFiles.map(f => f.content).join('\n')
       const iframeDoc = iframeRef.current?.contentDocument ?? null
@@ -622,7 +623,7 @@ export function useStudentCodeState({
         if (inPersonalSandboxRef.current) {
           currentFiles.forEach(f => savePersonalSandboxFile(lessonId, f.name, actor.anonymousId, f.content))
         } else {
-          currentFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
+          currentFiles.forEach(f => saveFile(lessonId, taskIdAtRunTime, f.name, actor.anonymousId, f.content))
         }
       }
       setRunning(false)
@@ -759,9 +760,6 @@ export function useStudentCodeState({
   function handleFileChange(filename, content) {
     const nextFiles = filesRef.current.map(f => f.name === filename ? { ...f, content } : f)
     setFiles(nextFiles)
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
-    }
     if (teacherPresentation) return
     if (identity && lesson?.type === 'html') {
       if (inPersonalSandboxRef.current) {
@@ -818,7 +816,7 @@ export function useStudentCodeState({
     const passed = task?.check ? evaluateCheck(task.check, null, context) : false
     const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
     if (task?.check && (passed || !suppressFailFeedback)) applyCheckFeedback(passed, suggestion)
-    if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
+    if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
         status: task?.check ? (passed ? 'success' : 'error') : null,
@@ -830,7 +828,11 @@ export function useStudentCodeState({
   function handleFsChange(newFs) {
     setFsState(newFs)
     if (!teacherPresentation && !previewMode) {
-      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+      if (inPersonalSandboxRef.current) {
+        savePersonalSandboxFs(lessonId, effectiveIdentity?.anonymousId, newFs)
+      } else {
+        saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+      }
     }
     applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
   }
