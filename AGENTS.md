@@ -384,6 +384,18 @@ gh api repos/{owner}/{repo}/pulls/comments/{comment_id}/replies \
 gh pr comment <pr-number> --body "Addressed in <commit-sha>: <brief explanation of what was changed>"
 ```
 
+### Code review
+
+When running `/code-review` on a PR number (e.g. `/code-review https://github.com/.../pull/123`), always post the findings as a comment on that PR when the review is complete:
+
+```bash
+gh pr comment <pr-number> --repo Headstart-Coding-Launchpad/editor --body "<findings>"
+```
+
+Format the comment as a markdown list of findings, one section per bug, with severity emoji (🔴 high / 🟠 medium / 🟡 low), the file and approximate line, a one-sentence summary, a concrete failure scenario, and a suggested fix where applicable. End the comment with `*Review performed by Claude Code (claude-sonnet-4-6)*`.
+
+If the review target is a local branch diff rather than a PR number, skip the comment step.
+
 ### Worktrees and environment variables
 
 The `.env` file lives **one level above the repo root** (i.e. `../` relative to any worktree), not inside the repo. This means all worktrees automatically share the same env vars without any copying or symlinking.
