@@ -31,7 +31,7 @@ export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = nul
         if (!cancelled) setLessonLoading(false)
       })
     return () => { cancelled = true }
-  }, [lessonId, lessonProp])
+  }, [lessonId, lessonProp, initialTaskId])
 
   return { lesson, lessonLoading, firstTaskId }
 }

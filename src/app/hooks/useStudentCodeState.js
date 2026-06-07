@@ -6,7 +6,7 @@ import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
 import { decodeFileKey } from './useSession'
-import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadSavedFs, saveFsState } from '../studentStorage'
+import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getQuizSuggestion } from '../studentQuizContent'
@@ -113,7 +113,8 @@ export function useStudentCodeState({
   }
 
   function currentTeacherLivePayload(extra = {}) {
-    const filesMap = Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
+    const isFilesystem = lessonRef.current?.type === 'filesystem'
+    const filesMap = isFilesystem ? {} : Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -123,7 +124,7 @@ export function useStudentCodeState({
       sourceStudentName,
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
-      code: codeRef.current,
+      code: isFilesystem ? JSON.stringify(fsStateRef.current) : codeRef.current,
       files: filesMap,
       activeFile: activeFileRef.current,
       output: outputRef.current,
@@ -197,6 +198,8 @@ export function useStudentCodeState({
       savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current })
     } else if (lessonRef.current.type === 'html') {
       filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content))
+    } else if (lessonRef.current.type === 'filesystem') {
+      savePersonalSandboxFs(lessonId, id.anonymousId, fsStateRef.current)
     }
     // Scratch: saves incrementally via handleScratchChange
   }
@@ -320,12 +323,12 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentTaskId, lesson, effectiveIdentity?.anonymousId])
 
-  // Publish to teacherLive when code/output changes and we are the source
+  // Publish to teacherLive when code/output/fsState changes and we are the source
   useEffect(() => {
     if (!canPublishTeacherLive()) return
     updateTeacherLive(currentTeacherLivePayload())
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted])
+  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
 
   // When phase leaves lesson/solo, exit personal sandbox silently
   useEffect(() => {
@@ -368,6 +371,8 @@ export function useStudentCodeState({
     } else if (lesson.type === 'scratch') {
       const saved = loadSavedCode(lessonId, currentTaskId, identity.anonymousId)
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
+    } else if (lesson.type === 'filesystem') {
+      writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
     }
     writeStudentInteraction(identity.anonymousId, {
       selection: editorSelectionRef.current,
@@ -388,6 +393,15 @@ export function useStudentCodeState({
     if (phase !== 'sandbox' || lesson?.type !== 'scratch' || !session?.sandboxCode) return
     try {
       setScratchSandboxProject(JSON.parse(session.sandboxCode))
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, session?.sandboxCodePushedAt])
+
+  // React to sandbox filesystem pushes
+  useEffect(() => {
+    if (phase !== 'sandbox' || lesson?.type !== 'filesystem' || !session?.sandboxCode) return
+    try {
+      setFsState(JSON.parse(session.sandboxCode))
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, session?.sandboxCodePushedAt])
@@ -461,9 +475,16 @@ export function useStudentCodeState({
       }
       setScratchExternalState(targetBlocks)
     } else if (lesson.type === 'filesystem') {
-      const targetFs = action === 'complete'
-        ? (task.completeFs ?? task.starterFs ?? DEFAULT_FS)
-        : (task.starterFs ?? DEFAULT_FS)
+      let targetFs
+      if (action === 'complete') {
+        targetFs = task.completeFs ?? task.starterFs ?? DEFAULT_FS
+      } else if (action === 'starter') {
+        targetFs = task.starterFs ?? DEFAULT_FS
+      } else {
+        const stageMatch = action.match(/^stage_(\d+)$/)
+        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
+        targetFs = stage?.fs ?? task.starterFs ?? DEFAULT_FS
+      }
       setFsState(targetFs)
       resetCheckFeedback()
     }
@@ -487,6 +508,9 @@ export function useStudentCodeState({
       const withContent = sandboxFiles.length > 0 ? sandboxFiles : starterFiles.map(f => ({ ...f }))
       setFiles(withContent)
       setActiveFile(withContent[0]?.name ?? '')
+    } else if (lesson.type === 'filesystem') {
+      const savedFs = loadPersonalSandboxFs(lessonId, id)
+      setFsState(savedFs ?? lesson.sandboxStarterFs ?? DEFAULT_FS)
     }
     setOutput('')
     setRunStatus(null)
@@ -580,6 +604,7 @@ export function useStudentCodeState({
     setIframeSrc(src)
     setRunStatus('success')
 
+    const taskIdAtRunTime = currentTaskIdRef.current
     waitForIframeText().then(text => {
       const codeStr = currentFiles.map(f => f.content).join('\n')
       const iframeDoc = iframeRef.current?.contentDocument ?? null
@@ -598,7 +623,7 @@ export function useStudentCodeState({
         if (inPersonalSandboxRef.current) {
           currentFiles.forEach(f => savePersonalSandboxFile(lessonId, f.name, actor.anonymousId, f.content))
         } else {
-          currentFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
+          currentFiles.forEach(f => saveFile(lessonId, taskIdAtRunTime, f.name, actor.anonymousId, f.content))
         }
       }
       setRunning(false)
@@ -794,7 +819,7 @@ export function useStudentCodeState({
     const passed = task?.check ? evaluateCheck(task.check, null, context) : false
     const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
     if (task?.check && (passed || !suppressFailFeedback)) applyCheckFeedback(passed, suggestion)
-    if (!teacherPresentation && phase === 'lesson' && effectiveIdentity?.anonymousId) {
+    if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
         status: task?.check ? (passed ? 'success' : 'error') : null,
@@ -806,7 +831,11 @@ export function useStudentCodeState({
   function handleFsChange(newFs) {
     setFsState(newFs)
     if (!teacherPresentation && !previewMode) {
-      saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+      if (inPersonalSandboxRef.current) {
+        savePersonalSandboxFs(lessonId, effectiveIdentity?.anonymousId, newFs)
+      } else {
+        saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
+      }
     }
     applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
   }
@@ -832,6 +861,9 @@ export function useStudentCodeState({
         setActiveFile(starterFiles[0]?.name ?? '')
         setIframeSrc(null)
         setRunStatus(null)
+      } else if (lesson.type === 'filesystem') {
+        setFsState(lesson.sandboxStarterFs ?? DEFAULT_FS)
+        resetCheckFeedback()
       }
       return
     }

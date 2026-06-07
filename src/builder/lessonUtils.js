@@ -78,6 +78,12 @@ export function validateLesson(lesson) {
         }
       }
     } else if (task.taskType !== 'information' && type === 'filesystem') {
+      if (task.codeStages?.length > 0) {
+        task.codeStages.forEach((stage, si) => {
+          if (!stage.label?.trim()) errors.push(`Task ${n} stage ${si + 1} is missing a label`)
+          if (!stage.fs || typeof stage.fs !== 'object') errors.push(`Task ${n} stage ${si + 1} has no filesystem state`)
+        })
+      }
       if (task.check) {
         const checks = normalizeChecks(task.check)
         if (checks.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {

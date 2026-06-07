@@ -1004,7 +1004,8 @@ Text files store editable `content`. Image files may store a static lesson-asset
 | Field | Required | Notes |
 |---|---:|---|
 | `starterFs` | No | Initial filesystem state when no carry-through exists. Defaults to `{ "/": { type: "dir" } }`. |
-| `completeFs` | No | Reference solution filesystem used in the builder. |
+| `completeFs` | No | Reference solution filesystem used in the builder and shown in the "See complete" action. |
+| `codeStages` | No | Array of `{ label: string, fs: FlatPathMap }` intermediate snapshots. Teacher can push each stage to all students via "Send to all". Students receive them via remote reset (`stage_N`). |
 | `carryFsFrom` | No | Previous task ID to carry the saved filesystem state from. |
 | `startsInDir` | No | Directory path the student's explorer opens in on task load. Defaults to `/` (root). Must be a normalised dir path ending with `/`. If the path does not exist in the loaded filesystem, the explorer falls back to root. |
 

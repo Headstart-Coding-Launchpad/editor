@@ -49,6 +49,17 @@ export function savePersonalSandboxFile(lessonId, filename, anonymousId, content
   localStorage.setItem(personalSandboxFileStorageKey(lessonId, filename, anonymousId), JSON.stringify({ content }))
 }
 
+export function loadPersonalSandboxFs(lessonId, anonymousId) {
+  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId))
+  if (!raw) return null
+  const parsed = JSON.parse(raw)
+  return parsed.fs ?? null
+}
+
+export function savePersonalSandboxFs(lessonId, anonymousId, fs) {
+  localStorage.setItem(personalSandboxStorageKey(lessonId, anonymousId), JSON.stringify({ fs }))
+}
+
 export function loadSavedFs(lessonId, taskId, anonymousId) {
   const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
   if (!raw) return null

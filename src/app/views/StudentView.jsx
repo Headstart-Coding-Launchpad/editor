@@ -236,6 +236,9 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     editorActivity: cs.editorActivity,
   })
   const task = flatTasks.find(t => t.id === displayedTaskId)
+  const displayFs = isForcedTeacherLive && lesson.type === 'filesystem'
+    ? (() => { try { return JSON.parse(session?.teacherLive?.code ?? '') } catch { return cs.fsState } })()
+    : cs.fsState
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'
@@ -261,6 +264,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!(lesson.sandboxStarterFiles?.length > 0)
     : lesson.type === 'scratch'
     ? !!(lesson.sandboxStarterCode != null)
+    : lesson.type === 'filesystem'
+    ? !!(lesson.sandboxStarterFs != null)
     : false
   const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
   const taskContentStyle = (!isSandbox && isQuizTask)
@@ -427,7 +432,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             <FilesystemTask
               key={`filesystem-${viewingTaskId ?? currentTaskId}`}
               initialDir={task?.carryFsFrom ? (cs.fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')) : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')}
-              fs={cs.fsState}
+              fs={displayFs}
               onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsChange}
               onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsInteraction}
               assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
