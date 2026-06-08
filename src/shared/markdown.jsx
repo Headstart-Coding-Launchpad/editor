@@ -359,6 +359,7 @@ export function InlineMarkdown({ content, topicType = null }) {
         <TopicReference
           topic={topic}
           label={children}
+          renderSummary={InlineMarkdown}
           onOpen={id => {
             setSelectedTopicId(id)
             setLibraryOpen(true)
@@ -690,6 +691,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
         <TopicReference
           topic={topic}
           label={children}
+          renderSummary={InlineMarkdown}
           onOpen={id => {
             setSelectedTopicId(id)
             setLibraryOpen(true)

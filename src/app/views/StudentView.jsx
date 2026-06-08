@@ -198,7 +198,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   // ─── Lesson / sandbox / solo render ───────────────────────────────────────
 
-  const taskDisplayMode = phase === 'solo' ? 'solo' : phase === 'lesson' ? 'live' : null
+  const taskDisplayMode = previewMode ? null : (phase === 'solo' ? 'solo' : phase === 'lesson' ? 'live' : null)
   const visibleTasks = filterTasksByMode(lesson.tasks, taskDisplayMode)
   const flatTasks = flattenTasks(visibleTasks)
   const currentIndex = flatTasks.findIndex(t => t.id === currentTaskId)
@@ -398,6 +398,16 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           transitionKey={`${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`}
           style={taskContentStyle}
         >
+          {previewMode && task && !isSandbox && (
+            <div style={styles.previewTaskModeBanner}>
+              {task.taskMode === 'live'
+                ? 'Live sessions only'
+                : task.taskMode === 'solo'
+                ? 'Solo mode only'
+                : 'Live + Solo'}
+            </div>
+          )}
+
           {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
             <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
           )}
@@ -995,6 +1005,16 @@ const styles = {
     color: '#5b21b6',
     display: 'flex',
     alignItems: 'center',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+  previewTaskModeBanner: {
+    background: 'rgba(14,165,233,0.08)',
+    borderBottom: '1px solid rgba(14,165,233,0.2)',
+    padding: '5px 16px',
+    fontSize: 12,
+    color: '#0369a1',
     fontFamily: 'var(--font-body)',
     fontWeight: 600,
     flexShrink: 0,

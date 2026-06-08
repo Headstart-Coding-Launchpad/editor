@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { clearTopicCache, normalizeTopicLibrary, searchTopics } from '../shared/topicLibrary'
-import { MarkdownFieldEditor } from '../builder/components/ExplainerEditor'
+import { MarkdownFieldEditor } from '../shared/MarkdownFieldEditor'
 
 const LESSON_TYPES = ['python', 'html', 'scratch']
 const ID_PATTERN   = /^[a-z0-9][a-z0-9._-]*$/
@@ -244,14 +244,18 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
       </div>
 
       <div style={f.fieldFull}>
-        <label style={f.label}>Summary <span style={f.hint}>(plain text — shown in hover card)</span></label>
-        <textarea
-          style={f.summaryTextarea}
-          value={topic.summary}
-          onChange={e => onChange('summary', e.target.value)}
-          placeholder="One-sentence description shown in the hover card and detail pane lead-in."
-          rows={2}
-        />
+        <label style={f.label}>Summary <span style={f.hint}>(Markdown — shown in hover card and detail pane lead-in)</span></label>
+        <div style={f.markdownWrap}>
+          <MarkdownFieldEditor
+            value={topic.summary}
+            onChange={val => onChange('summary', val)}
+            placeholder="One-sentence description shown in the hover card and detail pane lead-in."
+            height={120}
+            minHeight={80}
+            lessonType={lessonType}
+            inlineCodeLanguages={['python', 'html', 'css', 'javascript', 'scratch']}
+          />
+        </div>
       </div>
 
       <div style={f.fieldFull}>
