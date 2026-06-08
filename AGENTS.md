@@ -112,10 +112,49 @@ These rules are absolute — do not deviate regardless of context:
 │       ├── scratch.js
 │       ├── taskUtils.js
 │       └── useIsMobile.js
+├── mcp/                 # Local MCP server — see MCP Server section below
 ├── public/
 ├── vite.config.js
+├── .mcp.json            # Claude Code MCP server registration
 └── package.json
 ```
+
+---
+
+## MCP Server
+
+The `mcp/` sub-package exposes the lesson and topic library to AI agents via the Model Context Protocol. It runs locally as a stdio process using the Firebase Admin SDK — no browser auth needed.
+
+**Auth:** Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
+Download from: Firebase Console → Project Settings → Service Accounts → Generate new private key.
+
+**Setup:**
+1. `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`
+2. `cd mcp && npm install`
+3. Restart Claude Code — server registers automatically from `.mcp.json`
+
+**Available tools:**
+
+| Tool | Purpose |
+|---|---|
+| `list_lessons` | List all lessons (id, title, type, taskCount) |
+| `get_lesson(id)` | Fetch full lesson JSON from Firestore |
+| `validate_lesson(lesson)` | Validate structure without writing — returns `{valid, errors[], warnings[]}` |
+| `upsert_lesson(lesson)` | Create or update a lesson (validates first) |
+| `delete_lesson(id)` | Delete a lesson |
+| `list_topics` | List all topics (id, title, category, types) |
+| `get_topic(id)` | Fetch full topic |
+| `upsert_topic(topic)` | Create or update a topic |
+| `delete_topic(id)` | Delete a topic |
+
+**Available resources:**
+
+| URI | Content |
+|---|---|
+| `lesson://schema` | Full `LESSON_SCHEMA.md` |
+| `topic://schema` | Full `TOPIC_LIBRARY_SCHEMA.md` |
+
+**Note:** Scratch toolbox XML validation is skipped in `validate_lesson` (no `DOMParser` in Node.js) — use the builder preview to catch toolbox XML errors.
 
 ---
 

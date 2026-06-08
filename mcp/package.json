@@ -1,0 +1,14 @@
+{
+  "name": "hsc-repl-mcp",
+  "version": "1.0.0",
+  "description": "Local MCP server for HSC Repl lesson and topic library management",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "firebase-admin": "13.10.0",
+    "zod": "4.4.3"
+  }
+}

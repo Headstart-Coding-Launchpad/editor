@@ -236,11 +236,26 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 ---
 
+## MCP Server (`mcp/`)
+
+Local stdio MCP server for AI-assisted lesson and topic generation. Isolated sub-package — run `cd mcp && npm install` separately. Registered automatically in Claude Code sessions via `.mcp.json`.
+
+| File | Role |
+|---|---|
+| `mcp/package.json` | Sub-package manifest (`type: module`); deps: `@modelcontextprotocol/sdk`, `firebase-admin`, `zod` |
+| `mcp/server.mjs` | Entry point: creates `McpServer`, registers all tools/resources, connects `StdioServerTransport` |
+| `mcp/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore); exits on missing credentials |
+| `mcp/lessons.mjs` | `registerLessonTools(server)` — tools: `list_lessons`, `get_lesson`, `upsert_lesson`, `delete_lesson`, `validate_lesson` |
+| `mcp/topics.mjs` | `registerTopicTools(server)` — tools: `list_topics`, `get_topic`, `upsert_topic`, `delete_topic` |
+
+---
+
 ## Config & Build
 
 | File | Role |
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
 | `package.json` | Dependencies and scripts |
+| `.mcp.json` | Claude Code MCP server registration — points to `mcp/server.mjs` via stdio |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |
