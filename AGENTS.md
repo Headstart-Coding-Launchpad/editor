@@ -138,7 +138,7 @@ Both apps import from `src/shared/`. Never duplicate this logic.
 | `filesystem.js` | Virtual FS engine: flat path-map state, CRUD ops, `evaluateFsCheck`, `FS_CHECK_TYPES` — shared by classroom app and builder |
 | `pyodide.worker.js` | Web Worker: Pyodide loader, async `input()` AST transform, stdout/stderr streaming |
 | `scratch.js` | Block definitions, interpreter, `createRunContext()`, `createSpriteState()`, `createRunSignal()` |
-| `taskUtils.js` | `flattenTasks(tasks)`, duration total/format helpers, `getProgressItems(tasks)`, `updateSubtaskTitles(tasks)` |
+| `taskUtils.js` | `flattenTasks(tasks)`, duration total/format helpers, `getProgressItems(tasks)`, `updateSubtaskTitles(tasks)`, `deriveTaskContext(lesson, task)`, `buildStageOptions(task, lessonType)` |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` |
 
 ---

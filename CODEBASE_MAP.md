@@ -85,6 +85,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
+| `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
 | `StudentCard.jsx` | Compact card: name, online/run/check badges, code/output/quiz snippet, expand button |
 | `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Rename, Remove) |
 | `LiveActivityToast.jsx` | Transient live-view notice for editor copy, paste, and click activity |

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { getQuizOptionText, CONFIDENCE_COLOURS } from './QuizTask'
 import { InlineMarkdown } from '../../shared/markdown'
-import { findTaskById } from '../../shared/taskUtils'
+import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
+import PresenceBadge from './PresenceBadge'
 
 export default function StudentCard({ student, lesson, lessonId, session, onRename, onRemove, onExpand }) {
   const [editing, setEditing] = useState(false)
@@ -15,8 +16,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
-  const isQuiz = currentTask?.taskType === 'quiz'
-  const isInformation = currentTask?.taskType === 'information'
+  const { isPython, isFilesystem, isQuiz, isInformation } = deriveTaskContext(lesson, currentTask)
   const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
   const isShortAnswer = quizType === 'short_answer'
   const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
@@ -44,12 +44,6 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
     : checkFailed
     ? s.cardCheckFailed
     : null
-  const isWaiting = session?.state === 'waiting'
-  const presenceClass = isWaiting
-    ? 'presence-badge presence-badge--waiting'
-    : student.online ? 'presence-badge presence-badge--online' : 'presence-badge presence-badge--offline'
-  const presenceLabel = isWaiting ? 'Waiting' : student.online ? 'Online' : 'Offline'
-
   const hasAnswer = student.currentAnswer != null && student.currentAnswer !== ''
 
   return (
@@ -91,10 +85,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
           </button>
         </div>
         <div style={s.badgeRow}>
-          <span className={presenceClass} title={student.online ? 'Student is connected now' : 'Student is offline'}>
-            <span className="presence-badge__dot" />
-            {presenceLabel}
-          </span>
+          <PresenceBadge student={student} session={session} />
           {checkPassed && (
             <span style={{ ...s.checkBadge, ...s.checkBadgePassed }} title="Completion check passed">
               <span style={s.checkBadgeIcon}>✓</span>
@@ -149,7 +140,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
             <span style={{ color: '#9ca3af', fontSize: 12 }}>No answer yet</span>
           )}
         </div>
-      ) : lesson?.type === 'python' ? (
+      ) : isPython ? (
         isSubmitMode ? (
           <pre style={s.snippet}>
             {student.lastRunStatus === 'submitted'
@@ -159,7 +150,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
         ) : (
           <pre style={s.snippet}>{(student.currentOutput ?? '').split('\n').slice(0, 3).join('\n') || <span style={{ color: '#9ca3af' }}>No output yet</span>}</pre>
         )
-      ) : lesson?.type === 'filesystem' ? (
+      ) : isFilesystem ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
             {student.currentCode ? 'Filesystem project' : 'No changes yet'}

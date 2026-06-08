@@ -11,7 +11,8 @@ import ExplainerPanel from './ExplainerPanel'
 import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
-import { findTaskById } from '../../shared/taskUtils'
+import { findTaskById, deriveTaskContext, buildStageOptions } from '../../shared/taskUtils'
+import PresenceBadge from './PresenceBadge'
 import { DEFAULT_FS } from '../../shared/filesystem'
 
 function parseSpriteState(raw) {
@@ -28,13 +29,9 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
 
-  const isPython     = lesson?.type === 'python'
-  const isScratch    = lesson?.type === 'scratch'
-  const isFilesystem = lesson?.type === 'filesystem'
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
-  const task      = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const isQuiz    = task?.taskType === 'quiz'
-  const isInformation = task?.taskType === 'information'
+  const task = findTaskById(lesson?.tasks, session?.currentTaskId)
+  const { isPython, isScratch, isFilesystem, isQuiz, isInformation } = deriveTaskContext(lesson, task)
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
   const studentFs = isFilesystem
@@ -56,30 +53,7 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
     setActiveFile(liveFile)
   }, [isLive, student.currentActiveFile, student.currentSelection?.file, student.currentActivity?.file])
 
-  const hasComplete = isQuiz
-    ? false
-    : isPython
-    ? !!task?.completeCode
-    : isScratch
-    ? !!task?.completeBlocks
-    : isFilesystem
-    ? !!task?.completeFs
-    : (task?.completeFiles?.length > 0)
-
-  const codeStages = !isQuiz ? (task?.codeStages ?? []) : []
-
-  function buildStageOptions() {
-    const starterLabel = isScratch ? 'Starter blocks' : isFilesystem ? 'Starter folders' : 'Starter code'
-    const completeLabel = isScratch ? 'Complete blocks' : isFilesystem ? 'Complete folders' : 'Complete code'
-    const opts = [{ value: 'starter', label: starterLabel }]
-    codeStages.forEach((stage, i) => {
-      opts.push({ value: `stage_${i}`, label: stage.label || `Stage ${i + 1}` })
-    })
-    if (hasComplete) opts.push({ value: 'complete', label: completeLabel })
-    return opts
-  }
-
-  const stageOptions = buildStageOptions()
+  const stageOptions = buildStageOptions(task, lesson?.type)
 
   function handleSetToStage(action) {
     const opt = stageOptions.find(o => o.value === action)
@@ -109,13 +83,7 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
         <div style={s.header}>
           <div style={s.headerLeft}>
             <span style={s.name}>{student.displayName}</span>
-            <span
-              className={student.online ? 'presence-badge presence-badge--online' : 'presence-badge presence-badge--offline'}
-              title={student.online ? 'Student is connected now' : 'Student is offline'}
-            >
-              <span className="presence-badge__dot" />
-              {student.online ? 'Online' : 'Offline'}
-            </span>
+            <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && <span style={s.checkBadge}>✅</span>}
           </div>
