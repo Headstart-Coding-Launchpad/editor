@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { searchTopics } from './topicLibrary'
 
-export function TopicReference({ topic, label, onOpen }) {
+export function TopicReference({ topic, label, onOpen, renderSummary: SummaryContent = null }) {
   const [showPreview, setShowPreview] = useState(false)
   const [previewPosition, setPreviewPosition] = useState(null)
   const referenceRef = useRef(null)
@@ -71,7 +71,9 @@ export function TopicReference({ topic, label, onOpen }) {
             {topic.title}
           </button>
           <span style={s.previewCategory}>{topic.category}</span>
-          <span style={s.previewText}>{topic.summary}</span>
+          {SummaryContent
+            ? <SummaryContent content={topic.summary} />
+            : <span style={s.previewText}>{topic.summary}</span>}
         </span>,
         document.body,
       )}
