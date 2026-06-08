@@ -3,6 +3,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { initializeApp, getApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   process.stderr.write(
@@ -33,11 +34,15 @@ async function resolveProjectId() {
 }
 
 const projectId = await resolveProjectId()
+const storageBucket =
+  process.env.FIREBASE_STORAGE_BUCKET ||
+  (projectId ? `${projectId}.firebasestorage.app` : undefined)
 
 try {
   getApp()
 } catch {
-  initializeApp(projectId ? { projectId } : undefined)
+  initializeApp({ ...(projectId ? { projectId } : {}), ...(storageBucket ? { storageBucket } : {}) })
 }
 
 export const db = getFirestore()
+export const storage = getStorage()

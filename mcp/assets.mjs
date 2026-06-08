@@ -1,19 +1,14 @@
 import { z } from 'zod'
-import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises'
-import { join, dirname, basename } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
+import { basename } from 'node:path'
+import { db, storage } from './firebase.mjs'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const PUBLIC_ASSETS = join(__dirname, '..', 'public', 'assets')
-const MANIFEST_PATH = join(PUBLIC_ASSETS, 'manifest.json')
-
-async function readManifest() {
-  const raw = await readFile(MANIFEST_PATH, 'utf-8')
-  return JSON.parse(raw)
+function storagePath(lessonId, filename) {
+  return `lessons/${lessonId}/assets/${filename}`
 }
 
-async function writeManifest(manifest) {
-  await writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf-8')
+function buildDownloadUrl(bucketName, path, token) {
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${token}`
 }
 
 function validateFilename(filename) {
@@ -26,13 +21,16 @@ function validateFilename(filename) {
 export function registerAssetTools(server) {
   server.tool(
     'list_lesson_assets',
-    'List asset files for a lesson from public/assets/manifest.json',
+    'List Firebase Storage asset files for a lesson. Returns the storageAssets array from the lesson document in Firestore.',
     { lessonId: z.string().describe('Lesson ID slug') },
     async ({ lessonId }) => {
       try {
-        const manifest = await readManifest()
-        const files = manifest.lessons?.[lessonId] ?? []
-        return { content: [{ type: 'text', text: JSON.stringify({ lessonId, files }) }] }
+        const snap = await db.collection('lessons').doc(lessonId).get()
+        if (!snap.exists) {
+          return { content: [{ type: 'text', text: JSON.stringify({ lessonId, storageAssets: [], note: 'Lesson not found in Firestore' }) }] }
+        }
+        const storageAssets = snap.data().storageAssets ?? []
+        return { content: [{ type: 'text', text: JSON.stringify({ lessonId, storageAssets }) }] }
       } catch (err) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: err.message }) }] }
       }
@@ -41,13 +39,14 @@ export function registerAssetTools(server) {
 
   server.tool(
     'upload_lesson_asset',
-    'Upload a base64-encoded asset file for a lesson. Writes to public/assets/{lessonId}/{filename} and updates manifest.json. The file will be served once committed and deployed.',
+    'Upload a base64-encoded asset file to Firebase Storage at lessons/{lessonId}/assets/{filename}. Returns the download URL and updates storageAssets on the lesson document in Firestore.',
     {
       lessonId: z.string().describe('Lesson ID slug (e.g. "html-3-7")'),
       filename: z.string().describe('Filename with extension (e.g. "hero.png")'),
       base64Content: z.string().describe('File contents as a base64-encoded string'),
+      mimeType: z.string().optional().describe('MIME type (e.g. "image/png"). Defaults to "application/octet-stream".'),
     },
-    async ({ lessonId, filename, base64Content }) => {
+    async ({ lessonId, filename, base64Content, mimeType = 'application/octet-stream' }) => {
       if (!/^[a-z0-9-]+$/.test(lessonId)) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'lessonId must be a lowercase slug (letters, digits, hyphens only)' }) }] }
       }
@@ -57,22 +56,30 @@ export function registerAssetTools(server) {
       }
 
       try {
-        const dir = join(PUBLIC_ASSETS, lessonId)
-        await mkdir(dir, { recursive: true })
+        const bucket = storage.bucket()
+        const path = storagePath(lessonId, filename)
+        const token = randomUUID()
 
         const buffer = Buffer.from(base64Content, 'base64')
-        await writeFile(join(dir, filename), buffer)
+        await bucket.file(path).save(buffer, {
+          metadata: {
+            contentType: mimeType,
+            metadata: { firebaseStorageDownloadTokens: token },
+          },
+        })
 
-        const manifest = await readManifest()
-        if (!manifest.lessons) manifest.lessons = {}
-        if (!manifest.lessons[lessonId]) manifest.lessons[lessonId] = []
-        if (!manifest.lessons[lessonId].includes(filename)) {
-          manifest.lessons[lessonId].push(filename)
-          manifest.lessons[lessonId].sort()
+        const url = buildDownloadUrl(bucket.name, path, token)
+
+        // Update storageAssets on the lesson if it exists in Firestore
+        const lessonRef = db.collection('lessons').doc(lessonId)
+        const snap = await lessonRef.get()
+        if (snap.exists) {
+          const current = snap.data().storageAssets ?? []
+          const updated = [...current.filter(a => a.name !== filename), { name: filename, url, showInEditor: false }]
+          await lessonRef.update({ storageAssets: updated })
         }
-        await writeManifest(manifest)
 
-        return { content: [{ type: 'text', text: JSON.stringify({ success: true, lessonId, filename, bytes: buffer.length }) }] }
+        return { content: [{ type: 'text', text: JSON.stringify({ success: true, lessonId, filename, url, bytes: buffer.length }) }] }
       } catch (err) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: err.message }) }] }
       }
@@ -81,7 +88,7 @@ export function registerAssetTools(server) {
 
   server.tool(
     'delete_lesson_asset',
-    'Delete an asset file for a lesson from public/assets/{lessonId}/{filename} and remove it from manifest.json.',
+    'Delete an asset file from Firebase Storage and remove it from storageAssets on the lesson document in Firestore.',
     {
       lessonId: z.string().describe('Lesson ID slug'),
       filename: z.string().describe('Filename to delete'),
@@ -93,13 +100,19 @@ export function registerAssetTools(server) {
       }
 
       try {
-        await unlink(join(PUBLIC_ASSETS, lessonId, filename))
+        const bucket = storage.bucket()
+        try {
+          await bucket.file(storagePath(lessonId, filename)).delete()
+        } catch (err) {
+          if (err.code !== 404) throw err
+          // File absent from Storage — still clean up Firestore below
+        }
 
-        const manifest = await readManifest()
-        if (manifest.lessons?.[lessonId]) {
-          manifest.lessons[lessonId] = manifest.lessons[lessonId].filter(f => f !== filename)
-          if (manifest.lessons[lessonId].length === 0) delete manifest.lessons[lessonId]
-          await writeManifest(manifest)
+        const lessonRef = db.collection('lessons').doc(lessonId)
+        const snap = await lessonRef.get()
+        if (snap.exists) {
+          const updated = (snap.data().storageAssets ?? []).filter(a => a.name !== filename)
+          await lessonRef.update({ storageAssets: updated })
         }
 
         return { content: [{ type: 'text', text: JSON.stringify({ success: true, lessonId, filename }) }] }

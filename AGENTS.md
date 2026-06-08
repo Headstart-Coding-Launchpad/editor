@@ -146,9 +146,9 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 | `get_topic(id)` | Fetch full topic |
 | `upsert_topic(topic)` | Create or update a topic |
 | `delete_topic(id)` | Delete a topic |
-| `list_lesson_assets(lessonId)` | List asset files for a lesson from `manifest.json` |
-| `upload_lesson_asset(lessonId, filename, base64Content)` | Write a base64-encoded asset to `public/assets/{lessonId}/` and update `manifest.json` |
-| `delete_lesson_asset(lessonId, filename)` | Delete an asset file and remove it from `manifest.json` |
+| `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
+| `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage (`lessons/{lessonId}/assets/{filename}`), update `storageAssets` on the lesson document, and return the download URL |
+| `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
 
 **Available resources:**
 
