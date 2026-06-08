@@ -10,6 +10,8 @@ import {
   getProgressItems,
   updateTaskInTasks,
   updateSubtaskTitles,
+  deriveTaskContext,
+  buildStageOptions,
 } from '../taskUtils.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -330,5 +332,110 @@ describe('filterTasksByMode', () => {
     const g = { id: 'g1', type: 'group', title: 'G', subtasks: [both, liveOnly] }
     const [result] = filterTasksByMode([g], 'live')
     expect(result).not.toBe(g)
+  })
+})
+
+// ─── deriveTaskContext ────────────────────────────────────────────────────────
+
+describe('deriveTaskContext', () => {
+  it('identifies python lessons', () => {
+    const ctx = deriveTaskContext({ type: 'python' }, {})
+    expect(ctx).toMatchObject({ isPython: true, isScratch: false, isFilesystem: false, isHtml: false })
+  })
+
+  it('identifies scratch lessons', () => {
+    const ctx = deriveTaskContext({ type: 'scratch' }, {})
+    expect(ctx).toMatchObject({ isPython: false, isScratch: true, isFilesystem: false, isHtml: false })
+  })
+
+  it('identifies filesystem lessons', () => {
+    const ctx = deriveTaskContext({ type: 'filesystem' }, {})
+    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: true, isHtml: false })
+  })
+
+  it('treats html (and unknown) lesson types as isHtml', () => {
+    const ctx = deriveTaskContext({ type: 'html' }, {})
+    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isHtml: true })
+  })
+
+  it('identifies quiz task type', () => {
+    const ctx = deriveTaskContext({ type: 'python' }, { taskType: 'quiz' })
+    expect(ctx).toMatchObject({ isQuiz: true, isInformation: false })
+  })
+
+  it('identifies information task type', () => {
+    const ctx = deriveTaskContext({ type: 'python' }, { taskType: 'information' })
+    expect(ctx).toMatchObject({ isQuiz: false, isInformation: true })
+  })
+
+  it('returns false for both quiz flags when task has no taskType', () => {
+    const ctx = deriveTaskContext({ type: 'python' }, { taskType: 'code' })
+    expect(ctx).toMatchObject({ isQuiz: false, isInformation: false })
+  })
+
+  it('handles null lesson and task gracefully', () => {
+    const ctx = deriveTaskContext(null, null)
+    expect(ctx).toEqual({ isPython: false, isScratch: false, isFilesystem: false, isHtml: true, isQuiz: false, isInformation: false })
+  })
+})
+
+// ─── buildStageOptions ────────────────────────────────────────────────────────
+
+describe('buildStageOptions', () => {
+  it('returns [starter] when task has no stages and no complete', () => {
+    const opts = buildStageOptions({ codeStages: [] }, 'python')
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter code' }])
+  })
+
+  it('uses scratch labels for scratch lessons', () => {
+    const opts = buildStageOptions({ completeBlocks: 'x' }, 'scratch')
+    expect(opts[0].label).toBe('Starter blocks')
+    expect(opts[opts.length - 1].label).toBe('Complete blocks')
+  })
+
+  it('uses filesystem labels for filesystem lessons', () => {
+    const opts = buildStageOptions({ completeFs: {} }, 'filesystem')
+    expect(opts[0].label).toBe('Starter folders')
+    expect(opts[opts.length - 1].label).toBe('Complete folders')
+  })
+
+  it('uses code labels for python lessons', () => {
+    const opts = buildStageOptions({ completeCode: 'x' }, 'python')
+    expect(opts[0].label).toBe('Starter code')
+    expect(opts[opts.length - 1].label).toBe('Complete code')
+  })
+
+  it('includes intermediate stages with custom labels', () => {
+    const task = { codeStages: [{ label: 'My Stage' }, {}] }
+    const opts = buildStageOptions(task, 'python')
+    expect(opts[1]).toEqual({ value: 'stage_0', label: 'My Stage' })
+    expect(opts[2]).toEqual({ value: 'stage_1', label: 'Stage 2' })
+  })
+
+  it('falls back to "Stage N" when stage has no label', () => {
+    const opts = buildStageOptions({ codeStages: [{}] }, 'python')
+    expect(opts[1].label).toBe('Stage 1')
+  })
+
+  it('does not append complete option when task has no complete content', () => {
+    const opts = buildStageOptions({ completeCode: '' }, 'python')
+    expect(opts.every(o => o.value !== 'complete')).toBe(true)
+  })
+
+  it('appends complete option when html task has completeFiles', () => {
+    const task = { completeFiles: [{ name: 'index.html', content: '' }] }
+    const opts = buildStageOptions(task, 'html')
+    expect(opts[opts.length - 1]).toEqual({ value: 'complete', label: 'Complete code' })
+  })
+
+  it('returns only [starter] for quiz tasks regardless of other fields', () => {
+    const task = { taskType: 'quiz', completeCode: 'x', codeStages: [{}] }
+    const opts = buildStageOptions(task, 'python')
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter code' }])
+  })
+
+  it('handles null task gracefully', () => {
+    const opts = buildStageOptions(null, 'python')
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter code' }])
   })
 })

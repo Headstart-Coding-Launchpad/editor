@@ -48,6 +48,46 @@ export function getProgressItems(tasks) {
   )
 }
 
+// Derive boolean task-type flags from lesson and task objects.
+export function deriveTaskContext(lesson, task) {
+  const isPython     = lesson?.type === 'python'
+  const isScratch    = lesson?.type === 'scratch'
+  const isFilesystem = lesson?.type === 'filesystem'
+  const isHtml       = !isPython && !isScratch && !isFilesystem
+  const isQuiz        = task?.taskType === 'quiz'
+  const isInformation = task?.taskType === 'information'
+  return { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation }
+}
+
+// Build the ordered list of remote-reset stage options for a task.
+// lessonType: 'python' | 'html' | 'scratch' | 'filesystem'
+export function buildStageOptions(task, lessonType) {
+  const isScratch    = lessonType === 'scratch'
+  const isFilesystem = lessonType === 'filesystem'
+  const isQuiz       = task?.taskType === 'quiz'
+
+  const hasComplete = isQuiz
+    ? false
+    : lessonType === 'python'
+    ? !!task?.completeCode
+    : isScratch
+    ? !!task?.completeBlocks
+    : isFilesystem
+    ? !!task?.completeFs
+    : (task?.completeFiles?.length > 0)
+
+  const codeStages = isQuiz ? [] : (task?.codeStages ?? [])
+  const starterLabel  = isScratch ? 'Starter blocks'  : isFilesystem ? 'Starter folders'  : 'Starter code'
+  const completeLabel = isScratch ? 'Complete blocks' : isFilesystem ? 'Complete folders' : 'Complete code'
+
+  const opts = [{ value: 'starter', label: starterLabel }]
+  codeStages.forEach((stage, i) => {
+    opts.push({ value: `stage_${i}`, label: stage.label || `Stage ${i + 1}` })
+  })
+  if (hasComplete) opts.push({ value: 'complete', label: completeLabel })
+  return opts
+}
+
 // Filter tasks (including groups) to only those visible in a given mode.
 // mode: 'live' | 'solo' | null (null = no filtering, return all)
 // A task is included when taskMode is absent, 'both', or matches the current mode.
