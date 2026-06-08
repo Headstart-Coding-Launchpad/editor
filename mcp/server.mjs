@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { db } from './firebase.mjs'
 import { registerLessonTools } from './lessons.mjs'
 import { registerTopicTools } from './topics.mjs'
+import { registerAssetTools } from './assets.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -16,6 +17,7 @@ const server = new McpServer({ name: 'hsc-repl', version: '1.0.0' })
 
 registerLessonTools(server)
 registerTopicTools(server)
+registerAssetTools(server)
 
 server.resource(
   'lesson-schema',
