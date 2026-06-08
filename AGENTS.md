@@ -133,6 +133,7 @@ Both apps import from `src/shared/`. Never duplicate this logic.
 | `firebase.js` | Exports `db` (Firebase Realtime Database reference, initialized from env vars) |
 | `iframe.js` | `buildIframeSrc(files, entryFile, options)`, `waitForIframeText(timeout)` |
 | `markdown.jsx` | `MarkdownRenderer({content, title, style})`, `InlineMarkdown({content})` — supports `img` via standard Markdown image syntax |
+| `MarkdownFieldEditor.jsx` | Full Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
 | `pyodide.js` | `initPyodide()`, `runPython(code, {onOutput?, onInputRequired?})`, `stopPython()`, `provideInput(value)` |
 | `filesystem.js` | Virtual FS engine: flat path-map state, CRUD ops, `evaluateFsCheck`, `FS_CHECK_TYPES` — shared by classroom app and builder |
 | `pyodide.worker.js` | Web Worker: Pyodide loader, async `input()` AST transform, stdout/stderr streaming |
