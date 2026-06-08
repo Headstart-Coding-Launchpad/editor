@@ -11,6 +11,7 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 | Python | Single CodeMirror editor | Pyodide in Web Worker |
 | HTML/CSS/JS | Tabbed file editor | Sandboxed iframe with Blob URL virtual filesystem |
 | Scratch | Multi-sprite Blockly workspaces + stage canvas | Custom block interpreter (scratch.js) |
+| Filesystem | Windows Explorer-style virtual file manager | No execution — checks evaluate the resulting FS structure automatically |
 
 ---
 
@@ -88,6 +89,16 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 | `sprite_property` | manual, after_run, continuous | Sprite x/y/size/direction/visible satisfies operator + value |
 | `variable_equals` | manual, after_run | Named variable equals expected value |
 
+### Filesystem
+
+| Type | Description |
+|---|---|
+| `fs_file_exists` | A file at the given path exists in the virtual filesystem |
+| `fs_dir_exists` | A directory at the given path exists in the virtual filesystem |
+| `fs_file_not_exists` | A file at the given path does not exist |
+| `fs_dir_not_exists` | A directory at the given path does not exist |
+| `fs_dir_opened` | A directory at the given path is currently open in the folder tree |
+
 ### Quiz
 
 | Type | Description |
@@ -139,8 +150,8 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 - Full workspace view: code/output/iframe/quiz/Scratch stage
 - Go Live / Stop Live (one-to-one keystroke streaming)
 - Live code selection/cursor highlight plus copy, paste, and click activity notices
-- Remote Reset to Starter (loads `starterCode`/`starterFiles`/`starterBlocks`)
-- Remote Reset to Complete (loads `completeCode`/`completeFiles`/`completeBlocks`)
+- Remote Reset to Starter (loads `starterCode`/`starterFiles`/`starterBlocks`/`starterFs`)
+- Remote Reset to Complete (loads `completeCode`/`completeFiles`/`completeBlocks`/`completeFs`)
 - Rename student
 - Remove student
 
@@ -189,6 +200,7 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 - Python: CodeMirror with Pyodide status (loading → ready → error)
 - HTML: tabbed editor with optional asset browser drawer (AssetBrowser)
 - Scratch: multi-sprite Blockly workspace with stage canvas
+- Filesystem: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor
 - Quiz: polymorphic QuizTask component
 
 ### Sync (when watched by teacher)
@@ -229,9 +241,12 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 - Explainer editor with Edit / Preview tabs (live Markdown rendering)
 - Topic-library link picker and recognised-topic link suggestions in Markdown fields
 - Optional estimated minutes per task with summed lesson duration in the task list
-- Starter code / starter files (per lesson type)
-- Complete code / complete files (reference solution)
-- Carry-through configuration (`carryCodeFrom`, `carryBlocksFrom`)
+- Starter code / starter files / starter FS (`starterCode`, `starterFiles`, `starterFs`) per lesson type
+- Complete code / complete files / complete FS (`completeCode`, `completeFiles`, `completeFs`) as reference solution
+- Carry-through configuration (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`)
+- Filesystem `startsInDir`: sets the initial open directory when the student first enters the task
+- `FsTreeEditor`: visual editor for building starter and complete filesystem states in the builder
+- `FsCheckListEditor`: builder UI for adding and configuring filesystem check entries
 - Interaction mode: run or submit
 - Check editor with all supported check types filtered by lesson type and interaction mode
 - `_checkTested` flag tracks whether check has been verified
@@ -274,3 +289,4 @@ All features listed here are implemented in the current codebase. Replaces `Quiz
 - Task group utilities: flatten, progress tracking, auto-title subtasks
 - Responsive layout via `useIsMobile` hook (640px breakpoint)
 - SplitPane: draggable [15%, 85%] clamped, collapsible right pane
+- Virtual filesystem engine (`filesystem.js`): flat path-map state, CRUD operations (`createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`), `evaluateFsCheck`, `FS_CHECK_TYPES`
