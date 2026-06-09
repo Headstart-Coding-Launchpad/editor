@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runWorkspace } from '../scratch'
+import { runWorkspace, addPredefinedBlocksToToolbox, DEFAULT_TOOLBOX } from '../scratch'
 
 // Tests for scratch.js interpreter helpers — pure logic only.
 // Blockly workspace internals (inject, serialization, rendering) are not tested here.
@@ -126,5 +126,59 @@ describe('broadcast timing', () => {
     // If broadcast fired-and-forgot, afterBlock (data_setvariableto) would have run.
     // The data_setvariableto block calls onVariablesChange → sets afterBroadcastFired.
     expect(afterBroadcastFired).toBe(true)
+  })
+})
+
+// --- addPredefinedBlocksToToolbox ---
+
+describe('addPredefinedBlocksToToolbox', () => {
+  const predefined = [{ id: 'pb1', type: 'motion_movesteps', inputs: { STEPS: 50 } }]
+
+  it('returns toolbox unchanged when predefinedBlocks is empty', () => {
+    expect(addPredefinedBlocksToToolbox(DEFAULT_TOOLBOX, [])).toBe(DEFAULT_TOOLBOX)
+    expect(addPredefinedBlocksToToolbox(DEFAULT_TOOLBOX, null)).toBe(DEFAULT_TOOLBOX)
+  })
+
+  it('appends a block to the correct category in a JSON toolbox', () => {
+    const result = addPredefinedBlocksToToolbox(DEFAULT_TOOLBOX, predefined)
+    const motionCat = result.contents.find(c => c.name === 'Motion')
+    const added = motionCat.contents.filter(b => b.type === 'motion_movesteps')
+    // Original plus the new predefined one
+    expect(added.length).toBeGreaterThanOrEqual(2)
+    const addedBlock = added[added.length - 1]
+    expect(addedBlock.inputs.STEPS.shadow.fields.NUM).toBe('50')
+  })
+
+  it('does not mutate the original JSON toolbox', () => {
+    const motionBefore = DEFAULT_TOOLBOX.contents.find(c => c.name === 'Motion').contents.length
+    addPredefinedBlocksToToolbox(DEFAULT_TOOLBOX, predefined)
+    const motionAfter = DEFAULT_TOOLBOX.contents.find(c => c.name === 'Motion').contents.length
+    expect(motionAfter).toBe(motionBefore)
+  })
+
+  it('appends a block into the correct category in an XML toolbox', () => {
+    const xml = '<xml><category name="Motion" colour="#4C97FF"><block type="motion_movesteps"/></category></xml>'
+    const result = addPredefinedBlocksToToolbox(xml, predefined)
+    expect(typeof result).toBe('string')
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const blocks = Array.from(doc.querySelectorAll('category[name="Motion"] block'))
+    expect(blocks.length).toBe(2)
+    const lastBlock = blocks[blocks.length - 1]
+    expect(lastBlock.getAttribute('type')).toBe('motion_movesteps')
+    const field = lastBlock.querySelector('value[name="STEPS"] > shadow > field[name="NUM"]')
+    expect(field?.textContent).toBe('50')
+  })
+
+  it('skips a predefined block whose type is not in the XML toolbox', () => {
+    const xml = '<xml><category name="Events" colour="#FFAB19"><block type="event_whenflagclicked"/></category></xml>'
+    const result = addPredefinedBlocksToToolbox(xml, predefined)
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const motionBlocks = doc.querySelectorAll('category[name="Motion"] block')
+    expect(motionBlocks.length).toBe(0)
+  })
+
+  it('returns a non-category JSON toolbox unchanged', () => {
+    const flyout = { kind: 'flyoutToolbox', contents: [] }
+    expect(addPredefinedBlocksToToolbox(flyout, predefined)).toBe(flyout)
   })
 })

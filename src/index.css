@@ -1481,13 +1481,45 @@ select {
   user-select: none;
 }
 
-/* Scratch check editor grid */
+/* Scratch check editor — stacked layout */
 .te-scratch-check-editor {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: start;
   margin-top: 8px;
+}
+
+/* Predefined blocks editor row */
+.te-predefined-block-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.te-predefined-block-label {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--colour-text);
+  min-width: 80px;
+}
+.te-predefined-block-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+.te-predefined-block-field-name {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Carry-through picker */

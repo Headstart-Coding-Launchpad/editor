@@ -475,6 +475,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                 <ScratchWorkspace
                   key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}`}
                   task={cs.inPersonalSandbox ? null : task}
+                  predefinedBlocks={cs.inPersonalSandbox ? null : task?.predefinedBlocks ?? null}
                   readOnly={isViewingPrev || isForcedTeacherLive}
                   unrestricted={isSandbox || cs.inPersonalSandbox}
                   assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}

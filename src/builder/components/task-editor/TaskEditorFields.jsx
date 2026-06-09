@@ -289,7 +289,7 @@ function QuizTypeIcon({ type }) {
 
 const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))
 
-export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hidePosition = false, hideAdd = false }) {
+export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false }) {
   const [expandedCostumes, setExpandedCostumes] = React.useState({})
   const [presets, setPresets] = React.useState([])
   const [selectedPresetId, setSelectedPresetId] = React.useState('')
@@ -355,10 +355,11 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
     <div className="te-sprite-manager">
       {displayedSprites.map(sp => (
         <div key={sp.id}>
+          {/* Row 1: name + type + (costumes when pos row hidden) + remove */}
           <div className="te-sprite-row">
             <input
               className="te-input"
-              style={{ width: 120, flex: '0 0 120px' }}
+              style={{ flex: '1 1 100px', minWidth: 0 }}
               value={sp.name}
               onChange={e => update(sp.id, 'name', e.target.value)}
               placeholder="Name"
@@ -366,34 +367,16 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
             <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
               {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            {!hidePosition && (
-              <>
-                <label className="te-sprite-field">
-                  <span className="te-sprite-field__label">X</span>
-                  <input className="te-input" style={{ width: 56 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
-                </label>
-                <label className="te-sprite-field">
-                  <span className="te-sprite-field__label">Y</span>
-                  <input className="te-input" style={{ width: 56 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
-                </label>
-                <label className="te-sprite-field">
-                  <span className="te-sprite-field__label">Size</span>
-                  <input className="te-input" style={{ width: 60 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
-                </label>
-                <label className="te-sprite-field">
-                  <span className="te-sprite-field__label">Dir</span>
-                  <input className="te-input" style={{ width: 56 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
-                </label>
-              </>
+            {hidePosRow && (
+              <button
+                type="button"
+                className="te-costume-toggle-btn"
+                onClick={() => toggleCostumes(sp.id)}
+                title="Edit costumes"
+              >
+                Costumes ({(sp.costumes ?? []).length})
+              </button>
             )}
-            <button
-              type="button"
-              className="te-costume-toggle-btn"
-              onClick={() => toggleCostumes(sp.id)}
-              title="Edit costumes"
-            >
-              Costumes ({(sp.costumes ?? []).length})
-            </button>
             <button
               type="button"
               className="te-remove-btn"
@@ -404,6 +387,35 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
               ✕
             </button>
           </div>
+          {/* Row 2: position fields (omitted when hidePosRow) */}
+          {!hidePosRow && (
+            <div className="te-sprite-row" style={{ paddingTop: 4 }}>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">X</span>
+                <input className="te-input" style={{ width: 56 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
+              </label>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">Y</span>
+                <input className="te-input" style={{ width: 56 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
+              </label>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">Size</span>
+                <input className="te-input" style={{ width: 60 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
+              </label>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">Dir</span>
+                <input className="te-input" style={{ width: 56 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
+              </label>
+              <button
+                type="button"
+                className="te-costume-toggle-btn"
+                onClick={() => toggleCostumes(sp.id)}
+                title="Edit costumes"
+              >
+                Costumes ({(sp.costumes ?? []).length})
+              </button>
+            </div>
+          )}
           {expandedCostumes[sp.id] && (
             <CostumeManager
               costumes={sp.costumes ?? []}
@@ -547,6 +559,7 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
         const isBrowsing = browsingId === b.id
         return (
           <div key={b.id} className="te-backdrop-block">
+            {/* Row 1: Default tag + name + type toggle + remove */}
             <div className="te-backdrop-row">
               {i === 0 && <span className="te-backdrop-tag">Default</span>}
               <input
@@ -568,6 +581,16 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                 <option value="colour">Colour</option>
                 <option value="image">Image</option>
               </select>
+              <button
+                type="button"
+                className="te-remove-btn"
+                onClick={() => remove(b.id)}
+                disabled={backdrops.length <= 1}
+                title="Remove backdrop"
+              >✕</button>
+            </div>
+            {/* Row 2: colour picker or image path */}
+            <div className="te-backdrop-row" style={{ paddingTop: 4 }}>
               {isImage ? (
                 <>
                   <input
@@ -598,23 +621,18 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                   )}
                 </>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input
                     type="color"
                     value={b.colour ?? '#ffffff'}
                     onChange={e => update(b.id, { colour: e.target.value })}
                     className="te-color-input"
+                    style={{ width: 48, height: 32, padding: 2, cursor: 'pointer' }}
                   />
-                  <div className="te-backdrop-swatch" style={{ background: b.colour ?? '#ffffff' }} />
+                  <div className="te-backdrop-swatch" style={{ background: b.colour ?? '#ffffff', width: 32, height: 32, borderRadius: 4, border: '1px solid #e5e7eb' }} />
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#6b7280' }}>{b.colour ?? '#ffffff'}</span>
                 </div>
               )}
-              <button
-                type="button"
-                className="te-remove-btn"
-                onClick={() => remove(b.id)}
-                disabled={backdrops.length <= 1}
-                title="Remove backdrop"
-              >✕</button>
             </div>
             {isBrowsing && hasAnyAssets && (
               <div className="te-inline-browser">
