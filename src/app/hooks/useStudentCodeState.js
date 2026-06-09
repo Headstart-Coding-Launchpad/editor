@@ -103,6 +103,11 @@ export function useStudentCodeState({
   activeFileRef.current      = activeFile
   const fsInteractionRef     = useRef(fsInteraction)
   fsInteractionRef.current   = fsInteraction
+  const checkPassedRef       = useRef(checkPassed)
+  checkPassedRef.current     = checkPassed
+
+  const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
+  const shouldSkipLocalPersist = teacherPresentation || previewMode
 
   // ─── Teacher live broadcast helpers ───────────────────────────────────────
 
@@ -172,7 +177,7 @@ export function useStudentCodeState({
     const id = identityRef.current
     const currentLesson = lessonRef.current
     const taskId = currentTaskIdRef.current
-    if (!id || teacherPresentation || !currentLesson) return
+    if (!id || teacherPresentation || previewMode || !currentLesson) return
     if (inPersonalSandboxRef.current) return
 
     const task = flattenTasks(currentLesson.tasks).find(t => t.id === taskId)
@@ -226,7 +231,7 @@ export function useStudentCodeState({
         task,
         taskId,
         phase,
-        readSavedCode: sourceTaskId => loadSavedCode(lessonId, sourceTaskId, activeIdentity.anonymousId),
+        readSavedCode: previewMode ? () => null : sourceTaskId => loadSavedCode(lessonId, sourceTaskId, activeIdentity.anonymousId),
       }))
     } else if (lesson.type === 'scratch') {
       setFiles([])
@@ -259,7 +264,7 @@ export function useStudentCodeState({
         task,
         taskId,
         phase,
-        readSavedFile: (sourceTaskId, filename) => loadSavedFile(lessonId, sourceTaskId, filename, activeIdentity.anonymousId),
+        readSavedFile: previewMode ? () => null : (sourceTaskId, filename) => loadSavedFile(lessonId, sourceTaskId, filename, activeIdentity.anonymousId),
       })
       setFiles(taskFiles)
       setActiveFile(task.entryFile ?? taskFiles[0]?.name ?? '')
@@ -543,12 +548,13 @@ export function useStudentCodeState({
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const isWatched = session?.activeStudentView === actor.anonymousId
+    const alreadySolved = isAlreadySolved()
 
     setRunning(true)
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
-    resetCheckFeedback()
+    if (!alreadySolved) resetCheckFeedback()
 
     if (lesson.type === 'python') {
       let accumulated = ''
@@ -575,15 +581,18 @@ export function useStudentCodeState({
 
       const checkContext = { status, code, variables: result.variables ?? {} }
       const hasTests = task?.tests?.length > 0
-      const passed = hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext)
-      const incorrectHint = (!passed && !hasTests && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
-      const suggestion = (!hasTests && task?.check) ? (incorrectHint || getFirstFailedCheckHint(task.check, accumulated, checkContext)) : ''
-      if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
+      let passed = alreadySolved ? true : (hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext))
+      let suggestion = ''
+      if (!alreadySolved) {
+        const incorrectHint = (!passed && !hasTests && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
+        suggestion = (!hasTests && task?.check) ? (incorrectHint || getFirstFailedCheckHint(task.check, accumulated, checkContext)) : ''
+        if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
+      }
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !hasTests && !!task?.check, checkSuggestion: suggestion })
+        publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
       }
-      if (!teacherPresentation) {
+      if (!teacherPresentation && !previewMode) {
         if (inPersonalSandboxRef.current) {
           savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
         } else {
@@ -610,20 +619,27 @@ export function useStudentCodeState({
 
     const taskIdAtRunTime = currentTaskIdRef.current
     waitForIframeText().then(text => {
-      const codeStr = currentFiles.map(f => f.content).join('\n')
-      const iframeDoc = iframeRef.current?.contentDocument ?? null
-      const passed = evaluateCheck(task?.check, text, { code: codeStr, iframeDoc })
-      const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, text, { code: codeStr, iframeDoc }) : ''
-      const suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, text, { code: codeStr, iframeDoc })) : ''
-      if (task?.check) applyCheckFeedback(passed, suggestion)
+      let passed, suggestion = ''
+      if (!alreadySolved) {
+        const codeStr = currentFiles.map(f => f.content).join('\n')
+        const iframeDoc = iframeRef.current?.contentDocument ?? null
+        passed = evaluateCheck(task?.check, text, { code: codeStr, iframeDoc })
+        const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, text, { code: codeStr, iframeDoc }) : ''
+        suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, text, { code: codeStr, iframeDoc })) : ''
+        if (task?.check) applyCheckFeedback(passed, suggestion)
+      } else {
+        passed = true
+      }
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ runStatus: 'success', checkPassed: passed, checkAttempted: !!task?.check, checkSuggestion: suggestion, files: Object.fromEntries(currentFiles.map(f => [f.name, f.content])) })
+        publishTeacherLive({ runStatus: 'success', checkPassed: passed, checkAttempted: !alreadySolved && !!task?.check, checkSuggestion: suggestion, files: Object.fromEntries(currentFiles.map(f => [f.name, f.content])) })
       }
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
-        writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
+        if (taskIdAtRunTime === currentTaskIdRef.current) {
+          const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
+          writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
+        }
       }
-      if (!teacherPresentation) {
+      if (!teacherPresentation && !previewMode) {
         if (inPersonalSandboxRef.current) {
           currentFiles.forEach(f => savePersonalSandboxFile(lessonId, f.name, actor.anonymousId, f.content))
         } else {
@@ -650,6 +666,7 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task?.tests?.length) return
     const isWatched = session?.activeStudentView === actor.anonymousId
+    if (isAlreadySolved()) return
 
     setRunningTests(true)
     setOutput('')
@@ -693,7 +710,7 @@ export function useStudentCodeState({
       if (canPublishTeacherLive()) {
         publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
       }
-      if (!teacherPresentation) {
+      if (!teacherPresentation && !previewMode) {
         if (inPersonalSandboxRef.current) {
           savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
         } else {
@@ -718,7 +735,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ code: newCode })
     }
-    if (teacherPresentation) return
+    if (shouldSkipLocalPersist) return
     if (identity && lesson?.type === 'python') {
       if (inPersonalSandboxRef.current) {
         savePersonalSandboxCode(lessonId, identity.anonymousId, { code: newCode })
@@ -767,7 +784,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
     }
-    if (teacherPresentation) return
+    if (shouldSkipLocalPersist) return
     if (identity && lesson?.type === 'html') {
       if (inPersonalSandboxRef.current) {
         savePersonalSandboxFile(lessonId, filename, identity.anonymousId, content)
@@ -787,7 +804,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ code: JSON.stringify(workspaceStates) })
     }
-    if (teacherPresentation) return
+    if (shouldSkipLocalPersist) return
     if (!identity) return
     if (inPersonalSandboxRef.current) {
       savePersonalSandboxCode(lessonId, identity.anonymousId, { state: workspaceStates })
@@ -801,9 +818,11 @@ export function useStudentCodeState({
 
   function handleScratchCheck(passed, snapshot) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
+    const alreadySolved = isAlreadySolved()
+    const effectivePassed = alreadySolved ? true : passed
     const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
-    const suggestion = passed ? '' : String(checks.find(c => c?.hint)?.hint ?? '').trim()
-    if (task?.check) applyCheckFeedback(passed, suggestion)
+    const suggestion = effectivePassed ? '' : String(checks.find(c => c?.hint)?.hint ?? '').trim()
+    if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
     if (!identity || lesson?.type !== 'scratch') return
     if (phase === 'lesson' || phase === 'sandbox' || activeStudentViewRef.current === identity.anonymousId) {
       const states = snapshot?.workspaceStates ?? loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ?? null
@@ -811,7 +830,7 @@ export function useStudentCodeState({
         code: states ? JSON.stringify(states) : undefined,
         output: snapshot?.spriteStates ? JSON.stringify(snapshot.spriteStates) : undefined,
         status: 'success',
-        checkPassed: passed,
+        checkPassed: effectivePassed,
       })
     }
   }
@@ -819,15 +838,17 @@ export function useStudentCodeState({
   // ─── Filesystem handlers ───────────────────────────────────────────────────
 
   function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
+    const alreadySolved = isAlreadySolved()
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const passed = task?.check ? evaluateCheck(task.check, null, context) : false
+    const evaluatedPassed = task?.check ? evaluateCheck(task.check, null, context) : false
+    const passed = alreadySolved ? true : evaluatedPassed
     const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
-    if (task?.check && (passed || !suppressFailFeedback)) applyCheckFeedback(passed, suggestion)
+    if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) applyCheckFeedback(evaluatedPassed, suggestion)
     if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
-        status: task?.check ? (passed ? 'success' : 'error') : null,
-        checkPassed: passed,
+        status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
+        checkPassed: evaluatedPassed,
       })
     }
   }
@@ -932,11 +953,17 @@ export function useStudentCodeState({
     if (!actor) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const isHtml = lesson?.type === 'html'
-    const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code
-    const passed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck) : false
-    const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, '', { code: codeForCheck }) : ''
-    const suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, '', { code: codeForCheck })) : ''
-    if (task?.check) applyCheckFeedback(passed, suggestion)
+    const alreadySolved = isAlreadySolved()
+    let passed, suggestion = ''
+    if (!alreadySolved) {
+      const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code
+      passed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck) : false
+      const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, '', { code: codeForCheck }) : ''
+      suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, '', { code: codeForCheck })) : ''
+      if (task?.check) applyCheckFeedback(passed, suggestion)
+    } else {
+      passed = true
+    }
     setRunStatus('submitted')
     if (canPublishTeacherLive()) {
       publishTeacherLive({
@@ -945,13 +972,13 @@ export function useStudentCodeState({
         output: isHtml ? undefined : '',
         runStatus: 'submitted',
         checkPassed: passed,
-        checkAttempted: !!task?.check,
+        checkAttempted: !alreadySolved && !!task?.check,
         checkSuggestion: suggestion,
       })
     }
-    if (!teacherPresentation && isHtml) {
+    if (!teacherPresentation && !previewMode && isHtml) {
       files.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
-    } else if (!teacherPresentation) {
+    } else if (!teacherPresentation && !previewMode) {
       saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: '', runStatus: 'submitted' })
     }
     if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {

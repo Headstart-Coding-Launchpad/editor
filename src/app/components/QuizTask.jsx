@@ -106,12 +106,24 @@ function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, c
   const options = task?.options ?? []
   const correctId = task?.check?.type === 'answer_equals' ? task.check.value : null
   const revealAnswers = showCorrectAnswer && submitted && disabled && correctId
+  const locked = disabled || (submitted && checkPassed)
+
+  // Shuffle once per task (stable during the session, different each time the task mounts)
+  const shuffledOptions = useMemo(() => {
+    const arr = [...options]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id])
 
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
       <div style={s.options} role="radiogroup" aria-label={task?.title ?? 'Quiz options'}>
-        {options.map((option, index) => {
+        {shuffledOptions.map((option, index) => {
           const active = selectedAnswer === option.id
           const isCorrect = revealAnswers && option.id === correctId
           const isWrong = revealAnswers && active && option.id !== correctId
@@ -135,7 +147,7 @@ function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, c
                 ...((active || isCorrect || isWrong) ? s.optionActive : {}),
               }}
               onClick={() => onSelectAnswer?.(option.id)}
-              disabled={disabled}
+              disabled={locked}
             >
               <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
                 {option.id}
