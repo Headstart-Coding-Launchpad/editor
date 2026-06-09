@@ -31,6 +31,7 @@ export function useStudentCodeState({
   previewMode,
   // Session write commands
   writeStudentRun,
+  writeStudentAnswer,
   writeStudentCode,
   writeStudentFiles,
   writeStudentOutput,
@@ -993,6 +994,10 @@ export function useStudentCodeState({
 
     if (passedOverride === null) {
       setSelectedAnswer(answer)
+      const serializedPartial = typeof answer === 'string' ? answer : JSON.stringify(answer)
+      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
+        writeStudentAnswer?.(actor.anonymousId, serializedPartial)
+      }
       return
     }
 

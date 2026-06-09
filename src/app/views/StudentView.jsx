@@ -38,8 +38,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
-    session, loading: sessionLoading, connected, registerPresence, joinSession,
-    writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
+    session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
+    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
@@ -72,7 +72,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     onBeforeTaskChange,
     onPersonalSandboxExit,
     onTaskReset,
-    createIdentity, updateTimestamp, joinSession,
+    createIdentity, updateTimestamp, joinSession, registerJoining, unregisterJoining,
   })
 
   // ─── Code / editor state ───────────────────────────────────────────────────
@@ -81,7 +81,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     lessonId, lesson, currentTaskId, viewingTaskId, phase,
     effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
-    writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput,
+    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput,
     writeStudentInteraction, writeStudentPersonalSandbox,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,

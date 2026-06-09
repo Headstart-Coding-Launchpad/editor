@@ -19,6 +19,8 @@ export function useStudentPhase({
   createIdentity,
   updateTimestamp,
   joinSession,
+  registerJoining,
+  unregisterJoining,
 }) {
   const [phase, setPhase] = useState('loading')
   const [currentTaskId, setCurrentTaskId] = useState(firstTaskId ?? 1)
@@ -26,6 +28,21 @@ export function useStudentPhase({
 
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+
+  // Stable refs for joining callbacks so the effect dep array stays on `phase` only
+  const registerJoiningRef = useRef(registerJoining)
+  registerJoiningRef.current = registerJoining
+  const unregisterJoiningRef = useRef(unregisterJoining)
+  unregisterJoiningRef.current = unregisterJoining
+
+  // While in name-entry, write a temporary "joining" marker to Firebase so the teacher
+  // can see students who are in the process of entering their name.
+  useEffect(() => {
+    if (phase !== 'name-entry') return
+    const tempId = crypto.randomUUID()
+    registerJoiningRef.current?.(tempId)
+    return () => { unregisterJoiningRef.current?.(tempId) }
+  }, [phase])
 
   // Sync currentTaskId when firstTaskId resolves — only during loading phase to avoid
   // overwriting a session-driven task that was already applied by the phase-determination effect

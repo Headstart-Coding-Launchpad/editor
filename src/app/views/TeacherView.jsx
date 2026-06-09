@@ -335,6 +335,7 @@ export default function TeacherView({ lessonId }) {
   const activeTeacherStage = isShowingStage ? (taskCodeStages[teacherActiveStageIndex] ?? null) : null
   const isInformationTask = task?.taskType === 'information'
   const students = session ? Object.entries(session.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id })) : []
+  const joiningCount = Object.keys(session?.joiningStudents ?? {}).length
   const isPreviewing = previewTaskId !== null && !isInSandbox
 
   async function handleSendStageToAll(action) {
@@ -564,6 +565,7 @@ export default function TeacherView({ lessonId }) {
         <aside style={s.right}>
           <StudentGrid
             students={students}
+            joiningCount={joiningCount}
             lesson={lesson}
             lessonId={lessonId}
             session={session}

@@ -16,6 +16,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
+  const isSessionSandbox = session?.state === 'sandbox'
   const { isPython, isFilesystem, isQuiz, isInformation } = deriveTaskContext(lesson, currentTask)
   const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
   const isShortAnswer = quizType === 'short_answer'
@@ -111,7 +112,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
         <div style={s.iframeThumb}>
           <span style={{ color: '#6b7280', fontSize: 12 }}>Information task</span>
         </div>
-      ) : isQuiz ? (
+      ) : isQuiz && !isSessionSandbox ? (
         <div style={s.quizAnswer}>
           {hasAnswer ? (
             isConfidence ? (
@@ -126,7 +127,9 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
                   ? '✓ All correct'
                   : student.checkPassed === false
                   ? '✗ Some incorrect'
-                  : 'Answered'}
+                  : quizSubmitted
+                  ? 'Answered'
+                  : 'In progress…'}
               </span>
             ) : (
               <>
