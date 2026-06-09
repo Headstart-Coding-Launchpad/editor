@@ -6,30 +6,17 @@ import { useLessonLoader } from '../hooks/useLessonLoader'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import { flattenTasks, findTaskById, filterTasksByMode } from '../../shared/taskUtils'
-import { resolveAssetsPath } from '../../shared/assetPaths'
-import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
-import { loadSavedCode, loadPersonalSandboxCode } from '../studentStorage'
-import { selectScratchInitialProject } from '../studentTaskContent'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
 import TaskProgressDots from '../components/TaskProgressDots'
-import ExplainerPanel from '../components/ExplainerPanel'
-import InformationTask from '../components/InformationTask'
-import PythonEditor from '../components/PythonEditor'
-import HtmlEditor from '../components/HtmlEditor'
-import OutputPanel from '../components/OutputPanel'
-import CollapsibleIframePreview from '../components/CollapsibleIframePreview'
-import ScratchWorkspace from '../components/ScratchWorkspace'
-import QuizTask from '../components/QuizTask'
-import FilesystemTask from '../components/FilesystemTask'
-import CheckFeedbackBanner from '../components/CheckFeedbackBanner'
 import LiveActivityToast from '../components/LiveActivityToast'
-import SplitPane from '../../shared/SplitPane'
-import TaskSlideTransition from '../components/TaskSlideTransition'
-import StudentEditorHeader from '../components/StudentEditorHeader'
 import LoadingScreen from '../components/LoadingScreen'
+import SessionEndedScreen from '../components/SessionEndedScreen'
+import StudentStatusBanners from '../components/StudentStatusBanners'
+import LessonTaskContent from '../components/LessonTaskContent'
+import SoloNav from '../components/SoloNav'
 
 export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
@@ -106,7 +93,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.students?.[identity?.anonymousId]?.displayName])
 
-  // ─── Navigation handlers (cross-hook coordination) ─────────────────────────
+  // ─── Navigation handlers ───────────────────────────────────────────────────
 
   function handleSoloNavigate(taskId) {
     if (teacherPresentation) {
@@ -176,24 +163,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   }
 
   if (phase === 'ended') {
-    return (
-      <div style={styles.centreScreen}>
-        <h2 style={styles.title}>Session ended</h2>
-        <p style={{ color: 'var(--colour-text)', fontFamily: 'var(--font-body)', marginBottom: 8 }}>
-          Great work today! Your progress has been saved.
-        </p>
-        <p style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', marginBottom: 24 }}>
-          Want to keep practising on your own?
-        </p>
-        <button
-          className="btn-primary"
-          style={{ padding: '12px 32px', fontSize: 15 }}
-          onClick={() => setPhase('solo')}
-        >
-          Continue Solo
-        </button>
-      </div>
-    )
+    return <SessionEndedScreen onContinueSolo={() => setPhase('solo')} />
   }
 
   // ─── Lesson / sandbox / solo render ───────────────────────────────────────
@@ -268,39 +238,23 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!(lesson.sandboxStarterFs != null)
     : false
   const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
-  const taskContentStyle = (!isSandbox && isQuizTask)
-    ? styles.taskContentQuiz
-    : (!isSandbox && isInformationTask)
-    ? styles.taskContentInfo
-    : lesson.type === 'python' || lesson.type === 'html'
-    ? styles.taskContentScroll
-    : styles.taskContent
-  const editorAreaStyle = (!isSandbox && isQuizTask)
-    ? styles.editorAreaQuiz
-    : (!isSandbox && isInformationTask)
-    ? styles.editorAreaInfo
-    : lesson.type === 'scratch'
-    ? styles.editorAreaScratch
-    : lesson.type === 'python' || lesson.type === 'html'
-      ? styles.editorAreaScroll
-      : styles.editorArea
 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const topBarRight = teacherPresentation ? (
-    <div style={styles.presentationControls}>
+    <div style={s.presentationControls}>
       <button
         className="btn-ghost"
-        style={styles.presentationBtn}
+        style={s.presentationBtn}
         disabled={currentIndex <= 0}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
       >
         Previous
       </button>
-      <span style={styles.presentationTaskLabel}>Task {currentIndex + 1} / {flatTasks.length}</span>
+      <span style={s.presentationTaskLabel}>Task {currentIndex + 1} / {flatTasks.length}</span>
       <button
         className="btn-ghost"
-        style={styles.presentationBtn}
+        style={s.presentationBtn}
         disabled={currentIndex >= flatTasks.length - 1}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
       >
@@ -308,7 +262,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       </button>
       <button
         className={isTeacherLiveActive ? 'btn-danger' : 'btn-primary'}
-        style={styles.presentationBtn}
+        style={s.presentationBtn}
         onClick={handleToggleTeacherLive}
       >
         {isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
@@ -337,13 +291,15 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     )
   )
 
+  const transitionKey = `${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`
+
   return (
-    <div style={{ ...styles.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
+    <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
       {isPaused && (
-        <div style={styles.pauseOverlay}>
-          <span style={styles.pauseIcon}>⏸</span>
-          <h2 style={styles.pauseTitle}>Coding Paused</h2>
-          <p style={styles.pauseSubtitle}>Your teacher will resume the session shortly</p>
+        <div style={s.pauseOverlay}>
+          <span style={s.pauseIcon}>⏸</span>
+          <h2 style={s.pauseTitle}>Coding Paused</h2>
+          <p style={s.pauseSubtitle}>Your teacher will resume the session shortly</p>
         </div>
       )}
       <TopBar
@@ -355,426 +311,67 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         right={topBarRight}
       />
       <LiveActivityToast activity={displayActivity} showClicks={isForcedTeacherLive} />
-
-      {isForcedTeacherLive && (
-        <div style={styles.teacherLiveBanner}>
-          <span className="live-dot" />
-          {isPresentationStudentViewer || isStudentGoLiveViewer
-            ? `Watching ${session.teacherLive.sourceStudentName ?? 'a student'}'s screen — your work is saved`
-            : 'Watching teacher — your own work is saved and will return when live view ends'}
-        </div>
-      )}
-
-
-
-      {isViewingPrev && (
-        <div style={styles.prevBanner}>
-          You are viewing a previous task — return to current task to continue.
-          <button
-            className="btn-secondary"
-            style={{ marginLeft: 16, padding: '4px 12px', fontSize: 13 }}
-            onClick={() => setViewingTaskId(null)}
-          >
-            Back to Current Task
-          </button>
-        </div>
-      )}
-
-      {cs.inPersonalSandbox && (
-        <div style={styles.personalSandboxBanner}>
-          <span>Personal Sandbox — your lesson progress is saved</span>
-          <button
-            className="btn-secondary"
-            style={{ marginLeft: 16, padding: '4px 12px', fontSize: 13 }}
-            onClick={cs.handleLeavePersonalSandbox}
-          >
-            Close Sandbox
-          </button>
-        </div>
-      )}
-
-      <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...styles.body, overflow: 'hidden' } : styles.body}>
-        <TaskSlideTransition
-          transitionKey={`${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`}
-          style={taskContentStyle}
-        >
-          {previewMode && task && !isSandbox && (
-            <div style={styles.previewTaskModeBanner}>
-              {task.taskMode === 'live'
-                ? 'Live sessions only'
-                : task.taskMode === 'solo'
-                ? 'Solo mode only'
-                : 'Live + Solo'}
-            </div>
-          )}
-
-          {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
-            <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
-          )}
-
-        <div style={editorAreaStyle} className={isForcedTeacherLive ? 'live-view-active' : undefined}>
-          {!isSandbox && !cs.inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted && (
-            <CheckFeedbackBanner
-              passed={displayCheckPassed}
-              failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
-              suggestion={displayCheckSuggestion}
-              onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
-              onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
-            />
-          )}
-          {isSandbox && session?.sandboxExplainer && (
-            <ExplainerPanel title="Instructions" content={session.sandboxExplainer} topicType={lesson.type} />
-          )}
-          {!isSandbox && isInformationTask ? (
-            <InformationTask task={task} lesson={lesson} fill />
-          ) : !isSandbox && task?.taskType === 'quiz' ? (
-            <QuizTask
-              task={task}
-              showQuestion
-              selectedAnswer={cs.selectedAnswer}
-              onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
-              submitted={cs.runStatus === 'submitted'}
-              checkPassed={cs.checkPassed}
-              disabled={isViewingPrev}
-              showResult={false}
-            />
-          ) : lesson.type === 'filesystem' ? (
-            <FilesystemTask
-              key={`filesystem-${viewingTaskId ?? currentTaskId}`}
-              initialDir={task?.carryFsFrom ? (cs.fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')) : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')}
-              fs={displayFs}
-              onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsChange}
-              onInteraction={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsInteraction}
-              assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-              assets={lesson.assets}
-              disabled={isViewingPrev || isForcedTeacherLive}
-            />
-          ) : lesson.type === 'scratch' ? (() => {
-            const personalSandboxScratchState = cs.inPersonalSandbox
-              ? (loadPersonalSandboxCode(lessonId, identity?.anonymousId)?.state ?? lesson.sandboxStarterCode ?? null)
-              : null
-            const initialProject = cs.inPersonalSandbox ? null : selectScratchInitialProject({
-              task,
-              taskId: viewingTaskId ?? currentTaskId,
-              readSavedCode: previewMode ? () => null : sourceTaskId => loadSavedCode(lessonId, sourceTaskId, identity?.anonymousId),
-            })
-            return (
-              <>
-                {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && (
-                  <div style={{ display: 'flex', flexShrink: 0, paddingBottom: 4 }}>
-                    <button
-                      className="btn-ghost-outline"
-                      style={styles.resetBtn}
-                      onClick={cs.handleResetCode}
-                      title="Reset blocks to the starter blocks for this task"
-                    >
-                      Reset Blocks
-                    </button>
-                  </div>
-                )}
-                <ScratchWorkspace
-                  key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}`}
-                  task={cs.inPersonalSandbox ? null : task}
-                  predefinedBlocks={cs.inPersonalSandbox ? null : task?.predefinedBlocks ?? null}
-                  readOnly={isViewingPrev || isForcedTeacherLive}
-                  unrestricted={isSandbox || cs.inPersonalSandbox}
-                  assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                  initialState={initialProject}
-                  onStateChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleScratchChange}
-                  onCheckResult={isViewingPrev || isForcedTeacherLive || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
-                  externalState={isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
-                  syncNowKey={session?.activeStudentView === identity?.anonymousId ? session?.activeStudentView : null}
-                />
-              </>
-            )
-          })()
-          : lesson.type === 'python' ? (
-            <>
-              {!isViewingPrev && !isForcedTeacherLive && (
-                <div style={styles.studentEditorHeader} className="ui-tabs ui-tabs--editor">
-                  <span style={styles.studentEditorTitle}>Code</span>
-                  <div style={styles.studentEditorActions}>
-                    {task?.interactionMode === 'submit' ? (
-                      <button
-                        className="btn-primary"
-                        style={styles.studentEditorPrimaryBtn}
-                        onClick={cs.handleSubmit}
-                      >
-                        Submit
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          className={cs.running || cs.runningTests ? 'btn-danger' : 'btn-primary'}
-                          style={styles.studentEditorPrimaryBtn}
-                          onClick={cs.running || cs.runningTests ? cs.handleStop : cs.handleRun}
-                          disabled={!cs.running && !cs.runningTests && cs.pyodideStatus === 'loading'}
-                        >
-                          {cs.running || cs.runningTests ? 'Stop' : cs.pyodideStatus === 'loading' ? 'Getting Python ready…' : 'Run'}
-                        </button>
-                        {task?.tests?.length > 0 && (
-                          <button
-                            className="btn-primary"
-                            style={styles.studentEditorPrimaryBtn}
-                            onClick={cs.runningTests ? undefined : cs.handleRunTests}
-                            disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
-                          >
-                            {cs.runningTests ? 'Running tests…' : 'Run Tests'}
-                          </button>
-                        )}
-                      </>
-                    )}
-                    <button
-                      className="btn-ghost-outline"
-                      style={styles.resetBtn}
-                      onClick={cs.handleResetCode}
-                      disabled={cs.running}
-                      title="Reset code to the starter code for this task"
-                    >
-                      Reset Code
-                    </button>
-                  </div>
-                </div>
-              )}
-              <PythonEditor
-                code={isForcedTeacherLive ? displayCode : isViewingPrev ? (loadSavedCode(lessonId, viewingTaskId, identity?.anonymousId)?.code ?? '') : cs.code}
-                readOnly={isViewingPrev || isForcedTeacherLive}
-                onChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleCodeChange}
-                onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
-                onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
-                remoteSelection={isForcedTeacherLive ? displaySelection : null}
-                pyodideStatus={cs.pyodideStatus}
-              />
-              {!isViewingPrev && !isForcedTeacherLive && (
-                task?.interactionMode === 'submit' ? (
-                  <>
-                    {cs.runStatus === 'submitted' && (
-                      task?.check
-                        ? null
-                        : <div style={styles.submitBanner}>Code submitted</div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <OutputPanel
-                      output={cs.output}
-                      runStatus={cs.runStatus}
-                      inputPrompt={cs.inputPrompt}
-                      onInputSubmit={cs.handleInputSubmit}
-                      checkPassed={cs.checkPassed}
-                      hasCheck={!!task?.check || task?.tests?.length > 0}
-                      running={cs.running || cs.runningTests}
-                    />
-                    {cs.testResults !== null && (
-                      <div style={styles.testResultsPanel}>
-                        {cs.testResults.map((r, i) => (
-                          <span key={r.id ?? i} style={{ ...styles.testResultBadge, background: r.passed ? '#dcfce7' : '#fef3c7', color: r.passed ? '#15803d' : '#b45309' }}>
-                            {r.passed ? '✓' : '✗'} {r.name || `Test ${i + 1}`}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )
-              )}
-              {isForcedTeacherLive && (
-                <OutputPanel
-                  output={displayOutput}
-                  runStatus={displayRunStatus}
-                  checkPassed={displayCheckPassed}
-                  hasCheck={!!task?.check}
-                  checkAttempted={displayCheckAttempted}
-                />
-              )}
-              {isViewingPrev && (
-                <OutputPanel
-                  output={loadSavedCode(lessonId, viewingTaskId, identity?.anonymousId)?.output ?? ''}
-                  runStatus={loadSavedCode(lessonId, viewingTaskId, identity?.anonymousId)?.runStatus ?? null}
-                  checkPassed={false}
-                  hasCheck={false}
-                  checkAttempted={false}
-                />
-              )}
-            </>
-          ) : isMobile ? (
-            <div style={styles.htmlMobile}>
-              <div style={styles.htmlLeft}>
-                {!isViewingPrev && !isForcedTeacherLive && (
-                  <StudentEditorHeader
-                    task={task}
-                    running={cs.running}
-                    onRun={cs.handleRun}
-                    onSubmit={cs.handleSubmit}
-                    onReset={cs.handleResetCode}
-                  />
-                )}
-                <HtmlEditor
-                  files={displayFiles}
-                  activeFile={displayActiveFile}
-                  onTabChange={isForcedTeacherLive ? undefined : cs.handleFileTabChange}
-                  onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFileChange}
-                  onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
-                  onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
-                  remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
-                  readOnly={isViewingPrev || isForcedTeacherLive}
-                  assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                  assets={lesson.assets}
-                  storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
-                />
-              </div>
-              {task?.interactionMode !== 'submit' && (
-                <div style={styles.htmlMobilePreview}>
-                  <CollapsibleIframePreview
-                    src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
-                    iframeRef={cs.iframeRef}
-                    fill
-                    collapsed={cs.htmlPreviewCollapsed}
-                    onToggle={() => cs.setHtmlPreviewCollapsed(v => !v)}
-                    animate
-                  />
-                </div>
-              )}
-              {displayRunStatus === 'submitted' && !task?.check && (
-                <div style={styles.submitBanner}>Code submitted</div>
-              )}
-            </div>
-          ) : (
-            <>
-            <SplitPane
-              style={styles.htmlSplitPane}
-              rightCollapsed={task?.interactionMode === 'submit' || cs.htmlPreviewCollapsed}
-              collapsedRightWidth={task?.interactionMode === 'submit' ? 0 : 44}
-              collapsedRight={
-                task?.interactionMode === 'submit' ? null : (
-                  <CollapsibleIframePreview
-                    src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
-                    iframeRef={cs.iframeRef}
-                    collapsed
-                    onToggle={() => cs.setHtmlPreviewCollapsed(false)}
-                  />
-                )
-              }
-              left={
-                <div style={styles.htmlLeft}>
-                  {!isViewingPrev && !isForcedTeacherLive && (
-                    <StudentEditorHeader
-                      task={task}
-                      running={cs.running}
-                      onRun={cs.handleRun}
-                      onSubmit={cs.handleSubmit}
-                      onReset={cs.handleResetCode}
-                    />
-                  )}
-                  <HtmlEditor
-                    files={displayFiles}
-                    activeFile={displayActiveFile}
-                    onTabChange={isForcedTeacherLive ? undefined : cs.handleFileTabChange}
-                    onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFileChange}
-                    onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
-                    onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
-                    remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
-                    readOnly={isViewingPrev || isForcedTeacherLive}
-                    assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                    assets={lesson.assets}
-                    storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
-                  />
-                </div>
-              }
-              right={
-                <CollapsibleIframePreview
-                  src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
-                  iframeRef={cs.iframeRef}
-                  fill
-                  collapsed={false}
-                  onToggle={() => cs.setHtmlPreviewCollapsed(true)}
-                  animate
-                />
-              }
-            />
-            {displayRunStatus === 'submitted' && !task?.check && (
-              <div style={styles.submitBanner}>Code submitted</div>
-            )}
-            </>
-          )}
-
-          {false && isSolo && (
-            <div style={styles.soloNav}>
-              <button
-                className="btn-secondary"
-                style={styles.soloNavBtn}
-                disabled={currentIndex <= 0}
-                onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
-              >
-                ← Previous
-              </button>
-              <span style={styles.soloNavLabel}>
-                Task {currentIndex + 1} of {flatTasks.length}
-              </span>
-              <button
-                className="btn-secondary"
-                style={styles.soloNavBtn}
-                disabled={currentIndex >= flatTasks.length - 1}
-                onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
-              >
-                Next →
-              </button>
-            </div>
-          )}
-        </div>
-        </TaskSlideTransition>
+      <StudentStatusBanners
+        isForcedTeacherLive={isForcedTeacherLive}
+        isPresentationStudentViewer={isPresentationStudentViewer}
+        isStudentGoLiveViewer={isStudentGoLiveViewer}
+        teacherLiveSourceStudentName={session?.teacherLive?.sourceStudentName}
+        isViewingPrev={isViewingPrev}
+        onReturnToCurrentTask={() => setViewingTaskId(null)}
+        inPersonalSandbox={cs.inPersonalSandbox}
+        onLeavePersonalSandbox={cs.handleLeavePersonalSandbox}
+      />
+      <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...s.body, overflow: 'hidden' } : s.body}>
+        <LessonTaskContent
+          lesson={lesson}
+          task={task}
+          cs={cs}
+          lessonId={lessonId}
+          identityId={identity?.anonymousId}
+          sandboxExplainer={session?.sandboxExplainer}
+          activeStudentView={session?.activeStudentView}
+          viewingTaskId={viewingTaskId}
+          currentTaskId={currentTaskId}
+          transitionKey={transitionKey}
+          previewMode={previewMode}
+          isSandbox={isSandbox}
+          isViewingPrev={isViewingPrev}
+          isForcedTeacherLive={isForcedTeacherLive}
+          isMobile={isMobile}
+          isQuizTask={isQuizTask}
+          isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+          isInformationTask={isInformationTask}
+          displayCode={displayCode}
+          displayFiles={displayFiles}
+          displayActiveFile={displayActiveFile}
+          displayOutput={displayOutput}
+          displayRunStatus={displayRunStatus}
+          displayCheckPassed={displayCheckPassed}
+          displayCheckAttempted={displayCheckAttempted}
+          displayCheckSuggestion={displayCheckSuggestion}
+          displaySelection={displaySelection}
+          displayFs={displayFs}
+          canOfferCompleteSolution={canOfferCompleteSolution}
+          canOfferPersonalSandbox={canOfferPersonalSandbox}
+        />
       </div>
       {isSolo && (
-        <div style={styles.soloNav}>
-          {!cs.inPersonalSandbox && (
-            <button
-              className="btn-secondary"
-              style={styles.soloNavBtn}
-              disabled={currentIndex <= 0}
-              onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
-            >
-              Previous
-            </button>
-          )}
-          {cs.inPersonalSandbox ? (
-            <span style={styles.soloNavLabel}>Personal Sandbox</span>
-          ) : (
-            <span style={styles.soloNavLabel}>
-              Task {currentIndex + 1} of {flatTasks.length}
-            </span>
-          )}
-          {cs.inPersonalSandbox ? null : hasPersonalSandbox && !isQuizTask && !isInformationTask && (
-            <button
-              className="btn-ghost-outline"
-              style={{ ...styles.soloNavBtn, fontSize: 14 }}
-              onClick={cs.handleEnterPersonalSandbox}
-              title="Open your personal sandbox to experiment freely"
-            >
-              Open Sandbox
-            </button>
-          )}
-          {!cs.inPersonalSandbox && (
-            <button
-              className={`btn-secondary${cs.checkPassed && currentIndex < flatTasks.length - 1 ? ' btn-next-success' : ''}`}
-              style={{
-                ...styles.soloNavBtn,
-                ...(canNavigateNextSolo && currentIndex < flatTasks.length - 1
-                  ? { fontSize: 18, padding: '14px 36px' }
-                  : {}),
-              }}
-              disabled={currentIndex >= flatTasks.length - 1 || !canNavigateNextSolo}
-              onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
-              title={!canNavigateNextSolo ? 'Pass the completion check before moving on' : 'Next task'}
-            >
-              Next
-            </button>
-          )}
-        </div>
+        <SoloNav
+          flatTasks={flatTasks}
+          currentIndex={currentIndex}
+          cs={cs}
+          hasPersonalSandbox={hasPersonalSandbox}
+          isQuizTask={isQuizTask}
+          isInformationTask={isInformationTask}
+          canNavigateNextSolo={canNavigateNextSolo}
+          onNavigate={handleSoloNavigate}
+        />
       )}
     </div>
   )
 }
 
-const styles = {
+const s = {
   page: {
     display: 'flex',
     flexDirection: 'column',
@@ -788,20 +385,6 @@ const styles = {
     overflow: 'auto',
     padding: '16px',
     minHeight: 0,
-  },
-  teacherLiveBanner: {
-    background: 'var(--colour-primary)',
-    color: '#fff',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '1.15rem',
-    padding: '16px 20px',
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    letterSpacing: '0.01em',
   },
   presentationControls: {
     display: 'flex',
@@ -822,225 +405,6 @@ const styles = {
     opacity: 0.9,
     minWidth: 72,
     textAlign: 'center',
-  },
-  taskContent: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    minHeight: 0,
-    overflow: 'visible',
-  },
-  taskContentQuiz: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  taskContentInfo: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  editorArea: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    minHeight: 0,
-  },
-  editorAreaQuiz: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  editorAreaInfo: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  editorAreaScroll: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  taskContentScroll: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    overflow: 'visible',
-  },
-  editorAreaScratch: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    minHeight: 0,
-  },
-  buttonRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    margin: '8px 0',
-    flexShrink: 0,
-  },
-  htmlMobileButtonRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-    margin: '0 0 4px',
-    flexShrink: 0,
-  },
-  studentEditorHeader: {
-    flexShrink: 0,
-  },
-  studentEditorTitle: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.86rem',
-    color: 'var(--colour-primary)',
-    padding: '0 10px',
-  },
-  studentEditorActions: {
-    marginLeft: 'auto',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    paddingLeft: 8,
-    flexWrap: 'wrap',
-  },
-  studentEditorPrimaryBtn: {
-    padding: '7px 18px',
-    fontSize: 13,
-    flexShrink: 0,
-  },
-  resetBtn: {
-    fontSize: 14,
-    padding: '9px 20px',
-    color: '#6b7280',
-    border: '1px solid #d1d5db',
-    borderRadius: 8,
-    background: '#fff',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-  },
-  htmlLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-    minHeight: 420,
-    overflow: 'visible',
-    gap: 0,
-    paddingBottom: 4,
-  },
-  htmlMobile: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    minHeight: 0,
-  },
-  htmlMobilePreview: {
-    minHeight: 300,
-    height: 300,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  htmlSplitPane: {
-    flex: '0 0 auto',
-    minHeight: 520,
-    height: 520,
-    overflow: 'visible',
-  },
-  centreScreen: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: 16,
-    padding: 32,
-    textAlign: 'center',
-  },
-  title: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.5rem',
-    color: 'var(--colour-primary)',
-  },
-  taskTitleHeader: {
-    background: 'var(--colour-primary-dark)',
-    color: '#fff',
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.1rem',
-    padding: '10px 16px',
-    letterSpacing: '0.04em',
-    flexShrink: 0,
-  },
-  prevBanner: {
-    background: 'rgba(239,68,68,0.08)',
-    borderBottom: '1px solid rgba(239,68,68,0.2)',
-    padding: '8px 16px',
-    fontSize: 13,
-    color: '#b91c1c',
-    display: 'flex',
-    alignItems: 'center',
-    fontFamily: 'var(--font-body)',
-  },
-  personalSandboxBanner: {
-    background: 'rgba(124,58,237,0.08)',
-    borderBottom: '1px solid rgba(124,58,237,0.2)',
-    padding: '8px 16px',
-    fontSize: 13,
-    color: '#5b21b6',
-    display: 'flex',
-    alignItems: 'center',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    flexShrink: 0,
-  },
-  previewTaskModeBanner: {
-    background: 'rgba(14,165,233,0.08)',
-    borderBottom: '1px solid rgba(14,165,233,0.2)',
-    padding: '5px 16px',
-    fontSize: 12,
-    color: '#0369a1',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    flexShrink: 0,
-  },
-  soloNav: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    padding: '12px 16px 16px',
-    borderTop: '2px solid #e5e7eb',
-    background: '#f5f5f5',
-    flexShrink: 0,
-  },
-  soloNavBtn: {
-    fontSize: 16,
-    padding: '12px 28px',
-    fontWeight: 600,
-  },
-  soloNavLabel: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: 'var(--font-body)',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--colour-text)',
   },
   pauseOverlay: {
     position: 'fixed',
@@ -1071,52 +435,5 @@ const styles = {
     fontSize: '1rem',
     color: 'rgba(255,255,255,0.75)',
     margin: 0,
-  },
-  submitBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '10px 14px',
-    borderRadius: 8,
-    background: '#eff6ff',
-    border: '1px solid #bfdbfe',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.9rem',
-    color: '#1e40af',
-    fontWeight: 600,
-  },
-  submitCheckPass: {
-    background: '#dcfce7',
-    border: '1px solid #bbf7d0',
-    color: '#166534',
-    borderRadius: 999,
-    padding: '3px 10px',
-    fontSize: '0.82rem',
-    fontWeight: 700,
-  },
-  submitCheckFail: {
-    background: '#fffbeb',
-    border: '1px solid #fde68a',
-    color: '#92400e',
-    borderRadius: 999,
-    padding: '3px 10px',
-    fontSize: '0.82rem',
-    fontWeight: 700,
-  },
-  testResultsPanel: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-    padding: '8px 12px',
-    background: '#f9fafb',
-    borderTop: '1px solid #e5e7eb',
-  },
-  testResultBadge: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.82rem',
-    fontWeight: 600,
-    borderRadius: 999,
-    padding: '3px 10px',
-    border: '1px solid transparent',
   },
 }
