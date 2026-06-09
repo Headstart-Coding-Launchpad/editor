@@ -310,6 +310,11 @@ export default function TaskList({
                         </div>
                       )
                     })}
+                    <div
+                      style={{ ...s.groupEndDropZone, ...(dropStyle({ groupId: item.id, index: subtasks.length }) ?? {}) }}
+                      onDragOver={e => { e.stopPropagation(); handleDragOver(e, { groupId: item.id, index: subtasks.length }) }}
+                      onDrop={e => { e.stopPropagation(); handleDrop(e, { groupId: item.id, index: subtasks.length }) }}
+                    />
                     <button
                       type="button"
                       style={s.addSubtaskBtn}
@@ -520,6 +525,9 @@ const s = {
     borderLeft: '3px solid #c4b5fd',
     marginLeft: 14,
     background: '#fafafa',
+  },
+  groupEndDropZone: {
+    height: 12,
   },
   subtaskItem: {
     display: 'flex',

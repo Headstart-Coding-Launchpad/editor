@@ -456,7 +456,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             const initialProject = cs.inPersonalSandbox ? null : selectScratchInitialProject({
               task,
               taskId: viewingTaskId ?? currentTaskId,
-              readSavedCode: sourceTaskId => loadSavedCode(lessonId, sourceTaskId, identity?.anonymousId),
+              readSavedCode: previewMode ? () => null : sourceTaskId => loadSavedCode(lessonId, sourceTaskId, identity?.anonymousId),
             })
             return (
               <>
