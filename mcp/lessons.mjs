@@ -143,7 +143,7 @@ export function validateLessonForMcp(lesson) {
 export function registerLessonTools(server) {
   server.tool(
     'list_lessons',
-    'List all lessons with id, title, type, and task count',
+    'List all lessons currently live in the app (from Firestore). Use to check what is published before creating or updating a lesson.',
     {},
     async () => {
       const snap = await db.collection('lessons').get()
@@ -161,7 +161,7 @@ export function registerLessonTools(server) {
 
   server.tool(
     'get_lesson',
-    'Fetch a full lesson JSON by ID',
+    'Fetch the full lesson JSON for a published lesson from Firestore. Use to inspect or edit an existing lesson before upserting changes.',
     { id: z.string().describe('Lesson ID slug') },
     async ({ id }) => {
       const snap = await db.collection('lessons').doc(id).get()
@@ -174,7 +174,7 @@ export function registerLessonTools(server) {
 
   server.tool(
     'validate_lesson',
-    'Validate a lesson JSON structure without writing to Firestore. Returns {valid, errors[], warnings[]}.',
+    'Check a lesson JSON for structural errors before publishing. Always call this before upsert_lesson. Returns {valid, errors[], warnings[]}.',
     { lesson: z.object({}).passthrough().describe('Lesson JSON object to validate') },
     async ({ lesson }) => {
       const result = validateLessonForMcp(lesson)
@@ -184,7 +184,7 @@ export function registerLessonTools(server) {
 
   server.tool(
     'upsert_lesson',
-    'Create or update a lesson in Firestore (validates structure first)',
+    'Publish a finished lesson JSON to the live LaunchPad app (writes to Firestore). This is the final step after authoring and validating locally — validates structure first and returns errors if invalid.',
     { lesson: z.object({}).passthrough().describe('Full lesson JSON object') },
     async ({ lesson }) => {
       const { errors, warnings } = validateLessonForMcp(lesson)
@@ -202,7 +202,7 @@ export function registerLessonTools(server) {
 
   server.tool(
     'delete_lesson',
-    'Delete a lesson from Firestore by ID',
+    'Permanently delete a lesson from Firestore and the live app by ID. Use with caution — this cannot be undone.',
     { id: z.string().describe('Lesson ID to delete') },
     async ({ id }) => {
       const snap = await db.collection('lessons').doc(id).get()

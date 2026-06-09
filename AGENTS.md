@@ -125,6 +125,8 @@ These rules are absolute — do not deviate regardless of context:
 
 The `mcp/` sub-package exposes the lesson and topic library to AI agents via the Model Context Protocol. It runs locally as a stdio process using the Firebase Admin SDK — no browser auth needed.
 
+**Storage model:** Lessons and topics live in **Firestore** (`lessons/` and `topicLibrary/` collections), not in local files. The local `lessons/JSON Files/` directory is the authoring workspace only — editing a local file has no effect on the live app until you publish with `upsert_lesson`. Always read `workflow://lesson-authoring` at the start of any lesson authoring session.
+
 **Auth:** Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
 Download from: Firebase Console → Project Settings → Service Accounts → Generate new private key.
 
@@ -137,15 +139,15 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 
 | Tool | Purpose |
 |---|---|
-| `list_lessons` | List all lessons (id, title, type, taskCount) |
-| `get_lesson(id)` | Fetch full lesson JSON from Firestore |
-| `validate_lesson(lesson)` | Validate structure without writing — returns `{valid, errors[], warnings[]}` |
-| `upsert_lesson(lesson)` | Create or update a lesson (validates first) |
-| `delete_lesson(id)` | Delete a lesson |
-| `list_topics` | List all topics (id, title, category, types) |
-| `get_topic(id)` | Fetch full topic |
-| `upsert_topic(topic)` | Create or update a topic |
-| `delete_topic(id)` | Delete a topic |
+| `list_lessons` | List all lessons currently live in the app (from Firestore) — check before creating or updating |
+| `get_lesson(id)` | Fetch the full live lesson JSON from Firestore — use to inspect or edit an existing lesson |
+| `validate_lesson(lesson)` | Check a lesson JSON for errors before publishing — always call this before `upsert_lesson` |
+| `upsert_lesson(lesson)` | Publish a finished lesson to the live app (writes to Firestore) — validates first, returns errors if invalid |
+| `delete_lesson(id)` | Permanently delete a lesson from Firestore and the live app — cannot be undone |
+| `list_topics` | List all topics in the live topic library (from Firestore) |
+| `get_topic(id)` | Fetch a full topic from Firestore |
+| `upsert_topic(topic)` | Publish a topic to the live topic library (writes to Firestore) |
+| `delete_topic(id)` | Permanently delete a topic from Firestore |
 | `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
 | `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage (`lessons/{lessonId}/assets/{filename}`), update `storageAssets` on the lesson document, and return the download URL |
 | `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
@@ -154,8 +156,9 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 
 | URI | Content |
 |---|---|
-| `lesson://schema` | Full `LESSON_SCHEMA.md` |
-| `topic://schema` | Full `TOPIC_LIBRARY_SCHEMA.md` |
+| `workflow://lesson-authoring` | Step-by-step workflow for creating and publishing lessons — read this first |
+| `lesson://schema` | Full `LESSON_SCHEMA.md` — all lesson JSON fields, types, check types, and examples |
+| `topic://schema` | Full `TOPIC_LIBRARY_SCHEMA.md` — topic object fields and wiki-link syntax |
 
 **Note:** Scratch toolbox XML validation is skipped in `validate_lesson` (no `DOMParser` in Node.js) — use the builder preview to catch toolbox XML errors.
 
@@ -210,9 +213,9 @@ The `SKILLS/` folder contains Claude Code agent skill files (each with a `SKILL.
 | `topic-library-maintenance` | Add new topics, update existing ones, or validate topic references across lessons |
 | `validate-lesson-ideas` | Review an ideas file against the teaching ethos and lesson style guide before converting to JSON |
 
-**Workflow order:** `summarize-lesson-plans` → `lesson-idea-file` → `validate-lesson-ideas` → `lesson-json-from-ideas`
+**Workflow order:** `summarize-lesson-plans` → `lesson-idea-file` → `validate-lesson-ideas` → `lesson-json-from-ideas` → **publish with `upsert_lesson`**
 
-The MCP tools (`upsert_lesson`, `upsert_topic`) write directly to Firestore. The local `JSON Files/` copies are the source files; MCP tools are used to push them live.
+After `lesson-json-from-ideas` produces a validated local JSON file, the final step is always to call the MCP `upsert_lesson` tool to write it to Firestore and make it live. The local `JSON Files/` copies are the authoring workspace; the live app reads from Firestore only.
 
 ---
 

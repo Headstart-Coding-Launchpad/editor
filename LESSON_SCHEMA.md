@@ -1,6 +1,8 @@
 # Headstart Lesson Schema
 
-This document describes the lesson JSON format currently supported by the classroom app and lesson builder. Lesson files live in `lessons/` and are static JSON.
+This document describes the lesson JSON format used by the classroom app and lesson builder.
+
+**Where lessons are stored:** Lessons live in the Firestore `lessons/` collection. Each document's ID is the lesson `id`; the document fields mirror the lesson JSON below. The local `lessons/JSON Files/` directory is the authoring workspace — use the MCP `upsert_lesson` tool to push a finished lesson to the live app.
 
 The schema has three lesson types:
 
