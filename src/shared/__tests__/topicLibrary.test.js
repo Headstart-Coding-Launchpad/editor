@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   expandTopicLinks,
+  findAllTopicSuggestions,
   findTopicSuggestion,
   normalizeTopicLibrary,
   parseTopicHref,
@@ -54,5 +55,22 @@ describe('topic library utilities', () => {
     expect(findTopicSuggestion('Use a for loop to repeat this.', topics))
       .toEqual(expect.objectContaining({ label: 'for loop', topic: expect.objectContaining({ id: 'for-loop' }) }))
     expect(findTopicSuggestion('Use [[for-loop|a for loop]] here.', topics)).toBeNull()
+  })
+
+  it('finds all unlinked topic mentions', () => {
+    const result = findAllTopicSuggestions('Use a for loop and CSS selector here.', topics)
+    expect(result).toHaveLength(2)
+    expect(result[0]).toEqual(expect.objectContaining({ topic: expect.objectContaining({ id: 'for-loop' }) }))
+    expect(result[1]).toEqual(expect.objectContaining({ topic: expect.objectContaining({ id: 'selectors' }) }))
+  })
+
+  it('returns empty array when no topics match', () => {
+    expect(findAllTopicSuggestions('No matching terms here.', topics)).toEqual([])
+  })
+
+  it('excludes already-linked topics from all suggestions', () => {
+    const result = findAllTopicSuggestions('Use [[for-loop|a for loop]] and a selector.', topics)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toEqual(expect.objectContaining({ topic: expect.objectContaining({ id: 'selectors' }) }))
   })
 })
