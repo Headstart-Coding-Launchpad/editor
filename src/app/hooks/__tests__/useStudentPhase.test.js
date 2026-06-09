@@ -41,6 +41,8 @@ function defaultProps(overrides = {}) {
     createIdentity: vi.fn((displayName, ts) => ({ anonymousId: 'anon-1', displayName, lastSessionTimestamp: ts })),
     updateTimestamp: vi.fn(),
     joinSession: vi.fn().mockResolvedValue(undefined),
+    registerJoining: vi.fn().mockResolvedValue(undefined),
+    unregisterJoining: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }

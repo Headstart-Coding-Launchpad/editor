@@ -16,8 +16,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
-  const isSessionSandbox = session?.state === 'sandbox'
-  const { isPython, isFilesystem, isQuiz, isInformation } = deriveTaskContext(lesson, currentTask)
+  const { isPython, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, currentTask, session)
   const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
   const isShortAnswer = quizType === 'short_answer'
   const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
@@ -125,7 +124,7 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
               <span style={s.matchSummaryText}>
                 {student.checkPassed === true
                   ? '✓ All correct'
-                  : student.checkPassed === false
+                  : student.checkPassed === false && quizSubmitted
                   ? '✗ Some incorrect'
                   : quizSubmitted
                   ? 'Answered'

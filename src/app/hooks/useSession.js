@@ -110,7 +110,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function setTaskId(taskId) {
     const updates = { currentTaskId: taskId, currentTaskStartedAt: Date.now() }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
-      updates[`students/${anonymousId}/checkPassed`]    = false
+      updates[`students/${anonymousId}/checkPassed`]    = null
       updates[`students/${anonymousId}/lastRunStatus`]  = null
       updates[`students/${anonymousId}/currentOutput`]  = ''
       updates[`students/${anonymousId}/currentCode`]    = ''
@@ -226,8 +226,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function registerJoining(tempId) {
     const r = ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`)
-    await set(r, { joinedAt: Date.now() })
     onDisconnect(r).remove()
+    await set(r, { joinedAt: Date.now() })
   }
 
   async function unregisterJoining(tempId) {
@@ -248,7 +248,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       currentOutput: '',
       currentAnswer: null,
       lastRunStatus: null,
-      checkPassed:   false,
+      checkPassed:   null,
       lastRunAt:     null,
     })
   }

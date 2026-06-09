@@ -31,8 +31,7 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const isSessionSandbox = session?.state === 'sandbox'
-  const { isPython, isScratch, isFilesystem, isQuiz, isInformation } = deriveTaskContext(lesson, task)
+  const { isPython, isScratch, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
   const studentFs = isFilesystem

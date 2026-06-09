@@ -68,8 +68,9 @@ export function useStudentCodeState({
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
 
-  const iframeRef      = useRef(null)
-  const appendOutputRef = useRef(null)
+  const iframeRef           = useRef(null)
+  const appendOutputRef     = useRef(null)
+  const writeAnswerDebounceRef = useRef(null)
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
   const identityRef          = useRef(identity)
@@ -991,12 +992,15 @@ export function useStudentCodeState({
   async function handleQuizSelect(answer, passedOverride) {
     const actor = effectiveIdentity
     if (!actor) return
+    const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
 
     if (passedOverride === null) {
       setSelectedAnswer(answer)
-      const serializedPartial = typeof answer === 'string' ? answer : JSON.stringify(answer)
       if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-        writeStudentAnswer?.(actor.anonymousId, serializedPartial)
+        clearTimeout(writeAnswerDebounceRef.current)
+        writeAnswerDebounceRef.current = setTimeout(() => {
+          writeStudentAnswer?.(actor.anonymousId, serializedAnswer)
+        }, 300)
       }
       return
     }
@@ -1015,7 +1019,6 @@ export function useStudentCodeState({
     setSelectedAnswer(answer)
     applyCheckFeedback(passed, suggestion)
     setRunStatus('submitted')
-    const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
     if (canPublishTeacherLive()) {
       publishTeacherLive({ answer: serializedAnswer, runStatus: 'submitted', checkPassed: passed, checkAttempted: true, checkSuggestion: suggestion })
     }
