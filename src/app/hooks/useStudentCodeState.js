@@ -502,6 +502,15 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
+  // React to teacher overriding this student's check result
+  useEffect(() => {
+    if (!myStudentData?.checkOverridePushedAt) return
+    setCheckPassed(myStudentData.checkOverridePassed)
+    setCheckAttempted(true)
+    setCheckSuggestion(myStudentData.checkOverridePassed ? '' : (myStudentData.checkOverrideHint ?? ''))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.checkOverridePushedAt])
+
   // ─── Personal sandbox ──────────────────────────────────────────────────────
 
   function handleEnterPersonalSandbox() {

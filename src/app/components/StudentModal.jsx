@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import OutputPanel from './OutputPanel'
 import IframePreview from './IframePreview'
@@ -25,7 +25,7 @@ function parseSpriteState(raw) {
   }
 }
 
-export default function StudentModal({ student, lesson, session, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset }) {
+export default function StudentModal({ student, lesson, session, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
 
@@ -43,6 +43,10 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
 
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
   const activeFileObj = files.find(f => f.name === activeFile) ?? files[0]
+
+  const [overrideSelection, setOverrideSelection] = useState(null) // null | true | false
+  const [overrideHint, setOverrideHint] = useState('')
+  const hasOverride = !!student.checkOverridePushedAt
   const remoteSelection = !isLive || (!isPython && student.currentSelection?.file !== activeFile)
     ? null
     : student.currentSelection
@@ -124,6 +128,45 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+              </div>
+            )}
+            {onOverrideCheck && task?.check != null && (
+              <div style={s.overrideWrap}>
+                <div style={s.overrideToggleRow}>
+                  <span style={s.setToLabel}>Override</span>
+                  <button
+                    style={{ ...s.overrideBtn, ...(overrideSelection === true ? s.overrideBtnPassActive : {}) }}
+                    onClick={() => setOverrideSelection(v => v === true ? null : true)}
+                  >Pass</button>
+                  <button
+                    style={{ ...s.overrideBtn, ...(overrideSelection === false ? s.overrideBtnFailActive : {}) }}
+                    onClick={() => setOverrideSelection(v => v === false ? null : false)}
+                  >Fail</button>
+                  {overrideSelection !== null && (
+                    <button
+                      style={s.overrideApplyBtn}
+                      onClick={() => {
+                        onOverrideCheck(student.anonymousId, overrideSelection, overrideSelection ? null : (overrideHint || null))
+                        setOverrideSelection(null)
+                        setOverrideHint('')
+                      }}
+                    >Apply</button>
+                  )}
+                  {hasOverride && (
+                    <span style={s.overrideBadge}>
+                      {student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed'}
+                    </span>
+                  )}
+                </div>
+                {overrideSelection === false && (
+                  <textarea
+                    style={s.overrideHintInput}
+                    placeholder="Optional hint for student…"
+                    value={overrideHint}
+                    onChange={e => setOverrideHint(e.target.value)}
+                    rows={2}
+                  />
+                )}
               </div>
             )}
             {!isInformation && !isQuiz && (
@@ -459,6 +502,71 @@ const s = {
     cursor: 'pointer',
     fontFamily: 'var(--font-body)',
     fontWeight: 600,
+  },
+  overrideWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  overrideToggleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  overrideBtn: {
+    fontSize: 11,
+    padding: '3px 8px',
+    background: 'rgba(255,255,255,0.1)',
+    color: 'rgba(255,255,255,0.8)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+  overrideBtnPassActive: {
+    background: 'rgba(34,197,94,0.3)',
+    color: '#86efac',
+    border: '1px solid rgba(34,197,94,0.5)',
+  },
+  overrideBtnFailActive: {
+    background: 'rgba(239,68,68,0.3)',
+    color: '#fca5a5',
+    border: '1px solid rgba(239,68,68,0.5)',
+  },
+  overrideApplyBtn: {
+    fontSize: 11,
+    padding: '3px 8px',
+    background: 'rgba(253,211,77,0.2)',
+    color: '#fde68a',
+    border: '1px solid rgba(253,211,77,0.4)',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+  },
+  overrideBadge: {
+    fontSize: 10,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.6)',
+    whiteSpace: 'nowrap',
+    paddingLeft: 4,
+  },
+  overrideHintInput: {
+    fontSize: 11,
+    padding: '4px 8px',
+    background: 'rgba(255,255,255,0.1)',
+    color: '#fff',
+    border: '1px solid rgba(255,255,255,0.3)',
+    borderRadius: 4,
+    fontFamily: 'var(--font-body)',
+    resize: 'vertical',
+    width: '100%',
+    boxSizing: 'border-box',
+    minWidth: 180,
   },
   submitNotice: {
     padding: '10px 14px',

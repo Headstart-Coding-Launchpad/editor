@@ -5,11 +5,13 @@ import { useAuth } from '../auth/useAuth'
 import AccountManagement from './AccountManagement'
 import LessonPanel from './LessonPanel'
 import TopicLibraryPanel from './TopicLibraryPanel'
+import FeedbackPanel from './FeedbackPanel'
 
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'accounts', label: 'Accounts' },
+  { id: 'feedback', label: 'Platform Feedback' },
 ]
 
 export default function AdminPortal() {
@@ -50,6 +52,7 @@ export default function AdminPortal() {
         {activeTab === 'lessons' && <LessonPanel />}
         {activeTab === 'topics' && <TopicLibraryPanel />}
         {activeTab === 'accounts' && <AccountManagement />}
+        {activeTab === 'feedback' && <FeedbackPanel />}
       </main>
     </div>
   )

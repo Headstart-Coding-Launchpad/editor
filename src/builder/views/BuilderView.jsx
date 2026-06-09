@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
-import { doc, setDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore'
 import LessonMetaPanel from '../components/LessonMetaPanel'
 import TaskList from '../components/TaskList'
 import TaskEditor from '../components/TaskEditor'
@@ -395,8 +395,18 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const [previewing, setPreviewing] = useState(false)
   const [metaOpen, setMetaOpen] = useState(false)
   const [publishStatus, setPublishStatus] = useState(null) // null | 'publishing' | 'done' | 'error'
+  const [taskFeedback, setTaskFeedback] = useState([])
   const { role } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!selectedTaskId || !lesson?.id) { setTaskFeedback([]); return }
+    getDocs(query(
+      collection(firestore, 'lessons', lesson.id, 'feedback'),
+      where('taskId', '==', selectedTaskId),
+      orderBy('submittedAt', 'desc')
+    )).then(snap => setTaskFeedback(snap.docs.map(d => d.data()))).catch(() => setTaskFeedback([]))
+  }, [lesson?.id, selectedTaskId])
 
   function handleLessonUpdate(updater) {
     if (typeof updater === 'function') {
@@ -825,28 +835,33 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
               }}
             />
           ) : selectedTask ? (
-            <TaskEditor
-              key={selectedTask.id}
-              task={selectedTask}
-              lesson={lessonForEditor}
-              parentGroup={selectedTaskGroup}
-              onUpdate={updated => {
-                let finalUpdated = updated
-                if (selectedTaskGroup) {
-                  if ('_customTitle' in updated && !updated._customTitle) {
-                    // Explicit reset — clear flag so updateSubtaskTitles regenerates title
-                    const { _customTitle, ...withoutFlag } = finalUpdated
-                    finalUpdated = withoutFlag
-                  } else if (updated.title !== selectedTask.title) {
-                    finalUpdated = { ...updated, _customTitle: true }
+            <>
+              <TaskEditor
+                key={selectedTask.id}
+                task={selectedTask}
+                lesson={lessonForEditor}
+                parentGroup={selectedTaskGroup}
+                onUpdate={updated => {
+                  let finalUpdated = updated
+                  if (selectedTaskGroup) {
+                    if ('_customTitle' in updated && !updated._customTitle) {
+                      // Explicit reset — clear flag so updateSubtaskTitles regenerates title
+                      const { _customTitle, ...withoutFlag } = finalUpdated
+                      finalUpdated = withoutFlag
+                    } else if (updated.title !== selectedTask.title) {
+                      finalUpdated = { ...updated, _customTitle: true }
+                    }
                   }
-                }
-                handleLessonUpdate(prev => ({
-                  ...prev,
-                  tasks: updateTaskInTasks(prev.tasks, finalUpdated),
-                }))
-              }}
-            />
+                  handleLessonUpdate(prev => ({
+                    ...prev,
+                    tasks: updateTaskInTasks(prev.tasks, finalUpdated),
+                  }))
+                }}
+              />
+              {taskFeedback.length > 0 && (
+                <TaskFeedbackPanel feedback={taskFeedback} />
+              )}
+            </>
           ) : (
             <div style={s.empty}>
               <p>Select a task from the left panel, or add a new one to get started.</p>
@@ -855,6 +870,38 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         </main>
       </div>
     </div>
+  )
+}
+
+// ─── Task feedback panel ──────────────────────────────────────────────────────
+
+function TaskFeedbackPanel({ feedback }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <section style={s.feedbackSection}>
+      <button
+        type="button"
+        style={s.feedbackHeader}
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        <span style={s.feedbackTitle}>Lesson Feedback ({feedback.length})</span>
+        <span style={{ ...s.optionsChevron, transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+      {open && (
+        <div style={s.feedbackBody}>
+          {feedback.map((item, i) => (
+            <div key={i} style={s.feedbackItem}>
+              <div style={s.feedbackMeta}>
+                <span style={s.feedbackEmail}>{item.teacherEmail}</span>
+                <span style={s.feedbackDate}>{new Date(item.submittedAt).toLocaleString()}</span>
+              </div>
+              <p style={s.feedbackText}>{item.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -1151,5 +1198,69 @@ const s = {
     fontSize: '0.76rem',
     cursor: 'pointer',
     lineHeight: 1.4,
+  },
+  feedbackSection: {
+    marginTop: 16,
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  feedbackHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 14px',
+    background: '#f0fdf4',
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'left',
+    width: '100%',
+  },
+  feedbackTitle: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    color: '#16a34a',
+    flex: 1,
+  },
+  feedbackBody: {
+    padding: '8px 14px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    background: '#fff',
+    maxHeight: 320,
+    overflowY: 'auto',
+  },
+  feedbackItem: {
+    borderLeft: '3px solid #86efac',
+    paddingLeft: 10,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  feedbackMeta: {
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+  },
+  feedbackEmail: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.78rem',
+    color: 'var(--colour-primary)',
+  },
+  feedbackDate: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    color: '#9ca3af',
+  },
+  feedbackText: {
+    margin: 0,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.86rem',
+    color: 'var(--colour-text)',
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap',
   },
 }

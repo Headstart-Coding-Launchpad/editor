@@ -214,7 +214,10 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
           "lastRunAt": 1234567890,
           "remoteResetAction": "starter | complete | stage_0 | stage_1 | ...",
           "remoteResetPushedAt": 1234567890,
-          "inPersonalSandbox": "true | null"
+          "inPersonalSandbox": "true | null",
+          "checkOverridePassed": "boolean | null",
+          "checkOverrideHint": "string | null",
+          "checkOverridePushedAt": "number | null"
         }
       }
     }
@@ -228,6 +231,7 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
 
 - Teacher writes: `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`, `activeStudentView`, `teacherLive`, `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`, any student's `displayName`, student node removal
 - Teacher — remote reset: `remoteResetAction` + `remoteResetPushedAt` on individual student node
+- Teacher — check override: `checkOverridePassed` + `checkOverrideHint` + `checkOverridePushedAt` on individual student node; cleared by `setTaskId`
 - Student (on run): own `currentCode`/`currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`
 - Student (when watched — Python): `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`/`currentActivity` editor interactions
 - Student (when watched — HTML): `currentFiles` per active-tab keystroke, `currentActiveFile`/`currentSelection`/`currentActivity` editor interactions

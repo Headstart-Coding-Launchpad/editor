@@ -11,6 +11,7 @@ export default function TeacherSessionControls({
   onPreviousTask,
   onNextTask,
   onOpenPresentationWindow,
+  onOpenFeedback,
   onToggleSharePanel,
   onCloseSharePanel,
   onCopyLink,
@@ -53,6 +54,11 @@ export default function TeacherSessionControls({
       <button className="btn-ghost teacher-session-controls__action" onClick={onOpenPresentationWindow}>
         Presentation Window
       </button>
+      {isRunning && (
+        <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
+          Feedback
+        </button>
+      )}
       <div className="teacher-share">
         <button
           className="btn-ghost teacher-session-controls__action"
