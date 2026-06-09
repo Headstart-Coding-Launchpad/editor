@@ -194,6 +194,9 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
       "sandboxCodePushedAt": 1234567890,
       "sandboxFiles": { "index__dot__html": "..." },
       "sandboxFilesUpdatedAt": 1234567890,
+      "joiningStudents": {
+        "{tempId}": { "joinedAt": 1234567890 }
+      },
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
@@ -228,8 +231,9 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
 - Student (on run): own `currentCode`/`currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`
 - Student (when watched — Python): `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`/`currentActivity` editor interactions
 - Student (when watched — HTML): `currentFiles` per active-tab keystroke, `currentActiveFile`/`currentSelection`/`currentActivity` editor interactions
-- Student (quiz): `currentAnswer` on submit
+- Student (quiz): `currentAnswer` on submit; also written incrementally for match/fill_blank as tiles are placed
 - Student (personal sandbox): own `inPersonalSandbox` — set to `true` on entry, `null` on exit
+- Student (name-entry): writes own `joiningStudents/{tempId}` on entering name-entry phase; removed on joining or leaving
 - Firebase v1 security rules are open read/write — do not add authentication logic
 
 ### onDisconnect handlers
@@ -238,6 +242,7 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
 - `teacherLive` set to null when teacher disconnects
 - Student `online` **key removed** on disconnect (not set to false)
 - Session node deleted when teacher calls `endSession()` and disconnects
+- `joiningStudents/{tempId}` **key removed** on disconnect (set via `onDisconnect().remove()`)
 
 ---
 

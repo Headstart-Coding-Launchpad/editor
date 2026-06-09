@@ -49,14 +49,16 @@ export function getProgressItems(tasks) {
 }
 
 // Derive boolean task-type flags from lesson and task objects.
-export function deriveTaskContext(lesson, task) {
+// Pass the optional session to include isSessionSandbox in the result.
+export function deriveTaskContext(lesson, task, session) {
   const isPython     = lesson?.type === 'python'
   const isScratch    = lesson?.type === 'scratch'
   const isFilesystem = lesson?.type === 'filesystem'
   const isHtml       = !isPython && !isScratch && !isFilesystem
   const isQuiz        = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
-  return { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation }
+  const isSessionSandbox = session?.state === 'sandbox'
+  return { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox }
 }
 
 // Build the ordered list of remote-reset stage options for a task.

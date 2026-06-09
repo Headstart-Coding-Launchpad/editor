@@ -17,7 +17,7 @@ function formatCheck(check) {
   }).join(' · ')
 }
 
-export default function StudentGrid({ students = [], lesson, lessonId, session, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [checkSectionOpen, setCheckSectionOpen] = useState(false)
 
@@ -65,6 +65,13 @@ export default function StudentGrid({ students = [], lesson, lessonId, session, 
           <span style={s.collapsedStatLabel}>joined</span>
         </div>
 
+        {joiningCount > 0 && (
+          <div style={s.collapsedStat}>
+            <span style={{ ...s.collapsedBadge, background: '#f59e0b' }}>{joiningCount}</span>
+            <span style={s.collapsedStatLabel}>joining</span>
+          </div>
+        )}
+
         {students.length > 0 && (
           <div style={s.collapsedStat}>
             <span style={{ ...s.collapsedBadge, background: '#6b7280' }}>{runCount}</span>
@@ -96,6 +103,11 @@ export default function StudentGrid({ students = [], lesson, lessonId, session, 
       <div style={s.header}>
         <span style={s.label}>Students</span>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {joiningCount > 0 && (
+            <span style={{ ...s.checkCountBadge, background: '#f59e0b' }} title={`${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name`}>
+              {joiningCount} joining…
+            </span>
+          )}
           {hasCheck && (
             <>
               <span style={{ ...s.checkCountBadge, background: '#22c55e' }} title="Students who passed the completion check">✓ {passedCount}</span>
@@ -109,8 +121,8 @@ export default function StudentGrid({ students = [], lesson, lessonId, session, 
 
       {students.length === 0 ? (
         <div style={s.empty}>
-          <p>No students yet.</p>
-          <p style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: 6 }}>Share the lesson link to invite students.</p>
+          <p>{joiningCount > 0 ? `${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name…` : 'No students yet.'}</p>
+          {joiningCount === 0 && <p style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: 6 }}>Share the lesson link to invite students.</p>}
         </div>
       ) : (
         <div style={s.grid}>

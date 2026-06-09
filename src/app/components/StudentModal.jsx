@@ -31,7 +31,7 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const { isPython, isScratch, isFilesystem, isQuiz, isInformation } = deriveTaskContext(lesson, task)
+  const { isPython, isScratch, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
   const studentFs = isFilesystem
@@ -166,10 +166,10 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
         </div>
 
         {/* Content */}
-        <div style={isInformation ? s.bodyInformation : isQuiz ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
+        <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
           {isInformation ? (
             <ExplainerPanel title={task?.title} content={task?.explainer ?? ''} collapsible={false} fill topicType={lesson?.type} />
-          ) : isQuiz ? (
+          ) : isQuiz && !isSessionSandbox ? (
             <QuizTask
               task={task}
               showQuestion

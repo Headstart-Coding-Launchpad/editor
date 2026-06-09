@@ -110,7 +110,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function setTaskId(taskId) {
     const updates = { currentTaskId: taskId, currentTaskStartedAt: Date.now() }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
-      updates[`students/${anonymousId}/checkPassed`]    = false
+      updates[`students/${anonymousId}/checkPassed`]    = null
       updates[`students/${anonymousId}/lastRunStatus`]  = null
       updates[`students/${anonymousId}/currentOutput`]  = ''
       updates[`students/${anonymousId}/currentCode`]    = ''
@@ -224,6 +224,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   // ─── Student helpers ──────────────────────────────────────────────────────
 
+  async function registerJoining(tempId) {
+    const r = ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`)
+    onDisconnect(r).remove()
+    await set(r, { joinedAt: Date.now() })
+  }
+
+  async function unregisterJoining(tempId) {
+    await remove(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`))
+  }
+
   async function registerPresence(anonymousId) {
     const presenceRef = ref(db, `sessions/${lessonId}/students/${anonymousId}/online`)
     await set(presenceRef, true)
@@ -238,7 +248,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       currentOutput: '',
       currentAnswer: null,
       lastRunStatus: null,
-      checkPassed:   false,
+      checkPassed:   null,
       lastRunAt:     null,
     })
   }
@@ -254,6 +264,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     if (output != null) updates.currentOutput = output
     if (answer != null) updates.currentAnswer = answer
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
+  }
+
+  async function writeStudentAnswer(anonymousId, answer) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentAnswer`), answer)
   }
 
   async function writeStudentCode(anonymousId, code) {
@@ -291,6 +305,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent,
     // student
-    registerPresence, joinSession, writeStudentRun, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
+    registerPresence, joinSession, registerJoining, unregisterJoining,
+    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
   }
 }

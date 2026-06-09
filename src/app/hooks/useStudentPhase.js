@@ -19,6 +19,8 @@ export function useStudentPhase({
   createIdentity,
   updateTimestamp,
   joinSession,
+  registerJoining,
+  unregisterJoining,
 }) {
   const [phase, setPhase] = useState('loading')
   const [currentTaskId, setCurrentTaskId] = useState(firstTaskId ?? 1)
@@ -26,6 +28,28 @@ export function useStudentPhase({
 
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+
+  // Stable refs for joining callbacks so the effect dep array stays on `phase` only
+  const registerJoiningRef = useRef(registerJoining)
+  registerJoiningRef.current = registerJoining
+  const unregisterJoiningRef = useRef(unregisterJoining)
+  unregisterJoiningRef.current = unregisterJoining
+  // Holds the tempId for the current name-entry phase so handleNameSubmit can
+  // eagerly remove the joining marker before writing to students/.
+  const joiningTempIdRef = useRef(null)
+
+  // While in name-entry, write a temporary "joining" marker to Firebase so the teacher
+  // can see students who are in the process of entering their name.
+  useEffect(() => {
+    if (phase !== 'name-entry') return
+    const tempId = crypto.randomUUID()
+    joiningTempIdRef.current = tempId
+    registerJoiningRef.current?.(tempId)
+    return () => {
+      joiningTempIdRef.current = null
+      unregisterJoiningRef.current?.(tempId)
+    }
+  }, [phase])
 
   // Sync currentTaskId when firstTaskId resolves — only during loading phase to avoid
   // overwriting a session-driven task that was already applied by the phase-determination effect
@@ -188,6 +212,10 @@ export function useStudentPhase({
   async function handleNameSubmit(displayName) {
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
+    if (joiningTempIdRef.current) {
+      unregisterJoining(joiningTempIdRef.current)
+      joiningTempIdRef.current = null
+    }
     await joinSession(id.anonymousId, displayName)
     if (!session || session.state === 'ended') { setPhase('waiting'); return }
     if (session.state === 'waiting') { setPhase('waiting'); return }
