@@ -106,6 +106,9 @@ export function useStudentCodeState({
   const checkPassedRef       = useRef(checkPassed)
   checkPassedRef.current     = checkPassed
 
+  const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
+  const shouldSkipLocalPersist = teacherPresentation || previewMode
+
   // ─── Teacher live broadcast helpers ───────────────────────────────────────
 
   function canPublishTeacherLive() {
@@ -545,7 +548,7 @@ export function useStudentCodeState({
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const isWatched = session?.activeStudentView === actor.anonymousId
-    const alreadySolved = checkPassedRef.current && !inPersonalSandboxRef.current
+    const alreadySolved = isAlreadySolved()
 
     setRunning(true)
     setOutput('')
@@ -631,8 +634,10 @@ export function useStudentCodeState({
         publishTeacherLive({ runStatus: 'success', checkPassed: passed, checkAttempted: !alreadySolved && !!task?.check, checkSuggestion: suggestion, files: Object.fromEntries(currentFiles.map(f => [f.name, f.content])) })
       }
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
-        writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
+        if (taskIdAtRunTime === currentTaskIdRef.current) {
+          const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
+          writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
+        }
       }
       if (!teacherPresentation && !previewMode) {
         if (inPersonalSandboxRef.current) {
@@ -661,13 +666,13 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task?.tests?.length) return
     const isWatched = session?.activeStudentView === actor.anonymousId
-    const alreadySolved = checkPassedRef.current && !inPersonalSandboxRef.current
+    if (isAlreadySolved()) return
 
     setRunningTests(true)
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
-    if (!alreadySolved) resetCheckFeedback()
+    resetCheckFeedback()
 
     const results = []
     try {
@@ -692,7 +697,7 @@ export function useStudentCodeState({
         if (result.status === 'stopped') break
       }
 
-      const allPassed = alreadySolved ? true : (results.length > 0 && results.every(r => r.passed))
+      const allPassed = results.length > 0 && results.every(r => r.passed)
       const finalStatus = results.some(r => r.status === 'error')
         ? 'error'
         : results.some(r => r.status === 'stopped') ? 'stopped' : 'success'
@@ -700,10 +705,10 @@ export function useStudentCodeState({
       setTestResults(results)
       setOutput(displayedOutput)
       setRunStatus(finalStatus)
-      if (!alreadySolved && finalStatus !== 'stopped') applyCheckFeedback(allPassed)
+      if (finalStatus !== 'stopped') applyCheckFeedback(allPassed)
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: !alreadySolved })
+        publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
       }
       if (!teacherPresentation && !previewMode) {
         if (inPersonalSandboxRef.current) {
@@ -730,7 +735,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ code: newCode })
     }
-    if (teacherPresentation || previewMode) return
+    if (shouldSkipLocalPersist) return
     if (identity && lesson?.type === 'python') {
       if (inPersonalSandboxRef.current) {
         savePersonalSandboxCode(lessonId, identity.anonymousId, { code: newCode })
@@ -779,7 +784,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
     }
-    if (teacherPresentation || previewMode) return
+    if (shouldSkipLocalPersist) return
     if (identity && lesson?.type === 'html') {
       if (inPersonalSandboxRef.current) {
         savePersonalSandboxFile(lessonId, filename, identity.anonymousId, content)
@@ -799,7 +804,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ code: JSON.stringify(workspaceStates) })
     }
-    if (teacherPresentation || previewMode) return
+    if (shouldSkipLocalPersist) return
     if (!identity) return
     if (inPersonalSandboxRef.current) {
       savePersonalSandboxCode(lessonId, identity.anonymousId, { state: workspaceStates })
@@ -813,7 +818,7 @@ export function useStudentCodeState({
 
   function handleScratchCheck(passed, snapshot) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const alreadySolved = checkPassedRef.current && !inPersonalSandboxRef.current
+    const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
     const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
     const suggestion = effectivePassed ? '' : String(checks.find(c => c?.hint)?.hint ?? '').trim()
@@ -833,7 +838,7 @@ export function useStudentCodeState({
   // ─── Filesystem handlers ───────────────────────────────────────────────────
 
   function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
-    const alreadySolved = checkPassedRef.current && !inPersonalSandboxRef.current
+    const alreadySolved = isAlreadySolved()
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const evaluatedPassed = task?.check ? evaluateCheck(task.check, null, context) : false
     const passed = alreadySolved ? true : evaluatedPassed
@@ -842,8 +847,8 @@ export function useStudentCodeState({
     if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
-        status: task?.check ? (passed ? 'success' : 'error') : null,
-        checkPassed: passed,
+        status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
+        checkPassed: evaluatedPassed,
       })
     }
   }
@@ -948,7 +953,7 @@ export function useStudentCodeState({
     if (!actor) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const isHtml = lesson?.type === 'html'
-    const alreadySolved = checkPassedRef.current && !inPersonalSandboxRef.current
+    const alreadySolved = isAlreadySolved()
     let passed, suggestion = ''
     if (!alreadySolved) {
       const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code

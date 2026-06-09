@@ -528,6 +528,9 @@ const s = {
   },
   groupEndDropZone: {
     height: 12,
+    margin: '1px 4px',
+    borderRadius: 3,
+    border: '1px dashed #d1c4e9',
   },
   subtaskItem: {
     display: 'flex',
