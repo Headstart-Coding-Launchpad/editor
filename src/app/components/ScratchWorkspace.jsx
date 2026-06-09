@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,
+  STAGE_TOOLBOX,
   DEFAULT_SPRITES,
   buildAlwaysOpenToolbox,
+  addPredefinedBlocksToToolbox,
   createRunSignal,
   runAllSprites,
   runAllSpritesEvent,
@@ -245,7 +247,7 @@ function PropField({ label, value, onChange, readOnly, min, max }) {
 
 // ── Check helpers ─────────────────────────────────────────────────────────────
 
-function evalSingleCheck(check, spriteWorkspaces, signal) {
+function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {}) {
   if (!check?.type) return false
   try {
     if (check.type === 'block_used') {
@@ -254,9 +256,11 @@ function evalSingleCheck(check, spriteWorkspaces, signal) {
     if (check.type === 'variable_equals') {
       return evaluateScratchCheck(check, null, null, signal)
     }
-    // sprite_property: match by name or fall back to first
+    // sprite_property / sprite_property_delta / sprite_property_changed: match by name or fall back to first
     const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-    return target ? evaluateScratchCheck(check, target.workspace, target.state, signal) : false
+    if (!target) return false
+    const preRunState = preRunSpriteStates[target.id] ?? null
+    return evaluateScratchCheck(check, target.workspace, target.state, signal, preRunState)
   } catch { return false }
 }
 
@@ -289,6 +293,7 @@ export default function ScratchWorkspace({
   spritePanelTarget = null,
   onAddSprite = null,
   spritePanelEditor = null,
+  predefinedBlocks = null,   // PredefinedBlock[] merged for current tab
 }) {
   const sprites = task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
   const backdrops = task?.backdrops?.length > 0 ? task.backdrops : []
@@ -300,6 +305,7 @@ export default function ScratchWorkspace({
   const blocksDivRefs       = useRef({})
   const workspaceRefs       = useRef({})
   const spriteStatesRef     = useRef(initSpriteStates(sprites))
+  const preRunSpriteStatesRef = useRef({})
   const BlocklyRef          = useRef(null)
   const signalRef           = useRef(null)
   const syncTimerRef        = useRef(null)
@@ -474,7 +480,7 @@ export default function ScratchWorkspace({
   }, [])
 
   const buildSpriteWorkspaces = useCallback(() => {
-    return sprites.map(sp => ({
+    const result = sprites.map(sp => ({
       id: sp.id,
       name: sp.name,
       workspace: workspaceRefs.current[sp.id],
@@ -484,7 +490,19 @@ export default function ScratchWorkspace({
         commitSpriteStates({ ...spriteStatesRef.current, [sp.id]: s })
       },
     })).filter(sp => sp.workspace)
-  }, [sprites])
+    // Include stage workspace when enabled
+    if (task?.enableStageCode && workspaceRefs.current['__stage__']) {
+      result.push({
+        id: '__stage__',
+        name: '__stage__',
+        workspace: workspaceRefs.current['__stage__'],
+        state: null,
+        costumes: [],
+        onUpdate: () => {},
+      })
+    }
+    return result
+  }, [sprites, task?.enableStageCode])
 
   function commitSpriteStates(nextStates) {
     spriteStatesRef.current = nextStates
@@ -500,10 +518,18 @@ export default function ScratchWorkspace({
 
   function buildToolboxForSprite(spriteId) {
     const state = spriteStatesRef.current[spriteId] ?? { x: 0, y: 0 }
-    return buildAlwaysOpenToolbox(
-      unrestricted ? DEFAULT_TOOLBOX : (task?.toolbox ?? DEFAULT_TOOLBOX),
-      { position: { x: state.x, y: state.y } },
-    )
+    const isStage = spriteId === '__stage__'
+    let baseToolbox
+    if (unrestricted) {
+      baseToolbox = isStage ? STAGE_TOOLBOX : DEFAULT_TOOLBOX
+    } else {
+      const rawToolbox = task?.toolbox ?? (isStage ? STAGE_TOOLBOX : DEFAULT_TOOLBOX)
+      baseToolbox = isStage && !task?.toolbox ? STAGE_TOOLBOX : rawToolbox
+    }
+    const withPredefined = predefinedBlocks?.length
+      ? addPredefinedBlocksToToolbox(baseToolbox, predefinedBlocks)
+      : baseToolbox
+    return buildAlwaysOpenToolbox(withPredefined, { position: { x: state.x, y: state.y } })
   }
 
   function refreshSpriteToolbox(spriteId) {
@@ -593,6 +619,38 @@ export default function ScratchWorkspace({
           }
         }
 
+        // Create stage workspace if enabled
+        if (task?.enableStageCode) {
+          const stageDiv = blocksDivRefs.current['__stage__']
+          if (stageDiv) {
+            const stageWs = Blockly.inject(stageDiv, {
+              toolbox: buildToolboxForSprite('__stage__'),
+              renderer: 'zelos',
+              grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
+              zoom: { startScale: 0.75 },
+              trashcan: true,
+              readOnly,
+            })
+            workspaceRefs.current['__stage__'] = stageWs
+            Blockly.svgResize(stageWs)
+            const stageInitState = normInitStates?.['__stage__']
+            if (stageInitState) {
+              try {
+                suppressChangeRef.current = true
+                loadWorkspace(Blockly, stageWs, stageInitState)
+                requestAnimationFrame(() => { suppressChangeRef.current = false })
+              } catch { suppressChangeRef.current = false }
+            }
+            if (!readOnly) {
+              stageWs.addChangeListener(() => {
+                if (suppressChangeRef.current) return
+                clearTimeout(syncTimerRef.current)
+                syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+              })
+            }
+          }
+        }
+
         if (!cancelled) setStatus('ready')
       } catch (err) {
         console.error('Scratch init error:', err)
@@ -631,13 +689,14 @@ export default function ScratchWorkspace({
     } catch {}
   }, [flyoutCollapsed, selectedSpriteId, status])
 
-  // ── Update toolbox when task.toolbox changes ─────────────────────────────────
+  // ── Update toolbox when task.toolbox or predefined blocks change ─────────────
   useEffect(() => {
     if (status !== 'ready' || !BlocklyRef.current) return
     try {
       for (const sp of sprites) refreshSpriteToolbox(sp.id)
+      if (task?.enableStageCode) refreshSpriteToolbox('__stage__')
     } catch {}
-  }, [task?.toolbox, unrestricted, status, sprites])
+  }, [task?.toolbox, task?.enableStageCode, unrestricted, status, sprites, predefinedBlocks])
 
   // ── Load external state (teacher push) ───────────────────────────────────────
   useEffect(() => {
@@ -745,7 +804,7 @@ export default function ScratchWorkspace({
       setRunning(false)
       if (scratchChecks.length > 0 && hasAfterRunCheck) {
         const sws = buildSpriteWorkspaces()
-        notifyCheck(scratchChecks.every(c => evalSingleCheck(c, sws, signal)))
+        notifyCheck(scratchChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)))
       }
     }
   }
@@ -762,6 +821,7 @@ export default function ScratchWorkspace({
     if (status !== 'ready') return
     stopAll()
     lastCheckRef.current = null
+    preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     runningRef.current = true
     setRunning(true)
     setCheckAttempted(false)
@@ -1016,9 +1076,46 @@ export default function ScratchWorkspace({
     )
   }
 
+  const stageTileFull = task?.enableStageCode ? (
+    <button
+      key="__stage__"
+      type="button"
+      style={{ ...s.spriteTile, ...('__stage__' === selectedSpriteId ? s.spriteTileActive : {}) }}
+      onClick={() => setSelectedSpriteId('__stage__')}
+      title="Stage scripts"
+    >
+      <div style={{ ...s.spriteTileThumb, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+      </div>
+      <span style={s.spriteTileName}>Stage</span>
+    </button>
+  ) : null
+
+  const stageTileCompact = task?.enableStageCode ? (
+    <button
+      key="__stage__"
+      type="button"
+      style={{ ...s.spriteTileCompact, ...('__stage__' === selectedSpriteId ? s.spriteTileCompactActive : {}) }}
+      onClick={() => setSelectedSpriteId('__stage__')}
+      title="Stage scripts"
+    >
+      <div style={s.spriteTileCompactThumb}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+      </div>
+      <span style={s.spriteTileCompactName}>Stage</span>
+    </button>
+  ) : null
+
   const spritePanelFull = (
     <div style={s.spritePanel}>
       <div style={s.spriteTileRow}>
+        {stageTileFull}
         {sprites.map(sp => (
           <button
             key={sp.id}
@@ -1046,7 +1143,7 @@ export default function ScratchWorkspace({
           </button>
         )}
       </div>
-      {renderSpriteProps(false)}
+      {selectedSpriteId !== '__stage__' && renderSpriteProps(false)}
       {spritePanelEditor && <div style={s.spritePanelEditor}>{spritePanelEditor}</div>}
     </div>
   )
@@ -1054,6 +1151,7 @@ export default function ScratchWorkspace({
   const spritePanelCompact = (
     <div style={s.spritePanelCompact}>
       <div style={s.spriteTileRowCompact}>
+        {stageTileCompact}
         {sprites.map(sp => (
           <button
             key={sp.id}
@@ -1068,7 +1166,7 @@ export default function ScratchWorkspace({
           </button>
         ))}
       </div>
-      {renderSpriteProps(true)}
+      {selectedSpriteId !== '__stage__' && renderSpriteProps(true)}
     </div>
   )
 
@@ -1103,6 +1201,17 @@ export default function ScratchWorkspace({
           </button>
         </div>
         <div style={s.editorPaneBody}>
+          {task?.enableStageCode && (
+            <div
+              key="__stage__"
+              ref={el => { if (el) blocksDivRefs.current['__stage__'] = el }}
+              style={{
+                position: 'absolute', inset: 0,
+                visibility: selectedSpriteId === '__stage__' ? 'visible' : 'hidden',
+                pointerEvents: selectedSpriteId === '__stage__' ? 'auto' : 'none',
+              }}
+            />
+          )}
           {sprites.map(sp => (
             <div
               key={sp.id}

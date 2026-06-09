@@ -1,5 +1,6 @@
 import React from 'react'
 import { MarkdownFieldEditor } from '../ExplainerEditor'
+import { VALUE_INPUT_DEFAULTS } from '../../../shared/scratch'
 
 const SCRATCH_TOOLBOX_GROUPS = [
   {
@@ -224,6 +225,125 @@ export function ScratchToolboxPicker({ toolbox, onChange }) {
   )
 }
 
+// ── Predefined Blocks Editor ──────────────────────────────────────────────────
+
+// Block input metadata derived from VALUE_INPUT_DEFAULTS
+function getBlockInputFields(type) {
+  const defaults = VALUE_INPUT_DEFAULTS[type]
+  if (!defaults) return []
+  return Object.entries(defaults).map(([name, shadow]) => ({
+    name,
+    inputType: shadow.type === 'math_number' ? 'number' : 'text',
+    defaultValue: shadow.value,
+  }))
+}
+
+// Blocks that have configurable inputs (exclude pure dropdowns)
+const PREDEFINED_ELIGIBLE_TYPES = Object.keys(VALUE_INPUT_DEFAULTS)
+
+function newPredefinedBlock(type) {
+  const fields = getBlockInputFields(type)
+  const inputs = {}
+  for (const f of fields) inputs[f.name] = f.defaultValue
+  return { id: Math.random().toString(36).slice(2), type, inputs }
+}
+
+function blockLabel(type) {
+  const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === type)
+  return found ? found[1] : type
+}
+
+export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', onChange }) {
+  const [adding, setAdding] = React.useState(false)
+  const [newType, setNewType] = React.useState('')
+
+  // Only offer block types that are both in the toolbox and have configurable inputs
+  const toolboxTypes = new Set(parseScratchToolboxXml(toolbox))
+  const eligibleTypes = PREDEFINED_ELIGIBLE_TYPES.filter(t =>
+    !toolbox || toolboxTypes.has(t)
+  )
+
+  const defaultNewType = eligibleTypes[0] ?? ''
+
+  function startAdding() {
+    setNewType(defaultNewType)
+    setAdding(true)
+  }
+
+  function confirmAdd() {
+    if (!newType) return
+    onChange([...predefinedBlocks, newPredefinedBlock(newType)])
+    setAdding(false)
+    setNewType('')
+  }
+
+  function remove(id) {
+    onChange(predefinedBlocks.filter(pb => pb.id !== id))
+  }
+
+  function updateInput(id, inputName, value) {
+    onChange(predefinedBlocks.map(pb =>
+      pb.id === id ? { ...pb, inputs: { ...pb.inputs, [inputName]: value } } : pb
+    ))
+  }
+
+  if (eligibleTypes.length === 0) {
+    return (
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af', margin: '4px 0 0' }}>
+        No eligible blocks in the current toolbox. Enable blocks with configurable inputs to add predefined versions.
+      </p>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {predefinedBlocks.map(pb => {
+        const fields = getBlockInputFields(pb.type)
+        return (
+          <div key={pb.id} className="te-predefined-block-row">
+            <span className="te-predefined-block-label">{blockLabel(pb.type)}</span>
+            {fields.map(f => (
+              <label key={f.name} className="te-predefined-block-field">
+                <span className="te-predefined-block-field-name">{f.name.toLowerCase()}</span>
+                <input
+                  className="te-input"
+                  type={f.inputType}
+                  value={pb.inputs[f.name] ?? f.defaultValue}
+                  onChange={e => updateInput(pb.id, f.name, f.inputType === 'number' ? Number(e.target.value) : e.target.value)}
+                  style={{ width: f.inputType === 'number' ? 64 : 100 }}
+                />
+              </label>
+            ))}
+            <button type="button" className="te-check-remove-btn" onClick={() => remove(pb.id)} title="Remove">×</button>
+          </div>
+        )
+      })}
+
+      {adding ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <select
+            className="te-select"
+            value={newType}
+            onChange={e => setNewType(e.target.value)}
+          >
+            {eligibleTypes.map(t => (
+              <option key={t} value={t}>{blockLabel(t)}</option>
+            ))}
+          </select>
+          <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={confirmAdd}>Add</button>
+          <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={() => setAdding(false)}>Cancel</button>
+        </div>
+      ) : (
+        <button type="button" className="btn-ghost te-add-check-btn" onClick={startAdding}>
+          + Add predefined block
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Check editors ─────────────────────────────────────────────────────────────
+
 function ScratchCheckListEditor({ checks, onChange, sprites }) {
   function updateCheck(index, updated) {
     onChange(checks.map((c, i) => i === index ? updated : c))
@@ -261,119 +381,180 @@ function ScratchCheckListEditor({ checks, onChange, sprites }) {
   )
 }
 
+const SPRITE_PROPERTIES = ['x', 'y', 'size', 'direction', 'visible']
+const COMPARISON_OPERATORS = [
+  { value: 'equals', label: 'equals' },
+  { value: 'greater_than', label: 'greater than' },
+  { value: 'less_than', label: 'less than' },
+]
+
+function describeCheck(check, sprites) {
+  const spriteName = check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'
+  const propLabel = check.property ?? 'x'
+  const evalLabel = check.evaluation === 'after_run' ? 'After running' : 'When checked manually'
+
+  switch (check.type) {
+    case 'block_used': {
+      const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
+      const label = found ? found[1] : check.opcode
+      return `Workspace must contain a "${label}" block`
+    }
+    case 'sprite_property': {
+      const opLabel = COMPARISON_OPERATORS.find(o => o.value === check.operator)?.label ?? check.operator
+      return `${evalLabel}: ${spriteName}'s ${propLabel} must be ${opLabel} ${check.value}`
+    }
+    case 'variable_equals':
+      return `${evalLabel}: variable "${check.variableName ?? 'score'}" must equal ${check.value}`
+    case 'sprite_property_delta': {
+      const opLabel = COMPARISON_OPERATORS.find(o => o.value === check.operator)?.label ?? check.operator
+      return `After running: ${spriteName}'s ${propLabel} must have changed by ${opLabel} ${check.value}`
+    }
+    case 'sprite_property_changed':
+      return `After running: ${spriteName}'s ${propLabel} must have changed`
+    default:
+      return ''
+  }
+}
+
 function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name: 'Sprite 1' }] }) {
   const type = check.type ?? 'block_used'
 
   function changeType(nextType) {
+    const hint = check.hint ? { hint: check.hint } : {}
     if (nextType === 'sprite_property') {
-      onChange({
-        type: 'sprite_property',
-        evaluation: 'after_run',
-        spriteName: sprites[0]?.name ?? 'Sprite 1',
-        property: 'x',
-        operator: 'greater_than',
-        value: 50,
-        ...(check.hint ? { hint: check.hint } : {}),
-      })
+      onChange({ type: 'sprite_property', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', operator: 'greater_than', value: 50, ...hint })
       return
     }
-
     if (nextType === 'variable_equals') {
-      onChange({
-        type: 'variable_equals',
-        evaluation: 'manual',
-        variableName: 'score',
-        value: 10,
-        ...(check.hint ? { hint: check.hint } : {}),
-      })
+      onChange({ type: 'variable_equals', evaluation: 'manual', variableName: 'score', value: 10, ...hint })
       return
     }
-
-    onChange({ type: 'block_used', evaluation: 'manual', opcode: 'motion_movesteps', ...(check.hint ? { hint: check.hint } : {}) })
+    if (nextType === 'sprite_property_delta') {
+      onChange({ type: 'sprite_property_delta', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', operator: 'greater_than', value: 10, ...hint })
+      return
+    }
+    if (nextType === 'sprite_property_changed') {
+      onChange({ type: 'sprite_property_changed', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', ...hint })
+      return
+    }
+    onChange({ type: 'block_used', evaluation: 'manual', opcode: 'motion_movesteps', ...hint })
   }
+
+  const preview = describeCheck(check, sprites)
 
   return (
     <div className="te-scratch-check-editor">
-      <select className="te-select" value={type} onChange={e => changeType(e.target.value)}>
-        <option value="block_used">block_used</option>
-        <option value="sprite_property">sprite_property</option>
-        <option value="variable_equals">variable_equals</option>
-      </select>
-
-      <select
-        className="te-select"
-        value={check.evaluation ?? (type === 'block_used' ? 'manual' : 'after_run')}
-        onChange={e => onChange({ ...check, evaluation: e.target.value })}
-      >
-        <option value="manual">manual</option>
-        <option value="after_run">after run</option>
-      </select>
-
-      {type === 'block_used' ? (
+      {/* Row 1: type + evaluation */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <select className="te-select" value={type} onChange={e => changeType(e.target.value)}>
+          <option value="block_used">Uses block</option>
+          <option value="sprite_property">Sprite property</option>
+          <option value="variable_equals">Variable equals</option>
+          <option value="sprite_property_delta">Sprite property changed by</option>
+          <option value="sprite_property_changed">Sprite property changed</option>
+        </select>
         <select
           className="te-select"
-          value={check.opcode ?? ''}
-          onChange={e => onChange({ ...check, opcode: e.target.value })}
+          value={check.evaluation ?? (type === 'block_used' ? 'manual' : 'after_run')}
+          onChange={e => onChange({ ...check, evaluation: e.target.value })}
         >
-          {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+          <option value="manual">manual</option>
+          <option value="after_run">after run</option>
         </select>
-      ) : type === 'variable_equals' ? (
-        <>
-          <input
-            className="te-input"
-            value={check.variableName ?? 'score'}
-            onChange={e => onChange({ ...check, variableName: e.target.value })}
-            placeholder="Variable name"
-          />
-          <input
-            className="te-input"
-            value={check.value ?? ''}
-            onChange={e => onChange({ ...check, value: e.target.value })}
-            placeholder="Expected value"
-          />
-        </>
-      ) : (
-        <>
+      </div>
+
+      {/* Row 2: type-specific fields */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {type === 'block_used' ? (
           <select
             className="te-select"
-            value={check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'}
-            onChange={e => onChange({ ...check, spriteName: e.target.value })}
+            value={check.opcode ?? ''}
+            onChange={e => onChange({ ...check, opcode: e.target.value })}
           >
-            {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
-          <select
-            className="te-select"
-            value={check.property ?? 'x'}
-            onChange={e => onChange({ ...check, property: e.target.value })}
-          >
-            <option value="x">x</option>
-            <option value="y">y</option>
-            <option value="size">size</option>
-            <option value="direction">direction</option>
-            <option value="visible">visible</option>
-          </select>
-          <select
-            className="te-select"
-            value={check.operator ?? 'equals'}
-            onChange={e => onChange({ ...check, operator: e.target.value })}
-          >
-            <option value="equals">equals</option>
-            <option value="greater_than">greater_than</option>
-            <option value="less_than">less_than</option>
-          </select>
-          <input
-            className="te-input"
-            value={check.value ?? ''}
-            onChange={e => onChange({ ...check, value: e.target.value })}
-            placeholder="Expected value"
-          />
-        </>
+        ) : type === 'variable_equals' ? (
+          <>
+            <input
+              className="te-input"
+              value={check.variableName ?? 'score'}
+              onChange={e => onChange({ ...check, variableName: e.target.value })}
+              placeholder="Variable name"
+            />
+            <input
+              className="te-input"
+              value={check.value ?? ''}
+              onChange={e => onChange({ ...check, value: e.target.value })}
+              placeholder="Expected value"
+            />
+          </>
+        ) : type === 'sprite_property_changed' ? (
+          <>
+            <select
+              className="te-select"
+              value={check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'}
+              onChange={e => onChange({ ...check, spriteName: e.target.value })}
+            >
+              {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            </select>
+            <select
+              className="te-select"
+              value={check.property ?? 'x'}
+              onChange={e => onChange({ ...check, property: e.target.value })}
+            >
+              {SPRITE_PROPERTIES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </>
+        ) : (
+          /* sprite_property and sprite_property_delta share the same fields */
+          <>
+            <select
+              className="te-select"
+              value={check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'}
+              onChange={e => onChange({ ...check, spriteName: e.target.value })}
+            >
+              {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            </select>
+            <select
+              className="te-select"
+              value={check.property ?? 'x'}
+              onChange={e => onChange({ ...check, property: e.target.value })}
+            >
+              {SPRITE_PROPERTIES.filter(p => type === 'sprite_property_delta' ? p !== 'visible' : true).map(p =>
+                <option key={p} value={p}>{p}</option>
+              )}
+            </select>
+            <select
+              className="te-select"
+              value={check.operator ?? 'equals'}
+              onChange={e => onChange({ ...check, operator: e.target.value })}
+            >
+              {COMPARISON_OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <input
+              className="te-input"
+              value={check.value ?? ''}
+              onChange={e => onChange({ ...check, value: e.target.value })}
+              placeholder="Value"
+              style={{ width: 80 }}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Row 3: preview */}
+      {preview && (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontStyle: 'italic', margin: '2px 0 0' }}>
+          {preview}
+        </p>
       )}
+
+      {/* Row 4: hint markdown editor */}
       <MarkdownFieldEditor
-        height={118}
-        minHeight={104}
+        height={180}
+        minHeight={140}
         ariaLabel="Scratch check hint Markdown editor views"
         value={check.hint ?? ''}
         onChange={value => onChange({ ...check, hint: value })}

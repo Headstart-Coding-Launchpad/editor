@@ -19,7 +19,7 @@ import { copyScratchSpriteStateToStarters, copyStarterToComplete } from '../less
 import { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThroughPicker, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { CopyButtons, IncorrectCheckResultsDisplay, formatCheckFailure, formatCheckFailureDetail, CheckListEditor } from './task-editor/CheckEditors'
-import { ScratchToolboxPicker, ScratchCheckListEditor, VariableManager } from './task-editor/ScratchEditors'
+import { ScratchToolboxPicker, ScratchCheckListEditor, VariableManager, PredefinedBlocksEditor } from './task-editor/ScratchEditors'
 import { FsTreeEditor, FsCheckListEditor } from './task-editor/FilesystemEditors'
 import TestsEditor from './task-editor/TestsEditor'
 import { DEFAULT_FS } from '../../shared/filesystem'
@@ -66,7 +66,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [scratchModalTab, setScratchModalTab] = useState('starter')
   const [modalSelectedSpriteId, setModalSelectedSpriteId] = useState(null)
   const [modalSpritePanelTarget, setModalSpritePanelTarget] = useState(null)
-  const [sidebarSections, setSidebarSections] = useState({ toolbox: true, sprites: true, backdrops: false, variables: false })
+  const [sidebarSections, setSidebarSections] = useState({ toolbox: true, sprites: true, backdrops: true, variables: false })
   const [modalStarterBlocks, setModalStarterBlocks] = useState(null)
   const modalStarterBlocksRef = React.useRef(null)
   const modalCompleteBlocksRef = React.useRef(null)
@@ -1087,7 +1087,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         <>
           <div className="te-starter-blocks-summary">
             <div>
-              <span className="te-preview-title">Starter Blocks</span>
+              <span className="te-preview-title">Scratch Task Setup</span>
               <p className="te-summary-text">
                 {task.starterBlocks && Object.values(task.starterBlocks).some(Boolean)
                   ? 'Starter blocks configured for this task.'
@@ -1100,13 +1100,13 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           </div>
 
           {starterBlocksOpen && (
-            <Modal title="Starter blocks" onClose={handleCloseStarterBlocks}>
+            <Modal title="Scratch Task Setup" onClose={handleCloseStarterBlocks}>
               <div className="te-scratch-modal-content">
                 <div className="te-scratch-modal-header">
                   <CodeWorkspaceTabs
                     activeTab={scratchModalTab}
                     onChange={handleScratchModalTabChange}
-                    starterLabel="Starter blocks"
+                    starterLabel="Scratch Task Setup"
                     testLabel="Complete blocks"
                     stages={codeStages}
                     onAddStage={handleAddScratchStage}
@@ -1127,6 +1127,34 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                 <div className="te-scratch-modal-body">
                   {scratchModalTab === 'starter' && (
                     <div className="te-scratch-config-sidebar">
+                      {/* Enable stage code toggle */}
+                      <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.88rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!task.enableStageCode}
+                            onChange={e => {
+                              if (!e.target.checked) {
+                                // Wipe stage blocks when disabled
+                                const nextStarter = { ...(task.starterBlocks ?? {}) }
+                                delete nextStarter['__stage__']
+                                const nextComplete = { ...(task.completeBlocks ?? {}) }
+                                delete nextComplete['__stage__']
+                                set('enableStageCode', false)
+                                set('starterBlocks', Object.keys(nextStarter).length ? nextStarter : undefined)
+                                set('completeBlocks', Object.keys(nextComplete).length ? nextComplete : undefined)
+                              } else {
+                                set('enableStageCode', true)
+                              }
+                            }}
+                          />
+                          <span style={{ fontWeight: 600 }}>Enable stage code</span>
+                        </label>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', margin: '4px 0 0 24px' }}>
+                          Show a Stage tab in the workspace for backdrop-level scripts.
+                        </p>
+                      </div>
+
                       {/* Toolbox blocks */}
                       <div className="te-collapsible">
                         <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('toolbox')}>
@@ -1134,10 +1162,21 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                           <span className="te-collapsible__chevron" style={{ transform: sidebarSections.toolbox ? 'rotate(180deg)' : 'none' }}>▾</span>
                         </button>
                         {sidebarSections.toolbox && (
-                          <ScratchToolboxPicker
-                            toolbox={task.toolbox ?? ''}
-                            onChange={toolbox => set('toolbox', toolbox)}
-                          />
+                          <>
+                            <ScratchToolboxPicker
+                              toolbox={task.toolbox ?? ''}
+                              onChange={toolbox => set('toolbox', toolbox)}
+                            />
+                            {/* Predefined blocks — task level */}
+                            <div style={{ padding: '8px 12px', borderTop: '1px solid #e5e7eb' }}>
+                              <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.82rem', color: 'var(--colour-text)', display: 'block', marginBottom: 6 }}>Predefined blocks</span>
+                              <PredefinedBlocksEditor
+                                predefinedBlocks={task.predefinedBlocks ?? []}
+                                toolbox={task.toolbox ?? ''}
+                                onChange={pbs => set('predefinedBlocks', pbs.length ? pbs : undefined)}
+                              />
+                            </div>
+                          </>
                         )}
                       </div>
 
@@ -1213,11 +1252,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                         onSpriteSelect={setModalSelectedSpriteId}
                         spritePanelTarget={modalSpritePanelTarget}
                         onAddSprite={handleAddStarterSprite}
+                        predefinedBlocks={task.predefinedBlocks ?? null}
                         spritePanelEditor={(
                           <SpriteManager
                             sprites={getScratchSprites()}
                             focusedSpriteId={modalSelectedSpriteId}
-                            hidePosition
                             hideAdd
                             onChange={handleStarterSpritesChange}
                             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
@@ -1252,6 +1291,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                           }
                         }}
                         syncNowKey={starterBlocksSyncKey}
+                        predefinedBlocks={task.predefinedBlocks ?? null}
                       />
                     ) : (() => {
                       const stageMatch = scratchModalTab.match(/^stage_(\d+)$/)
@@ -1259,9 +1299,13 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                       const stageIdx = parseInt(stageMatch[1], 10)
                       const stage = codeStages[stageIdx]
                       if (!stage) return null
+                      const stagePredefined = [
+                        ...(task.predefinedBlocks ?? []),
+                        ...(stage.predefinedBlocks ?? []),
+                      ]
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0, flexWrap: 'wrap' }}>
                             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
                             <input
                               className="te-input"
@@ -1270,6 +1314,14 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                               onChange={e => updateStage(stageIdx, { label: e.target.value })}
                               placeholder={`Stage ${stageIdx + 1}`}
                             />
+                            <div style={{ flex: '1 1 100%', padding: '4px 0 0' }}>
+                              <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', display: 'block', marginBottom: 4 }}>Predefined blocks for this stage</span>
+                              <PredefinedBlocksEditor
+                                predefinedBlocks={stage.predefinedBlocks ?? []}
+                                toolbox={task.toolbox ?? ''}
+                                onChange={pbs => updateStage(stageIdx, { predefinedBlocks: pbs.length ? pbs : undefined })}
+                              />
+                            </div>
                           </div>
                           <ScratchWorkspace
                             key={`builder-scratch-stage-${task.id}-${stageIdx}-${(task.sprites ?? []).map(sp => sp.id).join(',')}`}
@@ -1282,6 +1334,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                               modalStageSpriteStatesRef.current[stageIdx] = states
                             }}
                             syncNowKey={starterBlocksSyncKey}
+                            predefinedBlocks={stagePredefined.length ? stagePredefined : null}
                           />
                         </div>
                       )
