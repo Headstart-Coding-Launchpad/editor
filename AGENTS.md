@@ -84,7 +84,7 @@ These rules are absolute — do not deviate regardless of context:
 ├── CODEBASE_MAP.md      # One-line role for every file — use for navigation
 ├── index.html           # Classroom app entry
 ├── builder/index.html   # Lesson builder entry
-├── lessons/             # Static lesson JSON files
+├── lessons/             # Symlink → C:/Users/rflem/Documents/Ryan/Work/Headstart Coding/Existing Lesson Plans — lesson content folder (see Lesson Content Folder section)
 ├── src/
 │   ├── App.jsx          # Classroom router (HashRouter)
 │   ├── main.jsx         # Classroom entry point
@@ -112,10 +112,110 @@ These rules are absolute — do not deviate regardless of context:
 │       ├── scratch.js
 │       ├── taskUtils.js
 │       └── useIsMobile.js
+├── mcp/                 # Local MCP server — see MCP Server section below
 ├── public/
 ├── vite.config.js
+├── .mcp.json            # Claude Code MCP server registration
 └── package.json
 ```
+
+---
+
+## MCP Server
+
+The `mcp/` sub-package exposes the lesson and topic library to AI agents via the Model Context Protocol. It runs locally as a stdio process using the Firebase Admin SDK — no browser auth needed.
+
+**Storage model:** Lessons and topics live in **Firestore** (`lessons/` and `topicLibrary/` collections), not in local files. The local `lessons/JSON Files/` directory is the authoring workspace only — editing a local file has no effect on the live app until you publish with `upsert_lesson`. Always read `workflow://lesson-authoring` at the start of any lesson authoring session.
+
+**Auth:** Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
+Download from: Firebase Console → Project Settings → Service Accounts → Generate new private key.
+
+**Setup:**
+1. `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`
+2. `cd mcp && npm install`
+3. Restart Claude Code — server registers automatically from `.mcp.json`
+
+**Available tools:**
+
+| Tool | Purpose |
+|---|---|
+| `list_lessons` | List all lessons currently live in the app (from Firestore) — check before creating or updating |
+| `get_lesson(id)` | Fetch the full live lesson JSON from Firestore — use to inspect or edit an existing lesson |
+| `validate_lesson(lesson)` | Check a lesson JSON for errors before publishing — always call this before `upsert_lesson` |
+| `upsert_lesson(lesson)` | Publish a finished lesson to the live app (writes to Firestore) — validates first, returns errors if invalid |
+| `delete_lesson(id)` | Permanently delete a lesson from Firestore and the live app — cannot be undone |
+| `list_topics` | List all topics in the live topic library (from Firestore) |
+| `get_topic(id)` | Fetch a full topic from Firestore |
+| `upsert_topic(topic)` | Publish a topic to the live topic library (writes to Firestore) |
+| `delete_topic(id)` | Permanently delete a topic from Firestore |
+| `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
+| `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage (`lessons/{lessonId}/assets/{filename}`), update `storageAssets` on the lesson document, and return the download URL |
+| `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
+
+**Available resources:**
+
+| URI | Content |
+|---|---|
+| `workflow://lesson-authoring` | Step-by-step workflow for creating and publishing lessons — read this first |
+| `lesson://schema` | Full `LESSON_SCHEMA.md` — all lesson JSON fields, types, check types, and examples |
+| `topic://schema` | Full `TOPIC_LIBRARY_SCHEMA.md` — topic object fields and wiki-link syntax |
+
+**Note:** Scratch toolbox XML validation is skipped in `validate_lesson` (no `DOMParser` in Node.js) — use the builder preview to catch toolbox XML errors.
+
+---
+
+## Lesson Content Folder
+
+The `lessons/` directory is a **symlink** pointing to:
+
+```
+C:/Users/rflem/Documents/Ryan/Work/Headstart Coding/Existing Lesson Plans
+```
+
+This folder is the working directory for all lesson authoring — it is not part of the repo. It contains source material, planning files, generated JSON, and the topic library. Structure:
+
+```
+Existing Lesson Plans/
+├── LESSON_SCHEMA.md          # Authoritative lesson JSON schema (copy also in repo root)
+├── TOPIC_LIBRARY_SCHEMA.md   # Topic library JSON schema
+├── FEATURES.md               # Platform feature reference
+├── Curriculum.md             # Course audience and progression
+├── lesson style.md           # Lesson-design style and sequencing guide
+├── The Headstart Coding Teaching Ethos.md
+├── JSON Files/               # Generated lesson JSON files, organised by course
+│   ├── <Course Name>/        # e.g. Python Level 2/, HTML & CSS Level 3/
+│   └── topic-library.json    # Runtime topic library — keep in sync with topic library/
+├── new/                      # Lesson ideas files awaiting JSON conversion
+│   └── <Course Name>/        # e.g. new/Python Level 2/python-2-7-ideas.md
+├── Detailed/                 # Structured lesson summaries (from slide exports)
+│   └── <Course Name>/
+├── md/                       # Raw Markdown lesson exports (slide-deck text)
+│   └── <Course Name>/
+├── txt/                      # Plain text lesson exports (fallback source material)
+├── topic library/            # Topic Markdown source files
+└── SKILLS/                   # Claude Code agent skills for lesson authoring
+    ├── lesson-idea-file/     # Create lesson ideas files from source material
+    ├── lesson-json-from-ideas/ # Convert ideas files to lesson JSON
+    ├── summarize-lesson-plans/ # Convert raw md/ exports to structured Detailed/ summaries
+    ├── topic-library-maintenance/ # Add and update topic-library entries
+    └── validate-lesson-ideas/  # Review and improve ideas files before JSON generation
+```
+
+### Lesson Authoring Skills
+
+The `SKILLS/` folder contains Claude Code agent skill files (each with a `SKILL.md` and optional `agents/` sub-folder). Invoke them when working on lesson content:
+
+| Skill | When to use |
+|---|---|
+| `lesson-idea-file` | Turn an existing lesson (from `Detailed/`, `md/`, or `txt/`) into a structured ideas file under `new/<course>/` |
+| `lesson-json-from-ideas` | Convert a completed ideas file into a validated lesson JSON file under `JSON Files/<course>/` |
+| `summarize-lesson-plans` | Convert raw slide-export Markdown files in `md/` into clean structured summaries in `Detailed/` |
+| `topic-library-maintenance` | Add new topics, update existing ones, or validate topic references across lessons |
+| `validate-lesson-ideas` | Review an ideas file against the teaching ethos and lesson style guide before converting to JSON |
+
+**Workflow order:** `summarize-lesson-plans` → `lesson-idea-file` → `validate-lesson-ideas` → `lesson-json-from-ideas` → **publish with `upsert_lesson`**
+
+After `lesson-json-from-ideas` produces a validated local JSON file, the final step is always to call the MCP `upsert_lesson` tool to write it to Firestore and make it live. The local `JSON Files/` copies are the authoring workspace; the live app reads from Firestore only.
 
 ---
 

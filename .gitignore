@@ -8,3 +8,7 @@ test-results/
 *.log
 .DS_Store
 .claude/worktrees
+lessons
+headstartcoding-repl-*.json
+.claude
+.codex

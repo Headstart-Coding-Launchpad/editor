@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "hsc-repl": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["mcp/server.mjs"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "headstartcoding-repl-firebase-adminsdk-fbsvc-6ba4dac665.json"
+      }
+    }
+  }
+}
