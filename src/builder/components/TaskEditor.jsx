@@ -1135,14 +1135,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                             checked={!!task.enableStageCode}
                             onChange={e => {
                               if (!e.target.checked) {
-                                // Wipe stage blocks when disabled
                                 const nextStarter = { ...(task.starterBlocks ?? {}) }
                                 delete nextStarter['__stage__']
                                 const nextComplete = { ...(task.completeBlocks ?? {}) }
                                 delete nextComplete['__stage__']
-                                set('enableStageCode', false)
-                                set('starterBlocks', Object.keys(nextStarter).length ? nextStarter : undefined)
-                                set('completeBlocks', Object.keys(nextComplete).length ? nextComplete : undefined)
+                                onUpdate({
+                                  ...task,
+                                  enableStageCode: false,
+                                  starterBlocks: Object.keys(nextStarter).length ? nextStarter : undefined,
+                                  completeBlocks: Object.keys(nextComplete).length ? nextComplete : undefined,
+                                })
                               } else {
                                 set('enableStageCode', true)
                               }
@@ -1258,6 +1260,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                             sprites={getScratchSprites()}
                             focusedSpriteId={modalSelectedSpriteId}
                             hideAdd
+                            hidePosRow
                             onChange={handleStarterSpritesChange}
                             assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                             storageAssets={lesson.storageAssets ?? []}

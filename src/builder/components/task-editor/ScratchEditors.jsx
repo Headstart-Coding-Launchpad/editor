@@ -254,8 +254,7 @@ function blockLabel(type) {
 }
 
 export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', onChange }) {
-  const [adding, setAdding] = React.useState(false)
-  const [newType, setNewType] = React.useState('')
+  const [newBlock, setNewBlock] = React.useState(null)
 
   // Only offer block types that are both in the toolbox and have configurable inputs
   const toolboxTypes = new Set(parseScratchToolboxXml(toolbox))
@@ -263,18 +262,18 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
     !toolbox || toolboxTypes.has(t)
   )
 
-  const defaultNewType = eligibleTypes[0] ?? ''
-
   function startAdding() {
-    setNewType(defaultNewType)
-    setAdding(true)
+    setNewBlock(newPredefinedBlock(eligibleTypes[0] ?? ''))
+  }
+
+  function handleNewTypeChange(type) {
+    setNewBlock(newPredefinedBlock(type))
   }
 
   function confirmAdd() {
-    if (!newType) return
-    onChange([...predefinedBlocks, newPredefinedBlock(newType)])
-    setAdding(false)
-    setNewType('')
+    if (!newBlock) return
+    onChange([...predefinedBlocks, newBlock])
+    setNewBlock(null)
   }
 
   function remove(id) {
@@ -285,6 +284,10 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
     onChange(predefinedBlocks.map(pb =>
       pb.id === id ? { ...pb, inputs: { ...pb.inputs, [inputName]: value } } : pb
     ))
+  }
+
+  function updateNewInput(inputName, value) {
+    setNewBlock(b => ({ ...b, inputs: { ...b.inputs, [inputName]: value } }))
   }
 
   if (eligibleTypes.length === 0) {
@@ -319,19 +322,34 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
         )
       })}
 
-      {adding ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {newBlock ? (
+        <div className="te-predefined-block-row te-predefined-block-row--adding">
           <select
             className="te-select"
-            value={newType}
-            onChange={e => setNewType(e.target.value)}
+            value={newBlock.type}
+            onChange={e => handleNewTypeChange(e.target.value)}
           >
             {eligibleTypes.map(t => (
               <option key={t} value={t}>{blockLabel(t)}</option>
             ))}
           </select>
+          {getBlockInputFields(newBlock.type).map(f => (
+            <label key={f.name} className="te-predefined-block-field">
+              <span className="te-predefined-block-field-name">{f.name.toLowerCase()}</span>
+              <input
+                className="te-input"
+                type={f.inputType}
+                value={newBlock.inputs[f.name] ?? f.defaultValue}
+                onChange={e => updateNewInput(f.name, f.inputType === 'number' ? Number(e.target.value) : e.target.value)}
+                style={{ width: f.inputType === 'number' ? 64 : 100 }}
+              />
+            </label>
+          ))}
+          {getBlockInputFields(newBlock.type).length === 0 && (
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#9ca3af' }}>No configurable inputs</span>
+          )}
           <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={confirmAdd}>Add</button>
-          <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={() => setAdding(false)}>Cancel</button>
+          <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={() => setNewBlock(null)}>Cancel</button>
         </div>
       ) : (
         <button type="button" className="btn-ghost te-add-check-btn" onClick={startAdding}>
