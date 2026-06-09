@@ -2,7 +2,7 @@
 
 Quick-reference guide for Claude Code and Codex sessions. Read this at the start of every session.
 
-For file roles: **CODEBASE_MAP.md**. For lesson JSON: **LESSON_SCHEMA.md**. For topic library: **TOPIC_LIBRARY_SCHEMA.md**. For platform features: **FEATURES.md**.
+For file roles: **CODEBASE_MAP.md**. For lesson JSON: **LESSON_SCHEMA.md**. For YAML lesson authoring: **YAML_LESSON_FORMAT.md**. For topic library: **TOPIC_LIBRARY_SCHEMA.md**. For platform features: **FEATURES.md**.
 
 ## Session Start Checklist
 
@@ -137,6 +137,7 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 | `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
 | `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage, update `storageAssets` on the lesson document, and return the download URL |
 | `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
+| `yaml_to_lesson(yaml)` | Convert a YAML lesson string to lesson JSON — task IDs auto-assigned, type/check/answer shorthands expanded, result validated. Does not publish; use `upsert_lesson` after reviewing. |
 
 **Available resources:**
 
@@ -145,6 +146,7 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 | `workflow://lesson-authoring` | Step-by-step workflow for creating and publishing lessons — read this first |
 | `lesson://schema` | Full `LESSON_SCHEMA.md` — all lesson JSON fields, types, check types, and examples |
 | `topic://schema` | Full `TOPIC_LIBRARY_SCHEMA.md` — topic object fields and wiki-link syntax |
+| `yaml://format` | Full `YAML_LESSON_FORMAT.md` — YAML lesson shorthand syntax and examples |
 
 **Note:** Scratch toolbox XML validation is skipped in `validate_lesson` (no `DOMParser` in Node.js) — use the builder preview to catch toolbox XML errors.
 
@@ -479,6 +481,7 @@ Read **TESTING.md** for full detail on tool choices, layer definitions, coverage
 After any significant change, update the relevant docs before closing the task:
 - **CODEBASE_MAP.md** — when files are added, moved, or removed
 - **LESSON_SCHEMA.md** — when lesson JSON fields or check types change
+- **YAML_LESSON_FORMAT.md** — when YAML conversion rules or shorthands change (e.g. new task type shorthand, new check alias)
 - **TOPIC_LIBRARY_SCHEMA.md** — when topic structure changes
 - **FEATURES.md** — when a new user-facing feature is added or removed
 - **TESTING.md** — when test strategy or coverage thresholds change

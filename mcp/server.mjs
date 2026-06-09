@@ -102,5 +102,14 @@ server.resource(
   }
 )
 
+server.resource(
+  'yaml-lesson-format',
+  'yaml://format',
+  async (uri) => {
+    const text = await readFile(join(__dirname, '..', 'YAML_LESSON_FORMAT.md'), 'utf-8')
+    return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] }
+  }
+)
+
 const transport = new StdioServerTransport()
 await server.connect(transport)
