@@ -48,10 +48,22 @@ The local \`lessons/JSON Files/\` directory is the **authoring workspace** only.
 
 ## Updating an existing lesson
 
+**Whole-lesson edit** (restructuring, reordering, or many changes at once):
 1. Fetch the current version: \`get_lesson(id)\`
 2. Apply your changes to the returned JSON
 3. Validate: \`validate_lesson(lesson)\`
 4. Publish: \`upsert_lesson(lesson)\`
+
+**Single-task edit** (lower token cost — preferred for targeted changes):
+1. Fetch the skeleton: \`get_lesson_skeleton(id)\` — see which task indices exist
+2. Fetch the task: \`get_task(lessonId, taskIndex)\`
+3. Edit the returned task object
+4. Write it back: \`upsert_task(lessonId, taskIndex, task)\` — validates the full lesson automatically
+
+**Build a lesson task by task** (create shell, then append):
+1. Publish a minimal lesson: \`upsert_lesson({ id, type, title, description, tasks: [] })\`
+2. For each task: \`append_task(lessonId, task)\` — appends and validates
+3. Confirm: \`get_lesson_skeleton(id)\`
 
 ## Topic library workflow
 

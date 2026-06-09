@@ -2,7 +2,7 @@
 
 Quick-reference guide for Claude Code and Codex sessions. Read this at the start of every session.
 
-For full detail: **SPEC.md**. For file roles: **CODEBASE_MAP.md**. For lesson JSON: **LESSON_SCHEMA.md**. For topic library JSON: **TOPIC_LIBRARY_SCHEMA.md**. For feature list: **FEATURES.md**.
+For file roles: **CODEBASE_MAP.md**. For lesson JSON: **LESSON_SCHEMA.md**. For topic library: **TOPIC_LIBRARY_SCHEMA.md**. For platform features: **FEATURES.md**.
 
 ## Session Start Checklist
 
@@ -18,12 +18,14 @@ Do this at the start of every session, before writing any code:
 ## Project Summary
 
 A browser-based coding classroom tool for Headstart Coding live sessions and solo study.
-Two applications in this repo:
+One React app with four route-based sections, deployed as a single Vite build to GitHub Pages:
 
-1. **Classroom App** — student/teacher coding environment (`/`)
-2. **Lesson Builder** — teacher-facing tool for creating and testing lesson JSON files (`/builder`)
+- **Classroom** — student/teacher coding environment at `/lesson/:lessonId`
+- **Lesson Builder** — teacher tool for creating and testing lesson JSON at `/builder`
+- **Admin Portal** — account and lesson management at `/admin` (admin role required)
+- **Login** — Firebase Auth sign-in at `/login`
 
-Both are static React apps deployed to GitHub Pages. No backend server exists or should be added.
+No backend server exists or should be added.
 
 ---
 
@@ -44,7 +46,7 @@ Both are static React apps deployed to GitHub Pages. No backend server exists or
 | Code editor | CodeMirror 6 |
 | Markdown | react-markdown + rehype-highlight |
 | Styling | CSS custom properties in a shared global stylesheet (`src/index.css`) |
-| Env vars | `.env` lives **one level above the repo root** (`../`); loaded via `envDir: '../'` in `vite.config.js` |
+| Env vars | `.env` lives one level above the repo root (`../`); loaded via `envDir: '../'` in `vite.config.js` — shared by all worktrees automatically |
 
 Do not add any other major dependencies without confirming with the user.
 
@@ -72,52 +74,32 @@ These rules are absolute — do not deviate regardless of context:
 
 ## Repository Structure
 
-> Illustrative overview only — see **CODEBASE_MAP.md** for the authoritative file list.
+> Key directories only — see **CODEBASE_MAP.md** for every file and its role.
 
 ```
 /
-├── SPEC.md              # Full specification — full detail on every behaviour
-├── AGENTS.md            # This file — quick reference for sessions
-├── CLAUDE.md            # Claude Code session checklist (read first)
-├── LESSON_SCHEMA.md     # Lesson JSON schema reference
-├── FEATURES.md          # Implemented features list
-├── CODEBASE_MAP.md      # One-line role for every file — use for navigation
-├── index.html           # Classroom app entry
-├── builder/index.html   # Lesson builder entry
-├── lessons/             # Symlink → C:/Users/rflem/Documents/Ryan/Work/Headstart Coding/Existing Lesson Plans — lesson content folder (see Lesson Content Folder section)
 ├── src/
-│   ├── App.jsx          # Classroom router (HashRouter)
-│   ├── main.jsx         # Classroom entry point
-│   ├── index.css        # Global styles and brand CSS custom properties
-│   ├── app/
-│   │   ├── components/  # UI components (19 files)
-│   │   ├── hooks/       # useIdentity.js, useSession.js
-│   │   └── views/       # LandingPage, LessonRoute, StudentView, TeacherView
-│   ├── builder/
-│   │   ├── App.jsx      # Builder root — lesson lifecycle and persistence
-│   │   ├── main.jsx     # Builder entry point
-│   │   ├── components/  # Builder-specific components
-│   │   └── views/       # BuilderView, PreviewView
-│   └── shared/          # Shared modules — used by BOTH apps (never duplicate)
-│       ├── CodeEditor.jsx
-│       ├── SplitPane.jsx
-│       ├── AssetBrowser.jsx
-│       ├── checks.js
-│       ├── codemirror.js
-│       ├── firebase.js
-│       ├── iframe.js
-│       ├── markdown.jsx
-│       ├── pyodide.js
-│       ├── pyodide.worker.js
-│       ├── scratch.js
-│       ├── taskUtils.js
-│       └── useIsMobile.js
-├── mcp/                 # Local MCP server — see MCP Server section below
-├── public/
-├── vite.config.js
-├── .mcp.json            # Claude Code MCP server registration
-└── package.json
+│   ├── app/             # Classroom (components, views, hooks)
+│   ├── builder/         # Lesson builder (components, views)
+│   ├── admin/           # Admin portal (AccountManagement, LessonPanel, TopicLibraryPanel)
+│   ├── auth/            # Auth context (AuthProvider, ProtectedRoute)
+│   └── shared/          # Modules shared by all sections — never duplicate
+├── mcp/                 # Local MCP server for lesson authoring
+├── functions/           # Firebase Cloud Functions (account management)
+├── index.html           # App entry (serves all routes via HashRouter)
+└── vite.config.js
 ```
+
+---
+
+## Admin Portal
+
+The admin portal (`/admin`) is accessible only to users with the admin Firebase role.
+
+**Tabs:**
+- **Accounts** — create teacher/admin accounts, set roles, disable/enable, delete (via Cloud Functions)
+- **Lessons** — browse all Firestore lessons grouped by type and level; launch as teacher or copy student link
+- **Topic Library** — create, edit, and delete topics with full Markdown description and syntax fields
 
 ---
 
@@ -125,7 +107,7 @@ These rules are absolute — do not deviate regardless of context:
 
 The `mcp/` sub-package exposes the lesson and topic library to AI agents via the Model Context Protocol. It runs locally as a stdio process using the Firebase Admin SDK — no browser auth needed.
 
-**Storage model:** Lessons and topics live in **Firestore** (`lessons/` and `topicLibrary/` collections), not in local files. The local `lessons/JSON Files/` directory is the authoring workspace only — editing a local file has no effect on the live app until you publish with `upsert_lesson`. Always read `workflow://lesson-authoring` at the start of any lesson authoring session.
+**Storage model:** Lessons and topics live in **Firestore** (`lessons/` and `topicLibrary/` collections), not in local files. Always read `workflow://lesson-authoring` at the start of any lesson authoring session.
 
 **Auth:** Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
 Download from: Firebase Console → Project Settings → Service Accounts → Generate new private key.
@@ -148,8 +130,12 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 | `get_topic(id)` | Fetch a full topic from Firestore |
 | `upsert_topic(topic)` | Publish a topic to the live topic library (writes to Firestore) |
 | `delete_topic(id)` | Permanently delete a topic from Firestore |
+| `get_lesson_skeleton(id)` | Fetch lesson metadata + compact task list (titles, flat indices, types) without task bodies — use instead of `get_lesson` when you only need to navigate tasks |
+| `get_task(lessonId, taskIndex)` | Fetch one task by 1-based flat index — groups are transparent |
+| `upsert_task(lessonId, taskIndex, task)` | Replace one task by flat index; validates the full lesson before writing |
+| `append_task(lessonId, task, groupTitle?)` | Append a new task to the lesson (or a named group); validates before writing |
 | `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
-| `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage (`lessons/{lessonId}/assets/{filename}`), update `storageAssets` on the lesson document, and return the download URL |
+| `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage, update `storageAssets` on the lesson document, and return the download URL |
 | `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
 
 **Available resources:**
@@ -164,82 +150,9 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 
 ---
 
-## Lesson Content Folder
-
-The `lessons/` directory is a **symlink** pointing to:
-
-```
-C:/Users/rflem/Documents/Ryan/Work/Headstart Coding/Existing Lesson Plans
-```
-
-This folder is the working directory for all lesson authoring — it is not part of the repo. It contains source material, planning files, generated JSON, and the topic library. Structure:
-
-```
-Existing Lesson Plans/
-├── LESSON_SCHEMA.md          # Authoritative lesson JSON schema (copy also in repo root)
-├── TOPIC_LIBRARY_SCHEMA.md   # Topic library JSON schema
-├── FEATURES.md               # Platform feature reference
-├── Curriculum.md             # Course audience and progression
-├── lesson style.md           # Lesson-design style and sequencing guide
-├── The Headstart Coding Teaching Ethos.md
-├── JSON Files/               # Generated lesson JSON files, organised by course
-│   ├── <Course Name>/        # e.g. Python Level 2/, HTML & CSS Level 3/
-│   └── topic-library.json    # Runtime topic library — keep in sync with topic library/
-├── new/                      # Lesson ideas files awaiting JSON conversion
-│   └── <Course Name>/        # e.g. new/Python Level 2/python-2-7-ideas.md
-├── Detailed/                 # Structured lesson summaries (from slide exports)
-│   └── <Course Name>/
-├── md/                       # Raw Markdown lesson exports (slide-deck text)
-│   └── <Course Name>/
-├── txt/                      # Plain text lesson exports (fallback source material)
-├── topic library/            # Topic Markdown source files
-└── SKILLS/                   # Claude Code agent skills for lesson authoring
-    ├── lesson-idea-file/     # Create lesson ideas files from source material
-    ├── lesson-json-from-ideas/ # Convert ideas files to lesson JSON
-    ├── summarize-lesson-plans/ # Convert raw md/ exports to structured Detailed/ summaries
-    ├── topic-library-maintenance/ # Add and update topic-library entries
-    └── validate-lesson-ideas/  # Review and improve ideas files before JSON generation
-```
-
-### Lesson Authoring Skills
-
-The `SKILLS/` folder contains Claude Code agent skill files (each with a `SKILL.md` and optional `agents/` sub-folder). Invoke them when working on lesson content:
-
-| Skill | When to use |
-|---|---|
-| `lesson-idea-file` | Turn an existing lesson (from `Detailed/`, `md/`, or `txt/`) into a structured ideas file under `new/<course>/` |
-| `lesson-json-from-ideas` | Convert a completed ideas file into a validated lesson JSON file under `JSON Files/<course>/` |
-| `summarize-lesson-plans` | Convert raw slide-export Markdown files in `md/` into clean structured summaries in `Detailed/` |
-| `topic-library-maintenance` | Add new topics, update existing ones, or validate topic references across lessons |
-| `validate-lesson-ideas` | Review an ideas file against the teaching ethos and lesson style guide before converting to JSON |
-
-**Workflow order:** `summarize-lesson-plans` → `lesson-idea-file` → `validate-lesson-ideas` → `lesson-json-from-ideas` → **publish with `upsert_lesson`**
-
-After `lesson-json-from-ideas` produces a validated local JSON file, the final step is always to call the MCP `upsert_lesson` tool to write it to Firestore and make it live. The local `JSON Files/` copies are the authoring workspace; the live app reads from Firestore only.
-
----
-
 ## Shared Modules — Critical
 
-Both apps import from `src/shared/`. Never duplicate this logic.
-
-| Module | Key exports / role |
-|---|---|
-| `CodeEditor.jsx` | Shared CodeMirror wrapper — language/readOnly switching via compartments, no remount |
-| `SplitPane.jsx` | Draggable two-pane splitter; clamped [15%, 85%]; right pane can collapse to fixed width |
-| `AssetBrowser.jsx` | Read-only lesson asset file browser with click-to-copy and image hover preview |
-| `checks.js` | `evaluateCheckResults(check, output, context)` — all check types, `CHECK_TYPES` constants |
-| `codemirror.js` | `createBaseExtensions(type, readOnly)`, `headstartTheme`, `headstartHighlight`, `getTabSize(type)` |
-| `firebase.js` | Exports `db` (Firebase Realtime Database reference, initialized from env vars) |
-| `iframe.js` | `buildIframeSrc(files, entryFile, options)`, `waitForIframeText(timeout)` |
-| `markdown.jsx` | `MarkdownRenderer({content, title, style})`, `InlineMarkdown({content})` — supports `img` via standard Markdown image syntax |
-| `MarkdownFieldEditor.jsx` | Full Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
-| `pyodide.js` | `initPyodide()`, `runPython(code, {onOutput?, onInputRequired?})`, `stopPython()`, `provideInput(value)` |
-| `filesystem.js` | Virtual FS engine: flat path-map state, CRUD ops, `evaluateFsCheck`, `FS_CHECK_TYPES` — shared by classroom app and builder |
-| `pyodide.worker.js` | Web Worker: Pyodide loader, async `input()` AST transform, stdout/stderr streaming |
-| `scratch.js` | Block definitions, interpreter, `createRunContext()`, `createSpriteState()`, `createRunSignal()` |
-| `taskUtils.js` | `flattenTasks(tasks)`, duration total/format helpers, `getProgressItems(tasks)`, `updateSubtaskTitles(tasks)`, `deriveTaskContext(lesson, task)`, `buildStageOptions(task, lessonType)` |
-| `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` |
+All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, CodeMirror, checks, or Markdown logic — always use the shared modules. See **CODEBASE_MAP.md** for the full list of shared modules and their exports.
 
 ---
 
@@ -347,7 +260,7 @@ Both apps import from `src/shared/`. Never duplicate this logic.
 |---|---|
 | `/` | Landing page — student enters lesson ID |
 | `/login` | Email/password sign-in page for teachers and admins; reads `?redirect` param |
-| `/admin` | Admin portal — account management (admin role required) |
+| `/admin` | Admin portal — account and lesson management (admin role required) |
 | `/lesson/:lessonId` | Solo student mode |
 | `/lesson/:lessonId?live=true` | Live student mode (joins Firebase session) |
 | `/lesson/:lessonId?teacher=true` | Teacher view — requires Firebase Auth (teacher or admin role); redirects to `/login` if unauthenticated |
@@ -498,17 +411,11 @@ Format the comment as a markdown list of findings, one section per bug, with sev
 
 If the review target is a local branch diff rather than a PR number, skip the comment step.
 
-### Worktrees and environment variables
+### Worktrees
 
-The `.env` file lives **one level above the repo root** (i.e. `../` relative to any worktree), not inside the repo. This means all worktrees automatically share the same env vars without any copying or symlinking.
+All worktrees share the same `.env` file automatically — it lives one level above the repo root (`../`) and all worktrees resolve it via `envDir: '../'` in `vite.config.js`. Do not create, copy, or write a `.env` file inside a worktree or the main repo directory.
 
-- **Do not create, copy, or write a `.env` file inside a worktree or the main repo directory.**
-- If a worktree cannot find env vars, check that `vite.config.js` still has `envDir: '../'` — do not change this.
-- The `../.env` file is gitignored at the parent level and is not committed anywhere.
-
-### Closing the worktree after submitting a PR
-
-After `gh pr create` completes successfully, exit and remove the worktree using the ExitWorktree tool (or, if running in a terminal, `git worktree remove <path>`). This keeps the repo tidy and signals that the branch is in review.
+After `gh pr create` completes successfully, exit and remove the worktree using the ExitWorktree tool (or `git worktree remove <path>`). This keeps the repo tidy and signals that the branch is in review.
 
 ---
 
@@ -569,7 +476,13 @@ Read **TESTING.md** for full detail on tool choices, layer definitions, coverage
 
 ## Doc Hygiene
 
-After any significant change, update the relevant section of SPEC.md, LESSON_SCHEMA.md, or this file before closing the task. Update CODEBASE_MAP.md when files are added, moved, or removed.
+After any significant change, update the relevant docs before closing the task:
+- **CODEBASE_MAP.md** — when files are added, moved, or removed
+- **LESSON_SCHEMA.md** — when lesson JSON fields or check types change
+- **TOPIC_LIBRARY_SCHEMA.md** — when topic structure changes
+- **FEATURES.md** — when a new user-facing feature is added or removed
+- **TESTING.md** — when test strategy or coverage thresholds change
+- **This file (AGENTS.md)** — when Firebase model, localStorage keys, URLs, session states, or key behaviours change
 
 **"Significant change" means:** a new component, hook, or module is created; a Firebase field is added or removed; a URL parameter changes; a behaviour listed in Key Behaviours changes; or any section of this file becomes inaccurate.
 
@@ -577,4 +490,4 @@ When a library or CDN module is added, removed, or upgraded to a new major versi
 
 ---
 
-*Last updated: May 2026 — merged from AGENTS.md + CLAUDE.md following codebase audit.*
+*Last updated: June 2026*
