@@ -168,7 +168,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
-| `useAssets.js` | Hook for fetching and caching `public/assets/manifest.json`; exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` |
+| `useAssets.js` | Hook for fetching `public/assets/manifest.json` (returns empty arrays when absent); exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` for static asset paths — currently returns empty everywhere |
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
@@ -216,15 +216,6 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
 | `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
-
----
-
-## Static Assets (`public/assets/`)
-
-| Path | Role |
-|---|---|
-| `public/assets/manifest.json` | Maps lesson IDs to their static asset filenames; read by `useAssets.js` for HTML lesson `assetsPath` lookups |
-| `public/assets/html-3-7/` | Static images (`car.png`, `skiing.jpg`) for the `html-3-7` lesson; served at `/assets/html-3-7/` alongside the app |
 
 ---
 
