@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { MarkdownRenderer } from './markdown'
-import { findTopicSuggestion, searchTopics, useTopicLibrary } from './topicLibrary'
+import { findAllTopicSuggestions, searchTopics, useTopicLibrary } from './topicLibrary'
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 
@@ -107,10 +107,12 @@ export function MarkdownFieldEditor({
   assetsPath = '',
 }) {
   const [tab, setTab] = useState('entry')
+  const [dismissedTopicIds, setDismissedTopicIds] = useState(() => new Set())
   const textareaRef = useRef(null)
   const content = value ?? ''
   const { topics } = useTopicLibrary(lessonType)
-  const topicSuggestion = findTopicSuggestion(content, topics)
+  const allTopicSuggestions = findAllTopicSuggestions(content, topics)
+  const topicSuggestion = allTopicSuggestions.find(s => !dismissedTopicIds.has(s.topic.id)) ?? null
   const SUGGESTION_BANNER_HEIGHT = 34
   const effectiveHeight = topicSuggestion ? height + SUGGESTION_BANNER_HEIGHT : height
   const effectiveMinHeight = topicSuggestion ? minHeight + SUGGESTION_BANNER_HEIGHT : minHeight
@@ -247,6 +249,12 @@ export function MarkdownFieldEditor({
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
+  function dismissTopicSuggestion() {
+    if (!topicSuggestion) return
+    setDismissedTopicIds(prev => new Set([...prev, topicSuggestion.topic.id]))
+    requestAnimationFrame(() => textareaRef.current?.focus())
+  }
+
   return (
     <div style={{ ...s.wrap, height: effectiveHeight, minHeight: effectiveMinHeight }}>
       <div style={s.tabs} className="ui-tabs" role="tablist" aria-label={ariaLabel}>
@@ -287,9 +295,14 @@ export function MarkdownFieldEditor({
           <span>
             Link <strong>{topicSuggestion.label}</strong> to the topic library?
           </span>
-          <button type="button" style={s.topicSuggestionButton} onClick={applyTopicSuggestion}>
-            Link to {topicSuggestion.topic.title}
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button type="button" style={s.topicSuggestionButton} onClick={applyTopicSuggestion}>
+              Link to {topicSuggestion.topic.title}
+            </button>
+            <button type="button" style={s.topicSuggestionDismiss} onClick={dismissTopicSuggestion} aria-label="Dismiss suggestion">
+              ×
+            </button>
+          </div>
         </div>
       )}
 
@@ -811,6 +824,17 @@ const s = {
     fontWeight: 700,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
+  },
+  topicSuggestionDismiss: {
+    border: 'none',
+    borderRadius: 999,
+    padding: '2px 6px',
+    background: 'transparent',
+    color: '#9ca3af',
+    fontFamily: 'var(--font-body)',
+    fontSize: '1rem',
+    lineHeight: 1,
+    cursor: 'pointer',
   },
   pane: {
     display: 'flex',

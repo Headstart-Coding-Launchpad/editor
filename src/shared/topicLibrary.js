@@ -118,22 +118,29 @@ function escapeRegExp(value) {
 }
 
 export function findTopicSuggestion(content, topics = []) {
+  const results = findAllTopicSuggestions(content, topics)
+  return results[0] ?? null
+}
+
+export function findAllTopicSuggestions(content, topics = []) {
   const protectedContent = String(content ?? '')
     .replace(/```[\s\S]*?```|`[^`\n]*`|\[\[[^\]\n]+\]\]/g, match => ' '.repeat(match.length))
 
+  const results = []
   for (const topic of topics) {
     const labels = [topic.title, ...topic.aliases].filter(label => label.length > 2)
     for (const label of labels) {
       const match = new RegExp(`\\b${escapeRegExp(label)}\\b`, 'i').exec(protectedContent)
       if (match) {
-        return {
+        results.push({
           topic,
           start: match.index,
           end: match.index + match[0].length,
           label: String(content).slice(match.index, match.index + match[0].length),
-        }
+        })
+        break
       }
     }
   }
-  return null
+  return results
 }
