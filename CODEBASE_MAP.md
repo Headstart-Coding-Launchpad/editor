@@ -214,6 +214,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 |---|---|
 | `scripts/migrate-lessons.mjs` | One-off Admin SDK migration: writes all lesson JSON files to Firestore `lessons/` collection |
 | `scripts/migrate-topic-library.mjs` | One-off Admin SDK migration: writes `public/assets/topic-library.json` topics to Firestore `topicLibrary/` collection |
+| `scripts/yaml-to-json.mjs` | CLI tool: converts a YAML lesson file to lesson JSON — `node scripts/yaml-to-json.mjs input.yaml [output.json]` |
 
 ---
 
@@ -242,10 +243,12 @@ Local stdio MCP server for AI-assisted lesson and topic generation. Isolated sub
 
 | File | Role |
 |---|---|
-| `mcp/package.json` | Sub-package manifest (`type: module`); deps: `@modelcontextprotocol/sdk`, `firebase-admin`, `zod` |
+| `mcp/package.json` | Sub-package manifest (`type: module`); deps: `@modelcontextprotocol/sdk`, `firebase-admin`, `js-yaml`, `zod` |
 | `mcp/server.mjs` | Entry point: creates `McpServer`, registers all tools/resources, connects `StdioServerTransport` |
 | `mcp/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore); exits on missing credentials |
-| `mcp/lessons.mjs` | `registerLessonTools(server)` — tools: `list_lessons`, `get_lesson`, `upsert_lesson`, `delete_lesson`, `validate_lesson` |
+| `mcp/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency); imported by lessons.mjs and yaml-converter.mjs |
+| `mcp/yaml-converter.mjs` | `parseYamlLesson(yamlText)` — converts YAML lesson text to lesson JSON; handles task ID assignment, taskType shorthands, check/answer normalization, groups |
+| `mcp/lessons.mjs` | `registerLessonTools(server)` — tools: `list_lessons`, `get_lesson`, `upsert_lesson`, `delete_lesson`, `validate_lesson`, `yaml_to_lesson` |
 | `mcp/topics.mjs` | `registerTopicTools(server)` — tools: `list_topics`, `get_topic`, `upsert_topic`, `delete_topic` |
 
 ---
