@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../auth/useAuth'
 import { useSession, decodeFileKey } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import { getLessonLinks } from '../../shared/lessonLinks'
@@ -21,6 +22,7 @@ import TeacherCodeTabs from '../components/TeacherCodeTabs'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
+import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import FilesystemTask from '../components/FilesystemTask'
 import { DEFAULT_FS } from '../../shared/filesystem'
 import { resolveAssetsPath } from '../../shared/assetPaths'
@@ -39,11 +41,12 @@ import {
 
 export default function TeacherView({ lessonId }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const {
     session, loading,
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent,
+    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck,
   } = useSession(lessonId)
 
   const [lesson, setLesson]             = useState(null)
@@ -52,7 +55,8 @@ export default function TeacherView({ lessonId }) {
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId]   = useState(null)
-  const [showEndModal, setShowEndModal]     = useState(false)
+  const [showEndModal, setShowEndModal]         = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [leftCollapsed, setLeftCollapsed]   = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [code, setCode]                 = useState('')
@@ -372,6 +376,7 @@ export default function TeacherView({ lessonId }) {
               if (displayIndex < flatTasks.length - 1) handlePreviewTask(flatTasks[displayIndex + 1].id)
             }}
             onOpenPresentationWindow={handleOpenPresentationWindow}
+            onOpenFeedback={() => setShowFeedbackModal(true)}
             onToggleSharePanel={() => setShowSharePanel(v => !v)}
             onCloseSharePanel={() => setShowSharePanel(false)}
             onCopyLink={handleCopyLink}
@@ -575,6 +580,7 @@ export default function TeacherView({ lessonId }) {
             onGoLiveForAll={handleGoLiveForAll}
             onStopLive={handleStopStudentLive}
             onRemoteReset={pushResetToStudent}
+            onOverrideCheck={overrideStudentCheck}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
           />
@@ -586,6 +592,17 @@ export default function TeacherView({ lessonId }) {
           onClose={() => setShowEndModal(false)}
           onEnd={() => handleEndSession(false)}
           onEndAndGoHome={() => handleEndSession(true)}
+        />
+      )}
+
+      {showFeedbackModal && (
+        <TeacherFeedbackModal
+          lessonId={lessonId}
+          lessonTitle={lesson?.title ?? ''}
+          currentTaskId={session?.currentTaskId ?? currentTaskId}
+          currentTaskTitle={currentTask?.title ?? null}
+          teacherEmail={user?.email ?? ''}
+          onClose={() => setShowFeedbackModal(false)}
         />
       )}
     </div>

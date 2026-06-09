@@ -110,17 +110,28 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function setTaskId(taskId) {
     const updates = { currentTaskId: taskId, currentTaskStartedAt: Date.now() }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
-      updates[`students/${anonymousId}/checkPassed`]    = null
-      updates[`students/${anonymousId}/lastRunStatus`]  = null
-      updates[`students/${anonymousId}/currentOutput`]  = ''
-      updates[`students/${anonymousId}/currentCode`]    = ''
-      updates[`students/${anonymousId}/currentFiles`]   = null
-      updates[`students/${anonymousId}/currentAnswer`]  = null
-      updates[`students/${anonymousId}/currentSelection`] = null
-      updates[`students/${anonymousId}/currentActivity`] = null
-      updates[`students/${anonymousId}/currentActiveFile`] = null
+      updates[`students/${anonymousId}/checkPassed`]           = null
+      updates[`students/${anonymousId}/lastRunStatus`]         = null
+      updates[`students/${anonymousId}/currentOutput`]         = ''
+      updates[`students/${anonymousId}/currentCode`]           = ''
+      updates[`students/${anonymousId}/currentFiles`]          = null
+      updates[`students/${anonymousId}/currentAnswer`]         = null
+      updates[`students/${anonymousId}/currentSelection`]      = null
+      updates[`students/${anonymousId}/currentActivity`]       = null
+      updates[`students/${anonymousId}/currentActiveFile`]     = null
+      updates[`students/${anonymousId}/checkOverridePassed`]   = null
+      updates[`students/${anonymousId}/checkOverrideHint`]     = null
+      updates[`students/${anonymousId}/checkOverridePushedAt`] = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  async function overrideStudentCheck(anonymousId, passed, hint = null) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      checkOverridePassed:   passed,
+      checkOverrideHint:     hint || null,
+      checkOverridePushedAt: Date.now(),
+    })
   }
 
   async function enterSandbox({ code = null, files = null } = {}) {
@@ -303,7 +314,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     // teacher
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent,
+    setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
