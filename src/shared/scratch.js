@@ -620,13 +620,48 @@ function withJsonInputDefaults(item, options = {}) {
   return { ...item, inputs: { ...inputs, ...(item.inputs ?? {}) } }
 }
 
-// Takes a JSON toolbox and a predefinedBlocks array [{ id, type, inputs: { NAME: value } }].
-// Returns a new toolbox JSON with each predefined block appended to its category.
+// Takes a JSON or XML toolbox and a predefinedBlocks array [{ id, type, inputs: { NAME: value } }].
+// Returns a new toolbox with each predefined block appended to its category.
 export function addPredefinedBlocksToToolbox(toolbox, predefinedBlocks) {
   if (!predefinedBlocks?.length) return toolbox
   const base = toolbox ?? DEFAULT_TOOLBOX
-  if (typeof base === 'string' || base?.kind !== 'categoryToolbox') return base
 
+  // Handle XML string toolboxes (produced by the toolbox picker)
+  if (typeof base === 'string') {
+    if (typeof DOMParser === 'undefined') return base
+    const doc = new DOMParser().parseFromString(base, 'text/xml')
+    if (doc.querySelector('parsererror')) return base
+
+    for (const pb of predefinedBlocks) {
+      const category = Array.from(doc.querySelectorAll('category')).find(cat =>
+        Array.from(cat.querySelectorAll('block')).some(b => b.getAttribute('type') === pb.type)
+      )
+      if (!category) continue
+
+      const blockEl = doc.createElement('block')
+      blockEl.setAttribute('type', pb.type)
+      const shadowDefaults = VALUE_INPUT_DEFAULTS[pb.type] ?? {}
+      for (const [name, val] of Object.entries(pb.inputs ?? {})) {
+        const s = shadowDefaults[name] ?? (typeof val === 'number' ? { type: 'math_number', field: 'NUM' } : { type: 'text', field: 'TEXT' })
+        const valueEl = doc.createElement('value')
+        valueEl.setAttribute('name', name)
+        const shadowEl = doc.createElement('shadow')
+        shadowEl.setAttribute('type', s.type)
+        const fieldEl = doc.createElement('field')
+        fieldEl.setAttribute('name', s.field)
+        fieldEl.textContent = String(val)
+        shadowEl.appendChild(fieldEl)
+        valueEl.appendChild(shadowEl)
+        blockEl.appendChild(valueEl)
+      }
+      category.appendChild(blockEl)
+    }
+    return new XMLSerializer().serializeToString(doc)
+  }
+
+  if (base?.kind !== 'categoryToolbox') return base
+
+  // Handle JSON category toolboxes (DEFAULT_TOOLBOX / STAGE_TOOLBOX)
   // Build a map from block type → category index for fast lookup
   const typeToCategory = {}
   for (const [ci, cat] of (base.contents ?? []).entries()) {

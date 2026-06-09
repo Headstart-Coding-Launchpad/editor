@@ -348,11 +348,11 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
           {getBlockInputFields(newBlock.type).length === 0 && (
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#9ca3af' }}>No configurable inputs</span>
           )}
-          <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={confirmAdd}>Add</button>
-          <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={() => setNewBlock(null)}>Cancel</button>
+          <button type="button" className="btn-ghost-outline" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={confirmAdd}>Add</button>
+          <button type="button" className="btn-ghost-outline" style={{ padding: '4px 10px', fontSize: '0.82rem' }} onClick={() => setNewBlock(null)}>Cancel</button>
         </div>
       ) : (
-        <button type="button" className="btn-ghost te-add-check-btn" onClick={startAdding}>
+        <button type="button" className="te-add-check-btn" onClick={startAdding}>
           + Add predefined block
         </button>
       )}
