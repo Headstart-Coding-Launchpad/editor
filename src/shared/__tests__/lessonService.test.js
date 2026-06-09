@@ -20,7 +20,6 @@ describe('lessonService', () => {
   beforeEach(() => {
     mockGetDoc.mockReset()
     mockGetDocs.mockReset()
-    vi.unstubAllGlobals()
   })
 
   it('loads a lesson from Firestore by id', async () => {
@@ -38,38 +37,15 @@ describe('lessonService', () => {
     })
   })
 
-  it('falls back to static lesson JSON when Firestore errors', async () => {
-    mockGetDoc.mockRejectedValue(new Error('unavailable'))
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ id: 'python-1-1', title: 'Static lesson', type: 'python', tasks: [] }),
-    }))
-
-    await expect(fetchLessonById('python-1-1')).resolves.toMatchObject({
-      id: 'python-1-1',
-      title: 'Static lesson',
-    })
-    expect(fetch).toHaveBeenCalledWith('/lessons/python-1-1.json')
-  })
-
-  it('falls back to static lesson JSON when Firestore does not resolve in time', async () => {
-    mockGetDoc.mockReturnValue(new Promise(() => {}))
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ title: 'Timed fallback', type: 'python', tasks: [] }),
-    }))
-
-    await expect(fetchLessonById('python-1-1', { timeoutMs: 1 })).resolves.toMatchObject({
-      id: 'python-1-1',
-      title: 'Timed fallback',
-    })
-  })
-
-  it('returns null when neither Firestore nor static JSON has the lesson', async () => {
+  it('returns null when Firestore has no matching lesson', async () => {
     mockGetDoc.mockResolvedValue({ exists: () => false })
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
 
     await expect(fetchLessonById('missing')).resolves.toBeNull()
+  })
+
+  it('returns null when lessonId is falsy', async () => {
+    await expect(fetchLessonById('')).resolves.toBeNull()
+    await expect(fetchLessonById(null)).resolves.toBeNull()
   })
 
   it('sorts Firestore lesson lists by title then id', async () => {

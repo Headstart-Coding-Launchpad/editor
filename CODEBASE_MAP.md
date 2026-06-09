@@ -185,17 +185,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` with static JSON fallback, plus `fetchLessonList()` sorting the Firestore `lessons` collection |
+| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` from Firestore `lessons` collection, plus `fetchLessonList()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
-
----
-
-## Lesson Files
-
-| Path | Role |
-|---|---|
-| `public/lessons/` | Static JSON lesson files (kept for reference; lesson content now served from Firestore `lessons/` collection) |
 
 ---
 
@@ -212,8 +204,6 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `scripts/migrate-lessons.mjs` | One-off Admin SDK migration: writes all lesson JSON files to Firestore `lessons/` collection |
-| `scripts/migrate-topic-library.mjs` | One-off Admin SDK migration: writes `public/assets/topic-library.json` topics to Firestore `topicLibrary/` collection |
 | `scripts/yaml-to-json.mjs` | CLI tool: converts a YAML lesson file to lesson JSON — `node scripts/yaml-to-json.mjs input.yaml [output.json]` |
 
 ---
@@ -229,11 +219,12 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 ---
 
-## Static Data Files
+## Static Assets (`public/assets/`)
 
 | Path | Role |
 |---|---|
-| `public/assets/topic-library.json` | Topic library seed data — kept for reference and migration; live data now served from Firestore `topicLibrary/` collection |
+| `public/assets/manifest.json` | Maps lesson IDs to their static asset filenames; read by `useAssets.js` for HTML lesson `assetsPath` lookups |
+| `public/assets/html-3-7/` | Static images (`car.png`, `skiing.jpg`) for the `html-3-7` lesson; served at `/assets/html-3-7/` alongside the app |
 
 ---
 
