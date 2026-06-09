@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   fetchLessonById: vi.fn(),
   useSession: vi.fn(),
   useIdentity: vi.fn(),
+  scratchWorkspace: vi.fn(),
 }))
 
 vi.mock('../../../shared/useIsMobile', () => ({
@@ -88,7 +89,10 @@ vi.mock('../../components/CollapsibleIframePreview', () => ({
 }))
 
 vi.mock('../../components/ScratchWorkspace', () => ({
-  default: () => <div>Scratch</div>,
+  default: props => {
+    mocks.scratchWorkspace(props)
+    return <div>Scratch</div>
+  },
 }))
 
 vi.mock('../../components/QuizTask', () => ({
@@ -117,6 +121,7 @@ vi.mock('../../components/StudentEditorHeader', () => ({
 
 describe('StudentView', () => {
   beforeEach(() => {
+    mocks.scratchWorkspace.mockClear()
     mocks.fetchLessonById.mockResolvedValue({
       id: 'python-1-1',
       title: 'Python 1.1',
@@ -171,5 +176,42 @@ describe('StudentView', () => {
     })
     expect(mocks.useSession).toHaveBeenCalledWith(null, { enabled: false })
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+  })
+
+  it('passes predefined Scratch blocks to the student workspace', async () => {
+    const predefinedBlocks = [
+      {
+        id: 'move-50',
+        type: 'motion_movesteps',
+        inputs: { STEPS: 50 },
+      },
+    ]
+
+    render(
+      <StudentView
+        lessonId="scratch-1-1"
+        soloMode
+        lesson={{
+          id: 'scratch-1-1',
+          title: 'Scratch 1.1',
+          type: 'scratch',
+          tasks: [
+            {
+              id: 1,
+              title: 'Move',
+              starterBlocks: null,
+              predefinedBlocks,
+            },
+          ],
+        }}
+      />
+    )
+
+    await waitFor(() => {
+      expect(mocks.scratchWorkspace).toHaveBeenCalled()
+    })
+
+    const latestProps = mocks.scratchWorkspace.mock.calls.at(-1)[0]
+    expect(latestProps.predefinedBlocks).toBe(predefinedBlocks)
   })
 })

@@ -262,6 +262,10 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
     !toolbox || toolboxTypes.has(t)
   )
 
+  React.useEffect(() => {
+    setNewBlock(null)
+  }, [toolbox])
+
   function startAdding() {
     setNewBlock(newPredefinedBlock(eligibleTypes[0] ?? ''))
   }

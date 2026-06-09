@@ -30,6 +30,17 @@ const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
 const STAGE_VERTICAL_CHROME = 112
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
+const STAGE_RUNTIME_STATE = {
+  x: 0,
+  y: 0,
+  direction: 90,
+  size: 100,
+  visible: true,
+  bubble: '',
+  bubbleType: 'say',
+  rotationStyle: 'all around',
+  costume: null,
+}
 
 const toCanvasX = x => STAGE_W / 2 + x
 const toCanvasY = y => STAGE_H / 2 - y
@@ -496,7 +507,7 @@ export default function ScratchWorkspace({
         id: '__stage__',
         name: '__stage__',
         workspace: workspaceRefs.current['__stage__'],
-        state: null,
+        state: { ...STAGE_RUNTIME_STATE },
         costumes: [],
         onUpdate: () => {},
       })
@@ -523,8 +534,7 @@ export default function ScratchWorkspace({
     if (unrestricted) {
       baseToolbox = isStage ? STAGE_TOOLBOX : DEFAULT_TOOLBOX
     } else {
-      const rawToolbox = task?.toolbox ?? (isStage ? STAGE_TOOLBOX : DEFAULT_TOOLBOX)
-      baseToolbox = isStage && !task?.toolbox ? STAGE_TOOLBOX : rawToolbox
+      baseToolbox = isStage ? STAGE_TOOLBOX : (task?.toolbox ?? DEFAULT_TOOLBOX)
     }
     const withPredefined = predefinedBlocks?.length
       ? addPredefinedBlocksToToolbox(baseToolbox, predefinedBlocks)
@@ -544,6 +554,36 @@ export default function ScratchWorkspace({
         } catch {}
       })
     } catch {}
+  }
+
+  function handleWorkspaceClickEvent(event, ws, spriteId, Blockly) {
+    if (
+      (event?.type === Blockly.Events.CLICK || event?.type === 'click') &&
+      event.targetType === 'block' &&
+      event.blockId
+    ) {
+      const clicked =
+        ws.getBlockById(event.blockId) ??
+        ws.getFlyout?.()?.getWorkspace?.()?.getBlockById?.(event.blockId)
+      if (clicked) runClickedBlock(clicked, spriteId)
+      return true
+    }
+    return false
+  }
+
+  function handleWorkspaceDomClick(event, ws, spriteId, Blockly) {
+    if (event.button !== 0) return
+    if (!event.target?.closest?.('.blocklyDraggable')) return
+    setTimeout(() => {
+      const selected = Blockly.getSelected?.()
+      const flyoutWs = ws.getFlyout?.()?.getWorkspace?.()
+      if (
+        selected?.type &&
+        (selected.workspace === ws || selected.workspace === flyoutWs)
+      ) {
+        runClickedBlock(selected, spriteId)
+      }
+    }, 0)
   }
 
   // ── Initialise Blockly (one workspace per sprite) ────────────────────────────
@@ -586,36 +626,13 @@ export default function ScratchWorkspace({
 
           if (!readOnly) {
             ws.addChangeListener((event) => {
-              if (
-                (event?.type === Blockly.Events.CLICK || event?.type === 'click') &&
-                event.targetType === 'block' &&
-                event.blockId
-              ) {
-                const clicked =
-                  ws.getBlockById(event.blockId) ??
-                  ws.getFlyout?.()?.getWorkspace?.()?.getBlockById?.(event.blockId)
-                if (clicked) runClickedBlock(clicked, sp.id)
-                return
-              }
+              if (handleWorkspaceClickEvent(event, ws, sp.id, Blockly)) return
               if (suppressChangeRef.current) return
               clearTimeout(syncTimerRef.current)
               syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
             })
 
-            div.addEventListener('click', (event) => {
-              if (event.button !== 0) return
-              if (!event.target?.closest?.('.blocklyDraggable')) return
-              setTimeout(() => {
-                const selected = Blockly.getSelected?.()
-                const flyoutWs = ws.getFlyout?.()?.getWorkspace?.()
-                if (
-                  selected?.type &&
-                  (selected.workspace === ws || selected.workspace === flyoutWs)
-                ) {
-                  runClickedBlock(selected, sp.id)
-                }
-              }, 0)
-            })
+            div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, sp.id, Blockly))
           }
         }
 
@@ -642,11 +659,14 @@ export default function ScratchWorkspace({
               } catch { suppressChangeRef.current = false }
             }
             if (!readOnly) {
-              stageWs.addChangeListener(() => {
+              stageWs.addChangeListener((event) => {
+                if (handleWorkspaceClickEvent(event, stageWs, '__stage__', Blockly)) return
                 if (suppressChangeRef.current) return
                 clearTimeout(syncTimerRef.current)
                 syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
               })
+
+              stageDiv.addEventListener('click', event => handleWorkspaceDomClick(event, stageWs, '__stage__', Blockly))
             }
           }
         }
@@ -696,7 +716,7 @@ export default function ScratchWorkspace({
       for (const sp of sprites) refreshSpriteToolbox(sp.id)
       if (task?.enableStageCode) refreshSpriteToolbox('__stage__')
     } catch {}
-  }, [task?.toolbox, task?.enableStageCode, unrestricted, status, sprites, predefinedBlocks])
+  }, [task?.toolbox, task?.enableStageCode, unrestricted, status, sprites, predefinedBlocks, flyoutCollapsed])
 
   // ── Load external state (teacher push) ───────────────────────────────────────
   useEffect(() => {
@@ -835,6 +855,7 @@ export default function ScratchWorkspace({
     if (runningRef.current || statusRef.current !== 'ready') return
     stopAll()
     lastCheckRef.current = null
+    preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     runningRef.current = true
     setRunning(true)
     setCheckAttempted(false)
@@ -851,11 +872,13 @@ export default function ScratchWorkspace({
     if (statusRef.current !== 'ready') return
     const prev = keySignalsRef.current.get(key)
     if (prev) prev.stopped = true
+    const shouldFinishRun = !runningRef.current
+    if (shouldFinishRun) preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     const signal = createSignal()
     keySignalsRef.current.set(key, signal)
     try { await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key) } catch {}
     if (keySignalsRef.current.get(key) === signal) keySignalsRef.current.delete(key)
-    if (!runningRef.current) finishRun(signal)
+    if (shouldFinishRun) finishRun(signal)
   }
 
   function handleStop() {
@@ -967,6 +990,7 @@ export default function ScratchWorkspace({
       if (statusRef.current === 'ready' && !runningRef.current) {
         if (signalRef.current) signalRef.current.stopped = true
         lastCheckRef.current = null
+        preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
         runningRef.current = true
         setRunning(true)
         setCheckAttempted(false)
