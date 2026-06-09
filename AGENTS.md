@@ -148,6 +148,10 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 | `get_topic(id)` | Fetch a full topic from Firestore |
 | `upsert_topic(topic)` | Publish a topic to the live topic library (writes to Firestore) |
 | `delete_topic(id)` | Permanently delete a topic from Firestore |
+| `get_lesson_skeleton(id)` | Fetch lesson metadata + compact task list (titles, flat indices, types) without task bodies — use instead of `get_lesson` when you only need to navigate tasks |
+| `get_task(lessonId, taskIndex)` | Fetch one task by 1-based flat index — groups are transparent |
+| `upsert_task(lessonId, taskIndex, task)` | Replace one task by flat index; validates the full lesson before writing |
+| `append_task(lessonId, task, groupTitle?)` | Append a new task to the lesson (or a named group); validates before writing |
 | `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
 | `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage (`lessons/{lessonId}/assets/{filename}`), update `storageAssets` on the lesson document, and return the download URL |
 | `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
