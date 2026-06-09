@@ -8,6 +8,7 @@ function loadManifest() {
   if (!fetchPromise) {
     fetchPromise = fetch(`${import.meta.env.BASE_URL}assets/manifest.json`)
       .then(r => {
+        if (r.status === 404) return {}
         if (!r.ok) throw new Error(`asset manifest fetch failed: ${r.status}`)
         return r.json()
       })

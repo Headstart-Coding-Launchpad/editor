@@ -168,7 +168,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
-| `useAssets.js` | Hook for fetching and caching `public/assets/manifest.json`; exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` |
+| `useAssets.js` | Hook for fetching `public/assets/manifest.json` (returns empty arrays when absent); exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` for static asset paths — currently returns empty everywhere |
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
@@ -185,17 +185,9 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` with static JSON fallback, plus `fetchLessonList()` sorting the Firestore `lessons` collection |
+| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` from Firestore `lessons` collection, plus `fetchLessonList()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
-
----
-
-## Lesson Files
-
-| Path | Role |
-|---|---|
-| `public/lessons/` | Static JSON lesson files (kept for reference; lesson content now served from Firestore `lessons/` collection) |
 
 ---
 
@@ -212,8 +204,6 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `scripts/migrate-lessons.mjs` | One-off Admin SDK migration: writes all lesson JSON files to Firestore `lessons/` collection |
-| `scripts/migrate-topic-library.mjs` | One-off Admin SDK migration: writes `public/assets/topic-library.json` topics to Firestore `topicLibrary/` collection |
 | `scripts/yaml-to-json.mjs` | CLI tool: converts a YAML lesson file to lesson JSON — `node scripts/yaml-to-json.mjs input.yaml [output.json]` |
 
 ---
@@ -226,14 +216,6 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
 | `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
-
----
-
-## Static Data Files
-
-| Path | Role |
-|---|---|
-| `public/assets/topic-library.json` | Topic library seed data — kept for reference and migration; live data now served from Firestore `topicLibrary/` collection |
 
 ---
 
