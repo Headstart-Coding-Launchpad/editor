@@ -37,8 +37,9 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
   // For match/fill_blank quizzes, checkPassed comes from internal quiz logic rather than task.check
   const hasCheck = !isConfidence && (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
-  const checkPassed = hasCheck && student.checkPassed === true
-  const checkFailed = hasCheck && checkAttempted && !checkPassed
+  const hasActiveOverride = !!student.checkOverridePushedAt
+  const checkPassed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
+  const checkFailed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === false : (checkAttempted && student.checkPassed !== true))
   const checkCardStyle = checkPassed
     ? s.cardCheckPassed
     : checkFailed
@@ -96,6 +97,15 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
             <span style={{ ...s.checkBadge, ...s.checkBadgeFailed }} title="Completion check failed">
               <span style={s.checkBadgeIcon}>✕</span>
               Failed
+            </span>
+          )}
+          {hasActiveOverride && (
+            <span
+              style={{ ...s.checkBadge, ...(student.checkOverridePassed ? s.checkBadgeOverridePassed : s.checkBadgeOverrideFailed) }}
+              title="Check overridden by teacher"
+            >
+              <span style={s.checkBadgeIcon}>{student.checkOverridePassed ? '✓' : '✕'}</span>
+              Override
             </span>
           )}
           {student.inPersonalSandbox && (
@@ -269,6 +279,16 @@ const s = {
   checkBadgeSandbox: {
     background: '#7c3aed',
     color: '#fff',
+  },
+  checkBadgeOverridePassed: {
+    background: 'rgba(34,197,94,0.12)',
+    color: '#16a34a',
+    border: '1.5px solid #22c55e',
+  },
+  checkBadgeOverrideFailed: {
+    background: 'rgba(239,68,68,0.12)',
+    color: '#dc2626',
+    border: '1.5px solid #ef4444',
   },
   checkBadgeIcon: {
     width: 16,

@@ -4,7 +4,7 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
-import { collection, doc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore'
+import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore'
 import LessonMetaPanel from '../components/LessonMetaPanel'
 import TaskList from '../components/TaskList'
 import TaskEditor from '../components/TaskEditor'
@@ -403,9 +403,12 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     if (!selectedTaskId || !lesson?.id) { setTaskFeedback([]); return }
     getDocs(query(
       collection(firestore, 'lessons', lesson.id, 'feedback'),
-      where('taskId', '==', selectedTaskId),
-      orderBy('submittedAt', 'desc')
-    )).then(snap => setTaskFeedback(snap.docs.map(d => d.data()))).catch(() => setTaskFeedback([]))
+      where('taskId', '==', selectedTaskId)
+    )).then(snap => {
+      const items = snap.docs.map(d => d.data())
+      items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
+      setTaskFeedback(items)
+    }).catch(() => setTaskFeedback([]))
   }, [lesson?.id, selectedTaskId])
 
   function handleLessonUpdate(updater) {
