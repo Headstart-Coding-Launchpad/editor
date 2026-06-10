@@ -50,8 +50,6 @@ describe('getSandboxStarterFiles', () => {
     sandboxStarterFiles: [{ name: 'configured.html', content: 'configured' }],
     tasks: [{ id: 2, starterFiles: [{ name: 'task.html', content: 'task' }] }],
   }
-  const decodeFileKey = key => key.replace('__dot__', '.')
-
   it('returns cloned draft files before live sandbox files', () => {
     const draftFiles = [{ name: 'draft.html', content: 'draft' }]
     const selected = getSandboxStarterFiles({
@@ -60,7 +58,6 @@ describe('getSandboxStarterFiles', () => {
       session: { state: 'sandbox', sandboxFiles: { 'live__dot__html': 'live' } },
       draftFiles,
       currentFiles: [],
-      decodeFileKey,
     })
     selected[0].content = 'edited'
     expect(draftFiles[0].content).toBe('draft')
@@ -74,20 +71,17 @@ describe('getSandboxStarterFiles', () => {
       session: { state: 'sandbox', sandboxFiles: { 'live__dot__html': 'live' } },
       draftFiles: [],
       currentFiles: [],
-      decodeFileKey,
     })[0]).toMatchObject({ name: 'live.html', type: 'html' })
-    expect(getSandboxStarterFiles({ lesson, taskId: 2, currentFiles: [], decodeFileKey })[0].name).toBe('configured.html')
+    expect(getSandboxStarterFiles({ lesson, taskId: 2, currentFiles: [] })[0].name).toBe('configured.html')
     expect(getSandboxStarterFiles({
       lesson: { tasks: lesson.tasks },
       taskId: 2,
       currentFiles: [{ name: 'current.html', content: 'current' }],
-      decodeFileKey,
     })[0].name).toBe('current.html')
     expect(getSandboxStarterFiles({
       lesson: { tasks: lesson.tasks },
       taskId: 2,
       currentFiles: [],
-      decodeFileKey,
     })[0].name).toBe('task.html')
   })
 })

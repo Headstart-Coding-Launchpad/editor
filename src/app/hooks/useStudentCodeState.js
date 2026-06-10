@@ -5,7 +5,7 @@ import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncor
 import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
-import { decodeFileKey } from './useSession'
+import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'

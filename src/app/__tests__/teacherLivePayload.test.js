@@ -10,7 +10,6 @@ describe('buildStudentLivePayload', () => {
       },
       taskId: 8,
       entryFileTaskId: 8,
-      decodeFileKey: key => key.replace('__dot__', '.'),
       student: {
         anonymousId: 'student-1',
         displayName: 'Jamie',
@@ -38,7 +37,6 @@ describe('buildStudentLivePayload', () => {
       lesson: { type: 'html', tasks: [{ id: 1 }] },
       taskId: 1,
       entryFileTaskId: undefined,
-      decodeFileKey: key => key,
       student: { currentFiles: { 'page.html': '' } },
     })
     expect(payload.activeFile).toBe('page.html')

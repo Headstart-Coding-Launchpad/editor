@@ -191,6 +191,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
+| `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |

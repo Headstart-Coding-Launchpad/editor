@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
-import { useSession, decodeFileKey } from '../hooks/useSession'
+import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import { getLessonLinks } from '../../shared/lessonLinks'
 import TopBar from '../components/TopBar'
@@ -153,7 +153,7 @@ export default function TeacherView({ lessonId }) {
     } else {
       const starterFiles = getSandboxStarterFiles({
         lesson, taskId: currentTaskId, session,
-        draftFiles: sandboxDraftRef.current.files, currentFiles: files, decodeFileKey,
+        draftFiles: sandboxDraftRef.current.files, currentFiles: files,
       })
       setFiles(starterFiles)
       setActiveFile(starterFiles[0]?.name ?? '')
@@ -201,7 +201,7 @@ export default function TeacherView({ lessonId }) {
     } else {
       const starterFiles = getSandboxStarterFiles({
         lesson, taskId: currentTaskId, session,
-        draftFiles: sandboxDraftRef.current.files, currentFiles: files, decodeFileKey,
+        draftFiles: sandboxDraftRef.current.files, currentFiles: files,
       })
       setFiles(starterFiles)
       setActiveFile(starterFiles[0]?.name ?? '')
@@ -301,7 +301,6 @@ export default function TeacherView({ lessonId }) {
       lesson,
       taskId: session?.currentTaskId ?? currentTaskId,
       entryFileTaskId: session?.currentTaskId,
-      decodeFileKey,
     }))
   }
 

@@ -1,16 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { ref, onValue, set, update, remove, serverTimestamp, onDisconnect } from 'firebase/database'
 import { db } from '../../shared/firebase'
+import { encodeFileKey } from '../../shared/fileKeys'
 
-// Firebase keys cannot contain dots — encode/decode file names like "index.html"
 function encodeFileKeys(files) {
-  return Object.fromEntries(
-    Object.entries(files).map(([k, v]) => [k.replace(/\./g, '__dot__'), v])
-  )
-}
-
-export function decodeFileKey(key) {
-  return key.replace(/__dot__/g, '.')
+  return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
 }
 
 /**

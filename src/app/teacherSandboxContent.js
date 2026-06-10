@@ -1,6 +1,7 @@
 import { findTaskById } from '../shared/taskUtils'
 import { cloneFiles, cloneScratchState, decodeSessionFiles, parseScratchState } from '../shared/workspaceData'
 import { DEFAULT_FS } from '../shared/filesystem'
+import { decodeFileKey } from '../shared/fileKeys'
 
 function cloneFs(fs) {
   if (!fs || typeof fs !== 'object') return DEFAULT_FS
@@ -33,7 +34,6 @@ export function getSandboxStarterFiles({
   session,
   draftFiles,
   currentFiles,
-  decodeFileKey,
   preferDraft = true,
 }) {
   const task = getTask(lesson, taskId)
