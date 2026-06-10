@@ -1,4 +1,5 @@
 import React from 'react'
+import Banner from '../../shared/Banner'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { normaliseDirPath } from '../../shared/filesystem'
 import { loadSavedCode, loadPersonalSandboxCode } from '../studentStorage'
@@ -70,13 +71,13 @@ export default function LessonTaskContent({
   return (
     <TaskSlideTransition transitionKey={transitionKey} style={taskContentStyle}>
       {previewMode && task && !isSandbox && (
-        <div style={s.previewTaskModeBanner}>
+        <Banner accent="#0ea5e9" color="#0369a1" style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}>
           {task.taskMode === 'live'
             ? 'Live sessions only'
             : task.taskMode === 'solo'
             ? 'Solo mode only'
             : 'Live + Solo'}
-        </div>
+        </Banner>
       )}
 
       {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
@@ -507,16 +508,6 @@ const s = {
     flexDirection: 'column',
     gap: '8px',
     minHeight: 0,
-  },
-  previewTaskModeBanner: {
-    background: 'rgba(14,165,233,0.08)',
-    borderBottom: '1px solid rgba(14,165,233,0.2)',
-    padding: '5px 16px',
-    fontSize: 12,
-    color: '#0369a1',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    flexShrink: 0,
   },
   studentEditorHeader: {
     flexShrink: 0,

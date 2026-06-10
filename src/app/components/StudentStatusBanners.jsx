@@ -1,4 +1,5 @@
 import React from 'react'
+import Banner from '../../shared/Banner'
 
 export default function StudentStatusBanners({
   isForcedTeacherLive,
@@ -22,7 +23,7 @@ export default function StudentStatusBanners({
       )}
 
       {isViewingPrev && (
-        <div style={s.prevBanner}>
+        <Banner accent="#ef4444" color="#b91c1c">
           You are viewing a previous task — return to current task to continue.
           <button
             className="btn-secondary"
@@ -31,11 +32,11 @@ export default function StudentStatusBanners({
           >
             Back to Current Task
           </button>
-        </div>
+        </Banner>
       )}
 
       {inPersonalSandbox && (
-        <div style={s.personalSandboxBanner}>
+        <Banner accent="#7c3aed" color="#5b21b6" style={{ fontWeight: 600 }}>
           <span>Personal Sandbox — your lesson progress is saved</span>
           <button
             className="btn-secondary"
@@ -44,7 +45,7 @@ export default function StudentStatusBanners({
           >
             Close Sandbox
           </button>
-        </div>
+        </Banner>
       )}
     </>
   )
@@ -64,27 +65,5 @@ const s = {
     justifyContent: 'center',
     gap: 12,
     letterSpacing: '0.01em',
-  },
-  prevBanner: {
-    background: 'rgba(239,68,68,0.08)',
-    borderBottom: '1px solid rgba(239,68,68,0.2)',
-    padding: '8px 16px',
-    fontSize: 13,
-    color: '#b91c1c',
-    display: 'flex',
-    alignItems: 'center',
-    fontFamily: 'var(--font-body)',
-  },
-  personalSandboxBanner: {
-    background: 'rgba(124,58,237,0.08)',
-    borderBottom: '1px solid rgba(124,58,237,0.2)',
-    padding: '8px 16px',
-    fontSize: 13,
-    color: '#5b21b6',
-    display: 'flex',
-    alignItems: 'center',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    flexShrink: 0,
   },
 }
