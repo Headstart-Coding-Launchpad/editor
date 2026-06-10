@@ -122,7 +122,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `BuilderView.jsx` | Main builder layout: 3-pane (meta / task list / editor), validation, CRUD, download/upload |
+| `BuilderView.jsx` | Main builder layout: 3-pane (meta / task list / editor), download/upload/print/publish handlers |
 | `PreviewView.jsx` | Preview mode: wraps StudentView read-only so teacher can test the student experience |
 
 ---
@@ -132,6 +132,15 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | File | Role |
 |---|---|
 | `lessonUtils.js` | Pure builder lesson validation and export normalisation rules |
+| `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM) |
+
+---
+
+## Builder Hooks (`src/builder/hooks/`)
+
+| File | Role |
+|---|---|
+| `useBuilderState.js` | Task CRUD state and handlers (add, duplicate, delete, reorder, subtasks) plus derived state (errors, warnings, flatTasks, selectedTask/Group) — no DOM, independently unit-testable |
 
 ---
 
@@ -145,6 +154,10 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
+| `GroupEditor.jsx` | Inline editor for a task group's title and subtask count summary |
+| `ValidationPanel.jsx` | Collapsible errors/warnings panel with tabbed view and per-warning ignore action |
+| `TaskFeedbackPanel.jsx` | Collapsible panel showing teacher-submitted lesson feedback items for the selected task |
+| `BuilderToolbar.jsx` | Top toolbar: branding, dirty indicator, and all action buttons (new/upload/preview/print/download/publish) |
 
 ### Task Editor Sub-modules (`src/builder/components/task-editor/`)
 
