@@ -10,7 +10,7 @@ import { registerAssetTools } from './assets.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// Keep db import alive — ensures Firebase is initialised before tools are called
+// Keep db import alive - ensures Firebase is initialised before tools are called
 void db
 
 const server = new McpServer({ name: 'hsc-repl', version: '1.0.0' })
@@ -29,40 +29,39 @@ server.resource(
 
 Lessons and topics live in **Firestore**, not in local files.
 
-- \`lessons/\` Firestore collection — live lessons served to students
-- \`topicLibrary/\` Firestore collection — live topic library
+- \`lessons/\` Firestore collection - live lessons served to students
+- \`topicLibrary/\` Firestore collection - live topic library
 
-The local \`lessons/JSON Files/\` directory is the **authoring workspace** only. Editing a local JSON file has no effect on the live app until you publish it with \`upsert_lesson\`.
+The local \`YAML Files/\` and \`JSON Files/\` directories are **authoring workspace** artifacts only. Editing a local file has no effect on the live app until you publish the converted lesson with \`upsert_lesson\`.
 
 ## Authoring workflow (step by step)
 
-1. **Understand the schema** — fetch \`lesson://schema\` before writing any lesson JSON. All field names, types, and valid values are defined there.
+1. **Understand the YAML format** - fetch \`yaml://format\` before writing lesson YAML. It documents the shorthand and links back to the full schema when a field needs deeper reference.
 
-2. **Create the lesson JSON locally** — write or generate the full lesson JSON object following the schema. The lesson \`id\` must be a lowercase slug (e.g. \`python-for-loops\`).
+2. **Create the lesson YAML locally** - write the concise lesson YAML following \`YAML_LESSON_FORMAT.md\`. The lesson \`id\` must be a lowercase slug (e.g. \`python-for-loops\`).
 
-3. **Validate before publishing** — call \`validate_lesson(lesson)\` with the full JSON. Fix all errors before continuing. Warnings are non-blocking but should be reviewed.
+3. **Convert and validate before publishing** - call \`yaml_to_lesson(yaml)\`. Review the converted lesson JSON, fix all errors, and review warnings before continuing.
 
-4. **Publish to Firestore** — call \`upsert_lesson(lesson)\` to write the lesson to the live app. This also validates; if validation fails the lesson is not written and errors are returned.
+4. **Publish to Firestore** - call \`upsert_lesson(lesson)\` with the converted lesson JSON to write the lesson to the live app. This also validates; if validation fails the lesson is not written and errors are returned. For the fast path after local review, call \`publish_yaml_lesson(yaml)\` to convert, validate, publish, and fetch confirmation in one call.
 
-5. **Confirm the publish** — call \`get_lesson(id)\` to verify the live lesson matches what you intended.
+5. **Confirm the publish** - call \`get_lesson(id)\` to verify the live lesson matches what you intended.
 
 ## Updating an existing lesson
 
 **Whole-lesson edit** (restructuring, reordering, or many changes at once):
 1. Fetch the current version: \`get_lesson(id)\`
-2. Apply your changes to the returned JSON
-3. Validate: \`validate_lesson(lesson)\`
-4. Publish: \`upsert_lesson(lesson)\`
+2. Apply your changes in YAML when possible, then run \`yaml_to_lesson(yaml)\`; for direct JSON edits, run \`validate_lesson(lesson)\`
+3. Publish: \`upsert_lesson(lesson)\`
 
-**Single-task edit** (lower token cost — preferred for targeted changes):
-1. Fetch the skeleton: \`get_lesson_skeleton(id)\` — see which task indices exist
+**Single-task edit** (lower token cost - preferred for targeted changes):
+1. Fetch the skeleton: \`get_lesson_skeleton(id)\` - see which task indices exist
 2. Fetch the task: \`get_task(lessonId, taskIndex)\`
 3. Edit the returned task object
-4. Write it back: \`upsert_task(lessonId, taskIndex, task)\` — validates the full lesson automatically
+4. Write it back: \`upsert_task(lessonId, taskIndex, task)\` - validates the full lesson automatically
 
 **Build a lesson task by task** (create shell, then append):
 1. Publish a minimal lesson: \`upsert_lesson({ id, type, title, description, tasks: [] })\`
-2. For each task: \`append_task(lessonId, task)\` — appends and validates
+2. For each task: \`append_task(lessonId, task)\` - appends and validates
 3. Confirm: \`get_lesson_skeleton(id)\`
 
 ## Topic library workflow
@@ -75,10 +74,11 @@ Use \`list_lesson_assets\`, \`upload_lesson_asset\`, and \`delete_lesson_asset\`
 
 ## Important rules
 
-- Never call \`upsert_lesson\` without calling \`validate_lesson\` first (or accepting that upsert will validate and reject)
-- Never call \`delete_lesson\` without confirming the lesson ID with the user — deletion is permanent
+- Prefer authoring new lessons in YAML, then converting with \`yaml_to_lesson\`
+- Never call \`upsert_lesson\` without first validating via \`yaml_to_lesson\` or \`validate_lesson\`
+- Never call \`delete_lesson\` without confirming the lesson ID with the user - deletion is permanent
 - The \`id\` field in the lesson JSON determines the Firestore document ID; changing it creates a new document (the old one must be deleted manually)
-- Scratch toolbox XML validation is skipped server-side (no DOMParser in Node.js) — use the builder preview to catch XML errors
+- Scratch toolbox XML validation is skipped server-side (no DOMParser in Node.js) - use the builder preview to catch XML errors
 `
     return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] }
   }

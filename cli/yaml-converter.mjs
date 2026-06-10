@@ -10,6 +10,8 @@ import yaml from 'js-yaml'
  * - `answer: <option-id>` on a multiple_choice quiz becomes `check: { type: answer_equals, value }`.
  * - `checks:` (plural array) is an alias for the `check:` field.
  * - Groups use `group: "Title"` + `tasks:` instead of JSON's `{ type: group, ... }`.
+ * - Group IDs are stable. Use `groupId:` to set one explicitly, or the converter
+ *   derives one from the lesson ID and group title.
  *
  * All other fields are passed through unchanged.
  */
@@ -23,18 +25,18 @@ export function parseYamlLesson(yamlText) {
 
 function convertLesson(raw) {
   const { tasks: rawTasks, ...envelope } = raw
-  const tasks = convertTaskList(rawTasks ?? [], envelope.type ?? '')
+  const tasks = convertTaskList(rawTasks ?? [], envelope.type ?? '', envelope.id ?? '')
   return { ...envelope, tasks }
 }
 
-function convertTaskList(rawTasks, lessonType) {
+function convertTaskList(rawTasks, lessonType, lessonId) {
   let taskCounter = 0
-  let groupCounter = 0
+  const groupIdCounts = new Map()
   const result = []
 
   for (const rawItem of rawTasks) {
     if (typeof rawItem.group === 'string') {
-      const groupId = `g-${Date.now() + groupCounter}`
+      const groupId = makeGroupId(rawItem, lessonId, groupIdCounts)
       const subtasks = (rawItem.tasks ?? []).map(t => convertTask(t, ++taskCounter, lessonType))
       result.push({
         id: groupId,
@@ -42,13 +44,31 @@ function convertTaskList(rawTasks, lessonType) {
         title: rawItem.group,
         subtasks,
       })
-      groupCounter++
     } else {
       result.push(convertTask(rawItem, ++taskCounter, lessonType))
     }
   }
 
   return result
+}
+
+function slugify(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function makeGroupId(rawItem, lessonId, groupIdCounts) {
+  const explicitId = rawItem.groupId ?? rawItem.id
+  const base = explicitId
+    ? slugify(explicitId)
+    : ['g', slugify(lessonId), slugify(rawItem.group)].filter(Boolean).join('-')
+
+  const safeBase = base || 'g-group'
+  const count = groupIdCounts.get(safeBase) ?? 0
+  groupIdCounts.set(safeBase, count + 1)
+  return count === 0 ? safeBase : `${safeBase}-${count + 1}`
 }
 
 function convertTask(raw, id, lessonType) {
