@@ -456,21 +456,13 @@ function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
 }
 
 function AssetSummary({ lessonId, lessonType, assets, assetsPath, storageAssets }) {
-  const { loading, error } = useAssets()
   const count = assets?.length ?? 0
 
   let text
-  if (loading) {
-    text = 'Loading asset manifest…'
-  } else if (error) {
-    text = 'Could not load asset manifest. Add files to public/assets/ and restart the dev server.'
-  } else if (count > 0) {
-    const folderPart = lessonId ? `/assets/${lessonId}/` : 'lesson folder'
-    const sharedPart = lessonType ? ` and shared/${lessonType}/` : ''
-    text = `${count} asset${count !== 1 ? 's' : ''} auto-detected from ${folderPart}${sharedPart}`
+  if (count > 0) {
+    text = `${count} asset${count !== 1 ? 's' : ''} listed in lesson JSON`
   } else {
-    const folderPart = lessonId ? `/assets/${lessonId}/` : 'a lesson folder'
-    text = `No assets found. Add files to public/${folderPart} to populate this field automatically.`
+    text = 'No static assets listed. Upload files via Firebase Storage above.'
   }
 
   const showBrowser = (count > 0 && assetsPath) || storageAssets?.length > 0
