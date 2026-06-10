@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState, useRef } from 'react'
 import SplitPane from '../../shared/SplitPane'
 import { CodeEditor } from '../../shared/CodeEditor'
-import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
-import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
-import { evaluateSingleCheck, filterChecksForInteraction, normalizeChecks, resolveTestCheck } from '../../shared/checks'
+import { filterChecksForInteraction, normalizeChecks } from '../../shared/checks'
 import AssetBrowser from '../../shared/AssetBrowser'
 import ExplainerEditor from './ExplainerEditor'
 import FileManager from './FileManager'
@@ -23,6 +21,7 @@ import { ScratchToolboxPicker, ScratchCheckListEditor, VariableManager, Predefin
 import { FsTreeEditor, FsCheckListEditor } from './task-editor/FilesystemEditors'
 import TestsEditor from './task-editor/TestsEditor'
 import { DEFAULT_FS } from '../../shared/filesystem'
+import { useTaskEditorState } from '../hooks/useTaskEditorState'
 
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
@@ -36,27 +35,6 @@ function getTaskInlineCodeLanguages(lessonType, task) {
 
 export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [optionsOpen, setOptionsOpen]   = useState(false)
-  const [output, setOutput]             = useState('')
-  const [runStatus, setRunStatus]       = useState(null)
-  const [running, setRunning]           = useState(false)
-  const [pyodideStatus, setPyodideStatus] = useState(isPyodideReady() ? 'ready' : 'idle')
-  const [inputPrompt, setInputPrompt]   = useState(null)
-  const [iframeSrc, setIframeSrc]       = useState(null)
-  const [checkResult, setCheckResult]   = useState(null)  // scratch only
-  const [checkResults, setCheckResults] = useState(null)  // python/html: null | [{type,value,passed}]
-  const [incorrectCheckResults, setIncorrectCheckResults] = useState(null) // null | [{type,value,passed,hint}]
-  const [testResults, setTestResults] = useState(null) // null | [{id, name, passed, output}]
-  const [runningTests, setRunningTests] = useState(false)
-  const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false)
-  const iframeRef = React.useRef(null)
-  const appendOutputRef = React.useRef(null)
-
-  const isPython     = lesson.type === 'python'
-  const isScratch    = lesson.type === 'scratch'
-  const isFilesystem = lesson.type === 'filesystem'
-  const isQuiz = task.taskType === 'quiz'
-  const isInformation = task.taskType === 'information'
-  const [quizSelectedAnswer, setQuizSelectedAnswer] = useState('')
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
   const [codeTab, setCodeTab] = useState('starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
@@ -68,10 +46,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [modalSpritePanelTarget, setModalSpritePanelTarget] = useState(null)
   const [sidebarSections, setSidebarSections] = useState({ toolbox: true, sprites: true, backdrops: true, variables: false })
   const [modalStarterBlocks, setModalStarterBlocks] = useState(null)
-  const modalStarterBlocksRef = React.useRef(null)
-  const modalCompleteBlocksRef = React.useRef(null)
-  const modalCompleteSpriteStatesRef = React.useRef(null)
-  const modalStageSpriteStatesRef = React.useRef({})
+  const modalStarterBlocksRef = useRef(null)
+  const modalCompleteBlocksRef = useRef(null)
+  const modalCompleteSpriteStatesRef = useRef(null)
+  const modalStageSpriteStatesRef = useRef({})
+
+  const isPython     = lesson.type === 'python'
+  const isScratch    = lesson.type === 'scratch'
+  const isFilesystem = lesson.type === 'filesystem'
+  const isQuiz = task.taskType === 'quiz'
+  const isInformation = task.taskType === 'information'
   const isCompleteTab = codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
@@ -94,14 +78,20 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     : isStageTab
     ? (activeStage?.entryFile ?? task.entryFile ?? 'index.html')
     : (task.entryFile ?? 'index.html')
-  const activeCodeForChecks = isPython
-    ? activePythonCode
-    : activeFiles.map(file => `--- ${file.name} ---\n${file.content ?? ''}`).join('\n\n')
   const explainerInlineCodeLanguages = getTaskInlineCodeLanguages(lesson.type, task)
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
   }
+
+  const {
+    output, runStatus, running, runningTests, pyodideStatus, inputPrompt, iframeSrc,
+    checkResult, checkResults, incorrectCheckResults, testResults, htmlPreviewOpen, quizSelectedAnswer,
+    iframeRef,
+    setCheckResults, setRunStatus, setCheckResult, setIframeSrc, setHtmlPreviewOpen, setQuizSelectedAnswer,
+    handleRun, handleRunTests, handleStop, handleTestChecks, handleQuizPreviewSelect, handleInputSubmit,
+    resetRunState,
+  } = useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set })
 
   function cloneBlocks(blocks) {
     if (!blocks) return null
@@ -137,15 +127,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
 
   function handleCodeTabChange(tab) {
     if (tab === codeTab) return
-
-    setOutput('')
-    setRunStatus(null)
-    setCheckResult(null)
-    setCheckResults(null)
-    setIncorrectCheckResults(null)
-    setTestResults(null)
-    setIframeSrc(null)
-    setHtmlPreviewOpen(false)
+    resetRunState()
 
     if (tab === 'complete') {
       if (isPython) {
@@ -203,10 +185,6 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     onUpdate({ ...task, codeStages: updated })
   }
 
-  function handleStop() {
-    stopPython()
-  }
-
   function makeDefaultQuizOptions() {
     return [
       { id: 'a', text: '' },
@@ -222,12 +200,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   }
 
   function handleTaskTypeChange(taskType) {
-    setOutput('')
-    setRunStatus(null)
-    setCheckResult(null)
-    setCheckResults(null)
-    setIncorrectCheckResults(null)
-    setIframeSrc(null)
+    resetRunState()
     setQuizSelectedAnswer('')
 
     if (taskType === 'quiz') {
@@ -305,10 +278,6 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setRunStatus(null)
   }
 
-  useEffect(() => {
-    if (!isPython && !isScratch) setHtmlPreviewOpen(false)
-  }, [task.id, lesson.type])
-
   function handleOpenStarterBlocks() {
     const blocks = cloneBlocks(task.starterBlocks)
     modalStarterBlocksRef.current = blocks
@@ -385,146 +354,6 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setScratchModalTab('starter')
   }
 
-  async function handleRunTests() {
-    if (runningTests) return
-    const tests = task.tests ?? []
-    if (tests.length === 0) return
-    setRunningTests(true)
-    setTestResults(null)
-    setOutput('')
-    setRunStatus(null)
-    setCheckResults(null)
-    setIncorrectCheckResults(null)
-
-    const results = []
-    try {
-      if (!isPyodideReady()) {
-        setPyodideStatus('loading')
-        await initPyodide(msg => setPyodideStatus(msg))
-        setPyodideStatus('ready')
-      }
-
-      for (const test of tests) {
-        const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
-        let accumulated = ''
-        const result = await runPython(activePythonCode, {
-          onOutput: text => { accumulated += text },
-          onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
-        })
-        const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
-        const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
-        const checks = normalizeChecks(resolvedCheck)
-        const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
-        results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
-        if (result.status === 'stopped') break
-      }
-
-      setTestResults(results)
-      const displayedOutput = results.find(r => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
-      setOutput(displayedOutput)
-      setRunStatus(results.some(r => r.status === 'error') ? 'error' : results.some(r => r.status === 'stopped') ? 'stopped' : 'success')
-    } catch {
-      stopPython()
-      setRunStatus('error')
-    } finally {
-      setRunningTests(false)
-    }
-  }
-
-  async function handleRun() {
-    if (running) return
-    setRunning(true)
-    setOutput('')
-    setRunStatus(null)
-    setCheckResult(null)
-    setCheckResults(null)
-    setIncorrectCheckResults(null)
-    setTestResults(null)
-    setIframeSrc(null)
-
-    if (isPython) {
-      if (!isPyodideReady()) {
-        setPyodideStatus('loading')
-        await initPyodide(msg => setPyodideStatus(msg))
-        setPyodideStatus('ready')
-      }
-
-      let accumulated = ''
-      const echoOutput = text => { accumulated += text; setOutput(accumulated) }
-      appendOutputRef.current = echoOutput
-      const result = await runPython(activePythonCode, {
-        onOutput: echoOutput,
-        onInputRequired: p => setInputPrompt(p),
-      })
-      setInputPrompt(null)
-
-      if (result.status === 'stopped') {
-        setRunning(false)
-        return
-      }
-
-      setRunStatus(result.status)
-
-      const checksToEval = normalizeChecks(task.check)
-      if (checksToEval.length > 0) {
-        const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
-        const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) }))
-        setCheckResults(results)
-        set('_checkTested', true)
-        if (!results.every(r => r.passed)) {
-          const incorrectChecksToEval = normalizeChecks(task.incorrectChecks ?? [])
-          if (incorrectChecksToEval.length > 0) {
-            setIncorrectCheckResults(incorrectChecksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) })))
-          }
-        }
-      }
-    } else if (!isScratch) {
-      setHtmlPreviewOpen(true)
-      const src = buildIframeSrc(activeFiles, activeEntryFile, {
-        assets: lesson.assets ?? [],
-        assetsPath: resolveAssetsPath(lesson.assetsPath),
-        storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
-      })
-      setIframeSrc(src)
-      setRunStatus('success')
-
-      const checksToEval = normalizeChecks(task.check)
-      if (checksToEval.length > 0) {
-        const codeStr = activeFiles.map(f => f.content).join('\n')
-        waitForIframeText().then(text => {
-          setOutput(text)
-          const iframeDoc = iframeRef.current?.contentDocument ?? null
-          const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }) }))
-          setCheckResults(results)
-          set('_checkTested', true)
-          if (!results.every(r => r.passed)) {
-            const incorrectChecksToEval = normalizeChecks(task.incorrectChecks ?? [])
-            if (incorrectChecksToEval.length > 0) {
-              setIncorrectCheckResults(incorrectChecksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }) })))
-            }
-          }
-        })
-      }
-    }
-    setRunning(false)
-  }
-
-  function handleTestChecks() {
-    const checksToEval = normalizeChecks(task.check)
-    if (checksToEval.length === 0) return
-    const codeStr = isPython ? activePythonCode : activeFiles.map(f => f.content).join('\n')
-    const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, '', { code: codeStr }) }))
-    setCheckResults(results)
-    setIncorrectCheckResults(null)
-    set('_checkTested', true)
-    if (!results.every(r => r.passed)) {
-      const incorrectChecksToEval = normalizeChecks(task.incorrectChecks ?? [])
-      if (incorrectChecksToEval.length > 0) {
-        setIncorrectCheckResults(incorrectChecksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, '', { code: codeStr }) })))
-      }
-    }
-  }
-
   function handleQuizTypeChange(quizType) {
     setQuizSelectedAnswer('')
     setCheckResults(null)
@@ -553,23 +382,6 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     if (quizType === 'confidence') {
       onUpdate({ ...task, quizType: 'confidence', options: undefined, pairs: undefined, blanks: undefined, text: undefined, check: null })
     }
-  }
-
-  function handleQuizPreviewSelect(answer, passedOverride) {
-    if (passedOverride === null) {
-      setQuizSelectedAnswer(answer)
-      return
-    }
-    const passed =
-      typeof passedOverride === 'boolean'
-        ? passedOverride
-        : task.check
-          ? evaluateSingleCheck(task.check, answer, { answer: typeof answer === 'string' ? answer : '' })
-          : false
-    setQuizSelectedAnswer(answer)
-    setRunStatus('submitted')
-    setCheckResults([{ type: 'quiz_result', passed }])
-    if (task.check || typeof passedOverride === 'boolean') set('_checkTested', true)
   }
 
   function handleResetCompleteToStarter() {
@@ -767,14 +579,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       )}
 
       {isInformation && (
-        <div className="te-preview-panel">
-          <div className="te-preview-header">
-            <span className="te-preview-title">Student preview</span>
-          </div>
+        <TaskPreviewPanel>
           <div className="te-info-preview">
             <InformationTask task={task} lesson={lesson} />
           </div>
-        </div>
+        </TaskPreviewPanel>
       )}
 
       {!isQuiz && !isInformation && (() => {
@@ -882,7 +691,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                       allowDomChecks={!isPython && !isScratch && task.interactionMode !== 'submit'}
                       lessonType={lesson.type}
                       output={output}
-                      code={activeCodeForChecks}
+                      code={isPython ? activePythonCode : activeFiles.map(file => `--- ${file.name} ---\n${file.content ?? ''}`).join('\n\n')}
                     />
                   )}
                 </Field>
@@ -901,7 +710,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                       allowDomChecks={!isPython && task.interactionMode !== 'submit'}
                       lessonType={lesson.type}
                       output={output}
-                      code={activeCodeForChecks}
+                      code={isPython ? activePythonCode : activeFiles.map(file => `--- ${file.name} ---\n${file.content ?? ''}`).join('\n\n')}
                     />
                   </Field>
                 )}
@@ -937,10 +746,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
               Students rate their confidence 1–5 (red to green). No options or check needed — any rating counts as complete.
             </div>
           ) : null}
-          <div className="te-preview-panel">
-            <div className="te-preview-header">
-              <span className="te-preview-title">Student preview</span>
-            </div>
+          <TaskPreviewPanel>
             <QuizTask
               task={task}
               showQuestion
@@ -963,7 +769,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                 </div>
               )
             })()}
-          </div>
+          </TaskPreviewPanel>
         </>
       ) : isPython ? (
         <>
@@ -1015,69 +821,27 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                   </span>
                 )}
               </div>
-              {checkResults !== null && (() => {
-                const allPassed = checkResults.every(r => r.passed)
-                return (
-                  <>
-                    <div style={{ border: '1px solid', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: '0.88rem', lineHeight: 1.6, background: allPassed ? '#f0fdf4' : '#fffbeb', borderColor: allPassed ? '#bbf7d0' : '#fde68a' }}>
-                      {checkResults.length === 1 ? (
-                        checkResults[0].passed
-                          ? 'Check passes — students will see the completion banner.'
-                          : formatCheckFailure(checkResults[0])
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {checkResults.map((r, i) => (
-                            <div key={i}>{r.passed ? `Check ${i + 1} passes.` : `Check ${i + 1} does not pass — ${formatCheckFailureDetail(r)}`}</div>
-                          ))}
-                          <div style={{ marginTop: 4, fontWeight: 700 }}>{allPassed ? 'All checks pass — students will see the completion banner.' : 'Not all checks pass.'}</div>
-                        </div>
-                      )}
-                    </div>
-                    {!allPassed && <IncorrectCheckResultsDisplay results={incorrectCheckResults} />}
-                  </>
-                )
-              })()}
+              <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
             </>
           ) : (
             <>
-              <div className="te-run-row">
-                <button
-                  className="btn-primary"
-                  onClick={running || runningTests ? handleStop : handleRun}
-                  disabled={!running && !runningTests && pyodideStatus === 'loading'}
-                  style={{
-                    padding: '10px 28px',
-                    fontSize: 15,
-                    ...(running || runningTests ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : {}),
-                  }}
-                >
-                  {running || runningTests ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}
-                </button>
-                {(task.tests?.length > 0) && (
-                  <button
-                    className="btn-primary"
-                    onClick={runningTests ? undefined : handleRunTests}
-                    disabled={running || pyodideStatus === 'loading' || runningTests}
-                    style={{ padding: '10px 28px', fontSize: 15 }}
-                  >
-                    {runningTests ? 'Running tests...' : 'Run Tests'}
-                  </button>
-                )}
-                {pyodideStatus === 'loading' && (
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-primary)' }}>
-                    Getting Python ready...
-                  </span>
-                )}
-              </div>
-
-              <BuilderOutputPanel
+              <TaskRunControls
+                running={running}
+                runningTests={runningTests}
+                pyodideStatus={pyodideStatus}
+                hasTests={task.tests?.length > 0}
+                onRun={handleRun}
+                onStop={handleStop}
+                onRunTests={handleRunTests}
+              />
+              <TaskTestResults
                 output={output}
                 runStatus={runStatus}
                 running={running || runningTests}
                 inputPrompt={inputPrompt}
-                onInputSubmit={v => { appendOutputRef.current?.(v + '\n'); setInputPrompt(null); provideInput(v) }}
-                checkResults={testResults !== null ? null : checkResults}
-                incorrectCheckResults={testResults !== null ? null : incorrectCheckResults}
+                onInputSubmit={handleInputSubmit}
+                checkResults={checkResults}
+                incorrectCheckResults={incorrectCheckResults}
                 testResults={testResults}
               />
             </>
@@ -1543,28 +1307,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
                         />
                       }
                     />
-                    {checkResults !== null && (() => {
-                      const allPassed = checkResults.every(r => r.passed)
-                      return (
-                        <>
-                          <div style={{ border: '1px solid', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: '0.88rem', lineHeight: 1.6, background: allPassed ? '#f0fdf4' : '#fffbeb', borderColor: allPassed ? '#bbf7d0' : '#fde68a', flexShrink: 0 }}>
-                            {checkResults.length === 1 ? (
-                              checkResults[0].passed
-                                ? 'Check passes - students will see the completion banner.'
-                                : formatCheckFailure(checkResults[0])
-                            ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {checkResults.map((r, i) => (
-                                  <div key={i}>{r.passed ? `Check ${i + 1} passes.` : `Check ${i + 1} does not pass - ${formatCheckFailureDetail(r)}`}</div>
-                                ))}
-                                <div style={{ marginTop: 4, fontWeight: 700 }}>{allPassed ? 'All checks pass - students will see the completion banner.' : 'Not all checks pass.'}</div>
-                              </div>
-                            )}
-                          </div>
-                          {!allPassed && <IncorrectCheckResultsDisplay results={incorrectCheckResults} />}
-                        </>
-                      )
-                    })()}
+                    <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
                   </div>
                 ) : (
                   <div className="te-html-editor-with-rail">
@@ -1605,28 +1348,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           </div>
 
           <div style={task.interactionMode === 'submit' ? { marginTop: 8 } : { display: 'none' }}>
-            {checkResults !== null && (() => {
-              const allPassed = checkResults.every(r => r.passed)
-              return (
-                <>
-                  <div style={{ border: '1px solid', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: '0.88rem', lineHeight: 1.6, background: allPassed ? '#f0fdf4' : '#fffbeb', borderColor: allPassed ? '#bbf7d0' : '#fde68a' }}>
-                    {checkResults.length === 1 ? (
-                      checkResults[0].passed
-                        ? 'Check passes - students will see the completion banner.'
-                        : formatCheckFailure(checkResults[0])
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {checkResults.map((r, i) => (
-                          <div key={i}>{r.passed ? `✅ Check ${i + 1} passes.` : `⚠️ Check ${i + 1} does not pass - ${formatCheckFailureDetail(r)}`}</div>
-                        ))}
-                        <div style={{ marginTop: 4, fontWeight: 700 }}>{allPassed ? '✅ All checks pass - students will see the completion banner.' : '⚠️ Not all checks pass.'}</div>
-                      </div>
-                    )}
-                  </div>
-                  {!allPassed && <IncorrectCheckResultsDisplay results={incorrectCheckResults} />}
-                </>
-              )
-            })()}
+            <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
           </div>
 
           {((lesson.assetsPath && lesson.assets?.length > 0) || lesson.storageAssets?.some(a => a.showInEditor)) && (
@@ -1642,5 +1364,86 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         </>
       )}
     </div>
+  )
+}
+
+function TaskPreviewPanel({ children }) {
+  return (
+    <div className="te-preview-panel">
+      <div className="te-preview-header">
+        <span className="te-preview-title">Student preview</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function TaskCheckResults({ checkResults, incorrectCheckResults }) {
+  if (!checkResults) return null
+  const allPassed = checkResults.every(r => r.passed)
+  return (
+    <>
+      <div style={{ border: '1px solid', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: '0.88rem', lineHeight: 1.6, background: allPassed ? '#f0fdf4' : '#fffbeb', borderColor: allPassed ? '#bbf7d0' : '#fde68a', flexShrink: 0 }}>
+        {checkResults.length === 1 ? (
+          checkResults[0].passed
+            ? 'Check passes — students will see the completion banner.'
+            : formatCheckFailure(checkResults[0])
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {checkResults.map((r, i) => (
+              <div key={i}>{r.passed ? `Check ${i + 1} passes.` : `Check ${i + 1} does not pass — ${formatCheckFailureDetail(r)}`}</div>
+            ))}
+            <div style={{ marginTop: 4, fontWeight: 700 }}>{allPassed ? 'All checks pass — students will see the completion banner.' : 'Not all checks pass.'}</div>
+          </div>
+        )}
+      </div>
+      {!allPassed && <IncorrectCheckResultsDisplay results={incorrectCheckResults} />}
+    </>
+  )
+}
+
+function TaskRunControls({ running, runningTests, pyodideStatus, hasTests, onRun, onStop, onRunTests }) {
+  const busy = running || runningTests
+  return (
+    <div className="te-run-row">
+      <button
+        className="btn-primary"
+        onClick={busy ? onStop : onRun}
+        disabled={!busy && pyodideStatus === 'loading'}
+        style={{ padding: '10px 28px', fontSize: 15, ...(busy ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : {}) }}
+      >
+        {busy ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}
+      </button>
+      {hasTests && (
+        <button
+          className="btn-primary"
+          onClick={runningTests ? undefined : onRunTests}
+          disabled={running || pyodideStatus === 'loading' || runningTests}
+          style={{ padding: '10px 28px', fontSize: 15 }}
+        >
+          {runningTests ? 'Running tests...' : 'Run Tests'}
+        </button>
+      )}
+      {pyodideStatus === 'loading' && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-primary)' }}>
+          Getting Python ready...
+        </span>
+      )}
+    </div>
+  )
+}
+
+function TaskTestResults({ output, runStatus, running, inputPrompt, onInputSubmit, checkResults, incorrectCheckResults, testResults }) {
+  return (
+    <BuilderOutputPanel
+      output={output}
+      runStatus={runStatus}
+      running={running}
+      inputPrompt={inputPrompt}
+      onInputSubmit={onInputSubmit}
+      checkResults={testResults !== null ? null : checkResults}
+      incorrectCheckResults={testResults !== null ? null : incorrectCheckResults}
+      testResults={testResults}
+    />
   )
 }
