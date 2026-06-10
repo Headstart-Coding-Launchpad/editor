@@ -103,6 +103,10 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `TaskSlideTransition.jsx` | Animated slide transition wrapper used when switching between tasks |
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
 | `LoadingScreen.jsx` | Centred loading/error message screen for StudentView phases |
+| `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended' |
+| `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
+| `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch (Python, HTML desktop/mobile, Scratch, Filesystem, Quiz, Information) |
+| `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut |
 
 ---
 
