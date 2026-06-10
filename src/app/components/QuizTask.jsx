@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../shared/markdown'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
+import { useTileDragAndDrop } from '../hooks/useTileDragAndDrop'
 
 export function getQuizOptionText(task, answerId) {
   return task?.options?.find(option => option.id === answerId)?.text ?? ''
@@ -19,54 +20,6 @@ function stableHash(str) {
   let h = 0
   for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
   return h
-}
-
-const DRAG_MIME = 'application/x-headstart-quiz-tile'
-
-function readDraggedTileId(event) {
-  return event.dataTransfer.getData(DRAG_MIME) || event.dataTransfer.getData('text/plain')
-}
-
-function writeDraggedTileId(event, tileId) {
-  event.dataTransfer.effectAllowed = 'move'
-  event.dataTransfer.setData(DRAG_MIME, tileId)
-  event.dataTransfer.setData('text/plain', tileId)
-}
-
-function setLiftedDragImage(event, label) {
-  const dragImage = document.createElement('div')
-  dragImage.textContent = label
-  Object.assign(dragImage.style, {
-    position: 'fixed',
-    top: '-1000px',
-    left: '-1000px',
-    maxWidth: '280px',
-    padding: '12px 22px',
-    border: '3px solid var(--colour-primary)',
-    borderRadius: '8px',
-    background: 'var(--colour-primary)',
-    color: '#fff',
-    boxShadow: '0 18px 42px rgba(35, 18, 76, 0.36), 0 0 0 5px rgba(251, 165, 4, 0.25)',
-    fontFamily: 'var(--font-body)',
-    fontSize: '1rem',
-    fontWeight: '700',
-    lineHeight: '1.35',
-    transform: 'rotate(-3deg) scale(1.08)',
-    zIndex: '99999',
-    pointerEvents: 'none',
-    whiteSpace: 'normal',
-  })
-  document.body.appendChild(dragImage)
-  const rect = dragImage.getBoundingClientRect()
-  event.dataTransfer.setDragImage(dragImage, rect.width / 2, rect.height / 2)
-  window.setTimeout(() => dragImage.remove(), 0)
-}
-
-function removeTileFromState(state, tileId) {
-  const next = { ...state }
-  const existingSlot = Object.keys(next).find(k => next[k] === tileId)
-  if (existingSlot) delete next[existingSlot]
-  return next
 }
 
 function QuestionPanel({ task }) {
@@ -192,9 +145,6 @@ function checkPassedFromTask(task, selectedAnswer) {
 function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
   const pairs = task?.pairs ?? []
   const revealAnswers = showCorrectAnswer && submitted && disabled
-  const [draggingTile, setDraggingTile] = useState(null)
-  const [dragOverSlot, setDragOverSlot] = useState(null)
-  const [touchSelectedTile, setTouchSelectedTile] = useState(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const shuffledAnswers = useMemo(() => [...pairs].sort((a, b) => stableHash(a.answer) - stableHash(b.answer)), [JSON.stringify(pairs)])
@@ -220,74 +170,11 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
     }
   }
 
-  function handleDragStart(event, pairId) {
-    if (blocked) return
-    setTouchSelectedTile(null)
-    writeDraggedTileId(event, pairId)
-    setLiftedDragImage(event, pairs.find(p => p.id === pairId)?.answer ?? '')
-    setDraggingTile(pairId)
-  }
-
-  function handleDragEnd() {
-    setDraggingTile(null)
-    setDragOverSlot(null)
-  }
-
-  function handleTileClick(pairId) {
-    if (blocked) return
-    setTouchSelectedTile(prev => prev === pairId ? null : pairId)
-  }
-
-  function handleSlotClick(promptId) {
-    if (blocked) return
-    if (touchSelectedTile) {
-      const next = removeTileFromState(state, touchSelectedTile)
-      next[promptId] = touchSelectedTile
-      setTouchSelectedTile(null)
-      publishState(next)
-    } else {
-      const placedId = state[promptId]
-      if (placedId) {
-        setTouchSelectedTile(placedId)
-        publishState(removeTileFromState(state, placedId))
-      }
-    }
-  }
-
-  function handleSlotDragOver(event, promptId) {
-    if (blocked) return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-    setDragOverSlot(promptId)
-  }
-
-  function handleSlotDrop(event, promptId) {
-    event.preventDefault()
-    if (blocked) return
-    const tileId = readDraggedTileId(event)
-    if (!tileId) return
-    const next = removeTileFromState(state, tileId)
-    next[promptId] = tileId
-    setDraggingTile(null)
-    setDragOverSlot(null)
-    publishState(next)
-  }
-
-  function handlePoolDragOver(event) {
-    if (blocked) return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-  }
-
-  function handlePoolDrop(event) {
-    event.preventDefault()
-    if (blocked) return
-    const tileId = readDraggedTileId(event)
-    if (!tileId) return
-    setDraggingTile(null)
-    setDragOverSlot(null)
-    publishState(removeTileFromState(state, tileId))
-  }
+  const dnd = useTileDragAndDrop({
+    blocked,
+    getLabelForTile: pairId => pairs.find(p => p.id === pairId)?.answer ?? '',
+  })
+  const { draggingTile, dragOverTarget: dragOverSlot, touchSelectedTile } = dnd
 
   return (
     <div style={s.wrap}>
@@ -325,13 +212,13 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
                       ...((isDragHighlight || isTapHighlight) ? sm.slotHighlight : {}),
                       cursor: blocked ? 'default' : (isTapHighlight || isOccupied) ? 'pointer' : 'copy',
                     }}
-                    onDragOver={event => handleSlotDragOver(event, pair.id)}
-                    onDragLeave={() => setDragOverSlot(null)}
-                    onDrop={event => handleSlotDrop(event, pair.id)}
-                    onClick={() => handleSlotClick(pair.id)}
+                    onDragOver={event => dnd.handleTargetDragOver(event, pair.id)}
+                    onDragLeave={dnd.clearDragOver}
+                    onDrop={event => dnd.handleTargetDrop(event, pair.id, state, publishState)}
+                    onClick={() => dnd.handleTargetClick(pair.id, state, publishState)}
                     draggable={isOccupied && !blocked}
-                    onDragStart={event => isOccupied && handleDragStart(event, placedId)}
-                    onDragEnd={handleDragEnd}
+                    onDragStart={event => isOccupied && dnd.handleDragStart(event, placedId)}
+                    onDragEnd={dnd.handleDragEnd}
                   >
                     {placedPair?.answer
                       ? <InlineMarkdown content={placedPair.answer} />
@@ -348,7 +235,7 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
           })}
         </div>
 
-        <div style={sm.answerPool} onDragOver={handlePoolDragOver} onDrop={handlePoolDrop}>
+        <div style={sm.answerPool} onDragOver={dnd.handlePoolDragOver} onDrop={event => dnd.handlePoolDrop(event, state, publishState)}>
           <div style={sm.poolLabel}>Answers</div>
           <div style={sm.poolTiles}>
             {shuffledAnswers.filter(p => !placedIds.has(p.id)).map(pair => (
@@ -360,9 +247,9 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
                   ...((draggingTile === pair.id || touchSelectedTile === pair.id) ? sm.tileSelected : {}),
                 }}
                 draggable={!blocked}
-                onDragStart={event => handleDragStart(event, pair.id)}
-                onDragEnd={handleDragEnd}
-                onClick={() => handleTileClick(pair.id)}
+                onDragStart={event => dnd.handleDragStart(event, pair.id)}
+                onDragEnd={dnd.handleDragEnd}
+                onClick={() => dnd.handleTileClick(pair.id)}
                 disabled={blocked}
               >
                 <InlineMarkdown content={pair.answer} />
@@ -436,9 +323,6 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
   const mode = task?.mode ?? 'drag'
   const revealAnswers = showCorrectAnswer && submitted && disabled
   const text = task?.text ?? ''
-  const [draggingTile, setDraggingTile] = useState(null)
-  const [dragOverBlank, setDragOverBlank] = useState(null)
-  const [touchSelectedTile, setTouchSelectedTile] = useState(null)
 
   const distractors = task?.distractors ?? []
 
@@ -480,74 +364,12 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
     }
   }
 
-  function handleDragStart(event, tileId) {
-    if (blocked) return
-    setTouchSelectedTile(null)
-    writeDraggedTileId(event, tileId)
-    setLiftedDragImage(event, tilePool.find(t => t.id === tileId)?.text ?? '')
-    setDraggingTile(tileId)
-  }
-
-  function handleDragEnd() {
-    setDraggingTile(null)
-    setDragOverBlank(null)
-  }
-
-  function handleTileClick(tileId) {
-    if (blocked || mode !== 'drag') return
-    setTouchSelectedTile(prev => prev === tileId ? null : tileId)
-  }
-
-  function handleBlankClick(blankId) {
-    if (blocked || mode !== 'drag') return
-    if (touchSelectedTile) {
-      const next = removeTileFromState(state, touchSelectedTile)
-      next[blankId] = touchSelectedTile
-      setTouchSelectedTile(null)
-      publishState(next)
-    } else {
-      const placedTileId = state[blankId]
-      if (placedTileId) {
-        setTouchSelectedTile(placedTileId)
-        publishState(removeTileFromState(state, placedTileId))
-      }
-    }
-  }
-
-  function handleBlankDragOver(event, blankId) {
-    if (blocked || mode !== 'drag') return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-    setDragOverBlank(blankId)
-  }
-
-  function handleBlankDrop(event, blankId) {
-    event.preventDefault()
-    if (blocked || mode !== 'drag') return
-    const tileId = readDraggedTileId(event)
-    if (!tileId) return
-    const next = removeTileFromState(state, tileId)
-    next[blankId] = tileId
-    setDraggingTile(null)
-    setDragOverBlank(null)
-    publishState(next)
-  }
-
-  function handlePoolDragOver(event) {
-    if (blocked || mode !== 'drag') return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-  }
-
-  function handlePoolDrop(event) {
-    event.preventDefault()
-    if (blocked || mode !== 'drag') return
-    const tileId = readDraggedTileId(event)
-    if (!tileId) return
-    setDraggingTile(null)
-    setDragOverBlank(null)
-    publishState(removeTileFromState(state, tileId))
-  }
+  const dnd = useTileDragAndDrop({
+    blocked,
+    dragEnabled: mode === 'drag',
+    getLabelForTile: tileId => tilePool.find(t => t.id === tileId)?.text ?? '',
+  })
+  const { draggingTile, dragOverTarget: dragOverBlank, touchSelectedTile } = dnd
 
   function handleTypeChange(blankId, value) {
     const next = { ...state, [blankId]: value }
@@ -624,13 +446,13 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
                   ...((isDragHighlight || isTapHighlight) ? sm.fillBlankHighlight : {}),
                   cursor: blocked ? 'default' : (isTapHighlight || placedTileId) ? 'pointer' : 'copy',
                 }}
-                onDragOver={event => handleBlankDragOver(event, blankId)}
-                onDragLeave={() => setDragOverBlank(null)}
-                onDrop={event => handleBlankDrop(event, blankId)}
-                onClick={() => handleBlankClick(blankId)}
+                onDragOver={event => dnd.handleTargetDragOver(event, blankId)}
+                onDragLeave={dnd.clearDragOver}
+                onDrop={event => dnd.handleTargetDrop(event, blankId, state, publishState)}
+                onClick={() => dnd.handleTargetClick(blankId, state, publishState)}
                 draggable={!!placedTileId && !blocked}
-                onDragStart={event => placedTileId && handleDragStart(event, placedTileId)}
-                onDragEnd={handleDragEnd}
+                onDragStart={event => placedTileId && dnd.handleDragStart(event, placedTileId)}
+                onDragEnd={dnd.handleDragEnd}
                 title={isBlankWrong && blank ? `Correct: ${blank.answer}` : undefined}
               >
                 {placedText
@@ -642,7 +464,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
         </div>
 
         {mode === 'drag' && (
-          <div style={sm.answerPool} onDragOver={handlePoolDragOver} onDrop={handlePoolDrop}>
+          <div style={sm.answerPool} onDragOver={dnd.handlePoolDragOver} onDrop={event => dnd.handlePoolDrop(event, state, publishState)}>
             <div style={sm.poolLabel}>Answer bank</div>
             <div style={sm.poolTiles}>
               {tilePool.filter(t => !placedIds.has(t.id)).map(t => (
@@ -651,9 +473,9 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
                   type="button"
                   style={{ ...sm.tile, ...((draggingTile === t.id || touchSelectedTile === t.id) ? sm.tileSelected : {}) }}
                   draggable={!blocked}
-                  onDragStart={event => handleDragStart(event, t.id)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => handleTileClick(t.id)}
+                  onDragStart={event => dnd.handleDragStart(event, t.id)}
+                  onDragEnd={dnd.handleDragEnd}
+                  onClick={() => dnd.handleTileClick(t.id)}
                   disabled={blocked}
                 >
                   <span style={(draggingTile === t.id || touchSelectedTile === t.id) ? sm.selectedTileMarkdown : undefined}>
