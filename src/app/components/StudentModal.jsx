@@ -210,103 +210,145 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
 
         {/* Content */}
         <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
-          {isInformation ? (
-            <ExplainerPanel title={task?.title} content={task?.explainer ?? ''} collapsible={false} fill topicType={lesson?.type} />
-          ) : isQuiz && !isSessionSandbox ? (
-            <QuizTask
-              task={task}
-              showQuestion
-              selectedAnswer={student.currentAnswer ?? ''}
-              submitted={student.lastRunStatus === 'submitted'}
-              checkPassed={student.checkPassed}
-              disabled
-              showCorrectAnswer
-            />
-          ) : isPython ? (
-            <>
-              <div style={s.editorWrap}>
-                 <CodeEditor
-                   value={student.currentCode ?? ''}
-                  language="python"
-                  readOnly
-                  remoteSelection={remoteSelection}
-                  style={{ height: '100%' }}
-                />
-              </div>
-              {task?.interactionMode === 'submit' ? (
-                <div style={s.submitNotice}>
-                  {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
-                </div>
-              ) : (
-                <OutputPanel
-                  output={student.currentOutput ?? ''}
-                  runStatus={student.lastRunStatus}
-                  hasCheck={!!task?.check}
-                  checkPassed={student.checkPassed}
-                />
-              )}
-            </>
-          ) : isScratch ? (
-            <ScratchWorkspace
-              key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
-              task={task}
-              readOnly
-              assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-              initialState={scratchState}
-              externalState={scratchState}
-              initialSpriteState={spriteState}
-            />
-          ) : isFilesystem ? (
-            <FilesystemTask
-              fs={studentFs}
-              assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-              assets={lesson?.assets}
-              disabled
-            />
-          ) : (
-            <>
-              {/* Left: tabbed file editor */}
-              <div style={s.htmlEditorPane}>
-                {files.length > 1 && (
-                  <div style={s.tabBar} className="ui-tabs">
-                    {files.map(f => (
-                      <button
-                        key={f.name}
-                        className={`ui-tab ui-tab--code${f.name === activeFile ? ' is-active' : ''}`}
-                        style={{ ...s.tab, ...(f.name === activeFile ? s.tabActive : {}) }}
-                        onClick={() => setActiveFile(f.name)}
-                      >
-                        {f.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {files.length === 1 && (
-                  <div style={s.singleFileLabel}>{files[0]?.name}</div>
-                )}
-                <div style={s.editorWrap}>
-                  {activeFileObj && (
-                     <CodeEditor
-                       key={activeFileObj.name}
-                       value={activeFileObj.content}
-                      language={activeFileObj.type}
-                      readOnly
-                      remoteSelection={remoteSelection}
-                      style={{ height: '100%' }}
-                    />
-                  )}
-                </div>
-              </div>
-              {task?.interactionMode !== 'submit' && (
-                <div style={s.iframePane}>
-                  <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
-                </div>
-              )}
-            </>
-          )}
+          <StudentWorkspaceBody
+            lesson={lesson}
+            task={task}
+            student={student}
+            session={session}
+            isInformation={isInformation}
+            isQuiz={isQuiz}
+            isSessionSandbox={isSessionSandbox}
+            isPython={isPython}
+            isScratch={isScratch}
+            isFilesystem={isFilesystem}
+            files={files}
+            activeFile={activeFile}
+            setActiveFile={setActiveFile}
+            activeFileObj={activeFileObj}
+            remoteSelection={remoteSelection}
+            scratchState={scratchState}
+            spriteState={spriteState}
+            studentFs={studentFs}
+            iframeSrc={iframeSrc}
+            iframeRef={iframeRef}
+          />
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Student workspace body (lesson.type dispatch) ───────────────────────────
+
+function StudentWorkspaceBody({
+  lesson, task, student, session,
+  isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isFilesystem,
+  files, activeFile, setActiveFile, activeFileObj,
+  remoteSelection, scratchState, spriteState, studentFs,
+  iframeSrc, iframeRef,
+}) {
+  if (isInformation) return (
+    <ExplainerPanel title={task?.title} content={task?.explainer ?? ''} collapsible={false} fill topicType={lesson?.type} />
+  )
+
+  if (isQuiz && !isSessionSandbox) return (
+    <QuizTask
+      task={task}
+      showQuestion
+      selectedAnswer={student.currentAnswer ?? ''}
+      submitted={student.lastRunStatus === 'submitted'}
+      checkPassed={student.checkPassed}
+      disabled
+      showCorrectAnswer
+    />
+  )
+
+  if (isPython) return (
+    <>
+      <div style={s.editorWrap}>
+        <CodeEditor
+          value={student.currentCode ?? ''}
+          language="python"
+          readOnly
+          remoteSelection={remoteSelection}
+          style={{ height: '100%' }}
+        />
+      </div>
+      {task?.interactionMode === 'submit' ? (
+        <div style={s.submitNotice}>
+          {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
+        </div>
+      ) : (
+        <OutputPanel
+          output={student.currentOutput ?? ''}
+          runStatus={student.lastRunStatus}
+          hasCheck={!!task?.check}
+          checkPassed={student.checkPassed}
+        />
+      )}
+    </>
+  )
+
+  if (isScratch) return (
+    <ScratchWorkspace
+      key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+      task={task}
+      readOnly
+      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+      initialState={scratchState}
+      externalState={scratchState}
+      initialSpriteState={spriteState}
+    />
+  )
+
+  if (isFilesystem) return (
+    <FilesystemTask
+      fs={studentFs}
+      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+      assets={lesson?.assets}
+      disabled
+    />
+  )
+
+  return (
+    <>
+      <div style={s.htmlEditorPane}>
+        {files.length > 1 && (
+          <div style={s.tabBar} className="ui-tabs">
+            {files.map(f => (
+              <button
+                key={f.name}
+                className={`ui-tab ui-tab--code${f.name === activeFile ? ' is-active' : ''}`}
+                style={{ ...s.tab, ...(f.name === activeFile ? s.tabActive : {}) }}
+                onClick={() => setActiveFile(f.name)}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {files.length === 1 && (
+          <div style={s.singleFileLabel}>{files[0]?.name}</div>
+        )}
+        <div style={s.editorWrap}>
+          {activeFileObj && (
+            <CodeEditor
+              key={activeFileObj.name}
+              value={activeFileObj.content}
+              language={activeFileObj.type}
+              readOnly
+              remoteSelection={remoteSelection}
+              style={{ height: '100%' }}
+            />
+          )}
+        </div>
+      </div>
+      {task?.interactionMode !== 'submit' && (
+        <div style={s.iframePane}>
+          <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
+        </div>
+      )}
+    </>
   )
 }
 

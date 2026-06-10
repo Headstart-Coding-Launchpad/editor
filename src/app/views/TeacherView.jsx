@@ -347,6 +347,23 @@ export default function TeacherView({ lessonId }) {
     await Promise.all(studentIds.map(id => pushResetToStudent(id, action)))
   }
 
+  // Pre-computed change handlers for TeacherEditorPanel (close over sandboxDraftRef)
+  const onCodeChange = (showingComplete || isShowingStage || !isInSandbox) ? undefined
+    : value => { setCode(value); sandboxDraftRef.current.code = value }
+
+  const onFilesChange = (showingComplete || isShowingStage || !isInSandbox) ? undefined
+    : (name, content) => setFiles(prev => {
+      const next = prev.map(f => f.name === name ? { ...f, content } : f)
+      sandboxDraftRef.current.files = cloneFiles(next)
+      return next
+    })
+
+  const onScratchChange = !isInSandbox ? undefined
+    : state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }
+
+  const onFsChange = !isInSandbox ? undefined
+    : newFs => { setFsState(newFs); sandboxDraftRef.current.fs = newFs }
+
   if (lessonLoading) {
     return <div style={s.centre}><p>Loading…</p></div>
   }
@@ -439,131 +456,34 @@ export default function TeacherView({ lessonId }) {
             />
           )}
 
-          {!isInSandbox && isInformationTask ? (
-            <InformationTask task={task} lesson={lesson} fill />
-          ) : !isInSandbox && task?.taskType === 'quiz' ? (
-            <QuizTask task={task} showQuestion disabled />
-          ) : lesson.type === 'python' ? (
-            <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
-              {!isInSandbox && (
-                <TeacherCodeTabs
-                  activeTab={teacherCodeTab}
-                  stages={taskCodeStages}
-                  onStarter={() => setTeacherCodeTab('starter')}
-                  onStage={i => setTeacherCodeTab(`stage_${i}`)}
-                  onComplete={() => { setTeacherCodeTab('complete'); setActiveCompleteFile(task?.completeFiles?.[0]?.name ?? '') }}
-                  onSendToAll={handleSendStageToAll}
-                  hasStudents={students.length > 0}
-                />
-              )}
-              <PythonEditor
-                code={showingComplete ? (task?.completeCode ?? '') : isShowingStage ? (activeTeacherStage?.code ?? '') : code}
-                onChange={showingComplete || isShowingStage || !isInSandbox ? undefined : value => {
-                  setCode(value)
-                  if (isInSandbox) sandboxDraftRef.current.code = value
-                }}
-                onActivity={setEditorActivity}
-                readOnly={showingComplete || isShowingStage || !isInSandbox}
-                pyodideStatus="idle"
-                editorStyle={isInSandbox ? undefined : s.attachedCodeEditor}
-              />
-            </div>
-          ) : lesson.type === 'scratch' ? (
-            <div style={!isInSandbox ? s.codeWorkspaceStack : s.scratchWrap}>
-              {!isInSandbox && (
-                <TeacherCodeTabs
-                  activeTab={teacherCodeTab}
-                  stages={taskCodeStages}
-                  onStarter={() => setTeacherCodeTab('starter')}
-                  onStage={i => setTeacherCodeTab(`stage_${i}`)}
-                  onComplete={task?.completeBlocks ? () => setTeacherCodeTab('complete') : undefined}
-                  onSendToAll={handleSendStageToAll}
-                  hasStudents={students.length > 0}
-                  starterLabel="Starter blocks"
-                  completeLabel="Complete blocks"
-                />
-              )}
-              <div style={s.scratchWrap}>
-                <ScratchWorkspace
-                  key={`teacher-scratch-${displayTaskId}-${isInSandbox ? 'sandbox' : 'task'}`}
-                  task={task}
-                  unrestricted={isInSandbox}
-                  assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                  initialState={scratchState}
-                  externalState={isInSandbox ? scratchState : showingComplete ? (task?.completeBlocks ?? null) : isShowingStage ? (activeTeacherStage?.blocks ?? null) : (task?.starterBlocks ?? null)}
-                  readOnly={!isInSandbox}
-                  hideStage
-                  onStateChange={!isInSandbox ? undefined : state => {
-                    setScratchState(state)
-                    if (isInSandbox) sandboxDraftRef.current.scratchState = cloneScratchState(state)
-                  }}
-                />
-              </div>
-            </div>
-          ) : lesson.type === 'filesystem' ? (
-            <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
-              {!isInSandbox && (
-                <TeacherCodeTabs
-                  activeTab={teacherCodeTab}
-                  stages={taskCodeStages}
-                  onStarter={() => setTeacherCodeTab('starter')}
-                  onStage={i => setTeacherCodeTab(`stage_${i}`)}
-                  onComplete={task?.completeFs ? () => setTeacherCodeTab('complete') : undefined}
-                  onSendToAll={handleSendStageToAll}
-                  hasStudents={students.length > 0}
-                  starterLabel="Starter folders"
-                  completeLabel="Complete folders"
-                />
-              )}
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <FilesystemTask
-                  key={`teacher-fs-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
-                  fs={isInSandbox ? fsState : showingComplete ? (task?.completeFs ?? DEFAULT_FS) : isShowingStage ? (activeTeacherStage?.fs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
-                  onFsChange={isInSandbox ? (newFs => {
-                    setFsState(newFs)
-                    sandboxDraftRef.current.fs = newFs
-                  }) : undefined}
-                  assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                  assets={lesson.assets}
-                  disabled={!isInSandbox}
-                />
-              </div>
-            </div>
-          ) : (
-            <div style={!isInSandbox ? s.codeWorkspaceStack : s.htmlLeft}>
-              {!isInSandbox && (
-                <TeacherCodeTabs
-                  activeTab={teacherCodeTab}
-                  stages={taskCodeStages}
-                  onStarter={() => setTeacherCodeTab('starter')}
-                  onStage={i => setTeacherCodeTab(`stage_${i}`)}
-                  onComplete={() => { setTeacherCodeTab('complete'); setActiveCompleteFile(task?.completeFiles?.[0]?.name ?? '') }}
-                  onSendToAll={handleSendStageToAll}
-                  hasStudents={students.length > 0}
-                />
-              )}
-              <div style={s.htmlLeft}>
-                <HtmlEditor
-                  files={showingComplete ? (task?.completeFiles ?? []) : isShowingStage ? (activeTeacherStage?.files ?? []) : files}
-                  activeFile={showingComplete ? activeCompleteFile : activeFile}
-                  onTabChange={showingComplete ? setActiveCompleteFile : setActiveFile}
-                  onFileChange={showingComplete || isShowingStage || !isInSandbox ? undefined : (name, content) =>
-                    setFiles(prev => {
-                      const next = prev.map(f => f.name === name ? { ...f, content } : f)
-                      if (isInSandbox) sandboxDraftRef.current.files = cloneFiles(next)
-                      return next
-                    })
-                  }
-                  onActivity={setEditorActivity}
-                  readOnly={showingComplete || isShowingStage || !isInSandbox}
-                  assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-                  assets={lesson.assets}
-                  storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
-                  attachedTop={!isInSandbox}
-                />
-              </div>
-            </div>
-          )}
+          <TeacherEditorPanel
+            lesson={lesson}
+            task={task}
+            displayTaskId={displayTaskId}
+            isInSandbox={isInSandbox}
+            isInformationTask={isInformationTask}
+            showingComplete={showingComplete}
+            isShowingStage={isShowingStage}
+            activeTeacherStage={activeTeacherStage}
+            taskCodeStages={taskCodeStages}
+            teacherCodeTab={teacherCodeTab}
+            setTeacherCodeTab={setTeacherCodeTab}
+            hasStudents={students.length > 0}
+            onSendStageToAll={handleSendStageToAll}
+            code={code}
+            onCodeChange={onCodeChange}
+            files={files}
+            onFilesChange={onFilesChange}
+            activeFile={activeFile}
+            setActiveFile={setActiveFile}
+            activeCompleteFile={activeCompleteFile}
+            setActiveCompleteFile={setActiveCompleteFile}
+            scratchState={scratchState}
+            onScratchChange={onScratchChange}
+            fsState={fsState}
+            onFsChange={onFsChange}
+            onActivity={setEditorActivity}
+          />
         </main>
 
         {/* Right — Student Grid */}
@@ -605,6 +525,139 @@ export default function TeacherView({ lessonId }) {
           onClose={() => setShowFeedbackModal(false)}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Teacher editor panel (lesson.type dispatch) ─────────────────────────────
+
+function TeacherEditorPanel({
+  lesson, task, displayTaskId,
+  isInSandbox, isInformationTask,
+  showingComplete, isShowingStage, activeTeacherStage, taskCodeStages,
+  teacherCodeTab, setTeacherCodeTab,
+  hasStudents, onSendStageToAll,
+  code, onCodeChange,
+  files, onFilesChange,
+  activeFile, setActiveFile,
+  activeCompleteFile, setActiveCompleteFile,
+  scratchState, onScratchChange,
+  fsState, onFsChange,
+  onActivity,
+}) {
+  if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
+  if (!isInSandbox && task?.taskType === 'quiz') return <QuizTask task={task} showQuestion disabled />
+
+  if (lesson.type === 'python') return (
+    <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
+      {!isInSandbox && (
+        <TeacherCodeTabs
+          activeTab={teacherCodeTab}
+          stages={taskCodeStages}
+          onStarter={() => setTeacherCodeTab('starter')}
+          onStage={i => setTeacherCodeTab(`stage_${i}`)}
+          onComplete={() => { setTeacherCodeTab('complete'); setActiveCompleteFile(task?.completeFiles?.[0]?.name ?? '') }}
+          onSendToAll={onSendStageToAll}
+          hasStudents={hasStudents}
+        />
+      )}
+      <PythonEditor
+        code={showingComplete ? (task?.completeCode ?? '') : isShowingStage ? (activeTeacherStage?.code ?? '') : code}
+        onChange={onCodeChange}
+        onActivity={onActivity}
+        readOnly={showingComplete || isShowingStage || !isInSandbox}
+        pyodideStatus="idle"
+        editorStyle={isInSandbox ? undefined : s.attachedCodeEditor}
+      />
+    </div>
+  )
+
+  if (lesson.type === 'scratch') return (
+    <div style={!isInSandbox ? s.codeWorkspaceStack : s.scratchWrap}>
+      {!isInSandbox && (
+        <TeacherCodeTabs
+          activeTab={teacherCodeTab}
+          stages={taskCodeStages}
+          onStarter={() => setTeacherCodeTab('starter')}
+          onStage={i => setTeacherCodeTab(`stage_${i}`)}
+          onComplete={task?.completeBlocks ? () => setTeacherCodeTab('complete') : undefined}
+          onSendToAll={onSendStageToAll}
+          hasStudents={hasStudents}
+          starterLabel="Starter blocks"
+          completeLabel="Complete blocks"
+        />
+      )}
+      <div style={s.scratchWrap}>
+        <ScratchWorkspace
+          key={`teacher-scratch-${displayTaskId}-${isInSandbox ? 'sandbox' : 'task'}`}
+          task={task}
+          unrestricted={isInSandbox}
+          assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
+          initialState={scratchState}
+          externalState={isInSandbox ? scratchState : showingComplete ? (task?.completeBlocks ?? null) : isShowingStage ? (activeTeacherStage?.blocks ?? null) : (task?.starterBlocks ?? null)}
+          readOnly={!isInSandbox}
+          hideStage
+          onStateChange={onScratchChange}
+        />
+      </div>
+    </div>
+  )
+
+  if (lesson.type === 'filesystem') return (
+    <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
+      {!isInSandbox && (
+        <TeacherCodeTabs
+          activeTab={teacherCodeTab}
+          stages={taskCodeStages}
+          onStarter={() => setTeacherCodeTab('starter')}
+          onStage={i => setTeacherCodeTab(`stage_${i}`)}
+          onComplete={task?.completeFs ? () => setTeacherCodeTab('complete') : undefined}
+          onSendToAll={onSendStageToAll}
+          hasStudents={hasStudents}
+          starterLabel="Starter folders"
+          completeLabel="Complete folders"
+        />
+      )}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <FilesystemTask
+          key={`teacher-fs-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
+          fs={isInSandbox ? fsState : showingComplete ? (task?.completeFs ?? DEFAULT_FS) : isShowingStage ? (activeTeacherStage?.fs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
+          onFsChange={onFsChange}
+          assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
+          assets={lesson.assets}
+          disabled={!isInSandbox}
+        />
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={!isInSandbox ? s.codeWorkspaceStack : s.htmlLeft}>
+      {!isInSandbox && (
+        <TeacherCodeTabs
+          activeTab={teacherCodeTab}
+          stages={taskCodeStages}
+          onStarter={() => setTeacherCodeTab('starter')}
+          onStage={i => setTeacherCodeTab(`stage_${i}`)}
+          onComplete={() => { setTeacherCodeTab('complete'); setActiveCompleteFile(task?.completeFiles?.[0]?.name ?? '') }}
+          onSendToAll={onSendStageToAll}
+          hasStudents={hasStudents}
+        />
+      )}
+      <div style={s.htmlLeft}>
+        <HtmlEditor
+          files={showingComplete ? (task?.completeFiles ?? []) : isShowingStage ? (activeTeacherStage?.files ?? []) : files}
+          activeFile={showingComplete ? activeCompleteFile : activeFile}
+          onTabChange={showingComplete ? setActiveCompleteFile : setActiveFile}
+          onFileChange={onFilesChange}
+          onActivity={onActivity}
+          readOnly={showingComplete || isShowingStage || !isInSandbox}
+          assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
+          assets={lesson.assets}
+          storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+          attachedTop={!isInSandbox}
+        />
+      </div>
     </div>
   )
 }
