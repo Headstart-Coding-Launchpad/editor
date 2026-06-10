@@ -221,19 +221,20 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 ---
 
-## MCP Server (`mcp/`)
+## CLI Tool (`cli/`)
 
-Local stdio MCP server for AI-assisted lesson and topic generation. Isolated sub-package — run `cd mcp && npm install` separately. Registered automatically in Claude Code sessions via `.mcp.json`.
+Node.js CLI for lesson and topic library management against Firestore and Firebase Storage. Isolated sub-package — run `cd cli && npm install` separately. Entry point: `node cli/cli.mjs`.
 
 | File | Role |
 |---|---|
-| `mcp/package.json` | Sub-package manifest (`type: module`); deps: `@modelcontextprotocol/sdk`, `firebase-admin`, `js-yaml`, `zod` |
-| `mcp/server.mjs` | Entry point: creates `McpServer`, registers all tools/resources, connects `StdioServerTransport` |
-| `mcp/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore); exits on missing credentials |
-| `mcp/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency); imported by lessons.mjs and yaml-converter.mjs |
-| `mcp/yaml-converter.mjs` | `parseYamlLesson(yamlText)` — converts YAML lesson text to lesson JSON; handles task ID assignment, taskType shorthands, check/answer normalization, groups |
-| `mcp/lessons.mjs` | `registerLessonTools(server)` — tools: `list_lessons`, `get_lesson`, `upsert_lesson`, `delete_lesson`, `validate_lesson`, `yaml_to_lesson` |
-| `mcp/topics.mjs` | `registerTopicTools(server)` — tools: `list_topics`, `get_topic`, `upsert_topic`, `delete_topic` |
+| `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
+| `cli/cli.mjs` | Entry point: yargs CLI with `lessons`, `tasks`, `topics`, `assets` subcommand groups |
+| `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
+| `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency) |
+| `cli/yaml-converter.mjs` | `parseYamlLesson(yamlText)` — converts YAML lesson text to lesson JSON; handles task ID assignment, taskType shorthands, check/answer normalization, groups |
+| `cli/lessons.mjs` | Exports async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
+| `cli/topics.mjs` | Exports async functions: `listTopics`, `getTopic`, `upsertTopic`, `deleteTopic` |
+| `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |
 
 ---
 
@@ -243,6 +244,6 @@ Local stdio MCP server for AI-assisted lesson and topic generation. Isolated sub
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
 | `package.json` | Dependencies and scripts |
-| `.mcp.json` | Claude Code MCP server registration — points to `mcp/server.mjs` via stdio |
+| `.mcp.json` | Obsolete — was Claude Code MCP server registration; no longer used now that the tool is a CLI |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |

@@ -84,7 +84,7 @@ These rules are absolute — do not deviate regardless of context:
 │   ├── admin/           # Admin portal (AccountManagement, LessonPanel, TopicLibraryPanel)
 │   ├── auth/            # Auth context (AuthProvider, ProtectedRoute)
 │   └── shared/          # Modules shared by all sections — never duplicate
-├── mcp/                 # Local MCP server for lesson authoring
+├── cli/                 # CLI tool for lesson and topic library management
 ├── functions/           # Firebase Cloud Functions (account management)
 ├── index.html           # App entry (serves all routes via HashRouter)
 └── vite.config.js
@@ -103,52 +103,62 @@ The admin portal (`/admin`) is accessible only to users with the admin Firebase 
 
 ---
 
-## MCP Server
+## CLI Tool (`cli/`)
 
-The `mcp/` sub-package exposes the lesson and topic library to AI agents via the Model Context Protocol. It runs locally as a stdio process using the Firebase Admin SDK — no browser auth needed.
+The `cli/` sub-package is a CLI for managing lessons, tasks, topics, and assets against Firestore and Firebase Storage. It uses the Firebase Admin SDK — no browser auth needed.
 
-**Storage model:** Lessons and topics live in **Firestore** (`lessons/` and `topicLibrary/` collections), not in local files. Always read `workflow://lesson-authoring` at the start of any lesson authoring session.
+**Storage model:** Lessons and topics live in **Firestore** (`lessons/` and `topicLibrary/` collections), not in local files.
 
 **Auth:** Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
 Download from: Firebase Console → Project Settings → Service Accounts → Generate new private key.
 
 **Setup:**
 1. `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`
-2. `cd mcp && npm install`
-3. Restart Claude Code — server registers automatically from `.mcp.json`
+2. `cd cli && npm install`
 
-**Available tools:**
+**Usage:** `node cli/cli.mjs <command> <subcommand> [args]`
 
-| Tool | Purpose |
+JSON data can be supplied as a file path argument or piped via stdin. All output is JSON to stdout; errors go to stderr with exit code 1.
+
+**Lessons:**
+
+| Command | Purpose |
 |---|---|
-| `list_lessons` | List all lessons currently live in the app (from Firestore) — check before creating or updating |
-| `get_lesson(id)` | Fetch the full live lesson JSON from Firestore — use to inspect or edit an existing lesson |
-| `validate_lesson(lesson)` | Check a lesson JSON for errors before publishing — always call this before `upsert_lesson` |
-| `upsert_lesson(lesson)` | Publish a finished lesson to the live app (writes to Firestore) — validates first, returns errors if invalid |
-| `delete_lesson(id)` | Permanently delete a lesson from Firestore and the live app — cannot be undone |
-| `list_topics` | List all topics in the live topic library (from Firestore) |
-| `get_topic(id)` | Fetch a full topic from Firestore |
-| `upsert_topic(topic)` | Publish a topic to the live topic library (writes to Firestore) |
-| `delete_topic(id)` | Permanently delete a topic from Firestore |
-| `get_lesson_skeleton(id)` | Fetch lesson metadata + compact task list (titles, flat indices, types) without task bodies — use instead of `get_lesson` when you only need to navigate tasks |
-| `get_task(lessonId, taskIndex)` | Fetch one task by 1-based flat index — groups are transparent |
-| `upsert_task(lessonId, taskIndex, task)` | Replace one task by flat index; validates the full lesson before writing |
-| `append_task(lessonId, task, groupTitle?)` | Append a new task to the lesson (or a named group); validates before writing |
-| `list_lesson_assets(lessonId)` | List `storageAssets` for a lesson from its Firestore document |
-| `upload_lesson_asset(lessonId, filename, base64Content, mimeType?)` | Upload a base64-encoded file to Firebase Storage, update `storageAssets` on the lesson document, and return the download URL |
-| `delete_lesson_asset(lessonId, filename)` | Delete a file from Firebase Storage and remove it from `storageAssets` in Firestore |
-| `yaml_to_lesson(yaml)` | Convert a YAML lesson string to lesson JSON — task IDs auto-assigned, type/check/answer shorthands expanded, result validated. Does not publish; use `upsert_lesson` after reviewing. |
+| `lessons list` | List all lessons currently live in the app (from Firestore) |
+| `lessons get <id>` | Fetch the full lesson JSON from Firestore |
+| `lessons skeleton <id>` | Fetch lesson metadata + compact task list without task bodies |
+| `lessons validate [file]` | Validate a lesson JSON — exits 1 if invalid. Does not require credentials. |
+| `lessons upsert [file]` | Publish a lesson JSON to Firestore — validates first |
+| `lessons delete <id>` | Permanently delete a lesson from Firestore |
+| `lessons yaml-to-json [file]` | Convert YAML lesson to JSON + validate. Does not require credentials. |
+| `lessons publish-yaml [file]` | Convert YAML, validate, and publish to Firestore in one step |
 
-**Available resources:**
+**Tasks:**
 
-| URI | Content |
+| Command | Purpose |
 |---|---|
-| `workflow://lesson-authoring` | Step-by-step workflow for creating and publishing lessons — read this first |
-| `lesson://schema` | Full `LESSON_SCHEMA.md` — all lesson JSON fields, types, check types, and examples |
-| `topic://schema` | Full `TOPIC_LIBRARY_SCHEMA.md` — topic object fields and wiki-link syntax |
-| `yaml://format` | Full `YAML_LESSON_FORMAT.md` — YAML lesson shorthand syntax and examples |
+| `tasks get <lessonId> <taskIndex>` | Fetch one task by 1-based flat index — groups are transparent |
+| `tasks upsert <lessonId> <taskIndex> [file]` | Replace one task by flat index; validates the full lesson before writing |
+| `tasks append <lessonId> [file] [--group <title>]` | Append a new task to the lesson (or a named group); validates before writing |
 
-**Note:** Scratch toolbox XML validation is skipped in `validate_lesson` (no `DOMParser` in Node.js) — use the builder preview to catch toolbox XML errors.
+**Topics:**
+
+| Command | Purpose |
+|---|---|
+| `topics list` | List all topics in the live topic library |
+| `topics get <id>` | Fetch a full topic from Firestore |
+| `topics upsert [file]` | Create or update a topic in the topic library |
+| `topics delete <id>` | Permanently delete a topic from Firestore |
+
+**Assets:**
+
+| Command | Purpose |
+|---|---|
+| `assets list <lessonId>` | List `storageAssets` for a lesson |
+| `assets upload <lessonId> <filepath> [--filename <name>] [--mime-type <type>]` | Upload a local file to Firebase Storage; MIME type auto-detected from extension |
+| `assets delete <lessonId> <filename>` | Delete a file from Firebase Storage and remove it from `storageAssets` |
+
+**Note:** Scratch toolbox XML validation is skipped server-side (no `DOMParser` in Node.js) — use the builder preview to catch XML errors.
 
 ---
 
