@@ -1741,10 +1741,9 @@ select {
   gap: 0;
 }
 .te-python-editor {
-  height: 300px;
+  min-height: 300px;
   border: 1px solid #e5e7eb;
   border-radius: 0 0 8px 8px;
-  overflow: hidden;
 }
 .te-attached-code-editor {
   border-radius: 0 0 8px 8px;
