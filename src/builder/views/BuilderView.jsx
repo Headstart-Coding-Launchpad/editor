@@ -10,6 +10,7 @@ import TaskFeedbackPanel from '../components/TaskFeedbackPanel'
 import BuilderToolbar from '../components/BuilderToolbar'
 import PreviewView from './PreviewView'
 import { useBuilderState } from '../hooks/useBuilderState'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildPrintHtml } from '../printLesson'
 import { flattenTasks, updateTaskInTasks } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
@@ -44,7 +45,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     selectedGroup,
     lessonForEditor,
     selectedTaskGroup,
-  } = useBuilderState({ lesson, onUpdate })
+  const { defaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
+  } = useBuilderState({ lesson, onUpdate, defaultSprites })
 
   useEffect(() => {
     if (!selectedTaskId || !lesson?.id) { setTaskFeedback([]); return }
