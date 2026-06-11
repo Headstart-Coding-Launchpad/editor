@@ -32,11 +32,12 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons and Accounts panels |
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons, Topics, Shared Assets, Accounts, and Feedback panels |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
 | `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
+| `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite editor |
 
 ---
 
@@ -118,7 +119,12 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
 | `useStudentPhase.js` | Student phase state machine (loading → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
-| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, Pyodide lifecycle, run/stop handlers, localStorage persistence |
+| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers; composes the four sub-hooks below |
+| `usePyodideState.js` | Pyodide warm-up effect, `pyodideStatus` state, and `initPyodideIfNeeded()` helper |
+| `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
+| `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
+| `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects |
+| `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `readDraggedTileId`, `writeDraggedTileId`, `setLiftedDragImage`, `removeTileFromState` |
 
 ---
 
@@ -145,6 +151,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | File | Role |
 |---|---|
 | `useBuilderState.js` | Task CRUD state and handlers (add, duplicate, delete, reorder, subtasks) plus derived state (errors, warnings, flatTasks, selectedTask/Group) — no DOM, independently unit-testable |
+| `useTaskEditorState.js` | Run/check/output state and handlers for the task editor: `handleRun`, `handleRunTests`, `handleStop`, `handleTestChecks`, `handleQuizPreviewSelect`, `handleInputSubmit`, `resetRunState` |
 
 ---
 
@@ -154,7 +161,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 |---|---|
 | `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, assets, sandbox config modals |
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
-| `TaskEditor.jsx` | Task editor composition root: imports sub-modules, re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+| `TaskEditor.jsx` | Task editor composition root (≤500 lines): orchestrates sub-components and workspace panels; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
@@ -174,6 +181,15 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `ScratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor` |
 | `FilesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` (visual starter/complete FS editor) and `FsCheckListEditor` (filesystem check builder) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
+| `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
+| `TaskCheckResults.jsx` | Pass/fail check result banner shown after running or testing checks in the builder |
+| `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
+| `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
+| `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check, incorrect checks, and tests |
+| `PythonTaskWorkspace.jsx` | Python code editor + run controls panel for the builder (starter/complete/stage tabs) |
+| `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
+| `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |
+| `ScratchTaskSetup.jsx` | Scratch block editor modal and setup summary; owns all scratch-specific state and handlers |
 
 ---
 
@@ -188,9 +204,11 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
 | `useAssets.js` | Hook for fetching `public/assets/manifest.json` (returns empty arrays when absent); exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` for static asset paths — currently returns empty everywhere |
+| `useTypeAssets.js` | Hook for fetching `lessonTypeAssets/{type}` from Firestore; returns `typeStorageAssets` and `defaultSprites` for type-wide shared files and Scratch sprite defaults |
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
+| `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 | `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
@@ -207,6 +225,8 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` from Firestore `lessons` collection, plus `fetchLessonList()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
+| `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
+| `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 
 ---
 

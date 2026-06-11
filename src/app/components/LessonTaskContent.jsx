@@ -1,5 +1,7 @@
 import React from 'react'
+import Banner from '../../shared/Banner'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 import { normaliseDirPath } from '../../shared/filesystem'
 import { loadSavedCode, loadPersonalSandboxCode } from '../studentStorage'
 import { selectScratchInitialProject } from '../studentTaskContent'
@@ -49,6 +51,16 @@ export default function LessonTaskContent({
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
 }) {
+  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
+  const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
+  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
+    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
+    : htmlTypeAssets
+  const htmlStorageAssets = [
+    ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),
+  ]
+
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
     : (!isSandbox && isInformationTask)
@@ -70,13 +82,13 @@ export default function LessonTaskContent({
   return (
     <TaskSlideTransition transitionKey={transitionKey} style={taskContentStyle}>
       {previewMode && task && !isSandbox && (
-        <div style={s.previewTaskModeBanner}>
+        <Banner accent="#0ea5e9" color="#0369a1" style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}>
           {task.taskMode === 'live'
             ? 'Live sessions only'
             : task.taskMode === 'solo'
             ? 'Solo mode only'
             : 'Live + Solo'}
-        </div>
+        </Banner>
       )}
 
       {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
@@ -163,6 +175,7 @@ export default function LessonTaskContent({
             displayActiveFile={displayActiveFile}
             displayRunStatus={displayRunStatus}
             displaySelection={displaySelection}
+            htmlStorageAssets={htmlStorageAssets}
           />
         ) : (
           <HtmlDesktopContent
@@ -175,6 +188,7 @@ export default function LessonTaskContent({
             displayActiveFile={displayActiveFile}
             displayRunStatus={displayRunStatus}
             displaySelection={displaySelection}
+            htmlStorageAssets={htmlStorageAssets}
           />
         )}
       </div>
@@ -335,7 +349,7 @@ function ScratchContent({ lesson, task, cs, lessonId, identityId, activeStudentV
 
 // ─── HTML mobile task ─────────────────────────────────────────────────────────
 
-function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection }) {
+function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection, htmlStorageAssets }) {
   return (
     <div style={s.htmlMobile}>
       <div style={s.htmlLeft}>
@@ -359,7 +373,7 @@ function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLiv
           readOnly={isViewingPrev || isForcedTeacherLive}
           assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
           assets={lesson.assets}
-          storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+          storageAssets={htmlStorageAssets}
         />
       </div>
       {task?.interactionMode !== 'submit' && (
@@ -383,7 +397,7 @@ function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLiv
 
 // ─── HTML desktop task ────────────────────────────────────────────────────────
 
-function HtmlDesktopContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection }) {
+function HtmlDesktopContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection, htmlStorageAssets }) {
   return (
     <>
       <SplitPane
@@ -422,7 +436,7 @@ function HtmlDesktopContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLi
               readOnly={isViewingPrev || isForcedTeacherLive}
               assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
               assets={lesson.assets}
-              storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+              storageAssets={htmlStorageAssets}
             />
           </div>
         }
@@ -507,16 +521,6 @@ const s = {
     flexDirection: 'column',
     gap: '8px',
     minHeight: 0,
-  },
-  previewTaskModeBanner: {
-    background: 'rgba(14,165,233,0.08)',
-    borderBottom: '1px solid rgba(14,165,233,0.2)',
-    padding: '5px 16px',
-    fontSize: 12,
-    color: '#0369a1',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    flexShrink: 0,
   },
   studentEditorHeader: {
     flexShrink: 0,

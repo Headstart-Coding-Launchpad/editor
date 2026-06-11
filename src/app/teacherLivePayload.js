@@ -1,6 +1,7 @@
 import { findTaskById } from '../shared/taskUtils'
+import { decodeFileKey } from '../shared/fileKeys'
 
-export function buildStudentLivePayload({ student, lesson, taskId, entryFileTaskId, decodeFileKey }) {
+export function buildStudentLivePayload({ student, lesson, taskId, entryFileTaskId }) {
   const task = findTaskById(lesson?.tasks, entryFileTaskId)
   const files = student.currentFiles
     ? Object.fromEntries(Object.entries(student.currentFiles).map(([key, content]) => [decodeFileKey(key), content]))

@@ -46,11 +46,6 @@ vi.mock('../LiveActivityToast', () => ({
   default: () => null,
 }))
 
-// Prevent useSession's firebase imports from running — we only need decodeFileKey
-vi.mock('../../hooks/useSession', () => ({
-  decodeFileKey: (key) => key.replace(/__dot__/g, '.'),
-}))
-
 vi.mock('../../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
 
 const BASE_STUDENT = {

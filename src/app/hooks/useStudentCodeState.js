@@ -1,15 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
+import { runPython, stopPython, provideInput } from '../../shared/pyodide'
 import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
 import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../shared/checks'
 import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
-import { decodeFileKey } from './useSession'
+import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, loadSavedFs, saveFsState } from '../studentStorage'
-import { selectHtmlTaskFiles, selectPythonTaskCode, selectScratchInitialProject } from '../studentTaskContent'
-import { toTeacherLiveFiles } from '../studentLiveDisplay'
+import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
 import { getQuizSuggestion } from '../studentQuizContent'
+import { usePyodideState } from './usePyodideState'
+import { useCheckFeedback } from './useCheckFeedback'
+import { createStudentPersistence } from './createStudentPersistence'
+import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 
 /**
  * Owns all student editor/code workspace state: code, files, output, checks, personal sandbox,
@@ -49,16 +53,8 @@ export function useStudentCodeState({
   const [runStatus, setRunStatus]         = useState(null)
   const [running, setRunning]             = useState(false)
   const [runningTests, setRunningTests]   = useState(false)
-  const [testResults, setTestResults]     = useState(null)
-  const [pyodideStatus, setPyodideStatus] = useState('idle')
   const [iframeSrc, setIframeSrc]         = useState(null)
-  const [teacherLiveIframeSrc, setTeacherLiveIframeSrc] = useState(null)
-  const [htmlPreviewCollapsed, setHtmlPreviewCollapsed] = useState(true)
   const [inputPrompt, setInputPrompt]     = useState(null)
-  const [checkPassed, setCheckPassed]     = useState(false)
-  const [checkAttempted, setCheckAttempted] = useState(false)
-  const [checkSuggestion, setCheckSuggestion] = useState('')
-  const [repeatedSuggestionCount, setRepeatedSuggestionCount] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
@@ -105,75 +101,47 @@ export function useStudentCodeState({
   activeFileRef.current      = activeFile
   const fsInteractionRef     = useRef(fsInteraction)
   fsInteractionRef.current   = fsInteraction
-  const checkPassedRef       = useRef(checkPassed)
-  checkPassedRef.current     = checkPassed
+
+  // ─── Sub-hooks ────────────────────────────────────────────────────────────
+
+  const { pyodideStatus, setPyodideStatus, initPyodideIfNeeded } = usePyodideState({ lesson })
+
+  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson?.type === 'html' ? 'html' : null)
+  const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
+  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
+    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
+    : htmlTypeAssets
+  const htmlIframeStorageAssets = [
+    ...(lesson?.storageAssets ?? []).filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !(lesson?.storageAssets ?? []).some(b => b.name === a.name)),
+  ]
+
+  const myStudentData = session?.students?.[identity?.anonymousId]
+  const {
+    checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
+    checkSuggestion, setCheckSuggestion, repeatedSuggestionCount,
+    testResults, setTestResults, checkPassedRef,
+    resetCheckFeedback, applyCheckFeedback,
+  } = useCheckFeedback({ myStudentData })
+
+  const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef })
+
+  const { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
+    teacherPresentation,
+    identityRef, sessionRef, lessonRef, currentTaskIdRef,
+    codeRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
+    editorSelectionRef, editorActivityRef,
+    lesson, session, identity, currentTaskId,
+    code, files, activeFile, output, runStatus,
+    checkPassed, checkAttempted, checkSuggestion, fsState,
+    iframeStorageAssets: htmlIframeStorageAssets,
+    updateTeacherLive,
+  })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
   const shouldSkipLocalPersist = teacherPresentation || previewMode
 
-  // ─── Teacher live broadcast helpers ───────────────────────────────────────
-
-  function canPublishTeacherLive() {
-    const s = sessionRef.current
-    if (!s?.teacherLive?.active) return false
-    if (teacherPresentation) return s?.teacherLive?.source !== 'student'
-    return s.teacherLive.sourceStudentId === identityRef.current?.anonymousId
-  }
-
-  function currentTeacherLivePayload(extra = {}) {
-    const isFilesystem = lessonRef.current?.type === 'filesystem'
-    const filesMap = isFilesystem ? {} : Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
-    const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
-    const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
-    return {
-      active: true,
-      source: teacherPresentation ? 'teacher' : 'student',
-      sourceStudentId,
-      sourceStudentName,
-      taskId: currentTaskIdRef.current,
-      lessonType: lessonRef.current?.type,
-      code: isFilesystem ? JSON.stringify(fsStateRef.current) : codeRef.current,
-      files: filesMap,
-      activeFile: activeFileRef.current,
-      output: outputRef.current,
-      runStatus: runStatusRef.current,
-      checkPassed,
-      checkAttempted,
-      checkSuggestion,
-      selection: editorSelectionRef.current,
-      activity: editorActivityRef.current,
-      ...extra,
-    }
-  }
-
-  function publishTeacherLive(extra = {}) {
-    if (!canPublishTeacherLive()) return
-    updateTeacherLive(currentTeacherLivePayload(extra))
-  }
-
-  // ─── Check feedback helpers ────────────────────────────────────────────────
-
-  function resetCheckFeedback() {
-    setCheckPassed(false)
-    setCheckAttempted(false)
-    setCheckSuggestion('')
-    setRepeatedSuggestionCount(0)
-    setTestResults(null)
-  }
-
-  function applyCheckFeedback(passed, suggestion = '') {
-    const nextSuggestion = passed ? '' : String(suggestion ?? '').trim()
-    setCheckPassed(passed)
-    setCheckAttempted(true)
-    setCheckSuggestion(nextSuggestion)
-    setRepeatedSuggestionCount(prev => {
-      if (passed || !nextSuggestion) return 0
-      return checkSuggestion === nextSuggestion ? prev + 1 : 1
-    })
-    return nextSuggestion
-  }
-
-  // ─── localStorage persistence helpers ─────────────────────────────────────
+  // ─── localStorage snapshot helpers ────────────────────────────────────────
 
   function saveCurrentWorkSnapshot() {
     const id = identityRef.current
@@ -297,32 +265,6 @@ export function useStudentCodeState({
     if (lesson?.type === 'html') setHtmlPreviewCollapsed(true)
   }, [lesson?.type, currentTaskId])
 
-  // Build teacher-live iframe src for HTML lessons
-  useEffect(() => {
-    if (teacherPresentation || lesson?.type !== 'html' || !session?.teacherLive?.active || !session.teacherLive.files) {
-      setTeacherLiveIframeSrc(null)
-      return
-    }
-    const liveFiles = toTeacherLiveFiles(session.teacherLive.files)
-    const liveTask = flattenTasks(lesson.tasks).find(t => t.id === session.teacherLive.taskId)
-    setHtmlPreviewCollapsed(false)
-    setTeacherLiveIframeSrc(buildIframeSrc(liveFiles, liveTask?.entryFile ?? 'index.html', {
-      assets: lesson.assets ?? [],
-      assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
-    }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])
-
-  // Warm up Pyodide for Python lessons
-  useEffect(() => {
-    if (!lesson || lesson.type !== 'python' || isPyodideReady()) return
-    setPyodideStatus('loading')
-    initPyodide(msg => setPyodideStatus(msg))
-      .then(() => setPyodideStatus('ready'))
-      .catch(() => setPyodideStatus('error'))
-  }, [lesson])
-
   // Load task content when task or phase changes
   useEffect(() => {
     if ((phase === 'lesson' || phase === 'solo') && effectiveIdentity && lesson) {
@@ -330,13 +272,6 @@ export function useStudentCodeState({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentTaskId, lesson, effectiveIdentity?.anonymousId])
-
-  // Publish to teacherLive when code/output/fsState changes and we are the source
-  useEffect(() => {
-    if (!canPublishTeacherLive()) return
-    updateTeacherLive(currentTeacherLivePayload())
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
 
   // When phase leaves lesson/solo, exit personal sandbox silently
   useEffect(() => {
@@ -436,7 +371,6 @@ export function useStudentCodeState({
   }, [phase, session?.sandboxFilesUpdatedAt])
 
   // React to teacher remotely resetting or completing this student's code
-  const myStudentData = session?.students?.[identity?.anonymousId]
   useEffect(() => {
     if (!myStudentData?.remoteResetPushedAt || (phase !== 'lesson' && phase !== 'solo')) return
     const action = myStudentData.remoteResetAction
@@ -501,15 +435,6 @@ export function useStudentCodeState({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
-
-  // React to teacher overriding this student's check result
-  useEffect(() => {
-    if (!myStudentData?.checkOverridePushedAt) return
-    setCheckPassed(myStudentData.checkOverridePassed)
-    setCheckAttempted(true)
-    setCheckSuggestion(myStudentData.checkOverridePassed ? '' : (myStudentData.checkOverrideHint ?? ''))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myStudentData?.checkOverridePushedAt])
 
   // ─── Personal sandbox ──────────────────────────────────────────────────────
 
@@ -603,13 +528,7 @@ export function useStudentCodeState({
       if (canPublishTeacherLive()) {
         publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
       }
-      if (!teacherPresentation && !previewMode) {
-        if (inPersonalSandboxRef.current) {
-          savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
-        } else {
-          saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: accumulated, runStatus: status })
-        }
-      }
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: accumulated, runStatus: status })
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
         await writeStudentRun(actor.anonymousId, { code, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
       }
@@ -623,7 +542,7 @@ export function useStudentCodeState({
     const src = buildIframeSrc(currentFiles, task?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
+      storageAssets: htmlIframeStorageAssets,
     })
     setIframeSrc(src)
     setRunStatus('success')
@@ -650,13 +569,7 @@ export function useStudentCodeState({
           writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
         }
       }
-      if (!teacherPresentation && !previewMode) {
-        if (inPersonalSandboxRef.current) {
-          currentFiles.forEach(f => savePersonalSandboxFile(lessonId, f.name, actor.anonymousId, f.content))
-        } else {
-          currentFiles.forEach(f => saveFile(lessonId, taskIdAtRunTime, f.name, actor.anonymousId, f.content))
-        }
-      }
+      persistence.saveHtmlFiles(actor.anonymousId, taskIdAtRunTime, currentFiles)
       setRunning(false)
     })
   }
@@ -687,11 +600,7 @@ export function useStudentCodeState({
 
     const results = []
     try {
-      if (!isPyodideReady()) {
-        setPyodideStatus('loading')
-        await initPyodide()
-        setPyodideStatus('ready')
-      }
+      await initPyodideIfNeeded()
 
       for (const test of task.tests) {
         const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
@@ -721,13 +630,7 @@ export function useStudentCodeState({
       if (canPublishTeacherLive()) {
         publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
       }
-      if (!teacherPresentation && !previewMode) {
-        if (inPersonalSandboxRef.current) {
-          savePersonalSandboxCode(lessonId, actor.anonymousId, { code })
-        } else {
-          saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: displayedOutput, runStatus: finalStatus })
-        }
-      }
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: displayedOutput, runStatus: finalStatus })
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
         await writeStudentRun(actor.anonymousId, { code, output: displayedOutput, status: finalStatus, checkPassed: allPassed })
       }
@@ -743,16 +646,10 @@ export function useStudentCodeState({
 
   function handleCodeChange(newCode) {
     setCode(newCode)
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ code: newCode })
-    }
+    if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
     if (shouldSkipLocalPersist) return
     if (identity && lesson?.type === 'python') {
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxCode(lessonId, identity.anonymousId, { code: newCode })
-      } else {
-        saveCode(lessonId, currentTaskId, identity.anonymousId, { code: newCode, output, runStatus })
-      }
+      persistence.savePythonCode(identity.anonymousId, currentTaskId, { code: newCode, output, runStatus })
     }
     if (session?.activeStudentView === identity?.anonymousId) {
       writeStudentCode(identity.anonymousId, newCode)
@@ -797,11 +694,7 @@ export function useStudentCodeState({
     }
     if (shouldSkipLocalPersist) return
     if (identity && lesson?.type === 'html') {
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxFile(lessonId, filename, identity.anonymousId, content)
-      } else {
-        saveFile(lessonId, currentTaskId, filename, identity.anonymousId, content)
-      }
+      persistence.saveHtmlFile(identity.anonymousId, currentTaskId, filename, content)
     }
     if (session?.activeStudentView === identity?.anonymousId) {
       const filesMap = Object.fromEntries(
@@ -812,16 +705,10 @@ export function useStudentCodeState({
   }
 
   function handleScratchChange(workspaceStates) {
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({ code: JSON.stringify(workspaceStates) })
-    }
+    if (canPublishTeacherLive()) publishTeacherLive({ code: JSON.stringify(workspaceStates) })
     if (shouldSkipLocalPersist) return
     if (!identity) return
-    if (inPersonalSandboxRef.current) {
-      savePersonalSandboxCode(lessonId, identity.anonymousId, { state: workspaceStates })
-    } else {
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { state: workspaceStates })
-    }
+    persistence.saveScratch(identity.anonymousId, currentTaskId, workspaceStates)
     if (activeStudentViewRef.current === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, JSON.stringify(workspaceStates))
     }
@@ -866,13 +753,7 @@ export function useStudentCodeState({
 
   function handleFsChange(newFs) {
     setFsState(newFs)
-    if (!teacherPresentation && !previewMode) {
-      if (inPersonalSandboxRef.current) {
-        savePersonalSandboxFs(lessonId, effectiveIdentity?.anonymousId, newFs)
-      } else {
-        saveFsState(lessonId, currentTaskId, effectiveIdentity?.anonymousId, newFs)
-      }
-    }
+    persistence.saveFs(effectiveIdentity?.anonymousId, currentTaskId, newFs)
     applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
   }
 
@@ -987,10 +868,10 @@ export function useStudentCodeState({
         checkSuggestion: suggestion,
       })
     }
-    if (!teacherPresentation && !previewMode && isHtml) {
-      files.forEach(f => saveFile(lessonId, currentTaskId, f.name, actor.anonymousId, f.content))
-    } else if (!teacherPresentation && !previewMode) {
-      saveCode(lessonId, currentTaskId, actor.anonymousId, { code, output: '', runStatus: 'submitted' })
+    if (isHtml) {
+      persistence.saveHtmlFiles(actor.anonymousId, currentTaskId, files)
+    } else {
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: '', runStatus: 'submitted' })
     }
     if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
       const filesMap = isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : undefined
@@ -1063,7 +944,7 @@ export function useStudentCodeState({
     exitPersonalSandbox,
     currentTeacherLivePayload,
     canPublishTeacherLive,
-    publishTeacherLive: publishTeacherLive,
+    publishTeacherLive,
     updateTeacherLiveFn: updateTeacherLive,
     setTeacherLiveFn: setTeacherLive,
   }

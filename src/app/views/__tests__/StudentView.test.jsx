@@ -19,7 +19,6 @@ vi.mock('../../../shared/lessonService', () => ({
 }))
 
 vi.mock('../../hooks/useSession', () => ({
-  decodeFileKey: key => key.replace(/__dot__/g, '.'),
   useSession: (...args) => mocks.useSession(...args),
 }))
 
