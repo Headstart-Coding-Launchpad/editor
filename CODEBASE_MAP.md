@@ -160,7 +160,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 |---|---|
 | `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, assets, sandbox config modals |
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
-| `TaskEditor.jsx` | Task editor composition root; delegates run/check state to `useTaskEditorState`; defines local sub-components `TaskPreviewPanel`, `TaskCheckResults`, `TaskRunControls`, `TaskTestResults`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+| `TaskEditor.jsx` | Task editor composition root (≤500 lines): orchestrates sub-components and workspace panels; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
@@ -180,6 +180,15 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `ScratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor` |
 | `FilesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` (visual starter/complete FS editor) and `FsCheckListEditor` (filesystem check builder) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
+| `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
+| `TaskCheckResults.jsx` | Pass/fail check result banner shown after running or testing checks in the builder |
+| `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
+| `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
+| `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check, incorrect checks, and tests |
+| `PythonTaskWorkspace.jsx` | Python code editor + run controls panel for the builder (starter/complete/stage tabs) |
+| `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
+| `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |
+| `ScratchTaskSetup.jsx` | Scratch block editor modal and setup summary; owns all scratch-specific state and handlers |
 
 ---
 
