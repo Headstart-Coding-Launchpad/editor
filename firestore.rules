@@ -38,6 +38,14 @@ service cloud.firestore {
                        || request.auth.token.role == 'admin');
     }
 
+    // Lesson-type-wide shared assets and default sprites.
+    // Public read so the builder can fetch them without auth.
+    match /lessonTypeAssets/{lessonType} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.role == 'admin';
+    }
+
     // Platform feedback: teacher or admin can write; admin can read.
     match /platformFeedback/{feedbackId} {
       allow read: if request.auth != null

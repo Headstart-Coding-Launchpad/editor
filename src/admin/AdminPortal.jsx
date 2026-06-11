@@ -6,10 +6,12 @@ import AccountManagement from './AccountManagement'
 import LessonPanel from './LessonPanel'
 import TopicLibraryPanel from './TopicLibraryPanel'
 import FeedbackPanel from './FeedbackPanel'
+import SharedAssetsPanel from './SharedAssetsPanel'
 
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
   { id: 'topics', label: 'Topic Library' },
+  { id: 'shared-assets', label: 'Shared Assets' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'feedback', label: 'Platform Feedback' },
 ]
@@ -51,6 +53,7 @@ export default function AdminPortal() {
       <main style={s.main}>
         {activeTab === 'lessons' && <LessonPanel />}
         {activeTab === 'topics' && <TopicLibraryPanel />}
+        {activeTab === 'shared-assets' && <SharedAssetsPanel />}
         {activeTab === 'accounts' && <AccountManagement />}
         {activeTab === 'feedback' && <FeedbackPanel />}
       </main>

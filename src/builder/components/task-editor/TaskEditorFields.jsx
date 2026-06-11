@@ -1,6 +1,7 @@
 import React from 'react'
 import AssetBrowser from '../../../shared/AssetBrowser'
 import { useAssets } from '../../../shared/useAssets'
+import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
 import { createSpriteFromPreset, normalizeSpritePresets, SPRITE_PRESETS_PATH } from '../../spritePresets'
@@ -457,8 +458,10 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
 function CostumeManager({ costumes, assetsPath, storageAssets, lessonId, lessonType, onAdd, onRemove, onUpdate }) {
   const [browsingIdx, setBrowsingIdx] = React.useState(null)
   const { lessonAssets } = useAssets()
+  const { typeStorageAssets } = useTypeAssets(lessonType)
   const assets = lessonAssets(lessonId, lessonType)
-  const hasAnyAssets = assets.length > 0 || storageAssets?.length > 0
+  const mergedStorageAssets = [...(storageAssets ?? []), ...typeStorageAssets.filter(a => !(storageAssets ?? []).some(b => b.name === a.name))]
+  const hasAnyAssets = assets.length > 0 || mergedStorageAssets.length > 0
 
   return (
     <div className="te-costume-manager">
@@ -517,7 +520,7 @@ function CostumeManager({ costumes, assetsPath, storageAssets, lessonId, lessonT
                 <AssetBrowser
                   assetsPath={assetsPath}
                   assets={assets}
-                  storageAssets={storageAssets}
+                  storageAssets={mergedStorageAssets}
                   mode="select"
                   onSelect={path => { onUpdate(idx, 'image', path); setBrowsingIdx(null) }}
                 />
@@ -536,8 +539,10 @@ function CostumeManager({ costumes, assetsPath, storageAssets, lessonId, lessonT
 export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets, lessonId, lessonType }) {
   const [browsingId, setBrowsingId] = React.useState(null)
   const { lessonAssets } = useAssets()
+  const { typeStorageAssets } = useTypeAssets(lessonType)
   const assets = lessonAssets(lessonId, lessonType)
-  const hasAnyAssets = assets.length > 0 || storageAssets?.length > 0
+  const mergedStorageAssets = [...(storageAssets ?? []), ...typeStorageAssets.filter(a => !(storageAssets ?? []).some(b => b.name === a.name))]
+  const hasAnyAssets = assets.length > 0 || mergedStorageAssets.length > 0
 
   function add() {
     const next = backdrops.length + 1
@@ -639,7 +644,7 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                 <AssetBrowser
                   assetsPath={assetsPath}
                   assets={assets}
-                  storageAssets={storageAssets}
+                  storageAssets={mergedStorageAssets}
                   mode="select"
                   onSelect={path => { update(b.id, { image: path }); setBrowsingId(null) }}
                 />

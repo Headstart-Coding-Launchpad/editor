@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { normalizeChecks } from '../../../shared/checks'
 import { DEFAULT_SPRITES } from '../../../shared/scratch'
+import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { Field, CarryThroughPicker } from './TaskEditorFields'
 import { CheckListEditor } from './CheckEditors'
 import { ScratchCheckListEditor } from './ScratchEditors'
@@ -13,6 +14,8 @@ export default function TaskOptionsSection({
   setCheckResults, setRunStatus, handleInteractionModeChange,
 }) {
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const { defaultSprites: typeDefaultSprites } = useTypeAssets(isScratch ? 'scratch' : null)
+  const effectiveDefaultSprites = typeDefaultSprites.length > 0 ? typeDefaultSprites : DEFAULT_SPRITES
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -105,7 +108,7 @@ export default function TaskOptionsSection({
               <ScratchCheckListEditor
                 checks={normalizeChecks(task.check)}
                 onChange={checks => set('check', checks)}
-                sprites={task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES}
+                sprites={task.sprites?.length > 0 ? task.sprites : effectiveDefaultSprites}
               />
             ) : task.check && isFilesystem ? (
               <FsCheckListEditor

@@ -100,6 +100,7 @@ The admin portal (`/admin`) is accessible only to users with the admin Firebase 
 - **Accounts** — create teacher/admin accounts, set roles, disable/enable, delete (via Cloud Functions)
 - **Lessons** — browse all Firestore lessons grouped by type and level; launch as teacher or copy student link
 - **Topic Library** — create, edit, and delete topics with full Markdown description and syntax fields
+- **Shared Assets** — manage lesson-type-wide Firebase Storage files and Scratch default sprites (`lessonTypeAssets/{type}` Firestore collection; storage at `shared/{type}/assets/`)
 
 ---
 

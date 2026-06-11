@@ -7,6 +7,7 @@ import ScratchWorkspace from '../../app/components/ScratchWorkspace'
 import { ScratchToolboxPicker, SpriteManager, BackdropManager } from './TaskEditor'
 import { DEFAULT_SPRITES } from '../../shared/scratch'
 import { useAssets } from '../../shared/useAssets'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 import AssetBrowser from '../../shared/AssetBrowser'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { FsTreeEditor } from './task-editor/FilesystemEditors'
@@ -16,6 +17,8 @@ import { useAuth } from '../../auth/useAuth'
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
+  const { defaultSprites: typeDefaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
+  const effectiveDefaultSprites = typeDefaultSprites.length > 0 ? typeDefaultSprites : DEFAULT_SPRITES
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
 
@@ -152,7 +155,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
               <ScratchSandboxStarter
                 value={lesson.sandboxStarter}
                 toolbox={lesson.sandboxToolbox ?? ''}
-                sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : DEFAULT_SPRITES}
+                sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : effectiveDefaultSprites}
                 backdrops={lesson.sandboxBackdrops?.length > 0 ? lesson.sandboxBackdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
                 assetsPath={lesson.assetsPath ?? ''}
                 storageAssets={lesson.storageAssets ?? []}

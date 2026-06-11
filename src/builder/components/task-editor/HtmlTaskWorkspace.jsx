@@ -2,6 +2,7 @@ import SplitPane from '../../../shared/SplitPane'
 import { CodeEditor } from '../../../shared/CodeEditor'
 import AssetBrowser from '../../../shared/AssetBrowser'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
+import { useTypeAssets } from '../../../shared/useTypeAssets'
 import IframePreview from '../../../app/components/IframePreview'
 import { CollapseTabButton } from '../../../app/components/CollapsiblePanelControls'
 import FileManager from '../FileManager'
@@ -33,6 +34,13 @@ export default function HtmlTaskWorkspace({
     : isStageTab
     ? (activeStage?.entryFile ?? task.entryFile ?? 'index.html')
     : (task.entryFile ?? 'index.html')
+
+  const { typeStorageAssets } = useTypeAssets(lesson.type)
+  const lessonStorageAssets = lesson.storageAssets ?? []
+  const allStorageAssets = [
+    ...lessonStorageAssets,
+    ...typeStorageAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
+  ]
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -204,12 +212,12 @@ export default function HtmlTaskWorkspace({
         <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
       </div>
 
-      {((lesson.assetsPath && lesson.assets?.length > 0) || lesson.storageAssets?.some(a => a.showInEditor)) && (
+      {((lesson.assetsPath && lesson.assets?.length > 0) || allStorageAssets.some(a => a.showInEditor)) && (
         <Field label="Asset browser (read-only - copy paths to use in starter code)">
           <AssetBrowser
             assetsPath={resolveAssetsPath(lesson.assetsPath)}
             assets={lesson.assets}
-            storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+            storageAssets={allStorageAssets.filter(a => a.showInEditor)}
             copyMode="relative"
           />
         </Field>
