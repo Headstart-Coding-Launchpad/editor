@@ -125,7 +125,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
           <SharedAssetsSelector
             typeStorageAssets={typeStorageAssets}
             sharedAssetNames={lesson.sharedAssetNames ?? null}
-            onChange={names => onUpdate(prev => ({ ...prev, sharedAssetNames: names.length ? names : undefined }))}
+            onChange={names => onUpdate(prev => ({ ...prev, sharedAssetNames: names }))}
           />
         )}
 

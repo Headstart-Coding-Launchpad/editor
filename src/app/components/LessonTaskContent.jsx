@@ -55,7 +55,7 @@ export default function LessonTaskContent({
   const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
   const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
     ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
-    : htmlTypeAssets.filter(a => a.showInEditor)
+    : htmlTypeAssets
   const htmlStorageAssets = [
     ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
     ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),

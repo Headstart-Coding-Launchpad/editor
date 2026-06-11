@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
@@ -148,14 +148,16 @@ function TypeAssetsEditor({ lessonType }) {
             <a href={asset.url} target="_blank" rel="noopener noreferrer" style={s.assetName} title={asset.url}>
               {asset.name}
             </a>
-            <label style={s.showInEditorLabel}>
-              <input
-                type="checkbox"
-                checked={!!asset.showInEditor}
-                onChange={() => handleToggleShowInEditor(asset)}
-              />
-              Web editor
-            </label>
+            {lessonType !== 'html' && (
+              <label style={s.showInEditorLabel}>
+                <input
+                  type="checkbox"
+                  checked={!!asset.showInEditor}
+                  onChange={() => handleToggleShowInEditor(asset)}
+                />
+                Web editor
+              </label>
+            )}
             <button style={s.copyUrlBtn} onClick={() => navigator.clipboard.writeText(asset.url).catch(() => {})}>
               Copy URL
             </button>
@@ -167,6 +169,7 @@ function TypeAssetsEditor({ lessonType }) {
       {isScratch && (
         <DefaultSpritesEditor
           sprites={defaultSprites}
+          storageAssets={storageAssets}
           onChange={sprites => updateField('defaultSprites', sprites)}
         />
       )}
@@ -174,22 +177,54 @@ function TypeAssetsEditor({ lessonType }) {
   )
 }
 
-function DefaultSpritesEditor({ sprites, onChange }) {
+function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
+  const [expandedCostumes, setExpandedCostumes] = useState({})
+
   function addSprite() {
     const next = sprites.length + 1
     let id = `sprite${next}`
     while (sprites.some(sp => sp.id === id)) { id = `sprite${parseInt(id.replace('sprite', '')) + 1}` }
-    onChange([...sprites, { id, name: `Sprite ${next}`, type: 'cat', x: 0, y: 0, size: 100, direction: 90 }])
+    onChange([...sprites, { id, name: `Sprite ${next}`, type: 'cat', x: 0, y: 0, size: 100, direction: 90, costumes: [] }])
   }
 
   function removeSprite(id) {
     if (sprites.length <= 1) return
     onChange(sprites.filter(sp => sp.id !== id))
+    setExpandedCostumes(prev => { const next = { ...prev }; delete next[id]; return next })
   }
 
   function update(id, field, value) {
     onChange(sprites.map(sp => sp.id === id ? { ...sp, [field]: value } : sp))
   }
+
+  function toggleCostumes(id) {
+    setExpandedCostumes(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  function addCostume(spriteId) {
+    const sp = sprites.find(s => s.id === spriteId)
+    const next = (sp?.costumes ?? []).length + 1
+    onChange(sprites.map(s => s.id === spriteId
+      ? { ...s, costumes: [...(s.costumes ?? []), { name: `costume${next}`, image: '' }] }
+      : s
+    ))
+  }
+
+  function removeCostume(spriteId, idx) {
+    onChange(sprites.map(s => s.id === spriteId
+      ? { ...s, costumes: (s.costumes ?? []).filter((_, i) => i !== idx) }
+      : s
+    ))
+  }
+
+  function updateCostume(spriteId, idx, field, value) {
+    onChange(sprites.map(s => s.id === spriteId
+      ? { ...s, costumes: (s.costumes ?? []).map((c, i) => i === idx ? { ...c, [field]: value } : c) }
+      : s
+    ))
+  }
+
+  const imageAssets = (storageAssets ?? []).filter(a => /\.(png|jpe?g|gif|svg|webp)$/i.test(a.name))
 
   return (
     <div style={s.sectionCard}>
@@ -201,7 +236,8 @@ function DefaultSpritesEditor({ sprites, onChange }) {
       </div>
       <p style={s.muted}>
         These sprites are used as the starting configuration for new Scratch tasks in the builder
-        when no task-specific sprites have been set.
+        when no task-specific sprites have been set. Add costumes to give sprites custom images
+        from the shared Scratch assets above.
       </p>
 
       {sprites.length === 0 && (
@@ -209,56 +245,88 @@ function DefaultSpritesEditor({ sprites, onChange }) {
       )}
 
       {sprites.map((sp, i) => (
-        <div key={sp.id} style={s.spriteRow}>
-          <span style={s.spriteIndex}>{i + 1}</span>
-          <input
-            style={s.spriteInput}
-            value={sp.name}
-            onChange={e => update(sp.id, 'name', e.target.value)}
-            placeholder="Name"
-          />
-          <select
-            style={s.spriteSelect}
-            value={sp.type ?? 'cat'}
-            onChange={e => update(sp.id, 'type', e.target.value)}
-          >
-            {SPRITE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-          </select>
-          <label style={s.spriteFieldLabel}>
-            X
+        <div key={sp.id} style={s.spriteBlock}>
+          <div style={s.spriteRow}>
+            <span style={s.spriteIndex}>{i + 1}</span>
             <input
-              type="number"
-              style={{ ...s.spriteNumInput }}
-              value={sp.x ?? 0}
-              onChange={e => update(sp.id, 'x', Number(e.target.value))}
+              style={s.spriteInput}
+              value={sp.name}
+              onChange={e => update(sp.id, 'name', e.target.value)}
+              placeholder="Name"
             />
-          </label>
-          <label style={s.spriteFieldLabel}>
-            Y
-            <input
-              type="number"
-              style={{ ...s.spriteNumInput }}
-              value={sp.y ?? 0}
-              onChange={e => update(sp.id, 'y', Number(e.target.value))}
-            />
-          </label>
-          <label style={s.spriteFieldLabel}>
-            Size
-            <input
-              type="number"
-              style={{ ...s.spriteNumInput, width: 60 }}
-              value={sp.size ?? 100}
-              min={10}
-              max={500}
-              onChange={e => update(sp.id, 'size', Number(e.target.value))}
-            />
-          </label>
-          <button
-            style={s.removeBtn}
-            onClick={() => removeSprite(sp.id)}
-            disabled={sprites.length <= 1}
-            title="Remove sprite"
-          >×</button>
+            <select
+              style={s.spriteSelect}
+              value={sp.type ?? 'cat'}
+              onChange={e => update(sp.id, 'type', e.target.value)}
+            >
+              {SPRITE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+            </select>
+            <label style={s.spriteFieldLabel}>
+              X
+              <input type="number" style={s.spriteNumInput} value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
+            </label>
+            <label style={s.spriteFieldLabel}>
+              Y
+              <input type="number" style={s.spriteNumInput} value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
+            </label>
+            <label style={s.spriteFieldLabel}>
+              Size
+              <input type="number" style={{ ...s.spriteNumInput, width: 60 }} value={sp.size ?? 100} min={10} max={500} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
+            </label>
+            <button
+              style={s.costumeToggleBtn}
+              onClick={() => toggleCostumes(sp.id)}
+              title="Edit costumes"
+            >
+              Costumes ({(sp.costumes ?? []).length})
+            </button>
+            <button
+              style={s.removeBtn}
+              onClick={() => removeSprite(sp.id)}
+              disabled={sprites.length <= 1}
+              title="Remove sprite"
+            >×</button>
+          </div>
+
+          {expandedCostumes[sp.id] && (
+            <div style={s.costumeSection}>
+              {(sp.costumes ?? []).length === 0 && (
+                <p style={s.mutedSmall}>No costumes — sprite uses its built-in shape. Add costumes to use images from the shared assets above.</p>
+              )}
+              {(sp.costumes ?? []).map((c, idx) => (
+                <div key={idx} style={s.costumeRow}>
+                  {idx === 0 && <span style={s.costumeTag}>Default</span>}
+                  <input
+                    style={s.spriteInput}
+                    value={c.name}
+                    onChange={e => updateCostume(sp.id, idx, 'name', e.target.value)}
+                    placeholder="Costume name"
+                  />
+                  {imageAssets.length > 0 ? (
+                    <select
+                      style={{ ...s.spriteSelect, flex: '2 1 160px' }}
+                      value={c.image ?? ''}
+                      onChange={e => updateCostume(sp.id, idx, 'image', e.target.value)}
+                    >
+                      <option value="">Select image…</option>
+                      {imageAssets.map(a => <option key={a.name} value={a.url}>{a.name}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      style={{ ...s.spriteInput, flex: '2 1 160px', fontFamily: 'var(--font-code)', fontSize: '0.78rem' }}
+                      value={c.image ?? ''}
+                      onChange={e => updateCostume(sp.id, idx, 'image', e.target.value)}
+                      placeholder="Image URL (upload files above first)"
+                    />
+                  )}
+                  <button style={s.removeBtn} onClick={() => removeCostume(sp.id, idx)} title="Remove costume">×</button>
+                </div>
+              ))}
+              <button className="btn-ghost" style={{ ...s.uploadBtn, alignSelf: 'flex-start', marginTop: 4 }} onClick={() => addCostume(sp.id)}>
+                + Add costume
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -300,10 +368,15 @@ const s = {
   muted: { fontFamily: 'var(--font-body)', fontSize: '0.84rem', color: '#9ca3af', margin: 0 },
   mutedSmall: { fontSize: '0.78rem', color: '#6b7280' },
   errorText: { color: '#ef4444', fontSize: '0.78rem' },
+  spriteBlock: { display: 'flex', flexDirection: 'column', gap: 0, borderBottom: '1px solid #f3f4f6', paddingBottom: 6, marginBottom: 4 },
   spriteRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' },
   spriteIndex: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '0.8rem', color: '#9ca3af', width: 18, textAlign: 'right', flexShrink: 0 },
   spriteInput: { flex: '1 1 100px', minWidth: 80, padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)', outline: 'none' },
   spriteSelect: { flex: '0 0 auto', padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)', outline: 'none', cursor: 'pointer' },
   spriteFieldLabel: { display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', flexShrink: 0 },
   spriteNumInput: { width: 52, padding: '4px 6px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--colour-text)', outline: 'none' },
+  costumeToggleBtn: { flexShrink: 0, background: 'none', border: '1px solid #d1d5db', borderRadius: 4, color: '#374151', fontSize: '0.72rem', cursor: 'pointer', padding: '2px 7px', whiteSpace: 'nowrap' },
+  costumeSection: { display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 26, paddingBottom: 4 },
+  costumeRow: { display: 'flex', alignItems: 'center', gap: 6 },
+  costumeTag: { flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700, background: '#dbeafe', color: '#1d4ed8', borderRadius: 3, padding: '1px 5px' },
 }

@@ -42,7 +42,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const includedTypeAssets = lesson.type === 'html' ? (
     sharedAssetNames !== null
       ? typeStorageAssets.filter(a => sharedAssetNames.includes(a.name))
-      : typeStorageAssets.filter(a => a.showInEditor)
+      : typeStorageAssets
   ) : []
   const iframeStorageAssets = [
     ...lessonStorageAssets.filter(a => a.showInEditor),

@@ -40,7 +40,7 @@ export default function HtmlTaskWorkspace({
   const sharedAssetNames = lesson.sharedAssetNames ?? null
   const includedTypeAssets = sharedAssetNames !== null
     ? typeStorageAssets.filter(a => sharedAssetNames.includes(a.name))
-    : typeStorageAssets.filter(a => a.showInEditor)
+    : typeStorageAssets
   const allStorageAssets = [
     ...lessonStorageAssets,
     ...includedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),

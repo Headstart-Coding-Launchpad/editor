@@ -295,6 +295,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   const [presets, setPresets] = React.useState([])
   const [selectedPresetId, setSelectedPresetId] = React.useState('')
   const [presetsLoading, setPresetsLoading] = React.useState(true)
+  const { defaultSprites: typeDefaultSprites } = useTypeAssets(lessonType === 'scratch' ? 'scratch' : null)
 
   React.useEffect(() => {
     let mounted = true
@@ -317,7 +318,13 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
 
   function addSprite() {
-    const preset = presets.find(item => item.id === selectedPresetId) ?? null
+    let preset = null
+    if (selectedPresetId.startsWith('default:')) {
+      const id = selectedPresetId.slice('default:'.length)
+      preset = typeDefaultSprites.find(sp => sp.id === id) ?? null
+    } else if (selectedPresetId) {
+      preset = presets.find(item => item.id === selectedPresetId) ?? null
+    }
     onChange([...sprites, createSpriteFromPreset(sprites, preset)])
     setSelectedPresetId('')
   }
@@ -441,10 +448,21 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
             onChange={event => setSelectedPresetId(event.target.value)}
           >
             <option value="">New blank sprite</option>
-            {presetsLoading && <option disabled>Loading presets...</option>}
-            {presets.map(preset => (
-              <option key={preset.id} value={preset.id}>{preset.name}</option>
-            ))}
+            {typeDefaultSprites.length > 0 && (
+              <optgroup label="Default sprites">
+                {typeDefaultSprites.map(sp => (
+                  <option key={`default:${sp.id}`} value={`default:${sp.id}`}>{sp.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {(presetsLoading || presets.length > 0) && (
+              <optgroup label="Preset shapes">
+                {presetsLoading && <option disabled>Loading…</option>}
+                {presets.map(preset => (
+                  <option key={preset.id} value={preset.id}>{preset.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <button type="button" className="btn-ghost te-add-sprite-btn" onClick={addSprite}>
             + Add sprite
