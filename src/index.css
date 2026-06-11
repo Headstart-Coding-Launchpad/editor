@@ -2261,6 +2261,66 @@ select {
   gap: 8px;
   flex-wrap: wrap;
 }
+.te-sprite-picker-wrap {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.te-sprite-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.te-sprite-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 76px;
+  padding: 8px 4px 6px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.te-sprite-card:hover,
+.te-sprite-card:focus-visible {
+  border-color: var(--colour-primary);
+  background: #f3eeff;
+  outline: none;
+}
+.te-sprite-card__thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.te-sprite-card__shape {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.te-sprite-card__name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: var(--colour-text);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 68px;
+}
 .te-backdrop-manager {
   display: flex;
   flex-direction: column;

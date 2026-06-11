@@ -290,20 +290,28 @@ function QuizTypeIcon({ type }) {
 
 const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))
 
+const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
+
 export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false }) {
   const [expandedCostumes, setExpandedCostumes] = React.useState({})
-  const [selectedPresetId, setSelectedPresetId] = React.useState('')
-  const { defaultSprites: typeDefaultSprites } = useTypeAssets(lessonType === 'scratch' ? 'scratch' : null)
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const pickerWrapRef = React.useRef(null)
+  const { defaultSprites: typeDefaultSprites, loading: typesLoading } = useTypeAssets(lessonType === 'scratch' ? 'scratch' : null)
   const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
+  const hasLibrarySprites = !typesLoading && typeDefaultSprites.length > 0
 
-  function addSprite() {
-    let preset = null
-    if (selectedPresetId) {
-      const id = selectedPresetId.startsWith('default:') ? selectedPresetId.slice('default:'.length) : selectedPresetId
-      preset = typeDefaultSprites.find(sp => sp.id === id) ?? null
+  React.useEffect(() => {
+    if (!pickerOpen) return
+    function onPointerDown(e) {
+      if (pickerWrapRef.current && !pickerWrapRef.current.contains(e.target)) setPickerOpen(false)
     }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [pickerOpen])
+
+  function addSprite(preset = null) {
     onChange([...sprites, createSpriteFromPreset(sprites, preset)])
-    setSelectedPresetId('')
+    setPickerOpen(false)
   }
 
   function removeSprite(id) {
@@ -416,23 +424,42 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
         </div>
       ))}
       {!hideAdd && (
-        <div className="te-add-sprite-row">
-          <select
-            className="te-select"
-            style={{ minWidth: 168 }}
-            aria-label="Choose sprite to add"
-            value={selectedPresetId}
-            onChange={event => setSelectedPresetId(event.target.value)}
-          >
-            <option value="">New (cat)</option>
-            {typeDefaultSprites.map(sp => (
-              <option key={`default:${sp.id}`} value={`default:${sp.id}`}>{sp.name}</option>
-            ))}
-          </select>
-          <button type="button" className="btn-ghost te-add-sprite-btn" onClick={addSprite}>
+        hasLibrarySprites ? (
+          <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
+            <button
+              type="button"
+              className="btn-ghost te-add-sprite-btn"
+              onClick={() => setPickerOpen(p => !p)}
+              aria-expanded={pickerOpen}
+            >
+              + Add sprite {pickerOpen ? '▴' : '▾'}
+            </button>
+            {pickerOpen && (
+              <div className="te-sprite-picker" role="listbox" aria-label="Choose a sprite to add">
+                <button type="button" className="te-sprite-card" role="option" onClick={() => addSprite(null)}>
+                  <span className="te-sprite-card__shape">{SHAPE_ICONS.cat}</span>
+                  <span className="te-sprite-card__name">Blank</span>
+                </button>
+                {typeDefaultSprites.map(sp => {
+                  const imageUrl = sp.costumes?.[0]?.image || null
+                  return (
+                    <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
+                      {imageUrl
+                        ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
+                        : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+                      }
+                      <span className="te-sprite-card__name">{sp.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addSprite(null)}>
             + Add sprite
           </button>
-        </div>
+        )
       )}
     </div>
   )
