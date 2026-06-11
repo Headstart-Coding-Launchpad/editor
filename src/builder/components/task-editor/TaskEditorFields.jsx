@@ -4,7 +4,7 @@ import { useAssets } from '../../../shared/useAssets'
 import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
-import { createSpriteFromPreset, normalizeSpritePresets, SPRITE_PRESETS_PATH } from '../../spritePresets'
+import { createSpriteFromPreset } from '../../spritePresets'
 import { DEFAULT_FS } from '../../../shared/filesystem'
 import { flattenTasks } from '../../../shared/taskUtils'
 
@@ -292,38 +292,15 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0
 
 export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false }) {
   const [expandedCostumes, setExpandedCostumes] = React.useState({})
-  const [presets, setPresets] = React.useState([])
   const [selectedPresetId, setSelectedPresetId] = React.useState('')
-  const [presetsLoading, setPresetsLoading] = React.useState(true)
   const { defaultSprites: typeDefaultSprites } = useTypeAssets(lessonType === 'scratch' ? 'scratch' : null)
-
-  React.useEffect(() => {
-    let mounted = true
-    fetch(`${import.meta.env.BASE_URL}${SPRITE_PRESETS_PATH}`)
-      .then(response => {
-        if (!response.ok) throw new Error(`sprite presets fetch failed: ${response.status}`)
-        return response.json()
-      })
-      .then(data => {
-        if (mounted) setPresets(normalizeSpritePresets(data))
-      })
-      .catch(() => {
-        if (mounted) setPresets([])
-      })
-      .finally(() => {
-        if (mounted) setPresetsLoading(false)
-      })
-    return () => { mounted = false }
-  }, [])
   const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
 
   function addSprite() {
     let preset = null
-    if (selectedPresetId.startsWith('default:')) {
-      const id = selectedPresetId.slice('default:'.length)
+    if (selectedPresetId) {
+      const id = selectedPresetId.startsWith('default:') ? selectedPresetId.slice('default:'.length) : selectedPresetId
       preset = typeDefaultSprites.find(sp => sp.id === id) ?? null
-    } else if (selectedPresetId) {
-      preset = presets.find(item => item.id === selectedPresetId) ?? null
     }
     onChange([...sprites, createSpriteFromPreset(sprites, preset)])
     setSelectedPresetId('')
@@ -443,26 +420,14 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
           <select
             className="te-select"
             style={{ minWidth: 168 }}
-            aria-label="Choose sprite preset"
+            aria-label="Choose sprite to add"
             value={selectedPresetId}
             onChange={event => setSelectedPresetId(event.target.value)}
           >
-            <option value="">New blank sprite</option>
-            {typeDefaultSprites.length > 0 && (
-              <optgroup label="Default sprites">
-                {typeDefaultSprites.map(sp => (
-                  <option key={`default:${sp.id}`} value={`default:${sp.id}`}>{sp.name}</option>
-                ))}
-              </optgroup>
-            )}
-            {(presetsLoading || presets.length > 0) && (
-              <optgroup label="Preset shapes">
-                {presetsLoading && <option disabled>Loading…</option>}
-                {presets.map(preset => (
-                  <option key={preset.id} value={preset.id}>{preset.name}</option>
-                ))}
-              </optgroup>
-            )}
+            <option value="">New (cat)</option>
+            {typeDefaultSprites.map(sp => (
+              <option key={`default:${sp.id}`} value={`default:${sp.id}`}>{sp.name}</option>
+            ))}
           </select>
           <button type="button" className="btn-ghost te-add-sprite-btn" onClick={addSprite}>
             + Add sprite

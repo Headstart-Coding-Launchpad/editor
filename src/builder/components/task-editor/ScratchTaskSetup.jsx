@@ -308,7 +308,6 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                       <SpriteManager
                         sprites={getScratchSprites()}
                         focusedSpriteId={modalSelectedSpriteId}
-                        hideAdd
                         hidePosRow
                         onChange={handleStarterSpritesChange}
                         assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
