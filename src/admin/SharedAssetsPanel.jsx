@@ -178,8 +178,6 @@ function TypeAssetsEditor({ lessonType }) {
 }
 
 function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
-  const [expandedCostumes, setExpandedCostumes] = useState({})
-
   function addSprite() {
     const next = sprites.length + 1
     let id = `sprite${next}`
@@ -190,15 +188,20 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
   function removeSprite(id) {
     if (sprites.length <= 1) return
     onChange(sprites.filter(sp => sp.id !== id))
-    setExpandedCostumes(prev => { const next = { ...prev }; delete next[id]; return next })
   }
 
   function update(id, field, value) {
     onChange(sprites.map(sp => sp.id === id ? { ...sp, [field]: value } : sp))
   }
 
-  function toggleCostumes(id) {
-    setExpandedCostumes(prev => ({ ...prev, [id]: !prev[id] }))
+  function updateMany(id, changes) {
+    onChange(sprites.map(sp => sp.id === id ? { ...sp, ...changes } : sp))
+  }
+
+  function setVisualMode(id, mode) {
+    if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
+    else if (mode === 'emoji') updateMany(id, { costumes: [] })
+    else updateMany(id, { emoji: '' })
   }
 
   function addCostume(spriteId) {
@@ -237,94 +240,103 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
       <p style={s.muted}>
         These sprites appear in the &ldquo;Add sprite&rdquo; picker in the lesson builder.
         Teachers can add any of them to a task. New tasks always start with a single Cat sprite;
-        these are additional options teachers can choose from. Add costumes to give sprites
-        custom images from the shared Scratch assets above.
+        these are additional options teachers can choose from.
       </p>
 
       {sprites.length === 0 && (
         <p style={s.muted}>No default sprites configured. A single Cat sprite will be used.</p>
       )}
 
-      {sprites.map((sp, i) => (
-        <div key={sp.id} style={s.spriteBlock}>
-          <div style={s.spriteRow}>
-            <span style={s.spriteIndex}>{i + 1}</span>
-            <input
-              style={s.spriteInput}
-              value={sp.name}
-              onChange={e => update(sp.id, 'name', e.target.value)}
-              placeholder="Name"
-            />
-            <select
-              style={s.spriteSelect}
-              value={sp.type ?? 'cat'}
-              onChange={e => update(sp.id, 'type', e.target.value)}
-            >
-              {SPRITE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-            </select>
-            <input
-              style={{ ...s.spriteInput, width: 44, textAlign: 'center' }}
-              value={sp.emoji ?? ''}
-              onChange={e => update(sp.id, 'emoji', e.target.value)}
-              placeholder="🐱"
-              title="Emoji (optional) — replaces the shape on the stage"
-            />
-            <button
-              style={s.costumeToggleBtn}
-              onClick={() => toggleCostumes(sp.id)}
-              title="Edit costumes"
-            >
-              Costumes ({(sp.costumes ?? []).length})
-            </button>
-            <button
-              style={s.removeBtn}
-              onClick={() => removeSprite(sp.id)}
-              disabled={sprites.length <= 1}
-              title="Remove sprite"
-            >×</button>
-          </div>
-
-          {expandedCostumes[sp.id] && (
-            <div style={s.costumeSection}>
-              {(sp.costumes ?? []).length === 0 && (
-                <p style={s.mutedSmall}>No costumes — sprite uses its built-in shape. Add costumes to use images from the shared assets above.</p>
-              )}
-              {(sp.costumes ?? []).map((c, idx) => (
-                <div key={idx} style={s.costumeRow}>
-                  {idx === 0 && <span style={s.costumeTag}>Default</span>}
-                  <input
-                    style={s.spriteInput}
-                    value={c.name}
-                    onChange={e => updateCostume(sp.id, idx, 'name', e.target.value)}
-                    placeholder="Costume name"
-                  />
-                  {imageAssets.length > 0 ? (
-                    <select
-                      style={{ ...s.spriteSelect, flex: '2 1 160px' }}
-                      value={c.image ?? ''}
-                      onChange={e => updateCostume(sp.id, idx, 'image', e.target.value)}
-                    >
-                      <option value="">Select image…</option>
-                      {imageAssets.map(a => <option key={a.name} value={a.url}>{a.name}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      style={{ ...s.spriteInput, flex: '2 1 160px', fontFamily: 'var(--font-code)', fontSize: '0.78rem' }}
-                      value={c.image ?? ''}
-                      onChange={e => updateCostume(sp.id, idx, 'image', e.target.value)}
-                      placeholder="Image URL (upload files above first)"
-                    />
-                  )}
-                  <button style={s.removeBtn} onClick={() => removeCostume(sp.id, idx)} title="Remove costume">×</button>
-                </div>
-              ))}
-              <button className="btn-ghost" style={{ ...s.uploadBtn, alignSelf: 'flex-start', marginTop: 4 }} onClick={() => addCostume(sp.id)}>
-                + Add costume
-              </button>
+      {sprites.map((sp, i) => {
+        const mode = sp.costumes?.length > 0 ? 'costume' : sp.emoji ? 'emoji' : 'preset'
+        return (
+          <div key={sp.id} style={s.spriteBlock}>
+            <div style={s.spriteRow}>
+              <span style={s.spriteIndex}>{i + 1}</span>
+              <input
+                style={s.spriteInput}
+                value={sp.name}
+                onChange={e => update(sp.id, 'name', e.target.value)}
+                placeholder="Name"
+              />
+              <div className="te-sprite-mode-sel">
+                <button type="button" className={`te-sprite-mode-btn${mode === 'preset' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'preset')}>Shape</button>
+                <button type="button" className={`te-sprite-mode-btn${mode === 'emoji' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'emoji')}>Emoji</button>
+                <button type="button" className={`te-sprite-mode-btn${mode === 'costume' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'costume')}>Costume</button>
+              </div>
+              <button
+                style={s.removeBtn}
+                onClick={() => removeSprite(sp.id)}
+                disabled={sprites.length <= 1}
+                title="Remove sprite"
+              >×</button>
             </div>
-          )}
-        </div>
-      ))}
+
+            {mode === 'preset' && (
+              <div style={{ ...s.spriteRow, paddingLeft: 28 }}>
+                <select
+                  style={s.spriteSelect}
+                  value={sp.type ?? 'cat'}
+                  onChange={e => update(sp.id, 'type', e.target.value)}
+                >
+                  {SPRITE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                </select>
+              </div>
+            )}
+
+            {mode === 'emoji' && (
+              <div style={{ ...s.spriteRow, paddingLeft: 28 }}>
+                <input
+                  style={{ ...s.spriteInput, width: 52, textAlign: 'center', fontSize: '20px' }}
+                  value={sp.emoji ?? ''}
+                  onChange={e => update(sp.id, 'emoji', e.target.value)}
+                  placeholder="🐱"
+                />
+              </div>
+            )}
+
+            {mode === 'costume' && (
+              <div style={s.costumeSection}>
+                {(sp.costumes ?? []).length === 0 && (
+                  <p style={s.mutedSmall}>No costumes yet. Add one to use an image from the shared assets above.</p>
+                )}
+                {(sp.costumes ?? []).map((c, idx) => (
+                  <div key={idx} style={s.costumeRow}>
+                    {idx === 0 && <span style={s.costumeTag}>Default</span>}
+                    <input
+                      style={s.spriteInput}
+                      value={c.name}
+                      onChange={e => updateCostume(sp.id, idx, 'name', e.target.value)}
+                      placeholder="Costume name"
+                    />
+                    {imageAssets.length > 0 ? (
+                      <select
+                        style={{ ...s.spriteSelect, flex: '2 1 160px' }}
+                        value={c.image ?? ''}
+                        onChange={e => updateCostume(sp.id, idx, 'image', e.target.value)}
+                      >
+                        <option value="">Select image…</option>
+                        {imageAssets.map(a => <option key={a.name} value={a.url}>{a.name}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        style={{ ...s.spriteInput, flex: '2 1 160px', fontFamily: 'var(--font-code)', fontSize: '0.78rem' }}
+                        value={c.image ?? ''}
+                        onChange={e => updateCostume(sp.id, idx, 'image', e.target.value)}
+                        placeholder="Image URL (upload files above first)"
+                      />
+                    )}
+                    <button style={s.removeBtn} onClick={() => removeCostume(sp.id, idx)} title="Remove costume">×</button>
+                  </div>
+                ))}
+                <button className="btn-ghost" style={{ ...s.uploadBtn, alignSelf: 'flex-start', marginTop: 4 }} onClick={() => addCostume(sp.id)}>
+                  + Add costume
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
