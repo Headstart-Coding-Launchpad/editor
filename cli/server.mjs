@@ -32,13 +32,13 @@ Lessons and topics live in **Firestore**, not in local files.
 - \`lessons/\` Firestore collection - live lessons served to students
 - \`topicLibrary/\` Firestore collection - live topic library
 
-The local \`YAML Files/\` and \`JSON Files/\` directories are **authoring workspace** artifacts only. Editing a local file has no effect on the live app until you publish the converted lesson with \`upsert_lesson\`.
+Local YAML and JSON directories are **authoring workspace** artifacts only. Use \`Old Lessons/YAML Files/\` and \`Old Lessons/JSON Files/\` for old-lesson conversions, and \`New Lessons/YAML Files/\` and \`New Lessons/JSON Files/\` for brand-new lessons. Editing a local file has no effect on the live app until you publish the converted lesson with \`upsert_lesson\`.
 
 ## Authoring workflow (step by step)
 
 1. **Understand the YAML format** - fetch \`yaml://format\` before writing lesson YAML. It documents the shorthand and links back to the full schema when a field needs deeper reference.
 
-2. **Create the lesson YAML locally** - write the concise lesson YAML following \`YAML_LESSON_FORMAT.md\`. The lesson \`id\` must be a lowercase slug (e.g. \`python-for-loops\`).
+2. **Create the lesson YAML locally** - write the concise lesson YAML following \`YAML_LESSON_FORMAT.md\` in the matching old or new lesson artifact folder. The lesson \`id\` must be a lowercase slug (e.g. \`python-for-loops\`).
 
 3. **Convert and validate before publishing** - call \`yaml_to_lesson(yaml)\`. Review the converted lesson JSON, fix all errors, and review warnings before continuing.
 
