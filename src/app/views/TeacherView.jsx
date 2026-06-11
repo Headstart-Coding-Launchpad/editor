@@ -26,6 +26,7 @@ import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import FilesystemTask from '../components/FilesystemTask'
 import { DEFAULT_FS } from '../../shared/filesystem'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 import { cloneFiles, cloneScratchState } from '../../shared/workspaceData'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import {
@@ -543,6 +544,16 @@ function TeacherEditorPanel({
   fsState, onFsChange,
   onActivity,
 }) {
+  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
+  const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
+  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
+    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
+    : htmlTypeAssets.filter(a => a.showInEditor)
+  const htmlStorageAssets = [
+    ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),
+  ]
+
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
   if (!isInSandbox && task?.taskType === 'quiz') return <QuizTask task={task} showQuestion disabled />
 
@@ -652,7 +663,7 @@ function TeacherEditorPanel({
           readOnly={showingComplete || isShowingStage || !isInSandbox}
           assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
           assets={lesson.assets}
-          storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+          storageAssets={htmlStorageAssets}
           attachedTop={!isInSandbox}
         />
       </div>

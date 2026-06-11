@@ -4,7 +4,7 @@ import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
 import { evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../shared/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
-export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set }) {
+export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets = null }) {
   const [output, setOutput] = useState('')
   const [runStatus, setRunStatus] = useState(null)
   const [running, setRunning] = useState(false)
@@ -138,7 +138,7 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
       const src = buildIframeSrc(activeFiles, activeEntryFile, {
         assets: lesson.assets ?? [],
         assetsPath: resolveAssetsPath(lesson.assetsPath),
-        storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
+        storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []).filter(a => a.showInEditor),
       })
       setIframeSrc(src)
       setRunStatus('success')

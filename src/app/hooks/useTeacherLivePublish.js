@@ -38,6 +38,7 @@ export function useTeacherLivePublish({
   checkAttempted,
   checkSuggestion,
   fsState,
+  iframeStorageAssets = null,
   // Callbacks
   updateTeacherLive,
 }) {
@@ -101,7 +102,7 @@ export function useTeacherLivePublish({
     setTeacherLiveIframeSrc(buildIframeSrc(liveFiles, liveTask?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
+      storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []).filter(a => a.showInEditor),
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])

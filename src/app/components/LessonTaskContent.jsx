@@ -1,6 +1,7 @@
 import React from 'react'
 import Banner from '../../shared/Banner'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 import { normaliseDirPath } from '../../shared/filesystem'
 import { loadSavedCode, loadPersonalSandboxCode } from '../studentStorage'
 import { selectScratchInitialProject } from '../studentTaskContent'
@@ -50,6 +51,16 @@ export default function LessonTaskContent({
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
 }) {
+  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
+  const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
+  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
+    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
+    : htmlTypeAssets.filter(a => a.showInEditor)
+  const htmlStorageAssets = [
+    ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),
+  ]
+
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
     : (!isSandbox && isInformationTask)
@@ -164,6 +175,7 @@ export default function LessonTaskContent({
             displayActiveFile={displayActiveFile}
             displayRunStatus={displayRunStatus}
             displaySelection={displaySelection}
+            htmlStorageAssets={htmlStorageAssets}
           />
         ) : (
           <HtmlDesktopContent
@@ -176,6 +188,7 @@ export default function LessonTaskContent({
             displayActiveFile={displayActiveFile}
             displayRunStatus={displayRunStatus}
             displaySelection={displaySelection}
+            htmlStorageAssets={htmlStorageAssets}
           />
         )}
       </div>
@@ -336,7 +349,7 @@ function ScratchContent({ lesson, task, cs, lessonId, identityId, activeStudentV
 
 // ─── HTML mobile task ─────────────────────────────────────────────────────────
 
-function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection }) {
+function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection, htmlStorageAssets }) {
   return (
     <div style={s.htmlMobile}>
       <div style={s.htmlLeft}>
@@ -360,7 +373,7 @@ function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLiv
           readOnly={isViewingPrev || isForcedTeacherLive}
           assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
           assets={lesson.assets}
-          storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+          storageAssets={htmlStorageAssets}
         />
       </div>
       {task?.interactionMode !== 'submit' && (
@@ -384,7 +397,7 @@ function HtmlMobileContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLiv
 
 // ─── HTML desktop task ────────────────────────────────────────────────────────
 
-function HtmlDesktopContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection }) {
+function HtmlDesktopContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLive, displayFiles, displayActiveFile, displayRunStatus, displaySelection, htmlStorageAssets }) {
   return (
     <>
       <SplitPane
@@ -423,7 +436,7 @@ function HtmlDesktopContent({ lesson, task, cs, isViewingPrev, isForcedTeacherLi
               readOnly={isViewingPrev || isForcedTeacherLive}
               assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
               assets={lesson.assets}
-              storageAssets={(lesson.storageAssets ?? []).filter(a => a.showInEditor)}
+              storageAssets={htmlStorageAssets}
             />
           </div>
         }

@@ -10,7 +10,7 @@ const LESSON_TYPES = [
   { id: 'filesystem', label: 'Files & Folders' },
 ]
 
-const SPRITE_TYPES = ['cat', 'bat', 'bear', 'bird', 'butterfly', 'castle', 'cat2', 'cheshire', 'dinosaur', 'dog', 'duck', 'elephant', 'fish', 'fox', 'frog', 'ghost', 'gobo', 'hippo', 'horse', 'knight', 'ladybug', 'lion', 'monkey', 'mouse', 'owl', 'panda', 'parrot', 'penguin', 'pig', 'rabbit', 'rocket', 'shark', 'snake', 'star', 'tiger', 'toucan', 'unicorn', 'witch', 'wizard']
+const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 
 function storagePath(type, filename) {
   return `shared/${type}/assets/${filename}`

@@ -38,6 +38,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     ...lessonStorageAssets,
     ...typeStorageAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
+  const sharedAssetNames = lesson.sharedAssetNames ?? null
+  const includedTypeAssets = lesson.type === 'html' ? (
+    sharedAssetNames !== null
+      ? typeStorageAssets.filter(a => sharedAssetNames.includes(a.name))
+      : typeStorageAssets.filter(a => a.showInEditor)
+  ) : []
+  const iframeStorageAssets = [
+    ...lessonStorageAssets.filter(a => a.showInEditor),
+    ...includedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
+  ]
 
   const isPython     = lesson.type === 'python'
   const isScratch    = lesson.type === 'scratch'
@@ -78,7 +88,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setCheckResults, setRunStatus, setCheckResult, setIframeSrc, setHtmlPreviewOpen, setQuizSelectedAnswer,
     handleRun, handleRunTests, handleStop, handleTestChecks, handleQuizPreviewSelect, handleInputSubmit,
     resetRunState,
-  } = useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set })
+  } = useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets })
 
   function handleCodeTabChange(tab) {
     if (tab === codeTab) return

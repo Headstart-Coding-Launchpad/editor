@@ -13,6 +13,7 @@ import { usePyodideState } from './usePyodideState'
 import { useCheckFeedback } from './useCheckFeedback'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 
 /**
  * Owns all student editor/code workspace state: code, files, output, checks, personal sandbox,
@@ -105,6 +106,16 @@ export function useStudentCodeState({
 
   const { pyodideStatus, setPyodideStatus, initPyodideIfNeeded } = usePyodideState({ lesson })
 
+  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson?.type === 'html' ? 'html' : null)
+  const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
+  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
+    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
+    : htmlTypeAssets.filter(a => a.showInEditor)
+  const htmlIframeStorageAssets = [
+    ...(lesson?.storageAssets ?? []).filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !(lesson?.storageAssets ?? []).some(b => b.name === a.name)),
+  ]
+
   const myStudentData = session?.students?.[identity?.anonymousId]
   const {
     checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
@@ -123,6 +134,7 @@ export function useStudentCodeState({
     lesson, session, identity, currentTaskId,
     code, files, activeFile, output, runStatus,
     checkPassed, checkAttempted, checkSuggestion, fsState,
+    iframeStorageAssets: htmlIframeStorageAssets,
     updateTeacherLive,
   })
 
@@ -530,7 +542,7 @@ export function useStudentCodeState({
     const src = buildIframeSrc(currentFiles, task?.entryFile ?? 'index.html', {
       assets: lesson.assets ?? [],
       assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: (lesson.storageAssets ?? []).filter(a => a.showInEditor),
+      storageAssets: htmlIframeStorageAssets,
     })
     setIframeSrc(src)
     setRunStatus('success')
