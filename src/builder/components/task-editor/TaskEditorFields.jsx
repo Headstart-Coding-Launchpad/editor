@@ -292,12 +292,10 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0
 
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
 
-export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false, bare = false }) {
-  const [expandedCostumes, setExpandedCostumes] = React.useState({})
+export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const pickerWrapRef = React.useRef(null)
   const { defaultSprites: typeDefaultSprites, loading: typesLoading } = useTypeAssets(lessonType === 'scratch' ? 'scratch' : null)
-  const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
   const hasLibrarySprites = !typesLoading && typeDefaultSprites.length > 0
 
   React.useEffect(() => {
@@ -313,6 +311,47 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
     onChange([...sprites, createSpriteFromPreset(sprites, preset)])
     setPickerOpen(false)
   }
+
+  if (!hasLibrarySprites) {
+    return (
+      <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addSprite(null)}>
+        + Add sprite
+      </button>
+    )
+  }
+
+  return (
+    <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
+      <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => setPickerOpen(p => !p)} aria-expanded={pickerOpen}>
+        + Add sprite {pickerOpen ? '▴' : '▾'}
+      </button>
+      {pickerOpen && (
+        <div className="te-sprite-picker" role="listbox" aria-label="Choose a sprite to add">
+          <button type="button" className="te-sprite-card" role="option" onClick={() => addSprite(null)}>
+            <span className="te-sprite-card__shape">{SHAPE_ICONS.cat}</span>
+            <span className="te-sprite-card__name">Blank</span>
+          </button>
+          {typeDefaultSprites.map(sp => {
+            const imageUrl = sp.costumes?.[0]?.image || null
+            return (
+              <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
+                {imageUrl
+                  ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
+                  : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+                }
+                <span className="te-sprite-card__name">{sp.name}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false, bare = false }) {
+  const [expandedCostumes, setExpandedCostumes] = React.useState({})
+  const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
 
   function removeSprite(id) {
     if (sprites.length <= 1) return
@@ -345,20 +384,22 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   }
 
   const entries = displayedSprites.map(sp => (
-    <div key={sp.id} className="te-sprite-entry">
-      <div className="te-sprite-entry__thumb">
-        {sp.costumes?.[0]?.image
-          ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-          : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
-        }
-        <button
-          type="button"
-          className="te-sprite-remove-circle"
-          onClick={() => removeSprite(sp.id)}
-          disabled={sprites.length <= 1}
-          title="Remove sprite"
-        >✕</button>
-      </div>
+    <div key={sp.id} className={bare ? null : 'te-sprite-entry'}>
+      {!bare && (
+        <div className="te-sprite-entry__thumb">
+          {sp.costumes?.[0]?.image
+            ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
+            : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+          }
+          <button
+            type="button"
+            className="te-sprite-remove-circle"
+            onClick={() => removeSprite(sp.id)}
+            disabled={sprites.length <= 1}
+            title="Remove sprite"
+          >✕</button>
+        </div>
+      )}
       <div className="te-sprite-entry__fields">
         <div className="te-sprite-row">
           <input
@@ -416,50 +457,13 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
     </div>
   ))
 
-  const addButton = hasLibrarySprites ? (
-    <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
-      <button
-        type="button"
-        className="btn-ghost te-add-sprite-btn"
-        onClick={() => setPickerOpen(p => !p)}
-        aria-expanded={pickerOpen}
-      >
-        + Add sprite {pickerOpen ? '▴' : '▾'}
-      </button>
-      {pickerOpen && (
-        <div className="te-sprite-picker" role="listbox" aria-label="Choose a sprite to add">
-          <button type="button" className="te-sprite-card" role="option" onClick={() => addSprite(null)}>
-            <span className="te-sprite-card__shape">{SHAPE_ICONS.cat}</span>
-            <span className="te-sprite-card__name">Blank</span>
-          </button>
-          {typeDefaultSprites.map(sp => {
-            const imageUrl = sp.costumes?.[0]?.image || null
-            return (
-              <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
-                {imageUrl
-                  ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                  : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
-                }
-                <span className="te-sprite-card__name">{sp.name}</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  ) : (
-    <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addSprite(null)}>
-      + Add sprite
-    </button>
-  )
-
   return (
     <>
       {bare
         ? entries
         : <div className="te-sprite-manager">{entries}</div>
       }
-      {!hideAdd && addButton}
+      {!hideAdd && <SpriteAddPicker sprites={sprites} onChange={onChange} lessonType={lessonType} />}
     </>
   )
 }

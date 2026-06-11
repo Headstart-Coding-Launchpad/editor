@@ -262,18 +262,6 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
             >
               {SPRITE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
-            <label style={s.spriteFieldLabel}>
-              X
-              <input type="number" style={s.spriteNumInput} value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
-            </label>
-            <label style={s.spriteFieldLabel}>
-              Y
-              <input type="number" style={s.spriteNumInput} value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
-            </label>
-            <label style={s.spriteFieldLabel}>
-              Size
-              <input type="number" style={{ ...s.spriteNumInput, width: 60 }} value={sp.size ?? 100} min={10} max={500} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
-            </label>
             <button
               style={s.costumeToggleBtn}
               onClick={() => toggleCostumes(sp.id)}
@@ -374,8 +362,6 @@ const s = {
   spriteIndex: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '0.8rem', color: '#9ca3af', width: 18, textAlign: 'right', flexShrink: 0 },
   spriteInput: { flex: '1 1 100px', minWidth: 80, padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)', outline: 'none' },
   spriteSelect: { flex: '0 0 auto', padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)', outline: 'none', cursor: 'pointer' },
-  spriteFieldLabel: { display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', flexShrink: 0 },
-  spriteNumInput: { width: 52, padding: '4px 6px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--colour-text)', outline: 'none' },
   costumeToggleBtn: { flexShrink: 0, background: 'none', border: '1px solid #d1d5db', borderRadius: 4, color: '#374151', fontSize: '0.72rem', cursor: 'pointer', padding: '2px 7px', whiteSpace: 'nowrap' },
   costumeSection: { display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 26, paddingBottom: 4 },
   costumeRow: { display: 'flex', alignItems: 'center', gap: 6 },

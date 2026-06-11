@@ -3,7 +3,7 @@ import ScratchWorkspace from '../../../app/components/ScratchWorkspace'
 import { DEFAULT_SPRITES } from '../../../shared/scratch'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
-import { CodeWorkspaceTabs, Modal, SpriteManager, BackdropManager } from './TaskEditorFields'
+import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager } from './TaskEditorFields'
 import { ScratchToolboxPicker, VariableManager, PredefinedBlocksEditor } from './ScratchEditors'
 
 export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, setCheckResult }) {
@@ -292,6 +292,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                     selectedSpriteId={modalSelectedSpriteId}
                     onSpriteSelect={setModalSelectedSpriteId}
                     hideSpriteProps
+                    onRemoveSprite={id => handleStarterSpritesChange(getScratchSprites().filter(sp => sp.id !== id))}
                     spritePanelTarget={modalSpritePanelTarget}
                     predefinedBlocks={task.predefinedBlocks ?? null}
                     spritePanelEditor={(
@@ -299,10 +300,18 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                         sprites={getScratchSprites()}
                         focusedSpriteId={modalSelectedSpriteId}
                         bare
+                        hideAdd
                         onChange={handleStarterSpritesChange}
                         assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                         storageAssets={lesson.storageAssets ?? []}
                         lessonId={lesson.id}
+                        lessonType={lesson.type}
+                      />
+                    )}
+                    spritePanelFooter={(
+                      <SpriteAddPicker
+                        sprites={getScratchSprites()}
+                        onChange={handleStarterSpritesChange}
                         lessonType={lesson.type}
                       />
                     )}

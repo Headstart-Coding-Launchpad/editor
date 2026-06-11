@@ -305,6 +305,8 @@ export default function ScratchWorkspace({
   onAddSprite = null,
   spritePanelEditor = null,
   hideSpriteProps = false,
+  onRemoveSprite = null,
+  spritePanelFooter = null,
   predefinedBlocks = null,   // PredefinedBlock[] merged for current tab
 }) {
   const sprites = task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
@@ -1142,18 +1144,29 @@ export default function ScratchWorkspace({
       <div style={s.spriteTileRow}>
         {stageTileFull}
         {sprites.map(sp => (
-          <button
+          <div
             key={sp.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             style={{ ...s.spriteTile, ...(sp.id === selectedSpriteId ? s.spriteTileActive : {}) }}
             onClick={() => setSelectedSpriteId(sp.id)}
+            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedSpriteId(sp.id)}
           >
             <div style={s.spriteTileThumb}>
               <SpriteThumb sprite={sp} state={spriteStates[sp.id]} imageCache={imageCacheRef.current} assetsPath={assetsPath} size={52} imageVersion={imageVersion} />
               {!spriteStates[sp.id]?.visible && <span style={s.spriteTileHiddenBadge} title="Hidden">👁</span>}
             </div>
             <span style={s.spriteTileName}>{sp.name}</span>
-          </button>
+            {!readOnly && onRemoveSprite && (
+              <button
+                type="button"
+                className="te-sprite-remove-circle"
+                onClick={e => { e.stopPropagation(); onRemoveSprite(sp.id) }}
+                disabled={sprites.length <= 1}
+                title="Remove sprite"
+              >✕</button>
+            )}
+          </div>
         ))}
         {!readOnly && onAddSprite && (
           <button
@@ -1170,6 +1183,7 @@ export default function ScratchWorkspace({
       </div>
       {selectedSpriteId !== '__stage__' && !hideSpriteProps && renderSpriteProps(false)}
       {spritePanelEditor && <div style={s.spritePanelEditor}>{spritePanelEditor}</div>}
+      {spritePanelFooter && <div style={s.spritePanelFooter}>{spritePanelFooter}</div>}
     </div>
   )
 
@@ -1374,6 +1388,7 @@ const s = {
   spriteAddIcon: { fontSize: '1.5rem', lineHeight: 1, fontWeight: 500 },
   spritePropBar: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '4px 2px', borderTop: '1px solid #e5e7eb' },
   spritePanelEditor: { paddingTop: 10, borderTop: '1px solid #e5e7eb' },
+  spritePanelFooter: { paddingTop: 8 },
   spritePropField: { display: 'flex', flexDirection: 'column', gap: 2 },
   spritePropLabel: { fontSize: '0.65rem', fontWeight: 700, color: '#6b7280', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.03em' },
   spritePropInput: { width: 58, padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--colour-text)', textAlign: 'center', background: '#fff' },
