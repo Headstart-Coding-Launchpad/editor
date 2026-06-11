@@ -105,6 +105,7 @@ export function MarkdownFieldEditor({
   inlineCodeLanguages = null,
   assets = null,
   assetsPath = '',
+  storageAssets = null,
 }) {
   const [tab, setTab] = useState('entry')
   const [dismissedTopicIds, setDismissedTopicIds] = useState(() => new Set())
@@ -222,8 +223,13 @@ export function MarkdownFieldEditor({
       cursorEnd = cursorStart
     } else if (action.startsWith('image:')) {
       const path = action.slice('image:'.length)
-      const base = assetsPath ? assetsPath.replace(/\/$/, '') : ''
-      const url = base ? base + '/' + path.replace(/^\//, '') : path
+      let url
+      if (/^https?:/.test(path)) {
+        url = path
+      } else {
+        const base = assetsPath ? assetsPath.replace(/\/$/, '') : ''
+        url = base ? base + '/' + path.replace(/^\//, '') : path
+      }
       const toInsert = `![Image](${url})`
       newVal = before + toInsert + after
       cursorStart = start + toInsert.length
@@ -285,7 +291,14 @@ export function MarkdownFieldEditor({
           lessonType={lessonType}
           inlineCodeLanguages={inlineCodeLanguages}
           onAction={applyFormat}
-          imageAssets={(assets ?? []).filter(p => IMAGE_EXTS.has(p.split('.').pop().toLowerCase()))}
+          imageAssets={[
+            ...(assets ?? [])
+              .filter(p => IMAGE_EXTS.has(p.split('.').pop().toLowerCase()))
+              .map(p => ({ name: p.split('/').pop(), path: p })),
+            ...(storageAssets ?? [])
+              .filter(a => IMAGE_EXTS.has(a.name.split('.').pop().toLowerCase()))
+              .map(a => ({ name: a.name, path: a.url })),
+          ]}
           topics={topics}
         />
       )}
@@ -618,23 +631,20 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
             </button>
             {openDropdown === 'image' && (
               <div style={{ ...s.dropdown, width: 220, maxHeight: 260, overflowY: 'auto' }}>
-                {imageAssets.map(path => {
-                  const name = path.split('/').pop()
-                  return (
-                    <button
-                      key={path}
-                      type="button"
-                      style={s.dropdownItem}
-                      onMouseDown={e => {
-                        e.preventDefault()
-                        onAction('image:' + path)
-                        setOpenDropdown(null)
-                      }}
-                    >
-                      {name}
-                    </button>
-                  )
-                })}
+                {imageAssets.map(asset => (
+                  <button
+                    key={asset.path}
+                    type="button"
+                    style={s.dropdownItem}
+                    onMouseDown={e => {
+                      e.preventDefault()
+                      onAction('image:' + asset.path)
+                      setOpenDropdown(null)
+                    }}
+                  >
+                    {asset.name}
+                  </button>
+                ))}
               </div>
             )}
           </div>

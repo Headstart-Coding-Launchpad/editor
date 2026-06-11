@@ -4,6 +4,7 @@ import ExplainerEditor from './ExplainerEditor'
 import QuizTask from '../../app/components/QuizTask'
 import InformationTask from '../../app/components/InformationTask'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useTypeAssets } from '../../shared/useTypeAssets'
 import { copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
@@ -31,6 +32,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
   const [codeTab, setCodeTab] = useState('starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
+  const { typeStorageAssets } = useTypeAssets(lesson.type)
+  const lessonStorageAssets = lesson.storageAssets ?? []
+  const allStorageAssets = [
+    ...lessonStorageAssets,
+    ...typeStorageAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
+  ]
 
   const isPython     = lesson.type === 'python'
   const isScratch    = lesson.type === 'scratch'
@@ -340,7 +347,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           <ExplainerEditor
             title={task.title} value={task.leftContent ?? ''} onChange={v => set('leftContent', v)}
             lessonType={lesson.type} inlineCodeLanguages={explainerInlineCodeLanguages}
-            assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={lesson.storageAssets ?? []}
+            assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={allStorageAssets}
           />
         </div>
       )}
@@ -360,7 +367,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             <ExplainerEditor
               title={task.title} value={task.explainer} onChange={v => set('explainer', v)}
               lessonType={lesson.type} inlineCodeLanguages={explainerInlineCodeLanguages}
-              assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={lesson.storageAssets ?? []}
+              assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={allStorageAssets}
             />
           )}
         </div>

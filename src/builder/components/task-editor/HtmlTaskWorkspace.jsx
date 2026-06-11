@@ -37,9 +37,13 @@ export default function HtmlTaskWorkspace({
 
   const { typeStorageAssets } = useTypeAssets(lesson.type)
   const lessonStorageAssets = lesson.storageAssets ?? []
+  const sharedAssetNames = lesson.sharedAssetNames ?? null
+  const includedTypeAssets = sharedAssetNames !== null
+    ? typeStorageAssets.filter(a => sharedAssetNames.includes(a.name))
+    : typeStorageAssets.filter(a => a.showInEditor)
   const allStorageAssets = [
     ...lessonStorageAssets,
-    ...typeStorageAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
+    ...includedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
 
   function set(field, value) {
@@ -212,12 +216,12 @@ export default function HtmlTaskWorkspace({
         <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
       </div>
 
-      {((lesson.assetsPath && lesson.assets?.length > 0) || allStorageAssets.some(a => a.showInEditor)) && (
+      {((lesson.assetsPath && lesson.assets?.length > 0) || allStorageAssets.length > 0) && (
         <Field label="Asset browser (read-only - copy paths to use in starter code)">
           <AssetBrowser
             assetsPath={resolveAssetsPath(lesson.assetsPath)}
             assets={lesson.assets}
-            storageAssets={allStorageAssets.filter(a => a.showInEditor)}
+            storageAssets={allStorageAssets}
             copyMode="relative"
           />
         </Field>

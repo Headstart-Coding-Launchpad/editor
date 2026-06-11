@@ -19,6 +19,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const { defaultSprites: typeDefaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
   const effectiveDefaultSprites = typeDefaultSprites.length > 0 ? typeDefaultSprites : DEFAULT_SPRITES
+  const { typeStorageAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
 
@@ -117,6 +118,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
             lessonId={lesson.id}
             storageAssets={lesson.storageAssets ?? []}
             onUpdate={updater => onUpdate(prev => ({ ...prev, storageAssets: typeof updater === 'function' ? updater(prev.storageAssets ?? []) : updater }))}
+          />
+        )}
+
+        {lesson.type === 'html' && typeStorageAssets.length > 0 && (
+          <SharedAssetsSelector
+            typeStorageAssets={typeStorageAssets}
+            sharedAssetNames={lesson.sharedAssetNames ?? null}
+            onChange={names => onUpdate(prev => ({ ...prev, sharedAssetNames: names.length ? names : undefined }))}
           />
         )}
 
@@ -351,6 +360,40 @@ function SandboxStarterFiles({ files, onChange }) {
         </div>
       }
     />
+  )
+}
+
+function SharedAssetsSelector({ typeStorageAssets, sharedAssetNames, onChange }) {
+  const selected = sharedAssetNames !== null ? new Set(sharedAssetNames) : null
+
+  function toggle(name) {
+    if (selected === null) {
+      onChange(typeStorageAssets.map(a => a.name).filter(n => n !== name))
+    } else if (selected.has(name)) {
+      onChange([...selected].filter(n => n !== name))
+    } else {
+      onChange([...selected, name])
+    }
+  }
+
+  return (
+    <div style={s.storageSection}>
+      <span style={s.fieldLabel}>Shared assets in web editor</span>
+      <p style={s.summaryText}>Choose which shared assets are available in this lesson&rsquo;s asset browser.</p>
+      {typeStorageAssets.map(asset => {
+        const checked = selected === null ? true : selected.has(asset.name)
+        return (
+          <label key={asset.name} style={s.showInEditorLabel}>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() => toggle(asset.name)}
+            />
+            {asset.name}
+          </label>
+        )
+      })}
+    </div>
   )
 }
 

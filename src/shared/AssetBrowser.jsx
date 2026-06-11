@@ -100,7 +100,7 @@ function StorageFileNode({ name, url, copyMode, mode, onSelect }) {
     >
       <span style={s.itemLabel}>{isImageFile(name) ? '🖼' : '📄'} {name}</span>
       {mode === 'select' ? (
-        <button style={s.actionBtn} onClick={() => onSelect?.(copyMode === 'relative' ? name : url)}>Select</button>
+        <button style={s.actionBtn} onClick={() => onSelect?.(url)}>Select</button>
       ) : (
         <button style={s.actionBtn} onClick={handleCopy}>{copied ? '✓' : copyMode === 'relative' ? 'Copy' : 'Copy URL'}</button>
       )}

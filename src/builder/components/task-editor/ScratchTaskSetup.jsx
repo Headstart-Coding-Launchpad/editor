@@ -289,8 +289,8 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               <div className="te-scratch-modal-workspace">
                 {scratchModalTab === 'starter' ? (
                   <ScratchWorkspace
-                    key={`builder-scratch-starter-${task.id}-${(task.sprites ?? []).map(sp => sp.id).join(',')}`}
-                    task={task}
+                    key={`builder-scratch-starter-${task.id}-${getScratchSprites().map(sp => sp.id).join(',')}`}
+                    task={{ ...task, sprites: getScratchSprites() }}
                     hideStage
                     assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                     initialStates={modalStarterBlocks}
@@ -324,8 +324,8 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   />
                 ) : scratchModalTab === 'complete' ? (
                   <ScratchWorkspace
-                    key={`builder-scratch-complete-${task.id}-${(task.sprites ?? []).map(sp => sp.id).join(',')}`}
-                    task={task}
+                    key={`builder-scratch-complete-${task.id}-${getScratchSprites().map(sp => sp.id).join(',')}`}
+                    task={{ ...task, sprites: getScratchSprites() }}
                     assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                     initialStates={testScratchBlocks}
                     onStateChange={states => {
@@ -380,8 +380,8 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                         </div>
                       </div>
                       <ScratchWorkspace
-                        key={`builder-scratch-stage-${task.id}-${stageIdx}-${(task.sprites ?? []).map(sp => sp.id).join(',')}`}
-                        task={task}
+                        key={`builder-scratch-stage-${task.id}-${stageIdx}-${getScratchSprites().map(sp => sp.id).join(',')}`}
+                        task={{ ...task, sprites: getScratchSprites() }}
                         hideStage
                         assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                         initialStates={stage.blocks ?? null}
