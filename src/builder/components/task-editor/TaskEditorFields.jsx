@@ -292,7 +292,7 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0
 
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
 
-export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false }) {
+export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false, bare = false }) {
   const [expandedCostumes, setExpandedCostumes] = React.useState({})
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const pickerWrapRef = React.useRef(null)
@@ -344,121 +344,122 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
     }))
   }
 
+  const entries = displayedSprites.map(sp => (
+    <div key={sp.id} className="te-sprite-entry">
+      <div className="te-sprite-entry__thumb">
+        {sp.costumes?.[0]?.image
+          ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
+          : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+        }
+        <button
+          type="button"
+          className="te-sprite-remove-circle"
+          onClick={() => removeSprite(sp.id)}
+          disabled={sprites.length <= 1}
+          title="Remove sprite"
+        >✕</button>
+      </div>
+      <div className="te-sprite-entry__fields">
+        <div className="te-sprite-row">
+          <input
+            className="te-input"
+            style={{ flex: '1 1 80px', minWidth: 0 }}
+            value={sp.name}
+            onChange={e => update(sp.id, 'name', e.target.value)}
+            placeholder="Name"
+          />
+          <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
+            {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        {!hidePosRow && (
+          <div className="te-sprite-row">
+            <label className="te-sprite-field">
+              <span className="te-sprite-field__label">X</span>
+              <input className="te-input" style={{ width: 52 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
+            </label>
+            <label className="te-sprite-field">
+              <span className="te-sprite-field__label">Y</span>
+              <input className="te-input" style={{ width: 52 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
+            </label>
+            <label className="te-sprite-field">
+              <span className="te-sprite-field__label">Size</span>
+              <input className="te-input" style={{ width: 52 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
+            </label>
+            <label className="te-sprite-field">
+              <span className="te-sprite-field__label">Dir</span>
+              <input className="te-input" style={{ width: 52 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
+            </label>
+          </div>
+        )}
+        <button
+          type="button"
+          className="te-costume-toggle-btn"
+          style={{ alignSelf: 'flex-start' }}
+          onClick={() => toggleCostumes(sp.id)}
+        >
+          Costumes ({(sp.costumes ?? []).length})
+        </button>
+        {expandedCostumes[sp.id] && (
+          <CostumeManager
+            costumes={sp.costumes ?? []}
+            assetsPath={assetsPath}
+            storageAssets={storageAssets}
+            lessonId={lessonId}
+            lessonType={lessonType}
+            onAdd={() => addCostume(sp.id)}
+            onRemove={idx => removeCostume(sp.id, idx)}
+            onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
+          />
+        )}
+      </div>
+    </div>
+  ))
+
+  const addButton = hasLibrarySprites ? (
+    <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
+      <button
+        type="button"
+        className="btn-ghost te-add-sprite-btn"
+        onClick={() => setPickerOpen(p => !p)}
+        aria-expanded={pickerOpen}
+      >
+        + Add sprite {pickerOpen ? '▴' : '▾'}
+      </button>
+      {pickerOpen && (
+        <div className="te-sprite-picker" role="listbox" aria-label="Choose a sprite to add">
+          <button type="button" className="te-sprite-card" role="option" onClick={() => addSprite(null)}>
+            <span className="te-sprite-card__shape">{SHAPE_ICONS.cat}</span>
+            <span className="te-sprite-card__name">Blank</span>
+          </button>
+          {typeDefaultSprites.map(sp => {
+            const imageUrl = sp.costumes?.[0]?.image || null
+            return (
+              <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
+                {imageUrl
+                  ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
+                  : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+                }
+                <span className="te-sprite-card__name">{sp.name}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  ) : (
+    <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addSprite(null)}>
+      + Add sprite
+    </button>
+  )
+
   return (
     <>
-      <div className="te-sprite-manager">
-        {displayedSprites.map(sp => (
-          <div key={sp.id} className="te-sprite-entry">
-            {/* Thumbnail — × circle lives here */}
-            <div className="te-sprite-entry__thumb">
-              {sp.costumes?.[0]?.image
-                ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
-              }
-              <button
-                type="button"
-                className="te-sprite-remove-circle"
-                onClick={() => removeSprite(sp.id)}
-                disabled={sprites.length <= 1}
-                title="Remove sprite"
-              >✕</button>
-            </div>
-            {/* All fields + costumes in one unified block */}
-            <div className="te-sprite-entry__fields">
-              <div className="te-sprite-row">
-                <input
-                  className="te-input"
-                  style={{ flex: '1 1 80px', minWidth: 0 }}
-                  value={sp.name}
-                  onChange={e => update(sp.id, 'name', e.target.value)}
-                  placeholder="Name"
-                />
-                <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
-                  {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              {!hidePosRow && (
-                <div className="te-sprite-row">
-                  <label className="te-sprite-field">
-                    <span className="te-sprite-field__label">X</span>
-                    <input className="te-input" style={{ width: 52 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
-                  </label>
-                  <label className="te-sprite-field">
-                    <span className="te-sprite-field__label">Y</span>
-                    <input className="te-input" style={{ width: 52 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
-                  </label>
-                  <label className="te-sprite-field">
-                    <span className="te-sprite-field__label">Size</span>
-                    <input className="te-input" style={{ width: 52 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
-                  </label>
-                  <label className="te-sprite-field">
-                    <span className="te-sprite-field__label">Dir</span>
-                    <input className="te-input" style={{ width: 52 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
-                  </label>
-                </div>
-              )}
-              <button
-                type="button"
-                className="te-costume-toggle-btn"
-                style={{ alignSelf: 'flex-start' }}
-                onClick={() => toggleCostumes(sp.id)}
-              >
-                Costumes ({(sp.costumes ?? []).length})
-              </button>
-              {expandedCostumes[sp.id] && (
-                <CostumeManager
-                  costumes={sp.costumes ?? []}
-                  assetsPath={assetsPath}
-                  storageAssets={storageAssets}
-                  lessonId={lessonId}
-                  lessonType={lessonType}
-                  onAdd={() => addCostume(sp.id)}
-                  onRemove={idx => removeCostume(sp.id, idx)}
-                  onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
-                />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      {!hideAdd && (
-        hasLibrarySprites ? (
-          <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
-            <button
-              type="button"
-              className="btn-ghost te-add-sprite-btn"
-              onClick={() => setPickerOpen(p => !p)}
-              aria-expanded={pickerOpen}
-            >
-              + Add sprite {pickerOpen ? '▴' : '▾'}
-            </button>
-            {pickerOpen && (
-              <div className="te-sprite-picker" role="listbox" aria-label="Choose a sprite to add">
-                <button type="button" className="te-sprite-card" role="option" onClick={() => addSprite(null)}>
-                  <span className="te-sprite-card__shape">{SHAPE_ICONS.cat}</span>
-                  <span className="te-sprite-card__name">Blank</span>
-                </button>
-                {typeDefaultSprites.map(sp => {
-                  const imageUrl = sp.costumes?.[0]?.image || null
-                  return (
-                    <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
-                      {imageUrl
-                        ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                        : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
-                      }
-                      <span className="te-sprite-card__name">{sp.name}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        ) : (
-          <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addSprite(null)}>
-            + Add sprite
-          </button>
-        )
-      )}
+      {bare
+        ? entries
+        : <div className="te-sprite-manager">{entries}</div>
+      }
+      {!hideAdd && addButton}
     </>
   )
 }

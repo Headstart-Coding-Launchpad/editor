@@ -54,16 +54,6 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     }
   }
 
-  function handleAddStarterSprite() {
-    const sprites = getScratchSprites()
-    let next = sprites.length + 1
-    while (sprites.some(sp => sp.id === `sprite${next}`)) next += 1
-    handleStarterSpritesChange([
-      ...sprites,
-      { id: `sprite${next}`, name: `Sprite ${next}`, type: 'cat', x: 0, y: 0, size: 100, direction: 90 },
-    ])
-  }
-
   function handleOpenStarterBlocks() {
     const blocks = cloneBlocks(task.starterBlocks)
     modalStarterBlocksRef.current = blocks
@@ -301,14 +291,14 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                     syncNowKey={starterBlocksSyncKey}
                     selectedSpriteId={modalSelectedSpriteId}
                     onSpriteSelect={setModalSelectedSpriteId}
+                    hideSpriteProps
                     spritePanelTarget={modalSpritePanelTarget}
-                    onAddSprite={handleAddStarterSprite}
                     predefinedBlocks={task.predefinedBlocks ?? null}
                     spritePanelEditor={(
                       <SpriteManager
                         sprites={getScratchSprites()}
                         focusedSpriteId={modalSelectedSpriteId}
-                        hidePosRow
+                        bare
                         onChange={handleStarterSpritesChange}
                         assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                         storageAssets={lesson.storageAssets ?? []}
