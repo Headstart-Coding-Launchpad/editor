@@ -345,84 +345,84 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   }
 
   return (
-    <div className="te-sprite-manager">
-      {displayedSprites.map(sp => (
-        <div key={sp.id}>
-          {/* Row 1: name + type + (costumes when pos row hidden) + remove */}
-          <div className="te-sprite-row">
-            <input
-              className="te-input"
-              style={{ flex: '1 1 100px', minWidth: 0 }}
-              value={sp.name}
-              onChange={e => update(sp.id, 'name', e.target.value)}
-              placeholder="Name"
-            />
-            <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
-              {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            {hidePosRow && (
-              <button
-                type="button"
-                className="te-costume-toggle-btn"
-                onClick={() => toggleCostumes(sp.id)}
-                title="Edit costumes"
-              >
-                Costumes ({(sp.costumes ?? []).length})
-              </button>
-            )}
+    <>
+      <div className="te-sprite-manager">
+        {displayedSprites.map(sp => (
+          <div key={sp.id} className="te-sprite-entry">
             <button
               type="button"
-              className="te-remove-btn"
+              className="te-sprite-remove-circle"
               onClick={() => removeSprite(sp.id)}
               disabled={sprites.length <= 1}
               title="Remove sprite"
-            >
-              ✕
-            </button>
-          </div>
-          {/* Row 2: position fields (omitted when hidePosRow) */}
-          {!hidePosRow && (
-            <div className="te-sprite-row" style={{ paddingTop: 4 }}>
-              <label className="te-sprite-field">
-                <span className="te-sprite-field__label">X</span>
-                <input className="te-input" style={{ width: 56 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
-              </label>
-              <label className="te-sprite-field">
-                <span className="te-sprite-field__label">Y</span>
-                <input className="te-input" style={{ width: 56 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
-              </label>
-              <label className="te-sprite-field">
-                <span className="te-sprite-field__label">Size</span>
-                <input className="te-input" style={{ width: 60 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
-              </label>
-              <label className="te-sprite-field">
-                <span className="te-sprite-field__label">Dir</span>
-                <input className="te-input" style={{ width: 56 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
-              </label>
-              <button
-                type="button"
-                className="te-costume-toggle-btn"
-                onClick={() => toggleCostumes(sp.id)}
-                title="Edit costumes"
-              >
-                Costumes ({(sp.costumes ?? []).length})
-              </button>
+            >✕</button>
+            {/* Row 1: name + type + costumes toggle */}
+            <div className="te-sprite-row">
+              <input
+                className="te-input"
+                style={{ flex: '1 1 100px', minWidth: 0 }}
+                value={sp.name}
+                onChange={e => update(sp.id, 'name', e.target.value)}
+                placeholder="Name"
+              />
+              <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
+                {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {hidePosRow && (
+                <button
+                  type="button"
+                  className="te-costume-toggle-btn"
+                  onClick={() => toggleCostumes(sp.id)}
+                  title="Edit costumes"
+                >
+                  Costumes ({(sp.costumes ?? []).length})
+                </button>
+              )}
             </div>
-          )}
-          {expandedCostumes[sp.id] && (
-            <CostumeManager
-              costumes={sp.costumes ?? []}
-              assetsPath={assetsPath}
-              storageAssets={storageAssets}
-              lessonId={lessonId}
-              lessonType={lessonType}
-              onAdd={() => addCostume(sp.id)}
-              onRemove={idx => removeCostume(sp.id, idx)}
-              onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
-            />
-          )}
-        </div>
-      ))}
+            {/* Row 2: position fields (omitted when hidePosRow) */}
+            {!hidePosRow && (
+              <div className="te-sprite-row" style={{ paddingTop: 4 }}>
+                <label className="te-sprite-field">
+                  <span className="te-sprite-field__label">X</span>
+                  <input className="te-input" style={{ width: 56 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
+                </label>
+                <label className="te-sprite-field">
+                  <span className="te-sprite-field__label">Y</span>
+                  <input className="te-input" style={{ width: 56 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
+                </label>
+                <label className="te-sprite-field">
+                  <span className="te-sprite-field__label">Size</span>
+                  <input className="te-input" style={{ width: 60 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
+                </label>
+                <label className="te-sprite-field">
+                  <span className="te-sprite-field__label">Dir</span>
+                  <input className="te-input" style={{ width: 56 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
+                </label>
+                <button
+                  type="button"
+                  className="te-costume-toggle-btn"
+                  onClick={() => toggleCostumes(sp.id)}
+                  title="Edit costumes"
+                >
+                  Costumes ({(sp.costumes ?? []).length})
+                </button>
+              </div>
+            )}
+            {expandedCostumes[sp.id] && (
+              <CostumeManager
+                costumes={sp.costumes ?? []}
+                assetsPath={assetsPath}
+                storageAssets={storageAssets}
+                lessonId={lessonId}
+                lessonType={lessonType}
+                onAdd={() => addCostume(sp.id)}
+                onRemove={idx => removeCostume(sp.id, idx)}
+                onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
       {!hideAdd && (
         hasLibrarySprites ? (
           <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
@@ -461,7 +461,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
           </button>
         )
       )}
-    </div>
+    </>
   )
 }
 

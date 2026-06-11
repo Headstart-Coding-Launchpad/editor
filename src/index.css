@@ -2158,10 +2158,44 @@ select {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
+  padding: 16px 12px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fafafa;
+}
+.te-sprite-entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.te-sprite-remove-circle {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: 2px solid #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  z-index: 1;
+  transition: background 0.12s;
+}
+.te-sprite-remove-circle:hover {
+  background: #dc2626;
+}
+.te-sprite-remove-circle:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
 }
 .te-sprite-row {
   display: flex;
