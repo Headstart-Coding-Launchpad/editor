@@ -170,6 +170,7 @@ export default function TeacherView({ lessonId }) {
   async function handleTaskChange(taskId) {
     setPreviewTaskId(null)
     setCurrentTaskId(taskId)
+    await setTeacherLive(null)
     await setTaskId(taskId)
   }
 
@@ -518,8 +519,8 @@ export default function TeacherView({ lessonId }) {
         <TeacherFeedbackModal
           lessonId={lessonId}
           lessonTitle={lesson?.title ?? ''}
-          currentTaskId={session?.currentTaskId ?? currentTaskId}
-          currentTaskTitle={currentTask?.title ?? null}
+          currentTaskId={displayTaskId}
+          currentTaskTitle={task?.title ?? null}
           teacherEmail={user?.email ?? ''}
           onClose={() => setShowFeedbackModal(false)}
         />
