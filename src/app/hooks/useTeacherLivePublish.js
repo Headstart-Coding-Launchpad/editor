@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { buildIframeSrc } from '../../shared/iframe'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { flattenTasks } from '../../shared/taskUtils'
@@ -40,9 +40,16 @@ export function useTeacherLivePublish({
   fsState,
   // Callbacks
   updateTeacherLive,
-  setHtmlPreviewCollapsed,
 }) {
   const [teacherLiveIframeSrc, setTeacherLiveIframeSrc] = useState(null)
+  const [htmlPreviewCollapsed, setHtmlPreviewCollapsed] = useState(true)
+
+  const checkPassedRef = useRef(checkPassed)
+  checkPassedRef.current = checkPassed
+  const checkAttemptedRef = useRef(checkAttempted)
+  checkAttemptedRef.current = checkAttempted
+  const checkSuggestionRef = useRef(checkSuggestion)
+  checkSuggestionRef.current = checkSuggestion
 
   function canPublishTeacherLive() {
     const s = sessionRef.current
@@ -68,9 +75,9 @@ export function useTeacherLivePublish({
       activeFile: activeFileRef.current,
       output: outputRef.current,
       runStatus: runStatusRef.current,
-      checkPassed,
-      checkAttempted,
-      checkSuggestion,
+      checkPassed: checkPassedRef.current,
+      checkAttempted: checkAttemptedRef.current,
+      checkSuggestion: checkSuggestionRef.current,
       selection: editorSelectionRef.current,
       activity: editorActivityRef.current,
       ...extra,
@@ -104,7 +111,7 @@ export function useTeacherLivePublish({
     if (!canPublishTeacherLive()) return
     updateTeacherLive(currentTeacherLivePayload())
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, files, activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
+  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, JSON.stringify(files), activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
 
-  return { teacherLiveIframeSrc, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive }
+  return { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive }
 }

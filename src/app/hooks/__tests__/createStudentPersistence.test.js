@@ -1,6 +1,5 @@
-import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useStudentPersistence } from '../useStudentPersistence'
+import { createStudentPersistence } from '../createStudentPersistence'
 
 vi.mock('../../studentStorage', () => ({
   saveCode: vi.fn(),
@@ -22,17 +21,15 @@ function makeRef(value) {
 
 function setup({ teacherPresentation = false, previewMode = false, inPersonalSandbox = false } = {}) {
   const inPersonalSandboxRef = makeRef(inPersonalSandbox)
-  const { result } = renderHook(() =>
-    useStudentPersistence({ lessonId: 'lesson-1', teacherPresentation, previewMode, inPersonalSandboxRef })
-  )
-  return { persistence: result.current, inPersonalSandboxRef }
+  const persistence = createStudentPersistence({ lessonId: 'lesson-1', teacherPresentation, previewMode, inPersonalSandboxRef })
+  return { persistence, inPersonalSandboxRef }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('useStudentPersistence', () => {
+describe('createStudentPersistence', () => {
   describe('savePythonCode', () => {
     it('calls saveCode in normal mode', () => {
       const { persistence } = setup()
@@ -143,7 +140,7 @@ describe('useStudentPersistence', () => {
   })
 
   describe('sandbox ref is read at call time', () => {
-    it('switches to sandbox save when inPersonalSandboxRef.current is mutated after hook creation', () => {
+    it('switches to sandbox save when inPersonalSandboxRef.current is mutated after factory call', () => {
       const { persistence, inPersonalSandboxRef } = setup({ inPersonalSandbox: false })
       inPersonalSandboxRef.current = true
       persistence.savePythonCode('anon-1', 1, { code: 'x=1' })

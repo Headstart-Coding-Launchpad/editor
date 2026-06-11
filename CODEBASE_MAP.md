@@ -121,8 +121,8 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers; composes the four sub-hooks below |
 | `usePyodideState.js` | Pyodide warm-up effect, `pyodideStatus` state, and `initPyodideIfNeeded()` helper |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
-| `useStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
-| `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` state, and the two teacher-live sync effects |
+| `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
+| `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects |
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `readDraggedTileId`, `writeDraggedTileId`, `setLiftedDragImage`, `removeTileFromState` |
 
 ---

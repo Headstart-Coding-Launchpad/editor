@@ -346,7 +346,6 @@ export default function TeacherView({ lessonId }) {
     await Promise.all(studentIds.map(id => pushResetToStudent(id, action)))
   }
 
-  // Pre-computed change handlers for TeacherEditorPanel (close over sandboxDraftRef)
   const onCodeChange = (showingComplete || isShowingStage || !isInSandbox) ? undefined
     : value => { setCode(value); sandboxDraftRef.current.code = value }
 

@@ -11,7 +11,7 @@ import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent
 import { getQuizSuggestion } from '../studentQuizContent'
 import { usePyodideState } from './usePyodideState'
 import { useCheckFeedback } from './useCheckFeedback'
-import { useStudentPersistence } from './useStudentPersistence'
+import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 
 /**
@@ -53,7 +53,6 @@ export function useStudentCodeState({
   const [running, setRunning]             = useState(false)
   const [runningTests, setRunningTests]   = useState(false)
   const [iframeSrc, setIframeSrc]         = useState(null)
-  const [htmlPreviewCollapsed, setHtmlPreviewCollapsed] = useState(true)
   const [inputPrompt, setInputPrompt]     = useState(null)
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
@@ -114,9 +113,9 @@ export function useStudentCodeState({
     resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
-  const persistence = useStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef })
+  const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef })
 
-  const { teacherLiveIframeSrc, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
+  const { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
     teacherPresentation,
     identityRef, sessionRef, lessonRef, currentTaskIdRef,
     codeRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
@@ -125,7 +124,6 @@ export function useStudentCodeState({
     code, files, activeFile, output, runStatus,
     checkPassed, checkAttempted, checkSuggestion, fsState,
     updateTeacherLive,
-    setHtmlPreviewCollapsed,
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
