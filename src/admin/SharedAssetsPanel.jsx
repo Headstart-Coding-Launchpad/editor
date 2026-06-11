@@ -235,9 +235,10 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
         </button>
       </div>
       <p style={s.muted}>
-        These sprites are used as the starting configuration for new Scratch tasks in the builder
-        when no task-specific sprites have been set. Add costumes to give sprites custom images
-        from the shared Scratch assets above.
+        These sprites appear in the &ldquo;Add sprite&rdquo; picker in the lesson builder.
+        Teachers can add any of them to a task. New tasks always start with a single Cat sprite;
+        these are additional options teachers can choose from. Add costumes to give sprites
+        custom images from the shared Scratch assets above.
       </p>
 
       {sprites.length === 0 && (

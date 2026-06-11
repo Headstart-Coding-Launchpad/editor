@@ -17,8 +17,6 @@ import { useAuth } from '../../auth/useAuth'
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
-  const { defaultSprites: typeDefaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
-  const effectiveDefaultSprites = typeDefaultSprites.length > 0 ? typeDefaultSprites : DEFAULT_SPRITES
   const { typeStorageAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
@@ -164,7 +162,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
               <ScratchSandboxStarter
                 value={lesson.sandboxStarter}
                 toolbox={lesson.sandboxToolbox ?? ''}
-                sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : effectiveDefaultSprites}
+                sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : DEFAULT_SPRITES}
                 backdrops={lesson.sandboxBackdrops?.length > 0 ? lesson.sandboxBackdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
                 assetsPath={lesson.assetsPath ?? ''}
                 storageAssets={lesson.storageAssets ?? []}

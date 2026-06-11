@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import ScratchWorkspace from '../../../app/components/ScratchWorkspace'
 import { DEFAULT_SPRITES } from '../../../shared/scratch'
-import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
 import { CodeWorkspaceTabs, Modal, SpriteManager, BackdropManager } from './TaskEditorFields'
@@ -20,9 +19,6 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const modalCompleteBlocksRef = useRef(null)
   const modalCompleteSpriteStatesRef = useRef(null)
   const modalStageSpriteStatesRef = useRef({})
-
-  const { defaultSprites: typeDefaultSprites } = useTypeAssets('scratch')
-  const effectiveDefaultSprites = typeDefaultSprites.length > 0 ? typeDefaultSprites : DEFAULT_SPRITES
 
   const codeStages = task.codeStages ?? []
 
@@ -43,7 +39,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   }
 
   function getScratchSprites() {
-    return task.sprites?.length > 0 ? task.sprites : effectiveDefaultSprites
+    return task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
   }
 
   function handleStarterSpritesChange(newSprites) {
@@ -79,7 +75,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     setScratchModalTab('starter')
     setStarterBlocksOpen(true)
     setCheckResult(null)
-    const activeSprites = task.sprites?.length > 0 ? task.sprites : effectiveDefaultSprites
+    const activeSprites = task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
     setModalSelectedSpriteId(activeSprites[0]?.id ?? null)
   }
 
@@ -133,7 +129,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     const spriteStates = scratchModalTab === 'complete'
       ? modalCompleteSpriteStatesRef.current
       : modalStageSpriteStatesRef.current[stageIndex]
-    const sprites = task.sprites?.length > 0 ? task.sprites : effectiveDefaultSprites
+    const sprites = task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
     set('sprites', copyScratchSpriteStateToStarters(sprites, spriteStates))
   }
 
