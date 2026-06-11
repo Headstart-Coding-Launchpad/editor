@@ -1,15 +1,8 @@
 import { db } from './firebase.mjs'
+import { normalizeTopic, normalizeTopicLibrary, validateTopic, validateTopicLibrary } from './topic-utils.mjs'
+import { parseYamlTopicLibrary } from './yaml-converter.mjs'
 
-function validateTopic(topic) {
-  if (!topic || typeof topic !== 'object' || Array.isArray(topic)) {
-    return ['topic must be a JSON object']
-  }
-  const errors = []
-  if (!topic.id || !String(topic.id).trim()) errors.push('id is required')
-  else if (!/^[a-z0-9._-]+$/.test(topic.id)) errors.push('id must be a slug (lowercase, digits, dots, underscores, hyphens only)')
-  if (!topic.title || !String(topic.title).trim()) errors.push('title is required')
-  return errors
-}
+export { normalizeTopic, normalizeTopicLibrary, validateTopic, validateTopicLibrary }
 
 export async function listTopics() {
   const snap = await db.collection('topicLibrary').get()
@@ -28,10 +21,26 @@ export async function getTopic(id) {
 }
 
 export async function upsertTopic(topic) {
-  const errors = validateTopic(topic)
+  const normalized = normalizeTopic(topic)
+  const errors = validateTopic(normalized)
   if (errors.length > 0) return { success: false, errors }
-  await db.collection('topicLibrary').doc(topic.id).set(topic)
-  return { success: true, id: topic.id }
+  await db.collection('topicLibrary').doc(normalized.id).set(normalized)
+  return { success: true, id: normalized.id }
+}
+
+export async function upsertTopicLibrary(input) {
+  const validation = validateTopicLibrary(input)
+  if (!validation.valid) return { success: false, errors: validation.errors }
+
+  for (const topic of validation.topics) {
+    await db.collection('topicLibrary').doc(topic.id).set(topic)
+  }
+
+  return {
+    success: true,
+    count: validation.topics.length,
+    ids: validation.topics.map(topic => topic.id),
+  }
 }
 
 export async function deleteTopic(id) {
@@ -39,4 +48,18 @@ export async function deleteTopic(id) {
   if (!snap.exists) throw new Error(`Topic '${id}' not found`)
   await db.collection('topicLibrary').doc(id).delete()
   return { success: true, id }
+}
+
+export function yamlToTopicLibrary(yamlText) {
+  const topics = parseYamlTopicLibrary(yamlText)
+  const validation = validateTopicLibrary(topics)
+  return { topics: validation.topics, valid: validation.valid, errors: validation.errors }
+}
+
+export async function publishYamlTopicLibrary(yamlText, includeTopics = false) {
+  const converted = yamlToTopicLibrary(yamlText)
+  if (!converted.valid) return { success: false, errors: converted.errors }
+  const result = await upsertTopicLibrary(converted.topics)
+  if (includeTopics && result.success) result.topics = converted.topics
+  return result
 }

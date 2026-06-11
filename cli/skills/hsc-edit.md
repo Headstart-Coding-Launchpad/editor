@@ -63,9 +63,10 @@ node cli/cli.mjs lessons get <lessonId>
 
 ### 2. Edit the JSON (or convert back to YAML, edit, reconvert)
 
-For YAML-first editing: paste the lesson JSON into YAML format, edit, then:
+For YAML-first editing, convert the lesson JSON into YAML, edit, then reconvert:
 
 ```
+node cli/cli.mjs lessons json-to-yaml lesson.json lesson.yaml
 node cli/cli.mjs lessons yaml-to-json lesson.yaml
 ```
 

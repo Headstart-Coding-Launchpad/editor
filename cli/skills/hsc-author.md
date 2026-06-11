@@ -5,6 +5,8 @@
 
 Author a complete lesson from scratch and publish it to the live app.
 
+For brand-new lessons, keep local YAML and JSON artifacts under `New Lessons/YAML Files/<course>/` and `New Lessons/JSON Files/<course>/`. For lessons converted from old material, use `Old Lessons/YAML Files/<course>/` and `Old Lessons/JSON Files/<course>/`.
+
 ## Before you start
 
 - Read `YAML_LESSON_FORMAT.md` for the full YAML shorthand syntax.
@@ -25,7 +27,8 @@ Write the lesson in YAML following `YAML_LESSON_FORMAT.md`. Key rules:
 ### 2. Convert and validate
 
 ```
-node cli/cli.mjs lessons yaml-to-json
+node cli/cli.mjs lessons preflight 'New Lessons/YAML Files/<course>/<lesson-id>.yaml'
+node cli/cli.mjs lessons yaml-to-json 'New Lessons/YAML Files/<course>/<lesson-id>.yaml'
 ```
 
 Pipe or pass the YAML file. Review the returned JSON — check task IDs, check types, and any warnings. Fix errors before continuing; warnings about missing starter code are worth addressing.
@@ -33,7 +36,8 @@ Pipe or pass the YAML file. Review the returned JSON — check task IDs, check t
 ### 3. Publish
 
 ```
-node cli/cli.mjs lessons upsert lesson.json
+node cli/cli.mjs lessons yaml-to-json 'New Lessons/YAML Files/<course>/<lesson-id>.yaml' --output 'New Lessons/JSON Files/<course>/<lesson-id>.json'
+node cli/cli.mjs lessons upsert 'New Lessons/JSON Files/<course>/<lesson-id>.json'
 ```
 
 Or pipe the JSON directly. The command validates again before writing; if it fails return to step 2.
@@ -51,7 +55,7 @@ Verify the task list matches what you intended. If the lesson has assets (images
 If you're confident in the YAML after reviewing the converted JSON:
 
 ```
-node cli/cli.mjs lessons publish-yaml lesson.yaml
+node cli/cli.mjs lessons publish-yaml 'New Lessons/YAML Files/<course>/<lesson-id>.yaml'
 ```
 
-Add `--include-lesson` to see the full converted JSON in the response.
+Add `--include-lesson` to see the full converted JSON in the response, or `--write-json` to save the converted JSON artifact while publishing.
