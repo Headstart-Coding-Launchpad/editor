@@ -150,6 +150,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 | File | Role |
 |---|---|
 | `useBuilderState.js` | Task CRUD state and handlers (add, duplicate, delete, reorder, subtasks) plus derived state (errors, warnings, flatTasks, selectedTask/Group) — no DOM, independently unit-testable |
+| `useTaskEditorState.js` | Run/check/output state and handlers for the task editor: `handleRun`, `handleRunTests`, `handleStop`, `handleTestChecks`, `handleQuizPreviewSelect`, `handleInputSubmit`, `resetRunState` |
 
 ---
 
@@ -159,7 +160,7 @@ Referenced from AGENTS.md. Use this for navigation before opening files.
 |---|---|
 | `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, assets, sandbox config modals |
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
-| `TaskEditor.jsx` | Task editor composition root: imports sub-modules, re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+| `TaskEditor.jsx` | Task editor composition root; delegates run/check state to `useTaskEditorState`; defines local sub-components `TaskPreviewPanel`, `TaskCheckResults`, `TaskRunControls`, `TaskTestResults`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
