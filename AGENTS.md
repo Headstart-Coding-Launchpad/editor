@@ -118,7 +118,7 @@ Download from: Firebase Console → Project Settings → Service Accounts → Ge
 
 **Usage:** `node cli/cli.mjs <command> <subcommand> [args]`
 
-JSON data can be supplied as a file path argument or piped via stdin. All output is JSON to stdout; errors go to stderr with exit code 1.
+JSON/YAML data can be supplied as a file path argument or piped via stdin where supported. Output is JSON by default; pass `--format yaml` (or `--yaml`) to print read results as YAML. Errors go to stderr with exit code 1.
 
 **Lessons:**
 
@@ -131,6 +131,8 @@ JSON data can be supplied as a file path argument or piped via stdin. All output
 | `lessons upsert [file]` | Publish a lesson JSON to Firestore — validates first |
 | `lessons delete <id>` | Permanently delete a lesson from Firestore |
 | `lessons yaml-to-json [file]` | Convert YAML lesson to JSON + validate. Does not require credentials. |
+| `lessons json-to-yaml <file> [output]` | Convert lesson JSON to concise lesson-authoring YAML |
+| `lessons preflight <file>` | Validate a YAML lesson and check local topic links before publishing |
 | `lessons publish-yaml [file]` | Convert YAML, validate, and publish to Firestore in one step |
 
 **Tasks:**
@@ -148,7 +150,19 @@ JSON data can be supplied as a file path argument or piped via stdin. All output
 | `topics list` | List all topics in the live topic library |
 | `topics get <id>` | Fetch a full topic from Firestore |
 | `topics upsert [file]` | Create or update a topic in the topic library |
+| `topics upsert-library [file]` | Create or update many topics from a JSON array or `{ topics }` object |
+| `topics yaml-to-json [file]` | Convert YAML topic library to JSON + validate. Does not require credentials. |
+| `topics json-to-yaml <file> [output]` | Convert topic JSON to topic-library YAML |
+| `topics publish-yaml [file]` | Convert YAML topic library, validate, and publish all topics to Firestore |
 | `topics delete <id>` | Permanently delete a topic from Firestore |
+
+**Feedback:**
+
+| Command | Purpose |
+|---|---|
+| `feedback platform [--lesson-id <id>] [--task-id <id>]` | List platform feedback, optionally filtered by lesson/task |
+| `feedback lesson <lessonId> [--task-id <id>]` | List all feedback saved under one lesson |
+| `feedback all [lessonId] [--task-id <id>]` | List platform and lesson feedback together, optionally scoped to one lesson |
 
 **Assets:**
 

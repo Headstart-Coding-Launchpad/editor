@@ -168,3 +168,12 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Account management**: create teacher/admin accounts, set roles, disable/enable, delete
 - **Lesson management**: browse all lessons by type and level; launch as teacher or copy student link
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields
+
+---
+
+## CLI Features
+
+- Manage live lessons, tasks, topics, assets, and feedback through `node cli/cli.mjs`
+- Convert lesson and topic-library YAML to JSON for validation and publishing
+- Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
+- Read platform feedback and per-lesson feedback from Firestore for review outside the app

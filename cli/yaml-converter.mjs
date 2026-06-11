@@ -23,6 +23,71 @@ export function parseYamlLesson(yamlText) {
   return convertLesson(raw)
 }
 
+export function parseYamlTopicLibrary(yamlText) {
+  const raw = yaml.load(yamlText)
+  return topicListFromRaw(raw)
+}
+
+export function lessonToYamlText(lesson) {
+  return yaml.dump(lessonToYamlObject(lesson), {
+    lineWidth: 100,
+    noRefs: true,
+    sortKeys: false,
+    quotingType: '"',
+  })
+}
+
+export function lessonToYamlObject(lesson) {
+  return {
+    ...lesson,
+    tasks: (lesson.tasks ?? []).map(item => {
+      if (item.type !== 'group') return taskToYamlObject(item)
+      return {
+        group: item.title,
+        groupId: item.id,
+        tasks: (item.subtasks ?? []).map(taskToYamlObject),
+      }
+    }),
+  }
+}
+
+export function topicToYamlText(topic) {
+  return yaml.dump(topicToYamlObject(topic), {
+    lineWidth: 100,
+    noRefs: true,
+    sortKeys: false,
+    quotingType: '"',
+  })
+}
+
+export function topicLibraryToYamlText(input) {
+  return yaml.dump({ topics: topicListFromRaw(input).map(topicToYamlObject) }, {
+    lineWidth: 100,
+    noRefs: true,
+    sortKeys: false,
+    quotingType: '"',
+  })
+}
+
+export function topicToYamlObject(topic) {
+  const out = { ...topic }
+  for (const field of ['types', 'aliases', 'related']) {
+    if (Array.isArray(out[field]) && out[field].length === 0) delete out[field]
+  }
+  for (const field of ['category', 'summary', 'description', 'syntax']) {
+    if (out[field] == null || out[field] === '') delete out[field]
+  }
+  return out
+}
+
+function topicListFromRaw(raw) {
+  if (!raw) throw new Error('YAML must contain a topic object, a topic array, or a topics array')
+  if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw.topics)) return raw.topics
+  if (raw.id || raw.title) return [raw]
+  throw new Error('YAML must contain a topic object, a topic array, or a topics array')
+}
+
 function convertLesson(raw) {
   const { tasks: rawTasks, ...envelope } = raw
   const tasks = convertTaskList(rawTasks ?? [], envelope.type ?? '', envelope.id ?? '')
@@ -93,4 +158,37 @@ function convertTask(raw, id, lessonType) {
   }
 
   return task
+}
+
+function taskToYamlObject(task) {
+  const out = { ...task }
+  delete out.id
+
+  if (out.carryCodeFrom === null) delete out.carryCodeFrom
+  if (out.carryBlocksFrom === null) delete out.carryBlocksFrom
+  if (out.carryFsFrom === null) delete out.carryFsFrom
+
+  if (out.taskType === 'information') {
+    out.type = 'information'
+    delete out.taskType
+  } else if (out.taskType === 'quiz') {
+    out.type = 'quiz'
+    delete out.taskType
+  }
+
+  if (
+    out.type === 'quiz' &&
+    (out.quizType == null || out.quizType === 'multiple_choice') &&
+    out.check?.type === 'answer_equals'
+  ) {
+    out.answer = out.check.value
+    delete out.check
+  }
+
+  if (Array.isArray(out.check)) {
+    out.checks = out.check
+    delete out.check
+  }
+
+  return out
 }

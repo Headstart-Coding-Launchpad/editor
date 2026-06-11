@@ -284,3 +284,44 @@ The auto-suggestion engine (`findTopicSuggestion`) scans lesson explainer conten
   ]
 }
 ```
+
+---
+
+## YAML Authoring
+
+The CLI accepts a topic library as YAML with the same fields as the JSON schema. The top level can be a `topics:` array, a bare array, or a single topic object.
+
+```yaml
+topics:
+  - id: for-loop
+    title: For loops
+    types: [python]
+    category: Loop
+    summary: Repeats indented code once for each item in a sequence.
+    description: |
+      Use `python:range()` when you want to repeat code a particular number of times.
+
+      > :info The loop variable updates automatically.
+    syntax: |
+      ```python
+      for i in range(5):
+          print(i)
+      ```
+    aliases:
+      - for loop
+      - for loops
+    related:
+      - range
+      - variables
+```
+
+CLI helpers:
+
+```bash
+node cli/cli.mjs topics yaml-to-json topics.yaml
+node cli/cli.mjs topics json-to-yaml topics.json topics.yaml
+node cli/cli.mjs topics publish-yaml topics.yaml
+node cli/cli.mjs topics get for-loop --format yaml
+```
+
+`topics yaml-to-json` validates without Firebase credentials. `topics publish-yaml` upserts every topic in the YAML file to Firestore; it does not delete topics that are absent from the file.

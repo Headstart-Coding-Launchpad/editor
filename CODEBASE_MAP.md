@@ -245,12 +245,14 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | File | Role |
 |---|---|
 | `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
-| `cli/cli.mjs` | Entry point: yargs CLI with `lessons`, `tasks`, `topics`, `assets` subcommand groups |
+| `cli/cli.mjs` | Entry point: yargs CLI with `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency) |
-| `cli/yaml-converter.mjs` | `parseYamlLesson(yamlText)` — converts YAML lesson text to lesson JSON; handles task ID assignment, taskType shorthands, check/answer normalization, groups |
+| `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
+| `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization |
 | `cli/lessons.mjs` | Exports async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
-| `cli/topics.mjs` | Exports async functions: `listTopics`, `getTopic`, `upsertTopic`, `deleteTopic` |
+| `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
+| `cli/feedback.mjs` | Exports read-only Firestore feedback listing helpers for platform, lesson, and combined feedback |
 | `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |
 
 ---

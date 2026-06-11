@@ -351,14 +351,23 @@ tasks:
 ## CLI Usage
 
 ```bash
-# Convert to stdout (pipe or redirect)
-node scripts/yaml-to-json.mjs lesson.yaml
+# Convert to stdout
+node cli/cli.mjs lessons yaml-to-json lesson.yaml
 
-# Write to a JSON file
-node scripts/yaml-to-json.mjs lesson.yaml lesson.json
+# Write converted JSON to a file
+node cli/cli.mjs lessons yaml-to-json lesson.yaml --output lesson.json
+
+# Convert lesson JSON back to concise authoring YAML
+node cli/cli.mjs lessons json-to-yaml lesson.json lesson.yaml
+
+# Fetch a live lesson as authoring YAML
+node cli/cli.mjs lessons get python-for-loops --format yaml
+
+# Convert, validate, and publish in one step
+node cli/cli.mjs lessons publish-yaml lesson.yaml
 ```
 
-Warnings are printed to stderr (they do not block output). Validation errors cause a non-zero exit.
+Validation errors cause a non-zero exit. Commands that read data from Firestore print JSON by default; pass `--format yaml` or `--yaml` to print YAML instead.
 
 ---
 
