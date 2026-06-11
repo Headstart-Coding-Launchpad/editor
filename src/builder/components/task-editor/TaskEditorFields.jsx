@@ -337,7 +337,7 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
               <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
                 {imageUrl
                   ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                  : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+                  : <span className="te-sprite-card__shape">{sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
                 }
                 <span className="te-sprite-card__name">{sp.name}</span>
               </button>
@@ -389,7 +389,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
         <div className="te-sprite-entry__thumb">
           {sp.costumes?.[0]?.image
             ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-            : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+            : <span className="te-sprite-card__shape">{sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
           }
           <button
             type="button"
@@ -412,6 +412,14 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
           <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
             {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          <input
+            className="te-input"
+            style={{ flex: '0 0 44px', textAlign: 'center', fontSize: '18px' }}
+            value={sp.emoji ?? ''}
+            onChange={e => update(sp.id, 'emoji', e.target.value)}
+            placeholder="🐱"
+            title="Optional emoji — replaces the shape on the stage"
+          />
         </div>
         {!hidePosRow && (
           <div className="te-sprite-row">

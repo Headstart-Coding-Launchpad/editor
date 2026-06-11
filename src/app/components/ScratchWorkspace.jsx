@@ -125,7 +125,14 @@ function drawScratchSpriteAtOrigin(ctx, type, r) {
   }
 }
 
-function drawSpriteShape(ctx, s, type) {
+function drawEmojiAtOrigin(ctx, emoji, r) {
+  ctx.font = `${r * 2}px serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(emoji, 0, 0)
+}
+
+function drawSpriteShape(ctx, s, type, emoji) {
   const cx = toCanvasX(s.x)
   const cy = toCanvasY(s.y)
   const r  = Math.max(4, (s.size / 100) * 24)
@@ -135,7 +142,8 @@ function drawSpriteShape(ctx, s, type) {
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate(rot)
-  drawScratchSpriteAtOrigin(ctx, type, r)
+  if (emoji) drawEmojiAtOrigin(ctx, emoji, r)
+  else drawScratchSpriteAtOrigin(ctx, type, r)
   ctx.restore()
 }
 
@@ -222,7 +230,8 @@ function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
   }
 
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
-  drawScratchSpriteAtOrigin(ctx, sprite.type ?? 'cat', r)
+  if (sprite.emoji) drawEmojiAtOrigin(ctx, sprite.emoji, r)
+  else drawScratchSpriteAtOrigin(ctx, sprite.type ?? 'cat', r)
   ctx.restore()
 }
 
@@ -420,7 +429,7 @@ export default function ScratchWorkspace({
         const img = imageCacheRef.current[url]
         if (img) { drawSpriteImage(ctx, state, img); continue }
       }
-      drawSpriteShape(ctx, state, sp.type ?? 'cat')
+      drawSpriteShape(ctx, state, sp.type ?? 'cat', sp.emoji)
     }
     for (const sp of sprites) {
       const state = states[sp.id]

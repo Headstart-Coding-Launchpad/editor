@@ -262,6 +262,13 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
             >
               {SPRITE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
+            <input
+              style={{ ...s.spriteInput, width: 44, textAlign: 'center' }}
+              value={sp.emoji ?? ''}
+              onChange={e => update(sp.id, 'emoji', e.target.value)}
+              placeholder="🐱"
+              title="Emoji (optional) — replaces the shape on the stage"
+            />
             <button
               style={s.costumeToggleBtn}
               onClick={() => toggleCostumes(sp.id)}
