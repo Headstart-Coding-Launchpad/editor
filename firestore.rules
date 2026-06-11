@@ -29,7 +29,8 @@ service cloud.firestore {
     }
 
     // Lesson feedback subcollection: teacher or admin can write; teacher or admin can read.
-    match /lessons/{lessonId}/feedback/{feedbackId} {
+    // The recursive wildcard path is required for collectionGroup() queries to work.
+    match /{path=**}/feedback/{feedbackId} {
       allow read: if request.auth != null
                   && (request.auth.token.role == 'admin'
                       || request.auth.token.role == 'teacher');

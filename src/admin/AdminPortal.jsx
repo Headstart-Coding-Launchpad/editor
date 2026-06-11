@@ -13,7 +13,7 @@ const TABS = [
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
   { id: 'accounts', label: 'Accounts' },
-  { id: 'feedback', label: 'Platform Feedback' },
+  { id: 'feedback', label: 'Feedback' },
 ]
 
 export default function AdminPortal() {

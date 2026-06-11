@@ -18,7 +18,7 @@ import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 
-export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null }) {
+export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
 
   // ─── Core hooks ───────────────────────────────────────────────────────────
@@ -78,6 +78,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   saveWorkRef.current = cs.saveCurrentWork
   exitSandboxRef.current = cs.exitPersonalSandbox
   resetForTaskRef.current = cs.resetForTaskChange
+
+  useEffect(() => {
+    onTaskChange?.(viewingTaskId ?? currentTaskId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewingTaskId, currentTaskId])
 
   const isMobile = useIsMobile()
 

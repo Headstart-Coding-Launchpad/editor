@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { flattenTasks, findGroupForTask, updateTaskInTasks, updateSubtaskTitles } from '../../shared/taskUtils'
 import { validateLesson } from '../lessonUtils'
 import { HTML_ONLY } from '../components/FileManager'
+import { createSpriteFromPreset } from '../spritePresets'
 
-export function useBuilderState({ lesson, onUpdate }) {
+export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   const [selectedTaskId, setSelectedTaskId] = useState(() => {
     const first = lesson.tasks[0]
     if (!first) return null
@@ -41,10 +42,12 @@ export function useBuilderState({ lesson, onUpdate }) {
       }
     }
     if (lesson.type === 'scratch') {
+      const sprites = defaultSprites.length > 0 ? [createSpriteFromPreset([], defaultSprites[0])] : undefined
       return {
         toolbox: '',
         starterBlocks: prevTask ? (prevTask.completeBlocks ?? prevTask.starterBlocks ?? null) : null,
         carryBlocksFrom: prevTask?.id ?? null,
+        ...(sprites ? { sprites } : {}),
       }
     }
     return {

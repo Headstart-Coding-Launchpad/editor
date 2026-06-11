@@ -69,8 +69,6 @@ const s = {
   },
   content: {
     padding: '14px 16px',
-    maxHeight: 280,
-    overflowY: 'auto',
   },
   contentFill: {
     flex: 1,

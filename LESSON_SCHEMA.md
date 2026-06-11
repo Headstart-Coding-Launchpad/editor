@@ -331,6 +331,7 @@ Sprite object:
 | `rotationStyle` | No | string | Initial rotation style: `all around`, `left-right`, or `don't rotate`. Defaults to `all around`. |
 | `costume` | No | string | Initial costume name when `costumes` are configured. Defaults to the first costume. |
 | `costumes` | No | costume array | Optional image costumes. First costume is default. |
+| `emoji` | No | string | A single emoji character. When set and no costume image is active, the emoji is rendered on the stage instead of the built-in vector shape. Costume images still take precedence. |
 
 Costume object:
 
@@ -355,6 +356,7 @@ Supported combinations:
 - Single sprite: one sprite in `sprites`.
 - Multi-sprite project: multiple `sprites`, with `starterBlocks` keyed by each sprite ID.
 - Shape sprites: use `type` with no costumes.
+- Emoji sprites: set `emoji` (e.g. `"🐶"`) with no costumes; overrides the built-in shape on the stage.
 - Image sprites: add `costumes` and set lesson-level `assetsPath`.
 - Shared image sprites: use a public root path in `costumes[].image`; no lesson `assetsPath` is required.
 - Solid backdrop: use `colour`.

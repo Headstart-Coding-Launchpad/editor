@@ -292,6 +292,12 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0
 
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
 
+function spriteVisualMode(sp) {
+  if (sp.costumes?.length > 0) return 'costume'
+  if (sp.emoji) return 'emoji'
+  return 'preset'
+}
+
 export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const pickerWrapRef = React.useRef(null)
@@ -337,7 +343,7 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
               <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
                 {imageUrl
                   ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                  : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
+                  : <span className="te-sprite-card__shape">{sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
                 }
                 <span className="te-sprite-card__name">{sp.name}</span>
               </button>
@@ -350,7 +356,23 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
 }
 
 export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false, bare = false }) {
-  const [expandedCostumes, setExpandedCostumes] = React.useState({})
+  const [spriteModes, setSpriteModes] = React.useState(() =>
+    Object.fromEntries(sprites.map(sp => [sp.id, spriteVisualMode(sp)]))
+  )
+
+  React.useEffect(() => {
+    setSpriteModes(prev => {
+      const next = { ...prev }
+      for (const sp of sprites) {
+        if (!(sp.id in next)) next[sp.id] = spriteVisualMode(sp)
+      }
+      for (const id of Object.keys(next)) {
+        if (!sprites.some(sp => sp.id === id)) delete next[id]
+      }
+      return next
+    })
+  }, [sprites])
+
   const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
 
   function removeSprite(id) {
@@ -362,8 +384,15 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
     onChange(sprites.map(sp => sp.id === id ? { ...sp, [field]: value } : sp))
   }
 
-  function toggleCostumes(id) {
-    setExpandedCostumes(prev => ({ ...prev, [id]: !prev[id] }))
+  function updateMany(id, changes) {
+    onChange(sprites.map(sp => sp.id === id ? { ...sp, ...changes } : sp))
+  }
+
+  function setVisualMode(id, mode) {
+    setSpriteModes(prev => ({ ...prev, [id]: mode }))
+    if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
+    else if (mode === 'emoji') updateMany(id, { costumes: [] })
+    else updateMany(id, { emoji: '' })
   }
 
   function addCostume(spriteId) {
@@ -383,79 +412,94 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
     }))
   }
 
-  const entries = displayedSprites.map(sp => (
-    <div key={sp.id} className={bare ? null : 'te-sprite-entry'}>
-      {!bare && (
-        <div className="te-sprite-entry__thumb">
-          {sp.costumes?.[0]?.image
-            ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-            : <span className="te-sprite-card__shape">{SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat}</span>
-          }
-          <button
-            type="button"
-            className="te-sprite-remove-circle"
-            onClick={() => removeSprite(sp.id)}
-            disabled={sprites.length <= 1}
-            title="Remove sprite"
-          >✕</button>
-        </div>
-      )}
-      <div className="te-sprite-entry__fields">
-        <div className="te-sprite-row">
-          <input
-            className="te-input"
-            style={{ flex: '1 1 80px', minWidth: 0 }}
-            value={sp.name}
-            onChange={e => update(sp.id, 'name', e.target.value)}
-            placeholder="Name"
-          />
-          <select className="te-select" style={{ flex: '0 0 auto' }} value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
-            {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-        {!hidePosRow && (
-          <div className="te-sprite-row">
-            <label className="te-sprite-field">
-              <span className="te-sprite-field__label">X</span>
-              <input className="te-input" style={{ width: 52 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
-            </label>
-            <label className="te-sprite-field">
-              <span className="te-sprite-field__label">Y</span>
-              <input className="te-input" style={{ width: 52 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
-            </label>
-            <label className="te-sprite-field">
-              <span className="te-sprite-field__label">Size</span>
-              <input className="te-input" style={{ width: 52 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
-            </label>
-            <label className="te-sprite-field">
-              <span className="te-sprite-field__label">Dir</span>
-              <input className="te-input" style={{ width: 52 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
-            </label>
+  const entries = displayedSprites.map(sp => {
+    const mode = spriteModes[sp.id] ?? spriteVisualMode(sp)
+    return (
+      <div key={sp.id} className={bare ? null : 'te-sprite-entry'}>
+        {!bare && (
+          <div className="te-sprite-entry__thumb">
+            {sp.costumes?.[0]?.image
+              ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
+              : <span className="te-sprite-card__shape">{sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
+            }
+            <button
+              type="button"
+              className="te-sprite-remove-circle"
+              onClick={() => removeSprite(sp.id)}
+              disabled={sprites.length <= 1}
+              title="Remove sprite"
+            >✕</button>
           </div>
         )}
-        <button
-          type="button"
-          className="te-costume-toggle-btn"
-          style={{ alignSelf: 'flex-start' }}
-          onClick={() => toggleCostumes(sp.id)}
-        >
-          Costumes ({(sp.costumes ?? []).length})
-        </button>
-        {expandedCostumes[sp.id] && (
-          <CostumeManager
-            costumes={sp.costumes ?? []}
-            assetsPath={assetsPath}
-            storageAssets={storageAssets}
-            lessonId={lessonId}
-            lessonType={lessonType}
-            onAdd={() => addCostume(sp.id)}
-            onRemove={idx => removeCostume(sp.id, idx)}
-            onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
-          />
-        )}
+        <div className="te-sprite-entry__fields">
+          <div className="te-sprite-row">
+            <input
+              className="te-input"
+              style={{ flex: '1 1 80px', minWidth: 0 }}
+              value={sp.name}
+              onChange={e => update(sp.id, 'name', e.target.value)}
+              placeholder="Name"
+            />
+            <div className="te-sprite-mode-sel">
+              <button type="button" className={`te-sprite-mode-btn${mode === 'preset' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'preset')}>Shape</button>
+              <button type="button" className={`te-sprite-mode-btn${mode === 'emoji' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'emoji')}>Emoji</button>
+              <button type="button" className={`te-sprite-mode-btn${mode === 'costume' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'costume')}>Costume</button>
+            </div>
+          </div>
+          {mode === 'preset' && (
+            <div className="te-sprite-row">
+              <select className="te-select" value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
+                {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          )}
+          {mode === 'emoji' && (
+            <div className="te-sprite-row">
+              <input
+                className="te-input"
+                style={{ width: 56, textAlign: 'center', fontSize: '20px' }}
+                value={sp.emoji ?? ''}
+                onChange={e => update(sp.id, 'emoji', e.target.value)}
+                placeholder="🐱"
+              />
+            </div>
+          )}
+          {!hidePosRow && (
+            <div className="te-sprite-row">
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">X</span>
+                <input className="te-input" style={{ width: 52 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
+              </label>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">Y</span>
+                <input className="te-input" style={{ width: 52 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
+              </label>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">Size</span>
+                <input className="te-input" style={{ width: 52 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
+              </label>
+              <label className="te-sprite-field">
+                <span className="te-sprite-field__label">Dir</span>
+                <input className="te-input" style={{ width: 52 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
+              </label>
+            </div>
+          )}
+          {mode === 'costume' && (
+            <CostumeManager
+              costumes={sp.costumes ?? []}
+              assetsPath={assetsPath}
+              storageAssets={storageAssets}
+              lessonId={lessonId}
+              lessonType={lessonType}
+              onAdd={() => addCostume(sp.id)}
+              onRemove={idx => removeCostume(sp.id, idx)}
+              onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
+            />
+          )}
+        </div>
       </div>
-    </div>
-  ))
+    )
+  })
 
   return (
     <>

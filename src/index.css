@@ -1741,10 +1741,9 @@ select {
   gap: 0;
 }
 .te-python-editor {
-  height: 300px;
+  min-height: 300px;
   border: 1px solid #e5e7eb;
   border-radius: 0 0 8px 8px;
-  overflow: hidden;
 }
 .te-attached-code-editor {
   border-radius: 0 0 8px 8px;
@@ -2221,6 +2220,38 @@ select {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+.te-sprite-mode-sel {
+  display: flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.te-sprite-mode-btn {
+  flex: 1;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: #fff;
+  color: #6b7280;
+  border: none;
+  border-right: 1px solid #e5e7eb;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+.te-sprite-mode-btn:last-child {
+  border-right: none;
+}
+.te-sprite-mode-btn--active {
+  background: var(--colour-primary);
+  color: #fff;
+}
+.te-sprite-mode-btn:hover:not(.te-sprite-mode-btn--active) {
+  background: #f3f4f6;
+  color: #374151;
 }
 .te-costume-toggle-btn {
   padding: 4px 8px;
