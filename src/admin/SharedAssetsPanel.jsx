@@ -12,6 +12,12 @@ const LESSON_TYPES = [
 
 const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 
+function spriteVisualMode(sp) {
+  if (sp.costumes?.length > 0) return 'costume'
+  if (sp.emoji) return 'emoji'
+  return 'preset'
+}
+
 function storagePath(type, filename) {
   return `shared/${type}/assets/${filename}`
 }
@@ -178,6 +184,23 @@ function TypeAssetsEditor({ lessonType }) {
 }
 
 function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
+  const [spriteModes, setSpriteModes] = useState(() =>
+    Object.fromEntries(sprites.map(sp => [sp.id, spriteVisualMode(sp)]))
+  )
+
+  useEffect(() => {
+    setSpriteModes(prev => {
+      const next = { ...prev }
+      for (const sp of sprites) {
+        if (!(sp.id in next)) next[sp.id] = spriteVisualMode(sp)
+      }
+      for (const id of Object.keys(next)) {
+        if (!sprites.some(sp => sp.id === id)) delete next[id]
+      }
+      return next
+    })
+  }, [sprites])
+
   function addSprite() {
     const next = sprites.length + 1
     let id = `sprite${next}`
@@ -199,6 +222,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
   }
 
   function setVisualMode(id, mode) {
+    setSpriteModes(prev => ({ ...prev, [id]: mode }))
     if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
     else if (mode === 'emoji') updateMany(id, { costumes: [] })
     else updateMany(id, { emoji: '' })
@@ -248,7 +272,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
       )}
 
       {sprites.map((sp, i) => {
-        const mode = sp.costumes?.length > 0 ? 'costume' : sp.emoji ? 'emoji' : 'preset'
+        const mode = spriteModes[sp.id] ?? spriteVisualMode(sp)
         return (
           <div key={sp.id} style={s.spriteBlock}>
             <div style={s.spriteRow}>

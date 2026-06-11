@@ -292,6 +292,12 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0
 
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
 
+function spriteVisualMode(sp) {
+  if (sp.costumes?.length > 0) return 'costume'
+  if (sp.emoji) return 'emoji'
+  return 'preset'
+}
+
 export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const pickerWrapRef = React.useRef(null)
@@ -350,6 +356,23 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
 }
 
 export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false, bare = false }) {
+  const [spriteModes, setSpriteModes] = React.useState(() =>
+    Object.fromEntries(sprites.map(sp => [sp.id, spriteVisualMode(sp)]))
+  )
+
+  React.useEffect(() => {
+    setSpriteModes(prev => {
+      const next = { ...prev }
+      for (const sp of sprites) {
+        if (!(sp.id in next)) next[sp.id] = spriteVisualMode(sp)
+      }
+      for (const id of Object.keys(next)) {
+        if (!sprites.some(sp => sp.id === id)) delete next[id]
+      }
+      return next
+    })
+  }, [sprites])
+
   const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
 
   function removeSprite(id) {
@@ -366,6 +389,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   }
 
   function setVisualMode(id, mode) {
+    setSpriteModes(prev => ({ ...prev, [id]: mode }))
     if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
     else if (mode === 'emoji') updateMany(id, { costumes: [] })
     else updateMany(id, { emoji: '' })
@@ -389,7 +413,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   }
 
   const entries = displayedSprites.map(sp => {
-    const mode = sp.costumes?.length > 0 ? 'costume' : sp.emoji ? 'emoji' : 'preset'
+    const mode = spriteModes[sp.id] ?? spriteVisualMode(sp)
     return (
       <div key={sp.id} className={bare ? null : 'te-sprite-entry'}>
         {!bare && (
