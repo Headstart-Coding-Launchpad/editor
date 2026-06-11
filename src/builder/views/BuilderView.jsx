@@ -25,6 +25,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const { role } = useAuth()
   const navigate = useNavigate()
 
+  const { defaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
+
   const {
     selectedTaskId,
     selectedGroupId,
@@ -45,7 +47,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     selectedGroup,
     lessonForEditor,
     selectedTaskGroup,
-  const { defaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
   } = useBuilderState({ lesson, onUpdate, defaultSprites })
 
   useEffect(() => {
