@@ -2164,15 +2164,34 @@ select {
   background: #fafafa;
 }
 .te-sprite-entry {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: flex-start;
+}
+.te-sprite-entry__thumb {
   position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.te-sprite-entry__fields {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 4px;
 }
 .te-sprite-remove-circle {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: -7px;
+  right: -7px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
