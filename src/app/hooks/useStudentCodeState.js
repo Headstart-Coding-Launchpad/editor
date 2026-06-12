@@ -21,6 +21,13 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
  *
  * Receives currentTaskId, viewingTaskId, phase, and session write callbacks from the caller.
  */
+function collapseForDisplay(str, maxLines) {
+  const lines = str.split('\n')
+  if (lines.length <= maxLines) return str
+  const hidden = lines.length - maxLines
+  return `[${hidden} earlier lines hidden]\n` + lines.slice(-maxLines).join('\n')
+}
+
 export function useStudentCodeState({
   lessonId,
   lesson,
@@ -72,6 +79,7 @@ export function useStudentCodeState({
   const outputRafIdRef         = useRef(null)
 
   const MAX_STREAMED_OUTPUT = 20_000
+  const MAX_DISPLAY_LINES   = 100
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
   const identityRef          = useRef(identity)
@@ -515,7 +523,7 @@ export function useStudentCodeState({
         if (outputRafIdRef.current === null) {
           outputRafIdRef.current = requestAnimationFrame(() => {
             outputRafIdRef.current = null
-            setOutput(accumulated)
+            setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
           })
         }
         // Debounce Firebase writes independently at 200ms
@@ -537,14 +545,14 @@ export function useStudentCodeState({
       if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
 
       if (result.status === 'stopped') {
-        setOutput(accumulated)
+        setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
         if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
         if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         setRunning(false)
         return
       }
 
-      setOutput(accumulated)
+      setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
       const status = result.status
       setRunStatus(status)
 
