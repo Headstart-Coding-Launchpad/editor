@@ -28,6 +28,7 @@ import { DEFAULT_FS } from '../../shared/filesystem'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { cloneFiles, cloneScratchState } from '../../shared/workspaceData'
+import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import {
   getSandboxConfiguredCode,
@@ -47,11 +48,13 @@ export default function TeacherView({ lessonId }) {
     session, loading,
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck,
+    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
+    sendToTopic,
   } = useSession(lessonId)
 
   const [lesson, setLesson]             = useState(null)
   const [lessonLoading, setLessonLoading] = useState(true)
+  const { topics } = useTopicLibrary(lesson?.type, !!lesson)
   const [lessonError, setLessonError]     = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
@@ -494,6 +497,7 @@ export default function TeacherView({ lessonId }) {
             lesson={lesson}
             lessonId={lessonId}
             session={session}
+            topics={topics}
             onRename={renameStudent}
             onRemove={removeStudent}
             onGoLive={handleGoLiveForMe}
@@ -501,6 +505,8 @@ export default function TeacherView({ lessonId }) {
             onStopLive={handleStopStudentLive}
             onRemoteReset={pushResetToStudent}
             onOverrideCheck={overrideStudentCheck}
+            onDismissHelp={dismissHelp}
+            onSendToTopic={sendToTopic}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
           />

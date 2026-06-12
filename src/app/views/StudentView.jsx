@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
@@ -27,7 +27,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const {
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
-    setTaskId, setTeacherLive, updateTeacherLive, removeStudent,
+    setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
@@ -97,6 +97,27 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.students?.[identity?.anonymousId]?.displayName])
+
+  // ─── Topic library tracking ────────────────────────────────────────────────
+
+  const [openTopicId, setOpenTopicId] = useState(null)
+  const sentToTopicPushedAt = session?.students?.[identity?.anonymousId]?.sentToTopicPushedAt
+
+  useEffect(() => {
+    if (!sentToTopicPushedAt) return
+    const sentId = session?.students?.[identity?.anonymousId]?.sentToTopicId
+    if (sentId) setOpenTopicId(sentId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentToTopicPushedAt])
+
+  function handleTopicOpen(topicId) {
+    if (identity?.anonymousId && phase === 'lesson') setStudentTopic?.(identity.anonymousId, topicId || null)
+  }
+
+  function handleTopicClose() {
+    setOpenTopicId(null)
+    if (identity?.anonymousId && phase === 'lesson') setStudentTopic?.(identity.anonymousId, null)
+  }
 
   // ─── Navigation handlers ───────────────────────────────────────────────────
 
@@ -358,6 +379,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displayFs={displayFs}
           canOfferCompleteSolution={canOfferCompleteSolution}
           canOfferPersonalSandbox={canOfferPersonalSandbox}
+          onNeedHelp={phase === 'lesson' && identity?.anonymousId ? () => requestHelp(identity.anonymousId) : undefined}
+          onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+          onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+          openTopicId={phase === 'lesson' ? openTopicId : null}
         />
       </div>
       {isSolo && (

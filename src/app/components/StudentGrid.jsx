@@ -17,7 +17,7 @@ function formatCheck(check) {
   }).join(' · ')
 }
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [checkSectionOpen, setCheckSectionOpen] = useState(false)
 
@@ -35,15 +35,27 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
 
   function handlePrev() {
     if (expandedIndex > 0) {
-      onStopLive?.()
-      setExpandedStudentId(students[expandedIndex - 1].anonymousId)
+      const prevStudent = students[expandedIndex - 1]
+      const isLiveForMe = session?.activeStudentView === expandedStudentId && session?.teacherLive?.sourceStudentId !== expandedStudentId
+      if (isLiveForMe) {
+        onGoLive?.(prevStudent.anonymousId)
+      } else {
+        onStopLive?.()
+      }
+      setExpandedStudentId(prevStudent.anonymousId)
     }
   }
 
   function handleNext() {
     if (expandedIndex < students.length - 1) {
-      onStopLive?.()
-      setExpandedStudentId(students[expandedIndex + 1].anonymousId)
+      const nextStudent = students[expandedIndex + 1]
+      const isLiveForMe = session?.activeStudentView === expandedStudentId && session?.teacherLive?.sourceStudentId !== expandedStudentId
+      if (isLiveForMe) {
+        onGoLive?.(nextStudent.anonymousId)
+      } else {
+        onStopLive?.()
+      }
+      setExpandedStudentId(nextStudent.anonymousId)
     }
   }
 
@@ -133,6 +145,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
               lesson={lesson}
               lessonId={lessonId}
               session={session}
+              topics={topics}
               onRename={onRename}
               onRemove={onRemove}
               onExpand={handleExpand}
@@ -168,6 +181,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           student={expandedStudent}
           lesson={lesson}
           session={session}
+          topics={topics}
           isLive={session?.activeStudentView === expandedStudent.anonymousId}
           isLiveForAll={session?.teacherLive?.sourceStudentId === expandedStudent.anonymousId}
           onGoLive={() => onGoLive?.(expandedStudent.anonymousId)}
@@ -180,6 +194,8 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           onNext={handleNext}
           onRemoteReset={onRemoteReset}
           onOverrideCheck={onOverrideCheck}
+          onDismissHelp={onDismissHelp}
+          onSendToTopic={onSendToTopic}
         />
       )}
     </div>

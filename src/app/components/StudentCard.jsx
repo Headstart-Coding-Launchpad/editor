@@ -4,7 +4,7 @@ import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 
-export default function StudentCard({ student, lesson, lessonId, session, onRename, onRemove, onExpand }) {
+export default function StudentCard({ student, lesson, lessonId, session, topics, onRename, onRemove, onExpand }) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
 
@@ -44,6 +44,8 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
     ? s.cardCheckPassed
     : checkFailed
     ? s.cardCheckFailed
+    : student.needsHelp
+    ? s.cardNeedsHelp
     : null
   const hasAnswer = student.currentAnswer != null && student.currentAnswer !== ''
 
@@ -113,6 +115,19 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
               Sandbox
             </span>
           )}
+          {student.needsHelp && (
+            <span style={{ ...s.checkBadge, ...s.checkBadgeHelp }} title="Student has requested help">
+              Help
+            </span>
+          )}
+          {student.currentTopicId && (() => {
+            const topic = topics?.find(t => t.id === student.currentTopicId)
+            return (
+              <span style={{ ...s.checkBadge, ...s.checkBadgeTopic }} title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}>
+                📖 {topic?.title ?? student.currentTopicId}
+              </span>
+            )
+          })()}
         </div>
       </div>
 
@@ -208,6 +223,11 @@ const s = {
     background: '#fef2f2',
     boxShadow: '0 0 0 3px rgba(239, 68, 68, 0.16), 0 8px 18px rgba(127, 29, 29, 0.14)',
   },
+  cardNeedsHelp: {
+    border: '3px solid #f59e0b',
+    background: '#fffbeb',
+    boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.2), 0 8px 18px rgba(120, 53, 15, 0.14)',
+  },
   header: {
     display: 'flex',
     flexDirection: 'column',
@@ -279,6 +299,19 @@ const s = {
   checkBadgeSandbox: {
     background: '#7c3aed',
     color: '#fff',
+  },
+  checkBadgeHelp: {
+    background: '#f59e0b',
+    color: '#fff',
+  },
+  checkBadgeTopic: {
+    background: '#0ea5e9',
+    color: '#fff',
+    maxWidth: 120,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    display: 'inline-block',
   },
   checkBadgeOverridePassed: {
     background: 'rgba(34,197,94,0.12)',
