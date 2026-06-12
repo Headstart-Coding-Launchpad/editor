@@ -255,8 +255,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     : (task?.completeFiles?.length > 0)
   const taskCodeStages = task?.codeStages ?? []
   const nextStageIndex = cs.offeredStageIndex + 1
-  const canOfferNextStage = isSolo && !displayCheckPassed && cs.repeatedSuggestionCount >= 2 && nextStageIndex < taskCodeStages.length
-  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.repeatedSuggestionCount >= 2 && nextStageIndex >= taskCodeStages.length
+  const canOfferNextStage = isSolo && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
+  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex >= taskCodeStages.length
   const hasPersonalSandbox = lesson.type === 'python'
     ? !!(lesson.sandboxStarterCode != null)
     : lesson.type === 'html'

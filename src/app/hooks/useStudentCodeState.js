@@ -123,7 +123,7 @@ export function useStudentCodeState({
   const myStudentData = session?.students?.[identity?.anonymousId]
   const {
     checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
-    checkSuggestion, setCheckSuggestion, repeatedSuggestionCount,
+    checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
     testResults, setTestResults, checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
     resetCheckFeedback, applyCheckFeedback,
@@ -508,10 +508,10 @@ export function useStudentCodeState({
           accumulated = accumulated.slice(0, MAX_STREAMED_OUTPUT) + '\n[Output truncated — stop the program to continue]'
           outputCapReachedRef.current = true
         }
-        setOutput(accumulated)
         const now = Date.now()
         if (now - lastOutputWriteRef.current >= 200) {
           lastOutputWriteRef.current = now
+          setOutput(accumulated)
           if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
           if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         }
@@ -524,12 +524,14 @@ export function useStudentCodeState({
       setInputPrompt(null)
 
       if (result.status === 'stopped') {
+        setOutput(accumulated)
         if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
         if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         setRunning(false)
         return
       }
 
+      setOutput(accumulated)
       const status = result.status
       setRunStatus(status)
 
@@ -975,7 +977,7 @@ export function useStudentCodeState({
     // State
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
-    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount,
+    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
     offeredStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,

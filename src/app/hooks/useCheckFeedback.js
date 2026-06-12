@@ -5,6 +5,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
   const [checkAttempted, setCheckAttempted]   = useState(false)
   const [checkSuggestion, setCheckSuggestion] = useState('')
   const [repeatedSuggestionCount, setRepeatedSuggestionCount] = useState(0)
+  const [checkFailCount, setCheckFailCount]   = useState(0)
   const [testResults, setTestResults]         = useState(null)
   const [offeredStageIndex, setOfferedStageIndex] = useState(-1)
 
@@ -18,6 +19,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setCheckAttempted(false)
     setCheckSuggestion('')
     setRepeatedSuggestionCount(0)
+    setCheckFailCount(0)
     setTestResults(null)
     setOfferedStageIndex(-1)
   }
@@ -27,6 +29,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setCheckPassed(passed)
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)
+    setCheckFailCount(prev => passed ? 0 : prev + 1)
     if (passed) setOfferedStageIndex(-1)
     setRepeatedSuggestionCount(prev => {
       if (passed || !nextSuggestion) return 0
@@ -49,6 +52,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     checkAttempted, setCheckAttempted,
     checkSuggestion, setCheckSuggestion,
     repeatedSuggestionCount,
+    checkFailCount,
     testResults, setTestResults,
     checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
