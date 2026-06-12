@@ -12,6 +12,13 @@ function matchesTaskId(item, taskId) {
   return String(item.taskId ?? '') === String(taskId)
 }
 
+function matchesScope(item, scope) {
+  if (!scope) return true
+  if (scope === 'task') return !!item.taskId
+  if (scope === 'lesson') return !item.taskId
+  return true
+}
+
 function sortNewestFirst(items) {
   return [...items].sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
 }
@@ -32,25 +39,27 @@ function normalizeFeedbackDoc(doc, source, lessonId = null) {
   }
 }
 
-export async function listPlatformFeedback({ lessonId = null, taskId = null } = {}) {
+export async function listPlatformFeedback({ lessonId = null, taskId = null, scope = null } = {}) {
   const snap = await db.collection('platformFeedback').get()
   const items = snap.docs
     .map(doc => normalizeFeedbackDoc(doc, 'platform'))
     .filter(item => (lessonId ? item.lessonId === lessonId : true))
     .filter(item => matchesTaskId(item, taskId))
+    .filter(item => matchesScope(item, scope))
   return sortNewestFirst(items)
 }
 
-export async function listLessonFeedback(lessonId, { taskId = null } = {}) {
+export async function listLessonFeedback(lessonId, { taskId = null, scope = null } = {}) {
   if (!lessonId) throw new Error('lessonId is required')
   const snap = await db.collection('lessons').doc(lessonId).collection('feedback').get()
   const items = snap.docs
     .map(doc => normalizeFeedbackDoc(doc, 'lesson', lessonId))
     .filter(item => matchesTaskId(item, taskId))
+    .filter(item => matchesScope(item, scope))
   return sortNewestFirst(items)
 }
 
-export async function listAllLessonFeedback({ lessonId = null, taskId = null } = {}) {
+export async function listAllLessonFeedback({ lessonId = null, taskId = null, scope = null } = {}) {
   const snap = await db.collectionGroup('feedback').get()
   const items = snap.docs
     .map(doc => {
@@ -59,13 +68,14 @@ export async function listAllLessonFeedback({ lessonId = null, taskId = null } =
     })
     .filter(item => (lessonId ? item.lessonId === lessonId : true))
     .filter(item => matchesTaskId(item, taskId))
+    .filter(item => matchesScope(item, scope))
   return sortNewestFirst(items)
 }
 
-export async function listAllFeedback({ lessonId = null, taskId = null } = {}) {
+export async function listAllFeedback({ lessonId = null, taskId = null, scope = null } = {}) {
   const [platform, lesson] = await Promise.all([
-    listPlatformFeedback({ lessonId, taskId }),
-    lessonId ? listLessonFeedback(lessonId, { taskId }) : listAllLessonFeedback({ taskId }),
+    listPlatformFeedback({ lessonId, taskId, scope }),
+    lessonId ? listLessonFeedback(lessonId, { taskId, scope }) : listAllLessonFeedback({ taskId, scope }),
   ])
   return sortNewestFirst([...platform, ...lesson])
 }

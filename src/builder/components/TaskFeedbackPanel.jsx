@@ -10,7 +10,7 @@ export default function TaskFeedbackPanel({ feedback }) {
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
       >
-        <span style={s.title}>Lesson Feedback ({feedback.length})</span>
+        <span style={s.title}>Task Feedback ({feedback.length})</span>
         <span style={{ ...s.chevron, transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
       </button>
       {open && (
