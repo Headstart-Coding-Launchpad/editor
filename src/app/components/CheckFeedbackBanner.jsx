@@ -8,6 +8,7 @@ export default function CheckFeedbackBanner({
   suggestion,
   onShowCompleteCode,
   onGoPersonalSandbox,
+  onNeedHelp,
 }) {
   const hint = String(suggestion ?? '').trim()
 
@@ -27,6 +28,11 @@ export default function CheckFeedbackBanner({
       {!passed && onShowCompleteCode && (
         <button type="button" style={s.actionLink} onClick={onShowCompleteCode}>
           See complete code
+        </button>
+      )}
+      {!passed && onNeedHelp && (
+        <button type="button" style={s.helpBtn} onClick={onNeedHelp}>
+          Need Help
         </button>
       )}
       {passed && onGoPersonalSandbox && (
@@ -116,5 +122,17 @@ const s = {
     cursor: 'pointer',
     textDecoration: 'underline',
     textUnderlineOffset: 3,
+  },
+  helpBtn: {
+    flexShrink: 0,
+    background: '#f59e0b',
+    border: 'none',
+    padding: '5px 12px',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.88rem',
+    color: '#fff',
+    cursor: 'pointer',
   },
 }

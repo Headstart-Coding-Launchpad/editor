@@ -239,6 +239,7 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
           "lastRunAt": 1234567890,
           "remoteResetAction": "starter | complete | stage_0 | stage_1 | ...",
           "remoteResetPushedAt": 1234567890,
+          "needsHelp": "true | null",
           "inPersonalSandbox": "true | null",
           "checkOverridePassed": "boolean | null",
           "checkOverrideHint": "string | null",

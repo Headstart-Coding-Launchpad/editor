@@ -44,6 +44,8 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
     ? s.cardCheckPassed
     : checkFailed
     ? s.cardCheckFailed
+    : student.needsHelp
+    ? s.cardNeedsHelp
     : null
   const hasAnswer = student.currentAnswer != null && student.currentAnswer !== ''
 
@@ -111,6 +113,11 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
           {student.inPersonalSandbox && (
             <span style={{ ...s.checkBadge, ...s.checkBadgeSandbox }} title="Student is in their personal sandbox">
               Sandbox
+            </span>
+          )}
+          {student.needsHelp && (
+            <span style={{ ...s.checkBadge, ...s.checkBadgeHelp }} title="Student has requested help">
+              Help
             </span>
           )}
         </div>
@@ -208,6 +215,11 @@ const s = {
     background: '#fef2f2',
     boxShadow: '0 0 0 3px rgba(239, 68, 68, 0.16), 0 8px 18px rgba(127, 29, 29, 0.14)',
   },
+  cardNeedsHelp: {
+    border: '3px solid #f59e0b',
+    background: '#fffbeb',
+    boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.2), 0 8px 18px rgba(120, 53, 15, 0.14)',
+  },
   header: {
     display: 'flex',
     flexDirection: 'column',
@@ -278,6 +290,10 @@ const s = {
   },
   checkBadgeSandbox: {
     background: '#7c3aed',
+    color: '#fff',
+  },
+  checkBadgeHelp: {
+    background: '#f59e0b',
     color: '#fff',
   },
   checkBadgeOverridePassed: {

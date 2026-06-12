@@ -27,7 +27,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const {
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
-    setTaskId, setTeacherLive, updateTeacherLive, removeStudent,
+    setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
@@ -358,6 +358,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displayFs={displayFs}
           canOfferCompleteSolution={canOfferCompleteSolution}
           canOfferPersonalSandbox={canOfferPersonalSandbox}
+          onNeedHelp={phase === 'lesson' && identity?.anonymousId ? () => requestHelp(identity.anonymousId) : undefined}
         />
       </div>
       {isSolo && (
