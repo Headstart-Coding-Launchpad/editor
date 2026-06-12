@@ -51,7 +51,7 @@ function LessonCard({ item, onDelete }) {
 export default function FeedbackPanel() {
   const [subTab, setSubTab] = useState('platform')
   const [platform, setPlatform] = useState([])
-  const [lesson, setLesson] = useState([])
+  const [allLesson, setAllLesson] = useState([])
   const [loadingPlatform, setLoadingPlatform] = useState(true)
   const [loadingLesson, setLoadingLesson] = useState(true)
 
@@ -72,7 +72,7 @@ export default function FeedbackPanel() {
         ...d.data(),
       }))
       items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
-      setLesson(items)
+      setAllLesson(items)
       setLoadingLesson(false)
     }, () => setLoadingLesson(false))
   }, [])
@@ -86,8 +86,11 @@ export default function FeedbackPanel() {
     deleteDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id))
   }
 
+  const lessonItems = allLesson.filter(item => !item.taskId)
+  const taskItems   = allLesson.filter(item => !!item.taskId)
+
   const loading = subTab === 'platform' ? loadingPlatform : loadingLesson
-  const items = subTab === 'platform' ? platform : lesson
+  const items = subTab === 'platform' ? platform : subTab === 'lesson' ? lessonItems : taskItems
 
   return (
     <div style={s.wrap}>
@@ -102,6 +105,10 @@ export default function FeedbackPanel() {
           style={{ ...s.subTab, ...(subTab === 'lesson' ? s.subTabActive : {}) }}
           onClick={() => setSubTab('lesson')}
         >Lesson</button>
+        <button
+          style={{ ...s.subTab, ...(subTab === 'task' ? s.subTabActive : {}) }}
+          onClick={() => setSubTab('task')}
+        >Task</button>
       </div>
 
       {loading ? (

@@ -500,23 +500,26 @@ await yargs(hideBin(process.argv))
     .command('platform', 'List platform feedback', {
       'lesson-id': { type: 'string', describe: 'Only include platform feedback linked to this lesson ID' },
       'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
-    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId }) => {
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
+    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope }) => {
       const { listPlatformFeedback } = await loadFeedback()
-      print(await listPlatformFeedback({ lessonId, taskId }))
+      print(await listPlatformFeedback({ lessonId, taskId, scope }))
     }))
 
     .command('lesson <lessonId>', 'List all feedback saved under one lesson', {
       'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
-    }, cmd(async ({ lessonId, 'task-id': taskId }) => {
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
+    }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
       const { listLessonFeedback } = await loadFeedback()
-      print(await listLessonFeedback(lessonId, { taskId }))
+      print(await listLessonFeedback(lessonId, { taskId, scope }))
     }))
 
     .command('all [lessonId]', 'List platform and lesson feedback together', {
       'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
-    }, cmd(async ({ lessonId, 'task-id': taskId }) => {
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
+    }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
       const { listAllFeedback } = await loadFeedback()
-      print(await listAllFeedback({ lessonId, taskId }))
+      print(await listAllFeedback({ lessonId, taskId, scope }))
     }))
 
     .demandCommand(1, 'Specify a subcommand: platform | lesson | all')

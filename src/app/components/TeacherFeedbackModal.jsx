@@ -6,9 +6,10 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   const overlayRef = useRef(null)
   const [activeTab, setActiveTab] = useState('lesson')
   const [lessonText, setLessonText] = useState('')
+  const [taskText, setTaskText] = useState('')
   const [platformText, setPlatformText] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(null) // null | 'lesson' | 'platform'
+  const [submitted, setSubmitted] = useState(null) // null | 'lesson' | 'task' | 'platform'
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose?.() }
@@ -23,14 +24,35 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
       await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), {
         lessonId,
         lessonTitle:  lessonTitle ?? '',
-        taskId:       currentTaskId ?? null,
-        taskTitle:    currentTaskTitle ?? null,
+        taskId:       null,
+        taskTitle:    null,
         text:         lessonText.trim(),
         teacherEmail: teacherEmail ?? '',
         submittedAt:  Date.now(),
       })
       setLessonText('')
       setSubmitted('lesson')
+      setTimeout(() => setSubmitted(null), 2500)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSubmitTask() {
+    if (!taskText.trim()) return
+    setSubmitting(true)
+    try {
+      await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), {
+        lessonId,
+        lessonTitle:  lessonTitle ?? '',
+        taskId:       currentTaskId ?? null,
+        taskTitle:    currentTaskTitle ?? null,
+        text:         taskText.trim(),
+        teacherEmail: teacherEmail ?? '',
+        submittedAt:  Date.now(),
+      })
+      setTaskText('')
+      setSubmitted('task')
       setTimeout(() => setSubmitted(null), 2500)
     } finally {
       setSubmitting(false)
@@ -78,6 +100,12 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
             style={{ ...s.tab, ...(activeTab === 'lesson' ? s.tabActive : {}) }}
             onClick={() => setActiveTab('lesson')}
           >Lesson Feedback</button>
+          {currentTaskTitle && (
+            <button
+              style={{ ...s.tab, ...(activeTab === 'task' ? s.tabActive : {}) }}
+              onClick={() => setActiveTab('task')}
+            >Task Feedback</button>
+          )}
           <button
             style={{ ...s.tab, ...(activeTab === 'platform' ? s.tabActive : {}) }}
             onClick={() => setActiveTab('platform')}
@@ -87,13 +115,11 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
         <div style={s.body}>
           {activeTab === 'lesson' ? (
             <>
-              <p style={s.context}>
-                <strong>{lessonTitle}</strong>{currentTaskTitle ? ` — Task: ${currentTaskTitle}` : ''}
-              </p>
-              <p style={s.hint}>Feedback about this lesson or task — saved with the lesson and visible in the builder.</p>
+              <p style={s.context}><strong>{lessonTitle}</strong></p>
+              <p style={s.hint}>Feedback about the lesson as a whole — saved with the lesson and visible in the builder.</p>
               <textarea
                 style={s.textarea}
-                placeholder="What worked well? What could be improved? Any issues with the task?"
+                placeholder="What worked well? What could be improved? Any general issues with the lesson?"
                 value={lessonText}
                 onChange={e => setLessonText(e.target.value)}
                 rows={6}
@@ -109,6 +135,33 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
                   disabled={submitting || !lessonText.trim()}
                 >
                   {submitting ? 'Submitting…' : 'Submit Lesson Feedback'}
+                </button>
+              </div>
+            </>
+          ) : activeTab === 'task' ? (
+            <>
+              <p style={s.context}>
+                <strong>{lessonTitle}</strong>{currentTaskTitle ? ` — Task: ${currentTaskTitle}` : ''}
+              </p>
+              <p style={s.hint}>Feedback specific to this task — saved with the task and visible in the builder.</p>
+              <textarea
+                style={s.textarea}
+                placeholder="What worked well? What could be improved? Any issues with this task?"
+                value={taskText}
+                onChange={e => setTaskText(e.target.value)}
+                rows={6}
+                autoFocus={activeTab === 'task'}
+              />
+              {submitted === 'task' && <p style={s.successMsg}>Submitted!</p>}
+              <div style={s.actions}>
+                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
+                <button
+                  className="btn-primary"
+                  style={s.submitBtn}
+                  onClick={handleSubmitTask}
+                  disabled={submitting || !taskText.trim()}
+                >
+                  {submitting ? 'Submitting…' : 'Submit Task Feedback'}
                 </button>
               </div>
             </>
