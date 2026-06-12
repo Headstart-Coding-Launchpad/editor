@@ -11,7 +11,7 @@ This file lists all third-party open-source libraries used in this project, thei
 | License | Libraries |
 |---|---|
 | MIT | CodeMirror 6 (all packages), React, React DOM, React Router DOM, react-markdown, rehype-highlight, remark-breaks, Vite, @vitejs/plugin-react |
-| Apache-2.0 | Firebase, Blockly, scratch-blocks |
+| Apache-2.0 | Firebase, Blockly |
 | BSD-3-Clause | highlight.js |
 | MPL-2.0 | Pyodide (CDN) |
 
@@ -79,10 +79,8 @@ License text: https://github.com/firebase/firebase-js-sdk/blob/master/LICENSE
 | Package | Version | License |
 |---|---|---|
 | `blockly` | 12.5.1 | Apache-2.0 |
-| `scratch-blocks` | 2.1.19 | Apache-2.0 |
 
 Blockly homepage: https://developers.google.com/blockly/
-scratch-blocks homepage: https://github.com/scratchfoundation/scratch-blocks
 License text: https://github.com/google/blockly/blob/master/LICENSE
 
 ---
