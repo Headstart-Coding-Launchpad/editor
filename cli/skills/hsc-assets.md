@@ -1,7 +1,6 @@
 # HSC: Manage Lesson Assets
 
-> **Install as slash command:** copy to `.claude/commands/hsc-assets.md` and invoke with `/hsc-assets`
-> **Arguments:** `$ARGUMENTS` — lesson ID and what to do (list / upload <file> / delete <filename>)
+Use with a lesson ID and an asset action: list, upload `<file>`, or delete `<filename>`.
 
 Upload, list, and delete image or file assets attached to a lesson. Assets are stored in Firebase Storage and their download URLs are recorded in the lesson's `storageAssets` field.
 

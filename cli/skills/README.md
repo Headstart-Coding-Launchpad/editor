@@ -1,18 +1,18 @@
-# CLI Skills
+# CLI Agent Playbooks
 
-Workflow skill files for the HSC CLI tool (`node cli/cli.mjs`).
+Reusable, agent-neutral workflow playbooks for the HSC CLI tool (`node cli/cli.mjs`).
 
-| File | Slash command | Purpose |
-|---|---|---|
-| `hsc-list.md` | `/hsc-list` | List all published lessons and topics |
-| `hsc-author.md` | `/hsc-author` | Author a new lesson from scratch |
-| `hsc-edit.md` | `/hsc-edit` | Edit an existing lesson or individual task |
-| `hsc-topics.md` | `/hsc-topics` | Manage the topic library |
-| `hsc-assets.md` | `/hsc-assets` | Upload, list, and delete lesson assets |
+| File | Purpose |
+|---|---|
+| `hsc-list.md` | List all published lessons and topics |
+| `hsc-author.md` | Author a new lesson from scratch |
+| `hsc-edit.md` | Edit an existing lesson or individual task |
+| `hsc-topics.md` | Manage the topic library |
+| `hsc-assets.md` | Upload, list, and delete lesson assets |
 
-## Installing as slash commands
+## Optional Claude Code compatibility
 
-Copy any skill file to `.claude/commands/` to make it available as a slash command in Claude Code:
+These files can be read directly by any agent. If you want to expose them as Claude Code slash commands, copy them into `.claude/commands/`:
 
 ```
 cp cli/skills/hsc-list.md .claude/commands/hsc-list.md

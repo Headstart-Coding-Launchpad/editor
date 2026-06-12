@@ -2,7 +2,7 @@
 
 One-line role for every source file. When a pull request adds, moves, or removes a source component or test target, update this map and consider the corresponding inventory in `TESTING.md`.
 
-Referenced from AGENTS.md. Use this for navigation before opening files.
+Referenced from `AGENTS.md`. Use this as a navigation index: search headings or open only the section relevant to the current task instead of loading the whole file by default.
 
 ---
 
@@ -283,6 +283,18 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
 | `package.json` | Dependencies and scripts |
-| `.mcp.json` | Obsolete — was Claude Code MCP server registration; no longer used now that the tool is a CLI |
+| `.mcp.json` | Obsolete MCP server registration; no longer used now that the tool is a CLI |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |
+
+---
+
+## Agent Reference Docs
+
+| File | Role |
+|---|---|
+| `AGENTS.md` | Short, agent-neutral session entrypoint and routing index |
+| `docs/agents/project-rules.md` | Agent reference for platform rules, stack, shared modules, admin, and CLI |
+| `docs/agents/runtime-model.md` | Agent reference for Firebase, localStorage, URLs, session states, and identity |
+| `docs/agents/classroom-behaviours.md` | Agent reference for live view, teacher broadcast, sandbox, carry-through, Pyodide, and file-key behaviour |
+| `docs/agents/workflows.md` | Agent reference for git, PRs, reviews, testing, worktrees, and doc hygiene |

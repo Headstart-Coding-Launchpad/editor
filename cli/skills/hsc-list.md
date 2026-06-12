@@ -1,7 +1,5 @@
 # HSC: List Published Content
 
-> **Install as slash command:** copy to `.claude/commands/hsc-list.md` and invoke with `/hsc-list`
-
 Print a summary of everything currently published to the live app.
 
 ## Steps

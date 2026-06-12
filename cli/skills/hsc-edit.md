@@ -1,7 +1,6 @@
 # HSC: Edit an Existing Lesson
 
-> **Install as slash command:** copy to `.claude/commands/hsc-edit.md` and invoke with `/hsc-edit`
-> **Arguments:** `$ARGUMENTS` — lesson ID and a description of what to change
+Use with a lesson ID and a description of what to change.
 
 Edit a published lesson — either a targeted single-task edit (cheaper) or a full lesson rewrite.
 
