@@ -815,6 +815,104 @@ Scratch checks can also be a single object or an array. Every check must pass.
 | `variableName` | Yes | Variable name. Legacy `name` is also read by the evaluator. |
 | `value` | Yes | Expected value. |
 
+### `blocks_in_order`
+
+```json
+{
+  "type": "blocks_in_order",
+  "evaluation": "manual",
+  "spriteName": "Sprite 1",
+  "sequence": ["event_whenflagclicked", "motion_movesteps", "motion_turnright"]
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `type` | Yes | Must be `blocks_in_order`. |
+| `evaluation` | No | `manual` or `after_run`. |
+| `spriteName` | No | Name of sprite to check. If omitted, all sprites are checked and the check passes if any sprite satisfies it. |
+| `sequence` | Yes | Ordered array of block opcodes. The check passes if any connected block stack contains these opcodes **consecutively** (no gaps). Minimum one item. |
+
+### `block_count`
+
+```json
+{
+  "type": "block_count",
+  "evaluation": "manual",
+  "spriteName": "Sprite 1",
+  "opcode": "motion_movesteps",
+  "operator": "equals",
+  "value": 3
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `type` | Yes | Must be `block_count`. |
+| `evaluation` | No | `manual` or `after_run`. |
+| `spriteName` | No | Name of sprite to check. If omitted, all sprites are counted together. |
+| `opcode` | Yes | Scratch block opcode to count. |
+| `operator` | Yes | `equals`, `greater_than`, or `less_than`. |
+| `value` | Yes | Expected block count. Numeric comparison is used. |
+
+### `variable_compare`
+
+```json
+{
+  "type": "variable_compare",
+  "evaluation": "after_run",
+  "variableName": "score",
+  "operator": "greater_than",
+  "value": 5
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `type` | Yes | Must be `variable_compare`. |
+| `evaluation` | No | `manual` or `after_run`. |
+| `variableName` | Yes | Variable name. |
+| `operator` | Yes | `equals`, `greater_than`, or `less_than`. |
+| `value` | Yes | Expected value. Numeric comparison is used when both sides parse as numbers. |
+
+Note: `variable_equals` remains supported. Use `variable_compare` for new checks that need non-equality operators.
+
+### `costume_is`
+
+```json
+{
+  "type": "costume_is",
+  "evaluation": "after_run",
+  "spriteName": "Sprite 1",
+  "value": "costume2"
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `type` | Yes | Must be `costume_is`. |
+| `evaluation` | No | `manual` or `after_run`. |
+| `spriteName` | No | Name of sprite to check. Falls back to first sprite if omitted. |
+| `value` | Yes | Exact costume name string. Case-sensitive. |
+
+### `block_run`
+
+```json
+{
+  "type": "block_run",
+  "evaluation": "after_run",
+  "opcode": "motion_movesteps"
+}
+```
+
+| Field | Required | Notes |
+|---|---:|---|
+| `type` | Yes | Must be `block_run`. |
+| `evaluation` | No | Should always be `after_run` — this check is meaningless before code runs. |
+| `opcode` | Yes | Block opcode that must have been executed during the run. |
+
+Note: event hat blocks (`event_whenflagclicked`, `event_whenkeypressed`, etc.) are not tracked — they trigger chains but are not executed through `runBlock`. Use `block_used` to check for a hat's presence in the workspace instead.
+
 ## Scratch Block Opcodes
 
 These are the block opcodes currently defined by the shared Scratch module and available to use in toolbox XML or `block_used` checks.
@@ -1093,6 +1191,11 @@ Checks evaluate automatically after each student operation — there is no Run b
 - Scratch toolbox XML must parse if provided.
 - Scratch `sprite_property` checks need `property`, `operator`, and `value`.
 - Scratch `block_used` checks need `opcode`.
+- Scratch `blocks_in_order` checks need a non-empty `sequence` array of valid opcodes.
+- Scratch `block_count` checks need `opcode`, `operator`, and `value`.
+- Scratch `variable_compare` checks need `variableName`, `operator`, and `value`.
+- Scratch `costume_is` checks need `value`.
+- Scratch `block_run` checks need `opcode` and should use `evaluation: "after_run"`.
 
 ## Minimal Complete Examples
 

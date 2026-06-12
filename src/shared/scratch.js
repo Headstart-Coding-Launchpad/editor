@@ -754,7 +754,7 @@ function inputDefaultsForBlock(type, options = {}) {
 }
 
 export function createRunSignal() {
-  return { stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null, backdrop: null, backdrops: [], onBackdropChange: null }
+  return { stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null, backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set() }
 }
 
 export async function runWorkspace(workspace, spriteState, onUpdate, signal) {
@@ -830,6 +830,8 @@ async function runChain(block, context) {
 async function runBlock(block, context) {
   const { state, onUpdate, signal, workspace } = context
   if (signal.stopped) return
+  signal.executedBlocks ??= new Set()
+  signal.executedBlocks.add(block.type)
 
   switch (block.type) {
     case 'motion_movesteps': {

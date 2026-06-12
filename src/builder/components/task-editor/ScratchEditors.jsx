@@ -433,6 +433,28 @@ function describeCheck(check, sprites) {
     }
     case 'sprite_property_changed':
       return `After running: ${spriteName}'s ${propLabel} must have changed`
+    case 'blocks_in_order': {
+      const labels = (check.sequence ?? [])
+        .map(op => SCRATCH_BLOCK_OPTIONS.find(([t]) => t === op)?.[1] ?? op)
+        .join(' → ')
+      const spriteLabel = check.spriteName ?? 'Any sprite'
+      return `${spriteLabel}: workspace must contain the sequence: ${labels}`
+    }
+    case 'block_count': {
+      const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
+      const opLabel = COMPARISON_OPERATORS.find(o => o.value === check.operator)?.label ?? check.operator
+      return `Workspace must have "${found?.[1] ?? check.opcode}" block count ${opLabel} ${check.value}`
+    }
+    case 'variable_compare': {
+      const opLabel = COMPARISON_OPERATORS.find(o => o.value === check.operator)?.label ?? check.operator
+      return `${evalLabel}: variable "${check.variableName ?? 'score'}" must be ${opLabel} ${check.value}`
+    }
+    case 'costume_is':
+      return `${evalLabel}: ${spriteName}'s costume must be "${check.value}"`
+    case 'block_run': {
+      const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
+      return `After running: a "${found?.[1] ?? check.opcode}" block must have been executed`
+    }
     default:
       return ''
   }
@@ -459,6 +481,26 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
       onChange({ type: 'sprite_property_changed', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', ...hint })
       return
     }
+    if (nextType === 'blocks_in_order') {
+      onChange({ type: 'blocks_in_order', evaluation: 'manual', sequence: ['event_whenflagclicked', 'motion_movesteps'], ...hint })
+      return
+    }
+    if (nextType === 'block_count') {
+      onChange({ type: 'block_count', evaluation: 'manual', opcode: 'motion_movesteps', operator: 'equals', value: 1, ...hint })
+      return
+    }
+    if (nextType === 'variable_compare') {
+      onChange({ type: 'variable_compare', evaluation: 'after_run', variableName: 'score', operator: 'greater_than', value: 0, ...hint })
+      return
+    }
+    if (nextType === 'costume_is') {
+      onChange({ type: 'costume_is', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', value: 'costume2', ...hint })
+      return
+    }
+    if (nextType === 'block_run') {
+      onChange({ type: 'block_run', evaluation: 'after_run', opcode: 'motion_movesteps', ...hint })
+      return
+    }
     onChange({ type: 'block_used', evaluation: 'manual', opcode: 'motion_movesteps', ...hint })
   }
 
@@ -470,19 +512,26 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <select className="te-select" value={type} onChange={e => changeType(e.target.value)}>
           <option value="block_used">Uses block</option>
+          <option value="blocks_in_order">Blocks in order</option>
+          <option value="block_count">Block count</option>
+          <option value="block_run">Block was run</option>
           <option value="sprite_property">Sprite property</option>
-          <option value="variable_equals">Variable equals</option>
           <option value="sprite_property_delta">Sprite property changed by</option>
           <option value="sprite_property_changed">Sprite property changed</option>
+          <option value="costume_is">Costume is</option>
+          <option value="variable_equals">Variable equals</option>
+          <option value="variable_compare">Variable compare</option>
         </select>
-        <select
-          className="te-select"
-          value={check.evaluation ?? (type === 'block_used' ? 'manual' : 'after_run')}
-          onChange={e => onChange({ ...check, evaluation: e.target.value })}
-        >
-          <option value="manual">manual</option>
-          <option value="after_run">after run</option>
-        </select>
+        {type !== 'block_run' && (
+          <select
+            className="te-select"
+            value={check.evaluation ?? (type === 'block_used' || type === 'blocks_in_order' || type === 'block_count' ? 'manual' : 'after_run')}
+            onChange={e => onChange({ ...check, evaluation: e.target.value })}
+          >
+            <option value="manual">manual</option>
+            <option value="after_run">after run</option>
+          </select>
+        )}
       </div>
 
       {/* Row 2: type-specific fields */}
@@ -497,6 +546,95 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+        ) : type === 'block_run' ? (
+          <select
+            className="te-select"
+            value={check.opcode ?? ''}
+            onChange={e => onChange({ ...check, opcode: e.target.value })}
+          >
+            {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        ) : type === 'block_count' ? (
+          <>
+            <select
+              className="te-select"
+              value={check.spriteName ?? ''}
+              onChange={e => onChange({ ...check, spriteName: e.target.value || undefined })}
+            >
+              <option value="">Any sprite</option>
+              {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            </select>
+            <select
+              className="te-select"
+              value={check.opcode ?? ''}
+              onChange={e => onChange({ ...check, opcode: e.target.value })}
+            >
+              {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <select
+              className="te-select"
+              value={check.operator ?? 'equals'}
+              onChange={e => onChange({ ...check, operator: e.target.value })}
+            >
+              {COMPARISON_OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <input
+              className="te-input"
+              type="number"
+              value={check.value ?? 1}
+              onChange={e => onChange({ ...check, value: Number(e.target.value) })}
+              style={{ width: 64 }}
+            />
+          </>
+        ) : type === 'blocks_in_order' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+            <select
+              className="te-select"
+              value={check.spriteName ?? ''}
+              onChange={e => onChange({ ...check, spriteName: e.target.value || undefined })}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              <option value="">Any sprite</option>
+              {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            </select>
+            {(check.sequence ?? ['motion_movesteps']).map((opcode, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#9ca3af', minWidth: 20 }}>
+                  {idx + 1}.
+                </span>
+                <select
+                  className="te-select"
+                  value={opcode}
+                  onChange={e => {
+                    const next = [...(check.sequence ?? [])]
+                    next[idx] = e.target.value
+                    onChange({ ...check, sequence: next })
+                  }}
+                >
+                  {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="te-check-remove-btn"
+                  disabled={(check.sequence ?? []).length <= 1}
+                  onClick={() => onChange({ ...check, sequence: (check.sequence ?? []).filter((_, i) => i !== idx) })}
+                  title="Remove"
+                >×</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn-ghost te-add-check-btn"
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() => onChange({ ...check, sequence: [...(check.sequence ?? []), SCRATCH_BLOCK_OPTIONS[0][0]] })}
+            >+ Add block</button>
+          </div>
         ) : type === 'variable_equals' ? (
           <>
             <input
@@ -510,6 +648,46 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
               value={check.value ?? ''}
               onChange={e => onChange({ ...check, value: e.target.value })}
               placeholder="Expected value"
+            />
+          </>
+        ) : type === 'variable_compare' ? (
+          <>
+            <input
+              className="te-input"
+              value={check.variableName ?? 'score'}
+              onChange={e => onChange({ ...check, variableName: e.target.value })}
+              placeholder="Variable name"
+            />
+            <select
+              className="te-select"
+              value={check.operator ?? 'equals'}
+              onChange={e => onChange({ ...check, operator: e.target.value })}
+            >
+              {COMPARISON_OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <input
+              className="te-input"
+              value={check.value ?? ''}
+              onChange={e => onChange({ ...check, value: e.target.value })}
+              placeholder="Expected value"
+              style={{ width: 80 }}
+            />
+          </>
+        ) : type === 'costume_is' ? (
+          <>
+            <select
+              className="te-select"
+              value={check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'}
+              onChange={e => onChange({ ...check, spriteName: e.target.value })}
+            >
+              {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            </select>
+            <input
+              className="te-input"
+              value={check.value ?? ''}
+              onChange={e => onChange({ ...check, value: e.target.value })}
+              placeholder="Costume name"
+              style={{ width: 120 }}
             />
           </>
         ) : type === 'sprite_property_changed' ? (

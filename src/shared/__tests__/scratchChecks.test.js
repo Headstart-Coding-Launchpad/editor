@@ -1,11 +1,31 @@
 import { describe, it, expect } from 'vitest'
 import { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } from '../scratchChecks'
 
-// Minimal workspace stub used by block_used checks.
+// Minimal workspace stub used by block_used / block_count checks.
 function makeWorkspace(blockTypes) {
   return {
-    getAllBlocks: () => blockTypes.map(type => ({ type })),
+    getAllBlocks: () => blockTypes.map(type => ({ type, previousConnection: { isConnected: () => false }, getNextBlock: () => null })),
   }
+}
+
+// Workspace stub where blocks form named chains for blocks_in_order checks.
+// chains is an array of opcode-string arrays, each representing one connected stack.
+function makeChainWorkspace(chains) {
+  const allBlocks = []
+  for (const chain of chains) {
+    const cb = chain.map(type => ({
+      type,
+      getNextBlock: null,
+      previousConnection: { isConnected: () => false },
+    }))
+    for (let i = 0; i < cb.length; i++) {
+      const next = cb[i + 1] ?? null
+      cb[i].getNextBlock = () => next
+      if (i > 0) cb[i].previousConnection = { isConnected: () => true }
+    }
+    allBlocks.push(...cb)
+  }
+  return { getAllBlocks: () => allBlocks }
 }
 
 describe('DEFAULT_SPRITES', () => {
@@ -157,6 +177,164 @@ describe('evaluateScratchCheck', () => {
 
     it('returns false when check.type is missing', () => {
       expect(evaluateScratchCheck({}, null, null)).toBe(false)
+    })
+  })
+
+  describe('blocks_in_order', () => {
+    it('returns true when the exact sequence matches the only chain', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps', 'motion_turnright']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws, null)).toBe(true)
+    })
+
+    it('returns true when the sequence is a prefix of the chain', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps', 'motion_turnright', 'control_wait']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps'] }, ws, null)).toBe(true)
+    })
+
+    it('returns true when the sequence appears in the middle of the chain', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps', 'motion_turnright', 'control_wait']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['motion_movesteps', 'motion_turnright'] }, ws, null)).toBe(true)
+    })
+
+    it('returns false when the opcodes are present but in the wrong order', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_turnright', 'motion_movesteps']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['motion_movesteps', 'motion_turnright'] }, ws, null)).toBe(false)
+    })
+
+    it('returns false when there is a gap between consecutive required blocks', () => {
+      const ws = makeChainWorkspace([['motion_movesteps', 'control_wait', 'motion_turnright']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['motion_movesteps', 'motion_turnright'] }, ws, null)).toBe(false)
+    })
+
+    it('returns true when the sequence appears in one of several chains', () => {
+      const ws = makeChainWorkspace([
+        ['event_whenkeypressed', 'looks_say'],
+        ['event_whenflagclicked', 'motion_movesteps'],
+      ])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps'] }, ws, null)).toBe(true)
+    })
+
+    it('returns false when workspace is null', () => {
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['motion_movesteps'] }, null, null)).toBe(false)
+    })
+
+    it('returns false when sequence is an empty array', () => {
+      const ws = makeChainWorkspace([['motion_movesteps']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: [] }, ws, null)).toBe(false)
+    })
+
+    it('returns false when sequence is longer than any chain', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws, null)).toBe(false)
+    })
+
+    it('handles a single-item sequence as a top-level block check', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps']])
+      expect(evaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked'] }, ws, null)).toBe(true)
+    })
+  })
+
+  describe('block_count', () => {
+    it('returns true when block count equals the expected value', () => {
+      const ws = makeWorkspace(['motion_movesteps', 'motion_movesteps', 'looks_say'])
+      expect(evaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 2 }, ws, null)).toBe(true)
+    })
+
+    it('returns false when block count does not match equals', () => {
+      const ws = makeWorkspace(['motion_movesteps', 'looks_say'])
+      expect(evaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 3 }, ws, null)).toBe(false)
+    })
+
+    it('returns true when count satisfies greater_than', () => {
+      const ws = makeWorkspace(['motion_movesteps', 'motion_movesteps', 'motion_movesteps'])
+      expect(evaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'greater_than', value: 2 }, ws, null)).toBe(true)
+    })
+
+    it('returns true when count satisfies less_than', () => {
+      const ws = makeWorkspace(['motion_movesteps'])
+      expect(evaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'less_than', value: 3 }, ws, null)).toBe(true)
+    })
+
+    it('returns true when count is zero and check expects zero', () => {
+      const ws = makeWorkspace(['looks_say'])
+      expect(evaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 0 }, ws, null)).toBe(true)
+    })
+
+    it('returns false when workspace is null', () => {
+      expect(evaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 1 }, null, null)).toBe(false)
+    })
+  })
+
+  describe('variable_compare', () => {
+    it('returns true when variable equals the expected value', () => {
+      const runState = { variables: { score: 5 } }
+      expect(evaluateScratchCheck({ type: 'variable_compare', variableName: 'score', operator: 'equals', value: 5 }, null, null, runState)).toBe(true)
+    })
+
+    it('returns true when variable satisfies greater_than', () => {
+      const runState = { variables: { score: 10 } }
+      expect(evaluateScratchCheck({ type: 'variable_compare', variableName: 'score', operator: 'greater_than', value: 3 }, null, null, runState)).toBe(true)
+    })
+
+    it('returns true when variable satisfies less_than', () => {
+      const runState = { variables: { score: 2 } }
+      expect(evaluateScratchCheck({ type: 'variable_compare', variableName: 'score', operator: 'less_than', value: 10 }, null, null, runState)).toBe(true)
+    })
+
+    it('returns false when runState is null', () => {
+      expect(evaluateScratchCheck({ type: 'variable_compare', variableName: 'score', operator: 'equals', value: 0 }, null, null, null)).toBe(false)
+    })
+
+    it('returns false when the variable is not in runState', () => {
+      const runState = { variables: { score: 10 } }
+      expect(evaluateScratchCheck({ type: 'variable_compare', variableName: 'lives', operator: 'equals', value: 3 }, null, null, runState)).toBe(false)
+    })
+  })
+
+  describe('costume_is', () => {
+    it('returns true when the costume matches', () => {
+      const spriteState = { x: 0, y: 0, costume: 'costume2' }
+      expect(evaluateScratchCheck({ type: 'costume_is', value: 'costume2' }, null, spriteState)).toBe(true)
+    })
+
+    it('returns false when the costume does not match', () => {
+      const spriteState = { x: 0, y: 0, costume: 'costume1' }
+      expect(evaluateScratchCheck({ type: 'costume_is', value: 'costume2' }, null, spriteState)).toBe(false)
+    })
+
+    it('returns false when spriteState is null', () => {
+      expect(evaluateScratchCheck({ type: 'costume_is', value: 'costume2' }, null, null)).toBe(false)
+    })
+
+    it('returns false when costume is null and value is a string', () => {
+      const spriteState = { x: 0, y: 0, costume: null }
+      expect(evaluateScratchCheck({ type: 'costume_is', value: 'costume2' }, null, spriteState)).toBe(false)
+    })
+  })
+
+  describe('block_run', () => {
+    it('returns true when the opcode is in executedBlocks', () => {
+      const runState = { executedBlocks: new Set(['motion_movesteps', 'looks_say']) }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps' }, null, null, runState)).toBe(true)
+    })
+
+    it('returns false when the opcode is not in executedBlocks', () => {
+      const runState = { executedBlocks: new Set(['looks_say']) }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps' }, null, null, runState)).toBe(false)
+    })
+
+    it('returns false when runState is null', () => {
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps' }, null, null, null)).toBe(false)
+    })
+
+    it('returns false when executedBlocks is empty', () => {
+      const runState = { executedBlocks: new Set() }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps' }, null, null, runState)).toBe(false)
+    })
+
+    it('returns false when executedBlocks is absent', () => {
+      const runState = { variables: {} }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps' }, null, null, runState)).toBe(false)
     })
   })
 })
