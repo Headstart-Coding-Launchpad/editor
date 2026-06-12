@@ -13,10 +13,7 @@ This file lists all third-party open-source libraries used in this project, thei
 | MIT | CodeMirror 6 (all packages), React, React DOM, React Router DOM, react-markdown, rehype-highlight, remark-breaks, Vite, @vitejs/plugin-react |
 | Apache-2.0 | Firebase, Blockly, scratch-blocks |
 | BSD-3-Clause | highlight.js |
-| AGPL-3.0-only | scratch-vm, scratch-render, scratch-storage |
 | MPL-2.0 | Pyodide (CDN) |
-
-> **Note on AGPL-3.0:** `scratch-vm`, `scratch-render`, and `scratch-storage` are licensed under the GNU Affero General Public License v3.0. This applies to those packages as received from npm; the Headstart Coding platform itself is not distributed under AGPL-3.0.
 
 ---
 
@@ -87,19 +84,6 @@ License text: https://github.com/firebase/firebase-js-sdk/blob/master/LICENSE
 Blockly homepage: https://developers.google.com/blockly/
 scratch-blocks homepage: https://github.com/scratchfoundation/scratch-blocks
 License text: https://github.com/google/blockly/blob/master/LICENSE
-
----
-
-### Scratch Foundation packages
-
-| Package | Version | License |
-|---|---|---|
-| `scratch-vm` | 5.0.300 | AGPL-3.0-only |
-| `scratch-render` | 2.2.84 | AGPL-3.0-only |
-| `scratch-storage` | 6.2.1 | AGPL-3.0-only |
-
-Homepage: https://github.com/scratchfoundation
-License text: https://github.com/scratchfoundation/scratch-vm/blob/develop/LICENSE
 
 ---
 
