@@ -273,10 +273,18 @@ function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {
     if (check.type === 'block_used') {
       return spriteWorkspaces.some(sp => sp.workspace?.getAllBlocks(false).some(b => b.type === check.opcode))
     }
-    if (check.type === 'variable_equals') {
+    if (check.type === 'variable_equals' || check.type === 'variable_compare' || check.type === 'block_run') {
       return evaluateScratchCheck(check, null, null, signal)
     }
-    // sprite_property / sprite_property_delta / sprite_property_changed: match by name or fall back to first
+    if (check.type === 'blocks_in_order' || check.type === 'block_count') {
+      if (check.spriteName) {
+        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        if (!target) return false
+        return evaluateScratchCheck(check, target.workspace, null, null)
+      }
+      return spriteWorkspaces.some(sp => evaluateScratchCheck(check, sp.workspace, null, null))
+    }
+    // sprite_property / sprite_property_delta / sprite_property_changed / costume_is: match by name or fall back to first
     const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
     if (!target) return false
     const preRunState = preRunSpriteStates[target.id] ?? null
