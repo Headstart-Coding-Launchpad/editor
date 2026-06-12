@@ -25,7 +25,7 @@ function parseSpriteState(raw) {
   }
 }
 
-export default function StudentModal({ student, lesson, session, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck }) {
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onSendToTopic }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
 
@@ -90,6 +90,14 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
             <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && <span style={s.checkBadge}>✅</span>}
+            {student.currentTopicId && (() => {
+              const topic = topics?.find(t => t.id === student.currentTopicId)
+              return (
+                <span style={s.topicBadge} title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}>
+                  📖 {topic?.title ?? student.currentTopicId}
+                </span>
+              )
+            })()}
           </div>
           <div style={s.headerRight}>
             <div style={s.navButtons}>
@@ -167,6 +175,26 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
                     rows={2}
                   />
                 )}
+              </div>
+            )}
+            {onSendToTopic && topics?.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={s.setToLabel}>Send to topic</span>
+                <select
+                  style={s.setToSelect}
+                  defaultValue=""
+                  onChange={e => {
+                    if (e.target.value) {
+                      onSendToTopic(student.anonymousId, e.target.value)
+                      e.target.value = ''
+                    }
+                  }}
+                >
+                  <option value="" disabled>Choose topic…</option>
+                  {topics.map(t => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+                </select>
               </div>
             )}
             {!isInformation && !isQuiz && (
@@ -417,6 +445,20 @@ const s = {
     letterSpacing: '0.05em',
   },
   checkBadge: { fontSize: '1rem' },
+  topicBadge: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.75rem',
+    color: '#bae6fd',
+    padding: '3px 8px',
+    background: 'rgba(14,165,233,0.2)',
+    border: '1px solid rgba(14,165,233,0.4)',
+    borderRadius: 999,
+    whiteSpace: 'nowrap',
+    maxWidth: 160,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
   bodyPython: {
     flex: 1,
     overflow: 'hidden',

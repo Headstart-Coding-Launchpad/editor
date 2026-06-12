@@ -242,7 +242,10 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
           "inPersonalSandbox": "true | null",
           "checkOverridePassed": "boolean | null",
           "checkOverrideHint": "string | null",
-          "checkOverridePushedAt": "number | null"
+          "checkOverridePushedAt": "number | null",
+          "currentTopicId": "topicId | null",
+          "sentToTopicId": "topicId | null",
+          "sentToTopicPushedAt": "number | null"
         }
       }
     }
@@ -257,11 +260,13 @@ All app sections import from `src/shared/`. Never duplicate Pyodide, iframe, Cod
 - Teacher writes: `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`, `activeStudentView`, `teacherLive`, `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`, any student's `displayName`, student node removal
 - Teacher — remote reset: `remoteResetAction` + `remoteResetPushedAt` on individual student node
 - Teacher — check override: `checkOverridePassed` + `checkOverrideHint` + `checkOverridePushedAt` on individual student node; cleared by `setTaskId`
+- Teacher — send to topic: `sentToTopicId` + `sentToTopicPushedAt` on individual student node; cleared by `setTaskId`
 - Student (on run): own `currentCode`/`currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`
 - Student (when watched — Python): `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`/`currentActivity` editor interactions
 - Student (when watched — HTML): `currentFiles` per active-tab keystroke, `currentActiveFile`/`currentSelection`/`currentActivity` editor interactions
 - Student (quiz): `currentAnswer` on submit; also written incrementally for match/fill_blank as tiles are placed
 - Student (personal sandbox): own `inPersonalSandbox` — set to `true` on entry, `null` on exit
+- Student (topic library): own `currentTopicId` — written when a topic is opened (link click or teacher-sent), cleared when dialog closed; cleared by `setTaskId`
 - Student (name-entry): writes own `joiningStudents/{tempId}` on entering name-entry phase; removed on joining or leaving
 - Firebase v1 security rules are open read/write — do not add authentication logic
 

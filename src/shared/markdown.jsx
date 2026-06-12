@@ -673,13 +673,34 @@ const components = {
   },
 }
 
-export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false }) {
+export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId }) {
   const topicEnabled = showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics, loading } = useTopicLibrary(topicType, topicEnabled)
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
   const blocks = parseMarkdownTables(topicEnabled ? expandTopicLinks(content, topics) : content)
   const heading = String(title ?? '').trim()
+
+  React.useEffect(() => {
+    if (!openTopicId) return
+    setSelectedTopicId(openTopicId)
+    setLibraryOpen(true)
+    onTopicOpen?.(openTopicId)
+  // openTopicId is the external trigger; only re-run when it changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTopicId])
+
+  function handleTopicLinkOpen(id) {
+    setSelectedTopicId(id)
+    setLibraryOpen(true)
+    onTopicOpen?.(id)
+  }
+
+  function handleDialogClose() {
+    setLibraryOpen(false)
+    onTopicClose?.()
+  }
+
   const markdownComponents = {
     ...components,
     a({ href, children }) {
@@ -692,10 +713,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
           topic={topic}
           label={children}
           renderSummary={InlineMarkdown}
-          onOpen={id => {
-            setSelectedTopicId(id)
-            setLibraryOpen(true)
-          }}
+          onOpen={handleTopicLinkOpen}
         />
       )
     },
@@ -759,7 +777,8 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
           initialTopicId={selectedTopicId}
           renderMarkdown={MarkdownRenderer}
           topicType={topicType}
-          onClose={() => setLibraryOpen(false)}
+          onClose={handleDialogClose}
+          onTopicSelect={onTopicOpen}
         />
       )}
     </MarkdownScaleContext.Provider>
