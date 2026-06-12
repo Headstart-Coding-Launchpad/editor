@@ -6,6 +6,7 @@ export default function CheckFeedbackBanner({
   failureMessage = 'Not quite, try again!',
   successMessage = 'Correct!',
   suggestion,
+  onShowCodeStage,
   onShowCompleteCode,
   onGoPersonalSandbox,
   onNeedHelp,
@@ -22,6 +23,14 @@ export default function CheckFeedbackBanner({
             : <div>{failureMessage}</div>
         )}
       </div>
+      {!passed && onShowCodeStage && (
+        <span style={s.completePrompt}>Want a hint?</span>
+      )}
+      {!passed && onShowCodeStage && (
+        <button type="button" style={s.actionLink} onClick={onShowCodeStage}>
+          Move to next stage
+        </button>
+      )}
       {!passed && onShowCompleteCode && (
         <span style={s.completePrompt}>Want to see the complete code?</span>
       )}

@@ -64,9 +64,13 @@ export function useStudentCodeState({
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
 
-  const iframeRef           = useRef(null)
-  const appendOutputRef     = useRef(null)
+  const iframeRef              = useRef(null)
+  const appendOutputRef        = useRef(null)
   const writeAnswerDebounceRef = useRef(null)
+  const lastOutputWriteRef     = useRef(0)
+  const outputCapReachedRef    = useRef(false)
+
+  const MAX_STREAMED_OUTPUT = 20_000
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
   const identityRef          = useRef(identity)
@@ -121,6 +125,7 @@ export function useStudentCodeState({
     checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
     checkSuggestion, setCheckSuggestion, repeatedSuggestionCount,
     testResults, setTestResults, checkPassedRef,
+    offeredStageIndex, setOfferedStageIndex,
     resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
@@ -493,12 +498,23 @@ export function useStudentCodeState({
     if (!alreadySolved) resetCheckFeedback()
 
     if (lesson.type === 'python') {
+      lastOutputWriteRef.current = 0
+      outputCapReachedRef.current = false
       let accumulated = ''
       const echoOutput = (text) => {
+        if (outputCapReachedRef.current) return
         accumulated += text
+        if (accumulated.length > MAX_STREAMED_OUTPUT) {
+          accumulated = accumulated.slice(0, MAX_STREAMED_OUTPUT) + '\n[Output truncated — stop the program to continue]'
+          outputCapReachedRef.current = true
+        }
         setOutput(accumulated)
-        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
-        if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
+        const now = Date.now()
+        if (now - lastOutputWriteRef.current >= 200) {
+          lastOutputWriteRef.current = now
+          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
+          if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
+        }
       }
       appendOutputRef.current = echoOutput
       const result = await runPython(code, {
@@ -508,6 +524,8 @@ export function useStudentCodeState({
       setInputPrompt(null)
 
       if (result.status === 'stopped') {
+        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
+        if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         setRunning(false)
         return
       }
@@ -805,6 +823,38 @@ export function useStudentCodeState({
     }
   }
 
+  function handleShowCodeStage(stageIndex) {
+    if (!identity) return
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    if (!task) return
+    const stage = task.codeStages?.[stageIndex]
+    if (!stage) return
+
+    if (lesson.type === 'python') {
+      const stageCode = stage.code ?? ''
+      setCode(stageCode)
+      setOutput('')
+      setRunStatus(null)
+      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: stageCode, output: '', runStatus: null })
+    } else if (lesson.type === 'html') {
+      const stageFiles = (stage.files ?? []).map(f => ({ ...f }))
+      setFiles(stageFiles)
+      setActiveFile(stage.entryFile ?? task.entryFile ?? stageFiles[0]?.name ?? '')
+      setIframeSrc(null)
+      setRunStatus(null)
+      stageFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
+    } else if (lesson.type === 'scratch') {
+      const stageBlocks = stage.blocks ?? null
+      setScratchExternalState(stageBlocks)
+      if (stageBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: stageBlocks })
+    } else if (lesson.type === 'filesystem') {
+      const stageFs = stage.fs ?? DEFAULT_FS
+      setFsState(stageFs)
+      if (!previewMode) saveFsState(lessonId, currentTaskId, identity.anonymousId, stageFs)
+    }
+    setOfferedStageIndex(stageIndex)
+  }
+
   function handleShowCompleteCode() {
     if (!identity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
@@ -926,6 +976,7 @@ export function useStudentCodeState({
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
     inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount,
+    offeredStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     // Refs
@@ -936,7 +987,7 @@ export function useStudentCodeState({
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
-    handleInputSubmit, handleResetCode, handleShowCompleteCode,
+    handleInputSubmit, handleResetCode, handleShowCodeStage, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,

@@ -253,7 +253,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     : lesson.type === 'filesystem'
     ? !!task?.completeFs
     : (task?.completeFiles?.length > 0)
-  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.repeatedSuggestionCount >= 2
+  const taskCodeStages = task?.codeStages ?? []
+  const nextStageIndex = cs.offeredStageIndex + 1
+  const canOfferNextStage = isSolo && !displayCheckPassed && cs.repeatedSuggestionCount >= 2 && nextStageIndex < taskCodeStages.length
+  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.repeatedSuggestionCount >= 2 && nextStageIndex >= taskCodeStages.length
   const hasPersonalSandbox = lesson.type === 'python'
     ? !!(lesson.sandboxStarterCode != null)
     : lesson.type === 'html'
@@ -377,6 +380,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displayCheckSuggestion={displayCheckSuggestion}
           displaySelection={displaySelection}
           displayFs={displayFs}
+          canOfferNextStage={canOfferNextStage}
           canOfferCompleteSolution={canOfferCompleteSolution}
           canOfferPersonalSandbox={canOfferPersonalSandbox}
           onNeedHelp={phase === 'lesson' && identity?.anonymousId ? () => requestHelp(identity.anonymousId) : undefined}

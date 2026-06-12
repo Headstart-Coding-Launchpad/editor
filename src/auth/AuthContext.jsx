@@ -24,9 +24,18 @@ export function AuthProvider({ children }) {
           setRole(null)
         }
       } catch {
-        // If firebaseUser is still valid, the token refresh failed transiently — keep
-        // existing auth state rather than redirecting an authenticated user to /login
-        if (!firebaseUser) {
+        if (firebaseUser) {
+          // Cached token fetch failed — retry with a network refresh before giving up.
+          // This covers new popup windows where the in-memory token cache is cold.
+          try {
+            const retryResult = await getIdTokenResult(firebaseUser, true)
+            setUser(firebaseUser)
+            setRole(retryResult.claims.role ?? null)
+          } catch {
+            setUser(null)
+            setRole(null)
+          }
+        } else {
           setUser(null)
           setRole(null)
         }
