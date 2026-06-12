@@ -19,7 +19,7 @@ export default function OutputPanel({
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [displayedOutput, setDisplayedOutput] = useState('')
   
-  const bottomRef  = useRef(null)
+  const preRef     = useRef(null)
   const inputRef   = useRef(null)
   const prevRunningRef = useRef(running)
 
@@ -73,9 +73,10 @@ export default function OutputPanel({
     return () => clearTimeout(timer)
   }, [output, displayedOutput])
 
-  // Scroll to bottom when output grows
+  // Snap scroll to bottom on every output update — smooth scrolling wobbles
+  // when updates arrive faster than the animation can complete (~60fps/12ms).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
   }, [displayedOutput, inputPrompt])
 
   // Focus input field when prompt appears or panel is expanded
@@ -116,7 +117,7 @@ export default function OutputPanel({
 
       {/* Output text (collapsible) */}
       {!isCollapsed && (
-        <pre style={s.pre}>
+        <pre ref={preRef} style={s.pre}>
           {displayedOutput || <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>}
           {showCursor && <span className="terminal-cursor" />}
 
@@ -133,8 +134,6 @@ export default function OutputPanel({
               />
             </form>
           )}
-
-          <span ref={bottomRef} />
         </pre>
       )}
     </div>
