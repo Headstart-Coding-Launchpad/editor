@@ -1,7 +1,6 @@
 # HSC: Manage the Topic Library
 
-> **Install as slash command:** copy to `.claude/commands/hsc-topics.md` and invoke with `/hsc-topics`
-> **Arguments:** `$ARGUMENTS` — what to do (list / get <id> / add / edit <id> / delete <id>)
+Use with the requested topic-library action: list, get `<id>`, add, edit `<id>`, or delete `<id>`.
 
 Create, update, or remove entries in the topic library used by the lesson builder.
 

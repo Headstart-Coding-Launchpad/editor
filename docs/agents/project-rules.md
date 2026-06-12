@@ -1,0 +1,114 @@
+# Agent Reference: Project Rules
+
+Load this when a task touches architecture, shared modules, admin, CLI, dependencies, or platform-wide constraints.
+
+## Tech Stack
+
+| Concern | Solution |
+|---|---|
+| Framework | React functional components and hooks only; no class components |
+| Build tool | Vite |
+| Hosting | GitHub Pages |
+| Real-time sync | Firebase Realtime Database for classroom session state |
+| Auth | Firebase Authentication email/password for teachers and admins only |
+| Database | Firebase Firestore for `lessons/` and `users/` |
+| Cloud Functions | Firebase Cloud Functions for account management with custom claims |
+| Python execution | Pyodide in a Web Worker for classroom and builder |
+| Web output | Sandboxed iframe with Blob URL virtual filesystem |
+| Scratch blocks | Custom scratch-blocks / Blockly fork with hand-rolled interpreter |
+| Code editor | CodeMirror 6 |
+| Markdown | `react-markdown` and `rehype-highlight` |
+| Styling | CSS custom properties in `src/index.css` |
+| Env vars | `.env` one level above repo root; loaded by `envDir: '../'` |
+
+Do not add major dependencies without confirming with the user.
+
+## Architecture Constraints
+
+- No backend server or API should be added.
+- Teachers and admins authenticate through Firebase Auth; `?teacher=true` is only a redirect hint to `/login`.
+- Students remain login-less.
+- Do not add auth requirements to student operations.
+- Do not hardcode student limits.
+- Do not add pip install support.
+- Do not add file I/O support.
+- Do not deviate from Firebase data model, localStorage key formats, URLs, or session-state semantics.
+
+## Repository Shape
+
+```text
+/
+├── src/
+│   ├── app/        # Classroom components, views, hooks
+│   ├── builder/    # Lesson builder components, views, hooks
+│   ├── admin/      # Admin portal
+│   ├── auth/       # Auth context and protected route
+│   └── shared/     # Shared modules; do not duplicate this logic
+├── cli/            # Lesson, topic, feedback, and asset CLI
+├── functions/      # Firebase Cloud Functions
+├── index.html      # App entry
+└── vite.config.js
+```
+
+Use `CODEBASE_MAP.md` to locate specific files. Search or open the relevant section instead of loading the full map by default.
+
+## Shared Modules
+
+All app sections should import shared logic from `src/shared/`. Do not duplicate:
+
+- Pyodide execution
+- iframe construction
+- CodeMirror configuration
+- check evaluation
+- Markdown rendering
+- Firebase file-key encoding
+- task flattening/group helpers
+
+Important shared files include `pyodide.js`, `iframe.js`, `CodeEditor.jsx`, `checks.js`, `markdown.jsx`, `fileKeys.js`, `taskUtils.js`, `lessonService.js`, and `workspaceData.js`.
+
+## Admin Portal
+
+The `/admin` route is available only to users with the admin Firebase role.
+
+Tabs:
+
+- Accounts: create teacher/admin accounts, set roles, disable/enable, delete via Cloud Functions.
+- Lessons: browse Firestore lessons grouped by type and level; launch as teacher or copy student link.
+- Topic Library: create, edit, and delete topics with Markdown description and syntax fields.
+- Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
+
+## CLI Tool
+
+The `cli/` package manages lessons, tasks, topics, feedback, and assets against Firestore and Firebase Storage. It uses Firebase Admin SDK, not browser auth.
+
+Storage model:
+
+- Lessons live in Firestore `lessons/`.
+- Topics live in Firestore `topicLibrary/`.
+- Lesson assets live in Firebase Storage and are referenced from lesson `storageAssets`.
+
+Auth:
+
+- Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
+- Download service accounts from Firebase Console > Project Settings > Service Accounts.
+- Do not commit or copy service account keys.
+
+Setup and usage:
+
+```bash
+cd cli
+npm install
+node cli/cli.mjs <command> <subcommand> [args]
+```
+
+Common command groups:
+
+- `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml`
+- `tasks get|upsert|append`
+- `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
+- `feedback platform|lesson|all`
+- `assets list|upload|delete`
+
+JSON/YAML can be supplied as a file argument or piped through stdin where supported. Output is JSON by default; pass `--format yaml` or `--yaml` for YAML read output. Errors go to stderr with exit code 1.
+
+Scratch toolbox XML validation is skipped server-side because Node lacks `DOMParser`; use builder preview to catch XML errors.

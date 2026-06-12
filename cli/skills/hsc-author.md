@@ -1,7 +1,6 @@
 # HSC: Author a New Lesson
 
-> **Install as slash command:** copy to `.claude/commands/hsc-author.md` and invoke with `/hsc-author`
-> **Arguments:** `$ARGUMENTS` — brief description of the lesson to create (type, topic, level, goals)
+Use with a brief description of the lesson to create: type, topic, level, and goals.
 
 Author a complete lesson from scratch and publish it to the live app.
 
