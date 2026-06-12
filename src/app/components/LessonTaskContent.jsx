@@ -50,6 +50,7 @@ export default function LessonTaskContent({
   displayFs,
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
+  onNeedHelp,
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
   const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
@@ -103,6 +104,7 @@ export default function LessonTaskContent({
             suggestion={displayCheckSuggestion}
             onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
             onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
+            onNeedHelp={onNeedHelp}
           />
         )}
         {isSandbox && sandboxExplainer && (

@@ -25,7 +25,7 @@ function parseSpriteState(raw) {
   }
 }
 
-export default function StudentModal({ student, lesson, session, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck }) {
+export default function StudentModal({ student, lesson, session, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
 
@@ -90,6 +90,15 @@ export default function StudentModal({ student, lesson, session, isLive, isLiveF
             <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && <span style={s.checkBadge}>✅</span>}
+            {student.needsHelp && (
+              <button
+                style={s.helpedBtn}
+                onClick={() => onDismissHelp?.(student.anonymousId)}
+                title="Mark as helped"
+              >
+                Help Needed — Helped ✓
+              </button>
+            )}
           </div>
           <div style={s.headerRight}>
             <div style={s.navButtons}>
@@ -417,6 +426,19 @@ const s = {
     letterSpacing: '0.05em',
   },
   checkBadge: { fontSize: '1rem' },
+  helpedBtn: {
+    background: '#f59e0b',
+    border: 'none',
+    borderRadius: 5,
+    padding: '3px 10px',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.78rem',
+    color: '#fff',
+    cursor: 'pointer',
+    letterSpacing: '0.02em',
+    whiteSpace: 'nowrap',
+  },
   bodyPython: {
     flex: 1,
     overflow: 'hidden',

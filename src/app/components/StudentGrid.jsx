@@ -17,7 +17,7 @@ function formatCheck(check) {
   }).join(' · ')
 }
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [checkSectionOpen, setCheckSectionOpen] = useState(false)
 
@@ -192,6 +192,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           onNext={handleNext}
           onRemoteReset={onRemoteReset}
           onOverrideCheck={onOverrideCheck}
+          onDismissHelp={onDismissHelp}
         />
       )}
     </div>

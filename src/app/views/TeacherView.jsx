@@ -47,7 +47,7 @@ export default function TeacherView({ lessonId }) {
     session, loading,
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck,
+    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
   } = useSession(lessonId)
 
   const [lesson, setLesson]             = useState(null)
@@ -501,6 +501,7 @@ export default function TeacherView({ lessonId }) {
             onStopLive={handleStopStudentLive}
             onRemoteReset={pushResetToStudent}
             onOverrideCheck={overrideStudentCheck}
+            onDismissHelp={dismissHelp}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
           />

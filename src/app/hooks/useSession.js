@@ -116,6 +116,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/checkOverridePassed`]   = null
       updates[`students/${anonymousId}/checkOverrideHint`]     = null
       updates[`students/${anonymousId}/checkOverridePushedAt`] = null
+      updates[`students/${anonymousId}/needsHelp`]             = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -227,6 +228,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function dismissHelp(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/needsHelp`), null)
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -301,6 +306,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/inPersonalSandbox`), inPersonalSandbox || null)
   }
 
+  async function requestHelp(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/needsHelp`), true)
+  }
+
   return {
     session,
     loading,
@@ -308,9 +317,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     // teacher
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck,
+    setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
+    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, requestHelp,
   }
 }
