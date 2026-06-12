@@ -14,13 +14,20 @@ export function useCheckFeedback({ myStudentData } = {}) {
   const checkSuggestionRef    = useRef('')
   checkSuggestionRef.current  = checkSuggestion
 
-  function resetCheckFeedback() {
+  function resetRunFeedback() {
+    // Clears per-run transient state. Does NOT reset checkFailCount or offeredStageIndex
+    // so that cross-run progress (fail count, hint progression) is preserved.
     setCheckPassed(false)
     setCheckAttempted(false)
     setCheckSuggestion('')
     setRepeatedSuggestionCount(0)
-    setCheckFailCount(0)
     setTestResults(null)
+  }
+
+  function resetCheckFeedback() {
+    // Full reset including cross-run progress — use on task change or code reset.
+    resetRunFeedback()
+    setCheckFailCount(0)
     setOfferedStageIndex(-1)
   }
 
@@ -56,6 +63,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     testResults, setTestResults,
     checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
+    resetRunFeedback,
     resetCheckFeedback,
     applyCheckFeedback,
   }

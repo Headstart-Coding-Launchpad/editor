@@ -69,6 +69,7 @@ export function useStudentCodeState({
   const writeAnswerDebounceRef = useRef(null)
   const lastOutputWriteRef     = useRef(0)
   const outputCapReachedRef    = useRef(false)
+  const outputRafIdRef         = useRef(null)
 
   const MAX_STREAMED_OUTPUT = 20_000
 
@@ -126,7 +127,7 @@ export function useStudentCodeState({
     checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
     testResults, setTestResults, checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
-    resetCheckFeedback, applyCheckFeedback,
+    resetRunFeedback, resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
   const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef })
@@ -495,11 +496,12 @@ export function useStudentCodeState({
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
-    if (!alreadySolved) resetCheckFeedback()
+    if (!alreadySolved) resetRunFeedback()
 
     if (lesson.type === 'python') {
       lastOutputWriteRef.current = 0
       outputCapReachedRef.current = false
+      if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
       let accumulated = ''
       const echoOutput = (text) => {
         if (outputCapReachedRef.current) return
@@ -508,10 +510,18 @@ export function useStudentCodeState({
           accumulated = accumulated.slice(0, MAX_STREAMED_OUTPUT) + '\n[Output truncated — stop the program to continue]'
           outputCapReachedRef.current = true
         }
+        // Throttle React re-renders to one per animation frame (~60fps max).
+        // accumulated is a closure var so the RAF always reads the latest value.
+        if (outputRafIdRef.current === null) {
+          outputRafIdRef.current = requestAnimationFrame(() => {
+            outputRafIdRef.current = null
+            setOutput(accumulated)
+          })
+        }
+        // Debounce Firebase writes independently at 200ms
         const now = Date.now()
         if (now - lastOutputWriteRef.current >= 200) {
           lastOutputWriteRef.current = now
-          setOutput(accumulated)
           if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
           if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         }
@@ -522,6 +532,9 @@ export function useStudentCodeState({
         onInputRequired: (prompt) => setInputPrompt(prompt),
       })
       setInputPrompt(null)
+
+      // Cancel any pending RAF and sync final output immediately
+      if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
 
       if (result.status === 'stopped') {
         setOutput(accumulated)
@@ -616,7 +629,7 @@ export function useStudentCodeState({
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
-    resetCheckFeedback()
+    resetRunFeedback()
 
     const results = []
     try {
