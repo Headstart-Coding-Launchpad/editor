@@ -91,6 +91,39 @@ describe('CheckFeedbackBanner', () => {
     })
   })
 
+  describe('onShowCodeStage (code stage hint)', () => {
+    it('does not render the "Move to next stage" button when onShowCodeStage is not provided', () => {
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.queryByRole('button', { name: /Move to next stage/i })).not.toBeInTheDocument()
+    })
+
+    it('renders the "Move to next stage" button when onShowCodeStage is provided and passed=false', () => {
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} />)
+      expect(screen.getByRole('button', { name: /Move to next stage/i })).toBeInTheDocument()
+    })
+
+    it('calls onShowCodeStage when the button is clicked', async () => {
+      const user = userEvent.setup()
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} />)
+      await user.click(screen.getByRole('button', { name: /Move to next stage/i }))
+      expect(handler).toHaveBeenCalledOnce()
+    })
+
+    it('does not render the "Move to next stage" button when passed=true', () => {
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={true} onShowCodeStage={handler} />)
+      expect(screen.queryByRole('button', { name: /Move to next stage/i })).not.toBeInTheDocument()
+    })
+
+    it('shows stage hint prompt text alongside the button', () => {
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} />)
+      expect(screen.getByText(/Want a hint\?/i)).toBeInTheDocument()
+    })
+  })
+
   describe('suggestion edge cases', () => {
     it('treats a whitespace-only suggestion as empty and falls back to failureMessage', () => {
       render(<CheckFeedbackBanner passed={false} suggestion="   " />)

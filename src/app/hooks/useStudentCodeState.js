@@ -21,6 +21,13 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
  *
  * Receives currentTaskId, viewingTaskId, phase, and session write callbacks from the caller.
  */
+function collapseForDisplay(str, maxLines) {
+  const lines = str.split('\n')
+  if (lines.length <= maxLines) return str
+  const hidden = lines.length - maxLines
+  return `[${hidden} earlier lines hidden]\n` + lines.slice(-maxLines).join('\n')
+}
+
 export function useStudentCodeState({
   lessonId,
   lesson,
@@ -64,9 +71,15 @@ export function useStudentCodeState({
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
 
-  const iframeRef           = useRef(null)
-  const appendOutputRef     = useRef(null)
+  const iframeRef              = useRef(null)
+  const appendOutputRef        = useRef(null)
   const writeAnswerDebounceRef = useRef(null)
+  const lastOutputWriteRef     = useRef(0)
+  const outputCapReachedRef    = useRef(false)
+  const outputRafIdRef         = useRef(null)
+
+  const MAX_STREAMED_OUTPUT = 20_000
+  const MAX_DISPLAY_LINES   = 100
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
   const identityRef          = useRef(identity)
@@ -119,9 +132,10 @@ export function useStudentCodeState({
   const myStudentData = session?.students?.[identity?.anonymousId]
   const {
     checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
-    checkSuggestion, setCheckSuggestion, repeatedSuggestionCount,
+    checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
     testResults, setTestResults, checkPassedRef,
-    resetCheckFeedback, applyCheckFeedback,
+    offeredStageIndex, setOfferedStageIndex,
+    resetRunFeedback, resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
   const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef })
@@ -490,15 +504,35 @@ export function useStudentCodeState({
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
-    if (!alreadySolved) resetCheckFeedback()
+    if (!alreadySolved) resetRunFeedback()
 
     if (lesson.type === 'python') {
+      lastOutputWriteRef.current = 0
+      outputCapReachedRef.current = false
+      if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
       let accumulated = ''
       const echoOutput = (text) => {
+        if (outputCapReachedRef.current) return
         accumulated += text
-        setOutput(accumulated)
-        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
-        if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
+        if (accumulated.length > MAX_STREAMED_OUTPUT) {
+          accumulated = accumulated.slice(0, MAX_STREAMED_OUTPUT) + '\n[Output truncated — stop the program to continue]'
+          outputCapReachedRef.current = true
+        }
+        // Throttle React re-renders to one per animation frame (~60fps max).
+        // accumulated is a closure var so the RAF always reads the latest value.
+        if (outputRafIdRef.current === null) {
+          outputRafIdRef.current = requestAnimationFrame(() => {
+            outputRafIdRef.current = null
+            setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
+          })
+        }
+        // Debounce Firebase writes independently at 200ms
+        const now = Date.now()
+        if (now - lastOutputWriteRef.current >= 200) {
+          lastOutputWriteRef.current = now
+          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
+          if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
+        }
       }
       appendOutputRef.current = echoOutput
       const result = await runPython(code, {
@@ -507,11 +541,18 @@ export function useStudentCodeState({
       })
       setInputPrompt(null)
 
+      // Cancel any pending RAF and sync final output immediately
+      if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
+
       if (result.status === 'stopped') {
+        setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
+        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
+        if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         setRunning(false)
         return
       }
 
+      setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
       const status = result.status
       setRunStatus(status)
 
@@ -596,7 +637,7 @@ export function useStudentCodeState({
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
-    resetCheckFeedback()
+    resetRunFeedback()
 
     const results = []
     try {
@@ -805,6 +846,38 @@ export function useStudentCodeState({
     }
   }
 
+  function handleShowCodeStage(stageIndex) {
+    if (!identity) return
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    if (!task) return
+    const stage = task.codeStages?.[stageIndex]
+    if (!stage) return
+
+    if (lesson.type === 'python') {
+      const stageCode = stage.code ?? ''
+      setCode(stageCode)
+      setOutput('')
+      setRunStatus(null)
+      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: stageCode, output: '', runStatus: null })
+    } else if (lesson.type === 'html') {
+      const stageFiles = (stage.files ?? []).map(f => ({ ...f }))
+      setFiles(stageFiles)
+      setActiveFile(stage.entryFile ?? task.entryFile ?? stageFiles[0]?.name ?? '')
+      setIframeSrc(null)
+      setRunStatus(null)
+      stageFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
+    } else if (lesson.type === 'scratch') {
+      const stageBlocks = stage.blocks ?? null
+      setScratchExternalState(stageBlocks)
+      if (stageBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: stageBlocks })
+    } else if (lesson.type === 'filesystem') {
+      const stageFs = stage.fs ?? DEFAULT_FS
+      setFsState(stageFs)
+      if (!previewMode) saveFsState(lessonId, currentTaskId, identity.anonymousId, stageFs)
+    }
+    setOfferedStageIndex(stageIndex)
+  }
+
   function handleShowCompleteCode() {
     if (!identity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
@@ -925,7 +998,8 @@ export function useStudentCodeState({
     // State
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
-    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount,
+    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
+    offeredStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     // Refs
@@ -936,7 +1010,7 @@ export function useStudentCodeState({
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
-    handleInputSubmit, handleResetCode, handleShowCompleteCode,
+    handleInputSubmit, handleResetCode, handleShowCodeStage, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,

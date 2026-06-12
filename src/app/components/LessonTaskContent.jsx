@@ -48,6 +48,7 @@ export default function LessonTaskContent({
   displayCheckSuggestion,
   displaySelection,
   displayFs,
+  canOfferNextStage,
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
   onNeedHelp,
@@ -105,6 +106,7 @@ export default function LessonTaskContent({
             passed={displayCheckPassed}
             failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
             suggestion={displayCheckSuggestion}
+            onShowCodeStage={canOfferNextStage ? () => cs.handleShowCodeStage(cs.offeredStageIndex + 1) : undefined}
             onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
             onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
             onNeedHelp={onNeedHelp}
