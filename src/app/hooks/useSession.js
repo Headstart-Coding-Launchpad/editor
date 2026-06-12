@@ -117,6 +117,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/checkOverrideHint`]     = null
       updates[`students/${anonymousId}/checkOverridePushedAt`] = null
       updates[`students/${anonymousId}/needsHelp`]             = null
+      updates[`students/${anonymousId}/currentTopicId`]        = null
+      updates[`students/${anonymousId}/sentToTopicId`]         = null
+      updates[`students/${anonymousId}/sentToTopicPushedAt`]   = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -310,6 +313,17 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/needsHelp`), true)
   }
 
+  async function setStudentTopic(anonymousId, topicId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentTopicId`), topicId || null)
+  }
+
+  async function sendToTopic(anonymousId, topicId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      sentToTopicId:       topicId || null,
+      sentToTopicPushedAt: Date.now(),
+    })
+  }
+
   return {
     session,
     loading,
@@ -318,8 +332,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
+    sendToTopic,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, requestHelp,
+    setStudentTopic,
   }
 }

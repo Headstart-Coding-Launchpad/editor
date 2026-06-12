@@ -51,6 +51,9 @@ export default function LessonTaskContent({
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
   onNeedHelp,
+  onTopicOpen,
+  onTopicClose,
+  openTopicId,
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
   const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
@@ -93,7 +96,7 @@ export default function LessonTaskContent({
       )}
 
       {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
-        <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
+        <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} />
       )}
 
       <div style={editorAreaStyle} className={isForcedTeacherLive ? 'live-view-active' : undefined}>

@@ -4,7 +4,7 @@ import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 
-export default function StudentCard({ student, lesson, lessonId, session, onRename, onRemove, onExpand }) {
+export default function StudentCard({ student, lesson, lessonId, session, topics, onRename, onRemove, onExpand }) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
 
@@ -120,6 +120,14 @@ export default function StudentCard({ student, lesson, lessonId, session, onRena
               Help
             </span>
           )}
+          {student.currentTopicId && (() => {
+            const topic = topics?.find(t => t.id === student.currentTopicId)
+            return (
+              <span style={{ ...s.checkBadge, ...s.checkBadgeTopic }} title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}>
+                📖 {topic?.title ?? student.currentTopicId}
+              </span>
+            )
+          })()}
         </div>
       </div>
 
@@ -295,6 +303,15 @@ const s = {
   checkBadgeHelp: {
     background: '#f59e0b',
     color: '#fff',
+  },
+  checkBadgeTopic: {
+    background: '#0ea5e9',
+    color: '#fff',
+    maxWidth: 120,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    display: 'inline-block',
   },
   checkBadgeOverridePassed: {
     background: 'rgba(34,197,94,0.12)',

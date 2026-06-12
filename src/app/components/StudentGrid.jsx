@@ -17,7 +17,7 @@ function formatCheck(check) {
   }).join(' · ')
 }
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [checkSectionOpen, setCheckSectionOpen] = useState(false)
 
@@ -145,6 +145,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
               lesson={lesson}
               lessonId={lessonId}
               session={session}
+              topics={topics}
               onRename={onRename}
               onRemove={onRemove}
               onExpand={handleExpand}
@@ -180,6 +181,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           student={expandedStudent}
           lesson={lesson}
           session={session}
+          topics={topics}
           isLive={session?.activeStudentView === expandedStudent.anonymousId}
           isLiveForAll={session?.teacherLive?.sourceStudentId === expandedStudent.anonymousId}
           onGoLive={() => onGoLive?.(expandedStudent.anonymousId)}
@@ -193,6 +195,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           onRemoteReset={onRemoteReset}
           onOverrideCheck={onOverrideCheck}
           onDismissHelp={onDismissHelp}
+          onSendToTopic={onSendToTopic}
         />
       )}
     </div>

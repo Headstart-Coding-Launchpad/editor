@@ -81,7 +81,7 @@ export function TopicReference({ topic, label, onOpen, renderSummary: SummaryCon
   )
 }
 
-export function TopicLibraryDialog({ topics, initialTopicId, onClose, renderMarkdown: MarkdownContent, topicType = null }) {
+export function TopicLibraryDialog({ topics, initialTopicId, onClose, onTopicSelect, renderMarkdown: MarkdownContent, topicType = null }) {
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState(initialTopicId || topics[0]?.id || '')
   const filteredTopics = useMemo(() => searchTopics(topics, query), [topics, query])
@@ -125,7 +125,7 @@ export function TopicLibraryDialog({ topics, initialTopicId, onClose, renderMark
                   type="button"
                   key={topic.id}
                   style={{ ...s.topicResult, ...(selectedTopic?.id === topic.id ? s.topicResultActive : {}) }}
-                  onClick={() => setSelectedId(topic.id)}
+                  onClick={() => { setSelectedId(topic.id); onTopicSelect?.(topic.id) }}
                 >
                   <span style={s.resultTitle}>{topic.title}</span>
                   <span style={s.resultMeta}>{topic.category}</span>
