@@ -381,7 +381,13 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   }
 
   function update(id, field, value) {
-    onChange(sprites.map(sp => sp.id === id ? { ...sp, [field]: value } : sp))
+    onChange(sprites.map(sp => {
+      if (sp.id !== id) return sp
+      const next = { ...sp }
+      if (value === undefined) delete next[field]
+      else next[field] = value
+      return next
+    }))
   }
 
   function updateMany(id, changes) {
@@ -446,6 +452,14 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
               <button type="button" className={`te-sprite-mode-btn${mode === 'costume' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'costume')}>Costume</button>
             </div>
           </div>
+          <label className="te-sprite-editable-toggle">
+            <input
+              type="checkbox"
+              checked={sp.studentEditable !== false}
+              onChange={e => update(sp.id, 'studentEditable', e.target.checked ? undefined : false)}
+            />
+            <span>Student editable</span>
+          </label>
           {mode === 'preset' && (
             <div className="te-sprite-row">
               <select className="te-select" value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>

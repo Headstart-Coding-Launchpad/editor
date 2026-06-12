@@ -6,7 +6,7 @@ import {
   STAGE_TOOLBOX,
   DEFAULT_SPRITES,
   buildAlwaysOpenToolbox,
-  addPredefinedBlocksToToolbox,
+  addPrebuiltStacksToToolbox,
   createRunSignal,
   runAllSprites,
   runAllSpritesEvent,
@@ -48,6 +48,14 @@ const toCanvasY = y => STAGE_H / 2 - y
 export const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 
 const SPRITE_TYPE_COLOR = { cat: '#FFA500', ball: '#4C97FF', star: '#FFD700', arrow: '#9966FF', bat: '#374151', parrot: '#22c55e' }
+
+export function isSpriteStudentEditable(sprite) {
+  return sprite?.studentEditable !== false
+}
+
+export function getSelectableScratchSprites(sprites, respectStudentEditable = false) {
+  return respectStudentEditable ? sprites.filter(isSpriteStudentEditable) : sprites
+}
 
 const ROT_STYLES = [
   { val: 'all around',  icon: '↺', title: 'Rotate all around' },
@@ -324,11 +332,14 @@ export default function ScratchWorkspace({
   hideSpriteProps = false,
   onRemoveSprite = null,
   spritePanelFooter = null,
-  predefinedBlocks = null,   // PredefinedBlock[] merged for current tab
+  predefinedBlocks = null,   // Legacy PredefinedBlock[] merged for current tab
+  prebuiltStacks = null,     // Visual stack snippets merged for current tab
+  respectStudentEditable = false,
 }) {
   const sprites = task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
   const backdrops = task?.backdrops?.length > 0 ? task.backdrops : []
   const variables = task?.variables ?? []
+  const selectableSprites = getSelectableScratchSprites(sprites, respectStudentEditable)
 
   const normInitStates  = normaliseInitialStates(initialStates ?? initialState, sprites)
   const normExtStates   = externalStates ?? (externalState ? normaliseInitialStates(externalState, sprites) : null)
@@ -359,9 +370,15 @@ export default function ScratchWorkspace({
   const imageCacheRef       = useRef({})
   const variableRuntimeRef  = useRef({})
 
-  const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(sprites[0]?.id ?? 'sprite1')
+  const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null))
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
+
+  function canSelectSpriteId(id) {
+    return id === '__stage__' || !respectStudentEditable || selectableSprites.some(sp => sp.id === id)
+  }
+
   function setSelectedSpriteId(id) {
+    if (!canSelectSpriteId(id)) return
     if (controlledSpriteId !== null) onSpriteSelect?.(id)
     else setInternalSelectedSpriteId(id)
   }
@@ -401,6 +418,13 @@ export default function ScratchWorkspace({
     setCostumeContext((sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprites, selectedSpriteId])
+
+  useEffect(() => {
+    if (controlledSpriteId !== null) return
+    if (selectedSpriteId && canSelectSpriteId(selectedSpriteId)) return
+    setInternalSelectedSpriteId(selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [respectStudentEditable, sprites, task?.enableStageCode])
 
   // ── Draw stage ──────────────────────────────────────────────────────────────
   const drawStage = useCallback((states) => {
@@ -556,10 +580,10 @@ export default function ScratchWorkspace({
     } else {
       baseToolbox = isStage ? STAGE_TOOLBOX : (task?.toolbox ?? DEFAULT_TOOLBOX)
     }
-    const withPredefined = predefinedBlocks?.length
-      ? addPredefinedBlocksToToolbox(baseToolbox, predefinedBlocks)
+    const withStacks = prebuiltStacks?.length || predefinedBlocks?.length
+      ? addPrebuiltStacksToToolbox(baseToolbox, prebuiltStacks, predefinedBlocks)
       : baseToolbox
-    return buildAlwaysOpenToolbox(withPredefined, { position: { x: state.x, y: state.y } })
+    return buildAlwaysOpenToolbox(withStacks, { position: { x: state.x, y: state.y } })
   }
 
   function refreshSpriteToolbox(spriteId) {
@@ -736,7 +760,7 @@ export default function ScratchWorkspace({
       for (const sp of sprites) refreshSpriteToolbox(sp.id)
       if (task?.enableStageCode) refreshSpriteToolbox('__stage__')
     } catch {}
-  }, [task?.toolbox, task?.enableStageCode, unrestricted, status, sprites, predefinedBlocks, flyoutCollapsed])
+  }, [task?.toolbox, task?.enableStageCode, unrestricted, status, sprites, predefinedBlocks, prebuiltStacks, flyoutCollapsed])
 
   // ── Load external state (teacher push) ───────────────────────────────────────
   useEffect(() => {
@@ -953,7 +977,7 @@ export default function ScratchWorkspace({
         draggingSpriteIdRef.current = sp.id
         dragStartRef.current = { canvasX: x, canvasY: y, spriteX: state.x, spriteY: state.y }
         event.currentTarget.setPointerCapture(event.pointerId)
-        setStageCursor('grabbing')
+        setStageCursor(isSpriteStudentEditable(sp) || !respectStudentEditable ? 'grabbing' : 'default')
         return
       }
     }
@@ -968,6 +992,7 @@ export default function ScratchWorkspace({
       const dx = x - dragStartRef.current.canvasX
       const dy = y - dragStartRef.current.canvasY
       if (!dragMovedRef.current && Math.hypot(dx, dy) > 3) dragMovedRef.current = true
+      if (respectStudentEditable && !isSpriteStudentEditable(sprites.find(sp => sp.id === draggingSpriteIdRef.current))) return
       if (dragMovedRef.current) {
         const id = draggingSpriteIdRef.current
         const newX = Math.max(-240, Math.min(240, dragStartRef.current.spriteX + dx))
@@ -986,6 +1011,7 @@ export default function ScratchWorkspace({
 
     let overSprite = false
     for (let i = sprites.length - 1; i >= 0; i--) {
+      if (respectStudentEditable && !isSpriteStudentEditable(sprites[i])) continue
       const state = spriteStatesRef.current[sprites[i].id]
       if (state && hitTest(state, x, y)) { overSprite = true; break }
     }
@@ -1022,7 +1048,7 @@ export default function ScratchWorkspace({
           .then(() => finishRun(signal))
           .catch(() => finishRun(signal))
       }
-    } else if (wasDragging && wasMoved && draggedId) {
+    } else if (wasDragging && wasMoved && draggedId && (!respectStudentEditable || isSpriteStudentEditable(sprites.find(sp => sp.id === draggedId)))) {
       refreshSpriteToolbox(draggedId)
     }
   }
@@ -1160,7 +1186,7 @@ export default function ScratchWorkspace({
     <div style={s.spritePanel}>
       <div style={s.spriteTileRow}>
         {stageTileFull}
-        {sprites.map(sp => (
+        {selectableSprites.map(sp => (
           <div
             key={sp.id}
             role="button"
@@ -1208,7 +1234,7 @@ export default function ScratchWorkspace({
     <div style={s.spritePanelCompact}>
       <div style={s.spriteTileRowCompact}>
         {stageTileCompact}
-        {sprites.map(sp => (
+        {selectableSprites.map(sp => (
           <button
             key={sp.id}
             type="button"

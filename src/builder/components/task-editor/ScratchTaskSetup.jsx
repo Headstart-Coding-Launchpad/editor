@@ -4,7 +4,7 @@ import { DEFAULT_SPRITES } from '../../../shared/scratch'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
 import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager } from './TaskEditorFields'
-import { ScratchToolboxPicker, VariableManager, PredefinedBlocksEditor } from './ScratchEditors'
+import { ScratchToolboxPicker, VariableManager, PrebuiltStacksEditor } from './ScratchEditors'
 
 export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, setCheckResult }) {
   const [testScratchBlocks, setTestScratchBlocks] = useState(null)
@@ -215,11 +215,12 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           onChange={toolbox => set('toolbox', toolbox)}
                         />
                         <div style={{ padding: '8px 12px', borderTop: '1px solid #e5e7eb' }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.82rem', color: 'var(--colour-text)', display: 'block', marginBottom: 6 }}>Predefined blocks</span>
-                          <PredefinedBlocksEditor
+                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.82rem', color: 'var(--colour-text)', display: 'block', marginBottom: 6 }}>Prebuilt stacks</span>
+                          <PrebuiltStacksEditor
+                            prebuiltStacks={task.prebuiltStacks ?? []}
                             predefinedBlocks={task.predefinedBlocks ?? []}
                             toolbox={task.toolbox ?? ''}
-                            onChange={pbs => set('predefinedBlocks', pbs.length ? pbs : undefined)}
+                            onChange={stacks => onUpdate({ ...task, prebuiltStacks: stacks.length ? stacks : undefined, predefinedBlocks: undefined })}
                           />
                         </div>
                       </>
@@ -295,6 +296,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                     onRemoveSprite={id => handleStarterSpritesChange(getScratchSprites().filter(sp => sp.id !== id))}
                     spritePanelTarget={modalSpritePanelTarget}
                     predefinedBlocks={task.predefinedBlocks ?? null}
+                    prebuiltStacks={task.prebuiltStacks ?? null}
                     spritePanelEditor={(
                       <SpriteManager
                         sprites={getScratchSprites()}
@@ -342,6 +344,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                     }}
                     syncNowKey={starterBlocksSyncKey}
                     predefinedBlocks={task.predefinedBlocks ?? null}
+                    prebuiltStacks={task.prebuiltStacks ?? null}
                   />
                 ) : (() => {
                   const stageMatch = scratchModalTab.match(/^stage_(\d+)$/)
@@ -352,6 +355,10 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   const stagePredefined = [
                     ...(task.predefinedBlocks ?? []),
                     ...(stage.predefinedBlocks ?? []),
+                  ]
+                  const stagePrebuilt = [
+                    ...(task.prebuiltStacks ?? []),
+                    ...(stage.prebuiltStacks ?? []),
                   ]
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -365,11 +372,12 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           placeholder={`Stage ${stageIdx + 1}`}
                         />
                         <div style={{ flex: '1 1 100%', padding: '4px 0 0' }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', display: 'block', marginBottom: 4 }}>Predefined blocks for this stage</span>
-                          <PredefinedBlocksEditor
+                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', display: 'block', marginBottom: 4 }}>Prebuilt stacks for this stage</span>
+                          <PrebuiltStacksEditor
+                            prebuiltStacks={stage.prebuiltStacks ?? []}
                             predefinedBlocks={stage.predefinedBlocks ?? []}
                             toolbox={task.toolbox ?? ''}
-                            onChange={pbs => updateStage(stageIdx, { predefinedBlocks: pbs.length ? pbs : undefined })}
+                            onChange={stacks => updateStage(stageIdx, { prebuiltStacks: stacks.length ? stacks : undefined, predefinedBlocks: undefined })}
                           />
                         </div>
                       </div>
@@ -385,6 +393,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                         }}
                         syncNowKey={starterBlocksSyncKey}
                         predefinedBlocks={stagePredefined.length ? stagePredefined : null}
+                        prebuiltStacks={stagePrebuilt.length ? stagePrebuilt : null}
                       />
                     </div>
                   )

@@ -306,7 +306,8 @@ Supported combinations:
 | `variables` | No | variable array | Predefined variables available in variable blocks. Omit or empty means a single `score` variable is available as fallback. |
 | `starterBlocks` | No | object or null | Blockly workspace state. Multi-sprite projects are keyed by sprite ID. |
 | `completeBlocks` | No | object or null | Reference solution workspace state. |
-| `codeStages` | No | stage array | Optional intermediate stages between starter and complete. Each stage has a `label` and `blocks` (Blockly workspace state). Teacher can send any stage to students. |
+| `prebuiltStacks` | No | stack array | Visual block stacks appended to the Scratch toolbox for the task. Each stack is available to drag into the workspace. |
+| `codeStages` | No | stage array | Optional intermediate stages between starter and complete. Each stage has a `label`, `blocks` (Blockly workspace state), and optional `prebuiltStacks`. Teacher can send any stage to students. |
 | `carryBlocksFrom` | No | integer or null | Previous task ID to carry saved Scratch blocks from. |
 
 Variable object:
@@ -332,6 +333,15 @@ Sprite object:
 | `costume` | No | string | Initial costume name when `costumes` are configured. Defaults to the first costume. |
 | `costumes` | No | costume array | Optional image costumes. First costume is default. |
 | `emoji` | No | string | A single emoji character. When set and no costume image is active, the emoji is rendered on the stage instead of the built-in vector shape. Costume images still take precedence. |
+| `studentEditable` | No | boolean | Defaults to `true`. When `false`, students can see the sprite on the stage and its scripts still run, but they cannot select it, drag it, or view its blocks. |
+
+Prebuilt stack object:
+
+| Field | Required | Notes |
+|---|---:|---|
+| `id` | Yes | Stable builder-generated ID. |
+| `label` | No | Builder display label for the stack. |
+| `stack` | Yes | Blockly toolbox-compatible block JSON. Connected stacks use the normal serialized `next.block` shape. |
 
 Costume object:
 

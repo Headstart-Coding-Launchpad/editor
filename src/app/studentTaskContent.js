@@ -49,3 +49,20 @@ export function selectScratchInitialProject({ task, taskId, readSavedCode }) {
   if (!initialProject) initialProject = task?.starterBlocks ?? null
   return initialProject
 }
+
+export function selectScratchToolboxSnippets({ task, activeStageIndex = null, disabled = false }) {
+  if (disabled || !task) return { predefinedBlocks: null, prebuiltStacks: null }
+  const activeStage = activeStageIndex != null ? task.codeStages?.[activeStageIndex] : null
+  const predefinedBlocks = [
+    ...(task.predefinedBlocks ?? []),
+    ...(activeStage?.predefinedBlocks ?? []),
+  ]
+  const prebuiltStacks = [
+    ...(task.prebuiltStacks ?? []),
+    ...(activeStage?.prebuiltStacks ?? []),
+  ]
+  return {
+    predefinedBlocks: predefinedBlocks.length ? predefinedBlocks : null,
+    prebuiltStacks: prebuiltStacks.length ? prebuiltStacks : null,
+  }
+}

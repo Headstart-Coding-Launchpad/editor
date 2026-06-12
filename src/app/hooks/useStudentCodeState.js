@@ -65,6 +65,7 @@ export function useStudentCodeState({
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
+  const [scratchActiveStageIndex, setScratchActiveStageIndex] = useState(null)
   const [fsState, setFsState]             = useState(DEFAULT_FS)
   const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
   const [editorSelection, setEditorSelection] = useState(null)
@@ -220,6 +221,7 @@ export function useStudentCodeState({
     } else if (lesson.type === 'scratch') {
       setFiles([])
       setActiveFile('')
+      setScratchActiveStageIndex(null)
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
@@ -426,12 +428,18 @@ export function useStudentCodeState({
     } else if (lesson.type === 'scratch') {
       let targetBlocks
       if (action === 'starter') targetBlocks = task.starterBlocks ?? null
-      else if (action === 'complete') targetBlocks = task.completeBlocks ?? null
+      else if (action === 'complete') {
+        targetBlocks = task.completeBlocks ?? null
+        setScratchActiveStageIndex(null)
+      }
       else {
         const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
+        const stageIndex = stageMatch ? parseInt(stageMatch[1], 10) : null
+        const stage = stageIndex != null ? (task.codeStages ?? [])[stageIndex] : null
         targetBlocks = stage?.blocks ?? task.starterBlocks ?? null
+        setScratchActiveStageIndex(stage ? stageIndex : null)
       }
+      if (action === 'starter') setScratchActiveStageIndex(null)
       setScratchExternalState(targetBlocks)
     } else if (lesson.type === 'filesystem') {
       let targetFs
@@ -843,6 +851,7 @@ export function useStudentCodeState({
       resetCheckFeedback()
     } else if (lesson.type === 'scratch') {
       setScratchExternalState(task?.starterBlocks ?? null)
+      setScratchActiveStageIndex(null)
     }
   }
 
@@ -869,6 +878,7 @@ export function useStudentCodeState({
     } else if (lesson.type === 'scratch') {
       const stageBlocks = stage.blocks ?? null
       setScratchExternalState(stageBlocks)
+      setScratchActiveStageIndex(stageIndex)
       if (stageBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: stageBlocks })
     } else if (lesson.type === 'filesystem') {
       const stageFs = stage.fs ?? DEFAULT_FS
@@ -901,6 +911,7 @@ export function useStudentCodeState({
     } else if (lesson.type === 'scratch') {
       const completeBlocks = task.completeBlocks ?? null
       setScratchExternalState(completeBlocks)
+      setScratchActiveStageIndex(null)
       applyCheckFeedback(true)
       if (completeBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: completeBlocks })
     } else if (lesson.type === 'filesystem') {
@@ -1000,7 +1011,7 @@ export function useStudentCodeState({
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
     inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
     offeredStageIndex,
-    selectedAnswer, scratchSandboxProject, scratchExternalState,
+    selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     // Refs
     iframeRef,

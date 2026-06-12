@@ -1,7 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { PredefinedBlocksEditor, buildScratchToolboxXml } from '../ScratchEditors'
+import { PrebuiltStacksEditor, PredefinedBlocksEditor, buildScratchToolboxXml } from '../ScratchEditors'
 
 describe('PredefinedBlocksEditor', () => {
   it('clears an in-progress block when the toolbox changes', async () => {
@@ -37,6 +37,29 @@ describe('PredefinedBlocksEditor', () => {
 
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ type: 'looks_say' }),
+    ])
+  })
+})
+
+describe('PrebuiltStacksEditor', () => {
+  it('adds a stack immediately when a block type is selected from the picker', () => {
+    const onChange = vi.fn()
+    render(
+      <PrebuiltStacksEditor
+        prebuiltStacks={[]}
+        toolbox={buildScratchToolboxXml(['motion_movesteps', 'looks_say'])}
+        onChange={onChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ add stack/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'say' }))
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        label: 'say',
+        stack: expect.objectContaining({ type: 'looks_say' }),
+      }),
     ])
   })
 })

@@ -4,6 +4,7 @@ import {
   selectHtmlTaskFiles,
   selectPythonTaskCode,
   selectScratchInitialProject,
+  selectScratchToolboxSnippets,
 } from '../studentTaskContent'
 
 const groupedTasks = [{
@@ -107,5 +108,32 @@ describe('selectScratchInitialProject', () => {
       readSavedCode: id => id === 1 ? { state: { selected: 'carry' } } : null,
     })).toEqual({ selected: 'carry' })
     expect(selectScratchInitialProject({ task, taskId: 2, readSavedCode: () => null })).toBe(starterBlocks)
+  })
+})
+
+describe('selectScratchToolboxSnippets', () => {
+  it('merges task-level and active-stage Scratch toolbox snippets', () => {
+    const taskPredefined = [{ id: 'task-pb', type: 'motion_movesteps' }]
+    const stagePredefined = [{ id: 'stage-pb', type: 'looks_say' }]
+    const taskStack = [{ id: 'task-stack', stack: { type: 'motion_movesteps' } }]
+    const stageStack = [{ id: 'stage-stack', stack: { type: 'looks_say' } }]
+    const task = {
+      predefinedBlocks: taskPredefined,
+      prebuiltStacks: taskStack,
+      codeStages: [{ predefinedBlocks: stagePredefined, prebuiltStacks: stageStack }],
+    }
+
+    expect(selectScratchToolboxSnippets({ task, activeStageIndex: 0 })).toEqual({
+      predefinedBlocks: [...taskPredefined, ...stagePredefined],
+      prebuiltStacks: [...taskStack, ...stageStack],
+    })
+    expect(selectScratchToolboxSnippets({ task, activeStageIndex: null })).toEqual({
+      predefinedBlocks: taskPredefined,
+      prebuiltStacks: taskStack,
+    })
+    expect(selectScratchToolboxSnippets({ task, activeStageIndex: 0, disabled: true })).toEqual({
+      predefinedBlocks: null,
+      prebuiltStacks: null,
+    })
   })
 })
