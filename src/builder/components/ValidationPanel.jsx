@@ -158,6 +158,8 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
+    maxHeight: 220,
+    overflowY: 'auto',
   },
   empty: {
     margin: 0,

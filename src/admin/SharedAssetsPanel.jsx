@@ -35,11 +35,11 @@ export default function SharedAssetsPanel() {
         </p>
       </div>
 
-      <div style={s.typeTabs}>
+      <div className="ui-tabs">
         {LESSON_TYPES.map(t => (
           <button
             key={t.id}
-            style={{ ...s.typeTab, ...(activeType === t.id ? s.typeTabActive : {}) }}
+            className={`ui-tab${activeType === t.id ? ' is-active' : ''}`}
             onClick={() => setActiveType(t.id)}
           >
             {t.label}
@@ -370,14 +370,6 @@ const s = {
   titleRow: { display: 'flex', flexDirection: 'column', gap: 4 },
   title: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
   subtitle: { fontFamily: 'var(--font-body)', fontSize: '0.84rem', color: '#6b7280', margin: 0 },
-  typeTabs: { display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb' },
-  typeTab: {
-    fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem',
-    padding: '10px 18px', border: 'none', borderBottom: '3px solid transparent',
-    background: 'none', color: '#6b7280', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
-    marginBottom: -2,
-  },
-  typeTabActive: { color: 'var(--colour-primary)', borderBottomColor: 'var(--colour-primary)' },
   typeEditor: { display: 'flex', flexDirection: 'column', gap: 20 },
   sectionCard: {
     display: 'flex', flexDirection: 'column', gap: 8,

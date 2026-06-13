@@ -2,24 +2,13 @@ import React, { useState } from 'react'
 import StudentCard from './StudentCard'
 import StudentModal from './StudentModal'
 import { findTaskById } from '../../shared/taskUtils'
+import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
+import { MarkdownRenderer } from '../../shared/markdown'
 
-function formatCheck(check) {
-  if (!check) return null
-  const checks = Array.isArray(check) ? check : [check]
-  return checks.map(c => {
-    if (c.type === 'output_contains') return `Contains: "${c.value}"`
-    if (c.type === 'answer_equals') return `Answer: "${c.value}"`
-    if (c.type === 'output_equals') return `Equals: "${c.value}"`
-    if (c.type === 'output_line_count') return `${c.value} line${c.value === 1 ? '' : 's'}`
-    if (c.type === 'output_not_empty') return 'Output is not empty'
-    if (c.type === 'output_empty') return 'Output is empty'
-    return `${c.type}: ${c.value}`
-  }).join(' · ')
-}
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
-  const [checkSectionOpen, setCheckSectionOpen] = useState(false)
+  const [showTopicsDialog, setShowTopicsDialog] = useState(false)
 
   const expandedIndex = students.findIndex(s => s.anonymousId === expandedStudentId)
   const expandedStudent = expandedIndex >= 0 ? students[expandedIndex] : null
@@ -60,7 +49,6 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
   }
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const tasksWithChecks = currentTask?.check != null ? [currentTask] : []
   const hasCheck = currentTask?.check != null
   const passedCount = hasCheck ? students.filter(student => student.checkPassed).length : 0
   const failedCount = hasCheck ? students.filter(student => student.lastRunStatus != null && !student.checkPassed).length : 0
@@ -127,6 +115,9 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
             </>
           )}
           <span style={s.count}>{students.length}</span>
+          {topics?.length > 0 && (
+            <button style={s.topicsBtn} onClick={() => setShowTopicsDialog(true)} title="Open topic library">📖</button>
+          )}
           <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">›</button>
         </div>
       </div>
@@ -154,26 +145,27 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
         </div>
       )}
 
-      {tasksWithChecks.length > 0 && (
-        <div style={s.checkSection}>
-          <button style={s.checkSectionHeader} onClick={() => setCheckSectionOpen(v => !v)}>
-            <span style={s.checkSectionTitle}>Check Conditions</span>
-            <span style={s.checkChevron}>{checkSectionOpen ? '▲' : '▼'}</span>
+      {onTogglePaused && (session?.state === 'active' || session?.state === 'sandbox') && (
+        <div style={s.pauseRow}>
+          <button
+            className={session?.isPaused ? 'btn-paused' : 'btn-ghost-outline'}
+            style={s.pauseBtn}
+            onClick={onTogglePaused}
+          >
+            {session?.isPaused ? 'Resume Coding' : 'Pause Coding'}
           </button>
-          {checkSectionOpen && (
-            <div style={s.checkSectionBody}>
-              {tasksWithChecks.map(task => (
-                <div key={task.id} style={s.checkRow}>
-                  <div style={s.checkTaskLabel}>
-                    <span style={s.checkTaskNum}>T{task.id}</span>
-                    <span style={s.checkTaskTitle}>{task.title}</span>
-                  </div>
-                  <span style={s.checkValue}>{formatCheck(task.check)}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+      )}
+
+      {showTopicsDialog && topics?.length > 0 && (
+        <TopicLibraryDialog
+          topics={topics}
+          onClose={() => setShowTopicsDialog(false)}
+          renderMarkdown={({ content, textScale, topicType }) => <MarkdownRenderer content={content} textScale={textScale} topicType={topicType} />}
+          students={students}
+          onSendToAll={onSendTopicToAll}
+          onSendToIndividual={onSendToIndividual}
+        />
       )}
 
       {expandedStudent && (
@@ -196,6 +188,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           onOverrideCheck={onOverrideCheck}
           onDismissHelp={onDismissHelp}
           onSendToTopic={onSendToTopic}
+          onSendTopicToAll={onSendTopicToAll}
         />
       )}
     </div>
@@ -271,80 +264,26 @@ const s = {
     lineHeight: 1,
     borderRadius: 3,
   },
-  checkSection: {
+  topicsBtn: {
+    background: 'rgba(255,255,255,0.18)',
+    border: 'none',
+    color: '#fff',
+    fontSize: '0.95rem',
+    cursor: 'pointer',
+    padding: '2px 6px',
+    lineHeight: 1,
+    borderRadius: 4,
+  },
+  pauseRow: {
     flexShrink: 0,
     borderTop: '1px solid #e5e7eb',
+    padding: '8px 10px',
+    background: '#fafafa',
   },
-  checkSectionHeader: {
+  pauseBtn: {
     width: '100%',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '8px 14px',
-    background: '#f9fafb',
-    border: 'none',
-    borderBottom: '1px solid transparent',
-    cursor: 'pointer',
-    textAlign: 'left',
-  },
-  checkSectionTitle: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '0.78rem',
-    letterSpacing: '0.03em',
-    color: 'var(--colour-primary)',
-  },
-  checkChevron: {
-    fontSize: '0.65rem',
-    color: '#9ca3af',
-  },
-  checkSectionBody: {
-    padding: '8px 14px 12px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    background: '#fff',
-    maxHeight: 240,
-    overflowY: 'auto',
-  },
-  checkRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  checkTaskLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-  },
-  checkTaskNum: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.7rem',
-    color: '#fff',
-    background: 'var(--colour-primary)',
-    borderRadius: 4,
-    padding: '1px 5px',
-    flexShrink: 0,
-  },
-  checkTaskTitle: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
     fontSize: '0.82rem',
-    color: 'var(--colour-text)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  checkValue: {
-    fontFamily: 'var(--font-code)',
-    fontSize: '0.75rem',
-    color: '#374151',
-    background: '#f3f4f6',
-    borderRadius: 4,
-    padding: '3px 8px',
-    wordBreak: 'break-all',
-    lineHeight: 1.4,
+    padding: '7px 12px',
   },
   collapsedWrap: {
     display: 'flex',

@@ -216,6 +216,23 @@ select {
   box-shadow: none !important;
 }
 
+/* Hover must not override the active-tab highlight */
+.ui-tab.is-active:hover,
+[role="tab"][aria-selected="true"]:hover {
+  background: var(--colour-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px rgba(98, 34, 204, 0.18) !important;
+  transform: none;
+}
+
+.ui-tabs--editor .ui-tab.is-active:hover,
+.ui-tabs--editor [role="tab"][aria-selected="true"]:hover {
+  background: #fafafa !important;
+  color: var(--colour-primary) !important;
+  box-shadow: none !important;
+  transform: none;
+}
+
 .ui-tab--code {
   font-family: var(--font-code) !important;
   font-size: 0.8rem !important;

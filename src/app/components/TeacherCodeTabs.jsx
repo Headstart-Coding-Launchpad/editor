@@ -15,7 +15,7 @@ export default function TeacherCodeTabs({
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Teacher code workspace">
       <button
         type="button"
-        className="ui-tab"
+        className={`ui-tab${activeTab === 'starter' ? ' is-active' : ''}`}
         role="tab"
         aria-selected={activeTab === 'starter'}
         onClick={onStarter}
@@ -26,7 +26,7 @@ export default function TeacherCodeTabs({
         <button
           key={i}
           type="button"
-          className="ui-tab"
+          className={`ui-tab${activeTab === `stage_${i}` ? ' is-active' : ''}`}
           role="tab"
           aria-selected={activeTab === `stage_${i}`}
           onClick={() => onStage?.(i)}
@@ -37,7 +37,7 @@ export default function TeacherCodeTabs({
       {onComplete && (
         <button
           type="button"
-          className="ui-tab"
+          className={`ui-tab${activeTab === 'complete' ? ' is-active' : ''}`}
           role="tab"
           aria-selected={activeTab === 'complete'}
           onClick={onComplete}

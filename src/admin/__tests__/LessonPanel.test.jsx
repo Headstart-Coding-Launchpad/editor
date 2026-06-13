@@ -65,11 +65,13 @@ describe('LessonPanel', () => {
     expect(screen.getByText('Scratch')).toBeInTheDocument()
   })
 
-  it('renders the lesson title for each lesson', () => {
+  it('renders the lesson title for each lesson', async () => {
+    const user = userEvent.setup()
     render(<LessonPanel />)
     fireLessons([PYTHON_LESSON, HTML_LESSON])
 
     expect(screen.getByText('Intro to Python')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /HTML/i }))
     expect(screen.getByText('HTML Basics')).toBeInTheDocument()
   })
 

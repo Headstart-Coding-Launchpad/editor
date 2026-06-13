@@ -128,10 +128,15 @@ export default function LessonPanel() {
     }
   }
 
+  const [activeType, setActiveType] = useState(null)
+
   const groups = useMemo(
     () => groupByTypeAndLevel(lessons.filter(l => !deletedIds.has(l.id))),
     [lessons, deletedIds],
   )
+
+  const displayType = activeType ?? groups[0]?.type ?? null
+  const activeGroup = groups.find(g => g.type === displayType)
 
   return (
     <section style={s.section}>
@@ -160,10 +165,30 @@ export default function LessonPanel() {
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
       )}
 
-      {groups.map(({ type, lessons: groupLessons }) => (
-        <div key={type} style={s.group}>
-          <h3 style={s.groupTitle}>{TYPE_LABELS[type] ?? type}</h3>
+      {groups.length > 0 && (
+        <div className="ui-tabs">
+          {groups.map(({ type, lessons: groupLessons }) => (
+            <button
+              key={type}
+              className={`ui-tab${displayType === type ? ' is-active' : ''}`}
+              onClick={() => setActiveType(type)}
+            >
+              {TYPE_LABELS[type] ?? type}
+              <span style={s.tabCount}>{groupLessons.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeGroup && (
+        <div key={activeGroup.type} style={s.group}>
           <table style={s.table}>
+            <colgroup>
+              <col style={{ width: '28%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '42%' }} />
+            </colgroup>
             <thead>
               <tr>
                 {['Title', 'Level', 'ID', 'Actions'].map(h => (
@@ -172,7 +197,7 @@ export default function LessonPanel() {
               </tr>
             </thead>
             <tbody>
-              {groupLessons.map(lesson => (
+              {activeGroup.lessons.map(lesson => (
                 <tr key={lesson.id}>
                   <td style={s.td}>{lesson.title || lesson.id}</td>
                   <td style={s.td}>
@@ -248,7 +273,7 @@ export default function LessonPanel() {
             </tbody>
           </table>
         </div>
-      ))}
+      )}
     </section>
   )
 }
@@ -260,14 +285,14 @@ const s = {
   headerActions:{ display: 'flex', gap: 8 },
   headerBtn:    { padding: '6px 14px', fontSize: '0.85rem' },
   group:      { display: 'flex', flexDirection: 'column', gap: 0 },
-  groupTitle: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--colour-primary)', margin: '0 0 8px', paddingBottom: 6, borderBottom: '2px solid var(--colour-primary)' },
-  table:      { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
+  tabCount:   { background: '#f0eafa', color: 'var(--colour-primary)', borderRadius: 999, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700, marginLeft: 4 },
+  table:      { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem', tableLayout: 'fixed' },
   th:         { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
   td:         { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
   levelBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: '#ede9fe', color: '#7c3aed' },
   dash:       { color: '#d1d5db' },
-  actions:    { display: 'flex', gap: 6, alignItems: 'center' },
-  actionBtn:  { padding: '4px 10px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' },
+  actions:    { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
+  actionBtn:  { padding: '4px 7px', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 },
   error:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
   muted:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af', margin: 0 },
 }

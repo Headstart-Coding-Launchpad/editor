@@ -47,6 +47,12 @@ vi.mock('../LiveActivityToast', () => ({
 }))
 
 vi.mock('../../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
+vi.mock('../../../shared/TopicLibraryView', () => ({
+  TopicLibraryDialog: () => <div data-testid="topic-library-dialog" />,
+}))
+vi.mock('../../../shared/markdown', () => ({
+  MarkdownRenderer: ({ content }) => <div>{content}</div>,
+}))
 
 const BASE_STUDENT = {
   anonymousId: 'student-1',
@@ -197,29 +203,38 @@ describe('StudentModal', () => {
       }],
     }
 
-    it('renders the stage dropdown with starter, stage, and complete options', () => {
+    it('renders the Set Stage button when stages are available', () => {
       render(<StudentModal {...mkProps({ lesson: LESSON_WITH_STAGES })} />)
-      const select = screen.getByRole('combobox')
-      expect(select).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'Starter code' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'Stage 1' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'Complete code' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Set Stage/i })).toBeInTheDocument()
     })
 
-    it('calls onRemoteReset with correct args after confirm', () => {
+    it('opens the stage dropdown and shows stage options when clicked', async () => {
+      const user = userEvent.setup()
+      render(<StudentModal {...mkProps({ lesson: LESSON_WITH_STAGES })} />)
+      await user.click(screen.getByRole('button', { name: /Set Stage/i }))
+      expect(screen.getByRole('button', { name: 'Starter code' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Stage 1' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Complete code' })).toBeInTheDocument()
+    })
+
+    it('calls onRemoteReset with correct args after confirm', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const user = userEvent.setup()
       const props = mkProps({ lesson: LESSON_WITH_STAGES })
       render(<StudentModal {...props} />)
-      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'starter' } })
+      await user.click(screen.getByRole('button', { name: /Set Stage/i }))
+      await user.click(screen.getByRole('button', { name: 'Starter code' }))
       expect(window.confirm).toHaveBeenCalled()
       expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'starter')
     })
 
-    it('does not call onRemoteReset when the confirm dialog is cancelled', () => {
+    it('does not call onRemoteReset when the confirm dialog is cancelled', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const user = userEvent.setup()
       const props = mkProps({ lesson: LESSON_WITH_STAGES })
       render(<StudentModal {...props} />)
-      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'complete' } })
+      await user.click(screen.getByRole('button', { name: /Set Stage/i }))
+      await user.click(screen.getByRole('button', { name: 'Complete code' }))
       expect(props.onRemoteReset).not.toHaveBeenCalled()
     })
   })
