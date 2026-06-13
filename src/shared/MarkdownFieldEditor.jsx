@@ -263,23 +263,21 @@ export function MarkdownFieldEditor({
 
   return (
     <div style={{ ...s.wrap, height: effectiveHeight, minHeight: effectiveMinHeight }}>
-      <div style={s.tabs} className="ui-tabs" role="tablist" aria-label={ariaLabel}>
+      <div className="ui-tabs" role="tablist" aria-label={ariaLabel}>
         <button
           type="button"
-          className="ui-tab"
+          className={`ui-tab${tab === 'entry' ? ' is-active' : ''}`}
           role="tab"
           aria-selected={tab === 'entry'}
-          style={tab === 'entry' ? { ...s.tab, ...s.tabActive } : s.tab}
           onClick={() => setTab('entry')}
         >
           Entry
         </button>
         <button
           type="button"
-          className="ui-tab"
+          className={`ui-tab${tab === 'preview' ? ' is-active' : ''}`}
           role="tab"
           aria-selected={tab === 'preview'}
-          style={tab === 'preview' ? { ...s.tab, ...s.tabActive } : s.tab}
           onClick={() => setTab('preview')}
         >
           Preview
@@ -690,33 +688,6 @@ const s = {
   wrap: {
     display: 'flex',
     flexDirection: 'column',
-  },
-  tabs: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    padding: 4,
-    border: '1px solid #e5e7eb',
-    borderBottom: 'none',
-    borderRadius: '8px 8px 0 0',
-    background: '#f7f7f7',
-    flexShrink: 0,
-  },
-  tab: {
-    border: 'none',
-    borderRadius: 6,
-    background: 'transparent',
-    color: '#6b7280',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.82rem',
-    fontWeight: 700,
-    padding: '6px 12px',
-    cursor: 'pointer',
-  },
-  tabActive: {
-    background: '#ffffff',
-    color: 'var(--colour-primary-dark)',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
   },
   toolbar: {
     display: 'flex',

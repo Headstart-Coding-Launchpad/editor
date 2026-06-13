@@ -81,11 +81,28 @@ export function TopicReference({ topic, label, onOpen, renderSummary: SummaryCon
   )
 }
 
-export function TopicLibraryDialog({ topics, initialTopicId, onClose, onTopicSelect, renderMarkdown: MarkdownContent, topicType = null }) {
+export function TopicLibraryDialog({ topics, initialTopicId, onClose, onTopicSelect, renderMarkdown: MarkdownContent, topicType = null, studentName, onSendToStudent, onSendToAll, students, onSendToIndividual }) {
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState(initialTopicId || topics[0]?.id || '')
+  const [sendMenuOpen, setSendMenuOpen] = useState(false)
+  const sendMenuRef = useRef(null)
   const filteredTopics = useMemo(() => searchTopics(topics, query), [topics, query])
   const selectedTopic = topics.find(topic => topic.id === selectedId) ?? filteredTopics[0] ?? topics[0]
+
+  // teacher-view mode: "Send to all" default with per-student dropdown
+  const hasStudentList = students && students.length > 0 && (onSendToAll || onSendToIndividual)
+  // student-modal mode: "Send to [name]" with optional "Send to all"
+  const hasStudentTarget = !hasStudentList && (onSendToStudent || onSendToAll)
+  const hasSendButton = hasStudentList || hasStudentTarget
+
+  useEffect(() => {
+    if (!sendMenuOpen) return
+    function onDown(e) {
+      if (sendMenuRef.current && !sendMenuRef.current.contains(e.target)) setSendMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [sendMenuOpen])
 
   useEffect(() => {
     if (initialTopicId) setSelectedId(initialTopicId)
@@ -137,7 +154,70 @@ export function TopicLibraryDialog({ topics, initialTopicId, onClose, onTopicSel
           <article style={s.detail}>
             {selectedTopic ? (
               <>
-                <div style={s.detailCategory}>{selectedTopic.category}</div>
+                <div style={s.detailTopRow}>
+                  <div style={s.detailCategory}>{selectedTopic.category}</div>
+                  {hasSendButton && (
+                    <div ref={sendMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+                      {hasStudentList ? (
+                        // Teacher-view mode: "Send to all ▾" with per-student list
+                        <>
+                          <button
+                            style={s.sendBtn}
+                            onClick={students.length > 0 || onSendToIndividual ? () => setSendMenuOpen(v => !v) : () => onSendToAll?.(selectedTopic.id)}
+                            aria-expanded={sendMenuOpen}
+                          >
+                            Send to all {students.length > 0 ? '▾' : ''}
+                          </button>
+                          {sendMenuOpen && (
+                            <div style={{ ...s.sendMenu, maxHeight: 260, overflowY: 'auto' }} className="ui-popover">
+                              {onSendToAll && (
+                                <button style={{ ...s.sendMenuItem, fontWeight: 700 }} onClick={() => { setSendMenuOpen(false); onSendToAll(selectedTopic.id) }}>
+                                  Send to all students
+                                </button>
+                              )}
+                              {students.length > 0 && <div style={s.sendMenuDivider} />}
+                              {students.map(st => (
+                                <button
+                                  key={st.anonymousId}
+                                  style={s.sendMenuItem}
+                                  onClick={() => { setSendMenuOpen(false); onSendToIndividual?.(selectedTopic.id, st.anonymousId) }}
+                                >
+                                  {st.displayName}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : onSendToStudent && !onSendToAll ? (
+                        // Student-modal mode, no "send to all"
+                        <button style={s.sendBtn} onClick={() => onSendToStudent(selectedTopic.id)}>
+                          Send to {studentName ?? 'student'}
+                        </button>
+                      ) : (
+                        // Student-modal mode with "send to all" dropdown
+                        <>
+                          <button style={s.sendBtn} onClick={() => setSendMenuOpen(v => !v)} aria-expanded={sendMenuOpen}>
+                            Send to {studentName ?? 'student'} ▾
+                          </button>
+                          {sendMenuOpen && (
+                            <div style={s.sendMenu} className="ui-popover">
+                              {onSendToStudent && (
+                                <button style={s.sendMenuItem} onClick={() => { setSendMenuOpen(false); onSendToStudent(selectedTopic.id) }}>
+                                  Send to {studentName ?? 'student'}
+                                </button>
+                              )}
+                              {onSendToAll && (
+                                <button style={{ ...s.sendMenuItem, fontWeight: 700 }} onClick={() => { setSendMenuOpen(false); onSendToAll(selectedTopic.id) }}>
+                                  Send to all students
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <h3 style={s.detailTitle}>{selectedTopic.title}</h3>
                 <p style={s.detailSummary}>{selectedTopic.summary}</p>
                 {selectedTopic.description && (
@@ -226,7 +306,49 @@ const s = {
   resultTitle: { color: 'var(--colour-text)', fontFamily: 'var(--font-body)', fontWeight: 700 },
   resultMeta: { color: '#6b7280', fontSize: '0.75rem' },
   detail: { overflowY: 'auto', padding: '28px 32px', background: '#fff', color: 'var(--colour-text)', fontFamily: 'var(--font-body)' },
+  detailTopRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 2 },
   detailCategory: { color: 'var(--colour-primary)', fontSize: '0.76rem', fontWeight: 700, textTransform: 'uppercase' },
+  sendBtn: {
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '5px 12px',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  sendMenu: {
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    right: 0,
+    minWidth: 200,
+    zIndex: 100,
+    padding: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  sendMenuItem: {
+    width: '100%',
+    padding: '8px 12px',
+    background: 'none',
+    border: 'none',
+    borderRadius: 5,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: 'var(--colour-text)',
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  sendMenuDivider: {
+    height: 1,
+    background: '#e5e7eb',
+    margin: '4px 0',
+  },
   detailTitle: { margin: '6px 0 10px', color: 'var(--colour-primary-dark)', fontFamily: 'var(--font-title)', fontSize: '1.55rem' },
   detailSummary: { margin: '0 0 16px', color: 'var(--colour-text)', fontWeight: 700, fontSize: '1.02rem', lineHeight: 1.5 },
   detailText: { color: 'var(--colour-text)', lineHeight: 1.6, margin: '0 0 16px' },

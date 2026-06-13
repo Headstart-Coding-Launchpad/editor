@@ -147,7 +147,7 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
   const revealAnswers = showCorrectAnswer && submitted && disabled
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const shuffledAnswers = useMemo(() => [...pairs].sort((a, b) => stableHash(a.answer) - stableHash(b.answer)), [JSON.stringify(pairs)])
+  const shuffledAnswers = useMemo(() => [...pairs].sort((a, b) => stableHash(a.answer ?? '') - stableHash(b.answer ?? '')), [JSON.stringify(pairs)])
 
   const state = useMemo(() => {
     if (selectedAnswer && typeof selectedAnswer === 'object' && !Array.isArray(selectedAnswer)) return selectedAnswer
@@ -333,7 +333,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
       ...blanks.map(b => ({ id: b.id, text: b.answer })),
       ...distractors.map(d => ({ id: d.id, text: d.text })),
     ]
-    return all.sort((a, b) => stableHash(a.text) - stableHash(b.text))
+    return all.sort((a, b) => stableHash(a.text ?? '') - stableHash(b.text ?? ''))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(blanks), JSON.stringify(distractors)])
 

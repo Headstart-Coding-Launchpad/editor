@@ -35,6 +35,7 @@ export default function TopicLibraryPanel() {
   const [deleting, setDeleting]   = useState(false)
   const [dirty, setDirty]         = useState(false)
   const [query, setQuery]         = useState('')
+  const [typeFilter, setTypeFilter] = useState(null) // null | 'python' | 'html' | 'scratch'
   const [uploading, setUploading] = useState(false)
   const uploadRef                 = useRef(null)
 
@@ -51,7 +52,19 @@ export default function TopicLibraryPanel() {
     )
   }, [])
 
-  const filtered = useMemo(() => searchTopics(topics, query), [topics, query])
+  const textFiltered = useMemo(() => searchTopics(topics, query), [topics, query])
+  const filtered = useMemo(() => {
+    if (!typeFilter) return textFiltered
+    return textFiltered.filter(t => (t.types ?? []).includes(typeFilter))
+  }, [textFiltered, typeFilter])
+
+  const typeCounts = useMemo(() => {
+    const counts = { all: topics.length }
+    for (const type of LESSON_TYPES) {
+      counts[type] = topics.filter(t => (t.types ?? []).includes(type)).length
+    }
+    return counts
+  }, [topics])
 
   function handleSelect(topic) {
     if (dirty && !confirm('You have unsaved changes. Discard them?')) return
@@ -195,6 +208,18 @@ export default function TopicLibraryPanel() {
             + New Topic
           </button>
         </div>
+      </div>
+
+      <div className="ui-tabs">
+        {[{ key: null, label: 'All', count: typeCounts.all }, ...LESSON_TYPES.map(t => ({ key: t, label: t.charAt(0).toUpperCase() + t.slice(1), count: typeCounts[t] }))].map(({ key, label, count }) => (
+          <button
+            key={label}
+            className={`ui-tab${typeFilter === key ? ' is-active' : ''}`}
+            onClick={() => setTypeFilter(key)}
+          >
+            {label} <span style={s.typeTabCount}>{count}</span>
+          </button>
+        ))}
       </div>
 
       <div style={s.body}>
@@ -478,6 +503,7 @@ const s = {
   newBtn:        { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
   body:          { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 0, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', background: '#fff', minHeight: 600 },
   listPane:      { display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb', background: '#f9fafb', minHeight: 0 },
+  typeTabCount:  { background: '#f0eafa', color: 'var(--colour-primary)', borderRadius: 999, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700 },
   search:        { margin: 12, padding: '9px 11px', border: '1px solid #d1d5db', borderRadius: 7, fontFamily: 'var(--font-body)', fontSize: '0.88rem', flexShrink: 0 },
   list:          { overflowY: 'auto', flex: 1, padding: '0 8px 12px' },
   listItem:      { display: 'flex', flexDirection: 'column', gap: 2, width: '100%', textAlign: 'left', border: 'none', borderRadius: 7, background: 'none', padding: '9px 10px', cursor: 'pointer' },

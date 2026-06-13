@@ -41,7 +41,7 @@ export default function AdminPortal() {
           {TABS.map(tab => (
             <button
               key={tab.id}
-              style={{ ...s.tab, ...(activeTab === tab.id ? s.tabActive : {}) }}
+              className={`ui-tab${activeTab === tab.id ? ' is-active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}
@@ -100,30 +100,15 @@ const s = {
   nav: {
     background: '#fff',
     borderBottom: '1px solid #e5e7eb',
-    padding: '0 32px',
+    padding: '8px 32px',
     flexShrink: 0,
   },
   tabs: {
     display: 'flex',
-    gap: 0,
+    gap: 4,
     maxWidth: 1100,
     margin: '0 auto',
-  },
-  tab: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.88rem',
-    padding: '12px 20px',
-    border: 'none',
-    borderBottom: '3px solid transparent',
-    background: 'none',
-    color: '#6b7280',
-    cursor: 'pointer',
-    transition: 'color 0.15s, border-color 0.15s',
-  },
-  tabActive: {
-    color: 'var(--colour-primary)',
-    borderBottomColor: 'var(--colour-primary)',
+    alignItems: 'center',
   },
   main: {
     flex: 1,

@@ -96,19 +96,10 @@ export default function FeedbackPanel() {
     <div style={s.wrap}>
       <h2 style={s.heading}>Feedback</h2>
 
-      <div style={s.subTabs}>
-        <button
-          style={{ ...s.subTab, ...(subTab === 'platform' ? s.subTabActive : {}) }}
-          onClick={() => setSubTab('platform')}
-        >Platform</button>
-        <button
-          style={{ ...s.subTab, ...(subTab === 'lesson' ? s.subTabActive : {}) }}
-          onClick={() => setSubTab('lesson')}
-        >Lesson</button>
-        <button
-          style={{ ...s.subTab, ...(subTab === 'task' ? s.subTabActive : {}) }}
-          onClick={() => setSubTab('task')}
-        >Task</button>
+      <div className="ui-tabs">
+        <button className={`ui-tab${subTab === 'platform' ? ' is-active' : ''}`} onClick={() => setSubTab('platform')}>Platform</button>
+        <button className={`ui-tab${subTab === 'lesson' ? ' is-active' : ''}`} onClick={() => setSubTab('lesson')}>Lesson</button>
+        <button className={`ui-tab${subTab === 'task' ? ' is-active' : ''}`} onClick={() => setSubTab('task')}>Task</button>
       </div>
 
       {loading ? (
@@ -139,26 +130,6 @@ const s = {
     fontSize: '1.1rem',
     color: 'var(--colour-text)',
     margin: 0,
-  },
-  subTabs: {
-    display: 'flex',
-    borderBottom: '1px solid #e5e7eb',
-    gap: 0,
-  },
-  subTab: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.88rem',
-    padding: '8px 18px',
-    border: 'none',
-    borderBottom: '3px solid transparent',
-    background: 'none',
-    color: '#6b7280',
-    cursor: 'pointer',
-  },
-  subTabActive: {
-    color: 'var(--colour-primary)',
-    borderBottomColor: 'var(--colour-primary)',
   },
   empty: {
     fontFamily: 'var(--font-body)',

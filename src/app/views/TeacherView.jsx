@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
-import { getLessonLinks } from '../../shared/lessonLinks'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import PythonEditor from '../components/PythonEditor'
@@ -70,8 +69,6 @@ export default function TeacherView({ lessonId }) {
   const [scratchState, setScratchState] = useState(null)
   const [fsState, setFsState] = useState(DEFAULT_FS)
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
-  const [showSharePanel, setShowSharePanel] = useState(false)
-  const [copiedLink, setCopiedLink] = useState(null) // 'live' | 'solo' | null
   const [activeCompleteFile, setActiveCompleteFile] = useState('')
   const [editorActivity, setEditorActivity] = useState(null)
   const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null, fs: null })
@@ -314,13 +311,6 @@ export default function TeacherView({ lessonId }) {
     await setActiveStudentView(null)
   }
 
-  async function handleCopyLink(type) {
-    const url = getLessonLinks(lessonId)[type]
-    await navigator.clipboard.writeText(url).catch(() => {})
-    setCopiedLink(type)
-    setTimeout(() => setCopiedLink(null), 2000)
-  }
-
   function handleOpenPresentationWindow() {
     const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
     presentationWindowRef.current = window.open(`${base}?teacher=true&present=true`, `headstart-present-${lessonId}`, 'popup=yes,width=1280,height=800')
@@ -349,6 +339,15 @@ export default function TeacherView({ lessonId }) {
   async function handleSendStageToAll(action) {
     const studentIds = Object.keys(session?.students ?? {})
     await Promise.all(studentIds.map(id => pushResetToStudent(id, action)))
+  }
+
+  async function handleSendTopicToAll(topicId) {
+    const studentIds = Object.keys(session?.students ?? {})
+    await Promise.all(studentIds.map(id => sendToTopic(id, topicId)))
+  }
+
+  async function handleSendToIndividual(topicId, studentId) {
+    await sendToTopic(studentId, topicId)
   }
 
   const onCodeChange = (showingComplete || isShowingStage || !isInSandbox) ? undefined
@@ -383,27 +382,12 @@ export default function TeacherView({ lessonId }) {
         right={
           <TeacherSessionControls
             session={session}
-            isInSandbox={isInSandbox}
-            displayIndex={displayIndex}
-            taskCount={flatTasks.length}
-            links={getLessonLinks(lessonId)}
-            copiedLink={copiedLink}
-            showSharePanel={showSharePanel}
-            onPreviousTask={() => {
-              if (displayIndex > 0) handlePreviewTask(flatTasks[displayIndex - 1].id)
-            }}
-            onNextTask={() => {
-              if (displayIndex < flatTasks.length - 1) handlePreviewTask(flatTasks[displayIndex + 1].id)
-            }}
             onOpenPresentationWindow={handleOpenPresentationWindow}
             onOpenFeedback={() => setShowFeedbackModal(true)}
-            onToggleSharePanel={() => setShowSharePanel(v => !v)}
-            onCloseSharePanel={() => setShowSharePanel(false)}
-            onCopyLink={handleCopyLink}
             onStartSession={startSession}
-            onTogglePaused={() => setPaused(!session?.isPaused)}
             onEndSession={() => setShowEndModal(true)}
             onRestartSession={restartSession}
+            onReturnToAdmin={() => navigate('/admin')}
           />
         }
       />
@@ -431,7 +415,7 @@ export default function TeacherView({ lessonId }) {
         </aside>
 
         {/* Centre — Teacher Editor */}
-        <main style={{ ...s.centre, ...(isInformationTask || lesson.type === 'html' || lesson.type === 'scratch' || lesson.type === 'filesystem' ? { overflow: 'hidden' } : {}) }}>
+        <main style={{ ...s.centre, ...((isInformationTask || lesson.type === 'html' || lesson.type === 'scratch' || lesson.type === 'filesystem') && !(currentTask?.check != null && !isInSandbox) ? { overflow: 'hidden' } : {}) }}>
           {task?.explainer && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
             <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
           )}
@@ -487,6 +471,9 @@ export default function TeacherView({ lessonId }) {
             onFsChange={onFsChange}
             onActivity={setEditorActivity}
           />
+          {task?.check != null && !isInSandbox && (
+            <CheckConditionsPanel check={task.check} taskTitle={task.title} />
+          )}
         </main>
 
         {/* Right — Student Grid */}
@@ -507,6 +494,9 @@ export default function TeacherView({ lessonId }) {
             onOverrideCheck={overrideStudentCheck}
             onDismissHelp={dismissHelp}
             onSendToTopic={sendToTopic}
+            onSendTopicToAll={handleSendTopicToAll}
+            onSendToIndividual={handleSendToIndividual}
+            onTogglePaused={() => setPaused(!session?.isPaused)}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
           />
@@ -533,6 +523,64 @@ export default function TeacherView({ lessonId }) {
       )}
     </div>
   )
+}
+
+// ─── Check conditions panel ───────────────────────────────────────────────────
+
+function formatCheckValue(c) {
+  if (c.type === 'output_contains') return `output contains "${c.value}"`
+  if (c.type === 'answer_equals') return `answer equals "${c.value}"`
+  if (c.type === 'output_equals') return `output equals "${c.value}"`
+  if (c.type === 'output_line_count') return `${c.value} output line${c.value === 1 ? '' : 's'}`
+  if (c.type === 'output_not_empty') return 'output is not empty'
+  if (c.type === 'output_empty') return 'output is empty'
+  return `${c.type}: ${c.value ?? ''}`
+}
+
+function CheckConditionsPanel({ check, taskTitle }) {
+  const [open, setOpen] = useState(false)
+  const checks = Array.isArray(check) ? check : [check]
+  return (
+    <div style={sc.wrap}>
+      <button style={sc.header} onClick={() => setOpen(v => !v)} aria-expanded={open}>
+        <span style={sc.title}>Check Conditions{taskTitle ? ` — ${taskTitle}` : ''}</span>
+        <span style={sc.chevron}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={sc.body}>
+          {checks.map((c, i) => (
+            <div key={i} style={sc.row}>
+              <span style={sc.badge}>{i + 1}</span>
+              <span style={sc.type}>{c.type?.replace(/_/g, ' ')}</span>
+              <span style={sc.value}>{formatCheckValue(c)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const sc = {
+  wrap: { flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' },
+  header: {
+    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '9px 14px', background: '#f9fafb', border: 'none', cursor: 'pointer', textAlign: 'left',
+  },
+  title: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'var(--colour-primary)' },
+  chevron: { fontSize: '0.65rem', color: '#9ca3af', flexShrink: 0 },
+  body: { display: 'flex', flexDirection: 'column', gap: 0 },
+  row: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '7px 14px', borderTop: '1px solid #f3f4f6',
+    fontFamily: 'var(--font-body)', fontSize: '0.82rem',
+  },
+  badge: {
+    background: 'var(--colour-primary)', color: '#fff', borderRadius: 4,
+    fontWeight: 700, fontSize: '0.7rem', padding: '1px 6px', flexShrink: 0,
+  },
+  type: { color: '#6b7280', fontWeight: 600, fontSize: '0.75rem', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.03em' },
+  value: { color: 'var(--colour-text)', fontFamily: 'var(--font-code)', fontSize: '0.8rem' },
 }
 
 // ─── Teacher editor panel (lesson.type dispatch) ─────────────────────────────

@@ -238,20 +238,18 @@ function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath,
       <div style={s.workspaceTabs} className="ui-tabs" role="tablist" aria-label="Sandbox starter workspace">
         <button
           type="button"
-          className="ui-tab"
+          className={`ui-tab${activeTab === 'starter' ? ' is-active' : ''}`}
           role="tab"
           aria-selected={activeTab === 'starter'}
-          style={{ ...s.workspaceTab, ...(activeTab === 'starter' ? s.workspaceTabActive : {}) }}
           onClick={() => handleTabChange('starter')}
         >
           Starter Blocks
         </button>
         <button
           type="button"
-          className="ui-tab"
+          className={`ui-tab${activeTab === 'test' ? ' is-active' : ''}`}
           role="tab"
           aria-selected={activeTab === 'test'}
-          style={{ ...s.workspaceTab, ...(activeTab === 'test' ? s.workspaceTabActive : {}) }}
           onClick={() => handleTabChange('test')}
         >
           Test Code
@@ -844,21 +842,6 @@ const s = {
     padding: 4,
     background: '#fff',
     flexShrink: 0,
-  },
-  workspaceTab: {
-    border: 0,
-    borderRadius: 6,
-    background: 'transparent',
-    color: '#4b5563',
-    padding: '8px 12px',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.86rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  workspaceTabActive: {
-    background: 'var(--colour-primary)',
-    color: '#fff',
   },
   scratchSandboxEditor: {
     flex: 1,

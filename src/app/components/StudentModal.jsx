@@ -14,6 +14,8 @@ import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceDat
 import { findTaskById, deriveTaskContext, buildStageOptions } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import { DEFAULT_FS } from '../../shared/filesystem'
+import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
+import { MarkdownRenderer } from '../../shared/markdown'
 
 function parseSpriteState(raw) {
   if (!raw) return null
@@ -25,9 +27,317 @@ function parseSpriteState(raw) {
   }
 }
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic }) {
+// ─── Dropdown menu (shared pattern) ─────────────────────────────────────────
+
+function DropdownMenu({ label, children, buttonClassName = 'btn-ghost', buttonStyle }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onDown(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        className={buttonClassName}
+        style={{ fontSize: 13, padding: '5px 12px', ...buttonStyle }}
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+      >
+        {label} ▾
+      </button>
+      {open && (
+        <div style={sDD.panel} className="ui-popover">
+          {typeof children === 'function' ? children(() => setOpen(false)) : children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const sDD = {
+  panel: {
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    right: 0,
+    minWidth: 180,
+    zIndex: 200,
+    padding: 10,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    background: '#fff',
+    boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+    borderRadius: 8,
+  },
+}
+
+// ─── Override dropdown ───────────────────────────────────────────────────────
+
+function OverrideDropdown({ student, task, onOverrideCheck }) {
+  const [showFailModal, setShowFailModal] = useState(false)
+  const [failHint, setFailHint] = useState('')
+  const hasOverride = !!student.checkOverridePushedAt
+
+  function applyOverride(passed, hint) {
+    onOverrideCheck(student.anonymousId, passed, passed ? null : (hint || null))
+    setShowFailModal(false)
+    setFailHint('')
+  }
+
+  return (
+    <>
+      <DropdownMenu
+        label={hasOverride ? (student.checkOverridePassed ? 'Override: Pass' : 'Override: Fail') : 'Override'}
+        buttonClassName="btn-ghost"
+      >
+        {close => (
+          <>
+            <button
+              style={sOv.passBtn}
+              onClick={() => { close(); applyOverride(true, null) }}
+            >
+              ✓ Pass
+            </button>
+            <button
+              style={sOv.failBtn}
+              onClick={() => { close(); setShowFailModal(true) }}
+            >
+              ✕ Fail
+            </button>
+          </>
+        )}
+      </DropdownMenu>
+
+      {showFailModal && (
+        <div style={sOv.modalOverlay} onClick={e => { if (e.target === e.currentTarget) { setShowFailModal(false); setFailHint('') } }}>
+          <div style={sOv.modal}>
+            <div style={sOv.modalHeader}>
+              <span style={sOv.modalTitle}>Override: Fail</span>
+              <button style={sOv.modalClose} onClick={() => { setShowFailModal(false); setFailHint('') }}>✕</button>
+            </div>
+            <div style={sOv.modalBody}>
+              <p style={sOv.modalHint}>Optional hint for student (supports Markdown):</p>
+              <textarea
+                style={sOv.hintTextarea}
+                placeholder="e.g. Check your indentation, or try using a `for` loop…"
+                value={failHint}
+                onChange={e => setFailHint(e.target.value)}
+                rows={5}
+                autoFocus
+              />
+            </div>
+            <div style={sOv.modalFooter}>
+              <button className="btn-ghost-outline" style={{ fontSize: 13 }} onClick={() => { setShowFailModal(false); setFailHint('') }}>
+                Cancel
+              </button>
+              <button className="btn-danger" style={{ fontSize: 13 }} onClick={() => applyOverride(false, failHint)}>
+                Apply Fail
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+const sOv = {
+  passBtn: {
+    width: '100%',
+    padding: '7px 12px',
+    background: 'rgba(34,197,94,0.12)',
+    color: '#166534',
+    border: '1px solid rgba(34,197,94,0.35)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  failBtn: {
+    width: '100%',
+    padding: '7px 12px',
+    background: 'rgba(239,68,68,0.12)',
+    color: '#991b1b',
+    border: '1px solid rgba(239,68,68,0.35)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 1100,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modal: {
+    background: '#fff',
+    borderRadius: 10,
+    width: 'min(480px, 90vw)',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    padding: '12px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexShrink: 0,
+  },
+  modalTitle: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1rem',
+  },
+  modalClose: {
+    background: 'rgba(255,255,255,0.15)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    color: '#fff',
+    borderRadius: 5,
+    width: 28,
+    height: 28,
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
+  modalBody: {
+    padding: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  modalHint: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    color: '#374151',
+    margin: 0,
+  },
+  hintTextarea: {
+    fontFamily: 'var(--font-code)',
+    fontSize: '0.85rem',
+    padding: '8px 10px',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    resize: 'vertical',
+    width: '100%',
+    color: 'var(--colour-text)',
+  },
+  modalFooter: {
+    padding: '12px 16px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+    borderTop: '1px solid #e5e7eb',
+    flexShrink: 0,
+  },
+}
+
+// ─── Stage dropdown ──────────────────────────────────────────────────────────
+
+function StageDropdown({ student, stageOptions, onRemoteReset }) {
+  return (
+    <DropdownMenu label="Set Stage" buttonClassName="btn-ghost">
+      {close => (
+        <>
+          {stageOptions.map(opt => (
+            <button
+              key={opt.value}
+              style={sSt.stageBtn}
+              onClick={() => {
+                close()
+                if (window.confirm(`Set ${student.displayName}'s code to ${opt.label}?`)) {
+                  onRemoteReset(student.anonymousId, opt.value)
+                }
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </>
+      )}
+    </DropdownMenu>
+  )
+}
+
+const sSt = {
+  stageBtn: {
+    width: '100%',
+    padding: '7px 12px',
+    background: 'rgba(98,34,204,0.06)',
+    color: 'var(--colour-primary-dark)',
+    border: '1px solid rgba(98,34,204,0.18)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: 13,
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+}
+
+// ─── GoLive dropdown ─────────────────────────────────────────────────────────
+
+function GoLiveDropdown({ onGoLive, onGoLiveForAll }) {
+  return (
+    <DropdownMenu label="Go Live" buttonClassName="btn-primary">
+      {close => (
+        <>
+          <button style={sLv.btn} onClick={() => { close(); onGoLive() }}>
+            For me
+          </button>
+          <button style={sLv.btn} onClick={() => { close(); onGoLiveForAll() }}>
+            For all students
+          </button>
+        </>
+      )}
+    </DropdownMenu>
+  )
+}
+
+const sLv = {
+  btn: {
+    width: '100%',
+    padding: '7px 12px',
+    background: 'rgba(251,165,4,0.12)',
+    color: '#92400e',
+    border: '1px solid rgba(251,165,4,0.35)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+}
+
+// ─── Main modal ──────────────────────────────────────────────────────────────
+
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
+  const [showTopicLibrary, setShowTopicLibrary] = useState(false)
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
@@ -44,8 +354,6 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
   const activeFileObj = files.find(f => f.name === activeFile) ?? files[0]
 
-  const [overrideSelection, setOverrideSelection] = useState(null) // null | true | false
-  const [overrideHint, setOverrideHint] = useState('')
   const hasOverride = !!student.checkOverridePushedAt
   const remoteSelection = !isLive || (!isPython && student.currentSelection?.file !== activeFile)
     ? null
@@ -59,14 +367,6 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
   const stageOptions = buildStageOptions(task, lesson?.type)
 
-  function handleSetToStage(action) {
-    const opt = stageOptions.find(o => o.value === action)
-    const label = opt?.label ?? action
-    if (!window.confirm(`Set ${student.displayName}'s code to ${label}?`)) return
-    onRemoteReset?.(student.anonymousId, action)
-  }
-
-  // Close on Escape
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose?.() }
     window.addEventListener('keydown', onKey)
@@ -90,6 +390,11 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && <span style={s.checkBadge}>✅</span>}
+            {hasOverride && (
+              <span style={s.overrideBadge}>
+                {student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed'}
+              </span>
+            )}
             {student.needsHelp && (
               <button
                 style={s.helpedBtn}
@@ -127,85 +432,29 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 →
               </button>
             </div>
+
+            {/* Stage dropdown */}
             {onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={s.setToLabel}>Set to</span>
-                <select
-                  style={s.setToSelect}
-                  defaultValue=""
-                  onChange={e => {
-                    if (e.target.value) {
-                      handleSetToStage(e.target.value)
-                      e.target.value = ''
-                    }
-                  }}
-                >
-                  <option value="" disabled>Choose stage…</option>
-                  {stageOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
+              <StageDropdown student={student} stageOptions={stageOptions} onRemoteReset={onRemoteReset} />
             )}
+
+            {/* Override dropdown */}
             {onOverrideCheck && task?.check != null && (
-              <div style={s.overrideWrap}>
-                <div style={s.overrideToggleRow}>
-                  <span style={s.setToLabel}>Override</span>
-                  <button
-                    style={{ ...s.overrideBtn, ...(overrideSelection === true ? s.overrideBtnPassActive : {}) }}
-                    onClick={() => setOverrideSelection(v => v === true ? null : true)}
-                  >Pass</button>
-                  <button
-                    style={{ ...s.overrideBtn, ...(overrideSelection === false ? s.overrideBtnFailActive : {}) }}
-                    onClick={() => setOverrideSelection(v => v === false ? null : false)}
-                  >Fail</button>
-                  {overrideSelection !== null && (
-                    <button
-                      style={s.overrideApplyBtn}
-                      onClick={() => {
-                        onOverrideCheck(student.anonymousId, overrideSelection, overrideSelection ? null : (overrideHint || null))
-                        setOverrideSelection(null)
-                        setOverrideHint('')
-                      }}
-                    >Apply</button>
-                  )}
-                  {hasOverride && (
-                    <span style={s.overrideBadge}>
-                      {student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed'}
-                    </span>
-                  )}
-                </div>
-                {overrideSelection === false && (
-                  <textarea
-                    style={s.overrideHintInput}
-                    placeholder="Optional hint for student…"
-                    value={overrideHint}
-                    onChange={e => setOverrideHint(e.target.value)}
-                    rows={2}
-                  />
-                )}
-              </div>
+              <OverrideDropdown student={student} task={task} onOverrideCheck={onOverrideCheck} />
             )}
+
+            {/* Send to Topic button */}
             {onSendToTopic && topics?.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={s.setToLabel}>Send to topic</span>
-                <select
-                  style={s.setToSelect}
-                  defaultValue=""
-                  onChange={e => {
-                    if (e.target.value) {
-                      onSendToTopic(student.anonymousId, e.target.value)
-                      e.target.value = ''
-                    }
-                  }}
-                >
-                  <option value="" disabled>Choose topic…</option>
-                  {topics.map(t => (
-                    <option key={t.id} value={t.id}>{t.title}</option>
-                  ))}
-                </select>
-              </div>
+              <button
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 12px' }}
+                onClick={() => setShowTopicLibrary(true)}
+              >
+                📖 Topic
+              </button>
             )}
+
+            {/* Go Live / Stop Live */}
             {!isInformation && !isQuiz && (
               isLive ? (
                 <button
@@ -216,24 +465,10 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                   Stop Live
                 </button>
               ) : (
-                <>
-                  <button
-                    className="btn-primary"
-                    style={{ fontSize: 13, padding: '5px 14px' }}
-                    onClick={onGoLive}
-                  >
-                    Go live for me
-                  </button>
-                  <button
-                    className="btn-primary"
-                    style={{ fontSize: 13, padding: '5px 14px' }}
-                    onClick={onGoLiveForAll}
-                  >
-                    Go live for all
-                  </button>
-                </>
+                <GoLiveDropdown onGoLive={onGoLive} onGoLiveForAll={onGoLiveForAll} />
               )
             )}
+
             <button
               className="btn-ghost"
               style={{ fontSize: 13, padding: '5px 10px' }}
@@ -271,6 +506,27 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
           />
         </div>
       </div>
+
+      {/* Topic library dialog */}
+      {showTopicLibrary && topics?.length > 0 && (
+        <TopicLibraryDialog
+          topics={topics}
+          topicType={lesson?.type}
+          renderMarkdown={({ content, textScale, topicType: tt }) => (
+            <MarkdownRenderer content={content} textScale={textScale} topicType={tt} />
+          )}
+          onClose={() => setShowTopicLibrary(false)}
+          studentName={student.displayName}
+          onSendToStudent={topicId => {
+            onSendToTopic?.(student.anonymousId, topicId)
+            setShowTopicLibrary(false)
+          }}
+          onSendToAll={onSendTopicToAll ? topicId => {
+            onSendTopicToAll(topicId)
+            setShowTopicLibrary(false)
+          } : undefined}
+        />
+      )}
     </div>
   )
 }
@@ -413,14 +669,15 @@ const s = {
   header: {
     background: 'var(--colour-primary)',
     color: '#fff',
-    padding: '12px 16px',
+    padding: '10px 14px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexShrink: 0,
+    gap: 8,
   },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: 10 },
-  headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 0', flexWrap: 'wrap' },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap' },
   navButtons: {
     display: 'flex',
     gap: 2,
@@ -445,6 +702,7 @@ const s = {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
     fontSize: '1.05rem',
+    whiteSpace: 'nowrap',
   },
   liveBadge: {
     fontFamily: 'var(--font-body)',
@@ -452,6 +710,7 @@ const s = {
     fontSize: '0.78rem',
     color: '#86efac',
     letterSpacing: '0.05em',
+    whiteSpace: 'nowrap',
   },
   checkBadge: { fontSize: '1rem' },
   helpedBtn: {
@@ -466,6 +725,16 @@ const s = {
     cursor: 'pointer',
     letterSpacing: '0.02em',
     whiteSpace: 'nowrap',
+  },
+  overrideBadge: {
+    fontSize: '0.72rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.75)',
+    whiteSpace: 'nowrap',
+    background: 'rgba(255,255,255,0.12)',
+    padding: '2px 7px',
+    borderRadius: 999,
   },
   topicBadge: {
     fontFamily: 'var(--font-body)',
@@ -573,106 +842,6 @@ const s = {
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-  },
-  teacherActionBtn: {
-    fontSize: 12,
-    padding: '4px 10px',
-    background: 'rgba(253,211,77,0.15)',
-    color: '#fde68a',
-    border: '1px solid rgba(253,211,77,0.4)',
-    borderRadius: 5,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    whiteSpace: 'nowrap',
-  },
-  teacherActionBtnComplete: {
-    background: 'rgba(134,239,172,0.15)',
-    color: '#86efac',
-    border: '1px solid rgba(134,239,172,0.4)',
-  },
-  setToLabel: {
-    fontFamily: 'var(--font-body)',
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#fde68a',
-    whiteSpace: 'nowrap',
-  },
-  setToSelect: {
-    fontSize: 12,
-    padding: '3px 8px',
-    background: 'rgba(255,255,255,0.1)',
-    color: '#fff',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: 5,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-  },
-  overrideWrap: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  overrideToggleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-  },
-  overrideBtn: {
-    fontSize: 11,
-    padding: '3px 8px',
-    background: 'rgba(255,255,255,0.1)',
-    color: 'rgba(255,255,255,0.8)',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    whiteSpace: 'nowrap',
-  },
-  overrideBtnPassActive: {
-    background: 'rgba(34,197,94,0.3)',
-    color: '#86efac',
-    border: '1px solid rgba(34,197,94,0.5)',
-  },
-  overrideBtnFailActive: {
-    background: 'rgba(239,68,68,0.3)',
-    color: '#fca5a5',
-    border: '1px solid rgba(239,68,68,0.5)',
-  },
-  overrideApplyBtn: {
-    fontSize: 11,
-    padding: '3px 8px',
-    background: 'rgba(253,211,77,0.2)',
-    color: '#fde68a',
-    border: '1px solid rgba(253,211,77,0.4)',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    whiteSpace: 'nowrap',
-  },
-  overrideBadge: {
-    fontSize: 10,
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    color: 'rgba(255,255,255,0.6)',
-    whiteSpace: 'nowrap',
-    paddingLeft: 4,
-  },
-  overrideHintInput: {
-    fontSize: 11,
-    padding: '4px 8px',
-    background: 'rgba(255,255,255,0.1)',
-    color: '#fff',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: 4,
-    fontFamily: 'var(--font-body)',
-    resize: 'vertical',
-    width: '100%',
-    boxSizing: 'border-box',
-    minWidth: 180,
   },
   submitNotice: {
     padding: '10px 14px',
