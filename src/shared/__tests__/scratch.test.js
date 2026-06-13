@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runWorkspace, addPredefinedBlocksToToolbox, DEFAULT_TOOLBOX } from '../scratch'
+import { runWorkspace, addPrebuiltStacksToToolbox, addPredefinedBlocksToToolbox, createScratchBlockStack, DEFAULT_TOOLBOX } from '../scratch'
 
 // Tests for scratch.js interpreter helpers — pure logic only.
 // Blockly workspace internals (inject, serialization, rendering) are not tested here.
@@ -180,5 +180,53 @@ describe('addPredefinedBlocksToToolbox', () => {
   it('returns a non-category JSON toolbox unchanged', () => {
     const flyout = { kind: 'flyoutToolbox', contents: [] }
     expect(addPredefinedBlocksToToolbox(flyout, predefined)).toBe(flyout)
+  })
+})
+
+describe('addPrebuiltStacksToToolbox', () => {
+  const connectedStack = {
+    id: 'stack-1',
+    label: 'Move and say',
+    stack: {
+      ...createScratchBlockStack('motion_movesteps', { STEPS: 25 }),
+      next: { block: createScratchBlockStack('looks_say', { MESSAGE: 'Done' }) },
+    },
+  }
+
+  it('appends connected stacks to a JSON toolbox without mutating the original', () => {
+    const motionBefore = DEFAULT_TOOLBOX.contents.find(c => c.name === 'Motion').contents.length
+    const result = addPrebuiltStacksToToolbox(DEFAULT_TOOLBOX, [connectedStack])
+    const motionAfter = DEFAULT_TOOLBOX.contents.find(c => c.name === 'Motion').contents.length
+    const motionCat = result.contents.find(c => c.name === 'Motion')
+    const added = motionCat.contents.at(-1)
+
+    expect(motionAfter).toBe(motionBefore)
+    expect(added.type).toBe('motion_movesteps')
+    expect(added.kind).toBe('block')
+    expect(added.next.block.type).toBe('looks_say')
+    expect(added.inputs.STEPS.shadow.fields.NUM).toBe('25')
+  })
+
+  it('appends connected stacks to an XML toolbox', () => {
+    const xml = '<xml><category name="Motion" colour="#4C97FF"><block type="motion_movesteps"/></category><category name="Looks" colour="#9966FF"><block type="looks_say"/></category></xml>'
+    const result = addPrebuiltStacksToToolbox(xml, [connectedStack])
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const blocks = Array.from(doc.querySelectorAll('category[name="Motion"] > block'))
+    const added = blocks.at(-1)
+
+    expect(blocks).toHaveLength(2)
+    expect(added.getAttribute('type')).toBe('motion_movesteps')
+    expect(added.querySelector('next > block')?.getAttribute('type')).toBe('looks_say')
+    expect(added.querySelector('value[name="STEPS"] > shadow > field[name="NUM"]')?.textContent).toBe('25')
+  })
+
+  it('converts legacy predefined blocks through the stack path', () => {
+    const predefined = [{ id: 'pb1', type: 'motion_movesteps', inputs: { STEPS: 50 } }]
+    const result = addPrebuiltStacksToToolbox(DEFAULT_TOOLBOX, [], predefined)
+    const motionCat = result.contents.find(c => c.name === 'Motion')
+    const added = motionCat.contents.at(-1)
+
+    expect(added.type).toBe('motion_movesteps')
+    expect(added.inputs.STEPS.shadow.fields.NUM).toBe('50')
   })
 })

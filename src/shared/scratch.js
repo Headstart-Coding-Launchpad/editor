@@ -620,73 +620,139 @@ function withJsonInputDefaults(item, options = {}) {
   return { ...item, inputs: { ...inputs, ...(item.inputs ?? {}) } }
 }
 
-// Takes a JSON or XML toolbox and a predefinedBlocks array [{ id, type, inputs: { NAME: value } }].
-// Returns a new toolbox with each predefined block appended to its category.
-export function addPredefinedBlocksToToolbox(toolbox, predefinedBlocks) {
-  if (!predefinedBlocks?.length) return toolbox
-  const base = toolbox ?? DEFAULT_TOOLBOX
+export function createScratchBlockStack(type, inputValues = {}) {
+  const inputs = {}
+  const shadowDefaults = VALUE_INPUT_DEFAULTS[type] ?? {}
+  for (const [name, val] of Object.entries(inputValues ?? {})) {
+    const shadow = shadowDefaults[name] ?? (typeof val === 'number'
+      ? { type: 'math_number', field: 'NUM' }
+      : { type: 'text', field: 'TEXT' })
+    inputs[name] = { shadow: { type: shadow.type, fields: { [shadow.field]: String(val) } } }
+  }
+  return Object.keys(inputs).length ? { type, inputs } : { type }
+}
 
-  // Handle XML string toolboxes (produced by the toolbox picker)
-  if (typeof base === 'string') {
-    if (typeof DOMParser === 'undefined') return base
-    const doc = new DOMParser().parseFromString(base, 'text/xml')
-    if (doc.querySelector('parsererror')) return base
+export function predefinedBlockToStack(pb) {
+  if (!pb?.type) return null
+  return {
+    id: pb.id,
+    label: pb.label,
+    stack: createScratchBlockStack(pb.type, pb.inputs),
+  }
+}
 
-    for (const pb of predefinedBlocks) {
-      const category = Array.from(doc.querySelectorAll('category')).find(cat =>
-        Array.from(cat.querySelectorAll('block')).some(b => b.getAttribute('type') === pb.type)
-      )
-      if (!category) continue
+function cloneBlockForToolbox(block) {
+  if (!block?.type) return null
+  const clone = JSON.parse(JSON.stringify(block))
+  stripBlockRuntimeFields(clone)
+  return clone
+}
 
-      const blockEl = doc.createElement('block')
-      blockEl.setAttribute('type', pb.type)
-      const shadowDefaults = VALUE_INPUT_DEFAULTS[pb.type] ?? {}
-      for (const [name, val] of Object.entries(pb.inputs ?? {})) {
-        const s = shadowDefaults[name] ?? (typeof val === 'number' ? { type: 'math_number', field: 'NUM' } : { type: 'text', field: 'TEXT' })
-        const valueEl = doc.createElement('value')
-        valueEl.setAttribute('name', name)
-        const shadowEl = doc.createElement('shadow')
-        shadowEl.setAttribute('type', s.type)
-        const fieldEl = doc.createElement('field')
-        fieldEl.setAttribute('name', s.field)
-        fieldEl.textContent = String(val)
-        shadowEl.appendChild(fieldEl)
-        valueEl.appendChild(shadowEl)
-        blockEl.appendChild(valueEl)
-      }
-      category.appendChild(blockEl)
-    }
-    return new XMLSerializer().serializeToString(doc)
+function stripBlockRuntimeFields(block) {
+  if (!block || typeof block !== 'object') return
+  delete block.id
+  delete block.x
+  delete block.y
+  delete block.deletable
+  delete block.movable
+  delete block.editable
+  for (const input of Object.values(block.inputs ?? {})) {
+    if (input.block) stripBlockRuntimeFields(input.block)
+    if (input.shadow) stripBlockRuntimeFields(input.shadow)
+  }
+  if (block.next?.block) stripBlockRuntimeFields(block.next.block)
+}
+
+function normalizePrebuiltStacks(prebuiltStacks = [], predefinedBlocks = []) {
+  const legacyStacks = (predefinedBlocks ?? []).map(predefinedBlockToStack).filter(Boolean)
+  return [...legacyStacks, ...(prebuiltStacks ?? [])]
+    .map(entry => cloneBlockForToolbox(entry?.stack))
+    .filter(Boolean)
+}
+
+function xmlBlockFromSerialized(doc, block, tagName = 'block') {
+  const el = doc.createElement(tagName)
+  el.setAttribute('type', block.type)
+
+  for (const [name, value] of Object.entries(block.fields ?? {})) {
+    const fieldEl = doc.createElement('field')
+    fieldEl.setAttribute('name', name)
+    fieldEl.textContent = typeof value === 'object' ? String(value.name ?? value.id ?? '') : String(value)
+    el.appendChild(fieldEl)
   }
 
-  if (base?.kind !== 'categoryToolbox') return base
+  for (const [name, input] of Object.entries(block.inputs ?? {})) {
+    const inputEl = doc.createElement(name.startsWith('SUBSTACK') ? 'statement' : 'value')
+    inputEl.setAttribute('name', name)
+    if (input.shadow) inputEl.appendChild(xmlBlockFromSerialized(doc, input.shadow, 'shadow'))
+    if (input.block) inputEl.appendChild(xmlBlockFromSerialized(doc, input.block, 'block'))
+    el.appendChild(inputEl)
+  }
 
-  // Handle JSON category toolboxes (DEFAULT_TOOLBOX / STAGE_TOOLBOX)
-  // Build a map from block type → category index for fast lookup
+  if (block.next?.block) {
+    const nextEl = doc.createElement('next')
+    nextEl.appendChild(xmlBlockFromSerialized(doc, block.next.block, 'block'))
+    el.appendChild(nextEl)
+  }
+
+  return el
+}
+
+function appendStacksToXmlToolbox(toolbox, stacks) {
+  if (typeof DOMParser === 'undefined') return toolbox
+  const doc = new DOMParser().parseFromString(toolbox, 'text/xml')
+  if (doc.querySelector('parsererror')) return toolbox
+
+  for (const stack of stacks) {
+    const category = Array.from(doc.querySelectorAll('category')).find(cat =>
+      Array.from(cat.querySelectorAll('block')).some(b => b.getAttribute('type') === stack.type)
+    )
+    if (!category) continue
+    category.appendChild(xmlBlockFromSerialized(doc, stack))
+  }
+
+  return new XMLSerializer().serializeToString(doc)
+}
+
+function appendStacksToJsonToolbox(toolbox, stacks) {
+  if (toolbox?.kind !== 'categoryToolbox') return toolbox
+
   const typeToCategory = {}
-  for (const [ci, cat] of (base.contents ?? []).entries()) {
+  for (const [ci, cat] of (toolbox.contents ?? []).entries()) {
     if (cat.kind !== 'category') continue
     for (const item of cat.contents ?? []) {
       if (item.kind === 'block') typeToCategory[item.type] = ci
     }
   }
 
-  // Clone contents; categories get cloned shallowly so we can push into them
-  const newContents = base.contents.map(cat => ({ ...cat, contents: cat.contents ? [...cat.contents] : [] }))
-
-  for (const pb of predefinedBlocks) {
-    const ci = typeToCategory[pb.type]
+  const newContents = toolbox.contents.map(cat => ({ ...cat, contents: cat.contents ? [...cat.contents] : [] }))
+  for (const stack of stacks) {
+    const ci = typeToCategory[stack.type]
     if (ci == null) continue
-    const shadowDefaults = VALUE_INPUT_DEFAULTS[pb.type] ?? {}
-    const builtInputs = {}
-    for (const [name, val] of Object.entries(pb.inputs ?? {})) {
-      const s = shadowDefaults[name] ?? (typeof val === 'number' ? { type: 'math_number', field: 'NUM' } : { type: 'text', field: 'TEXT' })
-      builtInputs[name] = { shadow: { type: s.type, fields: { [s.field]: String(val) } } }
-    }
-    newContents[ci].contents.push({ kind: 'block', type: pb.type, inputs: builtInputs })
+    newContents[ci].contents.push({ kind: 'block', ...stack })
   }
 
-  return { ...base, contents: newContents }
+  return { ...toolbox, contents: newContents }
+}
+
+// Takes a JSON or XML toolbox and visual prebuilt stack entries.
+// Legacy predefinedBlocks are accepted and converted to one-block stacks.
+export function addPrebuiltStacksToToolbox(toolbox, prebuiltStacks = [], predefinedBlocks = []) {
+  const stacks = normalizePrebuiltStacks(prebuiltStacks, predefinedBlocks)
+  if (!stacks.length) return toolbox
+  const base = toolbox || DEFAULT_TOOLBOX
+
+  // Handle XML string toolboxes (produced by the toolbox picker)
+  if (typeof base === 'string') {
+    return appendStacksToXmlToolbox(base, stacks)
+  }
+
+  return appendStacksToJsonToolbox(base, stacks)
+}
+
+// Legacy wrapper kept for existing lessons/tests.
+export function addPredefinedBlocksToToolbox(toolbox, predefinedBlocks) {
+  return addPrebuiltStacksToToolbox(toolbox, [], predefinedBlocks)
 }
 
 function flattenXmlToolbox(toolbox, options = {}) {

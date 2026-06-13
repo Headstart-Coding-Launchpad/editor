@@ -1,6 +1,14 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { MarkdownFieldEditor } from '../ExplainerEditor'
-import { VALUE_INPUT_DEFAULTS } from '../../../shared/scratch'
+import {
+  DEFAULT_TOOLBOX,
+  VALUE_INPUT_DEFAULTS,
+  buildAlwaysOpenToolbox,
+  createScratchBlockStack,
+  loadBlocklyModules,
+  predefinedBlockToStack,
+} from '../../../shared/scratch'
 
 const SCRATCH_TOOLBOX_GROUPS = [
   {
@@ -366,6 +374,303 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
 
 // ── Check editors ─────────────────────────────────────────────────────────────
 
+function blockColour(type) {
+  const group = SCRATCH_TOOLBOX_GROUPS.find(g => g.blocks.some(([t]) => t === type))
+  return group?.colour ?? '#6b7280'
+}
+
+export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL_BLOCK_TYPES, compact = false, placeholder = 'Choose block' }) {
+  const [open, setOpen] = React.useState(false)
+  const [menuStyle, setMenuStyle] = React.useState(null)
+  const wrapRef = React.useRef(null)
+  const menuRef = React.useRef(null)
+  const allowed = new Set(allowedTypes)
+  const currentLabel = value ? blockLabel(value) : placeholder
+  const currentColour = value ? blockColour(value) : '#6b7280'
+
+  React.useEffect(() => {
+    if (!open) return
+    function onPointerDown(event) {
+      if (wrapRef.current?.contains(event.target) || menuRef.current?.contains(event.target)) return
+      setOpen(false)
+    }
+    function onKeyDown(event) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  React.useLayoutEffect(() => {
+    if (!open) return
+    function positionMenu() {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const margin = 8
+      const gap = 4
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+      const width = Math.min(300, viewportWidth - margin * 2)
+      const spaceBelow = viewportHeight - rect.bottom - margin
+      const spaceAbove = rect.top - margin
+      const opensUp = spaceBelow < 240 && spaceAbove > spaceBelow
+      const maxHeight = Math.max(160, Math.min(360, (opensUp ? spaceAbove : spaceBelow) - gap))
+      const left = Math.min(Math.max(margin, rect.left), viewportWidth - width - margin)
+      const top = opensUp
+        ? Math.max(margin, rect.top - maxHeight - gap)
+        : Math.min(rect.bottom + gap, viewportHeight - maxHeight - margin)
+      setMenuStyle({ left, top, width, maxHeight })
+    }
+    positionMenu()
+    window.addEventListener('resize', positionMenu)
+    window.addEventListener('scroll', positionMenu, true)
+    return () => {
+      window.removeEventListener('resize', positionMenu)
+      window.removeEventListener('scroll', positionMenu, true)
+    }
+  }, [open])
+
+  function choose(type) {
+    onChange(type)
+    setOpen(false)
+  }
+
+  const menu = open ? createPortal(
+    <div
+      className="te-scratch-block-menu"
+      role="listbox"
+      ref={menuRef}
+      style={menuStyle ?? { visibility: 'hidden' }}
+    >
+      {SCRATCH_TOOLBOX_GROUPS.map(group => {
+        const blocks = group.blocks.filter(([type]) => allowed.has(type))
+        if (!blocks.length) return null
+        return (
+          <div key={group.name} className="te-scratch-block-menu__group">
+            <div className="te-scratch-block-menu__title">{group.name}</div>
+            {blocks.map(([type, label]) => (
+              <button
+                key={type}
+                type="button"
+                className="te-scratch-block-menu__item"
+                style={{ backgroundColor: group.colour }}
+                onClick={() => choose(type)}
+                role="option"
+                aria-selected={value === type}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )
+      })}
+    </div>,
+    document.body
+  ) : null
+
+  return (
+    <div className="te-scratch-block-picker" ref={wrapRef}>
+      <button
+        type="button"
+        className={compact ? 'te-scratch-block-chip te-scratch-block-chip--compact' : 'te-scratch-block-chip'}
+        style={{ backgroundColor: currentColour }}
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        {currentLabel}
+      </button>
+      {menu}
+    </div>
+  )
+}
+
+function defaultInputValuesForBlock(type) {
+  const inputs = {}
+  for (const [name, shadow] of Object.entries(VALUE_INPUT_DEFAULTS[type] ?? {})) {
+    inputs[name] = shadow.value
+  }
+  return inputs
+}
+
+function newStack(type) {
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
+    label: blockLabel(type),
+    stack: createScratchBlockStack(type, defaultInputValuesForBlock(type)),
+  }
+}
+
+function normalizeStackForEditor(stack) {
+  if (!stack?.type) return null
+  const clone = JSON.parse(JSON.stringify(stack))
+  stripRuntimeBlockFields(clone)
+  return clone
+}
+
+function stripRuntimeBlockFields(block) {
+  delete block.id
+  delete block.x
+  delete block.y
+  for (const input of Object.values(block.inputs ?? {})) {
+    if (input.block) stripRuntimeBlockFields(input.block)
+    if (input.shadow) stripRuntimeBlockFields(input.shadow)
+  }
+  if (block.next?.block) stripRuntimeBlockFields(block.next.block)
+}
+
+function ScratchStackWorkspace({ stack, toolbox, onChange }) {
+  const hostRef = React.useRef(null)
+  const workspaceRef = React.useRef(null)
+  const suppressRef = React.useRef(false)
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function init() {
+      const { Blockly } = await loadBlocklyModules()
+      if (cancelled || !hostRef.current) return
+      const ws = Blockly.inject(hostRef.current, {
+        toolbox: buildAlwaysOpenToolbox(toolbox || DEFAULT_TOOLBOX),
+        renderer: 'zelos',
+        grid: { spacing: 20, length: 2, colour: '#e5e7eb', snap: true },
+        zoom: { startScale: 0.7 },
+        trashcan: true,
+      })
+      workspaceRef.current = ws
+      const initial = normalizeStackForEditor(stack)
+      if (initial) {
+        try {
+          suppressRef.current = true
+          Blockly.serialization.workspaces.load({ blocks: { blocks: [initial] } }, ws)
+          requestAnimationFrame(() => { suppressRef.current = false })
+        } catch {
+          suppressRef.current = false
+        }
+      }
+      ws.addChangeListener(() => {
+        if (suppressRef.current) return
+        const state = Blockly.serialization.workspaces.save(ws)
+        const next = normalizeStackForEditor(state?.blocks?.blocks?.[0])
+        if (next) onChange(next)
+      })
+      Blockly.svgResize(ws)
+    }
+    init()
+    return () => {
+      cancelled = true
+      workspaceRef.current?.dispose?.()
+      workspaceRef.current = null
+    }
+  }, [toolbox])
+
+  return <div className="te-stack-workspace" ref={hostRef} />
+}
+
+export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [], toolbox = '', onChange }) {
+  const [editingStackId, setEditingStackId] = React.useState(null)
+  const toolboxTypes = new Set(parseScratchToolboxXml(toolbox))
+  const eligibleTypes = SCRATCH_ALL_BLOCK_TYPES.filter(t => !toolbox || toolboxTypes.has(t))
+
+  const legacyStacks = (predefinedBlocks ?? [])
+    .map((pb, index) => predefinedBlockToStack({ ...pb, id: pb.id ?? `legacy-${index}` }))
+    .filter(Boolean)
+  const stacks = [...legacyStacks, ...(prebuiltStacks ?? [])]
+
+  // Close editor if the stack being edited was removed
+  React.useEffect(() => {
+    if (editingStackId && !stacks.find(s => s.id === editingStackId)) {
+      setEditingStackId(null)
+    }
+  })
+
+  function addStack(type) {
+    const s = newStack(type)
+    onChange([...stacks, s])
+    setEditingStackId(s.id)
+  }
+
+  function remove(id) {
+    onChange(stacks.filter(stack => stack.id !== id))
+  }
+
+  function updateStack(id, updates) {
+    onChange(stacks.map(stack => stack.id === id ? { ...stack, ...updates } : stack))
+  }
+
+  if (eligibleTypes.length === 0) {
+    return (
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af', margin: '4px 0 0' }}>
+        No blocks are available in the current toolbox. Enable blocks to add prebuilt stacks.
+      </p>
+    )
+  }
+
+  const editingStack = stacks.find(s => s.id === editingStackId)
+
+  return (
+    <div className="te-prebuilt-stack-editor">
+      {stacks.map(pb => {
+        const type = pb.stack?.type ?? 'motion_movesteps'
+        return (
+          <div key={pb.id} className="te-prebuilt-stack-row">
+            <span
+              className="te-scratch-block-chip te-scratch-block-chip--compact"
+              style={{ backgroundColor: blockColour(type), flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {blockLabel(type)}
+            </span>
+            <button
+              type="button"
+              className="btn-ghost-outline"
+              style={{ padding: '2px 8px', fontSize: '0.78rem', flexShrink: 0 }}
+              onClick={() => setEditingStackId(pb.id)}
+            >
+              Edit
+            </button>
+            <button type="button" className="te-check-remove-btn" onClick={() => remove(pb.id)} title="Remove stack">×</button>
+          </div>
+        )
+      })}
+
+      <div className="te-prebuilt-stack-add">
+        <ScratchBlockPicker
+          value={null}
+          onChange={addStack}
+          allowedTypes={eligibleTypes}
+          compact
+          placeholder="+ Add stack"
+        />
+      </div>
+
+      {editingStack && createPortal(
+        <div
+          className="te-stack-edit-overlay"
+          onPointerDown={e => { if (e.target === e.currentTarget) setEditingStackId(null) }}
+        >
+          <div className="te-stack-edit-modal">
+            <div className="te-stack-edit-modal__header">
+              <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.9rem' }}>
+                Edit prebuilt stack: {blockLabel(editingStack.stack?.type ?? '')}
+              </span>
+              <button type="button" className="btn-ghost" onClick={() => setEditingStackId(null)}>Done</button>
+            </div>
+            <ScratchStackWorkspace
+              key={`edit-${editingStackId}`}
+              stack={editingStack.stack}
+              toolbox={toolbox}
+              onChange={stack => updateStack(editingStackId, { stack })}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 function ScratchCheckListEditor({ checks, onChange, sprites }) {
   function updateCheck(index, updated) {
     onChange(checks.map((c, i) => i === index ? updated : c))
@@ -537,25 +842,15 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
       {/* Row 2: type-specific fields */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {type === 'block_used' ? (
-          <select
-            className="te-select"
-            value={check.opcode ?? ''}
-            onChange={e => onChange({ ...check, opcode: e.target.value })}
-          >
-            {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+          <ScratchBlockPicker
+            value={check.opcode ?? 'motion_movesteps'}
+            onChange={opcode => onChange({ ...check, opcode })}
+          />
         ) : type === 'block_run' ? (
-          <select
-            className="te-select"
-            value={check.opcode ?? ''}
-            onChange={e => onChange({ ...check, opcode: e.target.value })}
-          >
-            {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+          <ScratchBlockPicker
+            value={check.opcode ?? 'motion_movesteps'}
+            onChange={opcode => onChange({ ...check, opcode })}
+          />
         ) : type === 'block_count' ? (
           <>
             <select
@@ -566,15 +861,11 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
               <option value="">Any sprite</option>
               {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
             </select>
-            <select
-              className="te-select"
-              value={check.opcode ?? ''}
-              onChange={e => onChange({ ...check, opcode: e.target.value })}
-            >
-              {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+            <ScratchBlockPicker
+              value={check.opcode ?? 'motion_movesteps'}
+              onChange={opcode => onChange({ ...check, opcode })}
+              compact
+            />
             <select
               className="te-select"
               value={check.operator ?? 'equals'}
@@ -606,19 +897,15 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#9ca3af', minWidth: 20 }}>
                   {idx + 1}.
                 </span>
-                <select
-                  className="te-select"
+                <ScratchBlockPicker
                   value={opcode}
-                  onChange={e => {
+                  onChange={nextOpcode => {
                     const next = [...(check.sequence ?? [])]
-                    next[idx] = e.target.value
+                    next[idx] = nextOpcode
                     onChange({ ...check, sequence: next })
                   }}
-                >
-                  {SCRATCH_BLOCK_OPTIONS.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+                  compact
+                />
                 <button
                   type="button"
                   className="te-check-remove-btn"

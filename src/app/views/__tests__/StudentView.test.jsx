@@ -185,6 +185,13 @@ describe('StudentView', () => {
         inputs: { STEPS: 50 },
       },
     ]
+    const prebuiltStacks = [
+      {
+        id: 'stack-1',
+        label: 'Move',
+        stack: { type: 'motion_movesteps' },
+      },
+    ]
 
     render(
       <StudentView
@@ -200,6 +207,7 @@ describe('StudentView', () => {
               title: 'Move',
               starterBlocks: null,
               predefinedBlocks,
+              prebuiltStacks,
             },
           ],
         }}
@@ -211,6 +219,8 @@ describe('StudentView', () => {
     })
 
     const latestProps = mocks.scratchWorkspace.mock.calls.at(-1)[0]
-    expect(latestProps.predefinedBlocks).toBe(predefinedBlocks)
+    expect(latestProps.predefinedBlocks).toEqual(predefinedBlocks)
+    expect(latestProps.prebuiltStacks).toEqual(prebuiltStacks)
+    expect(latestProps.respectStudentEditable).toBe(true)
   })
 })

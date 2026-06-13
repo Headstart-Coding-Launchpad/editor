@@ -173,7 +173,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         options: _options, check: _check, carryCodeFrom: _c1, carryBlocksFrom: _c2,
         starterCode: _sc, completeCode: _cc, starterFiles: _sf, completeFiles: _cf,
         entryFile: _ef, completeEntryFile: _ce, toolbox: _tb,
-        starterBlocks: _sb, completeBlocks: _cb, interactionMode: _im, _checkTested,
+        starterBlocks: _sb, completeBlocks: _cb, predefinedBlocks: _pb, prebuiltStacks: _ps,
+        interactionMode: _im, _checkTested,
         ...rest
       } = task
       onUpdate({ ...rest, taskType: 'information', informationType: task.informationType ?? 'standard', explainer: task.explainer ?? '' })

@@ -4,7 +4,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { normaliseDirPath } from '../../shared/filesystem'
 import { loadSavedCode, loadPersonalSandboxCode } from '../studentStorage'
-import { selectScratchInitialProject } from '../studentTaskContent'
+import { selectScratchInitialProject, selectScratchToolboxSnippets } from '../studentTaskContent'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
 import PythonEditor from './PythonEditor'
@@ -322,6 +322,11 @@ function ScratchContent({ lesson, task, cs, lessonId, identityId, activeStudentV
     taskId: viewingTaskId ?? currentTaskId,
     readSavedCode: previewMode ? () => null : sourceTaskId => loadSavedCode(lessonId, sourceTaskId, identityId),
   })
+  const { predefinedBlocks, prebuiltStacks } = selectScratchToolboxSnippets({
+    task,
+    activeStageIndex: cs.scratchActiveStageIndex,
+    disabled: cs.inPersonalSandbox,
+  })
 
   return (
     <>
@@ -340,7 +345,9 @@ function ScratchContent({ lesson, task, cs, lessonId, identityId, activeStudentV
       <ScratchWorkspace
         key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}`}
         task={cs.inPersonalSandbox ? null : task}
-        predefinedBlocks={cs.inPersonalSandbox ? null : task?.predefinedBlocks ?? null}
+        predefinedBlocks={predefinedBlocks}
+        prebuiltStacks={prebuiltStacks}
+        respectStudentEditable={!cs.inPersonalSandbox}
         readOnly={isViewingPrev || isForcedTeacherLive}
         unrestricted={isSandbox || cs.inPersonalSandbox}
         assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}

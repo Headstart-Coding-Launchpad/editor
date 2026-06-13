@@ -180,9 +180,9 @@ export function buildPrintHtml(lesson) {
           parts.push(`<div class="field"><div class="field-label">Carry Blocks From</div><div class="field-value">Task ${esc(String(task.carryBlocksFrom))}</div></div>`)
         }
         if (task.sprites?.length) {
-          parts.push(`<div class="field"><div class="field-label">Sprites</div><table class="data-table"><tr><th>Name</th><th>Type</th><th>X</th><th>Y</th><th>Size</th><th>Direction</th></tr>`)
+          parts.push(`<div class="field"><div class="field-label">Sprites</div><table class="data-table"><tr><th>Name</th><th>Type</th><th>X</th><th>Y</th><th>Size</th><th>Direction</th><th>Student Editable</th></tr>`)
           for (const sp of task.sprites) {
-            parts.push(`<tr><td>${esc(sp.name)}</td><td>${esc(sp.type || '')}</td><td>${esc(String(sp.x ?? ''))}</td><td>${esc(String(sp.y ?? ''))}</td><td>${esc(String(sp.size ?? ''))}</td><td>${esc(String(sp.direction ?? ''))}</td></tr>`)
+            parts.push(`<tr><td>${esc(sp.name)}</td><td>${esc(sp.type || '')}</td><td>${esc(String(sp.x ?? ''))}</td><td>${esc(String(sp.y ?? ''))}</td><td>${esc(String(sp.size ?? ''))}</td><td>${esc(String(sp.direction ?? ''))}</td><td>${sp.studentEditable === false ? 'No' : 'Yes'}</td></tr>`)
           }
           parts.push(`</table></div>`)
         }
@@ -203,6 +203,9 @@ export function buildPrintHtml(lesson) {
         if (task.toolbox) {
           parts.push(`<div class="field"><div class="field-label">Toolbox XML</div><pre class="code-block">${esc(task.toolbox)}</pre></div>`)
         }
+        if (task.prebuiltStacks?.length) {
+          parts.push(`<div class="field"><div class="field-label">Prebuilt Stacks</div><pre class="code-block">${esc(JSON.stringify(task.prebuiltStacks, null, 2))}</pre></div>`)
+        }
         if (task.starterBlocks != null) {
           parts.push(`<div class="field"><div class="field-label">Starter Blocks</div><pre class="code-block">${esc(JSON.stringify(task.starterBlocks, null, 2))}</pre></div>`)
         }
@@ -213,6 +216,9 @@ export function buildPrintHtml(lesson) {
           parts.push(`<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`)
           for (const stage of task.codeStages) {
             parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div><pre class="code-block">${esc(JSON.stringify(stage.blocks, null, 2))}</pre></div>`)
+            if (stage.prebuiltStacks?.length) {
+              parts.push(`<pre class="code-block">${esc(JSON.stringify(stage.prebuiltStacks, null, 2))}</pre>`)
+            }
           }
           parts.push(`</div>`)
         }

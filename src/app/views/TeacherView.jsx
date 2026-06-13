@@ -607,6 +607,14 @@ function TeacherEditorPanel({
         <ScratchWorkspace
           key={`teacher-scratch-${displayTaskId}-${isInSandbox ? 'sandbox' : 'task'}`}
           task={task}
+          predefinedBlocks={!isInSandbox ? [
+            ...(task?.predefinedBlocks ?? []),
+            ...(isShowingStage ? activeTeacherStage?.predefinedBlocks ?? [] : []),
+          ] : null}
+          prebuiltStacks={!isInSandbox ? [
+            ...(task?.prebuiltStacks ?? []),
+            ...(isShowingStage ? activeTeacherStage?.prebuiltStacks ?? [] : []),
+          ] : null}
           unrestricted={isInSandbox}
           assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
           initialState={scratchState}
