@@ -9,21 +9,45 @@ export function createSpriteState() {
   return { x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null }
 }
 
+// Normalize a blocks_in_order sequence item to {opcode, fieldValues}.
+export function normalizeSequenceItem(item) {
+  if (typeof item === 'string') return { opcode: item, fieldValues: null }
+  return { opcode: item.opcode, fieldValues: item.fieldValues ?? null }
+}
+
 function traverseChain(startBlock) {
   const chain = []
   let current = startBlock
   while (current) {
-    chain.push(current.type)
+    chain.push(current)
     current = current.getNextBlock()
   }
   return chain
 }
 
+function getInputValue(block, inputName) {
+  const inputBlock = block.getInputTargetBlock?.(inputName)
+  if (!inputBlock) return null
+  return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
+}
+
+function blockMatchesFieldValues(block, fieldValues) {
+  if (!fieldValues || Object.keys(fieldValues).length === 0) return true
+  return Object.entries(fieldValues).every(([inputName, expectedValue]) => {
+    const actual = getInputValue(block, inputName)
+    return actual !== null && String(actual) === String(expectedValue)
+  })
+}
+
 function containsSubsequence(haystack, needle) {
   if (needle.length === 0) return true
-  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
-    for (let j = 0; j < needle.length; j++) {
-      if (haystack[i + j] !== needle[j]) continue outer
+  const normalizedNeedle = needle.map(normalizeSequenceItem)
+  outer: for (let i = 0; i <= haystack.length - normalizedNeedle.length; i++) {
+    for (let j = 0; j < normalizedNeedle.length; j++) {
+      const block = haystack[i + j]
+      const { opcode, fieldValues } = normalizedNeedle[j]
+      if (block.type !== opcode) continue outer
+      if (!blockMatchesFieldValues(block, fieldValues)) continue outer
     }
     return true
   }
@@ -40,7 +64,8 @@ export function evaluateScratchCheck(check, workspace, spriteState, runState = n
       case 'variable_equals':
         return compare(runState?.variables?.[check.variableName ?? check.name ?? 'score'], 'equals', check.value)
       case 'block_used':
-        return workspace ? workspace.getAllBlocks(false).some(b => b.type === check.opcode) : false
+        if (!workspace) return false
+        return workspace.getAllBlocks(false).some(b => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
       case 'sprite_property_delta': {
         if (!spriteState || !preRunSpriteState) return false
         const delta = Number(spriteState[check.property]) - Number(preRunSpriteState[check.property] ?? 0)
@@ -64,8 +89,13 @@ export function evaluateScratchCheck(check, workspace, spriteState, runState = n
         return compare(runState?.variables?.[check.variableName], check.operator, check.value)
       case 'costume_is':
         return spriteState ? spriteState.costume === check.value : false
-      case 'block_run':
-        return runState?.executedBlocks?.has(check.opcode) ?? false
+      case 'block_run': {
+        const ran = runState?.executedBlocks?.has(check.opcode) ?? false
+        if (!ran) return false
+        if (!check.fieldValues || Object.keys(check.fieldValues).length === 0) return true
+        if (!workspace) return true
+        return workspace.getAllBlocks(false).some(b => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
+      }
       default:
         return false
     }
