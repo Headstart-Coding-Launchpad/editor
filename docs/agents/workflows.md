@@ -68,7 +68,7 @@ After creating a PR from a temporary worktree, remove that worktree when the PR 
 
 ## Testing
 
-Read `TESTING.md` before writing or modifying tests.
+Read `docs/TESTING.md` before writing or modifying tests.
 
 Commands:
 
@@ -110,14 +110,18 @@ Do not lower thresholds to make builds pass.
 
 After significant changes, update relevant docs:
 
-- `CODEBASE_MAP.md` when files are added, moved, or removed.
-- `LESSON_SCHEMA.md` when lesson JSON fields or check types change.
-- `YAML_LESSON_FORMAT.md` when YAML conversion rules or shorthands change.
-- `TOPIC_LIBRARY_SCHEMA.md` when topic structure changes.
-- `FEATURES.md` when user-facing features change.
-- `TESTING.md` when test strategy or coverage thresholds change.
+- `docs/CODEBASE_MAP.md` when files are added, moved, or removed.
+- `docs/authoring/lesson-schema.md`, `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, or `docs/authoring/scratch-reference.md` when lesson JSON fields or check types change.
+- `docs/authoring/AUTHORING_GUIDE.md` when YAML conversion rules or shorthands change.
+- `docs/TOPIC_LIBRARY_SCHEMA.md` when topic structure changes.
+- `docs/FEATURES.md` when user-facing features change.
+- `docs/TESTING.md` when test strategy or coverage thresholds change.
+- `docs/agents/project-rules.md` when CLI commands or auth setup changes.
+- `docs/skills/*.md` when authoring or editing workflows change.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
+
+**All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.
 
 A significant change includes a new component, hook, or module; Firebase field change; URL parameter change; or change to a documented key behaviour.
 
-When a library or CDN module is added, removed, or upgraded to a new major version, update `LICENSES.md` with package name, version, and license. Check for copyleft licenses before adding anything.
+When a library or CDN module is added, removed, or upgraded to a new major version, update `docs/LICENSES.md` with package name, version, and license. Check for copyleft licenses before adding anything.

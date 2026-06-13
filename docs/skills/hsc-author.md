@@ -8,15 +8,15 @@ For brand-new lessons, keep local YAML and JSON artifacts under `New Lessons/YAM
 
 ## Before you start
 
-- Read `YAML_LESSON_FORMAT.md` for the full YAML shorthand syntax.
-- Read `LESSON_SCHEMA.md` if you need detail on a specific field or check type.
+- Read `docs/authoring/AUTHORING_GUIDE.md` for YAML syntax, all fields, and CLI usage.
+- For specific detail: `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, `docs/authoring/scratch-reference.md`.
 - Run `node cli/cli.mjs lessons list` to check that the intended lesson ID is not already taken.
 
 ## Steps
 
 ### 1. Draft the YAML
 
-Write the lesson in YAML following `YAML_LESSON_FORMAT.md`. Key rules:
+Write the lesson in YAML following `docs/authoring/AUTHORING_GUIDE.md`. Key rules:
 - `id` must be a lowercase slug, e.g. `python-3-2`
 - `type` is one of `python | html | scratch | filesystem`
 - Each task needs a `title`; code tasks need `starterCode` / `starterFiles`

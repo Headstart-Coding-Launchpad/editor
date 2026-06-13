@@ -9,7 +9,7 @@ Before writing code:
 - Check open PRs with `gh pr list`.
 - Confirm the current branch with `git branch --show-current` or `git branch`.
 - Run `npm test`; the suite must pass before changes.
-- Use `CODEBASE_MAP.md` as an index. Search or open only the relevant sections instead of reading the whole map by default.
+- Use `docs/CODEBASE_MAP.md` as an index. Search or open only the relevant sections instead of reading the whole map by default.
 
 ## Project Summary
 
@@ -42,17 +42,22 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 
 | Task area | Read this first |
 |---|---|
-| File ownership or locating code | `CODEBASE_MAP.md` relevant section |
-| Product capabilities | `FEATURES.md` |
-| Project rules, stack, shared modules, CLI, admin | `docs/agents/project-rules.md` |
+| File ownership or locating code | `docs/CODEBASE_MAP.md` relevant section |
+| Product capabilities | `docs/FEATURES.md` |
+| Project rules, stack, shared modules, CLI tool, admin | `docs/agents/project-rules.md` |
 | Firebase, localStorage, URLs, session states, identity | `docs/agents/runtime-model.md` |
 | Classroom live-view, sandbox, Pyodide, carry-through behaviours | `docs/agents/classroom-behaviours.md` |
 | Git, PRs, review comments, testing, doc hygiene | `docs/agents/workflows.md` |
-| Lesson JSON schema | `LESSON_SCHEMA.md` |
-| YAML lesson authoring | `YAML_LESSON_FORMAT.md` |
-| Topic library schema | `TOPIC_LIBRARY_SCHEMA.md` |
-| Test strategy | `TESTING.md` |
-| Licenses | `LICENSES.md` |
+| Writing or editing a lesson (YAML-first) | `docs/authoring/AUTHORING_GUIDE.md` |
+| All check types | `docs/authoring/checks.md` |
+| Quiz sub-types in detail | `docs/authoring/quiz-tasks.md` |
+| Scratch fields, opcodes, block explainer style | `docs/authoring/scratch-reference.md` |
+| Lesson JSON field reference | `docs/authoring/lesson-schema.md` |
+| Topic library schema and YAML authoring | `docs/TOPIC_LIBRARY_SCHEMA.md` |
+| Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
+| Agent playbooks (author, edit, topics, assets) | `docs/skills/` |
+| Test strategy | `docs/TESTING.md` |
+| Licenses | `docs/LICENSES.md` |
 
 ## Default Workflow
 

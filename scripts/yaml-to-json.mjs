@@ -5,7 +5,7 @@
  *   node scripts/yaml-to-json.mjs <input.yaml>               # output to stdout
  *   node scripts/yaml-to-json.mjs <input.yaml> <output.json> # output to file
  *
- * Task IDs are auto-assigned. See YAML_LESSON_FORMAT.md for the YAML syntax.
+ * Task IDs are auto-assigned. See docs/authoring/AUTHORING_GUIDE.md for the YAML syntax.
  */
 
 import { readFile, writeFile } from 'node:fs/promises'
