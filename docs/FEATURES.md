@@ -1,6 +1,6 @@
 # FEATURES.md — Platform Feature Reference
 
-What the platform can do. For how to configure these features in lesson JSON, see **LESSON_SCHEMA.md**.
+What the platform can do. For how to configure these features see **docs/authoring/AUTHORING_GUIDE.md** (YAML) or **docs/authoring/lesson-schema.md** (JSON reference).
 
 ---
 
