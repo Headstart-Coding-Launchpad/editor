@@ -576,6 +576,39 @@ export const VALUE_INPUT_DEFAULTS = {
   data_changevariableby: { VALUE: numberShadow(1) },
 }
 
+// Message templates for blocks with value inputs. %N maps to inputOrder[N-1].
+// Used by the builder to render inline block-like editors with embedded input fields.
+export const BLOCK_DISPLAY_TEMPLATES = {
+  motion_movesteps:        { message: 'move %1 steps',                  inputOrder: ['STEPS'] },
+  motion_turnright:        { message: 'turn right %1 degrees',           inputOrder: ['DEGREES'] },
+  motion_turnleft:         { message: 'turn left %1 degrees',            inputOrder: ['DEGREES'] },
+  motion_gotoxy:           { message: 'go to x: %1 y: %2',              inputOrder: ['X', 'Y'] },
+  motion_glidesecstoxy:    { message: 'glide %1 secs to x: %2 y: %3',  inputOrder: ['SECS', 'X', 'Y'] },
+  motion_glideto:          { message: 'glide %1 secs to',               inputOrder: ['SECS'] },
+  motion_pointindirection: { message: 'point in direction %1',           inputOrder: ['DIRECTION'] },
+  motion_setx:             { message: 'set x to %1',                    inputOrder: ['X'] },
+  motion_sety:             { message: 'set y to %1',                    inputOrder: ['Y'] },
+  motion_changexby:        { message: 'change x by %1',                 inputOrder: ['DX'] },
+  motion_changeyby:        { message: 'change y by %1',                 inputOrder: ['DY'] },
+  looks_sayforsecs:        { message: 'say %1 for %2 seconds',          inputOrder: ['MESSAGE', 'SECS'] },
+  looks_say:               { message: 'say %1',                         inputOrder: ['MESSAGE'] },
+  looks_think:             { message: 'think %1',                       inputOrder: ['MESSAGE'] },
+  looks_thinkforsecs:      { message: 'think %1 for %2 seconds',        inputOrder: ['MESSAGE', 'SECS'] },
+  looks_setsizeto:         { message: 'set size to %1 %',               inputOrder: ['SIZE'] },
+  looks_changesizeby:      { message: 'change size by %1',              inputOrder: ['CHANGE'] },
+  control_wait:            { message: 'wait %1 seconds',                inputOrder: ['DURATION'] },
+  control_repeat:          { message: 'repeat %1',                      inputOrder: ['TIMES'] },
+  sensing_askandwait:      { message: 'ask %1 and wait',                inputOrder: ['QUESTION'] },
+  operator_equals:         { message: '%1 = %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
+  operator_gt:             { message: '%1 > %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
+  operator_lt:             { message: '%1 < %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
+  operator_add:            { message: '%1 + %2',                        inputOrder: ['NUM1', 'NUM2'] },
+  operator_subtract:       { message: '%1 - %2',                        inputOrder: ['NUM1', 'NUM2'] },
+  operator_join:           { message: 'join %1 %2',                     inputOrder: ['STRING1', 'STRING2'] },
+  data_setvariableto:      { message: 'set variable to %1',             inputOrder: ['VALUE'] },
+  data_changevariableby:   { message: 'change variable by %1',          inputOrder: ['VALUE'] },
+}
+
 function numberShadow(value) {
   return { type: 'math_number', field: 'NUM', value }
 }

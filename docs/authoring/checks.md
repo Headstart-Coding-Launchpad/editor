@@ -136,7 +136,10 @@ check:
   type: block_used
   evaluation: manual
   opcode: control_repeat
+  fieldValues:          # optional — require specific input values
+    TIMES: "10"
 ```
+`fieldValues` keys are the Blockly input names (e.g. `STEPS`, `DEGREES`, `MESSAGE`). Omit to match any value.
 
 ### `sprite_property`
 ```yaml
@@ -177,10 +180,12 @@ check:
   spriteName: Sprite 1   # optional — if omitted, any sprite satisfying it passes
   sequence:
     - event_whenflagclicked
-    - motion_movesteps
-    - motion_turnright
+    - opcode: motion_movesteps   # object form — allows fieldValues
+      fieldValues:
+        STEPS: "50"
+    - motion_turnright           # plain string — any value accepted
 ```
-Passes if any connected stack contains the opcodes **consecutively** (no gaps).
+Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`.
 
 ### `block_count`
 ```yaml
@@ -208,5 +213,7 @@ check:
   type: block_run
   evaluation: after_run
   opcode: motion_movesteps
+  fieldValues:          # optional — also require the block to have specific values in the workspace
+    STEPS: "50"
 ```
-Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead.
+Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace.

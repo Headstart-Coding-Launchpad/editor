@@ -4,7 +4,21 @@ import { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } fro
 // Minimal workspace stub used by block_used / block_count checks.
 function makeWorkspace(blockTypes) {
   return {
-    getAllBlocks: () => blockTypes.map(type => ({ type, previousConnection: { isConnected: () => false }, getNextBlock: () => null })),
+    getAllBlocks: () => blockTypes.map(type => ({ type, previousConnection: { isConnected: () => false }, getNextBlock: () => null, getInputTargetBlock: () => null })),
+  }
+}
+
+// Block stub with controllable input values for field-value checks.
+function makeBlock(type, inputValues = {}) {
+  return {
+    type,
+    previousConnection: { isConnected: () => false },
+    getNextBlock: () => null,
+    getInputTargetBlock: (inputName) => {
+      if (!(inputName in inputValues)) return null
+      const val = String(inputValues[inputName])
+      return { getFieldValue: () => val }
+    },
   }
 }
 
@@ -335,6 +349,86 @@ describe('evaluateScratchCheck', () => {
     it('returns false when executedBlocks is absent', () => {
       const runState = { variables: {} }
       expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps' }, null, null, runState)).toBe(false)
+    })
+  })
+
+  describe('block_used with fieldValues', () => {
+    it('returns true when block has matching field values', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '50' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null)).toBe(true)
+    })
+
+    it('returns false when block exists but field values do not match', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '10' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null)).toBe(false)
+    })
+
+    it('returns true when fieldValues is empty and block exists', () => {
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: {} }, makeWorkspace(['motion_movesteps']), null)).toBe(true)
+    })
+
+    it('returns false when block does not exist even if fieldValues is specified', () => {
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, makeWorkspace([]), null)).toBe(false)
+    })
+
+    it('coerces numeric string values when comparing', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '10' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '10' } }, ws, null)).toBe(true)
+    })
+  })
+
+  describe('blocks_in_order with fieldValues', () => {
+    function makeChain(typeValuePairs) {
+      const blocks = typeValuePairs.map(([type, vals]) => makeBlock(type, vals ?? {}))
+      for (let i = 0; i < blocks.length; i++) {
+        const next = blocks[i + 1] ?? null
+        blocks[i].getNextBlock = () => next
+        if (i > 0) blocks[i].previousConnection = { isConnected: () => true }
+      }
+      return { getAllBlocks: () => blocks }
+    }
+
+    it('returns true when sequence with field values matches', () => {
+      const ws = makeChain([['event_whenflagclicked', {}], ['motion_movesteps', { STEPS: '50' }]])
+      const check = { type: 'blocks_in_order', sequence: ['event_whenflagclicked', { opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }] }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+    })
+
+    it('returns false when field values do not match', () => {
+      const ws = makeChain([['event_whenflagclicked', {}], ['motion_movesteps', { STEPS: '10' }]])
+      const check = { type: 'blocks_in_order', sequence: ['event_whenflagclicked', { opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }] }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(false)
+    })
+
+    it('returns true for mixed sequence (some with fieldValues, some without)', () => {
+      const ws = makeChain([['event_whenflagclicked', {}], ['motion_movesteps', { STEPS: '50' }], ['motion_turnright', { DEGREES: '15' }]])
+      const check = { type: 'blocks_in_order', sequence: [{ opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, 'motion_turnright'] }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+    })
+  })
+
+  describe('block_run with fieldValues', () => {
+    it('returns true when block ran and workspace has matching field values', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '50' })] }
+      const runState = { executedBlocks: new Set(['motion_movesteps']) }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null, runState)).toBe(true)
+    })
+
+    it('returns false when block ran but workspace field values do not match', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '10' })] }
+      const runState = { executedBlocks: new Set(['motion_movesteps']) }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null, runState)).toBe(false)
+    })
+
+    it('returns false when block did not run regardless of field values in workspace', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '50' })] }
+      const runState = { executedBlocks: new Set() }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null, runState)).toBe(false)
+    })
+
+    it('returns true when block ran with empty fieldValues (no value constraint)', () => {
+      const runState = { executedBlocks: new Set(['motion_movesteps']) }
+      expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: {} }, null, null, runState)).toBe(true)
     })
   })
 })
