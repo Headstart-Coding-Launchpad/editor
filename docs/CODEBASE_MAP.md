@@ -283,7 +283,6 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
 | `package.json` | Dependencies and scripts |
-| `.mcp.json` | Obsolete MCP server registration; no longer used now that the tool is a CLI |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |
 

@@ -1,0 +1,194 @@
+# Markdown Renderer Reference
+
+The `explainer`, `description`, and `syntax` fields are rendered by the shared `MarkdownRenderer` (`src/shared/markdown.jsx`).
+
+---
+
+## Headings
+
+```
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+```
+
+`h5` and `h6` are not supported.
+
+---
+
+## Paragraphs and Line Breaks
+
+Plain text becomes a paragraph. A single line break in the source becomes a `<br>` (remark-breaks is active), so each new line starts a new visual line without needing a blank line.
+
+---
+
+## Bold and Italic
+
+```
+**bold text**
+*italic text*
+```
+
+Bold text renders in the brand primary colour.
+
+---
+
+## Inline Code
+
+A bare backtick span renders in lavender-tinted monospace.
+
+**Language-prefixed inline code** triggers syntax highlighting:
+
+| Prefix | Example | Effect |
+|---|---|---|
+| `python:` | `` `python:print("hi")` `` | Syntax-highlighted Python |
+| `html:` | `` `html:<h1>Title</h1>` `` | Syntax-highlighted HTML |
+| `css:` | `` `css:color: red;` `` | Syntax-highlighted CSS |
+| `js:` | `` `js:console.log(x)` `` | Syntax-highlighted JavaScript |
+| `scratch:` | `` `scratch:move (10) steps` `` | Coloured Scratch block pill |
+
+**Auto-Scratch detection:** inline code matching a recognised Scratch block pattern (e.g. `move (10) steps`, `when green flag clicked`) renders as a Scratch block pill automatically.
+
+---
+
+## Fenced Code Blocks
+
+````
+```python
+for i in range(5):
+    print(i)
+```
+````
+
+| Language tag | Effect |
+|---|---|
+| `python` | Syntax-highlighted Python |
+| `html` | Syntax-highlighted HTML |
+| `css` | Syntax-highlighted CSS |
+| `javascript` | Syntax-highlighted JavaScript |
+| `scratch` | Stacked Scratch block visual |
+| *(none)* | Auto-renders as Scratch if all non-empty lines match patterns; otherwise plain monospace |
+
+---
+
+## Scratch Blocks (fenced)
+
+The `scratch` fenced block renders each non-empty line as a coloured, stacked Scratch block. Indent with two spaces per level to show nesting inside C-blocks. The special text `end` closes C-block indentation without rendering an extra block.
+
+````
+```scratch
+when green flag clicked
+repeat (10)
+  move (10) steps
+  turn (15) degrees
+end
+```
+````
+
+**Block colours:**
+
+| Colour | Category | Example blocks |
+|---|---|---|
+| Orange `#FFAB19` | Events | `when green flag clicked`, `when [space] key pressed`, `broadcast [message]` |
+| Orange `#FFAB19` | Control | `repeat (10)`, `forever`, `if <> then`, `wait (1) seconds`, `stop all` |
+| Blue `#4C97FF` | Motion | `move (10) steps`, `turn (15) degrees`, `go to x: (0) y: (0)` |
+| Purple `#9966FF` | Looks | `say [Hello!] for (2) seconds`, `think [Hmm]`, `show`, `hide`, `set size to (100)%` |
+| Mauve `#CF63CF` | Sound | `play sound [meow]`, `stop all sounds` |
+| Light blue `#5CB1D6` | Sensing | `ask [What is your name?] and wait`, `answer`, `key [space] pressed?` |
+| Green `#59C059` | Operators | `join [hello] [world]`, expressions with `+`, `-`, `=`, `<`, `>`, `and`, `or` |
+| Amber `#FF8C1A` | Variables | `set [score] to (0)`, `change [score] by (1)` |
+| Grey `#7c7c7c` | Unknown | Any unrecognised block text |
+
+Hat blocks (`when …`) have rounded top corners. C-blocks (`forever`, `repeat`, `if … then`) show a chevron indicator.
+
+**Value pills inside block text:**
+- Numbers and quoted strings → white pill with dark text
+- `(input)` and `[dropdown]` spans → white pill
+- `<condition>` spans → green pill
+- `(answer)` → light-blue pill (sensing reporter style)
+
+---
+
+## Lists
+
+```
+- Unordered item
+- Another item
+
+1. Ordered item
+2. Another item
+```
+
+---
+
+## Tables
+
+GFM pipe tables with optional column alignment:
+
+```
+| Column A | Column B |
+|---|---:|
+| left     |    right |
+```
+
+Alignment: `---` (left), `---:` (right), `:---:` (centre). Table cells support inline Markdown.
+
+---
+
+## Blockquotes and Callouts
+
+```
+> Standard callout.
+
+> :warning Warning callout.
+> :error Error callout.
+> :success Success callout.
+> :info Info callout.
+```
+
+| Variant | Border | Background |
+|---|---|---|
+| `:warning` | Amber | Yellow-tinted white |
+| `:error` | Red | Red-tinted white |
+| `:success` | Green | Green-tinted white |
+| `:info` | Blue | Blue-tinted white |
+| *(plain `>`)* | Brand secondary | Warm white |
+
+The marker text is stripped from rendered output.
+
+---
+
+## Images
+
+```
+![alt text](url)
+```
+
+Block-level, `max-width: 100%`, small border radius.
+
+---
+
+## Links
+
+```
+[link text](https://example.com)
+```
+
+Topic library links (within `description` and `syntax` fields):
+```
+[link text](#topic/topic-id)
+```
+
+---
+
+## Wiki-Links
+
+Both lesson explainers and topic library fields support double-bracket wiki-link syntax:
+
+```
+[[topic-id]]                 # label is the topic's title
+[[topic-id|Custom label]]    # custom label
+```
+
+Wiki-links are expanded before Markdown rendering and are **not** expanded inside inline code or fenced blocks. In rendered output they appear as styled buttons — hover shows a preview card, click opens the Topic Library dialog.

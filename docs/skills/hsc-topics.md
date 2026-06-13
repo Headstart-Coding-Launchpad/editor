@@ -22,7 +22,7 @@ Returns the full topic object including `description` (Markdown) and `syntax` fi
 
 ## Create or update a topic
 
-Topic JSON shape (see `TOPIC_LIBRARY_SCHEMA.md` for all fields):
+Topic JSON shape (see `docs/TOPIC_LIBRARY_SCHEMA.md` for all fields):
 
 ```json
 {

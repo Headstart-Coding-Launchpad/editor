@@ -50,7 +50,7 @@ Do not add major dependencies without confirming with the user.
 └── vite.config.js
 ```
 
-Use `CODEBASE_MAP.md` to locate specific files. Search or open the relevant section instead of loading the full map by default.
+Use `docs/CODEBASE_MAP.md` to locate specific files. Search or open the relevant section instead of loading the full map by default.
 
 ## Shared Modules
 
@@ -79,36 +79,32 @@ Tabs:
 
 ## CLI Tool
 
-The `cli/` package manages lessons, tasks, topics, feedback, and assets against Firestore and Firebase Storage. It uses Firebase Admin SDK, not browser auth.
+The `cli/` package manages lessons, tasks, topics, feedback, and assets against Firestore and Firebase Storage using Firebase Admin SDK (not browser auth). Agents should use this CLI directly.
 
-Storage model:
+**Storage model:**
+- Lessons → Firestore `lessons/`
+- Topics → Firestore `topicLibrary/`
+- Assets → Firebase Storage, referenced from `lesson.storageAssets`
 
-- Lessons live in Firestore `lessons/`.
-- Topics live in Firestore `topicLibrary/`.
-- Lesson assets live in Firebase Storage and are referenced from lesson `storageAssets`.
-
-Auth:
-
+**Auth:**
 - Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
-- Download service accounts from Firebase Console > Project Settings > Service Accounts.
+- Download from Firebase Console > Project Settings > Service Accounts.
 - Do not commit or copy service account keys.
 
-Setup and usage:
-
 ```bash
-cd cli
-npm install
+cd cli && npm install
 node cli/cli.mjs <command> <subcommand> [args]
 ```
 
-Common command groups:
-
+Command groups:
 - `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml`
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all`
 - `assets list|upload|delete`
 
-JSON/YAML can be supplied as a file argument or piped through stdin where supported. Output is JSON by default; pass `--format yaml` or `--yaml` for YAML read output. Errors go to stderr with exit code 1.
+JSON/YAML can be supplied as a file argument or piped via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
-Scratch toolbox XML validation is skipped server-side because Node lacks `DOMParser`; use builder preview to catch XML errors.
+**Agent playbooks** (load when task matches): `docs/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`
+
+Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.
