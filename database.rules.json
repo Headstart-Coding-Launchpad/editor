@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "sessions": {
+      "$lessonId": {
+        // Anyone (including unauthenticated students) can read session data.
+        ".read": true,
+
+        // Teachers and admins can write anywhere in the session (create, update, delete).
+        ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')",
+
+        // Unauthenticated students may write to their own student node.
+        // Note: without Firebase Auth we cannot verify the anonymousId matches the
+        // caller's identity — any unauthenticated client could write to any student
+        // path. This still blocks students from touching session-control fields above.
+        "students": {
+          "$anonymousId": {
+            ".write": "auth == null"
+          }
+        },
+
+        // Unauthenticated students may create/remove their name-entry node.
+        "joiningStudents": {
+          "$tempId": {
+            ".write": "auth == null"
+          }
+        }
+      }
+    }
+  }
+}

@@ -101,7 +101,7 @@ Student writes:
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
 
-Firebase v1 Realtime Database security rules are open read/write; do not add authentication logic.
+Firebase Realtime Database security rules live in `database.rules.json`. Sessions are public-read. Authenticated teachers/admins (`auth.token.role == 'teacher' | 'admin'`) can write anything in a session. Unauthenticated clients (students) can write only to `students/$anonymousId` and `joiningStudents/$tempId` sub-paths — they cannot touch session-control fields. Because students have no Firebase Auth identity, we cannot verify that an unauthenticated caller owns a specific `anonymousId`; the rules restrict *what* paths students can write, not *which* student writes them.
 
 ## onDisconnect Rules
 
