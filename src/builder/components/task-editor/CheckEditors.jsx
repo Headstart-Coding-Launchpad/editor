@@ -73,6 +73,7 @@ function subjectOpFromType(type) {
     'output_not_equals':           { subject: 'output',  operator: 'not_equals' },
     'output_matches_regex':        { subject: 'output',  operator: 'matches_regex' },
     'output_line_count':           { subject: 'output',  operator: 'line_count' },
+    'output_line_count_at_least':  { subject: 'output',  operator: 'line_count_at_least' },
     'code_contains':               { subject: 'code',    operator: 'contains' },
     'code_equals':                 { subject: 'code',    operator: 'equals' },
     'code_does_not_contain':       { subject: 'code',    operator: 'not_contains' },
@@ -111,7 +112,8 @@ function typeFromSubjectOp(subject, operator) {
       matches_regex: 'output_matches_regex',
       not_empty:     'output_not_empty',
       empty:         'output_empty',
-      line_count:    'output_line_count',
+      line_count:           'output_line_count',
+      line_count_at_least:  'output_line_count_at_least',
     },
     code: {
       contains:      'code_contains',
@@ -156,7 +158,8 @@ function getOperatorOptions(subject, { allowCodeNoError }) {
     { value: 'matches_regex', label: 'matches regex' },
     { value: 'not_empty',     label: 'is not empty' },
     { value: 'empty',         label: 'is empty' },
-    { value: 'line_count',    label: 'line count equals' },
+    { value: 'line_count',          label: 'line count equals' },
+    { value: 'line_count_at_least', label: 'line count at least' },
   ]
   if (subject === 'code') return [
     { value: 'contains',      label: 'contains' },
@@ -341,7 +344,7 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
     )
   }
 
-  if (check.type === 'output_line_count') {
+  if (check.type === 'output_line_count' || check.type === 'output_line_count_at_least') {
     return (
       <input
         className="te-input"
@@ -350,7 +353,7 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
         min="0"
         value={check.value ?? ''}
         onChange={e => onChange({ ...check, value: e.target.value })}
-        placeholder="Expected number of lines"
+        placeholder={check.type === 'output_line_count_at_least' ? 'Minimum number of lines' : 'Expected number of lines'}
       />
     )
   }

@@ -54,7 +54,7 @@ describe('typeFromSubjectOp', () => {
   it('round-trips with subjectOpFromType for all known check types', () => {
     const types = [
       'output_contains', 'output_equals', 'output_not_contains', 'output_not_equals',
-      'output_matches_regex', 'output_not_empty', 'output_empty', 'output_line_count',
+      'output_matches_regex', 'output_not_empty', 'output_empty', 'output_line_count', 'output_line_count_at_least',
       'code_contains', 'code_equals', 'code_does_not_contain', 'code_not_equals', 'code_matches_regex',
       'element_exists', 'element_count', 'element_value', 'element_value_equals',
       'element_value_not_contains', 'element_value_not_equals', 'element_value_matches_regex',

@@ -532,6 +532,7 @@ function formatCheckValue(c) {
   if (c.type === 'answer_equals') return `answer equals "${c.value}"`
   if (c.type === 'output_equals') return `output equals "${c.value}"`
   if (c.type === 'output_line_count') return `${c.value} output line${c.value === 1 ? '' : 's'}`
+  if (c.type === 'output_line_count_at_least') return `at least ${c.value} output line${c.value === 1 ? '' : 's'}`
   if (c.type === 'output_not_empty') return 'output is not empty'
   if (c.type === 'output_empty') return 'output is empty'
   return `${c.type}: ${c.value ?? ''}`
