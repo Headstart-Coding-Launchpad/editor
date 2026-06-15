@@ -35,9 +35,11 @@ async def _hs_input(prompt=''):
 builtins.input = _hs_input
 
 class _Tx(ast.NodeTransformer):
+    def __init__(self, async_names):
+        self._async = async_names
     def visit_Call(self, node):
         self.generic_visit(node)
-        if isinstance(node.func, ast.Name) and node.func.id == 'input':
+        if isinstance(node.func, ast.Name) and node.func.id in self._async:
             return ast.Await(value=node)
         return node
     def visit_FunctionDef(self, node):
@@ -52,7 +54,9 @@ class _Tx(ast.NodeTransformer):
         return new
 
 _tree = ast.parse(_hs_user_code)
-_Tx().visit(_tree)
+_async_names = {n.name for n in ast.walk(_tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+_async_names.add('input')
+_Tx(_async_names).visit(_tree)
 ast.fix_missing_locations(_tree)
 
 _fn = ast.AsyncFunctionDef(
