@@ -162,6 +162,25 @@ describe('evaluateSingleCheck — output_line_count', () => {
   })
 })
 
+// ─── output_line_count_at_least ───────────────────────────────────────────────
+
+describe('evaluateSingleCheck — output_line_count_at_least', () => {
+  it('returns true when line count meets minimum', () => {
+    const check = { type: 'output_line_count_at_least', value: '3' }
+    expect(evaluateSingleCheck(check, 'a\nb\nc')).toBe(true)
+  })
+
+  it('returns true when line count exceeds minimum', () => {
+    const check = { type: 'output_line_count_at_least', value: '3' }
+    expect(evaluateSingleCheck(check, 'a\nb\nc\nd\ne')).toBe(true)
+  })
+
+  it('returns false when line count is below minimum', () => {
+    const check = { type: 'output_line_count_at_least', value: '3' }
+    expect(evaluateSingleCheck(check, 'a\nb')).toBe(false)
+  })
+})
+
 // ─── code_contains ────────────────────────────────────────────────────────────
 
 describe('evaluateSingleCheck — code_contains', () => {

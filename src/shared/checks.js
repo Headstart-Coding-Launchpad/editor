@@ -34,6 +34,7 @@ export const CHECK_TYPES = {
     'output_not_equals',
     'output_matches_regex',
     'output_line_count',
+    'output_line_count_at_least',
     'output_not_empty',
     'output_empty',
     'element_exists',
@@ -170,6 +171,10 @@ export function evaluateSingleCheck(check, output, context = {}) {
 
   if (check.type === 'output_line_count') {
     return countOutputLines(output) === Number(check.value)
+  }
+
+  if (check.type === 'output_line_count_at_least') {
+    return countOutputLines(output) >= Number(check.value)
   }
 
   if (check.type === 'code_contains') {

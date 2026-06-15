@@ -47,6 +47,7 @@ incorrectChecks:
 | `output_not_equals` | `type`, `value` | Y | N | Y | Y | Does not equal value |
 | `output_matches_regex` | `type`, `value` | Y | N | Y | Y | Matches regex (case-sensitive) |
 | `output_line_count` | `type`, `value` | Y | N | Y | Y | Exactly N lines |
+| `output_line_count_at_least` | `type`, `value` | Y | N | Y | Y | At least N lines (creative tasks) |
 | `output_not_empty` | `type` | Y | N | Y | Y | Output is not empty |
 | `output_empty` | `type` | Y | N | Y | Y | Output is empty / whitespace-only |
 | `code_contains` | `type`, `value` | Y | Y | Y | Y | Source contains value (whitespace ignored outside quotes) |
