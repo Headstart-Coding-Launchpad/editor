@@ -495,7 +495,7 @@ await yargs(hideBin(process.argv))
 
   // ─── FEEDBACK ──────────────────────────────────────────────────────────────
 
-  .command('feedback', 'Read platform and lesson feedback from Firestore', yargs => yargs
+  .command('feedback', 'Read, write, and clear platform and lesson feedback from Firestore', yargs => yargs
 
     .command('platform', 'List platform feedback', {
       'lesson-id': { type: 'string', describe: 'Only include platform feedback linked to this lesson ID' },
@@ -522,7 +522,57 @@ await yargs(hideBin(process.argv))
       print(await listAllFeedback({ lessonId, taskId, scope }))
     }))
 
-    .demandCommand(1, 'Specify a subcommand: platform | lesson | all')
+    .command('add-lesson <lessonId>', 'Add a feedback item to a lesson', {
+      text: { type: 'string', demandOption: true, describe: 'Feedback text' },
+      email: { type: 'string', default: '', describe: 'Teacher email address' },
+      'lesson-title': { type: 'string', describe: 'Lesson title (informational)' },
+      'task-id': { type: 'string', describe: 'Task ID (makes this task-scoped feedback)' },
+      'task-title': { type: 'string', describe: 'Task title (informational)' },
+    }, cmd(async ({ lessonId, text, email, 'lesson-title': lessonTitle, 'task-id': taskId, 'task-title': taskTitle }) => {
+      const { addLessonFeedback } = await loadFeedback()
+      print(await addLessonFeedback(lessonId, { text, teacherEmail: email, lessonTitle, taskId, taskTitle }))
+    }))
+
+    .command('add-platform', 'Add a platform feedback item', {
+      text: { type: 'string', demandOption: true, describe: 'Feedback text' },
+      email: { type: 'string', default: '', describe: 'Teacher email address' },
+      'lesson-id': { type: 'string', describe: 'Lesson context (optional)' },
+      'lesson-title': { type: 'string', describe: 'Lesson title (informational)' },
+      'task-id': { type: 'string', describe: 'Task context (optional)' },
+      'task-title': { type: 'string', describe: 'Task title (informational)' },
+    }, cmd(async ({ text, email, 'lesson-id': lessonId, 'lesson-title': lessonTitle, 'task-id': taskId, 'task-title': taskTitle }) => {
+      const { addPlatformFeedback } = await loadFeedback()
+      print(await addPlatformFeedback({ text, teacherEmail: email, lessonId, lessonTitle, taskId, taskTitle }))
+    }))
+
+    .command('delete-lesson <lessonId> <id>', 'Delete a single feedback item from a lesson', {}, cmd(async ({ lessonId, id }) => {
+      const { deleteLessonFeedbackItem } = await loadFeedback()
+      print(await deleteLessonFeedbackItem(lessonId, id))
+    }))
+
+    .command('delete-platform <id>', 'Delete a single platform feedback item', {}, cmd(async ({ id }) => {
+      const { deletePlatformFeedbackItem } = await loadFeedback()
+      print(await deletePlatformFeedbackItem(id))
+    }))
+
+    .command('clear-lesson <lessonId>', 'Delete all feedback items from a lesson (supports filters)', {
+      'task-id': { type: 'string', describe: 'Only delete feedback linked to this task ID' },
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before deleting' },
+    }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
+      const { clearLessonFeedback } = await loadFeedback()
+      print(await clearLessonFeedback(lessonId, { taskId, scope }))
+    }))
+
+    .command('clear-platform', 'Delete all platform feedback items (supports filters)', {
+      'lesson-id': { type: 'string', describe: 'Only delete platform feedback linked to this lesson ID' },
+      'task-id': { type: 'string', describe: 'Only delete feedback linked to this task ID' },
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before deleting' },
+    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope }) => {
+      const { clearPlatformFeedback } = await loadFeedback()
+      print(await clearPlatformFeedback({ lessonId, taskId, scope }))
+    }))
+
+    .demandCommand(1, 'Specify a subcommand: platform | lesson | all | add-lesson | add-platform | delete-lesson | delete-platform | clear-lesson | clear-platform')
     .help()
   )
 

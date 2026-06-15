@@ -171,9 +171,41 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 ---
 
+## Feedback
+
+### Submitting feedback (teacher in-session)
+
+Teachers can open the Feedback modal at any point during a session. It has three tabs:
+
+- **Lesson Feedback** — general feedback about the lesson as a whole; stored in `lessons/{lessonId}/feedback` and visible in the builder's task panel
+- **Task Feedback** — feedback specific to the current task (tab only shown when a task is active); stored in the same subcollection with the task ID attached
+- **Platform Feedback** — bug reports and feature suggestions about the platform itself; stored in the `platformFeedback` top-level collection, visible only to admins
+
+Each submission captures the teacher's email, the lesson and task context, the feedback text, and a timestamp.
+
+### Viewing and deleting feedback (admin)
+
+The Admin Portal's **Feedback** tab shows three sub-tabs:
+
+- **Platform** — all entries from `platformFeedback`, sorted newest-first; each card shows email, date, lesson/task context, and text; admins can delete individual items
+- **Lesson** — lesson-level entries from across all lesson subcollections (no task ID)
+- **Task** — task-scoped entries from across all lesson subcollections (has task ID)
+
+Lesson/task cards link to the lesson in the builder.
+
+### Viewing feedback in the builder
+
+The builder's **Task Feedback Panel** shows submitted lesson and task feedback for the currently selected task, so authors can review comments without leaving the builder.
+
+### CLI management
+
+The CLI can list, create, delete, and bulk-clear feedback items in both collections. See `docs/skills/hsc-feedback.md` for full command reference.
+
+---
+
 ## CLI Features
 
 - Manage live lessons, tasks, topics, assets, and feedback through `node cli/cli.mjs`
 - Convert lesson and topic-library YAML to JSON for validation and publishing
 - Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
-- Read platform feedback and per-lesson feedback from Firestore for review outside the app
+- Read, create, delete, and bulk-clear platform and per-lesson feedback from Firestore via the CLI
