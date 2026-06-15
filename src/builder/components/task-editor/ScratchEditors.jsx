@@ -2,6 +2,7 @@ import React from 'react'
 import { createPortal } from 'react-dom'
 import { MarkdownFieldEditor } from '../ExplainerEditor'
 import {
+  BLOCK_DISPLAY_TEMPLATES,
   DEFAULT_TOOLBOX,
   VALUE_INPUT_DEFAULTS,
   buildAlwaysOpenToolbox,
@@ -9,6 +10,7 @@ import {
   loadBlocklyModules,
   predefinedBlockToStack,
 } from '../../../shared/scratch'
+import { normalizeSequenceItem } from '../../../shared/scratchChecks'
 
 const SCRATCH_TOOLBOX_GROUPS = [
   {
@@ -379,7 +381,7 @@ function blockColour(type) {
   return group?.colour ?? '#6b7280'
 }
 
-export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL_BLOCK_TYPES, compact = false, placeholder = 'Choose block' }) {
+export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL_BLOCK_TYPES, compact = false, placeholder = 'Choose block', fieldValues, onChangeFieldValues }) {
   const [open, setOpen] = React.useState(false)
   const [menuStyle, setMenuStyle] = React.useState(null)
   const wrapRef = React.useRef(null)
@@ -387,6 +389,27 @@ export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL
   const allowed = new Set(allowedTypes)
   const currentLabel = value ? blockLabel(value) : placeholder
   const currentColour = value ? blockColour(value) : '#6b7280'
+
+  // Build inline template parts when fieldValues are active
+  const inlineTemplate = fieldValues !== undefined ? BLOCK_DISPLAY_TEMPLATES[value] : null
+  const inlineParts = React.useMemo(() => {
+    if (!inlineTemplate) return null
+    const parts = []
+    const regex = /%(\d+)/g
+    let lastIndex = 0
+    let match
+    while ((match = regex.exec(inlineTemplate.message)) !== null) {
+      const textBefore = inlineTemplate.message.slice(lastIndex, match.index).trim()
+      if (textBefore) parts.push({ text: textBefore })
+      const inputName = inlineTemplate.inputOrder[parseInt(match[1]) - 1]
+      const shadow = VALUE_INPUT_DEFAULTS[value]?.[inputName]
+      parts.push({ inputName, placeholder: String(shadow?.value ?? ''), isText: shadow?.type === 'text' })
+      lastIndex = match.index + match[0].length
+    }
+    const tail = inlineTemplate.message.slice(lastIndex).trim()
+    if (tail) parts.push({ text: tail })
+    return parts
+  }, [inlineTemplate, value])
 
   React.useEffect(() => {
     if (!open) return
@@ -472,17 +495,48 @@ export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL
     document.body
   ) : null
 
+  const chipClass = compact ? 'te-scratch-block-chip te-scratch-block-chip--compact' : 'te-scratch-block-chip'
+
   return (
     <div className="te-scratch-block-picker" ref={wrapRef}>
-      <button
-        type="button"
-        className={compact ? 'te-scratch-block-chip te-scratch-block-chip--compact' : 'te-scratch-block-chip'}
-        style={{ backgroundColor: currentColour }}
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-      >
-        {currentLabel}
-      </button>
+      {inlineParts ? (
+        <div
+          className={chipClass}
+          style={{ backgroundColor: currentColour, display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}
+          aria-expanded={open}
+        >
+          {inlineParts.map((part, i) =>
+            part.inputName ? (
+              <input
+                key={i}
+                type="text"
+                className={`te-scratch-inline-input${part.isText ? ' te-scratch-inline-input--text' : ''}${compact ? ' te-scratch-inline-input--compact' : ''}`}
+                value={fieldValues?.[part.inputName] ?? ''}
+                onChange={e => {
+                  const fv = { ...fieldValues }
+                  if (e.target.value === '') delete fv[part.inputName]
+                  else fv[part.inputName] = e.target.value
+                  onChangeFieldValues?.(fv)
+                }}
+                onClick={e => e.stopPropagation()}
+                placeholder={part.placeholder}
+              />
+            ) : (
+              <span key={i} style={{ cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>{part.text}</span>
+            )
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={chipClass}
+          style={{ backgroundColor: currentColour }}
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+        >
+          {currentLabel}
+        </button>
+      )}
       {menu}
     </div>
   )
@@ -724,7 +778,9 @@ function describeCheck(check, sprites) {
     case 'block_used': {
       const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
       const label = found ? found[1] : check.opcode
-      return `Workspace must contain a "${label}" block`
+      const fvEntries = check.fieldValues ? Object.entries(check.fieldValues).filter(([, v]) => v !== '') : []
+      const values = fvEntries.length > 0 ? ` (${fvEntries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})` : ''
+      return `Workspace must contain a "${label}" block${values}`
     }
     case 'sprite_property': {
       const opLabel = COMPARISON_OPERATORS.find(o => o.value === check.operator)?.label ?? check.operator
@@ -740,7 +796,14 @@ function describeCheck(check, sprites) {
       return `After running: ${spriteName}'s ${propLabel} must have changed`
     case 'blocks_in_order': {
       const labels = (check.sequence ?? [])
-        .map(op => SCRATCH_BLOCK_OPTIONS.find(([t]) => t === op)?.[1] ?? op)
+        .map(item => {
+          const { opcode, fieldValues } = normalizeSequenceItem(item)
+          const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === opcode)
+          const label = found ? found[1] : opcode
+          const fvEntries = fieldValues ? Object.entries(fieldValues).filter(([, v]) => v !== '') : []
+          const values = fvEntries.length > 0 ? ` (${fvEntries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})` : ''
+          return label + values
+        })
         .join(' → ')
       const spriteLabel = check.spriteName ?? 'Any sprite'
       return `${spriteLabel}: workspace must contain the sequence: ${labels}`
@@ -758,12 +821,15 @@ function describeCheck(check, sprites) {
       return `${evalLabel}: ${spriteName}'s costume must be "${check.value}"`
     case 'block_run': {
       const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
-      return `After running: a "${found?.[1] ?? check.opcode}" block must have been executed`
+      const fvEntries = check.fieldValues ? Object.entries(check.fieldValues).filter(([, v]) => v !== '') : []
+      const values = fvEntries.length > 0 ? ` (${fvEntries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})` : ''
+      return `After running: a "${found?.[1] ?? check.opcode}" block must have been executed${values}`
     }
     default:
       return ''
   }
 }
+
 
 function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name: 'Sprite 1' }] }) {
   const type = check.type ?? 'block_used'
@@ -841,16 +907,25 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
 
       {/* Row 2: type-specific fields */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {type === 'block_used' ? (
-          <ScratchBlockPicker
-            value={check.opcode ?? 'motion_movesteps'}
-            onChange={opcode => onChange({ ...check, opcode })}
-          />
-        ) : type === 'block_run' ? (
-          <ScratchBlockPicker
-            value={check.opcode ?? 'motion_movesteps'}
-            onChange={opcode => onChange({ ...check, opcode })}
-          />
+        {type === 'block_used' || type === 'block_run' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <ScratchBlockPicker
+              value={check.opcode ?? 'motion_movesteps'}
+              onChange={opcode => onChange({ ...check, opcode, fieldValues: undefined })}
+              fieldValues={check.fieldValues}
+              onChangeFieldValues={fv => onChange({ ...check, fieldValues: fv })}
+            />
+            {VALUE_INPUT_DEFAULTS[check.opcode ?? 'motion_movesteps'] && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!!check.fieldValues}
+                  onChange={e => onChange({ ...check, fieldValues: e.target.checked ? {} : undefined })}
+                />
+                Require specific values
+              </label>
+            )}
+          </div>
         ) : type === 'block_count' ? (
           <>
             <select
@@ -892,29 +967,53 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
               <option value="">Any sprite</option>
               {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
             </select>
-            {(check.sequence ?? ['motion_movesteps']).map((opcode, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#9ca3af', minWidth: 20 }}>
-                  {idx + 1}.
-                </span>
-                <ScratchBlockPicker
-                  value={opcode}
-                  onChange={nextOpcode => {
-                    const next = [...(check.sequence ?? [])]
-                    next[idx] = nextOpcode
-                    onChange({ ...check, sequence: next })
-                  }}
-                  compact
-                />
-                <button
-                  type="button"
-                  className="te-check-remove-btn"
-                  disabled={(check.sequence ?? []).length <= 1}
-                  onClick={() => onChange({ ...check, sequence: (check.sequence ?? []).filter((_, i) => i !== idx) })}
-                  title="Remove"
-                >×</button>
-              </div>
-            ))}
+            {(check.sequence ?? ['motion_movesteps']).map((seqItem, idx) => {
+              const { opcode, fieldValues } = normalizeSequenceItem(seqItem)
+              const hasInputs = !!VALUE_INPUT_DEFAULTS[opcode]
+              return (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#9ca3af', minWidth: 20 }}>
+                    {idx + 1}.
+                  </span>
+                  <ScratchBlockPicker
+                    value={opcode}
+                    onChange={nextOpcode => {
+                      const next = [...(check.sequence ?? [])]
+                      next[idx] = nextOpcode
+                      onChange({ ...check, sequence: next })
+                    }}
+                    fieldValues={fieldValues !== null ? fieldValues : undefined}
+                    onChangeFieldValues={fv => {
+                      const next = [...(check.sequence ?? [])]
+                      next[idx] = { opcode, fieldValues: fv }
+                      onChange({ ...check, sequence: next })
+                    }}
+                    compact
+                  />
+                  {hasInputs && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#9ca3af', cursor: 'pointer', flexShrink: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={fieldValues !== null}
+                        onChange={e => {
+                          const next = [...(check.sequence ?? [])]
+                          next[idx] = e.target.checked ? { opcode, fieldValues: {} } : opcode
+                          onChange({ ...check, sequence: next })
+                        }}
+                      />
+                      values
+                    </label>
+                  )}
+                  <button
+                    type="button"
+                    className="te-check-remove-btn"
+                    disabled={(check.sequence ?? []).length <= 1}
+                    onClick={() => onChange({ ...check, sequence: (check.sequence ?? []).filter((_, i) => i !== idx) })}
+                    title="Remove"
+                  >×</button>
+                </div>
+              )
+            })}
             <button
               type="button"
               className="btn-ghost te-add-check-btn"
