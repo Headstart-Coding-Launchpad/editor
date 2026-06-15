@@ -1,31 +1,55 @@
 import { useState, useEffect } from 'react'
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
+import { auth } from '../../shared/firebase'
 
 const STORAGE_KEY = 'headstart_identity'
 
-function generateId() {
-  return crypto.randomUUID()
-}
-
-/**
- * Manages the student's anonymous ID, display name, and session timestamp.
- * The anonymous ID never changes once created (unless the student clears storage).
- * The display name and session timestamp can be updated independently.
- */
 export function useIdentity() {
   const [identity, setIdentity] = useState(null)
   const [loaded, setLoaded] = useState(false)
+  const [authUid, setAuthUid] = useState(null)
 
+  // Ensure an anonymous Firebase Auth session exists and capture the stable UID.
+  // browserLocalPersistence (set in firebase.js) makes this UID persistent across
+  // page reloads so it can serve as the stable student key in the Realtime Database.
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      if (user) {
+        setAuthUid(user.uid)
+      } else {
+        signInAnonymously(auth)
+          .then(cred => setAuthUid(cred.user.uid))
+          .catch(err => {
+            console.warn('Anonymous sign-in failed; falling back to local UUID:', err)
+            setAuthUid(crypto.randomUUID())
+          })
+      }
+    })
+    return () => unsubscribe()
+  }, [])
+
+  // Load identity from localStorage once the Firebase UID is known.
+  // If the stored anonymousId differs from the Firebase UID (legacy UUID), migrate it
+  // so database writes pass the new per-student auth rules.
+  useEffect(() => {
+    if (authUid == null) return
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       try {
-        setIdentity(JSON.parse(raw))
+        const parsed = JSON.parse(raw)
+        if (parsed.anonymousId !== authUid) {
+          const migrated = { ...parsed, anonymousId: authUid }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
+          setIdentity(migrated)
+        } else {
+          setIdentity(parsed)
+        }
       } catch {
         localStorage.removeItem(STORAGE_KEY)
       }
     }
     setLoaded(true)
-  }, [])
+  }, [authUid])
 
   function save(id) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(id))
@@ -35,7 +59,7 @@ export function useIdentity() {
   /** Create a fresh identity (new session or first ever visit). */
   function createIdentity(displayName, sessionTimestamp) {
     const id = {
-      anonymousId:          generateId(),
+      anonymousId:          authUid,
       displayName,
       lastSessionTimestamp: sessionTimestamp,
     }

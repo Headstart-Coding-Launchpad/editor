@@ -1,19 +1,38 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useIdentity } from '../useIdentity'
 
+const authMocks = vi.hoisted(() => ({
+  onAuthStateChanged: vi.fn(),
+  signInAnonymously: vi.fn(),
+}))
+
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: (...args) => authMocks.onAuthStateChanged(...args),
+  signInAnonymously:  (...args) => authMocks.signInAnonymously(...args),
+}))
+
+vi.mock('../../../shared/firebase', () => ({
+  auth: {},
+}))
+
 const STORAGE_KEY = 'headstart_identity'
+const MOCK_UID    = 'firebase-anon-uid'
 
 describe('useIdentity', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.clearAllMocks()
+    // Default: user is already signed in anonymously (persistent session)
+    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback({ uid: MOCK_UID })
+      return () => {}
+    })
   })
 
   it('loaded becomes true and identity stays null when localStorage is empty', async () => {
     const { result } = renderHook(() => useIdentity())
 
-    // In the jsdom/Vitest environment effects flush synchronously during render,
-    // so loaded may already be true on the first render.  waitFor covers both cases.
     await waitFor(() => {
       expect(result.current.loaded).toBe(true)
     })
@@ -23,7 +42,7 @@ describe('useIdentity', () => {
 
   it('reads an existing identity from localStorage on mount', async () => {
     const stored = {
-      anonymousId: 'existing-id',
+      anonymousId: MOCK_UID,
       displayName: 'Alice',
       lastSessionTimestamp: 1000,
     }
@@ -38,7 +57,41 @@ describe('useIdentity', () => {
     expect(result.current.identity).toEqual(stored)
   })
 
-  it('createIdentity writes a new identity to localStorage and updates state', async () => {
+  it('migrates a legacy UUID-based anonymousId to the Firebase UID on load', async () => {
+    const stored = {
+      anonymousId: 'old-uuid-from-before-anon-auth',
+      displayName: 'Alice',
+      lastSessionTimestamp: 1000,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+
+    const { result } = renderHook(() => useIdentity())
+
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+
+    expect(result.current.identity).toEqual({
+      anonymousId: MOCK_UID,
+      displayName: 'Alice',
+      lastSessionTimestamp: 1000,
+    })
+    // Also persisted to localStorage
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)).anonymousId).toBe(MOCK_UID)
+  })
+
+  it('signs in anonymously when no user is currently signed in', async () => {
+    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback(null)
+      return () => {}
+    })
+    authMocks.signInAnonymously.mockResolvedValue({ user: { uid: MOCK_UID } })
+
+    const { result } = renderHook(() => useIdentity())
+
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(authMocks.signInAnonymously).toHaveBeenCalled()
+  })
+
+  it('createIdentity uses the Firebase UID as anonymousId', async () => {
     const { result } = renderHook(() => useIdentity())
 
     await waitFor(() => expect(result.current.loaded).toBe(true))
@@ -48,12 +101,9 @@ describe('useIdentity', () => {
       created = result.current.createIdentity('Bob', 5000)
     })
 
-    expect(created).toMatchObject({
-      displayName: 'Bob',
-      lastSessionTimestamp: 5000,
-    })
-    expect(typeof created.anonymousId).toBe('string')
-    expect(created.anonymousId.length).toBeGreaterThan(0)
+    expect(created.anonymousId).toBe(MOCK_UID)
+    expect(created.displayName).toBe('Bob')
+    expect(created.lastSessionTimestamp).toBe(5000)
 
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
     expect(stored).toEqual(created)
@@ -102,7 +152,6 @@ describe('useIdentity', () => {
 
     await waitFor(() => expect(result.current.loaded).toBe(true))
 
-    // identity is null at this point — calling updateTimestamp should not throw
     act(() => {
       result.current.updateTimestamp(9999)
     })
@@ -155,7 +204,6 @@ describe('useIdentity', () => {
       expect(result.current.loaded).toBe(true)
     })
 
-    // Corrupted entry should be removed and identity stays null
     expect(result.current.identity).toBe(null)
     expect(localStorage.getItem(STORAGE_KEY)).toBe(null)
   })

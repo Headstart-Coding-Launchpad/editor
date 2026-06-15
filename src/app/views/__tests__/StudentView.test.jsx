@@ -92,6 +92,7 @@ vi.mock('../../components/ScratchWorkspace', () => ({
     mocks.scratchWorkspace(props)
     return <div>Scratch</div>
   },
+  SPRITE_TYPES: ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot'],
 }))
 
 vi.mock('../../components/QuizTask', () => ({

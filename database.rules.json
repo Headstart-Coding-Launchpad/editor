@@ -2,26 +2,25 @@
   "rules": {
     "sessions": {
       "$lessonId": {
-        // Anyone (including unauthenticated students) can read session data.
         ".read": true,
 
-        // Teachers and admins can write anywhere in the session (create, update, delete).
-        ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')",
+        // Teachers and admins can write any session-level field
+        // (state, currentTaskId, teacherLive, sandboxCode, etc.)
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
 
-        // Unauthenticated students may write to their own student node.
-        // Note: without Firebase Auth we cannot verify the anonymousId matches the
-        // caller's identity — any unauthenticated client could write to any student
-        // path. This still blocks students from touching session-control fields above.
-        "students": {
-          "$anonymousId": {
-            ".write": "auth == null"
+        // Any authenticated user can register their name-entry presence marker.
+        // The tempId is a client-generated UUID so no UID match is enforced here.
+        "joiningStudents": {
+          "$tempId": {
+            ".write": "auth != null"
           }
         },
 
-        // Unauthenticated students may create/remove their name-entry node.
-        "joiningStudents": {
-          "$tempId": {
-            ".write": "auth == null"
+        // Students may only write to their own node (auth.uid must match the key).
+        // Teachers and admins retain write access for rename, reset, and check override.
+        "students": {
+          "$anonymousId": {
+            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
           }
         }
       }

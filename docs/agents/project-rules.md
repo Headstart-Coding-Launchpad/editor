@@ -43,6 +43,7 @@ Do not add major dependencies without confirming with the user.
 │   ├── builder/    # Lesson builder components, views, hooks
 │   ├── admin/      # Admin portal
 │   ├── auth/       # Auth context and protected route
+│   ├── modules/    # Lesson type modules (one folder per type + registry.js)
 │   └── shared/     # Shared modules; do not duplicate this logic
 ├── cli/            # Lesson, topic, feedback, and asset CLI
 ├── functions/      # Firebase Cloud Functions
@@ -51,6 +52,26 @@ Do not add major dependencies without confirming with the user.
 ```
 
 Use `docs/CODEBASE_MAP.md` to locate specific files. Search or open the relevant section instead of loading the full map by default.
+
+## Adding a New Lesson Type
+
+The app uses a module registry (`src/modules/registry.js`) so that each lesson type is self-contained. To add a new type:
+
+1. Create `src/modules/<type>/` with four files:
+   - `StudentWorkspace.jsx` — the student coding view (receives `lesson`, `task`, `cs`, and other display props)
+   - `BuilderWorkspace.jsx` — the builder workspace (re-export or wrapper of the builder component)
+   - `CheckEditor.jsx` — the check configuration UI (wraps an appropriate `CheckListEditor` variant)
+   - `index.js` — the module definition (see the interface table in `docs/CODEBASE_MAP.md`)
+
+2. Add the module to `src/modules/registry.js`:
+   ```js
+   import newTypeModule from './<type>/index.js'
+   const MODULES = { python, html, scratch, filesystem, <type>: newTypeModule }
+   ```
+
+3. No changes to `LessonTaskContent.jsx`, `TaskEditor.jsx`, or `TaskOptionsSection.jsx` are required.
+
+The contract test at `src/modules/__tests__/moduleInterface.test.js` will automatically validate the new module's interface.
 
 ## Shared Modules
 
