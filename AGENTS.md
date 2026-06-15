@@ -40,8 +40,11 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 
 ## Load Only What You Need
 
+**Not sure which doc to open?** See `docs/README.md` — it lists every file in `docs/` with a description and when to use it.
+
 | Task area | Read this first |
 |---|---|
+| Index of all docs | `docs/README.md` |
 | File ownership or locating code | `docs/CODEBASE_MAP.md` relevant section |
 | Product capabilities | `docs/FEATURES.md` |
 | Project rules, stack, shared modules, CLI tool, admin | `docs/agents/project-rules.md` |
@@ -55,7 +58,8 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Lesson JSON field reference | `docs/authoring/lesson-schema.md` |
 | Topic library schema and YAML authoring | `docs/TOPIC_LIBRARY_SCHEMA.md` |
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
-| Agent playbooks (author, edit, topics, assets) | `docs/skills/` |
+| Agent playbooks (author, edit, topics, assets, feedback) | `docs/skills/` |
+| Reading, creating, or clearing feedback via CLI | `docs/skills/hsc-feedback.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |
 

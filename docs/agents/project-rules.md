@@ -100,7 +100,7 @@ Command groups:
 - `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml`
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
-- `feedback platform|lesson|all`
+- `feedback platform|lesson|all|add-lesson|add-platform|delete-lesson|delete-platform|clear-lesson|clear-platform`
 - `assets list|upload|delete`
 
 JSON/YAML can be supplied as a file argument or piped via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.

@@ -1,5 +1,17 @@
 import { db } from './firebase.mjs'
 
+async function batchDeleteRefs(refs) {
+  const BATCH_SIZE = 500
+  let deleted = 0
+  for (let i = 0; i < refs.length; i += BATCH_SIZE) {
+    const batch = db.batch()
+    refs.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref))
+    await batch.commit()
+    deleted += refs.slice(i, i + BATCH_SIZE).length
+  }
+  return deleted
+}
+
 function normalizeSubmittedAt(value) {
   if (typeof value === 'number') return value
   if (value?.toMillis) return value.toMillis()
@@ -78,4 +90,72 @@ export async function listAllFeedback({ lessonId = null, taskId = null, scope = 
     lessonId ? listLessonFeedback(lessonId, { taskId, scope }) : listAllLessonFeedback({ taskId, scope }),
   ])
   return sortNewestFirst([...platform, ...lesson])
+}
+
+export async function addLessonFeedback(lessonId, { text, teacherEmail = '', taskId = null, taskTitle = null, lessonTitle = null } = {}) {
+  if (!lessonId) throw new Error('lessonId is required')
+  if (!text?.trim()) throw new Error('--text is required')
+  const ref = await db.collection('lessons').doc(lessonId).collection('feedback').add({
+    lessonId,
+    lessonTitle: lessonTitle ?? null,
+    taskId: taskId ?? null,
+    taskTitle: taskTitle ?? null,
+    text: text.trim(),
+    teacherEmail: teacherEmail ?? '',
+    submittedAt: Date.now(),
+  })
+  return { success: true, id: ref.id, lessonId, source: 'lesson' }
+}
+
+export async function addPlatformFeedback({ text, teacherEmail = '', lessonId = null, lessonTitle = null, taskId = null, taskTitle = null } = {}) {
+  if (!text?.trim()) throw new Error('--text is required')
+  const ref = await db.collection('platformFeedback').add({
+    lessonId: lessonId ?? null,
+    lessonTitle: lessonTitle ?? null,
+    taskId: taskId ?? null,
+    taskTitle: taskTitle ?? null,
+    text: text.trim(),
+    teacherEmail: teacherEmail ?? '',
+    submittedAt: Date.now(),
+  })
+  return { success: true, id: ref.id, source: 'platform' }
+}
+
+export async function deleteLessonFeedbackItem(lessonId, feedbackId) {
+  if (!lessonId) throw new Error('lessonId is required')
+  if (!feedbackId) throw new Error('feedbackId is required')
+  const ref = db.collection('lessons').doc(lessonId).collection('feedback').doc(feedbackId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Feedback item "${feedbackId}" not found under lesson "${lessonId}"`)
+  await ref.delete()
+  return { success: true, id: feedbackId, lessonId }
+}
+
+export async function deletePlatformFeedbackItem(feedbackId) {
+  if (!feedbackId) throw new Error('feedbackId is required')
+  const ref = db.collection('platformFeedback').doc(feedbackId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Platform feedback item "${feedbackId}" not found`)
+  await ref.delete()
+  return { success: true, id: feedbackId }
+}
+
+export async function clearLessonFeedback(lessonId, { taskId = null, scope = null } = {}) {
+  if (!lessonId) throw new Error('lessonId is required')
+  const snap = await db.collection('lessons').doc(lessonId).collection('feedback').get()
+  const toDelete = snap.docs
+    .filter(doc => matchesTaskId(doc.data(), taskId))
+    .filter(doc => matchesScope(doc.data(), scope))
+  const deleted = await batchDeleteRefs(toDelete.map(doc => doc.ref))
+  return { success: true, deleted, lessonId }
+}
+
+export async function clearPlatformFeedback({ lessonId = null, taskId = null, scope = null } = {}) {
+  const snap = await db.collection('platformFeedback').get()
+  const toDelete = snap.docs
+    .filter(doc => (lessonId ? doc.data().lessonId === lessonId : true))
+    .filter(doc => matchesTaskId(doc.data(), taskId))
+    .filter(doc => matchesScope(doc.data(), scope))
+  const deleted = await batchDeleteRefs(toDelete.map(doc => doc.ref))
+  return { success: true, deleted }
 }
