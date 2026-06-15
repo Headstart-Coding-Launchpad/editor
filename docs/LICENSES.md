@@ -8,12 +8,12 @@ This file lists all third-party open-source libraries used in this project, thei
 
 ## License Summary
 
-| License | Libraries |
-|---|---|
-| MIT | CodeMirror 6 (all packages), React, React DOM, React Router DOM, react-markdown, rehype-highlight, remark-breaks, Vite, @vitejs/plugin-react |
-| Apache-2.0 | Firebase, Blockly |
-| BSD-3-Clause | highlight.js |
-| MPL-2.0 | Pyodide (CDN) |
+| License      | Libraries                                                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| MIT          | CodeMirror 6 (all packages), React, React DOM, React Router DOM, react-markdown, rehype-highlight, remark-breaks, Vite, @vitejs/plugin-react |
+| Apache-2.0   | Firebase, Blockly                                                                                                                            |
+| BSD-3-Clause | highlight.js                                                                                                                                 |
+| MPL-2.0      | Pyodide (CDN)                                                                                                                                |
 
 ---
 
