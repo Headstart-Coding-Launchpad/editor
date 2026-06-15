@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "sessions": {
+      "$lessonId": {
+        ".read": true,
+
+        // Teachers and admins can write any session-level field
+        // (state, currentTaskId, teacherLive, sandboxCode, etc.)
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+
+        // Any authenticated user can register their name-entry presence marker.
+        // The tempId is a client-generated UUID so no UID match is enforced here.
+        "joiningStudents": {
+          "$tempId": {
+            ".write": "auth != null"
+          }
+        },
+
+        // Students may only write to their own node (auth.uid must match the key).
+        // Teachers and admins retain write access for rename, reset, and check override.
+        "students": {
+          "$anonymousId": {
+            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+          }
+        }
+      }
+    }
+  }
+}
