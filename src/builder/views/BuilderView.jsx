@@ -141,7 +141,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   }
 
   if (previewing) {
-    return <PreviewView lesson={lesson} onClose={() => setPreviewing(false)} initialTaskId={selectedTaskId} />
+    return <PreviewView lesson={lesson} onClose={taskId => { setPreviewing(false); if (taskId) selectTask(taskId) }} initialTaskId={selectedTaskId} />
   }
 
   return (

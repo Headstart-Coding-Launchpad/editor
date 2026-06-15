@@ -20,7 +20,7 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
           <button className="btn-ghost" style={s.feedbackBtn} onClick={() => setShowFeedback(true)}>
             Feedback
           </button>
-          <button className="btn-secondary" style={s.backBtn} onClick={onClose}>
+          <button className="btn-secondary" style={s.backBtn} onClick={() => onClose(currentTaskId)}>
             Go back to Builder
           </button>
         </div>
