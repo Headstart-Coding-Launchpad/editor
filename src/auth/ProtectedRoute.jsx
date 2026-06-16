@@ -10,6 +10,8 @@ export default function ProtectedRoute({ children, requiredRole }) {
   if (loading) return <LoadingScreen message="Checking sign-in…" />
 
   if (!user || (requiredRole && role !== requiredRole && role !== 'admin')) {
+    const reason = !user ? 'no signed-in user' : `role "${role ?? 'none'}" does not satisfy required role "${requiredRole}"`
+    console.warn(`ProtectedRoute: redirecting ${location.pathname} to /login (${reason}).`)
     const redirect = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
