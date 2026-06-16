@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { AuthProvider } from '../AuthContext'
 import { useAuth } from '../useAuth'
 
@@ -24,8 +24,18 @@ function Probe() {
 }
 
 describe('AuthContext', () => {
+  let warnSpy
+  let errorSpy
+
   beforeEach(() => {
     vi.clearAllMocks()
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 
   it('retries a failed cached token fetch without forcing a network refresh', async () => {
@@ -52,18 +62,51 @@ describe('AuthContext', () => {
     expect(authMocks.getIdTokenResult).toHaveBeenNthCalledWith(2, firebaseUser, false)
   })
 
-  it('signs the user out if the retry also fails', async () => {
+  it('signs the user out and logs the cause if the retry also fails', async () => {
     const firebaseUser = { uid: 'teacher-uid' }
     authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
       callback(firebaseUser)
       return () => {}
     })
-    authMocks.getIdTokenResult.mockRejectedValue(new Error('still cold'))
+    const retryError = new Error('still cold')
+    authMocks.getIdTokenResult.mockRejectedValue(retryError)
 
     render(<AuthProvider><Probe /></AuthProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('user:none role:none')).toBeInTheDocument()
     })
+
+    // The redirect to /login that follows from this state needs a traceable cause —
+    // both the cold-cache retry attempt and its final failure should be logged.
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('retrying with a network refresh'), expect.any(Error))
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('signing out and redirecting to /login'), retryError)
+  })
+
+  it('warns when a previously signed-in session is reported as signed out with no error', async () => {
+    const firebaseUser = { uid: 'teacher-uid' }
+    let authCallback
+    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+      authCallback = callback
+      callback(firebaseUser)
+      return () => {}
+    })
+    authMocks.getIdTokenResult.mockResolvedValue({ claims: { role: 'teacher' } })
+
+    render(<AuthProvider><Probe /></AuthProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
+    })
+
+    // Firebase itself (not an exception) now reports no user — the cross-tab
+    // storage-event bounce shape from #180/#279/#305. This is the case the existing
+    // retry logic cannot catch because nothing throws, so it needs its own log line.
+    await authCallback(null)
+
+    await waitFor(() => {
+      expect(screen.getByText('user:none role:none')).toBeInTheDocument()
+    })
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('previously signed-in session'))
   })
 })
