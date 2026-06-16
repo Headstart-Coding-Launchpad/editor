@@ -73,7 +73,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TopBar.jsx` | Header: lesson title, level badge, SOLO/LIVE/SANDBOX badge, student name, progress dots slot |
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted |
-| `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor |
+| `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only) |
 | `PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status |
 | `OutputPanel.jsx` | Python output with retro typing animation and inline `input()` prompt |
 | `HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer |

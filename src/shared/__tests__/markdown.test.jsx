@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MarkdownRenderer, InlineMarkdown } from '../markdown'
 
@@ -106,6 +106,33 @@ describe('MarkdownRenderer', () => {
   it('applies the textScale prop without crashing', () => {
     render(<MarkdownRenderer content="Scaled text." textScale={1.5} />)
     expect(screen.getByText('Scaled text.')).toBeInTheDocument()
+  })
+
+  it('allows text selection by default', () => {
+    const { container } = render(<MarkdownRenderer content="Selectable text." />)
+    expect(container.firstChild).not.toHaveStyle({ userSelect: 'none' })
+  })
+
+  it('disables selection and blocks copy/cut/drag when disableCopy is set', () => {
+    const { container } = render(<MarkdownRenderer content="Protected text." disableCopy />)
+    const wrapper = container.firstChild
+    expect(wrapper).toHaveStyle({ userSelect: 'none' })
+
+    const copyEvent = createEvent.copy(wrapper)
+    fireEvent(wrapper, copyEvent)
+    expect(copyEvent.defaultPrevented).toBe(true)
+
+    const cutEvent = createEvent.cut(wrapper)
+    fireEvent(wrapper, cutEvent)
+    expect(cutEvent.defaultPrevented).toBe(true)
+
+    const dragEvent = createEvent.dragStart(wrapper)
+    fireEvent(wrapper, dragEvent)
+    expect(dragEvent.defaultPrevented).toBe(true)
+
+    const contextMenuEvent = createEvent.contextMenu(wrapper)
+    fireEvent(wrapper, contextMenuEvent)
+    expect(contextMenuEvent.defaultPrevented).toBe(true)
   })
 
   it('opens a linked topic from its hover preview', async () => {

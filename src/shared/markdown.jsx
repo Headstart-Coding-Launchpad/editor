@@ -673,7 +673,7 @@ const components = {
   },
 }
 
-export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId }) {
+export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId, disableCopy = false }) {
   const topicEnabled = showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics, loading } = useTopicLibrary(topicType, topicEnabled)
   const [libraryOpen, setLibraryOpen] = React.useState(false)
@@ -728,8 +728,19 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
           color: inheritColor ? 'inherit' : 'var(--colour-text)',
           fontSize: `${15 * textScale}px`,
           lineHeight: 1.65,
+          ...(disableCopy ? {
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+          } : {}),
           ...style,
         }}
+        {...(disableCopy ? {
+          onCopy: e => e.preventDefault(),
+          onCut: e => e.preventDefault(),
+          onDragStart: e => e.preventDefault(),
+          onContextMenu: e => e.preventDefault(),
+        } : {})}
       >
         {showLibrary && (
           <button
