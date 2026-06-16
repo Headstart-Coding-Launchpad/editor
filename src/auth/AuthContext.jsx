@@ -25,10 +25,15 @@ export function AuthProvider({ children }) {
         }
       } catch {
         if (firebaseUser) {
-          // Cached token fetch failed — retry with a network refresh before giving up.
-          // This covers new popup windows where the in-memory token cache is cold.
+          // Cached token fetch failed transiently (e.g. cold popup window) — retry once.
+          // Do NOT pass forceRefresh=true: it rewrites the persisted auth user even when
+          // the cached token was still valid, which fires a storage event in every other
+          // open tab and can look like a sign-out there, bouncing it to /login (#180,
+          // regressed by the popup retry added for #279). A genuinely expired token still
+          // forces its own network refresh with forceRefresh=false, so retrying recovers
+          // the cold-cache case without the unconditional cross-tab churn.
           try {
-            const retryResult = await getIdTokenResult(firebaseUser, true)
+            const retryResult = await getIdTokenResult(firebaseUser, false)
             setUser(firebaseUser)
             setRole(retryResult.claims.role ?? null)
           } catch {
