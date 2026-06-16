@@ -62,6 +62,7 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
                   value={value}
                   onChange={e => setValue(e.target.value)}
                   maxLength={30}
+                  autoComplete="off"
                 />
               </label>
               <button className="btn-primary" type="submit" disabled={!value.trim()}>
