@@ -104,7 +104,7 @@ export default function LessonTaskContent({
             disabled={isViewingPrev}
             showResult={false}
           />
-        ) : lessonMod && (
+        ) : lessonMod ? (
           <lessonMod.StudentWorkspace
             lesson={lesson}
             task={task}
@@ -129,6 +129,10 @@ export default function LessonTaskContent({
             displaySelection={displaySelection}
             displayFs={displayFs}
           />
+        ) : (
+          <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
+            Unable to load this task — unrecognised lesson type "{lesson.type}".
+          </Banner>
         )}
       </div>
     </TaskSlideTransition>

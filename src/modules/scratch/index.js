@@ -41,9 +41,20 @@ const scratchModule = {
 
   defaultCheck: () => [{ type: 'block_used', evaluation: 'after_run', opcode: 'motion_movesteps' }],
 
+  carryThroughField: 'carryBlocksFrom',
+  carryThroughLabel: 'Carry blocks from task',
+  getCarryThroughUpdates: (sourceTask) => ({
+    starterBlocks: sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null,
+  }),
+  getNewStarterUpdates: () => ({
+    starterBlocks: null,
+  }),
+
   supportsInteractionMode: false,
   supportsIncorrectChecks: false,
   supportsTests: false,
+  supportsVariableChecks: false,
+  supportsDomChecks: false,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['scratch'],

@@ -9,6 +9,8 @@ export default function StudentWorkspace({
   displayCode, displayOutput, displayRunStatus,
   displayCheckPassed, displayCheckAttempted, displaySelection,
 }) {
+  const savedCode = isViewingPrev ? loadSavedCode(lessonId, viewingTaskId, identityId) : null
+
   return (
     <>
       {!isViewingPrev && !isForcedTeacherLive && (
@@ -54,7 +56,7 @@ export default function StudentWorkspace({
         </div>
       )}
       <PythonEditor
-        code={isForcedTeacherLive ? displayCode : isViewingPrev ? (loadSavedCode(lessonId, viewingTaskId, identityId)?.code ?? '') : cs.code}
+        code={isForcedTeacherLive ? displayCode : isViewingPrev ? (savedCode?.code ?? '') : cs.code}
         readOnly={isViewingPrev || isForcedTeacherLive}
         onChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleCodeChange}
         onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
@@ -103,8 +105,8 @@ export default function StudentWorkspace({
       )}
       {isViewingPrev && (
         <OutputPanel
-          output={loadSavedCode(lessonId, viewingTaskId, identityId)?.output ?? ''}
-          runStatus={loadSavedCode(lessonId, viewingTaskId, identityId)?.runStatus ?? null}
+          output={savedCode?.output ?? ''}
+          runStatus={savedCode?.runStatus ?? null}
           checkPassed={false}
           hasCheck={false}
           checkAttempted={false}

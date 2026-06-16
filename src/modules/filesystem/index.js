@@ -43,9 +43,20 @@ const filesystemModule = {
 
   defaultCheck: () => [{ type: 'fs_file_exists', path: '' }],
 
+  carryThroughField: 'carryFsFrom',
+  carryThroughLabel: 'Carry filesystem from task',
+  getCarryThroughUpdates: (sourceTask) => ({
+    starterFs: sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS,
+  }),
+  getNewStarterUpdates: () => ({
+    starterFs: DEFAULT_FS,
+  }),
+
   supportsInteractionMode: false,
   supportsIncorrectChecks: false,
   supportsTests: false,
+  supportsVariableChecks: false,
+  supportsDomChecks: false,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: [],

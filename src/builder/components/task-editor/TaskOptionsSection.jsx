@@ -12,9 +12,6 @@ export default function TaskOptionsSection({
 }) {
   const lessonMod = getLessonModule(lesson.type)
   const CheckEditor = lessonMod?.CheckEditor ?? null
-  const isPython = lessonMod?.type === 'python'
-  const isScratch = lessonMod?.type === 'scratch'
-  const isFilesystem = lessonMod?.type === 'filesystem'
   const [optionsOpen, setOptionsOpen] = useState(false)
 
   function set(field, value) {
@@ -43,7 +40,7 @@ export default function TaskOptionsSection({
 
       {optionsOpen && (
         <div className="te-options-section__body">
-          <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} isScratch={isScratch} isPython={isPython} isFilesystem={isFilesystem} />
+          <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} lessonMod={lessonMod} />
 
           {lessonMod?.supportsInteractionMode && (
             <Field label="Student interaction">
@@ -87,7 +84,7 @@ export default function TaskOptionsSection({
                 type="checkbox"
                 checked={!!task.check}
                 onChange={e => set('check', e.target.checked
-                  ? (lessonMod?.defaultCheck(task.interactionMode ?? 'run') ?? null)
+                  ? (lessonMod?.defaultCheck?.(task.interactionMode ?? 'run') ?? null)
                   : null)}
                 className="te-option-choice-input"
               />
@@ -118,8 +115,9 @@ export default function TaskOptionsSection({
                 checks={normalizeChecks(task.incorrectChecks ?? [])}
                 onChange={checks => set('incorrectChecks', checks.length > 0 ? checks : null)}
                 interactionMode={task.interactionMode ?? 'run'}
-                allowVariableChecks={lessonMod?.supportsTests && task.interactionMode !== 'submit'}
-                allowDomChecks={!lessonMod?.supportsTests && task.interactionMode !== 'submit'}
+                allowCodeNoError={false}
+                allowVariableChecks={lessonMod?.supportsVariableChecks && task.interactionMode !== 'submit'}
+                allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
                 lessonType={lesson.type}
                 output={output}
                 code={lessonMod?.supportsTests

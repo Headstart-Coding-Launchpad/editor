@@ -1,19 +1,9 @@
 import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
+import { scrollLayoutStyles } from '../sharedStyles.js'
 
-const taskContentStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-  overflow: 'visible',
-}
-
-const editorAreaStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-}
+const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 
 const pythonModule = {
   type: 'python',
@@ -45,9 +35,20 @@ const pythonModule = {
     ? [{ type: 'code_contains', value: '' }]
     : [{ type: 'output_contains', value: '' }],
 
+  carryThroughField: 'carryCodeFrom',
+  carryThroughLabel: 'Carry code from task',
+  getCarryThroughUpdates: (sourceTask) => ({
+    starterCode: sourceTask.completeCode ?? sourceTask.starterCode ?? '',
+  }),
+  getNewStarterUpdates: () => ({
+    starterCode: '',
+  }),
+
   supportsInteractionMode: true,
   supportsIncorrectChecks: true,
   supportsTests: true,
+  supportsVariableChecks: true,
+  supportsDomChecks: false,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],
