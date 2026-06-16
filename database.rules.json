@@ -1,6 +1,10 @@
 {
   "rules": {
     "sessions": {
+      // Admins can list every session at once (Admin Portal Sessions panel).
+      // Per-lesson reads below remain publicly readable regardless of this rule.
+      ".read": "auth != null && auth.token.role === 'admin'",
+
       "$lessonId": {
         ".read": true,
 

@@ -168,6 +168,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 - **Account management**: create teacher/admin accounts, set roles, disable/enable, delete
 - **Lesson management**: browse all lessons by type and level; launch as teacher or copy student link
+- **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields
 
 ---
