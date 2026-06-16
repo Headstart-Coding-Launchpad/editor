@@ -202,6 +202,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       active: true,
       updatedAt: Date.now(),
       ...payload,
+      ...(payload.files != null ? { files: encodeFileKeys(payload.files) } : {}),
     })
     onDisconnect(r2).set(null)
   }
@@ -210,6 +211,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}/teacherLive`), {
       updatedAt: Date.now(),
       ...payload,
+      ...(payload.files != null ? { files: encodeFileKeys(payload.files) } : {}),
     })
   }
 
