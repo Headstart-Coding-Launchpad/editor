@@ -139,7 +139,7 @@ export default function LessonTaskContent({
           disabled={isViewingPrev}
           showResult={false}
         />
-      ) : StudentWorkspace && (
+      ) : StudentWorkspace ? (
         <StudentWorkspace
           lesson={lesson}
           task={task}
@@ -166,6 +166,10 @@ export default function LessonTaskContent({
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
         />
+      ) : (
+        <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
+          Unable to load this task - unrecognised lesson type "{lesson.type}".
+        </Banner>
       )}
     </>
   )

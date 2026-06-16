@@ -5,7 +5,6 @@ import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
 import { createSpriteFromPreset } from '../../spritePresets'
-import { DEFAULT_FS } from '../../../shared/filesystem'
 import { flattenTasks } from '../../../shared/taskUtils'
 
 function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
@@ -83,49 +82,26 @@ function Modal({ title, children, onClose }) {
   )
 }
 
-function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFilesystem }) {
+function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   const flatTasks = flattenTasks(lesson.tasks)
   const taskIndex = flatTasks.findIndex(t => t.id === task.id)
   const prevTask = taskIndex > 0 ? flatTasks[taskIndex - 1] : null
   const otherTasks = flatTasks.filter(t => t.id !== task.id)
 
-  const carryField = isScratch ? 'carryBlocksFrom' : isFilesystem ? 'carryFsFrom' : 'carryCodeFrom'
-  const carryFrom = isScratch ? task.carryBlocksFrom : isFilesystem ? task.carryFsFrom : task.carryCodeFrom
+  const carryField = lessonMod?.carryThroughField ?? 'carryCodeFrom'
+  const carryFrom = task[carryField]
 
   const mode = carryFrom == null
     ? 'new'
     : (prevTask && carryFrom === prevTask.id ? 'last' : 'other')
 
   function copyCompleteCode(sourceTask) {
-    const updates = { [carryField]: sourceTask.id }
-    if (isPython) {
-      updates.starterCode = sourceTask.completeCode ?? sourceTask.starterCode ?? ''
-    } else if (isScratch) {
-      updates.starterBlocks = sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null
-      updates.sprites = JSON.parse(JSON.stringify(sourceTask.sprites ?? []))
-      updates.backdrops = JSON.parse(JSON.stringify(sourceTask.backdrops ?? []))
-      updates.variables = JSON.parse(JSON.stringify(sourceTask.variables ?? []))
-    } else if (isFilesystem) {
-      updates.starterFs = sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS
-    } else {
-      updates.starterFiles = (sourceTask.completeFiles ?? sourceTask.starterFiles ?? []).map(f => ({ ...f }))
-      const newEntry = sourceTask.completeEntryFile ?? sourceTask.entryFile
-      if (newEntry) updates.entryFile = newEntry
-    }
+    const updates = { [carryField]: sourceTask.id, ...lessonMod?.getCarryThroughUpdates?.(sourceTask) }
     onUpdate({ ...task, ...updates })
   }
 
   function handleNewStarterCode() {
-    const updates = { [carryField]: null }
-    if (isPython) {
-      updates.starterCode = ''
-    } else if (isScratch) {
-      updates.starterBlocks = null
-    } else if (isFilesystem) {
-      updates.starterFs = DEFAULT_FS
-    } else {
-      updates.starterFiles = (task.starterFiles ?? []).map(f => ({ ...f, content: '' }))
-    }
+    const updates = { [carryField]: null, ...lessonMod?.getNewStarterUpdates?.(task) }
     onUpdate({ ...task, ...updates })
   }
 
@@ -137,7 +113,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFil
   const radioName = `carry-${task.id}`
 
   return (
-    <Field label={isScratch ? 'Carry blocks from task' : isFilesystem ? 'Carry filesystem from task' : 'Carry code from task'}>
+    <Field label={lessonMod?.carryThroughLabel ?? 'Carry code from task'}>
       <div className="te-carry-radio-group">
         <label className={`te-option-choice-card${mode === 'last' ? ' te-option-choice-card--active' : ''}${!prevTask ? ' te-option-choice-card--disabled' : ''}`}>
           <input

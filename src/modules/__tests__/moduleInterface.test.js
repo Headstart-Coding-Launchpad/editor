@@ -48,6 +48,18 @@ describe('module interface contract', () => {
         expect('BuilderWorkspace' in mod).toBe(true)
         expect('CheckEditor' in mod).toBe(true)
       })
+
+      it('has supportsVariableChecks and supportsDomChecks as booleans', () => {
+        expect(typeof mod.supportsVariableChecks).toBe('boolean')
+        expect(typeof mod.supportsDomChecks).toBe('boolean')
+      })
+
+      it('has carryThroughField as a string and getCarryThroughUpdates/getNewStarterUpdates as functions', () => {
+        expect(typeof mod.carryThroughField).toBe('string')
+        expect(typeof mod.carryThroughLabel).toBe('string')
+        expect(typeof mod.getCarryThroughUpdates).toBe('function')
+        expect(typeof mod.getNewStarterUpdates).toBe('function')
+      })
     })
   }
 
