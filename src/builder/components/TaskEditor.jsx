@@ -9,24 +9,13 @@ import { copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { ScratchToolboxPicker } from './task-editor/ScratchEditors'
-import { DEFAULT_FS } from '../../shared/filesystem'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
-import PythonTaskWorkspace from './task-editor/PythonTaskWorkspace'
-import FilesystemTaskWorkspace from './task-editor/FilesystemTaskWorkspace'
-import HtmlTaskWorkspace from './task-editor/HtmlTaskWorkspace'
-import ScratchTaskSetup from './task-editor/ScratchTaskSetup'
+import { getLessonModule } from '../../modules/registry'
 
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
-
-function getTaskInlineCodeLanguages(lessonType) {
-  if (lessonType === 'python') return ['python']
-  if (lessonType === 'scratch') return ['scratch']
-  if (lessonType === 'html') return ['html', 'javascript', 'css']
-  return []
-}
 
 export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
@@ -49,9 +38,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     ...includedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
 
-  const isPython     = lesson.type === 'python'
-  const isScratch    = lesson.type === 'scratch'
-  const isFilesystem = lesson.type === 'filesystem'
+  const lessonMod = getLessonModule(lesson.type)
+  const isPython     = lessonMod?.type === 'python'
+  const isScratch    = lessonMod?.type === 'scratch'
+  const isFilesystem = lessonMod?.type === 'filesystem'
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
   const isCompleteTab = codeTab === 'complete'
@@ -75,7 +65,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     : isStageTab
     ? (activeStage?.entryFile ?? task.entryFile ?? 'index.html')
     : (task.entryFile ?? 'index.html')
-  const explainerInlineCodeLanguages = getTaskInlineCodeLanguages(lesson.type)
+  const explainerInlineCodeLanguages = lessonMod?.explainerInlineCodeLanguages ?? []
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -95,46 +85,27 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     resetRunState()
 
     if (tab === 'complete') {
-      if (isPython) {
-        if (task.completeCode == null) {
-          set('completeCode', task.starterCode ?? '')
-        }
-      } else if (!isScratch && !isFilesystem) {
-        if (!task.completeFiles?.length) {
-          const initFiles = (task.starterFiles ?? []).map(f => ({ ...f }))
-          onUpdate({ ...task, completeFiles: initFiles })
-          setSelectedCompleteFile(initFiles[0]?.name ?? '')
-        } else {
-          setSelectedCompleteFile(task.completeFiles[0]?.name ?? selectedFile ?? '')
-        }
-      }
+      lessonMod?.initCompleteTab?.(task, { onUpdate, selectedFile, setSelectedCompleteFile })
     }
 
     const stageMatch = tab.match(/^stage_(\d+)$/)
     if (stageMatch) {
       const idx = parseInt(stageMatch[1], 10)
       const stage = (task.codeStages ?? [])[idx]
-      if (stage && !isPython && !isScratch && !isFilesystem) {
-        setSelectedFile(stage.files?.[0]?.name ?? '')
-      }
+      lessonMod?.initStageTab?.(stage, { setSelectedFile })
     }
 
     setCodeTab(tab)
   }
 
   function handleAddStage() {
+    if (!lessonMod?.makeNewStage) return
     const existing = task.codeStages ?? []
-    const newStage = isPython
-      ? { label: `Stage ${existing.length + 1}`, code: task.starterCode ?? '' }
-      : isFilesystem
-      ? { label: `Stage ${existing.length + 1}`, fs: task.starterFs ? { ...task.starterFs } : DEFAULT_FS }
-      : { label: `Stage ${existing.length + 1}`, files: (task.starterFiles ?? []).map(f => ({ ...f })), entryFile: task.entryFile ?? 'index.html' }
+    const newStage = lessonMod.makeNewStage(task, existing)
     const updated = [...existing, newStage]
     onUpdate({ ...task, codeStages: updated })
     setCodeTab(`stage_${updated.length - 1}`)
-    if (!isPython && !isScratch && !isFilesystem) {
-      setSelectedFile(newStage.files?.[0]?.name ?? '')
-    }
+    lessonMod.initStageTab?.(newStage, { setSelectedFile })
   }
 
   function handleRemoveStage(idx) {
@@ -182,17 +153,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     }
 
     const { taskType: _t, informationType: _i, options: _o, ...rest } = task
-    const typeFields = lesson.type === 'python'
-      ? { starterCode: task.starterCode ?? '', carryCodeFrom: task.carryCodeFrom ?? null }
-      : lesson.type === 'scratch'
-      ? { toolbox: task.toolbox ?? '', starterBlocks: task.starterBlocks ?? null, carryBlocksFrom: task.carryBlocksFrom ?? null }
-      : lesson.type === 'filesystem'
-      ? { starterFs: task.starterFs ?? DEFAULT_FS, carryFsFrom: task.carryFsFrom ?? null }
-      : {
-          starterFiles: task.starterFiles?.length ? task.starterFiles : [{ name: 'index.html', type: 'html', content: '<!DOCTYPE html>\n<html>\n<body>\n\n</body>\n</html>' }],
-          entryFile: task.entryFile ?? 'index.html',
-          carryCodeFrom: task.carryCodeFrom ?? null,
-        }
+    const typeFields = lessonMod?.makeCodeTaskFields(task) ?? {}
     onUpdate({ ...rest, ...typeFields, check: null })
   }
 
@@ -393,7 +354,6 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       {!isQuiz && !isInformation && (
         <TaskOptionsSection
           task={task} lesson={lesson} onUpdate={onUpdate}
-          isPython={isPython} isScratch={isScratch} isFilesystem={isFilesystem}
           activePythonCode={activePythonCode} activeFiles={activeFiles} output={output}
           setCheckResults={setCheckResults} setRunStatus={setRunStatus}
           handleInteractionModeChange={handleInteractionModeChange}
@@ -436,43 +396,28 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             })()}
           </TaskPreviewPanel>
         </>
-      ) : isPython ? (
-        <PythonTaskWorkspace
-          task={task} onUpdate={onUpdate}
-          codeTab={codeTab} codeStages={codeStages} activePythonCode={activePythonCode}
+      ) : lessonMod?.BuilderWorkspace ? (
+        <lessonMod.BuilderWorkspace
+          task={task} lesson={lesson} onUpdate={onUpdate}
+          codeTab={codeTab} codeStages={codeStages}
+          activePythonCode={activePythonCode}
+          selectedFile={selectedFile} selectedCompleteFile={selectedCompleteFile}
+          setSelectedFile={setSelectedFile} setSelectedCompleteFile={setSelectedCompleteFile}
           running={running} runningTests={runningTests} pyodideStatus={pyodideStatus}
+          htmlPreviewOpen={htmlPreviewOpen} setHtmlPreviewOpen={setHtmlPreviewOpen}
+          iframeSrc={iframeSrc} iframeRef={iframeRef}
           inputPrompt={inputPrompt} output={output} runStatus={runStatus}
+          checkResult={checkResult} setCheckResult={setCheckResult}
           checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} testResults={testResults}
           handleCodeTabChange={handleCodeTabChange} handleAddStage={handleAddStage} handleRemoveStage={handleRemoveStage}
           handleRun={handleRun} handleStop={handleStop} handleRunTests={handleRunTests}
           handleTestChecks={handleTestChecks} handleInputSubmit={handleInputSubmit}
           resetToStarterBtn={resetToStarterBtn}
         />
-      ) : isScratch ? (
-        <ScratchTaskSetup
-          task={task} lesson={lesson} onUpdate={onUpdate}
-          checkResult={checkResult} setCheckResult={setCheckResult}
-        />
-      ) : isFilesystem ? (
-        <FilesystemTaskWorkspace
-          task={task} lesson={lesson} onUpdate={onUpdate}
-          codeTab={codeTab} codeStages={codeStages}
-          handleCodeTabChange={handleCodeTabChange} handleAddStage={handleAddStage} handleRemoveStage={handleRemoveStage}
-          resetToStarterBtn={resetToStarterBtn}
-        />
       ) : (
-        <HtmlTaskWorkspace
-          task={task} lesson={lesson} onUpdate={onUpdate}
-          codeTab={codeTab} codeStages={codeStages}
-          selectedFile={selectedFile} selectedCompleteFile={selectedCompleteFile}
-          setSelectedFile={setSelectedFile} setSelectedCompleteFile={setSelectedCompleteFile}
-          running={running} htmlPreviewOpen={htmlPreviewOpen} setHtmlPreviewOpen={setHtmlPreviewOpen}
-          iframeSrc={iframeSrc} iframeRef={iframeRef}
-          checkResults={checkResults} incorrectCheckResults={incorrectCheckResults}
-          handleCodeTabChange={handleCodeTabChange} handleAddStage={handleAddStage} handleRemoveStage={handleRemoveStage}
-          handleRun={handleRun} handleTestChecks={handleTestChecks}
-          resetToStarterBtn={resetToStarterBtn}
-        />
+        <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: '#991b1b' }}>
+          Unrecognised lesson type "{lesson.type}" — no builder workspace available for this task.
+        </div>
       )}
     </div>
   )

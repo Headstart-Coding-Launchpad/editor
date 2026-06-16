@@ -106,7 +106,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LoadingScreen.jsx` | Centred loading/error message screen for StudentView phases |
 | `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended' |
 | `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
-| `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch (Python, HTML desktop/mobile, Scratch, Filesystem, Quiz, Information) |
+| `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz and Information rendered inline; all code types delegated to their module's `StudentWorkspace`) |
 | `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut |
 
 ---
@@ -161,7 +161,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, assets, sandbox config modals |
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
-| `TaskEditor.jsx` | Task editor composition root (≤500 lines): orchestrates sub-components and workspace panels; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+| `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
@@ -185,11 +185,59 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskCheckResults.jsx` | Pass/fail check result banner shown after running or testing checks in the builder |
 | `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
 | `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
-| `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check, incorrect checks, and tests |
+| `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), incorrect checks, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
 | `PythonTaskWorkspace.jsx` | Python code editor + run controls panel for the builder (starter/complete/stage tabs) |
 | `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
 | `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |
 | `ScratchTaskSetup.jsx` | Scratch block editor modal and setup summary; owns all scratch-specific state and handlers |
+
+---
+
+## Lesson Type Modules (`src/modules/`)
+
+Each lesson type is a self-contained module folder. Adding a new type requires only a new folder and one line in the registry.
+
+| File | Role |
+|---|---|
+| `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
+| `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
+| `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
+| `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
+| `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
+| `html/index.js` | HTML module definition |
+| `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
+| `html/BuilderWorkspace.jsx` | Re-export of `HtmlTaskWorkspace` |
+| `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
+| `scratch/index.js` | Scratch module definition |
+| `scratch/StudentWorkspace.jsx` | Scratch workspace with Reset Blocks button (extracted from `LessonTaskContent`) |
+| `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
+| `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
+| `filesystem/index.js` | Filesystem module definition |
+| `filesystem/StudentWorkspace.jsx` | `FilesystemTask` wrapper with initialDir derivation |
+| `filesystem/BuilderWorkspace.jsx` | Re-export of `FilesystemTaskWorkspace` |
+| `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
+
+### Module interface
+
+Each `index.js` exports a default object with:
+
+| Property | Type | Purpose |
+|---|---|---|
+| `type` | `string` | Matches `lesson.type` value |
+| `StudentWorkspace` | `Component` | Student coding view |
+| `BuilderWorkspace` | `Component` | Builder task editor |
+| `CheckEditor` | `Component` | Check configuration UI |
+| `getLayoutStyles(isMobile)` | `fn → {taskContentStyle, editorAreaStyle}` | CSS layout for the task area |
+| `makeCodeTaskFields(task)` | `fn → object` | Initial fields when switching a task to code format |
+| `makeNewStage(task, existing)` | `fn \| null` | Initial fields for a new code stage |
+| `initCompleteTab(task, ctx)` | `fn \| null` | Called when switching to the Complete tab in the builder |
+| `initStageTab(stage, ctx)` | `fn \| null` | Called when switching to a Stage tab in the builder |
+| `defaultCheck(interactionMode)` | `fn → check[]` | Default check array when enabling a check |
+| `supportsInteractionMode` | `boolean` | Show Run/Submit mode picker |
+| `supportsIncorrectChecks` | `boolean` | Show incorrect-checks section |
+| `supportsTests` | `boolean` | Show TestsEditor; also gates `allowVariableChecks` |
+| `stageLabels` | `{starterLabel, completeLabel}` | Tab label strings |
+| `explainerInlineCodeLanguages` | `string[]` | Languages offered in the explainer inline-code picker |
 
 ---
 
