@@ -38,6 +38,7 @@ Do not deviate from this shape.
       "sandboxCodePushedAt": 1234567890,
       "sandboxFiles": { "index__dot__html": "..." },
       "sandboxFilesUpdatedAt": 1234567890,
+      "lessonOverrideTasks": "Task[] | null",
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
       },
@@ -82,6 +83,7 @@ Teacher writes:
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `activeStudentView`, `teacherLive`
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
+- `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - any student's `displayName`
 - student node removal
 

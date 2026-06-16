@@ -230,13 +230,13 @@ export function quizHasCheckValue(task) {
   return !!task.check?.value
 }
 
-export function normalizeTasksForExport(tasks) {
+export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
   let counter = 0
   const idMap = {}
   function assignIds(items) {
     for (const item of items) {
       if (item.type === 'group') assignIds(item.subtasks ?? [])
-      else idMap[item.id] = ++counter
+      else idMap[item.id] = preserveIds ? item.id : ++counter
     }
   }
   assignIds(tasks)

@@ -137,6 +137,26 @@ describe('useSession', () => {
         expect.objectContaining({ state: 'ended', endedAt: expect.any(Number) }),
       )
     })
+
+    it('clears any session-only lesson override so a restart starts from the published lesson', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.endSession() })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ lessonOverrideTasks: null }),
+      )
+    })
+  })
+
+  describe('createSession', () => {
+    it('initialises lessonOverrideTasks to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.createSession() })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ lessonOverrideTasks: null }),
+      )
+    })
   })
 
   describe('setTeacherLive', () => {
@@ -182,6 +202,29 @@ describe('useSession', () => {
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/teacherLive' },
         expect.objectContaining({ output: 'hi' }),
+      )
+    })
+  })
+
+  describe('pushLessonOverride', () => {
+    it('writes the tasks array to the session lessonOverrideTasks path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const tasks = [{ id: 1, title: 'Edited' }]
+      await act(async () => { await result.current.pushLessonOverride(tasks) })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/lessonOverrideTasks' },
+        tasks,
+      )
+    })
+  })
+
+  describe('clearLessonOverride', () => {
+    it('clears the lessonOverrideTasks path back to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.clearLessonOverride() })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/lessonOverrideTasks' },
+        null,
       )
     })
   })

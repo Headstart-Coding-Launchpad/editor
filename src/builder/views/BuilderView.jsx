@@ -12,7 +12,7 @@ import PreviewView from './PreviewView'
 import { useBuilderState } from '../hooks/useBuilderState'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildPrintHtml } from '../printLesson'
-import { flattenTasks, updateTaskInTasks } from '../../shared/taskUtils'
+import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
@@ -214,18 +214,9 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                 lesson={lessonForEditor}
                 parentGroup={selectedTaskGroup}
                 onUpdate={updated => {
-                  let finalUpdated = updated
-                  if (selectedTaskGroup) {
-                    if ('_customTitle' in updated && !updated._customTitle) {
-                      const { _customTitle, ...withoutFlag } = finalUpdated
-                      finalUpdated = withoutFlag
-                    } else if (updated.title !== selectedTask.title) {
-                      finalUpdated = { ...updated, _customTitle: true }
-                    }
-                  }
                   handleLessonUpdate(prev => ({
                     ...prev,
-                    tasks: updateTaskInTasks(prev.tasks, finalUpdated),
+                    tasks: applyTaskUpdate(prev.tasks, selectedTaskGroup, selectedTask, updated),
                   }))
                 }}
               />

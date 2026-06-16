@@ -55,6 +55,16 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - HTML sandbox stores files in Firebase `sandboxFiles` with `__dot__` encoded keys.
 - Filesystem sandbox stores state as a JSON string in `sandboxCode`.
 
+## Live Lesson Task Editing: `lessonOverrideTasks`
+
+- `EditLessonModal` (launched from `TeacherSessionControls` → "Edit Lesson") reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit tasks without leaving TeacherView.
+- Both TeacherView and StudentView compute an *effective* lesson via `applyLessonOverride(baseLesson, session?.lessonOverrideTasks)` — the fetched Firestore lesson with its `tasks` swapped for the live override when present. Every other lesson field is untouched.
+- "Apply for This Session" (teacher or admin) calls `pushLessonOverride(tasks)`, writing to `sessions/{lessonId}/lessonOverrideTasks`. Currently connected students see the change immediately through their existing `useSession` listener — no page reload needed.
+- "Save Permanently" (admin only) additionally calls `publishLessonTasks(lessonId, tasks)`, merge-writing `tasks` to the lesson's Firestore document, so future sessions start from the edited version too.
+- Existing task IDs are never renumbered by this flow (`normalizeTasksForExport(tasks, { preserveIds: true })`) — `session.currentTaskId`, carry-through references, and student per-task localStorage keys all key off the original IDs and would desync if they changed mid-session. Only brand-new tasks get fresh IDs.
+- "Reset to Original" calls `clearLessonOverride()`, reverting both views back to the canonical Firestore lesson.
+- The override clears automatically on `createSession`/`endSession`, so a session restart always starts from the published lesson.
+
 ## Personal Sandbox
 
 - Separate from teacher-forced `sandbox` session state.

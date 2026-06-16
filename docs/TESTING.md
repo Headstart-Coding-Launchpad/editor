@@ -72,6 +72,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/LiveActivityToast.jsx` | Activity notification rendering and expiry behaviour |
 | `src/app/components/TeacherTimers.jsx` | Elapsed/countdown rendering and expired task state |
 | `src/app/components/TeacherSessionControls.jsx` | Navigation, share-link callbacks, and state-specific teacher session actions |
+| `src/app/components/EditLessonModal.jsx` | Role-based footer actions (teacher: session-only; admin: session-only + permanent), save validation gate, active-task delete confirmation; builder's `TaskList`/`TaskEditor`/`GroupEditor` are stubbed at the module boundary |
 | `src/app/components/FilesystemTask.jsx` | Folder navigation, image preview rendering, and browse interaction callbacks |
 | `src/shared/markdown.jsx` | `MarkdownRenderer` renders headings, tables, code fences, callouts and topic-library interaction; `InlineMarkdown` renders inline-only |
 | `src/builder/components/ExplainerEditor.jsx` | Markdown topic picker and recognised-term link prompt |

@@ -121,6 +121,22 @@ export function updateTaskInTasks(tasks, updatedTask) {
   })
 }
 
+// Merge an updated task into the tasks array, tracking whether a subtask's
+// title was manually overridden (vs. left to the group's auto-title pattern).
+// selectedTaskGroup/selectedTask are null for standalone (non-subtask) tasks.
+export function applyTaskUpdate(tasks, selectedTaskGroup, selectedTask, updatedTask) {
+  let finalUpdated = updatedTask
+  if (selectedTaskGroup) {
+    if ('_customTitle' in updatedTask && !updatedTask._customTitle) {
+      const { _customTitle, ...withoutFlag } = finalUpdated
+      finalUpdated = withoutFlag
+    } else if (updatedTask.title !== selectedTask.title) {
+      finalUpdated = { ...updatedTask, _customTitle: true }
+    }
+  }
+  return updateTaskInTasks(tasks, finalUpdated)
+}
+
 // Ensure the titles of all subtasks in all groups match their group's title and index.
 // Subtasks with _customTitle:true are skipped — their title was manually set.
 // The "N" counter only increments for non-custom subtasks, so:

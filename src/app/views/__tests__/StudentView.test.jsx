@@ -16,6 +16,7 @@ vi.mock('../../../shared/useIsMobile', () => ({
 
 vi.mock('../../../shared/lessonService', () => ({
   fetchLessonById: (...args) => mocks.fetchLessonById(...args),
+  applyLessonOverride: (lesson, overrideTasks) => (overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson),
 }))
 
 vi.mock('../../hooks/useSession', () => ({

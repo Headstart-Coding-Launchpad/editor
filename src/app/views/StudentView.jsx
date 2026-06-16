@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
 import { useLessonLoader } from '../hooks/useLessonLoader'
+import { applyLessonOverride } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import { flattenTasks, findTaskById, filterTasksByMode } from '../../shared/taskUtils'
@@ -32,7 +33,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
-  const { lesson, lessonLoading, firstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
+  const { lesson: baseLesson, lessonLoading, firstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
+  const lesson = useMemo(
+    () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
+    [baseLesson, session?.lessonOverrideTasks]
+  )
 
   // ─── Stable callback refs wired to code-state after it initialises ─────────
 

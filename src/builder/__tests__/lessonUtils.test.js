@@ -160,6 +160,18 @@ describe('normalizeTasksForExport', () => {
     }])
   })
 
+  it('preserves original task IDs when preserveIds is true', () => {
+    const exported = normalizeTasksForExport([{
+      id: 70,
+      type: 'group',
+      title: 'Group',
+      subtasks: [{ id: 40, title: 'First', starterCode: '' }, { id: 90, title: 'Second', starterCode: '', carryCodeFrom: 40 }],
+    }], { preserveIds: true })
+
+    expect(exported[0].subtasks[0].id).toBe(40)
+    expect(exported[0].subtasks[1]).toMatchObject({ id: 90, carryCodeFrom: 40 })
+  })
+
   it('exports recap (two-pane) information tasks including leftContent', () => {
     expect(normalizeTasksForExport([{
       id: 4,

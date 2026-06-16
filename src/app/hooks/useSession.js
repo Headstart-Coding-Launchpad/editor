@@ -65,6 +65,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
+      lessonOverrideTasks:   null,
       students:              {},
     })
   }
@@ -94,6 +95,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
+      lessonOverrideTasks:   null,
       students:              null,
     })
     // When the teacher closes the tab, remove the session entirely so the
@@ -177,6 +179,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}`), {
       sandboxExplainer: text || null,
     })
+  }
+
+  async function pushLessonOverride(tasks) {
+    await set(ref(db, `sessions/${lessonId}/lessonOverrideTasks`), tasks)
+  }
+
+  async function clearLessonOverride() {
+    await set(ref(db, `sessions/${lessonId}/lessonOverrideTasks`), null)
   }
 
   async function setPaused(isPaused) {
@@ -333,6 +343,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     // teacher
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
+    pushLessonOverride, clearLessonOverride,
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic,
     // student
