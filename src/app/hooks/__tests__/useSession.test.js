@@ -139,6 +139,53 @@ describe('useSession', () => {
     })
   })
 
+  describe('setTeacherLive', () => {
+    it('encodes dotted file keys before writing, so HTML lessons do not break Realtime Database key rules', async () => {
+      const { result } = renderHook(() => useSession('html-1-1'))
+      await act(async () => {
+        await result.current.setTeacherLive({
+          source: 'teacher',
+          taskId: 1,
+          files: { 'index.html': '<main />', 'style.css': 'body {}' },
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/html-1-1/teacherLive' },
+        expect.objectContaining({
+          files: { index__dot__html: '<main />', style__dot__css: 'body {}' },
+        }),
+      )
+    })
+
+    it('clears the teacherLive node when called with null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.setTeacherLive(null) })
+      expect(firebaseMocks.set).toHaveBeenCalledWith({ path: 'sessions/lesson-1/teacherLive' }, null)
+    })
+  })
+
+  describe('updateTeacherLive', () => {
+    it('encodes dotted file keys before writing via update', async () => {
+      const { result } = renderHook(() => useSession('html-2-1'))
+      await act(async () => {
+        await result.current.updateTeacherLive({ files: { 'index.html': '<main />' } })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/html-2-1/teacherLive' },
+        expect.objectContaining({ files: { index__dot__html: '<main />' } }),
+      )
+    })
+
+    it('leaves payloads without a files map untouched', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.updateTeacherLive({ output: 'hi' }) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLive' },
+        expect.objectContaining({ output: 'hi' }),
+      )
+    })
+  })
+
   describe('renameStudent', () => {
     it('writes the new name to the student displayName path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

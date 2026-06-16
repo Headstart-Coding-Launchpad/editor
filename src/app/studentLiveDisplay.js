@@ -1,10 +1,15 @@
+import { decodeFileKey } from '../shared/fileKeys'
+
 export function toTeacherLiveFiles(files) {
   return files
-    ? Object.entries(files).map(([name, content]) => ({
-      name,
-      content,
-      type: name.endsWith('.html') ? 'html' : name.endsWith('.css') ? 'css' : 'javascript',
-    }))
+    ? Object.entries(files).map(([key, content]) => {
+      const name = decodeFileKey(key)
+      return {
+        name,
+        content,
+        type: name.endsWith('.html') ? 'html' : name.endsWith('.css') ? 'css' : 'javascript',
+      }
+    })
     : []
 }
 
