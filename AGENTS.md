@@ -65,7 +65,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 
 ## Default Workflow
 
-- Make feature work on a focused branch (`feature/`, `fix/`, or `refactor/`).
+- Make feature work on a focused branch (`feature/`, `fix/`, or `refactor/`) - Create this branch before making changes. 
 - Keep changes scoped to the request and existing architecture.
 - Preserve unrelated user changes in the worktree.
 - Add or update tests when behaviour changes.
