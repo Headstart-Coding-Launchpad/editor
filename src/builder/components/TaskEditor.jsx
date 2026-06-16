@@ -396,28 +396,29 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             })()}
           </TaskPreviewPanel>
         </>
-      ) : lessonMod?.BuilderWorkspace && (() => {
-        const BuilderWorkspace = lessonMod.BuilderWorkspace
-        return (
-          <BuilderWorkspace
-            task={task} lesson={lesson} onUpdate={onUpdate}
-            codeTab={codeTab} codeStages={codeStages}
-            activePythonCode={activePythonCode}
-            selectedFile={selectedFile} selectedCompleteFile={selectedCompleteFile}
-            setSelectedFile={setSelectedFile} setSelectedCompleteFile={setSelectedCompleteFile}
-            running={running} runningTests={runningTests} pyodideStatus={pyodideStatus}
-            htmlPreviewOpen={htmlPreviewOpen} setHtmlPreviewOpen={setHtmlPreviewOpen}
-            iframeSrc={iframeSrc} iframeRef={iframeRef}
-            inputPrompt={inputPrompt} output={output} runStatus={runStatus}
-            checkResult={checkResult} setCheckResult={setCheckResult}
-            checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} testResults={testResults}
-            handleCodeTabChange={handleCodeTabChange} handleAddStage={handleAddStage} handleRemoveStage={handleRemoveStage}
-            handleRun={handleRun} handleStop={handleStop} handleRunTests={handleRunTests}
-            handleTestChecks={handleTestChecks} handleInputSubmit={handleInputSubmit}
-            resetToStarterBtn={resetToStarterBtn}
-          />
-        )
-      })()}
+      ) : lessonMod?.BuilderWorkspace ? (
+        <lessonMod.BuilderWorkspace
+          task={task} lesson={lesson} onUpdate={onUpdate}
+          codeTab={codeTab} codeStages={codeStages}
+          activePythonCode={activePythonCode}
+          selectedFile={selectedFile} selectedCompleteFile={selectedCompleteFile}
+          setSelectedFile={setSelectedFile} setSelectedCompleteFile={setSelectedCompleteFile}
+          running={running} runningTests={runningTests} pyodideStatus={pyodideStatus}
+          htmlPreviewOpen={htmlPreviewOpen} setHtmlPreviewOpen={setHtmlPreviewOpen}
+          iframeSrc={iframeSrc} iframeRef={iframeRef}
+          inputPrompt={inputPrompt} output={output} runStatus={runStatus}
+          checkResult={checkResult} setCheckResult={setCheckResult}
+          checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} testResults={testResults}
+          handleCodeTabChange={handleCodeTabChange} handleAddStage={handleAddStage} handleRemoveStage={handleRemoveStage}
+          handleRun={handleRun} handleStop={handleStop} handleRunTests={handleRunTests}
+          handleTestChecks={handleTestChecks} handleInputSubmit={handleInputSubmit}
+          resetToStarterBtn={resetToStarterBtn}
+        />
+      ) : (
+        <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: '#991b1b' }}>
+          Unrecognised lesson type "{lesson.type}" — no builder workspace available for this task.
+        </div>
+      )}
     </div>
   )
 }

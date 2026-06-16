@@ -1,19 +1,9 @@
 import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
+import { scrollLayoutStyles } from '../sharedStyles.js'
 
-const taskContentStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-  overflow: 'visible',
-}
-
-const editorAreaStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-}
+const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 
 const DEFAULT_HTML_FILE = {
   name: 'index.html',
@@ -59,9 +49,23 @@ const htmlModule = {
     ? [{ type: 'code_contains', value: '' }]
     : [{ type: 'output_contains', value: '' }],
 
+  carryThroughField: 'carryCodeFrom',
+  carryThroughLabel: 'Carry code from task',
+  getCarryThroughUpdates: (sourceTask) => {
+    const updates = { starterFiles: (sourceTask.completeFiles ?? sourceTask.starterFiles ?? []).map(f => ({ ...f })) }
+    const newEntry = sourceTask.completeEntryFile ?? sourceTask.entryFile
+    if (newEntry) updates.entryFile = newEntry
+    return updates
+  },
+  getNewStarterUpdates: (task) => ({
+    starterFiles: (task.starterFiles ?? []).map(f => ({ ...f, content: '' })),
+  }),
+
   supportsInteractionMode: true,
   supportsIncorrectChecks: true,
   supportsTests: false,
+  supportsVariableChecks: false,
+  supportsDomChecks: true,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['html', 'javascript', 'css'],
