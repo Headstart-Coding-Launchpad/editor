@@ -72,7 +72,7 @@ export default function LessonTaskContent({
       )}
 
       {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
-        <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} />
+        <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy />
       )}
 
       <div style={editorAreaStyle} className={isForcedTeacherLive ? 'live-view-active' : undefined}>
@@ -88,11 +88,11 @@ export default function LessonTaskContent({
           />
         )}
         {isSandbox && sandboxExplainer && (
-          <ExplainerPanel title="Instructions" content={sandboxExplainer} topicType={lesson.type} />
+          <ExplainerPanel title="Instructions" content={sandboxExplainer} topicType={lesson.type} disableCopy />
         )}
 
         {!isSandbox && isInformationTask ? (
-          <InformationTask task={task} lesson={lesson} fill />
+          <InformationTask task={task} lesson={lesson} fill disableCopy />
         ) : !isSandbox && isQuizTask ? (
           <QuizTask
             task={task}

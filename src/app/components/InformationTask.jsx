@@ -9,7 +9,7 @@ function lessonTypeLabel(type) {
   return type || 'Lesson'
 }
 
-export default function InformationTask({ task, lesson, fill = true }) {
+export default function InformationTask({ task, lesson, fill = true, disableCopy = false }) {
   const informationType = task?.informationType ?? 'standard'
   const markdownTextScale = 1.4
 
@@ -32,10 +32,10 @@ export default function InformationTask({ task, lesson, fill = true }) {
     return (
       <section className="information-task information-task--recap">
         <div className="information-recap__left">
-          <MarkdownRenderer content={task?.leftContent ?? ''} textScale={markdownTextScale} inheritColor topicType={lesson?.type} />
+          <MarkdownRenderer content={task?.leftContent ?? ''} textScale={markdownTextScale} inheritColor topicType={lesson?.type} disableCopy={disableCopy} />
         </div>
         <div className="information-recap__content">
-          <MarkdownRenderer content={task?.explainer ?? ''} textScale={markdownTextScale} topicType={lesson?.type} showLibrary />
+          <MarkdownRenderer content={task?.explainer ?? ''} textScale={markdownTextScale} topicType={lesson?.type} showLibrary disableCopy={disableCopy} />
         </div>
       </section>
     )
@@ -49,6 +49,7 @@ export default function InformationTask({ task, lesson, fill = true }) {
       fill={fill}
       markdownTextScale={markdownTextScale}
       topicType={lesson?.type}
+      disableCopy={disableCopy}
     />
   )
 }

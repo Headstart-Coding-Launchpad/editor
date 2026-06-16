@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 import ExplainerPanel from '../ExplainerPanel'
 
 vi.mock('../../../shared/markdown', () => ({
-  MarkdownRenderer: ({ content }) => <div data-testid="markdown">{content}</div>,
+  MarkdownRenderer: ({ content, disableCopy }) => <div data-testid="markdown" data-disable-copy={String(!!disableCopy)}>{content}</div>,
 }))
 
 describe('ExplainerPanel', () => {
@@ -60,5 +60,15 @@ describe('ExplainerPanel', () => {
     render(<ExplainerPanel content="No title" collapsible={false} />)
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
     expect(screen.getByTestId('markdown')).toBeInTheDocument()
+  })
+
+  it('does not disable copy by default', () => {
+    render(<ExplainerPanel title="Section" content="Content" />)
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-disable-copy', 'false')
+  })
+
+  it('passes disableCopy through to the markdown renderer', () => {
+    render(<ExplainerPanel title="Section" content="Content" disableCopy />)
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-disable-copy', 'true')
   })
 })

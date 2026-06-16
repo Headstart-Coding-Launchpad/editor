@@ -5,6 +5,15 @@ import InformationTask from '../InformationTask'
 
 const lesson = { id: 'test', type: 'python', title: 'Test Lesson', description: 'Desc', level: 1 }
 
+function findUserSelectNoneAncestor(el) {
+  let node = el
+  while (node && node !== document.body) {
+    if (node.style?.userSelect === 'none') return node
+    node = node.parentElement
+  }
+  return null
+}
+
 describe('InformationTask', () => {
   describe('standard type', () => {
     it('renders the explainer content', () => {
@@ -17,6 +26,18 @@ describe('InformationTask', () => {
       const task = { title: 'Read this', explainer: 'Standard content' }
       render(<InformationTask task={task} lesson={lesson} />)
       expect(screen.getByText('Standard content')).toBeInTheDocument()
+    })
+
+    it('does not disable text selection by default', () => {
+      const task = { informationType: 'standard', title: 'Read this', explainer: 'Hello world' }
+      render(<InformationTask task={task} lesson={lesson} />)
+      expect(findUserSelectNoneAncestor(screen.getByText('Hello world'))).toBeNull()
+    })
+
+    it('disables text selection when disableCopy is set', () => {
+      const task = { informationType: 'standard', title: 'Read this', explainer: 'Hello world' }
+      render(<InformationTask task={task} lesson={lesson} disableCopy />)
+      expect(findUserSelectNoneAncestor(screen.getByText('Hello world'))).not.toBeNull()
     })
   })
 
@@ -65,6 +86,13 @@ describe('InformationTask', () => {
       const task = { informationType: 'recap', leftContent: '', explainer: '' }
       render(<InformationTask task={task} lesson={lesson} />)
       expect(screen.queryByText('Recap!')).not.toBeInTheDocument()
+    })
+
+    it('disables text selection in both panes when disableCopy is set', () => {
+      const task = { informationType: 'recap', leftContent: 'Left pane text', explainer: 'Right pane text' }
+      render(<InformationTask task={task} lesson={lesson} disableCopy />)
+      expect(findUserSelectNoneAncestor(screen.getByText('Left pane text'))).not.toBeNull()
+      expect(findUserSelectNoneAncestor(screen.getByText('Right pane text'))).not.toBeNull()
     })
   })
 })

@@ -105,6 +105,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Lesson title, level badge, and mode indicator (solo / live / sandbox)
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
 - Collapsible explainer panel with Markdown formatting, inline topic definitions, and Scratch block visualisation
+- Explainer text is not selectable/copyable for students (teacher and builder previews are unaffected)
 - Retro typing animation on Python output
 
 ### Task Navigation

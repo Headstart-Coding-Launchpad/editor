@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, onTopicOpen, onTopicClose, openTopicId }) {
+export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, onTopicOpen, onTopicClose, openTopicId, disableCopy = false }) {
   const [collapsed, setCollapsed] = useState(false)
   const isCollapsed = collapsible && collapsed
 
@@ -22,7 +22,7 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
 
       {!isCollapsed && (
         <div style={{ ...s.content, ...(fill ? s.contentFill : {}) }}>
-          <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} />
+          <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} />
         </div>
       )}
     </div>
