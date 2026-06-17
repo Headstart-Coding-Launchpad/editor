@@ -4,12 +4,14 @@ import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import AccountManagement from './AccountManagement'
 import LessonPanel from './LessonPanel'
+import SessionsPanel from './SessionsPanel'
 import TopicLibraryPanel from './TopicLibraryPanel'
 import FeedbackPanel from './FeedbackPanel'
 import SharedAssetsPanel from './SharedAssetsPanel'
 
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
+  { id: 'sessions', label: 'Sessions' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
   { id: 'accounts', label: 'Accounts' },
@@ -52,6 +54,7 @@ export default function AdminPortal() {
 
       <main style={s.main}>
         {activeTab === 'lessons' && <LessonPanel />}
+        {activeTab === 'sessions' && <SessionsPanel />}
         {activeTab === 'topics' && <TopicLibraryPanel />}
         {activeTab === 'shared-assets' && <SharedAssetsPanel />}
         {activeTab === 'accounts' && <AccountManagement />}
