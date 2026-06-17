@@ -33,10 +33,15 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
-  const { lesson: baseLesson, lessonLoading, firstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
+  const { lesson: baseLesson, lessonLoading, firstTaskId: baseFirstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
   const lesson = useMemo(
     () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
     [baseLesson, session?.lessonOverrideTasks]
+  )
+  // Derive firstTaskId from the post-override lesson so solo-mode students start on a valid task
+  const firstTaskId = useMemo(
+    () => lesson ? (flattenTasks(lesson.tasks)[0]?.id ?? baseFirstTaskId) : baseFirstTaskId,
+    [lesson, baseFirstTaskId]
   )
 
   // ─── Stable callback refs wired to code-state after it initialises ─────────

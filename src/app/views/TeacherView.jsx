@@ -304,8 +304,15 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleSavePermanentLessonEdit(tasks) {
-    await publishLessonTasks(lessonId, tasks)
-    await pushLessonOverride(tasks)
+    const [firestoreResult, rtdbResult] = await Promise.allSettled([
+      publishLessonTasks(lessonId, tasks),
+      pushLessonOverride(tasks),
+    ])
+    if (firestoreResult.status === 'rejected') throw firestoreResult.reason
+    setBaseLesson(prev => ({ ...prev, tasks }))
+    if (rtdbResult.status === 'rejected') {
+      throw new Error('Lesson saved — but failed to update the live session: ' + rtdbResult.reason?.message)
+    }
   }
 
   async function handleResetLessonOverride() {

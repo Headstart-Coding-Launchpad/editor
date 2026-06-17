@@ -53,15 +53,23 @@ export default function EditLessonModal({
   }
 
   function guardedDelete(taskId) {
-    if (!confirmIfActiveTask(taskId)) return
-    handleDelete(taskId)
+    if (taskId === currentTaskId) {
+      if (!confirmIfActiveTask(taskId)) return
+      handleDelete(taskId, { skipConfirm: true })
+    } else {
+      handleDelete(taskId)
+    }
   }
 
   function guardedDeleteGroup(groupId) {
     const group = draftLesson.tasks.find(t => t.type === 'group' && t.id === groupId)
     const containsActiveTask = (group?.subtasks ?? []).some(t => t.id === currentTaskId)
-    if (containsActiveTask && !confirmIfActiveTask(currentTaskId)) return
-    handleDeleteGroup(groupId)
+    if (containsActiveTask) {
+      if (!confirmIfActiveTask(currentTaskId)) return
+      handleDeleteGroup(groupId, { skipConfirm: true })
+    } else {
+      handleDeleteGroup(groupId)
+    }
   }
 
   function validateBeforeSave() {
@@ -81,6 +89,8 @@ export default function EditLessonModal({
     try {
       await onApplySession(normalizeTasksForExport(draftLesson.tasks, { preserveIds: true }))
       onClose()
+    } catch (err) {
+      alert('Failed to apply session changes: ' + err.message)
     } finally {
       setSaving(false)
     }

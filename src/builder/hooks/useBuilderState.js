@@ -166,8 +166,8 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     selectTask(newId)
   }
 
-  function handleDelete(taskId) {
-    if (!confirm('Delete this task?')) return
+  function handleDelete(taskId, { skipConfirm = false } = {}) {
+    if (!skipConfirm && !confirm('Delete this task?')) return
     const group = findGroupForTask(lesson.tasks, taskId)
     if (group) {
       const newSubtasks = (group.subtasks ?? []).filter(t => t.id !== taskId)
@@ -191,8 +191,8 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     }
   }
 
-  function handleDeleteGroup(groupId) {
-    if (!confirm('Delete this group and all its subtasks?')) return
+  function handleDeleteGroup(groupId, { skipConfirm = false } = {}) {
+    if (!skipConfirm && !confirm('Delete this group and all its subtasks?')) return
     handleLessonUpdate(prev => ({ ...prev, tasks: prev.tasks.filter(t => !(t.type === 'group' && t.id === groupId)) }))
     const remaining = flattenTasks(lesson.tasks.filter(t => !(t.type === 'group' && t.id === groupId)))
     selectTask(remaining[0]?.id ?? null)

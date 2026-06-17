@@ -268,6 +268,7 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
 
     const { _checkTested, _customTitle, hints: _hints, ...rest } = task
     const exported = { ...rest, id: idMap[task.id] }
+    if (preserveIds && _customTitle) exported._customTitle = _customTitle
     if (exported.taskMode === 'both') delete exported.taskMode
     if (exported.carryCodeFrom != null) exported.carryCodeFrom = idMap[exported.carryCodeFrom] ?? exported.carryCodeFrom
     if (exported.carryBlocksFrom != null) exported.carryBlocksFrom = idMap[exported.carryBlocksFrom] ?? exported.carryBlocksFrom
