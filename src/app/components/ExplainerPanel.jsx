@@ -69,10 +69,14 @@ const s = {
   },
   content: {
     padding: '14px 16px',
+    overflowY: 'auto',
+    maxHeight: '50vh',
   },
   contentFill: {
     flex: 1,
+    minHeight: 0,
     maxHeight: 'none',
+    overflowY: 'auto',
     padding: '24px 28px',
   },
 }
