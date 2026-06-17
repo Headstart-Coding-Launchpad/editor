@@ -91,6 +91,12 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Broadcast teacher's or a pinned student's screen to all students simultaneously
 - Available via a separate presentation window
 
+### Edit Lesson
+- "Edit Lesson" button opens the builder's task list/editor (add, duplicate, delete, reorder, group) in a modal without leaving the session
+- Teachers: "Apply for This Session" broadcasts the edited tasks live to connected students for the current session only — never written to Firestore, and cleared on session end/restart
+- Admins: same session-only option, plus "Save Permanently" which also publishes the change to the lesson's Firestore document
+- "Reset to Original" discards any session edits and reverts to the published lesson
+
 ---
 
 ## Student Features

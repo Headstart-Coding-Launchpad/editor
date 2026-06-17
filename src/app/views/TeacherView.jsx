@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
+import { applyLessonOverride, publishLessonTasks } from '../../shared/lessonService'
+import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import PythonEditor from '../components/PythonEditor'
@@ -42,16 +44,21 @@ import {
 
 export default function TeacherView({ lessonId }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const {
     session, loading,
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
+    pushLessonOverride, clearLessonOverride,
     setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic,
   } = useSession(lessonId)
 
-  const [lesson, setLesson]             = useState(null)
+  const [baseLesson, setBaseLesson]     = useState(null)
+  const lesson = useMemo(
+    () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
+    [baseLesson, session?.lessonOverrideTasks]
+  )
   const [lessonLoading, setLessonLoading] = useState(true)
   const { topics } = useTopicLibrary(lesson?.type, !!lesson)
   const [lessonError, setLessonError]     = useState(false)
@@ -60,6 +67,7 @@ export default function TeacherView({ lessonId }) {
   const [previewTaskId, setPreviewTaskId]   = useState(null)
   const [showEndModal, setShowEndModal]         = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [leftCollapsed, setLeftCollapsed]   = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [code, setCode]                 = useState('')
@@ -79,7 +87,7 @@ export default function TeacherView({ lessonId }) {
     getDoc(doc(firestore, 'lessons', lessonId))
       .then(snap => {
         if (snap.exists()) {
-          setLesson(snap.data())
+          setBaseLesson(snap.data())
         } else {
           setLessonError(true)
         }
@@ -291,6 +299,26 @@ export default function TeacherView({ lessonId }) {
     if (goHome) navigate('/')
   }
 
+  async function handleApplySessionLessonEdit(tasks) {
+    await pushLessonOverride(tasks)
+  }
+
+  async function handleSavePermanentLessonEdit(tasks) {
+    const [firestoreResult, rtdbResult] = await Promise.allSettled([
+      publishLessonTasks(lessonId, tasks),
+      pushLessonOverride(tasks),
+    ])
+    if (firestoreResult.status === 'rejected') throw firestoreResult.reason
+    setBaseLesson(prev => ({ ...prev, tasks }))
+    if (rtdbResult.status === 'rejected') {
+      throw new Error('Lesson saved — but failed to update the live session: ' + rtdbResult.reason?.message)
+    }
+  }
+
+  async function handleResetLessonOverride() {
+    await clearLessonOverride()
+  }
+
   async function handleGoLiveForMe(studentId) {
     await setTeacherLive(null)
     await setActiveStudentView(studentId)
@@ -384,6 +412,7 @@ export default function TeacherView({ lessonId }) {
             session={session}
             onOpenPresentationWindow={handleOpenPresentationWindow}
             onOpenFeedback={() => setShowFeedbackModal(true)}
+            onOpenEditLesson={() => setShowEditLessonModal(true)}
             onStartSession={startSession}
             onEndSession={() => setShowEndModal(true)}
             onRestartSession={restartSession}
@@ -519,6 +548,18 @@ export default function TeacherView({ lessonId }) {
           currentTaskTitle={task?.title ?? null}
           teacherEmail={user?.email ?? ''}
           onClose={() => setShowFeedbackModal(false)}
+        />
+      )}
+
+      {showEditLessonModal && (
+        <EditLessonModal
+          lesson={lesson}
+          role={role}
+          currentTaskId={session?.currentTaskId ?? currentTaskId}
+          onApplySession={handleApplySessionLessonEdit}
+          onSavePermanent={handleSavePermanentLessonEdit}
+          onResetToOriginal={handleResetLessonOverride}
+          onClose={() => setShowEditLessonModal(false)}
         />
       )}
     </div>

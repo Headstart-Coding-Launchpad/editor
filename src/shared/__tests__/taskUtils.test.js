@@ -9,6 +9,7 @@ import {
   findGroupForTask,
   getProgressItems,
   updateTaskInTasks,
+  applyTaskUpdate,
   updateSubtaskTitles,
   deriveTaskContext,
   buildStageOptions,
@@ -178,6 +179,35 @@ describe('updateTaskInTasks', () => {
     const updatedSub = { id: 's1', title: 'New Sub 1' }
     const result = updateTaskInTasks([group], updatedSub)
     expect(result[0]).not.toBe(group)
+  })
+})
+
+// ─── applyTaskUpdate ──────────────────────────────────────────────────────────
+
+describe('applyTaskUpdate', () => {
+  it('updates a standalone task without touching _customTitle', () => {
+    const updated = { id: 't1', title: 'Renamed' }
+    const result = applyTaskUpdate([task1, task2], null, null, updated)
+    expect(result[0]).toBe(updated)
+  })
+
+  it('flags a subtask as custom-titled when its title diverges from the group default', () => {
+    const updated = { ...sub1, title: 'My Special Step' }
+    const result = applyTaskUpdate([group], group, sub1, updated)
+    expect(result[0].subtasks[0]).toMatchObject({ title: 'My Special Step', _customTitle: true })
+  })
+
+  it('clears the _customTitle flag when a subtask title is reverted', () => {
+    const customSub = { ...sub1, _customTitle: true }
+    const updated = { ...customSub, _customTitle: false }
+    const result = applyTaskUpdate([{ ...group, subtasks: [customSub, sub2] }], group, customSub, updated)
+    expect(result[0].subtasks[0]).not.toHaveProperty('_customTitle')
+  })
+
+  it('leaves the update untouched when the title matches the existing subtask title', () => {
+    const updated = { ...sub1, explainer: 'New content' }
+    const result = applyTaskUpdate([group], group, sub1, updated)
+    expect(result[0].subtasks[0]).not.toHaveProperty('_customTitle')
   })
 })
 

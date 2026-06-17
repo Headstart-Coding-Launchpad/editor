@@ -4,6 +4,7 @@ export default function TeacherSessionControls({
   session,
   onOpenPresentationWindow,
   onOpenFeedback,
+  onOpenEditLesson,
   onStartSession,
   onEndSession,
   onRestartSession,
@@ -22,6 +23,9 @@ export default function TeacherSessionControls({
       </button>
       <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
         Feedback
+      </button>
+      <button className="btn-ghost teacher-session-controls__action" onClick={onOpenEditLesson}>
+        Edit Lesson
       </button>
       <button className="btn-ghost teacher-session-controls__action" onClick={onReturnToAdmin}>
         Admin
