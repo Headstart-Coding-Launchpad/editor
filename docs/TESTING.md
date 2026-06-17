@@ -9,7 +9,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | Concern | Tool | Reason |
 |---|---|---|
 | Test runner | **Vitest** | Native Vite integration — zero config overhead, same transform pipeline as dev/build |
-| DOM environment | **jsdom** | `checks.js` exercises `querySelectorAll` / CSS style reads; jsdom is more complete than happy-dom for this |
+| DOM environment | **jsdom** | `modules/checks.js` exercises `querySelectorAll` / CSS style reads; jsdom is more complete than happy-dom for this |
 | Component/hook testing | **@testing-library/react** | Tests behaviour not implementation; natural event simulation |
 | E2E | **Playwright** | Solo-student and builder flows are fully self-contained (no Firebase) — high-value without infrastructure cost |
 | Coverage | **Vitest built-in (v8)** | No separate Istanbul setup needed |
@@ -26,7 +26,8 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 
 | File | Key targets |
 |---|---|
-| `src/shared/checks.js` | `evaluateSingleCheck` (all 37+ check types), `evaluateCheckResults`, `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeExactOutput`, `countOutputLines`, `parseCheckValue`, `deepEqual`, `normalizeChecks`, `checkRequiresRun`, `checkAllowedForSubmit` |
+| `src/modules/checks.js` | `evaluateSingleCheck` (all 37+ check types dispatched via module evaluators), `evaluateCheckResults`, `normalizeChecks`, `checkRequiresRun`, `checkAllowedForSubmit` |
+| `src/shared/checkHelpers.js` | `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeExactOutput`, `countOutputLines`, `parseCheckValue`, `deepEqual` |
 | `src/shared/taskUtils.js` | `flattenTasks`, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, `updateSubtaskTitles` |
 | `src/shared/codemirror.js` | `getTabSize`, `getLanguageExtension`, `createBaseExtensions` |
 | `src/shared/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
@@ -43,9 +44,9 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/teacherSandboxContent.js` | Teacher sandbox draft/live/configured/task fallback selection and defensive cloning |
 | `src/app/teacherLivePayload.js` | Decoded teacher-live payload construction from a student snapshot |
 
-**Placement:** `src/shared/__tests__/checks.test.js`, `src/shared/__tests__/taskUtils.test.js`, etc.
+**Placement:** `src/modules/__tests__/checks.test.js`, `src/shared/__tests__/taskUtils.test.js`, etc.
 
-**Coverage target:** 90%+ line coverage on `checks.js` and `taskUtils.js`; 80%+ on `iframe.js`.
+**Coverage target:** 90%+ line coverage on `modules/checks.js` and `taskUtils.js`; 80%+ on `iframe.js`.
 
 ---
 

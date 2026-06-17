@@ -1,4 +1,4 @@
-import { getFirstFailedCheckHint } from '../shared/checks'
+import { getFirstFailedCheckHint } from '../modules/checks'
 
 export function getQuizSuggestion(task, answer) {
   if (!task) return ''

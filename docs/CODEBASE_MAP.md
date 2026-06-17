@@ -209,19 +209,24 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
+| `checks.js` | Check evaluation dispatcher: `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `normalizeChecks`, `CHECK_TYPES` — delegates `fs_*` → `filesystem/checks.js`, `variable_*` → `python/checks.js`, `element_*` → `html/checks.js` |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
+| `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
 | `html/index.js` | HTML module definition |
+| `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck` — all `element_*` types |
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
 | `html/BuilderWorkspace.jsx` | Re-export of `HtmlTaskWorkspace` |
 | `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
 | `scratch/index.js` | Scratch module definition |
+| `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
 | `scratch/StudentWorkspace.jsx` | Scratch workspace with Reset Blocks button (extracted from `LessonTaskContent`) |
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
 | `filesystem/index.js` | Filesystem module definition |
+| `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `evaluateFsCheck` — all `fs_*` types |
 | `filesystem/StudentWorkspace.jsx` | `FilesystemTask` wrapper with initialDir derivation |
 | `filesystem/BuilderWorkspace.jsx` | Re-export of `FilesystemTaskWorkspace` |
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
@@ -265,9 +270,9 @@ Each `index.js` exports a default object with:
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
-| `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
+| `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeCode`, `parseMultipleContainOptions`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, and related helpers — used by `modules/checks.js` and sub-module evaluators |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
-| `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `evaluateFsCheck`, `FS_CHECK_TYPES` |
+| `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `normaliseDirPath`, `normaliseFilePath`, `parentPath` — CRUD helpers only; check evaluation lives in `modules/filesystem/checks.js` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
@@ -275,10 +280,9 @@ Each `index.js` exports a default object with:
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
 | `pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
 | `pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming |
-| `scratch.js` | Custom Scratch interpreter: 88 block definitions, multi-sprite state, broadcast, sounds; re-exports from sub-modules |
+| `scratch.js` | Custom Scratch interpreter: 88 block definitions, multi-sprite state, broadcast, sounds; re-exports check/state helpers from `modules/scratch/checks.js` and persistence helpers from `scratchPersistence.js` |
 | `lessonBlocksCodec.js` | Encodes/decodes Scratch block trees as JSON strings for Firestore storage, working around Firestore's nested map/array depth cap |
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, task summary); `reportToYamlText()` for YAML export |
-| `scratchChecks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES` |
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |

@@ -51,17 +51,13 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Firebase, localStorage, URLs, session states, identity | `docs/agents/runtime-model.md` |
 | Classroom live-view, sandbox, Pyodide, carry-through behaviours | `docs/agents/classroom-behaviours.md` |
 | Git, PRs, review comments, testing, doc hygiene | `docs/agents/workflows.md` |
-| Writing or editing a lesson (YAML-first) | `docs/authoring/AUTHORING_GUIDE.md` |
-| Plain-language overview of task types (no field detail) | `docs/authoring/task-types.md` |
-| Plain-language overview of quiz types (no field detail) | `docs/authoring/quiz-types.md` |
-| All check types | `docs/authoring/checks.md` |
-| Quiz sub-types in detail | `docs/authoring/quiz-tasks.md` |
-| Python code task fields, tests | `docs/authoring/python-tasks.md` |
-| HTML code task fields | `docs/authoring/html-tasks.md` |
-| Filesystem code task fields | `docs/authoring/filesystem-tasks.md` |
-| Scratch fields, opcodes, block explainer style | `docs/authoring/scratch-reference.md` |
-| Scratch toolbox XML format and examples | `docs/authoring/scratch-toolbox-xml.md` |
-| Lesson JSON field reference | `docs/authoring/lesson-schema.md` |
+| Writing or editing a lesson (envelope, common fields, quiz, groups) | `docs/authoring/AUTHORING_GUIDE.md` |
+| Authoring a Python lesson (task fields, checks, tests, examples) | `docs/authoring/python.md` |
+| Authoring an HTML lesson (task fields, element checks, examples) | `docs/authoring/html.md` |
+| Authoring a Scratch lesson (sprites, opcodes, checks, examples) | `docs/authoring/scratch.md` |
+| Authoring a Filesystem lesson (task fields, fs checks, examples) | `docs/authoring/filesystem.md` |
+| Quiz sub-types and quiz check types in detail | `docs/authoring/quiz-tasks.md` |
+| Lesson JSON field reference (cross-cutting schema) | `docs/authoring/lesson-schema.md` |
 | Lesson YAML basics (envelope, common fields, info/group/draft tasks) | `docs/authoring/lesson-schema-yaml.md` |
 | Topic library schema and YAML authoring | `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` |
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |

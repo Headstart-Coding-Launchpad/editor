@@ -1,13 +1,8 @@
 # Lesson JSON Schema
 
-Full JSON field reference. For YAML authoring see `docs/authoring/AUTHORING_GUIDE.md` or the basic-field reference at `docs/authoring/lesson-schema-yaml.md`.
+Full JSON field reference for cross-cutting fields. For YAML authoring see `docs/authoring/AUTHORING_GUIDE.md` or the basic-field reference at `docs/authoring/lesson-schema-yaml.md`. For type-specific code task fields, checks, and minimal examples see `docs/authoring/{python,html,scratch,filesystem}.md`.
 
-**Check types:** `docs/authoring/checks.md`
 **Quiz sub-types:** `docs/authoring/quiz-tasks.md`
-**Python code task fields:** `docs/authoring/python-tasks.md`
-**HTML code task fields:** `docs/authoring/html-tasks.md`
-**Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`
-**Scratch fields and opcodes:** `docs/authoring/scratch-reference.md`
 
 Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson, including lessons that still contain draft tasks.
 
@@ -134,17 +129,6 @@ Any task can carry a `reviewNote` for in-builder collaboration:
 
 ---
 
-## Code Task Fields (by lesson type)
-
-Type-specific code task fields, carry-through behaviour, and task tests live in their own files:
-
-- **Python:** `docs/authoring/python-tasks.md`
-- **HTML:** `docs/authoring/html-tasks.md`
-- **Filesystem:** `docs/authoring/filesystem-tasks.md`
-- **Scratch:** `docs/authoring/scratch-reference.md`
-
----
-
 ## Information Task Fields
 
 | Field | Required | Notes |
@@ -200,15 +184,4 @@ Two separate validators exist and they do not enforce the same rules. `cli lesso
 - Variable checks (`variable_*`) need a `name`; `variable_dict_key_value` needs a `key`; `variable_array_nth_item` needs a valid `index`.
 - Checks requiring a value must provide one (exceptions: `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`).
 - Scratch toolbox XML must parse if provided.
-- Scratch checks beyond `sprite_property`/`block_used` have their own required fields — see `docs/authoring/checks.md`.
-
----
-
-## Minimal Examples
-
-A minimal full-lesson JSON example for each lesson type lives alongside its field reference:
-
-- **Python:** `docs/authoring/python-tasks.md`
-- **HTML:** `docs/authoring/html-tasks.md`
-- **Scratch:** `docs/authoring/scratch-reference.md`
-- **Filesystem:** `docs/authoring/filesystem-tasks.md`
+- Scratch checks have their own required fields — see `docs/authoring/scratch.md`.

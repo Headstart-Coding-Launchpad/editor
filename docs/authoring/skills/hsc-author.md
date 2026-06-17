@@ -9,7 +9,7 @@ For brand-new lessons, keep local YAML and JSON artifacts under `New Lessons/YAM
 ## Before you start
 
 - Read `docs/authoring/AUTHORING_GUIDE.md` for YAML syntax, all fields, and CLI usage.
-- For specific detail: `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, `docs/authoring/scratch-reference.md`.
+- For per-type detail: `docs/authoring/python.md`, `docs/authoring/html.md`, `docs/authoring/scratch.md`, `docs/authoring/filesystem.md`, `docs/authoring/quiz-tasks.md`.
 - Run `node cli/cli.mjs lessons list` to check that the intended lesson ID is not already taken.
 
 ---

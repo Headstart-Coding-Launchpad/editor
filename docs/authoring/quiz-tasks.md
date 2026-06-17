@@ -190,3 +190,21 @@ Students rate confidence on a 1–5 scale (red to green). Any rating completes t
 ```
 
 No `check`, `options`, `pairs`, `blanks`, or `text` fields.
+
+---
+
+## Quiz Check Types
+
+These check types apply to quiz tasks regardless of which lesson type contains them.
+
+| Type | Fields | Notes |
+|---|---|---|
+| `answer_equals` | `type`, `value` | Selected option ID or text equals value |
+| `answer_contains` | `type`, `value` | Free-text answer contains value |
+| `answer_not_contains` | `type`, `value` | Free-text answer does not contain value |
+| `answer_matches_regex` | `type`, `value` | Free-text answer matches regex |
+| `quiz_result` | `type` | All pairs/blanks correct (match, fill_blank). No `value` needed. |
+
+The `answer:` shorthand on multiple choice tasks auto-generates `check: { type: answer_equals, value: <id> }`.
+
+**Multi-option:** `"option1","option2"` format for `answer_contains` — passes if the answer contains any option. **Case sensitivity:** `answer_matches_regex` is case-sensitive; all other answer comparisons are case-insensitive.

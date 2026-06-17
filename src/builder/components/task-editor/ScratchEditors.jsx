@@ -10,7 +10,7 @@ import {
   loadBlocklyModules,
   predefinedBlockToStack,
 } from '../../../shared/scratch'
-import { normalizeSequenceItem } from '../../../shared/scratchChecks'
+import { normalizeSequenceItem } from '../../../modules/scratch/checks'
 
 const SCRATCH_TOOLBOX_GROUPS = [
   {

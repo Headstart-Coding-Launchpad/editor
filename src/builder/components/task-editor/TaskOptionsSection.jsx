@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { normalizeChecks } from '../../../shared/checks'
+import { normalizeChecks } from '../../../modules/checks'
 import { Field, CarryThroughPicker } from './TaskEditorFields'
 import { CheckListEditor } from './CheckEditors'
 import TestsEditor from './TestsEditor'

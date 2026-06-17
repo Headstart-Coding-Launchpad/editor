@@ -4,7 +4,7 @@
 // Re-exported here for backward compatibility.
 import * as Blockly from 'blockly'
 
-export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from './scratchChecks'
+export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from '../modules/scratch/checks'
 export { saveWorkspace, loadWorkspace, migrateBroadcastState, migrateVariableFields } from './scratchPersistence'
 
 let _Blockly = null

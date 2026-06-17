@@ -1,4 +1,4 @@
-import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks } from '../shared/checks'
+import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks } from '../modules/checks'
 import { flattenTasks } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
 
