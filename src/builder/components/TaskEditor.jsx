@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { filterChecksForInteraction } from '../../shared/checks'
+import { filterChecksForInteraction } from '../../modules/checks'
 import ExplainerEditor from './ExplainerEditor'
 import QuizTask from '../../app/components/QuizTask'
 import InformationTask from '../../app/components/InformationTask'

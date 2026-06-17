@@ -1,5 +1,5 @@
 import React from 'react'
-import { normalizeChecks } from '../../shared/checks'
+import { normalizeChecks } from '../checks'
 import { CheckListEditor } from '../../builder/components/task-editor/CheckEditors'
 
 export default function CheckEditor({ task, lesson, onUpdate, interactionMode, output, activeFiles }) {

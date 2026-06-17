@@ -1,5 +1,5 @@
 import React from 'react'
-import { normalizeChecks } from '../../shared/checks'
+import { normalizeChecks } from '../checks'
 import { ScratchCheckListEditor } from '../../builder/components/task-editor/ScratchEditors'
 import { DEFAULT_SPRITES } from '../../shared/scratch'
 

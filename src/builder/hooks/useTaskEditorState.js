@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
 import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
-import { evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../shared/checks'
+import { evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
 export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets = null }) {

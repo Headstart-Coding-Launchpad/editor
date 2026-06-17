@@ -2,11 +2,13 @@
 
 YAML-first reference for writing HSC lessons and topics. Use the CLI to convert YAML and publish to Firestore.
 
-**Full JSON field reference:** `docs/authoring/lesson-schema.md`
-**All check types:** `docs/authoring/checks.md`
-**Quiz types in detail:** `docs/authoring/quiz-tasks.md`
-**Scratch fields and opcodes:** `docs/authoring/scratch-reference.md`
-**Markdown renderer:** `docs/authoring/markdown-renderer.md`
+**Per-type authoring (task fields, checks, examples):**
+- Python: `docs/authoring/python.md`
+- HTML: `docs/authoring/html.md`
+- Scratch: `docs/authoring/scratch.md`
+- Filesystem: `docs/authoring/filesystem.md`
+
+**Other references:** `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/markdown-renderer.md`
 
 ---
 
@@ -35,27 +37,6 @@ title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
 level: 1                     # optional — difficulty badge in the TopBar
 
-# Python / Scratch sandbox mode
-sandboxStarter: |            # optional — pre-loaded code or Scratch state
-  # Try anything here!
-
-# HTML sandbox mode
-sandboxStarterFiles:         # optional — pre-loaded files
-  - name: index.html
-    type: html
-    content: |
-      <!DOCTYPE html><html><body></body></html>
-
-# Scratch sandbox mode
-sandboxToolbox: "<xml>...</xml>"   # optional — Scratch XML toolbox
-sandboxSprites: []                 # optional — sprite array
-sandboxBackdrops: []               # optional — backdrop array
-
-# Filesystem sandbox mode
-sandboxStarterFs:            # optional — initial filesystem for sandbox
-  "/":
-    type: dir
-
 # Assets
 assetsPath: scratch-assets   # optional — base URL for image assets
 assets:                      # optional — files shown in AssetBrowser
@@ -67,6 +48,8 @@ storageAssets:               # optional — Firebase Storage files
 
 tasks: []                    # required — ordered task list (see below)
 ```
+
+Sandbox-mode fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`) are type-specific — see each per-type doc.
 
 ---
 
@@ -84,112 +67,6 @@ tasks:
     taskMode: both            # optional — both (default) | live | solo
     # taskType omitted = code task; use information or quiz for non-code tasks
 ```
-
----
-
-## Code Tasks
-
-### Python
-
-```yaml
-  - title: Print a message
-    explainer: Use `print()` to show text.
-    starterCode: |            # optional — loaded when no carry-through exists
-      print('Hello')
-    completeCode: |           # optional — reference solution (builder only)
-      print('Hello Headstart')
-    carryCodeFrom: 1          # optional — carry saved code from task ID
-    interactionMode: run      # optional — run (default) | submit
-    check:
-      type: output_contains
-      value: Hello Headstart
-```
-
-### HTML
-
-```yaml
-  - title: Add a heading
-    explainer: Add an `<h1>` tag.
-    entryFile: index.html     # optional — defaults to index.html
-    starterFiles:
-      - name: index.html
-        type: html            # html | css | javascript
-        content: |
-          <!DOCTYPE html><html><body></body></html>
-      - name: style.css
-        type: css
-        content: "body { font-family: sans-serif; }"
-    completeFiles:            # optional — reference solution
-      - name: index.html
-        type: html
-        content: |
-          <!DOCTYPE html><html><body><h1>Hello</h1></body></html>
-    carryCodeFrom: 1          # optional — carry files from task ID (matched by filename)
-    interactionMode: run      # optional — run (default) | submit
-    check:
-      type: element_exists
-      selector: h1
-```
-
-### Scratch
-
-```yaml
-  - title: Move the sprite
-    explainer: Make the sprite move to the right.
-    toolbox: "<xml>...</xml>" # optional — restricts available blocks
-    sprites:                  # optional — defaults to one cat sprite
-      - id: sprite1
-        name: Rocket
-        type: arrow           # cat | ball | star | arrow | bat | parrot
-        x: -100
-        y: 0
-        size: 100
-        direction: 90
-        costumes:             # optional — image costumes
-          - name: rocket
-            image: sprites/rocket.png
-    backdrops:                # optional — defaults to plain white
-      - id: backdrop1
-        name: Space
-        image: backdrops/space.png
-    variables:                # optional — defaults to a single 'score' variable
-      - name: score
-        showOnStage: true
-    starterBlocks: null       # optional — Blockly workspace state
-    completeBlocks: null      # optional — reference solution blocks
-    carryBlocksFrom: null     # optional — carry blocks from task ID
-    check:
-      type: sprite_property
-      evaluation: after_run
-      spriteName: Rocket
-      property: x
-      operator: greater_than
-      value: 50
-```
-
-For full Scratch fields (costumes, emoji sprites, prebuilt stacks, block opcodes, `blocks_in_order` etc.) see `docs/authoring/scratch-reference.md`.
-
-### Filesystem
-
-```yaml
-  - title: Create a folder
-    explainer: Create a folder called **Documents**.
-    starterFs:                # optional — initial filesystem state
-      "/":
-        type: dir
-    completeFs:               # optional — reference solution
-      "/":
-        type: dir
-      "/Documents/":
-        type: dir
-    carryFsFrom: null         # optional — carry filesystem from task ID
-    startsInDir: /            # optional — which dir the explorer opens in
-    check:
-      type: fs_dir_exists
-      path: /Documents/
-```
-
-Filesystem checks evaluate automatically (no Run button). Check types: `fs_file_exists`, `fs_dir_exists`, `fs_not_exists`, `fs_content_contains`, `fs_content_equals`, `fs_file_in_dir`, `fs_dir_opened`, `fs_file_opened`.
 
 ---
 
@@ -263,7 +140,7 @@ For full quiz detail and all answer check types see `docs/authoring/quiz-tasks.m
 
 ## Checks
 
-### Single check
+### Check shape
 
 ```yaml
 check:
@@ -294,20 +171,11 @@ incorrectChecks:
     hint: Change `Hello World` to `Hello Headstart`.
 ```
 
-### Common check types
+**Wildcards:** `*` matches any sequence (including newlines) in `value` for containment/equality checks.
 
-| Task type | Common checks |
-|---|---|
-| Python run | `output_contains`, `output_line_count`, `code_contains`, variable checks |
-| Python variable | `variable_equals`, `variable_exists`, `variable_type` |
-| Python submit | `code_contains`, `code_does_not_contain`, `code_matches_regex` |
-| HTML run | `element_exists`, `element_value`, `element_attribute`, `output_contains` |
-| Scratch | `sprite_property`, `block_used`, `variable_equals`, `blocks_in_order` |
-| Quiz | `answer_equals`, `answer_contains`, `quiz_result` |
+**Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
 
-Python run-mode completion checks automatically fail if the code run ends with an error. Do not add a separate check for error-free execution; choose a check that describes the output, code, or variable state the task is intended to produce.
-
-For the full list of every check type and its fields see `docs/authoring/checks.md`.
+**Case sensitivity:** Regex checks are case-sensitive. All other string comparisons are case-insensitive.
 
 ---
 
@@ -334,29 +202,6 @@ tasks:
 ```
 
 Groups cannot be nested. Group IDs are auto-generated.
-
----
-
-## Automated Tests (Python only)
-
-```yaml
-  - title: Greet the user
-    explainer: Ask for a name and print `Hello <name>`.
-    starterCode: |
-      name = input('What is your name? ')
-      print('Hello', name)
-    tests:
-      - id: t1
-        name: Greet Alice
-        inputs:
-          - name: username
-            value: Alice
-        check:
-          type: output_contains
-          value: "Hello {username}"   # {username} substituted with Alice
-```
-
-When `tests` is present, a **Run Tests** button appears. Students must pass all tests to complete the task. Plain **Run** remains interactive but does not gate completion.
 
 ---
 
@@ -542,7 +387,7 @@ For full topic field reference see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
 
 ---
 
-## Full YAML Example
+## Full YAML Example (Python)
 
 ```yaml
 id: python-for-loops

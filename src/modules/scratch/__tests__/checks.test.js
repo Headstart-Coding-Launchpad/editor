@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } from '../scratchChecks'
+import { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } from '../checks'
 
 // Minimal workspace stub used by block_used / block_count checks.
 function makeWorkspace(blockTypes) {
