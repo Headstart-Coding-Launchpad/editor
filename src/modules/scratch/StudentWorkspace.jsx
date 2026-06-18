@@ -10,7 +10,7 @@ export default function StudentWorkspace({
   isSandbox, isViewingPrev, isForcedTeacherLive, previewMode,
 }) {
   const personalSandboxScratchState = cs.inPersonalSandbox
-    ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarterCode ?? null)
+    ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
     : null
   const initialProject = cs.inPersonalSandbox ? null : selectScratchInitialProject({
     task,

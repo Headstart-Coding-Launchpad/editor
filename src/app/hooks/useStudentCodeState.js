@@ -465,7 +465,7 @@ export function useStudentCodeState({
     const id = identity.anonymousId
     if (lesson.type === 'python') {
       const saved = loadPersonalSandboxCode(lessonId, id)
-      setCode(saved?.code ?? lesson.sandboxStarterCode ?? '')
+      setCode(saved?.code ?? lesson.sandboxStarter ?? '')
     } else if (lesson.type === 'html') {
       const starterFiles = lesson.sandboxStarterFiles ?? []
       const sandboxFiles = starterFiles.map(f => {
@@ -818,7 +818,7 @@ export function useStudentCodeState({
     if (inPersonalSandboxRef.current) {
       if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.')) return
       if (lesson.type === 'python') {
-        setCode(lesson.sandboxStarterCode ?? '')
+        setCode(lesson.sandboxStarter ?? '')
         setOutput('')
         setRunStatus(null)
       } else if (lesson.type === 'html') {

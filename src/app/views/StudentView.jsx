@@ -268,11 +268,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const canOfferNextStage = isSolo && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
   const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex >= taskCodeStages.length
   const hasPersonalSandbox = lesson.type === 'python'
-    ? !!(lesson.sandboxStarterCode != null)
+    ? true
     : lesson.type === 'html'
     ? !!(lesson.sandboxStarterFiles?.length > 0)
     : lesson.type === 'scratch'
-    ? !!(lesson.sandboxStarterCode != null)
+    ? !!(lesson.sandboxStarter != null)
     : lesson.type === 'filesystem'
     ? !!(lesson.sandboxStarterFs != null)
     : false
