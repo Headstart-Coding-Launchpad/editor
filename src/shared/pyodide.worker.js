@@ -200,8 +200,8 @@ self.onmessage = async ({ data }) => {
       self.postMessage({ type: 'done', status: 'success', variables: _lastVariables })
     } catch (err) {
       flushBuffers()
-      const msg = String(err).replace(/^PythonError:\s*/, '')
-      self.postMessage({ type: 'output', text: msg + '\n', kind: 'stderr' })
+      const raw = String(err).replace(/^PythonError:\s*/, '')
+      self.postMessage({ type: 'output', text: formatPythonError(raw) + '\n', kind: 'stderr' })
       self.postMessage({ type: 'done', status: 'error', variables: _lastVariables })
     }
     return
@@ -212,6 +212,22 @@ self.onmessage = async ({ data }) => {
     _inputResolve = null
     return
   }
+}
+
+function formatPythonError(traceback) {
+  const lines = traceback.split('\n').map(l => l.trimEnd()).filter(Boolean)
+  if (lines.length === 0) return traceback
+
+  // Find the innermost <student> frame to get the student's line number
+  let lineNum = null
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = lines[i].match(/File "<student>", line (\d+)/)
+    if (m) { lineNum = m[1]; break }
+  }
+
+  // The last line is the actual error type and message
+  const errorLine = lines[lines.length - 1]
+  return lineNum ? `Line ${lineNum}: ${errorLine}` : errorLine
 }
 
 async function loadPyodide_() {
