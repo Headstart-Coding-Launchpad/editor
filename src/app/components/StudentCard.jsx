@@ -1,12 +1,40 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { getQuizOptionText, CONFIDENCE_COLOURS } from './QuizTask'
 import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 
+function formatLastRun(ts) {
+  if (!ts) return null
+  const secs = Math.floor((Date.now() - ts) / 1000)
+  if (secs < 10) return 'Just now'
+  if (secs < 60) return `${secs}s ago`
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  return `${hrs}h ago`
+}
+
 export default function StudentCard({ student, lesson, lessonId, session, topics, onRename, onRemove, onExpand }) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
+  const [isActive, setIsActive] = useState(false)
+  const [, setTick] = useState(0)
+
+  // Show typing dots for 4 seconds after lastActivityAt updates, then clear
+  useEffect(() => {
+    if (!student.lastActivityAt) return
+    setIsActive(true)
+    const t = setTimeout(() => setIsActive(false), 4000)
+    return () => clearTimeout(t)
+  }, [student.lastActivityAt])
+
+  // Refresh "X ago" label every 30 seconds
+  useEffect(() => {
+    if (!student.lastRunAt) return
+    const interval = setInterval(() => setTick(n => n + 1), 30000)
+    return () => clearInterval(interval)
+  }, [student.lastRunAt])
 
   function handleRename(e) {
     e.preventDefault()
@@ -89,6 +117,16 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         </div>
         <div style={s.badgeRow}>
           <PresenceBadge student={student} session={session} />
+          {student.online && student.windowFocused === false && (
+            <span style={{ ...s.checkBadge, ...s.checkBadgeAway }} title="Student's tab is not focused">
+              Away
+            </span>
+          )}
+          {isActive && (
+            <span className="activity-dots" title="Student is active">
+              <span /><span /><span />
+            </span>
+          )}
           {checkPassed && (
             <span style={{ ...s.checkBadge, ...s.checkBadgePassed }} title="Completion check passed">
               <span style={s.checkBadgeIcon}>✓</span>
@@ -188,6 +226,13 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
           {student.currentFiles
             ? <span style={{ color: '#6b7280', fontSize: 12 }}>HTML project</span>
             : <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>}
+        </div>
+      )}
+
+      {/* Last run indicator for code tasks */}
+      {!isQuiz && !isInformation && student.lastRunAt && (
+        <div style={s.lastRunRow}>
+          <span style={s.lastRunLabel}>▶ {formatLastRun(student.lastRunAt)}</span>
         </div>
       )}
 
@@ -312,6 +357,11 @@ const s = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     display: 'inline-block',
+  },
+  checkBadgeAway: {
+    background: '#f3f4f6',
+    color: '#6b7280',
+    border: '1px solid #d1d5db',
   },
   checkBadgeOverridePassed: {
     background: 'rgba(34,197,94,0.12)',
@@ -448,6 +498,16 @@ const s = {
     fontWeight: 700,
     fontSize: '0.9rem',
     flexShrink: 0,
+  },
+  lastRunRow: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  lastRunLabel: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.7rem',
+    color: '#9ca3af',
+    fontWeight: 500,
   },
   expandBtn: {
     fontSize: 12,
