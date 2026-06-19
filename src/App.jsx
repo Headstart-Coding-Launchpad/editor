@@ -16,7 +16,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/lesson/:lessonId" element={<LessonRoute />} />
           <Route
-            path="/admin"
+            path="/admin/:tab?/:subtab?"
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminPortal />

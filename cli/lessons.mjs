@@ -191,9 +191,188 @@ export function yamlToLesson(yamlText) {
   return { lesson, valid, errors, warnings }
 }
 
+// ── Lesson Drafts (CLI) ───────────────────────────────────────────────────────
+
+export async function listDrafts() {
+  const snap = await db.collection('lessonDrafts').orderBy('updatedAt', 'desc').get()
+  return snap.docs.map(d => {
+    const data = d.data()
+    return {
+      id: d.id,
+      title: data.title ?? '',
+      type: data.type ?? '',
+      level: data.level ?? null,
+      stage: data.stage ?? '',
+      updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? null,
+    }
+  })
+}
+
+export async function getDraft(id) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  return { id: snap.id, ...snap.data() }
+}
+
+export async function upsertDraftDoc(id, fields) {
+  const ref = db.collection('lessonDrafts').doc(id)
+  const existing = await ref.get()
+  const base = existing.exists ? existing.data() : {}
+  await ref.set({
+    ...base,
+    ...fields,
+    id,
+    updatedAt: new Date(),
+    _meta: {
+      ...(base._meta ?? {}),
+      ...(fields._meta ?? {}),
+      createdAt: base._meta?.createdAt ?? new Date(),
+      updatedAt: new Date(),
+    },
+  })
+  const saved = await ref.get()
+  return { success: true, id, stage: saved.data().stage }
+}
+
+export async function updateDraftContext(id, context) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  await db.collection('lessonDrafts').doc(id).update({ context, updatedAt: new Date() })
+  return { success: true, id }
+}
+
+const STAGE_ORDER = ['ideas', 'details', 'review']
+
+export async function submitDraft(id) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  const current = snap.data().stage ?? 'ideas'
+  const idx = STAGE_ORDER.indexOf(current)
+  if (idx === -1 || idx >= STAGE_ORDER.length - 1) {
+    throw new Error(`Draft is already at stage '${current}' — cannot advance further via submit. Use approve to move to approved.`)
+  }
+  const next = STAGE_ORDER[idx + 1]
+  await db.collection('lessonDrafts').doc(id).update({ stage: next, updatedAt: new Date() })
+  return { success: true, id, previousStage: current, stage: next }
+}
+
+export async function requestChanges(id) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  await db.collection('lessonDrafts').doc(id).update({ stage: 'details', updatedAt: new Date() })
+  return { success: true, id, stage: 'details' }
+}
+
+export async function approveDraft(id, reviewerEmail) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  const now = new Date()
+  await db.collection('lessonDrafts').doc(id).update({
+    stage: 'approved',
+    updatedAt: now,
+    '_meta.reviewedBy': reviewerEmail ?? '',
+    '_meta.reviewedAt': now,
+  })
+  return { success: true, id, stage: 'approved' }
+}
+
+export async function markDraftPublished(id) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  await db.collection('lessonDrafts').doc(id).update({ stage: 'published', updatedAt: new Date() })
+  return { success: true, id, stage: 'published' }
+}
+
+export async function listDraftNotes(id) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  return snap.data().reviewNotes ?? []
+}
+
+export async function addDraftNote(id, note) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  const existing = snap.data().reviewNotes ?? []
+  const filtered = existing.filter(n => n.sectionId !== note.sectionId)
+  await db.collection('lessonDrafts').doc(id).update({
+    reviewNotes: [...filtered, { ...note, createdAt: Date.now() }],
+    updatedAt: new Date(),
+  })
+  return { success: true, id, sectionId: note.sectionId }
+}
+
+export async function updateDraftNote(id, sectionId, fields) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  const notes = snap.data().reviewNotes ?? []
+  const updated = notes.map(n => n.sectionId === sectionId ? { ...n, ...fields } : n)
+  await db.collection('lessonDrafts').doc(id).update({ reviewNotes: updated, updatedAt: new Date() })
+  return { success: true, id, sectionId }
+}
+
+export async function deleteDraftNote(id, sectionId) {
+  const snap = await db.collection('lessonDrafts').doc(id).get()
+  if (!snap.exists) throw new Error(`Draft '${id}' not found`)
+  const notes = (snap.data().reviewNotes ?? []).filter(n => n.sectionId !== sectionId)
+  await db.collection('lessonDrafts').doc(id).update({ reviewNotes: notes, updatedAt: new Date() })
+  return { success: true, id, sectionId }
+}
+
 export async function publishYamlLesson(yamlText, includeLesson = false) {
   const lesson = parseYamlLesson(yamlText)
   const result = await publishLesson(lesson)
   if (includeLesson && result.success) result.lesson = lesson
   return result
+}
+
+// ── Draft Entries (CLI) ───────────────────────────────────────────────────────
+
+function makeEntryId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+}
+
+export async function listDraftEntries(draftId) {
+  const snap = await db.collection('lessonDrafts').doc(draftId).get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  return (snap.data().entries ?? []).sort((a, b) => a.order - b.order)
+}
+
+export async function getDraftEntry(draftId, entryId) {
+  const snap = await db.collection('lessonDrafts').doc(draftId).get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const entry = (snap.data().entries ?? []).find(e => e.id === entryId)
+  if (!entry) throw new Error(`Entry '${entryId}' not found in draft '${draftId}'`)
+  return entry
+}
+
+export async function addDraftEntry(draftId, fields) {
+  const ref = db.collection('lessonDrafts').doc(draftId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const entries = snap.data().entries ?? []
+  const entry = { id: makeEntryId(), order: entries.length + 1, ...fields, createdAt: Date.now() }
+  await ref.update({ entries: [...entries, entry], updatedAt: new Date() })
+  return { success: true, entry }
+}
+
+export async function updateDraftEntryById(draftId, entryId, fields) {
+  const ref = db.collection('lessonDrafts').doc(draftId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const entries = snap.data().entries ?? []
+  if (!entries.find(e => e.id === entryId)) throw new Error(`Entry '${entryId}' not found`)
+  const updated = entries.map(e => e.id === entryId ? { ...e, ...fields } : e)
+  await ref.update({ entries: updated, updatedAt: new Date() })
+  return { success: true, draftId, entryId }
+}
+
+export async function deleteDraftEntryById(draftId, entryId) {
+  const ref = db.collection('lessonDrafts').doc(draftId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const remaining = (snap.data().entries ?? [])
+    .filter(e => e.id !== entryId)
+    .map((e, i) => ({ ...e, order: i + 1 }))
+  await ref.update({ entries: remaining, updatedAt: new Date() })
+  return { success: true, draftId, entryId, remaining: remaining.length }
 }

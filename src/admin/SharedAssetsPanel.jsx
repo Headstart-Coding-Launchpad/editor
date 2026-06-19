@@ -22,8 +22,11 @@ function storagePath(type, filename) {
   return `shared/${type}/assets/${filename}`
 }
 
-export default function SharedAssetsPanel() {
-  const [activeType, setActiveType] = useState('python')
+const VALID_TYPES = LESSON_TYPES.map(t => t.id)
+
+export default function SharedAssetsPanel({ subtab, onSubtabChange }) {
+  const activeType = VALID_TYPES.includes(subtab) ? subtab : 'python'
+  const setActiveType = onSubtabChange
 
   return (
     <section style={s.section}>

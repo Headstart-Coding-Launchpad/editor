@@ -48,8 +48,11 @@ function LessonCard({ item, onDelete }) {
   )
 }
 
-export default function FeedbackPanel() {
-  const [subTab, setSubTab] = useState('platform')
+const VALID_SUBTABS = ['platform', 'lesson', 'task']
+
+export default function FeedbackPanel({ subtab, onSubtabChange }) {
+  const subTab = VALID_SUBTABS.includes(subtab) ? subtab : 'platform'
+  const setSubTab = onSubtabChange
   const [platform, setPlatform] = useState([])
   const [allLesson, setAllLesson] = useState([])
   const [loadingPlatform, setLoadingPlatform] = useState(true)

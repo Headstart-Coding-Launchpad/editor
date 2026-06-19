@@ -12,7 +12,86 @@ For brand-new lessons, keep local YAML and JSON artifacts under `New Lessons/YAM
 - For specific detail: `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, `docs/authoring/scratch-reference.md`.
 - Run `node cli/cli.mjs lessons list` to check that the intended lesson ID is not already taken.
 
-## Steps
+---
+
+## Standard Path: Draft → Review → Publish
+
+This is the default path for AI-authored lessons. Drafts are stored in Firestore and reviewed by a human in the Admin Portal → Authoring tab before going live.
+
+### 1. Write the Ideas document
+
+Write a YAML file covering the lesson's scope, rough task sequence, and open questions. The `content` field holds the Markdown planning prose.
+
+```yaml
+id: python-l3-09
+title: Dictionaries
+type: python
+level: 3
+stage: ideas
+author: ai@headstart
+content: |
+  # Python Level 3 - Lesson 9: Dictionaries [Conceptual Draft]
+
+  ## Metadata
+  ...
+
+  ## Sequential Flow
+
+  ### 1. Opening Recap
+  ...
+```
+
+```
+node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-ideas.yaml'
+```
+
+### 2. Expand to the Details document
+
+Update the same draft with the full execution-level spec (exact student-facing copy, code, checks, hints). Change `stage: ideas` to `stage: details` in the file, then re-upsert:
+
+```
+node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-details.yaml'
+node cli/cli.mjs lessons draft submit python-l3-09
+```
+
+`submit` advances the stage: `ideas → details → review`.
+
+### 3. Await human review
+
+The reviewer opens the Admin Portal → Authoring tab and reads the plan. They add per-section notes and either approves or requests changes. Read the current notes:
+
+```
+node cli/cli.mjs lessons draft notes list python-l3-09
+```
+
+If changes are requested (stage returns to `details`), update the content and re-upsert:
+
+```
+node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-details.yaml'
+node cli/cli.mjs lessons draft submit python-l3-09
+```
+
+### 4. Generate YAML and publish
+
+Once approved (`stage: approved`), convert the Details document to YAML, validate, and publish:
+
+```
+node cli/cli.mjs lessons preflight 'New Lessons/YAML Files/Python L3/python-l3-09.yaml'
+node cli/cli.mjs lessons publish-yaml 'New Lessons/YAML Files/Python L3/python-l3-09.yaml'
+node cli/cli.mjs lessons skeleton python-l3-09
+```
+
+Then mark the draft as published:
+
+```
+node cli/cli.mjs lessons draft publish python-l3-09
+```
+
+---
+
+## Fast Path: Direct Publish (trusted content only)
+
+Skip the draft system when making small fixes or when you are confident the lesson needs no human review. This publishes directly to the live `lessons` collection.
 
 ### 1. Draft the YAML
 

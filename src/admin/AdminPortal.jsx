@@ -1,16 +1,19 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { signOut } from 'firebase/auth'
+import { useNavigate, useParams } from 'react-router-dom'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import AccountManagement from './AccountManagement'
+import AuthoringPanel from './AuthoringPanel'
+import FeedbackPanel from './FeedbackPanel'
 import LessonPanel from './LessonPanel'
 import SessionsPanel from './SessionsPanel'
-import TopicLibraryPanel from './TopicLibraryPanel'
-import FeedbackPanel from './FeedbackPanel'
 import SharedAssetsPanel from './SharedAssetsPanel'
+import TopicLibraryPanel from './TopicLibraryPanel'
 
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
+  { id: 'authoring', label: 'Authoring' },
   { id: 'sessions', label: 'Sessions' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
@@ -20,7 +23,13 @@ const TABS = [
 
 export default function AdminPortal() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('lessons')
+  const { tab, subtab } = useParams()
+  const navigate = useNavigate()
+  const activeTab = TABS.some(t => t.id === tab) ? tab : 'lessons'
+
+  function handleSubtabChange(sub) {
+    navigate(`/admin/${activeTab}/${sub}`)
+  }
 
   async function handleLogout() {
     await signOut(auth)
@@ -44,7 +53,7 @@ export default function AdminPortal() {
             <button
               key={tab.id}
               className={`ui-tab${activeTab === tab.id ? ' is-active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => navigate(`/admin/${tab.id}`)}
             >
               {tab.label}
             </button>
@@ -54,11 +63,12 @@ export default function AdminPortal() {
 
       <main style={s.main}>
         {activeTab === 'lessons' && <LessonPanel />}
+        {activeTab === 'authoring' && <AuthoringPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
         {activeTab === 'sessions' && <SessionsPanel />}
         {activeTab === 'topics' && <TopicLibraryPanel />}
-        {activeTab === 'shared-assets' && <SharedAssetsPanel />}
+        {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
         {activeTab === 'accounts' && <AccountManagement />}
-        {activeTab === 'feedback' && <FeedbackPanel />}
+        {activeTab === 'feedback' && <FeedbackPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
       </main>
     </div>
   )

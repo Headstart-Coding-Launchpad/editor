@@ -32,7 +32,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
+| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons, Authoring, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
+| `AuthoringPanel.jsx` | Lesson authoring workflow: draft list with stage badges, Markdown plan viewer with per-section review notes, context tab, notes CRUD, approve/request-changes/publish actions |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
 | `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
@@ -273,7 +274,7 @@ Each `index.js` exports a default object with:
 | `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()` from Firestore `lessons` collection, plus `fetchLessonList()`, `publishLessonTasks()` (admin permanent task save), and `applyLessonOverride()` (merges a live session task override on top of the fetched lesson) |
+| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLessonTasks()`, `applyLessonOverride()`; also draft CRUD helpers: `fetchDraftList()`, `fetchLessonDraftById()`, `upsertDraft()`, `updateDraftStage()`, `addDraftReviewNote()`, `updateDraftReviewNote()`, `deleteDraftReviewNote()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
