@@ -38,10 +38,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
     [baseLesson, session?.lessonOverrideTasks]
   )
-  // Derive firstTaskId from the post-override lesson so solo-mode students start on a valid task
+  // Derive firstTaskId from the post-override lesson so solo-mode students start on a valid task.
+  // If an explicit initialTaskId was provided (e.g. builder preview), honour it over the lesson's first task.
   const firstTaskId = useMemo(
-    () => lesson ? (flattenTasks(lesson.tasks)[0]?.id ?? baseFirstTaskId) : baseFirstTaskId,
-    [lesson, baseFirstTaskId]
+    () => initialTaskId ?? (lesson ? (flattenTasks(lesson.tasks)[0]?.id ?? baseFirstTaskId) : baseFirstTaskId),
+    [lesson, baseFirstTaskId, initialTaskId]
   )
 
   // ─── Stable callback refs wired to code-state after it initialises ─────────
