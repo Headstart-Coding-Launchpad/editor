@@ -566,7 +566,7 @@ export function useStudentCodeState({
 
       const checkContext = { status, code, variables: result.variables ?? {} }
       const hasTests = task?.tests?.length > 0
-      let passed = alreadySolved ? true : (hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext))
+      let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext))
       let suggestion = ''
       if (!alreadySolved) {
         const incorrectHint = (!passed && !hasTests && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
@@ -661,7 +661,7 @@ export function useStudentCodeState({
         const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
         const checks = normalizeChecks(resolvedCheck)
         const checkContext = { status: result.status, code, variables: result.variables ?? {} }
-        const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
+        const passed = result.status !== 'error' && checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
         results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
         if (result.status === 'stopped') break
       }
