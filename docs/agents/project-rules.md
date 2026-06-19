@@ -119,13 +119,17 @@ node cli/cli.mjs <command> <subcommand> [args]
 
 Command groups:
 - `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml`
+- `lessons draft list|get|upsert|context|submit|request-changes|approve|publish`
+- `lessons draft entry list|get|add|update|delete`
+- `lessons draft notes list|add|update|delete`
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|delete-lesson|delete-platform|clear-lesson|clear-platform`
 - `assets list|upload|delete`
+- `authoring guidelines list|get|upsert|delete`
 
 JSON/YAML can be supplied as a file argument or piped via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
-**Agent playbooks** (load when task matches): `docs/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`
+**Agent playbooks** (load when task matches): `docs/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`, `hsc-authoring.md`
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.

@@ -229,6 +229,7 @@ const loadTopics = () => import('./topics.mjs')
 const loadAssets = () => import('./assets.mjs')
 const loadFeedback = () => import('./feedback.mjs')
 const loadTopicUtils = () => import('./topic-utils.mjs')
+const loadAuthoring = () => import('./authoring.mjs')
 
 // validate and yaml-to-json don't touch Firebase, so import directly.
 const loadValidate = () => import('./validate.mjs')
@@ -374,7 +375,7 @@ await yargs(hideBin(process.argv))
         print(await getDraft(id))
       }))
 
-      .command('upsert <id> [file]', 'Create or update a draft from a YAML file — file path or stdin. Fields: title, type, level, stage, content, context, author.', {}, cmd(async ({ id, file }) => {
+      .command('upsert <id> [file]', 'Create or update a draft from a YAML file — file path or stdin. Fields: title, type, level, stage, content, context, author, module, lessonNumber, description, targetAudience, duration.', {}, cmd(async ({ id, file }) => {
         const text = await readText(file)
         let parsed = {}
         try { parsed = yaml.load(text) ?? {} } catch (e) { throw new Error(`Failed to parse YAML: ${e.message}`) }
@@ -385,7 +386,12 @@ await yargs(hideBin(process.argv))
           level: parsed.level ?? null,
           stage: parsed.stage ?? 'ideas',
           content: parsed.content ?? '',
-          ...(parsed.context ? { context: parsed.context } : {}),
+          ...(parsed.context != null ? { context: parsed.context } : {}),
+          ...(parsed.module != null ? { module: parsed.module } : {}),
+          ...(parsed.lessonNumber != null ? { lessonNumber: parsed.lessonNumber } : {}),
+          ...(parsed.description != null ? { description: parsed.description } : {}),
+          ...(parsed.targetAudience != null ? { targetAudience: parsed.targetAudience } : {}),
+          ...(parsed.duration != null ? { duration: parsed.duration } : {}),
           _meta: { authorEmail: parsed.author ?? '' },
         }
         print(await upsertDraftDoc(id, fields))
@@ -425,6 +431,62 @@ await yargs(hideBin(process.argv))
         const { markDraftPublished } = await loadLessons()
         print(await markDraftPublished(id))
       }))
+
+      .command('entry', 'Manage structured plan entries on a draft', yargs => yargs
+
+        .command('list <draftId>', 'List all entries for a draft', {}, cmd(async ({ draftId }) => {
+          const { listDraftEntries } = await loadLessons()
+          print(await listDraftEntries(draftId))
+        }))
+
+        .command('get <draftId> <entryId>', 'Fetch a single entry', {}, cmd(async ({ draftId, entryId }) => {
+          const { getDraftEntry } = await loadLessons()
+          print(await getDraftEntry(draftId, entryId))
+        }))
+
+        .command('add <draftId>', 'Add a new entry to a draft', {
+          title: { type: 'string', demandOption: true, describe: 'Entry title' },
+          type: { type: 'string', choices: ['information', 'code', 'quiz'], default: 'code', describe: 'Entry type' },
+          purpose: { type: 'string', default: '', describe: 'What this entry achieves' },
+          body: { type: 'string', default: '', describe: 'Main Markdown content' },
+          outcome: { type: 'string', default: '', describe: 'Expected outcome' },
+          pitfalls: { type: 'string', default: '', describe: 'Known pitfalls (optional)' },
+        }, cmd(async ({ draftId, title, type, purpose, body, outcome, pitfalls }) => {
+          const { addDraftEntry } = await loadLessons()
+          print(await addDraftEntry(draftId, { title, entryType: type, purpose, body, expectedOutcome: outcome, pitfalls }))
+        }))
+
+        .command('update <draftId> <entryId>', 'Update fields on an existing entry', {
+          title: { type: 'string', describe: 'New title' },
+          type: { type: 'string', choices: ['information', 'code', 'quiz'], describe: 'New entry type' },
+          purpose: { type: 'string', describe: 'Updated purpose' },
+          body: { type: 'string', describe: 'Updated body (Markdown)' },
+          outcome: { type: 'string', describe: 'Updated expected outcome' },
+          pitfalls: { type: 'string', describe: 'Updated pitfalls' },
+          decision: { type: 'string', choices: ['pending', 'accepted', 'rejected'], describe: 'Review decision for this entry' },
+          change: { type: 'string', describe: 'Reviewer suggested change note' },
+        }, cmd(async ({ draftId, entryId, title, type, purpose, body, outcome, pitfalls, decision, change }) => {
+          const { updateDraftEntryById } = await loadLessons()
+          const fields = {}
+          if (title !== undefined) fields.title = title
+          if (type !== undefined) fields.entryType = type
+          if (purpose !== undefined) fields.purpose = purpose
+          if (body !== undefined) fields.body = body
+          if (outcome !== undefined) fields.expectedOutcome = outcome
+          if (pitfalls !== undefined) fields.pitfalls = pitfalls
+          if (decision !== undefined) fields.decision = decision
+          if (change !== undefined) fields.suggestedChange = change
+          print(await updateDraftEntryById(draftId, entryId, fields))
+        }))
+
+        .command('delete <draftId> <entryId>', 'Delete an entry (remaining entries are renumbered)', {}, cmd(async ({ draftId, entryId }) => {
+          const { deleteDraftEntryById } = await loadLessons()
+          print(await deleteDraftEntryById(draftId, entryId))
+        }))
+
+        .demandCommand(1, 'Specify a subcommand: list | get | add | update | delete')
+        .help()
+      )
 
       .command('notes', 'Manage per-section review notes on a draft', yargs => yargs
 
@@ -469,7 +531,7 @@ await yargs(hideBin(process.argv))
         .help()
       )
 
-      .demandCommand(1, 'Specify a subcommand: list | get | upsert | context | submit | request-changes | approve | publish | notes')
+      .demandCommand(1, 'Specify a subcommand: list | get | upsert | context | submit | request-changes | approve | publish | entry | notes')
       .help()
     )
 
@@ -716,6 +778,49 @@ await yargs(hideBin(process.argv))
     .help()
   )
 
-  .demandCommand(1, 'Specify a command: lessons | tasks | topics | feedback | assets')
+  // ─── AUTHORING ───────────────────────────────────────────────────────────────
+
+  .command('authoring', 'Manage authoring guidelines (standalone admin guidance docs)', yargs => yargs
+
+    .command('guidelines', 'Manage authoring guideline entries', yargs => yargs
+
+      .command('list', 'List all authoring guidelines', {
+        'applies-to': { type: 'string', choices: ['python', 'html', 'scratch', 'all'], describe: 'Filter by lesson type' },
+      }, cmd(async ({ 'applies-to': appliesTo }) => {
+        const { listGuidelines } = await loadAuthoring()
+        print(await listGuidelines({ appliesTo: appliesTo ?? null }))
+      }))
+
+      .command('get <id>', 'Fetch a single guideline by ID', {}, cmd(async ({ id }) => {
+        const { getGuideline } = await loadAuthoring()
+        print(await getGuideline(id))
+      }))
+
+      .command('upsert <id> [file]', 'Create or update a guideline from a YAML file — file path or stdin. Fields: title, appliesTo, body.', {}, cmd(async ({ id, file }) => {
+        const text = await readText(file)
+        let parsed = {}
+        try { parsed = yaml.load(text) ?? {} } catch (e) { throw new Error(`Failed to parse YAML: ${e.message}`) }
+        const { upsertGuideline } = await loadAuthoring()
+        print(await upsertGuideline(id, {
+          title: parsed.title ?? '',
+          appliesTo: parsed.appliesTo ?? 'all',
+          body: parsed.body ?? '',
+        }))
+      }))
+
+      .command('delete <id>', 'Permanently delete a guideline', {}, cmd(async ({ id }) => {
+        const { deleteGuideline } = await loadAuthoring()
+        print(await deleteGuideline(id))
+      }))
+
+      .demandCommand(1, 'Specify a subcommand: list | get | upsert | delete')
+      .help()
+    )
+
+    .demandCommand(1, 'Specify a subcommand: guidelines')
+    .help()
+  )
+
+  .demandCommand(1, 'Specify a command: lessons | tasks | topics | feedback | assets | authoring')
   .help()
   .parseAsync()

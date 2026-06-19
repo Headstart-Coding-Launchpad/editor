@@ -10,6 +10,7 @@ Reusable workflow playbooks for the HSC platform. Each file can be read directly
 | `hsc-topics.md` | Manage the topic library |
 | `hsc-assets.md` | Upload, list, and delete lesson assets |
 | `hsc-feedback.md` | Read, create, delete, and bulk-clear feedback |
+| `hsc-authoring.md` | Authoring guidelines and lesson draft pipeline (Ideas → Published) |
 
 ## Install as Claude Code slash commands
 

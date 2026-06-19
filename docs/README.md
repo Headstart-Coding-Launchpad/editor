@@ -118,3 +118,8 @@ Upload, list, and delete lesson asset files in Firebase Storage. Covers MIME typ
 
 ### [skills/hsc-feedback.md](skills/hsc-feedback.md)
 Read, create, delete, and bulk-clear feedback items in both the lesson feedback subcollection and the platform feedback collection. Full field reference, filter options, and example commands.
+
+### [skills/hsc-authoring.md](skills/hsc-authoring.md)
+Authoring guidelines (`authoring guidelines`) and the lesson draft pipeline (`lessons draft`, `lessons draft entry`, `lessons draft notes`). Covers the full Ideas → Details → Review → Approved → Published workflow with all commands, flags, YAML input formats, and a typical end-to-end example.
+
+**Load when:** managing authoring guidelines in the Admin Portal, or working with lesson drafts at any stage of the review pipeline.

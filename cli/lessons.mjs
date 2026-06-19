@@ -324,3 +324,55 @@ export async function publishYamlLesson(yamlText, includeLesson = false) {
   if (includeLesson && result.success) result.lesson = lesson
   return result
 }
+
+// ── Draft Entries (CLI) ───────────────────────────────────────────────────────
+
+function makeEntryId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+}
+
+export async function listDraftEntries(draftId) {
+  const snap = await db.collection('lessonDrafts').doc(draftId).get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  return (snap.data().entries ?? []).sort((a, b) => a.order - b.order)
+}
+
+export async function getDraftEntry(draftId, entryId) {
+  const snap = await db.collection('lessonDrafts').doc(draftId).get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const entry = (snap.data().entries ?? []).find(e => e.id === entryId)
+  if (!entry) throw new Error(`Entry '${entryId}' not found in draft '${draftId}'`)
+  return entry
+}
+
+export async function addDraftEntry(draftId, fields) {
+  const ref = db.collection('lessonDrafts').doc(draftId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const entries = snap.data().entries ?? []
+  const entry = { id: makeEntryId(), order: entries.length + 1, ...fields, createdAt: Date.now() }
+  await ref.update({ entries: [...entries, entry], updatedAt: new Date() })
+  return { success: true, entry }
+}
+
+export async function updateDraftEntryById(draftId, entryId, fields) {
+  const ref = db.collection('lessonDrafts').doc(draftId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const entries = snap.data().entries ?? []
+  if (!entries.find(e => e.id === entryId)) throw new Error(`Entry '${entryId}' not found`)
+  const updated = entries.map(e => e.id === entryId ? { ...e, ...fields } : e)
+  await ref.update({ entries: updated, updatedAt: new Date() })
+  return { success: true, draftId, entryId }
+}
+
+export async function deleteDraftEntryById(draftId, entryId) {
+  const ref = db.collection('lessonDrafts').doc(draftId)
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error(`Draft '${draftId}' not found`)
+  const remaining = (snap.data().entries ?? [])
+    .filter(e => e.id !== entryId)
+    .map((e, i) => ({ ...e, order: i + 1 }))
+  await ref.update({ entries: remaining, updatedAt: new Date() })
+  return { success: true, draftId, entryId, remaining: remaining.length }
+}

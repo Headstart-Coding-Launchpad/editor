@@ -60,6 +60,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
 | Agent playbooks (author, edit, topics, assets, feedback) | `docs/skills/` |
 | Reading, creating, or clearing feedback via CLI | `docs/skills/hsc-feedback.md` |
+| Authoring guidelines and lesson draft pipeline | `docs/skills/hsc-authoring.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |
 

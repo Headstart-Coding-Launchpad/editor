@@ -61,5 +61,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null
                          && request.auth.token.role == 'admin';
     }
+
+    // Authoring guidelines: admin-only. Internal reference docs for lesson authors.
+    match /authoringGuidelines/{guidelineId} {
+      allow read, write: if request.auth != null
+                         && request.auth.token.role == 'admin';
+    }
   }
 }
