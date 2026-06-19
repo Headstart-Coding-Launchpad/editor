@@ -70,7 +70,7 @@ function TypeBadge({ type }) {
 
 // ── Entry drawer ──────────────────────────────────────────────────────────────
 
-function EntryDrawer({ entry, draftId, lessonId, onClose, onSaved, onDeleted }) {
+function EntryDrawer({ entry, draftId, lessonId, onClose, onSaved, onDeleted, initialTab = 'edit' }) {
   const isNew = !entry.id
   const [form, setForm] = useState({
     title: entry.title ?? '',
@@ -88,7 +88,7 @@ function EntryDrawer({ entry, draftId, lessonId, onClose, onSaved, onDeleted }) 
   const [feedback, setFeedback] = useState([])
   const [loadingFeedback, setLoadingFeedback] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [tab, setTab] = useState('edit')
+  const [tab, setTab] = useState(initialTab)
 
   useEffect(() => {
     if (!entry.id || !lessonId) return
@@ -167,16 +167,16 @@ function EntryDrawer({ entry, draftId, lessonId, onClose, onSaved, onDeleted }) 
                 </select>
 
                 <label style={s.label}>Purpose</label>
-                <textarea style={s.textarea} rows={4} value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} placeholder="What this entry achieves…" />
+                <textarea style={{ ...s.textarea, minHeight: 100 }} rows={5} value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} placeholder="What this entry achieves…" />
 
                 <label style={s.label}>Content <span style={s.hint}>(Markdown)</span></label>
                 <textarea style={{ ...s.textarea, minHeight: 160, fontFamily: 'var(--font-mono, monospace)', fontSize: '0.82rem' }} rows={8} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="User-facing content, starter code, instructions…" />
 
                 <label style={s.label}>Expected outcome</label>
-                <textarea style={s.textarea} rows={4} value={form.expectedOutcome} onChange={e => setForm(f => ({ ...f, expectedOutcome: e.target.value }))} placeholder="What students should be able to do…" />
+                <textarea style={{ ...s.textarea, minHeight: 100 }} rows={5} value={form.expectedOutcome} onChange={e => setForm(f => ({ ...f, expectedOutcome: e.target.value }))} placeholder="What students should be able to do…" />
 
                 <label style={s.label}>Known pitfalls <span style={s.hint}>(optional)</span></label>
-                <textarea style={s.textarea} rows={4} value={form.pitfalls} onChange={e => setForm(f => ({ ...f, pitfalls: e.target.value }))} placeholder="Common mistakes or implementation notes…" />
+                <textarea style={{ ...s.textarea, minHeight: 100 }} rows={5} value={form.pitfalls} onChange={e => setForm(f => ({ ...f, pitfalls: e.target.value }))} placeholder="Common mistakes or implementation notes…" />
               </>
             )}
 
@@ -239,8 +239,25 @@ function EntryDrawer({ entry, draftId, lessonId, onClose, onSaved, onDeleted }) 
 
 // ── Entries tab ───────────────────────────────────────────────────────────────
 
-function EntriesTab({ draft, onOpenEntry }) {
+const REVIEW_NOTE_COLORS = {
+  pending:  { bg: '#fffbeb', border: '#fde68a', label: '#92400e' },
+  accepted: { bg: '#f0fdf4', border: '#bbf7d0', label: '#166534' },
+  rejected: { bg: '#fef2f2', border: '#fecaca', label: '#991b1b' },
+}
+
+function EntriesTab({ draft, draftId, onOpenEntry, onUpdateDecision }) {
   const entries = (draft.entries ?? []).slice().sort((a, b) => a.order - b.order)
+  const [busyId, setBusyId] = useState(null)
+
+  async function handleDecision(entry, decision) {
+    setBusyId(entry.id)
+    try {
+      const note = entry.reviewNote ?? {}
+      await onUpdateDecision(entry.id, decision, note)
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   if (entries.length === 0) {
     return (
@@ -255,17 +272,80 @@ function EntriesTab({ draft, onOpenEntry }) {
     <div style={s.entryList}>
       {entries.map(entry => {
         const note = entry.reviewNote
-        const hasNote = note?.suggestedChange?.trim() || note?.extraNote?.trim()
+        const decision = note?.decision ?? 'pending'
+        const hasNoteText = note?.suggestedChange?.trim() || note?.extraNote?.trim()
+        const noteColors = REVIEW_NOTE_COLORS[decision] ?? REVIEW_NOTE_COLORS.pending
+        const busy = busyId === entry.id
+
         return (
-          <button key={entry.id} style={s.entryCard} onClick={() => onOpenEntry(entry)}>
-            <div style={s.entryCardTop}>
-              <span style={s.entryOrder}>{entry.order}</span>
-              <TypeBadge type={entry.entryType} />
-              <span style={s.entryTitle}>{entry.title || '(untitled)'}</span>
-              {hasNote && <DecisionBadge decision={note.decision ?? 'pending'} />}
+          <div key={entry.id} style={s.entryCard}>
+            <div style={s.entryCardHeader}>
+              <div style={s.entryCardMeta}>
+                <span style={s.entryOrder}>{entry.order}</span>
+                <TypeBadge type={entry.entryType} />
+                <span style={s.entryTitle}>{entry.title || '(untitled)'}</span>
+              </div>
+              <DecisionBadge decision={decision} />
             </div>
-            {entry.purpose && <p style={s.entryPurpose}>{entry.purpose}</p>}
-          </button>
+
+            {(entry.purpose || entry.expectedOutcome || entry.pitfalls) && (
+              <div style={s.entryCardBody}>
+                {entry.purpose && (
+                  <div style={s.entrySection}>
+                    <span style={s.entrySectionLabel}>Purpose</span>
+                    <p style={s.entrySectionText}>{entry.purpose}</p>
+                  </div>
+                )}
+                {entry.expectedOutcome && (
+                  <div style={s.entrySection}>
+                    <span style={s.entrySectionLabel}>Expected outcome</span>
+                    <p style={s.entrySectionText}>{entry.expectedOutcome}</p>
+                  </div>
+                )}
+                {entry.pitfalls && (
+                  <div style={s.entrySection}>
+                    <span style={s.entrySectionLabel}>Known pitfalls</span>
+                    <p style={s.entrySectionText}>{entry.pitfalls}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {hasNoteText && (
+              <div style={{ ...s.reviewNoteBox, background: noteColors.bg, borderColor: noteColors.border }}>
+                <span style={{ ...s.entrySectionLabel, color: noteColors.label }}>Review note</span>
+                {note.suggestedChange?.trim() && (
+                  <p style={s.reviewNoteText}><strong>Suggested change:</strong> {note.suggestedChange}</p>
+                )}
+                {note.extraNote?.trim() && (
+                  <p style={s.reviewNoteText}><strong>Note:</strong> {note.extraNote}</p>
+                )}
+              </div>
+            )}
+
+            <div style={s.entryCardActions}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  style={{ ...s.entryActionBtn, ...s.entryActionReject }}
+                  disabled={busy || decision === 'rejected'}
+                  onClick={() => handleDecision(entry, 'rejected')}
+                >
+                  Reject
+                </button>
+                <button
+                  style={{ ...s.entryActionBtn, ...s.entryActionApprove }}
+                  disabled={busy || decision === 'accepted'}
+                  onClick={() => handleDecision(entry, 'accepted')}
+                >
+                  Approve
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button style={s.entryActionBtn} onClick={() => onOpenEntry(entry, 'review')}>Review</button>
+                <button style={{ ...s.entryActionBtn, ...s.entryActionEdit }} onClick={() => onOpenEntry(entry, 'edit')}>Edit</button>
+              </div>
+            </div>
+          </div>
         )
       })}
     </div>
@@ -601,6 +681,14 @@ export default function AuthoringPanel({ subtab, onSubtabChange }) {
     }
   }
 
+  async function handleEntryDecision(entryId, decision, existingNote) {
+    await updateEntryReviewNote(selectedId, entryId, {
+      decision,
+      suggestedChange: existingNote.suggestedChange ?? '',
+      extraNote: existingNote.extraNote ?? '',
+    })
+  }
+
   async function handleDeleteDraft() {
     if (!confirm(`Delete draft "${draft?.title || selectedId}"? This cannot be undone.`)) return
     try {
@@ -687,7 +775,7 @@ export default function AuthoringPanel({ subtab, onSubtabChange }) {
                 </div>
                 {subTab === 'entries' && (
                   <button className="btn-ghost-outline" style={{ fontSize: '0.8rem' }}
-                    onClick={() => setOpenEntry({ order: (draft.entries?.length ?? 0) + 1 })}>
+                    onClick={() => setOpenEntry({ entry: { order: (draft.entries?.length ?? 0) + 1 }, tab: 'edit' })}>
                     + Add entry
                   </button>
                 )}
@@ -695,7 +783,12 @@ export default function AuthoringPanel({ subtab, onSubtabChange }) {
 
               <div style={s.panelBody}>
                 {subTab === 'entries' && (
-                  <EntriesTab draft={draft} onOpenEntry={entry => setOpenEntry(entry)} />
+                  <EntriesTab
+                    draft={draft}
+                    draftId={draft.id}
+                    onOpenEntry={(entry, tab) => setOpenEntry({ entry, tab: tab ?? 'edit' })}
+                    onUpdateDecision={handleEntryDecision}
+                  />
                 )}
                 {subTab === 'context' && (
                   <ContextTab draft={draft} onSave={handleSaveContext} />
@@ -746,7 +839,8 @@ export default function AuthoringPanel({ subtab, onSubtabChange }) {
 
       {openEntry && draft && (
         <EntryDrawer
-          entry={openEntry}
+          entry={openEntry.entry}
+          initialTab={openEntry.tab}
           draftId={draft.id}
           lessonId={draft.id}
           onClose={() => setOpenEntry(null)}
@@ -794,7 +888,7 @@ const s = {
   draftTitle: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', lineHeight: 1.3 },
   draftMeta: { display: 'flex', alignItems: 'center', gap: 6 },
   draftType: { fontFamily: 'var(--font-body)', fontSize: '0.72rem', color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '1px 5px' },
-  panel: { flex: 1, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  panel: { flex: 1, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, display: 'flex', flexDirection: 'column' },
   panelHeader: { padding: '16px 20px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   panelTitle: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   panelName: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1rem', color: 'var(--colour-text)' },
@@ -802,29 +896,65 @@ const s = {
   panelId: { fontFamily: 'var(--font-mono, monospace)', fontSize: '0.73rem', color: '#9ca3af', background: '#f9fafb', borderRadius: 4, padding: '1px 6px', border: '1px solid #f3f4f6' },
   notesCount: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '2px 8px' },
   entryCount: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '2px 8px' },
-  panelBody: { flex: 1, padding: '0 20px 20px', overflowY: 'auto', maxHeight: '65vh' },
+  panelBody: { padding: '0 20px 20px' },
   actionBar: { padding: '12px 20px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: 8, justifyContent: 'flex-end' },
   noSelection: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafafa', border: '1px dashed #e5e7eb', borderRadius: 8 },
   tabRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: 0, borderBottom: '1px solid #f3f4f6' },
   empty: { fontFamily: 'var(--font-body)', color: '#6b7280', fontSize: '0.9rem', margin: 0 },
   emptyHint: { fontFamily: 'var(--font-body)', color: '#9ca3af', fontSize: '0.82rem', margin: '6px 0 0' },
   emptyState: { paddingTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
-  entryList: { display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 16 },
+  entryList: { display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 16 },
   entryCard: {
-    width: '100%', textAlign: 'left', background: '#fafafa',
-    border: '1px solid #e5e7eb', borderRadius: 6, padding: '10px 14px',
-    cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
-    transition: 'border-color 0.1s',
+    background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
   },
-  entryCardTop: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  entryCardHeader: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    gap: 8, padding: '12px 14px 10px', flexWrap: 'wrap',
+  },
+  entryCardMeta: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 },
   entryOrder: { fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', color: '#9ca3af', minWidth: 18 },
-  entryTitle: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', flex: 1 },
-  entryPurpose: { margin: '2px 0 0 26px', fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', lineHeight: 1.4 },
+  entryTitle: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '0.9rem', color: 'var(--colour-text)', flex: 1 },
+  entryCardBody: {
+    padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 10,
+    borderBottom: '1px solid #f3f4f6',
+  },
+  entrySection: { display: 'flex', flexDirection: 'column', gap: 3 },
+  entrySectionLabel: {
+    fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700,
+    color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em',
+  },
+  entrySectionText: {
+    margin: 0, fontFamily: 'var(--font-body)', fontSize: '0.85rem',
+    color: '#374151', lineHeight: 1.5,
+  },
+  entryCardActions: {
+    display: 'flex', gap: 8, padding: '8px 14px', background: '#fafafa',
+    justifyContent: 'space-between', alignItems: 'center',
+    borderTop: '1px solid #f3f4f6',
+  },
+  entryActionBtn: {
+    fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 600,
+    color: '#4b5563', background: '#fff', border: '1px solid #d1d5db',
+    borderRadius: 5, padding: '4px 12px', cursor: 'pointer', display: 'flex',
+    alignItems: 'center', gap: 6,
+  },
+  entryActionEdit: { color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff' },
+  entryActionApprove: { color: '#166534', borderColor: '#bbf7d0', background: '#f0fdf4' },
+  entryActionReject: { color: '#991b1b', borderColor: '#fecaca', background: '#fef2f2' },
+  reviewNoteBox: {
+    margin: '0 14px 12px', padding: '10px 12px', borderRadius: 6,
+    border: '1px solid', display: 'flex', flexDirection: 'column', gap: 4,
+  },
+  reviewNoteText: {
+    margin: 0, fontFamily: 'var(--font-body)', fontSize: '0.83rem',
+    color: '#374151', lineHeight: 1.5,
+  },
   contextEdit: { display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 16 },
   rowEnd: { display: 'flex', gap: 8, justifyContent: 'flex-end' },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' },
-  drawerWrap: { width: '100%', maxWidth: 760 },
-  drawer: { background: '#fff', borderTop: '3px solid var(--colour-primary)', borderRadius: '8px 8px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.12)', maxHeight: '88vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  drawerWrap: { width: '100%', maxWidth: 760, maxHeight: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column' },
+  drawer: { background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid var(--colour-primary)', borderRadius: 8, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
   drawerHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 },
   drawerTitle: { fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: 'var(--colour-text)' },
   closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1.3rem', lineHeight: 1, padding: '0 4px' },
