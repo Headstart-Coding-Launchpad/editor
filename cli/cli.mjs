@@ -374,24 +374,19 @@ await yargs(hideBin(process.argv))
         print(await getDraft(id))
       }))
 
-      .command('upsert <id> [file]', 'Create or update a draft from a Markdown file — file path or stdin. YAML front matter (---) sets title/type/level/stage/context.', {}, cmd(async ({ id, file }) => {
+      .command('upsert <id> [file]', 'Create or update a draft from a YAML file — file path or stdin. Fields: title, type, level, stage, content, context, author.', {}, cmd(async ({ id, file }) => {
         const text = await readText(file)
-        const fmMatch = /^---[\r\n]+([\s\S]*?)[\r\n]+---[\r\n]+([\s\S]*)$/.exec(text)
-        let meta = {}
-        let content = text
-        if (fmMatch) {
-          try { meta = yaml.load(fmMatch[1]) ?? {} } catch { /* ignore parse errors */ }
-          content = fmMatch[2]
-        }
+        let parsed = {}
+        try { parsed = yaml.load(text) ?? {} } catch (e) { throw new Error(`Failed to parse YAML: ${e.message}`) }
         const { upsertDraftDoc } = await loadLessons()
         const fields = {
-          title: meta.title ?? '',
-          type: meta.type ?? '',
-          level: meta.level ?? null,
-          stage: meta.stage ?? 'ideas',
-          content,
-          ...(meta.context ? { context: meta.context } : {}),
-          _meta: { authorEmail: meta.author ?? '' },
+          title: parsed.title ?? '',
+          type: parsed.type ?? '',
+          level: parsed.level ?? null,
+          stage: parsed.stage ?? 'ideas',
+          content: parsed.content ?? '',
+          ...(parsed.context ? { context: parsed.context } : {}),
+          _meta: { authorEmail: parsed.author ?? '' },
         }
         print(await upsertDraftDoc(id, fields))
       }))

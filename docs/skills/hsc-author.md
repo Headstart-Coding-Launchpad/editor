@@ -20,37 +20,37 @@ This is the default path for AI-authored lessons. Drafts are stored in Firestore
 
 ### 1. Write the Ideas document
 
-Write a Markdown planning document covering the lesson's scope, rough task sequence, and open questions. Use YAML front matter to set metadata.
+Write a YAML file covering the lesson's scope, rough task sequence, and open questions. The `content` field holds the Markdown planning prose.
 
-```markdown
----
+```yaml
 id: python-l3-09
 title: Dictionaries
 type: python
 level: 3
 stage: ideas
----
-# Python Level 3 - Lesson 9: Dictionaries [Conceptual Draft]
+author: ai@headstart
+content: |
+  # Python Level 3 - Lesson 9: Dictionaries [Conceptual Draft]
 
-## Metadata
-...
+  ## Metadata
+  ...
 
-## Sequential Flow
+  ## Sequential Flow
 
-### 1. Opening Recap
-...
+  ### 1. Opening Recap
+  ...
 ```
 
 ```
-node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-ideas.md'
+node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-ideas.yaml'
 ```
 
 ### 2. Expand to the Details document
 
-Update the same draft with the full execution-level spec (exact student-facing copy, code, checks, hints). Change `stage: ideas` to `stage: details` in the front matter, then re-upsert:
+Update the same draft with the full execution-level spec (exact student-facing copy, code, checks, hints). Change `stage: ideas` to `stage: details` in the file, then re-upsert:
 
 ```
-node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-details.md'
+node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-details.yaml'
 node cli/cli.mjs lessons draft submit python-l3-09
 ```
 
@@ -67,7 +67,7 @@ node cli/cli.mjs lessons draft notes list python-l3-09
 If changes are requested (stage returns to `details`), update the content and re-upsert:
 
 ```
-node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-details.md'
+node cli/cli.mjs lessons draft upsert python-l3-09 'New Lessons/YAML Files/Python L3/python-l3-09-details.yaml'
 node cli/cli.mjs lessons draft submit python-l3-09
 ```
 

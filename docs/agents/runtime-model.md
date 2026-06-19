@@ -148,7 +148,7 @@ Admin-only Firestore collection for the lesson authoring workflow (Ideas → Det
 }
 ```
 
-Section IDs are slugified H3 headings from the Markdown content. The CLI uses YAML front matter in Markdown files to supply `title`, `type`, `level`, `stage`, and `context` fields on `lessons draft upsert`. Stage flow: `ideas → details → review → approved → published`.
+Section IDs are slugified H3 headings from the Markdown stored in `content`. The CLI reads a YAML file on `lessons draft upsert`; fields: `title`, `type`, `level`, `stage`, `content` (Markdown body), `context`, `author`. Stage flow: `ideas → details → review → approved → published`.
 
 ## localStorage Keys
 
