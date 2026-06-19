@@ -114,16 +114,28 @@ The `answer:` shorthand on multiple choice tasks auto-generates `check: { type: 
 
 Evaluated automatically after each student operation.
 
+All `path` and `dir` fields are matched **case-insensitively**, so `Documents` and `documents` are treated the same.
+
+`path` also supports glob wildcards:
+
+| Pattern | Matches |
+|---|---|
+| `*` | Any sequence of characters except `/` |
+| `**` | Any sequence of characters including `/` |
+| `?` | Exactly one character (not `/`) |
+
+Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
+
 | Type | Fields | Notes |
 |---|---|---|
-| `fs_file_exists` | `path` | File at path exists |
-| `fs_dir_exists` | `path` | Directory at path exists |
-| `fs_not_exists` | `path` | Path (file or dir) does not exist |
+| `fs_file_exists` | `path` | File at path exists (wildcards supported) |
+| `fs_dir_exists` | `path` | Directory at path exists (wildcards supported) |
+| `fs_not_exists` | `path` | Path (file or dir) does not exist (wildcards supported) |
 | `fs_content_contains` | `path`, `value` | File content contains value (case-insensitive) |
 | `fs_content_equals` | `path`, `value` | File content equals value (trimmed, case-insensitive) |
 | `fs_file_in_dir` | `path`, `dir` | File exists and its direct parent equals dir |
-| `fs_dir_opened` | `path` | Student navigated to the folder |
-| `fs_file_opened` | `path` | Student opened the file |
+| `fs_dir_opened` | `path` | Student navigated to the folder (wildcards supported) |
+| `fs_file_opened` | `path` | Student opened the file (wildcards supported) |
 
 ---
 
