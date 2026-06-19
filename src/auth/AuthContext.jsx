@@ -12,16 +12,39 @@ export function AuthProvider({ children }) {
   const wasSignedInRef        = useRef(false)
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
+    let bounceRecoveryTimeout = null
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // A new auth event always supersedes any pending bounce-recovery wait.
+      if (bounceRecoveryTimeout) {
+        clearTimeout(bounceRecoveryTimeout)
+        bounceRecoveryTimeout = null
+      }
+
+      if (!firebaseUser && wasSignedInRef.current) {
+        // onAuthStateChanged fired null while we had a live session.
+        // This is the cross-tab storage-event bounce shape (#180/#279/#305): a
+        // localStorage write in another tab (e.g. Firebase's own token refresh)
+        // can make the SDK briefly report null before restoring the real user.
+        // Hold the loading state and wait; if the user comes back in a subsequent
+        // onAuthStateChanged call, cancel the timeout and stay signed in.
+        // If not, it's a real sign-out and we redirect after the grace period.
+        console.warn('Auth: onAuthStateChanged reported no user for a previously signed-in session — waiting for potential bounce recovery before redirecting.')
+        setLoading(true)
+
+        bounceRecoveryTimeout = setTimeout(() => {
+          console.warn('Auth: no recovery within grace period — treating as a real sign-out and redirecting to /login.')
+          wasSignedInRef.current = false
+          setUser(null)
+          setRole(null)
+          setLoading(false)
+          bounceRecoveryTimeout = null
+        }, 1000)
+        return
+      }
+
       // Only enter loading state on initial resolution, not on periodic token refreshes
       if (!initializedRef.current) setLoading(true)
-      if (!firebaseUser && wasSignedInRef.current) {
-        // No exception was thrown here — Firebase itself reported the user as signed
-        // out. This is the shape of the cross-tab storage-event bounce (#180/#279/#305):
-        // a localStorage write in another tab makes this tab's SDK briefly believe the
-        // user signed out. Logging it lets us tell that case apart from a real sign-out.
-        console.warn('Auth: onAuthStateChanged reported no user for a previously signed-in session — redirecting to /login.')
-      }
       try {
         if (firebaseUser) {
           const tokenResult = await getIdTokenResult(firebaseUser, false)
@@ -60,6 +83,11 @@ export function AuthProvider({ children }) {
         setLoading(false)
       }
     })
+
+    return () => {
+      unsubscribe()
+      if (bounceRecoveryTimeout) clearTimeout(bounceRecoveryTimeout)
+    }
   }, [])
 
   return (
