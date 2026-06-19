@@ -27,7 +27,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox,
+    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
@@ -80,7 +80,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput,
-    writeStudentInteraction, writeStudentPersonalSandbox,
+    writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,
   })

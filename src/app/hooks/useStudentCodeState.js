@@ -48,6 +48,7 @@ export function useStudentCodeState({
   writeStudentOutput,
   writeStudentInteraction,
   writeStudentPersonalSandbox,
+  writeStudentPresence,
   registerPresence,
   removeStudent,
   updateTeacherLive,
@@ -310,6 +311,48 @@ export function useStudentCodeState({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, identity?.anonymousId, teacherPresentation, connected])
+
+  // Track whether the student's browser window is focused so the teacher can
+  // see "Away" when a student has switched tabs or minimised the window.
+  useEffect(() => {
+    if (teacherPresentation || !identity?.anonymousId) return
+    if (phase !== 'lesson' && phase !== 'sandbox') return
+    const id = identity.anonymousId
+    const onFocus = () => writeStudentPresence?.(id, { windowFocused: true })
+    const onBlur  = () => writeStudentPresence?.(id, { windowFocused: false })
+    writeStudentPresence?.(id, { windowFocused: document.hasFocus() })
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('blur', onBlur)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, identity?.anonymousId, teacherPresentation])
+
+  // Track mouse/keyboard activity so the teacher gets a WhatsApp-style
+  // typing indicator. Throttled to one Firebase write per 2 seconds.
+  useEffect(() => {
+    if (teacherPresentation || !identity?.anonymousId) return
+    if (phase !== 'lesson' && phase !== 'sandbox') return
+    const id = identity.anonymousId
+    let lastWrite = 0
+    const record = () => {
+      const now = Date.now()
+      if (now - lastWrite < 2000) return
+      lastWrite = now
+      writeStudentPresence?.(id, { lastActivityAt: now })
+    }
+    window.addEventListener('mousemove', record)
+    window.addEventListener('keydown', record)
+    window.addEventListener('mousedown', record)
+    return () => {
+      window.removeEventListener('mousemove', record)
+      window.removeEventListener('keydown', record)
+      window.removeEventListener('mousedown', record)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, identity?.anonymousId, teacherPresentation])
 
   // Presentation windows must not appear as students
   useEffect(() => {

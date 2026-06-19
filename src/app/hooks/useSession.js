@@ -317,6 +317,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
     }
   }
 
+  async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt } = {}) {
+    const updates = {}
+    if (windowFocused !== undefined) updates.windowFocused = windowFocused
+    if (lastActivityAt !== undefined) updates.lastActivityAt = lastActivityAt
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
+    }
+  }
+
   async function writeStudentPersonalSandbox(anonymousId, inPersonalSandbox) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/inPersonalSandbox`), inPersonalSandbox || null)
   }
@@ -348,7 +357,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sendToTopic,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, requestHelp,
+    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic,
   }
 }
