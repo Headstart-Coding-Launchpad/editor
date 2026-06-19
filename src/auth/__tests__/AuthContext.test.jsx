@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { AuthProvider } from '../AuthContext'
 import { useAuth } from '../useAuth'
@@ -83,30 +83,67 @@ describe('AuthContext', () => {
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('signing out and redirecting to /login'), retryError)
   })
 
-  it('warns when a previously signed-in session is reported as signed out with no error', async () => {
-    const firebaseUser = { uid: 'teacher-uid' }
-    let authCallback
-    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
-      authCallback = callback
-      callback(firebaseUser)
-      return () => {}
-    })
-    authMocks.getIdTokenResult.mockResolvedValue({ claims: { role: 'teacher' } })
+  it('holds the loading screen during the grace period and signs out if no recovery', async () => {
+    vi.useFakeTimers()
+    try {
+      const firebaseUser = { uid: 'teacher-uid' }
+      let authCallback
+      authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+        authCallback = callback
+        return () => {}
+      })
+      authMocks.getIdTokenResult.mockResolvedValue({ claims: { role: 'teacher' } })
 
-    render(<AuthProvider><Probe /></AuthProvider>)
+      render(<AuthProvider><Probe /></AuthProvider>)
 
-    await waitFor(() => {
+      // Initial sign-in
+      await act(async () => { await authCallback(firebaseUser) })
       expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
-    })
 
-    // Firebase itself (not an exception) now reports no user — the cross-tab
-    // storage-event bounce shape from #180/#279/#305. This is the case the existing
-    // retry logic cannot catch because nothing throws, so it needs its own log line.
-    await authCallback(null)
+      // Firebase fires null — the cross-tab storage-event bounce (#180/#279/#305).
+      // Should immediately enter loading (not redirect), log the warning, then sign
+      // out only after the grace period elapses with no recovery.
+      act(() => { authCallback(null) })
+      expect(screen.getByText('loading')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('waiting for potential bounce recovery'))
 
-    await waitFor(() => {
+      await act(async () => { vi.runAllTimers() })
       expect(screen.getByText('user:none role:none')).toBeInTheDocument()
-    })
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('previously signed-in session'))
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no recovery within grace period'))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('recovers silently from a transient null without signing out if the user comes back within the grace period', async () => {
+    vi.useFakeTimers()
+    try {
+      const firebaseUser = { uid: 'teacher-uid' }
+      let authCallback
+      authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+        authCallback = callback
+        return () => {}
+      })
+      authMocks.getIdTokenResult.mockResolvedValue({ claims: { role: 'teacher' } })
+
+      render(<AuthProvider><Probe /></AuthProvider>)
+
+      await act(async () => { await authCallback(firebaseUser) })
+      expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
+
+      // Null bounce — enters loading
+      act(() => { authCallback(null) })
+      expect(screen.getByText('loading')).toBeInTheDocument()
+
+      // User comes back before grace period (Firebase recovered) — should stay signed in
+      await act(async () => { await authCallback(firebaseUser) })
+      expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
+
+      // Confirm the grace-period timer was cancelled: running outstanding timers has no effect
+      act(() => { vi.runAllTimers() })
+      expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
