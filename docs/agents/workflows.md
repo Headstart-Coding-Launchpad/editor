@@ -113,11 +113,11 @@ After significant changes, update relevant docs:
 - `docs/CODEBASE_MAP.md` when files are added, moved, or removed.
 - `docs/authoring/lesson-schema.md`, `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, or `docs/authoring/scratch-reference.md` when lesson JSON fields or check types change.
 - `docs/authoring/AUTHORING_GUIDE.md` when YAML conversion rules or shorthands change.
-- `docs/TOPIC_LIBRARY_SCHEMA.md` when topic structure changes.
+- `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` when topic structure changes.
 - `docs/FEATURES.md` when user-facing features change.
 - `docs/TESTING.md` when test strategy or coverage thresholds change.
 - `docs/agents/project-rules.md` when CLI commands or auth setup changes.
-- `docs/skills/*.md` when authoring or editing workflows change.
+- `docs/authoring/skills/*.md` when authoring or editing workflows change.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
 
 **All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.

@@ -130,6 +130,6 @@ Command groups:
 
 JSON/YAML can be supplied as a file argument or piped via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
-**Agent playbooks** (load when task matches): `docs/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`, `hsc-authoring.md`
+**Agent playbooks** (load when task matches): `docs/authoring/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`, `hsc-authoring.md`
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.

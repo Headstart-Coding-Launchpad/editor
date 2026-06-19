@@ -56,11 +56,11 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Quiz sub-types in detail | `docs/authoring/quiz-tasks.md` |
 | Scratch fields, opcodes, block explainer style | `docs/authoring/scratch-reference.md` |
 | Lesson JSON field reference | `docs/authoring/lesson-schema.md` |
-| Topic library schema and YAML authoring | `docs/TOPIC_LIBRARY_SCHEMA.md` |
+| Topic library schema and YAML authoring | `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` |
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
-| Agent playbooks (author, edit, topics, assets, feedback) | `docs/skills/` |
-| Reading, creating, or clearing feedback via CLI | `docs/skills/hsc-feedback.md` |
-| Authoring guidelines and lesson draft pipeline | `docs/skills/hsc-authoring.md` |
+| Agent playbooks (author, edit, topics, assets, feedback) | `docs/authoring/skills/` |
+| Reading, creating, or clearing feedback via CLI | `docs/authoring/skills/hsc-feedback.md` |
+| Authoring guidelines and lesson draft pipeline | `docs/authoring/skills/hsc-authoring.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |
 

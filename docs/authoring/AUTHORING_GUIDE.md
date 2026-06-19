@@ -405,7 +405,7 @@ node cli/cli.mjs topics yaml-to-json topics.yaml   # validate without Firebase
 node cli/cli.mjs topics get for-loop --format yaml # fetch a topic as YAML
 ```
 
-For full topic field reference see `docs/TOPIC_LIBRARY_SCHEMA.md`.
+For full topic field reference see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
 
 ---
 

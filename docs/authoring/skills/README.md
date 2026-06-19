@@ -15,5 +15,5 @@ Reusable workflow playbooks for the HSC platform. Each file can be read directly
 ## Install as Claude Code slash commands
 
 ```bash
-cp docs/skills/hsc-*.md .claude/commands/
+cp docs/authoring/skills/hsc-*.md .claude/commands/
 ```

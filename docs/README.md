@@ -18,11 +18,6 @@ Feature reference for the whole platform — lesson types, task types, quiz vari
 
 **Load when:** you need to understand product capabilities before making a change, or when checking whether a feature already exists.
 
-### [TOPIC_LIBRARY_SCHEMA.md](TOPIC_LIBRARY_SCHEMA.md)
-Schema reference for the topic library: Firestore structure, all field definitions, YAML authoring format, and how topics are linked from Markdown via `[[wiki-links]]`.
-
-**Load when:** writing or editing topics, or when working on anything that reads from `topicLibrary` in Firestore.
-
 ### [TESTING.md](TESTING.md)
 Testing strategy, tool choices, test file conventions, and what to test when behaviour changes. Read this before writing or significantly modifying tests.
 
@@ -95,31 +90,36 @@ Supported Markdown features in the shared renderer: callout syntax, fenced code 
 
 **Load when:** writing `explainer`, `description`, or `syntax` field content, or working on the Markdown renderer itself.
 
+### [authoring/TOPIC_LIBRARY_SCHEMA.md](authoring/TOPIC_LIBRARY_SCHEMA.md)
+Schema reference for the topic library: Firestore structure, all field definitions, YAML authoring format, and how topics are linked from Markdown via `[[wiki-links]]`.
+
+**Load when:** writing or editing topics, or when working on anything that reads from `topicLibrary` in Firestore.
+
 ---
 
-## CLI playbooks (`docs/skills/`)
+## CLI playbooks (`docs/authoring/skills/`)
 
-Step-by-step agent playbooks for CLI-driven workflows. Each can also be installed as a Claude Code slash command (`cp docs/skills/hsc-*.md .claude/commands/`). See [skills/README.md](skills/README.md) for setup.
+Step-by-step agent playbooks for CLI-driven workflows. Each can also be installed as a Claude Code slash command (`cp docs/authoring/skills/hsc-*.md .claude/commands/`). See [authoring/skills/README.md](authoring/skills/README.md) for setup.
 
-### [skills/hsc-list.md](skills/hsc-list.md)
+### [authoring/skills/hsc-list.md](authoring/skills/hsc-list.md)
 Print a summary of all published lessons and topics — IDs, titles, types, and levels. A quick orientation command before authoring or editing.
 
-### [skills/hsc-author.md](skills/hsc-author.md)
+### [authoring/skills/hsc-author.md](authoring/skills/hsc-author.md)
 End-to-end workflow for authoring a brand-new lesson: gather requirements, write YAML, validate, publish to Firestore, and confirm.
 
-### [skills/hsc-edit.md](skills/hsc-edit.md)
+### [authoring/skills/hsc-edit.md](authoring/skills/hsc-edit.md)
 Workflow for editing an existing published lesson — either a targeted single-task edit or a full lesson rewrite. Covers fetching the current state, making changes, and re-publishing.
 
-### [skills/hsc-topics.md](skills/hsc-topics.md)
+### [authoring/skills/hsc-topics.md](authoring/skills/hsc-topics.md)
 CRUD operations on the topic library: list, fetch, create or update, and delete. Includes field rules and duplicate-checking guidance.
 
-### [skills/hsc-assets.md](skills/hsc-assets.md)
+### [authoring/skills/hsc-assets.md](authoring/skills/hsc-assets.md)
 Upload, list, and delete lesson asset files in Firebase Storage. Covers MIME type detection, storage filename overrides, and how assets are referenced in lesson content.
 
-### [skills/hsc-feedback.md](skills/hsc-feedback.md)
+### [authoring/skills/hsc-feedback.md](authoring/skills/hsc-feedback.md)
 Read, create, delete, and bulk-clear feedback items in both the lesson feedback subcollection and the platform feedback collection. Full field reference, filter options, and example commands.
 
-### [skills/hsc-authoring.md](skills/hsc-authoring.md)
+### [authoring/skills/hsc-authoring.md](authoring/skills/hsc-authoring.md)
 Authoring guidelines (`authoring guidelines`) and the lesson draft pipeline (`lessons draft`, `lessons draft entry`, `lessons draft notes`). Covers the full Ideas → Details → Review → Approved → Published workflow with all commands, flags, YAML input formats, and a typical end-to-end example.
 
 **Load when:** managing authoring guidelines in the Admin Portal, or working with lesson drafts at any stage of the review pipeline.
