@@ -66,7 +66,9 @@ Do not deviate from this shape.
           "checkOverridePushedAt": "number | null",
           "currentTopicId": "topicId | null",
           "sentToTopicId": "topicId | null",
-          "sentToTopicPushedAt": "number | null"
+          "sentToTopicPushedAt": "number | null",
+          "teacherMessage": "string | null",
+          "teacherMessagePushedAt": "number | null"
         }
       }
     }

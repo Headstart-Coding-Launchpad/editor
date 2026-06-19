@@ -6,7 +6,7 @@ import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, onSendMessage, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
 
@@ -189,6 +189,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           onDismissHelp={onDismissHelp}
           onSendToTopic={onSendToTopic}
           onSendTopicToAll={onSendTopicToAll}
+          onSendMessage={onSendMessage}
         />
       )}
     </div>
