@@ -115,13 +115,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentSelection`]      = null
       updates[`students/${anonymousId}/currentActivity`]       = null
       updates[`students/${anonymousId}/currentActiveFile`]     = null
-      updates[`students/${anonymousId}/checkOverridePassed`]   = null
-      updates[`students/${anonymousId}/checkOverrideHint`]     = null
-      updates[`students/${anonymousId}/checkOverridePushedAt`] = null
-      updates[`students/${anonymousId}/needsHelp`]             = null
-      updates[`students/${anonymousId}/currentTopicId`]        = null
-      updates[`students/${anonymousId}/sentToTopicId`]         = null
-      updates[`students/${anonymousId}/sentToTopicPushedAt`]   = null
+      updates[`students/${anonymousId}/checkOverridePassed`]    = null
+      updates[`students/${anonymousId}/checkOverrideHint`]      = null
+      updates[`students/${anonymousId}/checkOverridePushedAt`]  = null
+      updates[`students/${anonymousId}/needsHelp`]              = null
+      updates[`students/${anonymousId}/currentTopicId`]         = null
+      updates[`students/${anonymousId}/sentToTopicId`]          = null
+      updates[`students/${anonymousId}/sentToTopicPushedAt`]    = null
+      updates[`students/${anonymousId}/teacherMessage`]         = null
+      updates[`students/${anonymousId}/teacherMessagePushedAt`] = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -247,6 +249,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/needsHelp`), null)
   }
 
+  async function sendMessageToStudent(anonymousId, message) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherMessage:         message || null,
+      teacherMessagePushedAt: Date.now(),
+    })
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -345,7 +354,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
-    sendToTopic,
+    sendToTopic, sendMessageToStudent,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, requestHelp,

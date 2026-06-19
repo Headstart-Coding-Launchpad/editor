@@ -13,6 +13,7 @@ import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
 import TaskProgressDots from '../components/TaskProgressDots'
 import LiveActivityToast from '../components/LiveActivityToast'
+import TeacherMessageToast from '../components/TeacherMessageToast'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
@@ -351,6 +352,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         right={topBarRight}
       />
       <LiveActivityToast activity={displayActivity} showClicks={isForcedTeacherLive} />
+      {!teacherPresentation && (
+        <TeacherMessageToast
+          message={session?.students?.[identity?.anonymousId]?.teacherMessage}
+          pushedAt={session?.students?.[identity?.anonymousId]?.teacherMessagePushedAt}
+        />
+      )}
       <StudentStatusBanners
         isForcedTeacherLive={isForcedTeacherLive}
         isPresentationStudentViewer={isPresentationStudentViewer}

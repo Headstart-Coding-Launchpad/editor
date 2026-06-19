@@ -254,6 +254,154 @@ const sOv = {
   },
 }
 
+// ─── Message compose ─────────────────────────────────────────────────────────
+
+function MessageCompose({ student, onSendMessage }) {
+  const [showModal, setShowModal] = useState(false)
+  const [text, setText] = useState('')
+
+  function handleSend() {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    onSendMessage(student.anonymousId, trimmed)
+    setShowModal(false)
+    setText('')
+  }
+
+  return (
+    <>
+      <button
+        className="btn-ghost"
+        style={{ fontSize: 13, padding: '5px 12px' }}
+        onClick={() => setShowModal(true)}
+      >
+        ✉ Message
+      </button>
+
+      {showModal && (
+        <div
+          style={sMc.overlay}
+          onClick={e => { if (e.target === e.currentTarget) { setShowModal(false); setText('') } }}
+        >
+          <div style={sMc.modal}>
+            <div style={sMc.header}>
+              <span style={sMc.title}>Message {student.displayName}</span>
+              <button style={sMc.closeBtn} onClick={() => { setShowModal(false); setText('') }}>✕</button>
+            </div>
+            <div style={sMc.body}>
+              <p style={sMc.hint}>A friendly pop-up will appear on {student.displayName}&apos;s screen.</p>
+              <textarea
+                style={sMc.textarea}
+                placeholder='e.g. "Great work so far!" or "Try a different approach…"'
+                value={text}
+                onChange={e => setText(e.target.value)}
+                rows={4}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend() }}
+              />
+              <p style={sMc.hint2}>Ctrl+Enter to send</p>
+            </div>
+            <div style={sMc.footer}>
+              <button className="btn-ghost-outline" style={{ fontSize: 13 }} onClick={() => { setShowModal(false); setText('') }}>
+                Cancel
+              </button>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={handleSend} disabled={!text.trim()}>
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+const sMc = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 1200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modal: {
+    background: 'var(--ui-surface)',
+    borderRadius: 10,
+    width: 'min(460px, 92vw)',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  header: {
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    padding: '12px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexShrink: 0,
+    borderRadius: '10px 10px 0 0',
+  },
+  title: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1rem',
+  },
+  closeBtn: {
+    background: 'rgba(255,255,255,0.15)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    color: '#fff',
+    borderRadius: 5,
+    width: 28,
+    height: 28,
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
+  body: {
+    padding: '16px 18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  hint: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    color: 'var(--colour-text)',
+    margin: 0,
+  },
+  hint2: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    color: '#9ca3af',
+    margin: 0,
+    textAlign: 'right',
+  },
+  textarea: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    padding: '10px 12px',
+    resize: 'vertical',
+    width: '100%',
+    lineHeight: 1.5,
+  },
+  footer: {
+    padding: '12px 16px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+    borderTop: '1px solid var(--ui-border)',
+    flexShrink: 0,
+    borderRadius: '0 0 10px 10px',
+  },
+}
+
 // ─── Stage dropdown ──────────────────────────────────────────────────────────
 
 function StageDropdown({ student, stageOptions, onRemoteReset }) {
@@ -334,7 +482,7 @@ const sLv = {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll }) {
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
@@ -452,6 +600,11 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               >
                 📖 Topic
               </button>
+            )}
+
+            {/* Message button */}
+            {onSendMessage && (
+              <MessageCompose student={student} onSendMessage={onSendMessage} />
             )}
 
             {/* Go Live / Stop Live */}

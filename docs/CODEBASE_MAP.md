@@ -92,6 +92,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `StudentCard.jsx` | Compact card: name, online/run/check badges, code/output/quiz snippet, expand button |
 | `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove) |
 | `LiveActivityToast.jsx` | Transient live-view notice for editor copy, paste, and click activity |
+| `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
 | `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, and session action controls |
 | `TeacherCodeTabs.jsx` | Starter/stage/complete tab strip shown above teacher code editors; includes "Send to all" action |

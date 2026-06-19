@@ -51,7 +51,7 @@ export default function TeacherView({ lessonId }) {
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
     setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
-    sendToTopic,
+    sendToTopic, sendMessageToStudent,
   } = useSession(lessonId)
 
   const [baseLesson, setBaseLesson]     = useState(null)
@@ -525,6 +525,7 @@ export default function TeacherView({ lessonId }) {
             onSendToTopic={sendToTopic}
             onSendTopicToAll={handleSendTopicToAll}
             onSendToIndividual={handleSendToIndividual}
+            onSendMessage={sendMessageToStudent}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
