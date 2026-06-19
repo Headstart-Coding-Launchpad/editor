@@ -115,6 +115,41 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 - Session node is deleted when the teacher calls `endSession()` and disconnects.
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 
+## Lesson Drafts (`lessonDrafts` collection)
+
+Admin-only Firestore collection for the lesson authoring workflow (Ideas → Details → Review → Publish). Draft content is Markdown prose, not lesson JSON. Drafts never appear in the classroom.
+
+```json
+{
+  "id": "python-l3-09",
+  "stage": "ideas | details | review | approved | published",
+  "title": "Dictionaries",
+  "type": "python",
+  "level": 3,
+  "content": "# Markdown lesson plan content (the Ideas or Details document)",
+  "context": "AI working notes: prerequisites, open decisions, author reasoning",
+  "reviewNotes": [
+    {
+      "sectionId": "4-runnable-reminder-rps-snippet",
+      "sectionTitle": "4. Runnable Reminder — RPS Snippet",
+      "decision": "pending | accepted | rejected",
+      "suggestedChange": "The recap code is too complex…",
+      "extraNote": "",
+      "createdAt": 1234567890
+    }
+  ],
+  "_meta": {
+    "authorEmail": "ai@headstart",
+    "createdAt": "Timestamp",
+    "updatedAt": "Timestamp",
+    "reviewedBy": "ryan@flemtech.co.uk",
+    "reviewedAt": "Timestamp | null"
+  }
+}
+```
+
+Section IDs are slugified H3 headings from the Markdown content. The CLI uses YAML front matter in Markdown files to supply `title`, `type`, `level`, `stage`, and `context` fields on `lessons draft upsert`. Stage flow: `ideas → details → review → approved → published`.
+
 ## localStorage Keys
 
 Do not deviate from these key formats.

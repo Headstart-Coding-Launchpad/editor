@@ -1,4 +1,7 @@
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
+import {
+  collection, doc, getDoc, getDocs, orderBy, query,
+  serverTimestamp, setDoc, updateDoc,
+} from 'firebase/firestore'
 import { firestore } from './firebase'
 
 export async function fetchLessonById(lessonId) {
@@ -27,4 +30,81 @@ export async function publishLessonTasks(lessonId, tasks) {
 export function applyLessonOverride(lesson, overrideTasks) {
   if (!lesson || !overrideTasks) return lesson
   return { ...lesson, tasks: overrideTasks }
+}
+
+// ── Lesson Drafts ─────────────────────────────────────────────────────────────
+// Drafts are Markdown planning documents (Ideas / Details) stored in
+// `lessonDrafts/{id}`. They are admin-only and never exposed to students.
+
+export async function fetchDraftList() {
+  const q = query(collection(firestore, 'lessonDrafts'), orderBy('updatedAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function fetchLessonDraftById(id) {
+  const snap = await getDoc(doc(firestore, 'lessonDrafts', id))
+  if (!snap.exists()) return null
+  return { id: snap.id, ...snap.data() }
+}
+
+export async function upsertDraft(draft) {
+  const { id, ...fields } = draft
+  if (!id) throw new Error('Draft id is required')
+  const ref = doc(firestore, 'lessonDrafts', id)
+  const existing = await getDoc(ref)
+  const base = existing.exists() ? existing.data() : {}
+  await setDoc(ref, {
+    ...base,
+    ...fields,
+    id,
+    updatedAt: serverTimestamp(),
+    _meta: {
+      ...(base._meta ?? {}),
+      ...(fields._meta ?? {}),
+      createdAt: base._meta?.createdAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+  })
+}
+
+export async function updateDraftStage(id, stage, reviewerEmail) {
+  const update = { stage, updatedAt: serverTimestamp() }
+  if (reviewerEmail) {
+    update['_meta.reviewedBy'] = reviewerEmail
+    update['_meta.reviewedAt'] = serverTimestamp()
+  }
+  await updateDoc(doc(firestore, 'lessonDrafts', id), update)
+}
+
+export async function addDraftReviewNote(id, note) {
+  const snap = await getDoc(doc(firestore, 'lessonDrafts', id))
+  if (!snap.exists()) throw new Error(`Draft '${id}' not found`)
+  const existing = snap.data().reviewNotes ?? []
+  const filtered = existing.filter(n => n.sectionId !== note.sectionId)
+  await updateDoc(doc(firestore, 'lessonDrafts', id), {
+    reviewNotes: [...filtered, { ...note, createdAt: Date.now() }],
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function updateDraftReviewNote(id, sectionId, fields) {
+  const snap = await getDoc(doc(firestore, 'lessonDrafts', id))
+  if (!snap.exists()) throw new Error(`Draft '${id}' not found`)
+  const notes = snap.data().reviewNotes ?? []
+  const updated = notes.map(n => n.sectionId === sectionId ? { ...n, ...fields } : n)
+  await updateDoc(doc(firestore, 'lessonDrafts', id), {
+    reviewNotes: updated,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteDraftReviewNote(id, sectionId) {
+  const snap = await getDoc(doc(firestore, 'lessonDrafts', id))
+  if (!snap.exists()) throw new Error(`Draft '${id}' not found`)
+  const notes = (snap.data().reviewNotes ?? []).filter(n => n.sectionId !== sectionId)
+  await updateDoc(doc(firestore, 'lessonDrafts', id), {
+    reviewNotes: notes,
+    updatedAt: serverTimestamp(),
+  })
 }

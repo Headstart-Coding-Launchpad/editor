@@ -362,7 +362,123 @@ await yargs(hideBin(process.argv))
       if (!result.success) process.exit(1)
     }))
 
-    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | yaml-to-json | json-to-yaml | preflight | publish-yaml')
+    .command('draft', 'Manage lesson drafts (Ideas → Details → Review → Publish)', yargs => yargs
+
+      .command('list', 'List all drafts with stage and metadata', {}, cmd(async () => {
+        const { listDrafts } = await loadLessons()
+        print(await listDrafts())
+      }))
+
+      .command('get <id>', 'Fetch the full draft document', {}, cmd(async ({ id }) => {
+        const { getDraft } = await loadLessons()
+        print(await getDraft(id))
+      }))
+
+      .command('upsert <id> [file]', 'Create or update a draft from a Markdown file — file path or stdin. YAML front matter (---) sets title/type/level/stage/context.', {}, cmd(async ({ id, file }) => {
+        const text = await readText(file)
+        const fmMatch = /^---[\r\n]+([\s\S]*?)[\r\n]+---[\r\n]+([\s\S]*)$/.exec(text)
+        let meta = {}
+        let content = text
+        if (fmMatch) {
+          try { meta = yaml.load(fmMatch[1]) ?? {} } catch { /* ignore parse errors */ }
+          content = fmMatch[2]
+        }
+        const { upsertDraftDoc } = await loadLessons()
+        const fields = {
+          title: meta.title ?? '',
+          type: meta.type ?? '',
+          level: meta.level ?? null,
+          stage: meta.stage ?? 'ideas',
+          content,
+          ...(meta.context ? { context: meta.context } : {}),
+          _meta: { authorEmail: meta.author ?? '' },
+        }
+        print(await upsertDraftDoc(id, fields))
+      }))
+
+      .command('context <id> [text]', 'Set or print the AI working-notes context field. Pass text inline, or use --file for a file path.', {
+        file: { alias: 'f', type: 'string', describe: 'Read context from this file instead of inline text or stdin' },
+      }, cmd(async ({ id, text, file }) => {
+        const { getDraft, updateDraftContext } = await loadLessons()
+        if (text === undefined && !file) {
+          const draft = await getDraft(id)
+          process.stdout.write((draft.context ?? '') + '\n')
+          return
+        }
+        const context = file ? await readText(file) : (text ?? await readText(null))
+        print(await updateDraftContext(id, context))
+      }))
+
+      .command('submit <id>', 'Advance draft stage: ideas → details → review', {}, cmd(async ({ id }) => {
+        const { submitDraft } = await loadLessons()
+        print(await submitDraft(id))
+      }))
+
+      .command('request-changes <id>', 'Retreat draft stage back to details (reviewer requests revisions)', {}, cmd(async ({ id }) => {
+        const { requestChanges } = await loadLessons()
+        print(await requestChanges(id))
+      }))
+
+      .command('approve <id>', 'Approve a draft (stage → approved). Stamps reviewer metadata.', {
+        reviewer: { type: 'string', describe: 'Reviewer email address' },
+      }, cmd(async ({ id, reviewer }) => {
+        const { approveDraft } = await loadLessons()
+        print(await approveDraft(id, reviewer))
+      }))
+
+      .command('publish <id>', 'Mark draft as published. Run lessons publish-yaml separately to push the lesson live.', {}, cmd(async ({ id }) => {
+        const { markDraftPublished } = await loadLessons()
+        print(await markDraftPublished(id))
+      }))
+
+      .command('notes', 'Manage per-section review notes on a draft', yargs => yargs
+
+        .command('list <id>', 'List all review notes for a draft', {}, cmd(async ({ id }) => {
+          const { listDraftNotes } = await loadLessons()
+          print(await listDraftNotes(id))
+        }))
+
+        .command('add <id>', 'Add or replace a review note for a section', {
+          section: { type: 'string', demandOption: true, describe: 'Section ID (slugified H3 heading)' },
+          title: { type: 'string', describe: 'Human-readable section title' },
+          change: { type: 'string', default: '', describe: 'Suggested change text' },
+          note: { type: 'string', default: '', describe: 'Extra note text' },
+          decision: { type: 'string', choices: ['pending', 'accepted', 'rejected'], default: 'pending' },
+        }, cmd(async ({ id, section, title, change, note, decision }) => {
+          const { addDraftNote } = await loadLessons()
+          print(await addDraftNote(id, { sectionId: section, sectionTitle: title ?? section, suggestedChange: change, extraNote: note, decision }))
+        }))
+
+        .command('update <id>', 'Update an existing review note\'s decision or text', {
+          section: { type: 'string', demandOption: true, describe: 'Section ID to update' },
+          decision: { type: 'string', choices: ['pending', 'accepted', 'rejected'], describe: 'New decision' },
+          change: { type: 'string', describe: 'Updated suggested change text' },
+          note: { type: 'string', describe: 'Updated extra note text' },
+        }, cmd(async ({ id, section, decision, change, note }) => {
+          const { updateDraftNote } = await loadLessons()
+          const fields = {}
+          if (decision !== undefined) fields.decision = decision
+          if (change !== undefined) fields.suggestedChange = change
+          if (note !== undefined) fields.extraNote = note
+          print(await updateDraftNote(id, section, fields))
+        }))
+
+        .command('delete <id>', 'Delete a review note from a draft', {
+          section: { type: 'string', demandOption: true, describe: 'Section ID to remove' },
+        }, cmd(async ({ id, section }) => {
+          const { deleteDraftNote } = await loadLessons()
+          print(await deleteDraftNote(id, section))
+        }))
+
+        .demandCommand(1, 'Specify a subcommand: list | add | update | delete')
+        .help()
+      )
+
+      .demandCommand(1, 'Specify a subcommand: list | get | upsert | context | submit | request-changes | approve | publish | notes')
+      .help()
+    )
+
+    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | yaml-to-json | json-to-yaml | preflight | publish-yaml | draft')
     .help()
   )
 
