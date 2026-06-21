@@ -150,7 +150,7 @@ const s = {
     flexDirection: 'column',
     gap: '12px',
     minHeight: 0,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   taskContentInfo: {
     flex: 1,
@@ -172,7 +172,7 @@ const s = {
     flexDirection: 'column',
     gap: '8px',
     minHeight: 0,
-    overflow: 'hidden',
+    overflow: 'auto',
   },
   editorAreaInfo: {
     flex: 1,
