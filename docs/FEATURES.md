@@ -163,7 +163,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Download lesson as JSON
 - Upload and restore from JSON
 - Auto-save to localStorage; restore prompt on next load
-- Validation: errors block download; warnings require confirmation
+- Admins can save the current lesson to Firestore without leaving the builder
+- Validation: errors block download and warnings require confirmation, but neither blocks saving to Firestore
 
 ### Preview
 - Renders the full student view with the current lesson so teachers can test the student experience
