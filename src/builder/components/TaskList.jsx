@@ -47,6 +47,33 @@ function TaskFormatIcon({ type }) {
   )
 }
 
+const DRAFT_STATUS = {
+  accepted: { label: 'ACCEPTED', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+  rejected: { label: 'REJECTED', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5' },
+  pending:  { label: 'DRAFT',    color: '#9ca3af', bg: '#f3f4f6', border: '#e5e7eb' },
+}
+
+function DraftStatusBadge({ decision }) {
+  const cfg = DRAFT_STATUS[decision] ?? DRAFT_STATUS.pending
+  return (
+    <span style={{
+      fontFamily: 'var(--font-body)',
+      fontSize: '0.62rem',
+      fontWeight: 700,
+      letterSpacing: '0.05em',
+      color: cfg.color,
+      background: cfg.bg,
+      border: `1px solid ${cfg.border}`,
+      borderRadius: 4,
+      padding: '1px 5px',
+      flexShrink: 0,
+      whiteSpace: 'nowrap',
+    }}>
+      {cfg.label}
+    </span>
+  )
+}
+
 function removeTaskFromTree(items, taskId) {
   let removed = null
   const next = items.map(item => {
@@ -372,7 +399,7 @@ export default function TaskList({
               <span style={s.title}>
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
               </span>
-              {isDraft && <span style={s.draftBadge}>DRAFT</span>}
+              {isDraft && <DraftStatusBadge decision={item.reviewNote?.decision} />}
               <div style={s.actions} onClick={e => e.stopPropagation()}>
                 <button style={s.iconBtn} onClick={() => moveUp(i)} title="Move up" disabled={i === 0}>▲</button>
                 <button style={s.iconBtn} onClick={() => moveDown(i)} title="Move down" disabled={i === tasks.length - 1}>▼</button>
@@ -529,19 +556,6 @@ const s = {
   taskTypeIconDraft: {
     color: '#9ca3af',
     background: '#f3f4f6',
-  },
-  draftBadge: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.62rem',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-    color: '#9ca3af',
-    background: '#f3f4f6',
-    border: '1px solid #e5e7eb',
-    borderRadius: 4,
-    padding: '1px 5px',
-    flexShrink: 0,
-    whiteSpace: 'nowrap',
   },
   // Group styles
   groupHeader: {

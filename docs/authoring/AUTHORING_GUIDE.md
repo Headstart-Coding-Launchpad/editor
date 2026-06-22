@@ -416,10 +416,10 @@ tasks:
 ### Review notes via CLI
 
 ```bash
-# View all tasks with review notes
+# View all tasks with review notes (output includes taskId values to use with --task)
 node cli/cli.mjs lessons review python-loops-draft
 
-# Set a review note on a specific task (by task ID)
+# Set a review note using the task's id field shown in the list output
 node cli/cli.mjs lessons review python-loops-draft --task 2 --decision rejected --note "Needs a second example"
 node cli/cli.mjs lessons review python-loops-draft --task 2 --decision accepted
 ```

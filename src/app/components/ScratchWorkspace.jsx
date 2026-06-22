@@ -134,7 +134,7 @@ function drawScratchSpriteAtOrigin(ctx, type, r) {
 }
 
 function drawEmojiAtOrigin(ctx, emoji, r) {
-  ctx.font = `${r * 2}px serif`
+  ctx.font = `${r * 2}px 'Noto Color Emoji', serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(emoji, 0, 0)

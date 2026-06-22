@@ -76,6 +76,8 @@ Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always requi
 | `title` | Short name for the task |
 | `kind` | Intended task type: `information slide`, `code task`, `quiz`, `confidence check`, `project step`, `group heading`, `recap`, or `extension` |
 | `purpose` | Why this moment exists in the lesson |
+| `expectedOutcome` | What the learner produces or achieves (also appears in Tier 2 with richer context) |
+| `knownPitfalls` | Optional — common mistakes or misconceptions to watch for |
 
 ### Tier 2 — Details stage and later
 

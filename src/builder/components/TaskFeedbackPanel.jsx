@@ -117,6 +117,10 @@ const s = {
     border: '1px solid #e5e7eb',
     borderRadius: 8,
     overflow: 'hidden',
+    maxWidth: 1120,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    width: '100%',
   },
   reviewBlock: {
     padding: '12px 14px',

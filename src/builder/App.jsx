@@ -8,12 +8,21 @@ import BuilderView from './views/BuilderView'
 
 export const LS_KEY = 'headstart_builder_current'
 
-const blankLesson = type => ({
+const STAGE_OPTIONS = [
+  { value: 'ideas', label: 'Ideas', hint: 'Brainstorming and planning', color: '#6b7280' },
+  { value: 'details', label: 'Details', hint: 'Authoring content', color: '#2563eb' },
+  { value: 'review', label: 'Review', hint: 'Ready for review', color: '#d97706' },
+  { value: 'approved', label: 'Approved', hint: 'Approved for publishing', color: '#16a34a' },
+  { value: 'published', label: 'Published', hint: 'Live for students', color: '#7c3aed' },
+]
+
+const blankLesson = (type, stage = 'ideas') => ({
   id: '',
   type,
   title: '',
   description: '',
   tasks: [],
+  stage,
   ...(type === 'filesystem' ? { sandboxStarterFs: { '/': { type: 'dir' } } } : {}),
 })
 
@@ -116,8 +125,8 @@ export default function BuilderApp() {
   if (!lesson) {
     return (
       <LessonTypeChooser
-        onChoose={type => {
-          setLesson(blankLesson(type))
+        onChoose={(type, stage) => {
+          setLesson(blankLesson(type, stage))
           setDirty(false)
         }}
         onUpload={uploaded => {
@@ -147,6 +156,7 @@ export default function BuilderApp() {
 function LessonTypeChooser({ onChoose, onUpload }) {
   const { role } = useAuth()
   const [firestoreOpen, setFirestoreOpen] = useState(false)
+  const [selectedStage, setSelectedStage] = useState('ideas')
 
   function handleUpload() {
     const input = document.createElement('input')
@@ -182,22 +192,45 @@ function LessonTypeChooser({ onChoose, onUpload }) {
             <p style={s.choiceText}>This sets the editor, runner, and starter-code format for the lesson.</p>
           </div>
           <div style={s.choiceGrid}>
-            <button style={s.choiceButton} onClick={() => onChoose('python')}>
+            <button style={s.choiceButton} onClick={() => onChoose('python', selectedStage)}>
               <span style={s.choiceName}>Python</span>
               <span style={s.choiceDescription}>Single-file Python tasks with output checks and Pyodide execution.</span>
             </button>
-            <button style={s.choiceButton} onClick={() => onChoose('html')}>
+            <button style={s.choiceButton} onClick={() => onChoose('html', selectedStage)}>
               <span style={s.choiceName}>Web</span>
               <span style={s.choiceDescription}>HTML, CSS, and JavaScript tasks with files, assets, and iframe preview.</span>
             </button>
-            <button style={s.choiceButton} onClick={() => onChoose('scratch')}>
+            <button style={s.choiceButton} onClick={() => onChoose('scratch', selectedStage)}>
               <span style={s.choiceName}>Scratch</span>
               <span style={s.choiceDescription}>Block-based tasks with a Scratch workspace, stage, toolbox limits, and block checks.</span>
             </button>
-            <button style={s.choiceButton} onClick={() => onChoose('filesystem')}>
+            <button style={s.choiceButton} onClick={() => onChoose('filesystem', selectedStage)}>
               <span style={s.choiceName}>Files/Folders</span>
               <span style={s.choiceDescription}>Virtual filesystem tasks — create, rename, move, and organise files and folders.</span>
             </button>
+          </div>
+          <div>
+            <p style={{ ...s.choiceText, marginBottom: 8 }}>Starting stage</p>
+            <div style={s.stageGrid}>
+              {STAGE_OPTIONS.map(opt => {
+                const active = selectedStage === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    style={{
+                      ...s.stageOption,
+                      borderColor: active ? opt.color : '#e5e7eb',
+                      background: active ? opt.color : '#fff',
+                      color: active ? '#fff' : '#4b5563',
+                    }}
+                    onClick={() => setSelectedStage(opt.value)}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: '0.82rem' }}>{opt.label}</span>
+                    <span style={{ fontSize: '0.75rem', opacity: active ? 0.85 : 0.7 }}>{opt.hint}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
@@ -435,5 +468,24 @@ const s = {
     color: '#4b5563',
     fontSize: '0.86rem',
     lineHeight: 1.45,
+  },
+  stageGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  stageOption: {
+    border: '1px solid',
+    borderRadius: 7,
+    background: '#fff',
+    padding: '6px 12px',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    textAlign: 'left',
+    transition: 'all 0.1s',
+    fontFamily: 'var(--font-body)',
+    minWidth: 110,
   },
 }

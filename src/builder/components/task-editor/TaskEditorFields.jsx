@@ -471,7 +471,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
             <div className="te-sprite-row">
               <input
                 className="te-input"
-                style={{ width: 56, textAlign: 'center', fontSize: '20px' }}
+                style={{ width: 56, textAlign: 'center', fontSize: '20px', fontFamily: "'Noto Color Emoji', serif" }}
                 value={sp.emoji ?? ''}
                 onChange={e => update(sp.id, 'emoji', e.target.value)}
                 placeholder="🐱"

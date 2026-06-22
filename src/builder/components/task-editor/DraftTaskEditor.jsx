@@ -139,14 +139,38 @@ export default function DraftTaskEditor({ task, lesson, onUpdate }) {
           </Field>
         </>
       ) : (
-        <div style={s.tierLocked}>
-          <p style={s.tierLockedText}>
-            Move the lesson to <strong>Details</strong> stage to unlock the full authoring template.
-          </p>
-          <p style={s.tierLockedHint}>
-            Use the Stage selector in Lesson Details (left panel) to advance the stage.
-          </p>
-        </div>
+        <>
+          <Field label="Expected outcome">
+            <textarea
+              className="te-input"
+              rows={3}
+              value={task.expectedOutcome ?? ''}
+              onChange={e => set('expectedOutcome', e.target.value)}
+              placeholder="What the learner produces or achieves by the end of this task."
+              style={{ resize: 'vertical' }}
+            />
+          </Field>
+
+          <Field label="Known pitfalls" hint="optional">
+            <textarea
+              className="te-input"
+              rows={3}
+              value={task.knownPitfalls ?? ''}
+              onChange={e => set('knownPitfalls', e.target.value)}
+              placeholder="Common mistakes or misconceptions to watch for."
+              style={{ resize: 'vertical' }}
+            />
+          </Field>
+
+          <div style={s.tierLocked}>
+            <p style={s.tierLockedText}>
+              Move the lesson to <strong>Details</strong> stage to unlock the full authoring template.
+            </p>
+            <p style={s.tierLockedHint}>
+              Use the Stage selector in Lesson Details (left panel) to advance the stage.
+            </p>
+          </div>
+        </>
       )}
     </>
   )

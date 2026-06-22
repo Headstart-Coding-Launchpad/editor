@@ -61,6 +61,18 @@ function parseJson(text) {
   }
 }
 
+function parseJsonOrYaml(filePath, text) {
+  const ext = filePath ? extname(filePath).toLowerCase() : ''
+  if (ext === '.yaml' || ext === '.yml') {
+    try {
+      return yaml.load(text.trim()) ?? {}
+    } catch (e) {
+      throw new Error(`Invalid YAML: ${e.message}`)
+    }
+  }
+  return parseJson(text)
+}
+
 function currentOutputFormat() {
   if (process.argv.includes('--yaml')) return 'yaml'
   const formatIndex = process.argv.findIndex(arg => arg === '--format' || arg === '-f')
@@ -580,18 +592,18 @@ await yargs(hideBin(process.argv))
       print(await getTask(lessonId, Number(taskIndex)))
     }))
 
-    .command('upsert <lessonId> <taskIndex> [file]', 'Replace a task by flat index — file path or stdin', {}, cmd(async ({ lessonId, taskIndex, file }) => {
+    .command('upsert <lessonId> <taskIndex> [file]', 'Replace a task by flat index — file path or stdin (JSON or YAML)', {}, cmd(async ({ lessonId, taskIndex, file }) => {
       const { upsertTask } = await loadLessons()
-      const result = await upsertTask(lessonId, Number(taskIndex), parseJson(await readText(file)))
+      const result = await upsertTask(lessonId, Number(taskIndex), parseJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.success) process.exit(1)
     }))
 
-    .command('append <lessonId> [file]', 'Append a task to a lesson — file path or stdin', {
+    .command('append <lessonId> [file]', 'Append a task to a lesson — file path or stdin (JSON or YAML)', {
       group: { type: 'string', describe: 'Group title to append into (created if it does not exist)' },
     }, cmd(async ({ lessonId, group, file }) => {
       const { appendTask } = await loadLessons()
-      const result = await appendTask(lessonId, parseJson(await readText(file)), group)
+      const result = await appendTask(lessonId, parseJsonOrYaml(file, await readText(file)), group)
       print(result)
       if (!result.success) process.exit(1)
     }))

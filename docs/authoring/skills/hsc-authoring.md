@@ -334,6 +334,25 @@ node cli/cli.mjs lessons draft notes delete <id> --section introduction
 
 ---
 
+---
+
+## Draft tasks inside a published lesson (different concept)
+
+The `lessonDrafts/` pipeline above is for *planning* a new lesson before it exists. There is a separate concept — `taskType: "draft"` placeholder tasks embedded directly inside a lesson in the `lessons/` collection — for in-progress authoring of a lesson that is already in the builder.
+
+Key differences:
+
+| | Lesson drafts (`lessonDrafts/`) | Draft tasks (`taskType: "draft"`) |
+|---|---|---|
+| Where stored | `lessonDrafts/` Firestore collection | `lessons/` collection, inside the task list |
+| CLI namespace | `lessons draft …` | `lessons set-stage`, `lessons review` |
+| Purpose | Plan a lesson before building it | Placeholder tasks during active lesson authoring |
+| Blocks publish? | No | Yes — `lessons publish-yaml` rejects them |
+
+For the YAML syntax, field reference, and CLI commands for draft tasks, see the **"Draft Tasks and Lesson Stage"** section in `docs/authoring/AUTHORING_GUIDE.md`.
+
+---
+
 ## Typical draft workflow
 
 ```bash

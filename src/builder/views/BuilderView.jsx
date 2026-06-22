@@ -194,7 +194,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             onSelect={selectTask}
             onSelectGroup={selectGroup}
             onAdd={handleAddTask}
-            onAddDraft={handleAddDraftTask}
+            onAddDraft={lesson.stage !== 'approved' && lesson.stage !== 'published' ? handleAddDraftTask : undefined}
             onAddGroup={handleAddGroup}
             onAddSubtask={handleAddSubtask}
             onDuplicate={handleDuplicate}
@@ -234,7 +234,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                 }}
               />
               <TaskFeedbackPanel
-                key={selectedTask.id}
+                key={selectedTask.id + '-fb'}
                 task={selectedTask}
                 feedback={taskFeedback}
                 onUpdateTask={updated => {
