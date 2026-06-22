@@ -231,11 +231,11 @@ function TaskFormatIcon({ type }) {
   )
 }
 
-function Field({ label, children }) {
+function Field({ label, hint, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)' }}>
-        {label}
+        {label}{hint && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.82rem', marginLeft: 4 }}>({hint})</span>}
       </span>
       {children}
     </div>
@@ -471,7 +471,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
             <div className="te-sprite-row">
               <input
                 className="te-input"
-                style={{ width: 56, textAlign: 'center', fontSize: '20px' }}
+                style={{ width: 56, textAlign: 'center', fontSize: '20px', fontFamily: "'Noto Color Emoji', serif" }}
                 value={sp.emoji ?? ''}
                 onChange={e => update(sp.id, 'emoji', e.target.value)}
                 placeholder="🐱"

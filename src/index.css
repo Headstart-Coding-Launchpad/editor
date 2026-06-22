@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Quicksand:wght@400;600&family=JetBrains+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Quicksand:wght@400;600&family=JetBrains+Mono&family=Noto+Color+Emoji&display=swap');
 
 :root {
   --colour-primary:          #6222CC;
@@ -2611,6 +2611,7 @@ select {
   align-items: center;
   justify-content: center;
   font-size: 1.75rem;
+  font-family: 'Noto Color Emoji', serif;
   line-height: 1;
 }
 .te-sprite-card__name {

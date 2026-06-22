@@ -365,9 +365,64 @@ When `tests` is present, a **Run Tests** button appears. Students must pass all 
 | `id` omitted | Auto-assigned sequential integers (1, 2, 3 …) |
 | `type: information` on a task | `taskType: "information"` |
 | `type: quiz` on a task | `taskType: "quiz"` |
+| `type: draft` on a task | `taskType: "draft"` |
 | `group: "Title"` + `tasks:` | Group object with auto-generated ID |
 | `checks:` (plural array) | `check:` (the JSON field name) |
 | `answer: a` on a multiple_choice quiz | `check: { type: "answer_equals", value: "a" }` |
+
+---
+
+## Draft Tasks and Lesson Stage
+
+The builder supports an authoring pipeline with `stage` on the lesson envelope and `type: draft` placeholder tasks.
+
+### Lesson stages
+
+`ideas → details → review → approved → published`
+
+Set via the Stage selector in Lesson Details (builder) or the CLI:
+
+```bash
+node cli/cli.mjs lessons set-stage python-for-loops review
+```
+
+### Draft tasks in YAML
+
+```yaml
+id: python-loops-draft
+type: python
+title: Python Loops (Draft)
+stage: ideas
+tasks:
+  - type: draft
+    title: Introduce for loops
+    kind: information slide
+    purpose: Set context before the first code task.
+
+  - type: draft
+    title: Write a basic for loop
+    kind: code task
+    purpose: Students write their first loop.
+    # Tier 2 fields (unlocked at 'details' stage and later):
+    studentFacingContent: |
+      Use `range()` to print the numbers 0–4.
+    expectedOutcome: Five lines of output, one number per line.
+    checksAndSuccessSignals: "output_line_count: 5"
+    hintsAndSupport: "Remind students that range(5) gives 0, 1, 2, 3, 4."
+```
+
+`type: draft` tasks produce a validation **warning** (not an error) — `lessons upsert` saves them, `lessons publish-yaml` blocks them.
+
+### Review notes via CLI
+
+```bash
+# View all tasks with review notes (output includes taskId values to use with --task)
+node cli/cli.mjs lessons review python-loops-draft
+
+# Set a review note using the task's id field shown in the list output
+node cli/cli.mjs lessons review python-loops-draft --task 2 --decision rejected --note "Needs a second example"
+node cli/cli.mjs lessons review python-loops-draft --task 2 --decision accepted
+```
 
 ---
 

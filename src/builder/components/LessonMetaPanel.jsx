@@ -14,6 +14,10 @@ import { FsTreeEditor } from './task-editor/FilesystemEditors'
 import { storage } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 
+const STAGE_LABELS = { ideas: 'Ideas', details: 'Details', review: 'Review', approved: 'Approved', published: 'Published' }
+const STAGE_COLORS = { ideas: '#6b7280', details: '#2563eb', review: '#d97706', approved: '#16a34a', published: '#7c3aed' }
+const STAGE_ORDER = ['ideas', 'details', 'review', 'approved', 'published']
+
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
@@ -107,6 +111,30 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
             onChange={e => set('description', e.target.value)}
             placeholder="Short summary shown on entry screen."
           />
+        </Field>
+
+        <Field label="Stage">
+          <div style={s.stageGrid}>
+            {STAGE_ORDER.map(value => {
+              const active = (lesson.stage ?? 'published') === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  style={{
+                    ...s.stageBtn,
+                    background: active ? STAGE_COLORS[value] : '#f9fafb',
+                    color: active ? '#fff' : '#4b5563',
+                    borderColor: active ? STAGE_COLORS[value] : '#d1d5db',
+                    fontWeight: active ? 700 : 500,
+                  }}
+                  onClick={() => set('stage', value)}
+                >
+                  {STAGE_LABELS[value]}
+                </button>
+              )
+            })}
+          </div>
         </Field>
 
         <AssetSummary lessonId={lesson.id} lessonType={lesson.type} assets={lesson.assets} assetsPath={resolveAssetsPath(lesson.assetsPath)} storageAssets={lesson.storageAssets ?? []} />
@@ -660,6 +688,21 @@ const s = {
     height: 1,
     background: '#e5e7eb',
     margin: '4px 0',
+  },
+  stageGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  stageBtn: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    padding: '4px 8px',
+    borderRadius: 5,
+    border: '1px solid',
+    cursor: 'pointer',
+    transition: 'all 0.1s',
+    letterSpacing: '0.02em',
   },
   removeBtn: {
     flexShrink: 0,

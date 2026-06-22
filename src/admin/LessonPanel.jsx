@@ -9,6 +9,17 @@ function makeBuilderUrl(lessonId) {
 
 const TYPE_ORDER = ['python', 'scratch', 'html', 'filesystem']
 
+const STAGE_LABELS = { ideas: 'Ideas', details: 'Details', review: 'Review', approved: 'Approved', published: 'Published' }
+const STAGE_COLORS = { ideas: '#6b7280', details: '#2563eb', review: '#d97706', approved: '#16a34a', published: '#7c3aed' }
+const STAGE_FILTER_OPTIONS = [
+  { value: null, label: 'All' },
+  { value: 'ideas', label: 'Ideas' },
+  { value: 'details', label: 'Details' },
+  { value: 'review', label: 'Review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'published', label: 'Published' },
+]
+
 function levelSortKey(level) {
   if (level === null || level === undefined) return Infinity
   if (typeof level === 'number') return level
@@ -129,6 +140,7 @@ export default function LessonPanel() {
   }
 
   const [activeType, setActiveType] = useState(null)
+  const [stageFilter, setStageFilter] = useState(null)
 
   const groups = useMemo(
     () => groupByTypeAndLevel(lessons.filter(l => !deletedIds.has(l.id))),
@@ -137,6 +149,11 @@ export default function LessonPanel() {
 
   const displayType = activeType ?? groups[0]?.type ?? null
   const activeGroup = groups.find(g => g.type === displayType)
+  const filteredLessons = useMemo(() => {
+    const base = activeGroup?.lessons ?? []
+    if (!stageFilter) return base
+    return base.filter(l => (l.stage ?? 'published') === stageFilter)
+  }, [activeGroup, stageFilter])
 
   return (
     <section style={s.section}>
@@ -181,29 +198,65 @@ export default function LessonPanel() {
       )}
 
       {activeGroup && (
+        <div style={s.stageFilterRow}>
+          {STAGE_FILTER_OPTIONS.map(opt => (
+            <button
+              key={String(opt.value)}
+              style={{
+                ...s.stageFilterBtn,
+                ...(stageFilter === opt.value ? {
+                  background: opt.value ? STAGE_COLORS[opt.value] : 'var(--colour-primary)',
+                  color: '#fff',
+                  borderColor: opt.value ? STAGE_COLORS[opt.value] : 'var(--colour-primary)',
+                } : {}),
+              }}
+              onClick={() => setStageFilter(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeGroup && (
         <div key={activeGroup.type} style={s.group}>
           <table style={s.table}>
             <colgroup>
-              <col style={{ width: '28%' }} />
+              <col style={{ width: '26%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '42%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '38%' }} />
             </colgroup>
             <thead>
               <tr>
-                {['Title', 'Level', 'ID', 'Actions'].map(h => (
+                {['Title', 'Level', 'Stage', 'ID', 'Actions'].map(h => (
                   <th key={h} style={s.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {activeGroup.lessons.map(lesson => (
+              {filteredLessons.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ ...s.td, color: '#9ca3af', textAlign: 'center', padding: '20px 12px' }}>
+                    No lessons match the selected stage filter.
+                  </td>
+                </tr>
+              )}
+              {filteredLessons.map(lesson => {
+                const stageKey = lesson.stage ?? 'published'
+                return (
                 <tr key={lesson.id}>
                   <td style={s.td}>{lesson.title || lesson.id}</td>
                   <td style={s.td}>
                     {lesson.level != null
                       ? <span style={s.levelBadge}>{lesson.level}</span>
                       : <span style={s.dash}>—</span>}
+                  </td>
+                  <td style={s.td}>
+                    <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
+                      {STAGE_LABELS[stageKey] ?? stageKey}
+                    </span>
                   </td>
                   <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
                   <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
@@ -269,7 +322,8 @@ export default function LessonPanel() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )
+              })}
             </tbody>
           </table>
         </div>
@@ -290,9 +344,23 @@ const s = {
   th:         { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
   td:         { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
   levelBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: '#ede9fe', color: '#7c3aed' },
+  stageBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, color: '#fff', letterSpacing: '0.02em' },
   dash:       { color: '#d1d5db' },
   actions:    { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
   actionBtn:  { padding: '4px 7px', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 },
   error:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
   muted:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af', margin: 0 },
+  stageFilterRow: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
+  stageFilterBtn: {
+    padding: '4px 12px',
+    borderRadius: 20,
+    border: '1px solid #d1d5db',
+    background: '#fff',
+    color: '#6b7280',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.1s',
+  },
 }

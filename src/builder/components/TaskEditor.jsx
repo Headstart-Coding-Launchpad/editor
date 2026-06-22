@@ -7,6 +7,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
+import DraftTaskEditor from './task-editor/DraftTaskEditor'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { ScratchToolboxPicker } from './task-editor/ScratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
@@ -44,6 +45,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const isFilesystem = lessonMod?.type === 'filesystem'
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
+  const isDraft = task.taskType === 'draft'
   const isCompleteTab = codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
@@ -214,6 +216,38 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       Reset to starter code
     </button>
   ) : null
+
+  if (isDraft) {
+    return (
+      <div className="te-wrap">
+        {parentGroup ? (
+          <Field label="Task title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                className="te-input"
+                style={{ flex: 1 }}
+                value={task.title}
+                onChange={e => set('title', e.target.value)}
+                placeholder={`${parentGroup.title} - N`}
+              />
+              {task._customTitle ? (
+                <button type="button" className="te-reset-title-btn" title="Reset to auto-generated name" onClick={() => onUpdate({ ...task, title: '', _customTitle: undefined })}>
+                  reset
+                </button>
+              ) : (
+                <span className="te-auto-title-badge">auto</span>
+              )}
+            </div>
+          </Field>
+        ) : (
+          <Field label="Task title">
+            <input className="te-input" value={task.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Hello World" />
+          </Field>
+        )}
+        <DraftTaskEditor task={task} lesson={lesson} onUpdate={onUpdate} />
+      </div>
+    )
+  }
 
   return (
     <div className="te-wrap">

@@ -19,6 +19,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | number | Difficulty badge in the TopBar. |
+| `stage` | No | string | Lesson lifecycle stage: `ideas`, `details`, `review`, `approved`, `published`. Defaults to `published` if absent. Controls which draft-task fields are unlocked in the builder. |
 | `sandboxStarter` | No | string | Python/Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
 | `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. |
@@ -41,23 +42,73 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `explainer` | Yes | string | Markdown shown to students. |
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
-| `taskType` | No | string | Omit for code tasks. `information` or `quiz` for non-code tasks. |
+| `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `incorrectChecks` | No | object or array | Detect specific wrong patterns. Each must have a non-empty `hint`. |
+| `reviewNote` | No | object | Builder review metadata: `{ decision, suggestedChange, extraNote }`. Not used by the student view. |
 | `_checkTested` | No | boolean | Builder-only validation flag. |
 
 ---
 
 ## Task Format Matrix
 
-| Lesson type | Code task | Information | Quiz |
-|---|---|---|---|
-| `python` | Python editor + output | Supported | Supported |
-| `html` | Multi-file editor + iframe | Supported | Supported |
-| `scratch` | Scratch blocks + stage | Supported | Supported |
-| `filesystem` | Virtual file manager | Supported | Supported |
+| Lesson type | Code task | Information | Quiz | Draft |
+|---|---|---|---|---|
+| `python` | Python editor + output | Supported | Supported | Supported |
+| `html` | Multi-file editor + iframe | Supported | Supported | Supported |
+| `scratch` | Scratch blocks + stage | Supported | Supported | Supported |
+| `filesystem` | Virtual file manager | Supported | Supported | Supported |
 
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, and carry-through fields.
+
+`draft` tasks are planning placeholders — they block publishing (in the builder and via `lessons publish-yaml`) but can be saved via `lessons upsert`.
+
+---
+
+## Draft Task Fields
+
+Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always required, Tier 2 fields are unlocked when the lesson `stage` is `details` or later.
+
+### Tier 1 — Ideas stage
+
+| Field | Notes |
+|---|---|
+| `title` | Short name for the task |
+| `kind` | Intended task type: `information slide`, `code task`, `quiz`, `confidence check`, `project step`, `group heading`, `recap`, or `extension` |
+| `purpose` | Why this moment exists in the lesson |
+| `expectedOutcome` | What the learner produces or achieves (also appears in Tier 2 with richer context) |
+| `knownPitfalls` | Optional — common mistakes or misconceptions to watch for |
+
+### Tier 2 — Details stage and later
+
+| Field | Notes |
+|---|---|
+| `studentFacingContent` | Complete draft of explainer text, quiz question, task prompt, or slide copy (Markdown) |
+| `studentAction` | What the learner does; omit for quizzes and information slides |
+| `starterState` | Starter code, files, blocks, or carry-through notes |
+| `expectedOutcome` | Output, correct answers, page state, or completed work |
+| `checksAndSuccessSignals` | Check type and value, e.g. `output_contains: "X"` or `manual review` |
+| `hintsAndSupport` | Hint text, quiz feedback, code stages, or key misconception note |
+| `topicLinks` | Topic wiki links, e.g. `[[for-loop]]` |
+| `yamlHandoffNotes` | Task type, mode, grouping, carry-through, assets — anything the builder needs when converting to a real task |
+
+---
+
+## Review Note Object
+
+Any task can carry a `reviewNote` for in-builder collaboration:
+
+```json
+{
+  "reviewNote": {
+    "decision": "pending",
+    "suggestedChange": "Split this into two tasks.",
+    "extraNote": "See also task 5."
+  }
+}
+```
+
+`decision` values: `pending` (grey), `accepted` (green), `rejected` (red). Stored on the lesson JSON; not rendered in the student view.
 
 ---
 

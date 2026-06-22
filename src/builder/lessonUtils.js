@@ -55,6 +55,10 @@ export function validateLesson(lesson) {
     if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
       errors.push(`Task ${n} estimated time must be a positive whole number of minutes`)
     }
+    if (task.taskType === 'draft') {
+      warnings.push(`Task ${n} "${task.title || 'Untitled'}" is a draft — convert it to a real task type before publishing`)
+      return
+    }
     if (task.taskType === 'information' && task.informationType !== 'introduction' && !task.explainer?.trim()) {
       errors.push(`Task ${n} is an information task but has no explainer`)
     }

@@ -102,6 +102,18 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     selectTask(newId)
   }
 
+  function handleAddDraftTask() {
+    const { index } = topLevelInsertPosition()
+    const newId = nextId()
+    const newTask = { id: newId, title: '', taskType: 'draft', kind: 'code task', purpose: '' }
+    handleLessonUpdate(prev => {
+      const next = [...prev.tasks]
+      next.splice(index, 0, newTask)
+      return { ...prev, tasks: next }
+    })
+    selectTask(newId)
+  }
+
   function handleAddGroup() {
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
@@ -229,6 +241,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     selectGroup,
     handleLessonUpdate,
     handleAddTask,
+    handleAddDraftTask,
     handleAddGroup,
     handleAddSubtask,
     handleDuplicate,

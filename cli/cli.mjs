@@ -61,6 +61,18 @@ function parseJson(text) {
   }
 }
 
+function parseJsonOrYaml(filePath, text) {
+  const ext = filePath ? extname(filePath).toLowerCase() : ''
+  if (ext === '.yaml' || ext === '.yml') {
+    try {
+      return yaml.load(text.trim()) ?? {}
+    } catch (e) {
+      throw new Error(`Invalid YAML: ${e.message}`)
+    }
+  }
+  return parseJson(text)
+}
+
 function currentOutputFormat() {
   if (process.argv.includes('--yaml')) return 'yaml'
   const formatIndex = process.argv.findIndex(arg => arg === '--format' || arg === '-f')
@@ -344,6 +356,11 @@ await yargs(hideBin(process.argv))
         print({ success: false, ...validation })
         process.exit(1)
       }
+      const draftTasks = (lesson.tasks ?? []).flatMap(t => t.type === 'group' ? (t.subtasks ?? []) : [t]).filter(t => t.taskType === 'draft')
+      if (draftTasks.length > 0) {
+        print({ success: false, errors: [`${draftTasks.length} draft task(s) must be converted or removed before publishing: ${draftTasks.map(t => t.title || `task ${t.id}`).join(', ')}`], warnings: validation.warnings })
+        process.exit(1)
+      }
 
       let outputPath = null
       if (json || writeJson) {
@@ -361,6 +378,33 @@ await yargs(hideBin(process.argv))
           : yamlDump(result),
       })
       if (!result.success) process.exit(1)
+    }))
+
+    .command('set-stage <id> <stage>', 'Set the stage of a lesson (ideas|details|review|approved|published)', {}, cmd(async ({ id, stage }) => {
+      const { setLessonStage } = await loadLessons()
+      const result = await setLessonStage(id, stage)
+      print(result)
+    }))
+
+    .command('review <id>', 'Show all tasks with their review notes', {
+      task: { type: 'number', describe: 'Task ID to update review note on' },
+      decision: { type: 'string', choices: ['pending', 'accepted', 'rejected'], describe: 'Set decision on a specific task' },
+      note: { type: 'string', describe: 'Set suggestedChange on a specific task' },
+      extra: { type: 'string', describe: 'Set extraNote on a specific task' },
+    }, cmd(async ({ id, task: taskId, decision, note, extra }) => {
+      const { getLessonReviewNotes, setTaskReviewNote } = await loadLessons()
+      if (taskId != null) {
+        const reviewNote = {}
+        if (decision != null) reviewNote.decision = decision
+        if (note != null) reviewNote.suggestedChange = note
+        if (extra != null) reviewNote.extraNote = extra
+        if (Object.keys(reviewNote).length === 0) {
+          throw new Error('Provide at least one of --decision, --note, or --extra to update a task review note')
+        }
+        print(await setTaskReviewNote(id, taskId, reviewNote))
+      } else {
+        print(await getLessonReviewNotes(id))
+      }
     }))
 
     .command('draft', 'Manage lesson drafts (Ideas → Details → Review → Publish)', yargs => yargs
@@ -548,18 +592,18 @@ await yargs(hideBin(process.argv))
       print(await getTask(lessonId, Number(taskIndex)))
     }))
 
-    .command('upsert <lessonId> <taskIndex> [file]', 'Replace a task by flat index — file path or stdin', {}, cmd(async ({ lessonId, taskIndex, file }) => {
+    .command('upsert <lessonId> <taskIndex> [file]', 'Replace a task by flat index — file path or stdin (JSON or YAML)', {}, cmd(async ({ lessonId, taskIndex, file }) => {
       const { upsertTask } = await loadLessons()
-      const result = await upsertTask(lessonId, Number(taskIndex), parseJson(await readText(file)))
+      const result = await upsertTask(lessonId, Number(taskIndex), parseJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.success) process.exit(1)
     }))
 
-    .command('append <lessonId> [file]', 'Append a task to a lesson — file path or stdin', {
+    .command('append <lessonId> [file]', 'Append a task to a lesson — file path or stdin (JSON or YAML)', {
       group: { type: 'string', describe: 'Group title to append into (created if it does not exist)' },
     }, cmd(async ({ lessonId, group, file }) => {
       const { appendTask } = await loadLessons()
-      const result = await appendTask(lessonId, parseJson(await readText(file)), group)
+      const result = await appendTask(lessonId, parseJsonOrYaml(file, await readText(file)), group)
       print(result)
       if (!result.success) process.exit(1)
     }))
