@@ -20,7 +20,7 @@ import { useAuth } from '../../auth/useAuth'
 export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSaved }) {
   const [previewing, setPreviewing] = useState(false)
   const [metaOpen, setMetaOpen] = useState(false)
-  const [publishStatus, setPublishStatus] = useState(null) // null | 'publishing' | 'done' | 'error'
+  const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'done' | 'error'
   const [taskFeedback, setTaskFeedback] = useState([])
   const { role } = useAuth()
   const navigate = useNavigate()
@@ -86,33 +86,19 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     onMarkSaved()
   }
 
-  async function handlePublish() {
-    if (errors.length) {
-      alert('Cannot publish — please fix these errors:\n\n' + errors.join('\n'))
-      return
-    }
-    const draftTasks = flattenTasks(lesson.tasks).filter(t => t.taskType === 'draft')
-    if (draftTasks.length > 0) {
-      alert(`Cannot publish — ${draftTasks.length} draft task(s) must be converted or removed first.`)
-      return
-    }
-    if (warnings.length) {
-      const ok = confirm('Warnings:\n\n' + warnings.join('\n') + '\n\nPublish anyway?')
-      if (!ok) return
-    }
-    if (!lesson.id) { alert('Cannot publish — lesson ID is required.'); return }
-    setPublishStatus('publishing')
+  async function handleSave() {
+    if (!lesson.id) { alert('Cannot save — lesson ID is required.'); return }
+    setSaveStatus('saving')
     try {
       const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }))
       await setDoc(doc(firestore, 'lessons', lesson.id), exported)
-      setPublishStatus('done')
+      setSaveStatus('done')
       onMarkSaved()
-      setTimeout(() => navigate('/admin'), 1500)
     } catch (err) {
-      console.error('Publish failed:', err)
-      setPublishStatus('error')
-      setTimeout(() => setPublishStatus(null), 3000)
-      alert('Failed to publish: ' + err.message)
+      console.error('Save failed:', err)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus(null), 3000)
+      alert('Failed to save: ' + err.message)
     }
   }
 
@@ -160,7 +146,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         dirty={dirty}
         role={role}
         errors={errors}
-        publishStatus={publishStatus}
+        saveStatus={saveStatus}
         hasNoTasks={lesson.tasks.length === 0}
         stage={lesson.stage}
         onSetStage={handleSetStage}
@@ -169,7 +155,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         onPreview={() => setPreviewing(true)}
         onPrint={handlePrint}
         onDownload={handleDownload}
-        onPublish={handlePublish}
+        onSave={handleSave}
         onBack={() => navigate('/admin')}
       />
 

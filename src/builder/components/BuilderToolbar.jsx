@@ -15,7 +15,7 @@ export default function BuilderToolbar({
   dirty,
   role,
   errors,
-  publishStatus,
+  saveStatus,
   hasNoTasks,
   stage,
   onSetStage,
@@ -24,7 +24,7 @@ export default function BuilderToolbar({
   onPreview,
   onPrint,
   onDownload,
-  onPublish,
+  onSave,
   onBack,
 }) {
   const currentStage = stage ?? 'published'
@@ -92,14 +92,14 @@ export default function BuilderToolbar({
             className="btn-primary"
             style={{
               ...s.btnPrimary,
-              background: publishStatus === 'done' ? '#16a34a' : publishStatus === 'error' ? '#ef4444' : undefined,
+              background: saveStatus === 'done' ? '#16a34a' : saveStatus === 'error' ? '#ef4444' : undefined,
             }}
-            onClick={onPublish}
-            disabled={publishStatus === 'publishing'}
+            onClick={onSave}
+            disabled={saveStatus === 'saving'}
           >
-            {publishStatus === 'publishing' ? 'Saving…'
-              : publishStatus === 'done' ? 'Saved ✓'
-              : publishStatus === 'error' ? 'Save failed ✕'
+            {saveStatus === 'saving' ? 'Saving…'
+              : saveStatus === 'done' ? 'Saved ✓'
+              : saveStatus === 'error' ? 'Save failed ✕'
               : 'Save'}
           </button>
         )}
