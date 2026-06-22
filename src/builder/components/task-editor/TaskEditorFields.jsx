@@ -231,11 +231,11 @@ function TaskFormatIcon({ type }) {
   )
 }
 
-function Field({ label, children }) {
+function Field({ label, hint, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)' }}>
-        {label}
+        {label}{hint && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.82rem', marginLeft: 4 }}>({hint})</span>}
       </span>
       {children}
     </div>

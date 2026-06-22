@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { formatEstimatedMinutes, getTotalEstimatedMinutes } from '../../shared/taskUtils'
 
 function taskIconType(task) {
+  if (task.taskType === 'draft') return 'draft'
   if (task.taskType === 'information') return 'information'
   if (task.taskType === 'quiz') return 'quiz'
   if (task.toolbox || task.starterBlocks || task.completeBlocks) return 'scratch'
@@ -10,6 +11,12 @@ function taskIconType(task) {
 
 function TaskFormatIcon({ type }) {
   const common = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }
+  if (type === 'draft') return (
+    <svg {...common}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  )
   if (type === 'scratch') return (
     <svg {...common}>
       <rect x="2" y="2" width="9" height="9" rx="1.5" />
@@ -88,6 +95,7 @@ export default function TaskList({
   onSelect,
   onSelectGroup,
   onAdd,
+  onAddDraft,
   onAddGroup,
   onAddSubtask,
   onDuplicate,
@@ -216,6 +224,16 @@ export default function TaskList({
           >
             + Group
           </button>
+          {onAddDraft && (
+            <button
+              type="button"
+              style={s.addDraftBtn}
+              onClick={onAddDraft}
+              title="Add a draft placeholder task"
+            >
+              + Draft
+            </button>
+          )}
         </div>
       </div>
 
@@ -330,12 +348,14 @@ export default function TaskList({
 
           // Standalone task
           const isActive = item.id === selectedTaskId
+          const isDraft = item.taskType === 'draft'
           return (
             <div
               key={item.id}
               style={{
                 ...s.item,
-                ...(isActive ? s.itemActive : {}),
+                ...(isDraft ? s.itemDraft : {}),
+                ...(isActive ? (isDraft ? s.itemDraftActive : s.itemActive) : {}),
                 ...(dropStyle({ groupId: null, index: i }) ?? {}),
               }}
               draggable
@@ -345,13 +365,14 @@ export default function TaskList({
               onDrop={e => handleDrop(e, { groupId: null, index: i })}
               onClick={() => onSelect(item.id)}
             >
-              <span style={s.num}>{i + 1}</span>
-              <span style={s.taskTypeIcon} title={`${taskIconType(item)} task`}>
+              <span style={isDraft ? s.numDraft : s.num}>{i + 1}</span>
+              <span style={{ ...s.taskTypeIcon, ...(isDraft ? s.taskTypeIconDraft : {}) }} title={`${taskIconType(item)} task`}>
                 <TaskFormatIcon type={taskIconType(item)} />
               </span>
               <span style={s.title}>
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
               </span>
+              {isDraft && <span style={s.draftBadge}>DRAFT</span>}
               <div style={s.actions} onClick={e => e.stopPropagation()}>
                 <button style={s.iconBtn} onClick={() => moveUp(i)} title="Move up" disabled={i === 0}>▲</button>
                 <button style={s.iconBtn} onClick={() => moveDown(i)} title="Move down" disabled={i === tasks.length - 1}>▼</button>
@@ -392,6 +413,17 @@ const s = {
     background: 'rgba(255,255,255,0.15)',
     border: '1px solid rgba(255,255,255,0.4)',
     color: '#fff',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+  },
+  addDraftBtn: {
+    fontSize: 11,
+    padding: '4px 8px',
+    background: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    color: 'rgba(255,255,255,0.75)',
     borderRadius: 6,
     cursor: 'pointer',
     fontFamily: 'var(--font-body)',
@@ -469,6 +501,47 @@ const s = {
     borderRadius: 4,
     color: '#6b7280',
     opacity: 0.7,
+  },
+  itemDraft: {
+    background: '#fafafa',
+    borderLeft: '3px solid #d1d5db',
+    opacity: 0.85,
+  },
+  itemDraftActive: {
+    background: '#f1f5f9',
+    borderLeftColor: '#6b7280',
+    opacity: 1,
+  },
+  numDraft: {
+    width: 20,
+    height: 20,
+    background: '#9ca3af',
+    color: '#fff',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.72rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  taskTypeIconDraft: {
+    color: '#9ca3af',
+    background: '#f3f4f6',
+  },
+  draftBadge: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    color: '#9ca3af',
+    background: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    borderRadius: 4,
+    padding: '1px 5px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   // Group styles
   groupHeader: {

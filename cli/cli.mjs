@@ -344,6 +344,11 @@ await yargs(hideBin(process.argv))
         print({ success: false, ...validation })
         process.exit(1)
       }
+      const draftTasks = (lesson.tasks ?? []).flatMap(t => t.type === 'group' ? (t.subtasks ?? []) : [t]).filter(t => t.taskType === 'draft')
+      if (draftTasks.length > 0) {
+        print({ success: false, errors: [`${draftTasks.length} draft task(s) must be converted or removed before publishing: ${draftTasks.map(t => t.title || `task ${t.id}`).join(', ')}`], warnings: validation.warnings })
+        process.exit(1)
+      }
 
       let outputPath = null
       if (json || writeJson) {
@@ -361,6 +366,33 @@ await yargs(hideBin(process.argv))
           : yamlDump(result),
       })
       if (!result.success) process.exit(1)
+    }))
+
+    .command('set-stage <id> <stage>', 'Set the stage of a lesson (ideas|details|review|approved|published)', {}, cmd(async ({ id, stage }) => {
+      const { setLessonStage } = await loadLessons()
+      const result = await setLessonStage(id, stage)
+      print(result)
+    }))
+
+    .command('review <id>', 'Show all tasks with their review notes', {
+      task: { type: 'number', describe: 'Task ID to update review note on' },
+      decision: { type: 'string', choices: ['pending', 'accepted', 'rejected'], describe: 'Set decision on a specific task' },
+      note: { type: 'string', describe: 'Set suggestedChange on a specific task' },
+      extra: { type: 'string', describe: 'Set extraNote on a specific task' },
+    }, cmd(async ({ id, task: taskId, decision, note, extra }) => {
+      const { getLessonReviewNotes, setTaskReviewNote } = await loadLessons()
+      if (taskId != null) {
+        const reviewNote = {}
+        if (decision != null) reviewNote.decision = decision
+        if (note != null) reviewNote.suggestedChange = note
+        if (extra != null) reviewNote.extraNote = extra
+        if (Object.keys(reviewNote).length === 0) {
+          throw new Error('Provide at least one of --decision, --note, or --extra to update a task review note')
+        }
+        print(await setTaskReviewNote(id, taskId, reviewNote))
+      } else {
+        print(await getLessonReviewNotes(id))
+      }
     }))
 
     .command('draft', 'Manage lesson drafts (Ideas → Details → Review → Publish)', yargs => yargs

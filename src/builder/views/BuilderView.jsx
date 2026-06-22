@@ -34,6 +34,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     selectGroup,
     handleLessonUpdate,
     handleAddTask,
+    handleAddDraftTask,
     handleAddGroup,
     handleAddSubtask,
     handleDuplicate,
@@ -48,6 +49,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     lessonForEditor,
     selectedTaskGroup,
   } = useBuilderState({ lesson, onUpdate, defaultSprites })
+
+  function handleSetStage(newStage) {
+    handleLessonUpdate(prev => ({ ...prev, stage: newStage }))
+  }
 
   useEffect(() => {
     if (!selectedTaskId || !lesson?.id) { setTaskFeedback([]); return }
@@ -84,6 +89,11 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   async function handlePublish() {
     if (errors.length) {
       alert('Cannot publish — please fix these errors:\n\n' + errors.join('\n'))
+      return
+    }
+    const draftTasks = flattenTasks(lesson.tasks).filter(t => t.taskType === 'draft')
+    if (draftTasks.length > 0) {
+      alert(`Cannot publish — ${draftTasks.length} draft task(s) must be converted or removed first.`)
       return
     }
     if (warnings.length) {
@@ -152,6 +162,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         errors={errors}
         publishStatus={publishStatus}
         hasNoTasks={lesson.tasks.length === 0}
+        stage={lesson.stage}
+        onSetStage={handleSetStage}
         onNew={onNew}
         onUpload={handleUpload}
         onPreview={() => setPreviewing(true)}
@@ -182,6 +194,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             onSelect={selectTask}
             onSelectGroup={selectGroup}
             onAdd={handleAddTask}
+            onAddDraft={handleAddDraftTask}
             onAddGroup={handleAddGroup}
             onAddSubtask={handleAddSubtask}
             onDuplicate={handleDuplicate}
@@ -220,7 +233,17 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                   }))
                 }}
               />
-              {taskFeedback.length > 0 && <TaskFeedbackPanel feedback={taskFeedback} />}
+              <TaskFeedbackPanel
+                key={selectedTask.id}
+                task={selectedTask}
+                feedback={taskFeedback}
+                onUpdateTask={updated => {
+                  handleLessonUpdate(prev => ({
+                    ...prev,
+                    tasks: applyTaskUpdate(prev.tasks, selectedTaskGroup, selectedTask, updated),
+                  }))
+                }}
+              />
             </>
           ) : (
             <div style={s.empty}>

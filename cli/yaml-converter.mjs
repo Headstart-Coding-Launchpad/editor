@@ -144,6 +144,8 @@ function convertTask(raw, id, lessonType) {
     task.taskType = 'information'
   } else if (type === 'quiz') {
     task.taskType = 'quiz'
+  } else if (type === 'draft') {
+    task.taskType = 'draft'
   }
   // type === lessonType or undefined → code task, no taskType added
 
@@ -173,6 +175,9 @@ function taskToYamlObject(task) {
     delete out.taskType
   } else if (out.taskType === 'quiz') {
     out.type = 'quiz'
+    delete out.taskType
+  } else if (out.taskType === 'draft') {
+    out.type = 'draft'
     delete out.taskType
   }
 

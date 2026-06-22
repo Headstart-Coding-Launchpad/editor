@@ -185,6 +185,52 @@ export async function deleteLesson(id) {
   return { success: true, id }
 }
 
+const VALID_STAGES = ['ideas', 'details', 'review', 'approved', 'published']
+
+export async function setLessonStage(id, stage) {
+  if (!VALID_STAGES.includes(stage)) {
+    throw new Error(`Invalid stage '${stage}'. Must be one of: ${VALID_STAGES.join(', ')}`)
+  }
+  const snap = await db.collection('lessons').doc(id).get()
+  if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
+  const previous = snap.data().stage ?? 'published'
+  await db.collection('lessons').doc(id).update({ stage })
+  return { success: true, id, previousStage: previous, stage }
+}
+
+export async function getLessonReviewNotes(id) {
+  const snap = await db.collection('lessons').doc(id).get()
+  if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
+  const tasks = snap.data().tasks ?? []
+  const flat = flattenTasks(tasks)
+  return flat
+    .filter(t => t.reviewNote)
+    .map(t => ({
+      taskId: t.id,
+      title: t.title ?? '',
+      taskType: t.taskType ?? null,
+      reviewNote: t.reviewNote,
+    }))
+}
+
+export async function setTaskReviewNote(lessonId, taskId, reviewNote) {
+  const snap = await db.collection('lessons').doc(lessonId).get()
+  if (!snap.exists) throw new Error(`Lesson '${lessonId}' not found`)
+  const lesson = { id: snap.id, ...snap.data() }
+  const flat = flattenTasks(lesson.tasks ?? [])
+  const target = flat.find(t => String(t.id) === String(taskId))
+  if (!target) throw new Error(`Task '${taskId}' not found in lesson '${lessonId}'`)
+  const updated = { ...target, reviewNote: { ...(target.reviewNote ?? {}), ...reviewNote } }
+  const updatedTasks = replaceTaskAtFlatIndex(
+    lesson.tasks,
+    flat.findIndex(t => String(t.id) === String(taskId)) + 1,
+    updated,
+  )
+  if (!updatedTasks) throw new Error(`Could not locate task '${taskId}'`)
+  await db.collection('lessons').doc(lessonId).set({ ...lesson, tasks: updatedTasks })
+  return { success: true, lessonId, taskId, reviewNote: updated.reviewNote }
+}
+
 export function yamlToLesson(yamlText) {
   const lesson = parseYamlLesson(yamlText)
   const { valid, errors, warnings } = validateLessonForMcp(lesson)

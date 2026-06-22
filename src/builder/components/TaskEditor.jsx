@@ -7,6 +7,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
+import DraftTaskEditor from './task-editor/DraftTaskEditor'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
 import { ScratchToolboxPicker } from './task-editor/ScratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
@@ -44,6 +45,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const isFilesystem = lessonMod?.type === 'filesystem'
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
+  const isDraft = task.taskType === 'draft'
   const isCompleteTab = codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
@@ -214,6 +216,69 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       Reset to starter code
     </button>
   ) : null
+
+  if (isDraft) {
+    return (
+      <div className="te-wrap">
+        {parentGroup ? (
+          <Field label="Task title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                className="te-input"
+                style={{ flex: 1 }}
+                value={task.title}
+                onChange={e => set('title', e.target.value)}
+                placeholder={`${parentGroup.title} - N`}
+              />
+              {task._customTitle ? (
+                <button type="button" className="te-reset-title-btn" title="Reset to auto-generated name" onClick={() => onUpdate({ ...task, title: '', _customTitle: undefined })}>
+                  reset
+                </button>
+              ) : (
+                <span className="te-auto-title-badge">auto</span>
+              )}
+            </div>
+          </Field>
+        ) : (
+          <Field label="Task title">
+            <input className="te-input" value={task.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Hello World" />
+          </Field>
+        )}
+        <Field label="Estimated time (minutes)">
+          <input
+            className="te-input"
+            type="number"
+            min="1"
+            step="1"
+            value={task.estimatedMinutes ?? ''}
+            onChange={e => {
+              const value = e.target.value
+              set('estimatedMinutes', value === '' ? undefined : Math.max(1, Number.parseInt(value, 10) || 1))
+            }}
+            placeholder="e.g. 10"
+          />
+        </Field>
+        <Field label="Available in">
+          <div className="te-info-type-grid">
+            {[
+              { value: 'both', label: 'Both', hint: 'Live and solo mode' },
+              { value: 'live', label: 'Live only', hint: 'During live sessions' },
+              { value: 'solo', label: 'Solo only', hint: 'In solo mode' },
+            ].map(option => {
+              const active = (task.taskMode ?? 'both') === option.value
+              return (
+                <button key={option.value} type="button" className={active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'} onClick={() => set('taskMode', option.value === 'both' ? undefined : option.value)}>
+                  <span className="te-info-type-label">{option.label}</span>
+                  <span className="te-info-type-hint">{option.hint}</span>
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+        <DraftTaskEditor task={task} lesson={lesson} onUpdate={onUpdate} />
+      </div>
+    )
+  }
 
   return (
     <div className="te-wrap">
