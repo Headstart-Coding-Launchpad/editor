@@ -36,9 +36,9 @@ export function normalizeTopicLibrary(data) {
 function loadTopics() {
   if (cachedTopics) return Promise.resolve(cachedTopics)
   if (!fetchPromise) {
-    fetchPromise = getDocs(collection(firestore, 'topicLibrary'))
+    fetchPromise = Promise.resolve(getDocs(collection(firestore, 'topicLibrary')))
       .then(snap => {
-        const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        const raw = (snap?.docs ?? []).map(d => ({ id: d.id, ...d.data() }))
         cachedTopics = normalizeTopicLibrary(raw)
         return cachedTopics
       })

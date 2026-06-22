@@ -43,7 +43,7 @@ Rules:
 Publish:
 
 ```
-node cli/cli.mjs topics upsert topic.json
+node cli/cli.mjs topics upsert topic.yaml  # accepts YAML or JSON
 ```
 
 Or pipe the JSON. Upsert creates if the ID is new, updates if it already exists.

@@ -1,5 +1,6 @@
 import { checkAllowedForSubmit, normalizeChecks } from '../shared/checks'
 import { flattenTasks } from '../shared/taskUtils'
+import { validateTopicProposals } from '../shared/topicAudit'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 
@@ -33,6 +34,7 @@ export function validateLesson(lesson) {
   const errors = []
   const warnings = []
   const { id, title, type, tasks } = lesson
+  errors.push(...validateTopicProposals(lesson.topicProposals))
 
   if (!id) errors.push('Lesson ID is required')
   else if (!/^[a-z0-9-]+$/.test(id)) errors.push('Lesson ID must be lowercase with hyphens only')

@@ -148,9 +148,9 @@ function typeFromSubjectOp(subject, operator) {
   return maps[subject]?.[operator] ?? 'output_contains'
 }
 
-function getOperatorOptions(subject, { allowCodeNoError }) {
+function getOperatorOptions(subject, currentOperator = null) {
   if (subject === 'output') return [
-    ...(allowCodeNoError ? [{ value: 'no_error', label: 'no error' }] : []),
+    ...(currentOperator === 'no_error' ? [{ value: 'no_error', label: 'no error (legacy)' }] : []),
     { value: 'contains',      label: 'contains' },
     { value: 'equals',        label: 'equals' },
     { value: 'not_contains',  label: 'does not contain' },
@@ -386,7 +386,7 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
   )
 }
 
-function CheckListEditor({ checks, onChange, interactionMode = 'run', allowCodeNoError = false, allowVariableChecks = false, allowDomChecks = false, lessonType = null, output = '', code = '' }) {
+function CheckListEditor({ checks, onChange, interactionMode = 'run', allowVariableChecks = false, allowDomChecks = false, lessonType = null, output = '', code = '' }) {
   const submitMode = interactionMode === 'submit'
 
   function updateCheck(index, updated) {
@@ -396,12 +396,12 @@ function CheckListEditor({ checks, onChange, interactionMode = 'run', allowCodeN
     onChange(checks.filter((_, i) => i !== index))
   }
   function addCheck() {
-    onChange([...checks, submitMode ? { type: 'code_contains', value: '' } : allowCodeNoError ? { type: 'code_no_error' } : { type: 'output_contains', value: '' }])
+    onChange([...checks, submitMode ? { type: 'code_contains', value: '' } : { type: 'output_contains', value: '' }])
   }
 
   function handleSubjectChange(index, newSubject) {
     const current = checks[index]
-    const defaultOp = newSubject === 'output' ? (allowCodeNoError ? 'no_error' : 'contains')
+    const defaultOp = newSubject === 'output' ? 'contains'
       : newSubject === 'code' ? 'contains'
       : newSubject === 'variable' ? 'exists'
       : 'exists'
@@ -418,7 +418,7 @@ function CheckListEditor({ checks, onChange, interactionMode = 'run', allowCodeN
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
       {checks.map((check, index) => {
         const { subject, operator } = subjectOpFromType(check.type)
-        const operatorOptions = getOperatorOptions(subject, { allowCodeNoError })
+        const operatorOptions = getOperatorOptions(subject, operator)
         return (
           <div key={index} className="te-check-row">
             {checks.length > 1 && <span className="te-check-index">#{index + 1}</span>}

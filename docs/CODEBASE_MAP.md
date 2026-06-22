@@ -163,7 +163,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, assets, sandbox config modals |
+| `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, topic summary/proposals, assets, sandbox config modals |
+| `LessonTopicSummary.jsx` | Derived existing/missing/unused topic report and editor for lesson-level topic proposals |
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
 | `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
@@ -258,6 +259,7 @@ Each `index.js` exports a default object with:
 | `useAssets.js` | Hook for fetching `public/assets/manifest.json` (returns empty arrays when absent); exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` for static asset paths — currently returns empty everywhere |
 | `useTypeAssets.js` | Hook for fetching `lessonTypeAssets/{type}` from Firestore; returns `typeStorageAssets` and `defaultSprites` for type-wide shared files and Scratch sprite defaults |
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
+| `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checks.js` | Check evaluation engine: `evaluateCheckResults()`, `evaluateSingleCheck()`, `CHECK_TYPES` constants — delegates `fs_*` types to `filesystem.js` |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
@@ -317,11 +319,12 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | File | Role |
 |---|---|
 | `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
-| `cli/cli.mjs` | Entry point: yargs CLI with `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
+| `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency) |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization |
+| `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |
 | `cli/lessons.mjs` | Exports async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
 | `cli/feedback.mjs` | Exports Firestore feedback helpers: list (platform/lesson/all), add (lesson/platform), delete by ID, and bulk-clear with optional filters |

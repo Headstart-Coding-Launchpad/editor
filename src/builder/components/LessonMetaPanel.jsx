@@ -13,12 +13,13 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { FsTreeEditor } from './task-editor/FilesystemEditors'
 import { storage } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
+import LessonTopicSummary from './LessonTopicSummary'
 
 const STAGE_LABELS = { ideas: 'Ideas', details: 'Details', review: 'Review', approved: 'Approved', published: 'Published' }
 const STAGE_COLORS = { ideas: '#6b7280', details: '#2563eb', review: '#d97706', approved: '#16a34a', published: '#7c3aed' }
 const STAGE_ORDER = ['ideas', 'details', 'review', 'approved', 'published']
 
-export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
+export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetStage, topicState }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const { typeStorageAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
@@ -128,7 +129,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
                     borderColor: active ? STAGE_COLORS[value] : '#d1d5db',
                     fontWeight: active ? 700 : 500,
                   }}
-                  onClick={() => set('stage', value)}
+                  onClick={() => onSetStage?.(value)}
                 >
                   {STAGE_LABELS[value]}
                 </button>
@@ -136,6 +137,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse }) {
             })}
           </div>
         </Field>
+
+        <LessonTopicSummary
+          lesson={lesson}
+          topics={topicState?.topics ?? []}
+          loading={topicState?.loading ?? false}
+          error={topicState?.error ?? null}
+          onUpdate={onUpdate}
+        />
 
         <AssetSummary lessonId={lesson.id} lessonType={lesson.type} assets={lesson.assets} assetsPath={resolveAssetsPath(lesson.assetsPath)} storageAssets={lesson.storageAssets ?? []} />
 

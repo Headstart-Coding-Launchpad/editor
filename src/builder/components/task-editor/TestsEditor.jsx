@@ -139,7 +139,6 @@ function SingleTestEditor({ test, onChange, onRemove, lessonType }) {
           checks={test.check ? (Array.isArray(test.check) ? test.check : [test.check]) : [{ type: 'output_contains', value: '' }]}
           onChange={checks => setField('check', checks)}
           interactionMode="run"
-          allowCodeNoError
           allowVariableChecks
           allowDomChecks={false}
           lessonType={lessonType}

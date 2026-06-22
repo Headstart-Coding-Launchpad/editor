@@ -118,7 +118,7 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml`
+- `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml|set-stage|topics`
 - `lessons draft list|get|upsert|context|submit|request-changes|approve|publish`
 - `lessons draft entry list|get|add|update|delete`
 - `lessons draft notes list|add|update|delete`
@@ -128,7 +128,7 @@ Command groups:
 - `assets list|upload|delete`
 - `authoring guidelines list|get|upsert|delete`
 
-JSON/YAML can be supplied as a file argument or piped via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
+Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
 **Agent playbooks** (load when task matches): `docs/authoring/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`, `hsc-authoring.md`
 

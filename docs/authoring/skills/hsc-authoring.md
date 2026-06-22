@@ -351,6 +351,18 @@ Key differences:
 
 For the YAML syntax, field reference, and CLI commands for draft tasks, see the **"Draft Tasks and Lesson Stage"** section in `docs/authoring/AUTHORING_GUIDE.md`.
 
+### Topic planning for lesson-native drafts
+
+Do not keep a separate "Topics to Create" list in working notes. Record likely topic IDs on each draft task using `topicLinks` during Ideas. Add lesson-level `topicProposals` only for referenced IDs that are missing from the Topic Library, then embed the links in `studentFacingContent`, `hintsAndSupport`, or final task prose during Details.
+
+Audit the lesson against Firestore before stage changes:
+
+```bash
+node cli/cli.mjs lessons topics <lessonId>
+```
+
+Details → Review requires every missing ID to have a `proposed` or `deferred` proposal. Approved → Published requires every referenced ID to exist in the Topic Library.
+
 ---
 
 ## Typical draft workflow

@@ -1,6 +1,7 @@
 import { db } from './firebase.mjs'
 import { validateLessonForMcp } from './validate.mjs'
 import { parseYamlLesson } from './yaml-converter.mjs'
+import { auditLessonTopics, validateTopicStage } from '../src/shared/topicAudit.js'
 
 export { validateLessonForMcp as validateLesson }
 
@@ -94,13 +95,34 @@ function summarize(id, lesson) {
   return { id, title: lesson.title ?? '', type: lesson.type ?? '', flatTaskCount: flattenTasks(tasks).length }
 }
 
+async function fetchTopicLibrary() {
+  const snap = await db.collection('topicLibrary').get()
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+}
+
 async function publishLesson(lesson) {
   const { valid, errors, warnings } = validateLessonForMcp(lesson)
   if (!valid) return { success: false, valid, errors, warnings }
+  const topicValidation = validateTopicStage(lesson, await fetchTopicLibrary(), lesson.stage ?? 'published')
+  if (!topicValidation.valid) {
+    return {
+      success: false,
+      valid: false,
+      errors: topicValidation.errors,
+      warnings: [...warnings, ...topicValidation.warnings],
+      topicAudit: topicValidation.audit,
+    }
+  }
   await db.collection('lessons').doc(lesson.id).set(lesson)
   const snap = await db.collection('lessons').doc(lesson.id).get()
   const published = snap.exists ? summarize(snap.id, snap.data()) : null
-  return { success: true, valid, id: lesson.id, warnings, published }
+  return {
+    success: true,
+    valid,
+    id: lesson.id,
+    warnings: [...warnings, ...topicValidation.warnings],
+    published,
+  }
 }
 
 export async function listLessons() {
@@ -193,9 +215,34 @@ export async function setLessonStage(id, stage) {
   }
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  const previous = snap.data().stage ?? 'published'
+  const lesson = { id: snap.id, ...snap.data() }
+  const previous = lesson.stage ?? 'published'
+  const topicValidation = validateTopicStage(lesson, await fetchTopicLibrary(), stage)
+  if (!topicValidation.valid) throw new Error(topicValidation.errors.join('; '))
   await db.collection('lessons').doc(id).update({ stage })
-  return { success: true, id, previousStage: previous, stage }
+  return {
+    success: true,
+    id,
+    previousStage: previous,
+    stage,
+    warnings: topicValidation.warnings,
+    topicAudit: topicValidation.audit,
+  }
+}
+
+export async function getLessonTopicAudit(id) {
+  const lesson = await getLesson(id)
+  const audit = auditLessonTopics(lesson, await fetchTopicLibrary())
+  return {
+    lessonId: id,
+    lessonTitle: lesson.title ?? '',
+    stage: lesson.stage ?? 'published',
+    references: audit.references,
+    existing: audit.existing,
+    missing: audit.missing,
+    proposals: lesson.topicProposals ?? [],
+    unusedProposals: audit.unusedProposals,
+  }
 }
 
 export async function getLessonReviewNotes(id) {
