@@ -704,12 +704,10 @@ export default function AuthoringPanel({ subtab, onSubtabChange }) {
 
   return (
     <div style={s.wrap}>
-      <div style={s.topTabRow}>
-        <h2 style={s.heading}>Authoring</h2>
-        <div className="ui-tabs">
-          <button className={`ui-tab${topTab === 'drafts' ? ' is-active' : ''}`} onClick={() => setTopTab('drafts')}>Drafts</button>
-          <button className={`ui-tab${topTab === 'guidelines' ? ' is-active' : ''}`} onClick={() => setTopTab('guidelines')}>Guidelines</button>
-        </div>
+      <h2 style={s.heading}>Authoring</h2>
+      <div className="ui-tabs">
+        <button className={`ui-tab${topTab === 'drafts' ? ' is-active' : ''}`} onClick={() => setTopTab('drafts')}>Drafts</button>
+        <button className={`ui-tab${topTab === 'guidelines' ? ' is-active' : ''}`} onClick={() => setTopTab('guidelines')}>Guidelines</button>
       </div>
 
       {topTab === 'guidelines' && <GuidelinesSection />}
@@ -863,7 +861,6 @@ export default function AuthoringPanel({ subtab, onSubtabChange }) {
 
 const s = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 16 },
-  topTabRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   heading: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
   layout: { display: 'flex', gap: 24, alignItems: 'flex-start', minHeight: 500 },
   sidebar: { width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 },
@@ -888,7 +885,7 @@ const s = {
   draftTitle: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', lineHeight: 1.3 },
   draftMeta: { display: 'flex', alignItems: 'center', gap: 6 },
   draftType: { fontFamily: 'var(--font-body)', fontSize: '0.72rem', color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '1px 5px' },
-  panel: { flex: 1, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, display: 'flex', flexDirection: 'column' },
+  panel: { flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, display: 'flex', flexDirection: 'column' },
   panelHeader: { padding: '16px 20px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   panelTitle: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   panelName: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1rem', color: 'var(--colour-text)' },
