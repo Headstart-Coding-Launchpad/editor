@@ -95,12 +95,12 @@ export default function BuilderToolbar({
               background: publishStatus === 'done' ? '#16a34a' : publishStatus === 'error' ? '#ef4444' : undefined,
             }}
             onClick={onPublish}
-            disabled={errors.length > 0 || publishStatus === 'publishing'}
+            disabled={publishStatus === 'publishing'}
           >
-            {publishStatus === 'publishing' ? 'Publishing…'
-              : publishStatus === 'done' ? 'Published ✓'
-              : publishStatus === 'error' ? 'Publish failed ✕'
-              : 'Publish to Firestore'}
+            {publishStatus === 'publishing' ? 'Saving…'
+              : publishStatus === 'done' ? 'Saved ✓'
+              : publishStatus === 'error' ? 'Save failed ✕'
+              : 'Save'}
           </button>
         )}
       </div>
