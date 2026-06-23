@@ -15,10 +15,6 @@ export function normalizeOutput(value, caseSensitive = false) {
   return caseSensitive ? s : s.toLowerCase()
 }
 
-export function normalizeRegexOutput(value) {
-  return String(value ?? '').replace(/\r\n?/g, '\n').trim()
-}
-
 export function normalizeExactOutput(value) {
   return String(value ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').toLowerCase()
 }
@@ -85,6 +81,15 @@ export function parseMultipleContainOptions(value) {
   const stripped = trimmed.replace(/"[^"]*"/g, '').replace(/[\s,]/g, '')
   if (stripped !== '') return null
   return options.length > 0 ? options : null
+}
+
+export function matchesContainValue(rawValue, checkValue, normalizeFn) {
+  const opts = parseMultipleContainOptions(checkValue)
+  if (opts) {
+    const actual = normalizeFn(rawValue)
+    return opts.some(opt => wildcardContains(actual, normalizeFn(opt)))
+  }
+  return wildcardContains(normalizeFn(rawValue), normalizeFn(checkValue))
 }
 
 export function parseCheckValue(value) {

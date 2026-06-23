@@ -2,10 +2,9 @@ import {
   wildcardContains,
   wildcardEquals,
   normalizeOutput,
-  normalizeRegexOutput,
   normalizeStyleValue,
   getElementText,
-  parseMultipleContainOptions,
+  matchesContainValue,
 } from '../../shared/checkHelpers.js'
 
 export const HTML_CHECK_TYPES = [
@@ -61,12 +60,7 @@ export function evaluateHtmlCheck(check, output, context = {}) {
       const el = context.iframeDoc.querySelector(check.selector)
       if (!el) return false
       const raw = getElementText(el)
-      const elemOptions = parseMultipleContainOptions(check.value)
-      if (elemOptions) {
-        const actual = normalizeOutput(raw)
-        return elemOptions.some(opt => wildcardContains(actual, normalizeOutput(opt)))
-      }
-      return wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
+      return matchesContainValue(raw, check.value, normalizeOutput)
     } catch { return false }
   }
 
@@ -102,7 +96,7 @@ export function evaluateHtmlCheck(check, output, context = {}) {
     try {
       const el = context.iframeDoc.querySelector(check.selector)
       if (!el) return false
-      return new RegExp(check.value).test(normalizeRegexOutput(getElementText(el)))
+      return new RegExp(check.value).test(normalizeOutput(getElementText(el), true))
     } catch { return false }
   }
 

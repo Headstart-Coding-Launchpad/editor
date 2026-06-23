@@ -8,7 +8,7 @@ import {
   normalizeExactOutput,
   normalizeCode,
   countOutputLines,
-  parseMultipleContainOptions,
+  matchesContainValue,
 } from '../shared/checkHelpers.js'
 
 export function substituteTestInputs(value, inputs) {
@@ -45,6 +45,7 @@ export const CHECK_TYPES = {
     'output_not_equals',
     'output_matches_regex',
     'output_line_count',
+    'output_line_count_at_least',
     'output_not_empty',
     'output_empty',
     'element_exists',
@@ -124,12 +125,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'answer_contains') {
-    const answerOptions = parseMultipleContainOptions(check.value)
-    if (answerOptions) {
-      const actual = normalizeOutput(context.answer ?? output)
-      return answerOptions.some(opt => wildcardContains(actual, normalizeOutput(opt)))
-    }
-    return wildcardContains(normalizeOutput(context.answer ?? output), normalizeOutput(check.value))
+    return matchesContainValue(context.answer ?? output, check.value, normalizeOutput)
   }
 
   if (check.type === 'answer_not_contains') {
@@ -160,13 +156,12 @@ export function evaluateSingleCheck(check, output, context = {}) {
     return countOutputLines(output) === Number(check.value)
   }
 
+  if (check.type === 'output_line_count_at_least') {
+    return countOutputLines(output) >= Number(check.value)
+  }
+
   if (check.type === 'code_contains') {
-    const codeOptions = parseMultipleContainOptions(check.value)
-    if (codeOptions) {
-      const actual = normalizeCode(context.code ?? '')
-      return codeOptions.some(opt => wildcardContains(actual, normalizeCode(opt)))
-    }
-    return wildcardContains(normalizeCode(context.code ?? ''), normalizeCode(check.value))
+    return matchesContainValue(context.code ?? '', check.value, normalizeCode)
   }
 
   if (check.type === 'code_does_not_contain') {
@@ -185,12 +180,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
     try { return new RegExp(check.value).test(normalizeCode(context.code ?? '', true)) } catch { return false }
   }
 
-  const outputOptions = parseMultipleContainOptions(check.value)
-  if (outputOptions) {
-    const actual = normalizeOutput(output)
-    return outputOptions.some(opt => wildcardContains(actual, normalizeOutput(opt)))
-  }
-  return wildcardContains(normalizeOutput(output), normalizeOutput(check.value))
+  return matchesContainValue(output, check.value, normalizeOutput)
 }
 
 export function evaluateCheck(check, output, context = {}) {
