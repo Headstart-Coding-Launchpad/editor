@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { buildIframeSrc } from '../../shared/iframe'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { flattenTasks } from '../../shared/taskUtils'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
+import { getLessonModule } from '../../modules/registry'
 
 /**
  * Owns the teacher-live broadcast helpers and the two related effects:
@@ -90,20 +90,21 @@ export function useTeacherLivePublish({
     updateTeacherLive(currentTeacherLivePayload(extra))
   }
 
-  // Rebuild the teacher-live iframe src when the teacher's HTML live state updates
+  // Rebuild the teacher-live preview src when the teacher's live state updates
   useEffect(() => {
-    if (teacherPresentation || lesson?.type !== 'html' || !session?.teacherLive?.active || !session.teacherLive.files) {
+    const mod = lesson ? getLessonModule(lesson.type) : null
+    if (teacherPresentation || !mod?.runtime?.buildPreviewSrc || !session?.teacherLive?.active || !session.teacherLive.files) {
       setTeacherLiveIframeSrc(null)
       return
     }
     const liveFiles = toTeacherLiveFiles(session.teacherLive.files)
     const liveTask = flattenTasks(lesson.tasks).find(t => t.id === session.teacherLive.taskId)
     setHtmlPreviewCollapsed(false)
-    setTeacherLiveIframeSrc(buildIframeSrc(liveFiles, liveTask?.entryFile ?? 'index.html', {
-      assets: lesson.assets ?? [],
-      assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []),
-    }))
+    setTeacherLiveIframeSrc(mod.runtime.buildPreviewSrc(
+      { files: liveFiles, entryFile: liveTask?.entryFile ?? 'index.html' },
+      liveTask,
+      { assets: lesson.assets ?? [], assetsPath: resolveAssetsPath(lesson.assetsPath), storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []) }
+    ))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])
 

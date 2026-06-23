@@ -11,9 +11,6 @@ import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
-import PythonEditor from '../components/PythonEditor'
-import HtmlEditor from '../components/HtmlEditor'
-import ScratchWorkspace from '../components/ScratchWorkspace'
 import ExplainerPanel from '../components/ExplainerPanel'
 import InformationTask from '../components/InformationTask'
 import StudentGrid from '../components/StudentGrid'
@@ -28,23 +25,12 @@ import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
 import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
-import FilesystemTask from '../components/FilesystemTask'
-import { DEFAULT_FS } from '../../shared/filesystem'
-import { resolveAssetsPath } from '../../shared/assetPaths'
-import { useTypeAssets } from '../../shared/useTypeAssets'
-import { cloneFiles, cloneScratchState } from '../../shared/workspaceData'
+import { DEFAULT_FS } from '../../modules/filesystem'
+import { cloneFiles, cloneScratchState, decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
+import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
-import {
-  getSandboxConfiguredCode,
-  getSandboxConfiguredFiles,
-  getSandboxConfiguredScratch,
-  getSandboxConfiguredFs,
-  getSandboxStarterCode,
-  getSandboxStarterFiles,
-  getSandboxStarterScratch,
-  getSandboxStarterFs,
-} from '../teacherSandboxContent'
+import { getLessonModule } from '../../modules/registry'
 
 export default function TeacherView({ lessonId }) {
   const navigate = useNavigate()
@@ -81,12 +67,10 @@ export default function TeacherView({ lessonId }) {
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1100)
   const [code, setCode]                 = useState('')
   const [files, setFiles]               = useState([])
-  const [activeFile, setActiveFile]     = useState('')
   const [sandboxStaging, setSandboxStaging] = useState(false)
   const [scratchState, setScratchState] = useState(null)
   const [fsState, setFsState] = useState(DEFAULT_FS)
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
-  const [activeCompleteFile, setActiveCompleteFile] = useState('')
   const [editorActivity, setEditorActivity] = useState(null)
   const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null, fs: null })
   const presentationWindowRef = useRef(null)
@@ -135,7 +119,6 @@ export default function TeacherView({ lessonId }) {
     if (task.taskType === 'quiz' || task.taskType === 'information') {
       setCode('')
       setFiles([])
-      setActiveFile('')
       setScratchState(null)
     } else
     if (lesson.type === 'python') {
@@ -145,9 +128,7 @@ export default function TeacherView({ lessonId }) {
     } else if (lesson.type === 'filesystem') {
       setFsState(task.starterFs ?? DEFAULT_FS)
     } else {
-      const taskFiles = task.starterFiles ?? []
-      setFiles(taskFiles)
-      setActiveFile(task.entryFile ?? taskFiles[0]?.name ?? '')
+      setFiles(task.starterFiles ?? [])
     }
   }
 
@@ -158,33 +139,31 @@ export default function TeacherView({ lessonId }) {
     loadCurrentTaskContent(previewTaskId ?? currentTaskId)
   }, [currentTaskId, previewTaskId, lesson, sandboxStaging, session?.state])
 
-  // If the teacher opens/reloads while the sandbox is already live, show the
-  // live sandbox payload instead of the normal task starter.
+  // Restore sandbox state when teacher opens/reloads while sandbox is live.
+  // Also used when entering sandbox — see applySandboxStarterState() below.
+  function applySandboxStarterState() {
+    const mod = getLessonModule(lesson.type)
+    const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
+    const configured = mod.getSandboxState(lesson, task)
+    const draft = sandboxDraftRef.current
+    const sessionHasCode = session?.state === 'sandbox' && session.sandboxCode != null
+
+    if (lesson.type === 'python') {
+      setCode(draft.code ?? (sessionHasCode ? session.sandboxCode : null) ?? configured)
+    } else if (lesson.type === 'scratch') {
+      setScratchState(draft.scratchState ?? (sessionHasCode ? parseScratchState(session.sandboxCode) : null) ?? configured)
+    } else if (lesson.type === 'filesystem') {
+      setFsState(draft.fs ?? (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ?? configured)
+    } else {
+      const sessionFiles = isSandbox ? decodeSessionFiles(session?.sandboxFiles, decodeFileKey) : []
+      const starterFiles = draft.files?.length ? cloneFiles(draft.files) : sessionFiles.length ? cloneFiles(sessionFiles) : cloneFiles(configured.files ?? [])
+      setFiles(starterFiles)
+    }
+  }
+
   useEffect(() => {
     if (!lesson || sandboxStaging || session?.state !== 'sandbox') return
-    if (lesson.type === 'python') {
-      setCode(getSandboxStarterCode({
-        lesson, taskId: currentTaskId, session,
-        draftCode: sandboxDraftRef.current.code, currentCode: code,
-      }))
-    } else if (lesson.type === 'scratch') {
-      setScratchState(getSandboxStarterScratch({
-        lesson, taskId: currentTaskId, session,
-        draftState: sandboxDraftRef.current.scratchState, currentState: scratchState,
-      }))
-    } else if (lesson.type === 'filesystem') {
-      setFsState(getSandboxStarterFs({
-        lesson, taskId: currentTaskId, session,
-        draftFs: sandboxDraftRef.current.fs, currentFs: fsState,
-      }))
-    } else {
-      const starterFiles = getSandboxStarterFiles({
-        lesson, taskId: currentTaskId, session,
-        draftFiles: sandboxDraftRef.current.files, currentFiles: files,
-      })
-      setFiles(starterFiles)
-      setActiveFile(starterFiles[0]?.name ?? '')
-    }
+    applySandboxStarterState()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson, sandboxStaging, session?.state, session?.sandboxCodePushedAt, session?.sandboxFilesUpdatedAt])
 
@@ -211,29 +190,7 @@ export default function TeacherView({ lessonId }) {
 
   function handleEnterSandbox() {
     setPreviewTaskId(null)
-    if (lesson.type === 'python') {
-      setCode(getSandboxStarterCode({
-        lesson, taskId: currentTaskId, session,
-        draftCode: sandboxDraftRef.current.code, currentCode: code,
-      }))
-    } else if (lesson.type === 'scratch') {
-      setScratchState(getSandboxStarterScratch({
-        lesson, taskId: currentTaskId, session,
-        draftState: sandboxDraftRef.current.scratchState, currentState: scratchState,
-      }))
-    } else if (lesson.type === 'filesystem') {
-      setFsState(getSandboxStarterFs({
-        lesson, taskId: currentTaskId, session,
-        draftFs: sandboxDraftRef.current.fs, currentFs: fsState,
-      }))
-    } else {
-      const starterFiles = getSandboxStarterFiles({
-        lesson, taskId: currentTaskId, session,
-        draftFiles: sandboxDraftRef.current.files, currentFiles: files,
-      })
-      setFiles(starterFiles)
-      setActiveFile(starterFiles[0]?.name ?? '')
-    }
+    applySandboxStarterState()
     setSandboxStaging(true)
   }
 
@@ -276,24 +233,25 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleResetSandboxStarter() {
+    const mod = getLessonModule(lesson.type)
+    const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
+    const configured = mod.getSandboxState(lesson, task)
+
     if (lesson.type === 'python') {
-      const starterCode = getSandboxConfiguredCode({ lesson, taskId: currentTaskId })
-      sandboxDraftRef.current.code = starterCode
-      setCode(starterCode)
-      if (isSandbox) await pushSandboxCode(starterCode)
+      sandboxDraftRef.current.code = configured
+      setCode(configured)
+      if (isSandbox) await pushSandboxCode(configured)
     } else if (lesson.type === 'scratch') {
-      const starterScratch = getSandboxConfiguredScratch({ lesson, taskId: currentTaskId })
-      sandboxDraftRef.current.scratchState = cloneScratchState(starterScratch)
-      setScratchState(starterScratch)
-      if (isSandbox) await pushSandboxCode(JSON.stringify(starterScratch ?? {}))
+      sandboxDraftRef.current.scratchState = cloneScratchState(configured)
+      setScratchState(configured)
+      if (isSandbox) await pushSandboxCode(JSON.stringify(configured ?? {}))
     } else if (lesson.type === 'filesystem') {
-      const starterFs = getSandboxConfiguredFs({ lesson, taskId: currentTaskId })
-      sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(starterFs))
-      setFsState(starterFs)
-      if (isSandbox) await pushSandboxCode(JSON.stringify(starterFs))
+      sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(configured))
+      setFsState(configured)
+      if (isSandbox) await pushSandboxCode(JSON.stringify(configured))
     } else {
-      const starterFiles = getSandboxConfiguredFiles({ lesson, taskId: currentTaskId })
-      sandboxDraftRef.current.files = cloneFiles(starterFiles)
+      const starterFiles = cloneFiles(configured.files ?? [])
+      sandboxDraftRef.current.files = starterFiles
       setFiles(starterFiles)
       setActiveFile(starterFiles[0]?.name ?? '')
       if (isSandbox) await pushSandboxFiles(starterFiles)
@@ -374,12 +332,12 @@ export default function TeacherView({ lessonId }) {
   const task = flatTasks.find(t => t.id === displayTaskId)
   const currentTask = flatTasks.find(t => t.id === (session?.currentTaskId ?? currentTaskId))
   const displayIndex = flatTasks.findIndex(t => t.id === displayTaskId)
-  const showingComplete = teacherCodeTab === 'complete' && !isInSandbox
   const teacherStageMatch = teacherCodeTab.match(/^stage_(\d+)$/)
   const teacherActiveStageIndex = teacherStageMatch ? parseInt(teacherStageMatch[1], 10) : null
-  const isShowingStage = teacherActiveStageIndex !== null && !isInSandbox
   const taskCodeStages = task?.codeStages ?? []
-  const activeTeacherStage = isShowingStage ? (taskCodeStages[teacherActiveStageIndex] ?? null) : null
+  const activeTeacherStage = teacherActiveStageIndex !== null && !isInSandbox
+    ? (taskCodeStages[teacherActiveStageIndex] ?? null)
+    : null
   const isInformationTask = task?.taskType === 'information'
   const students = session ? Object.entries(session.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id })) : []
   const joiningCount = Object.keys(session?.joiningStudents ?? {}).length
@@ -399,21 +357,23 @@ export default function TeacherView({ lessonId }) {
     await sendToTopic(studentId, topicId)
   }
 
-  const onCodeChange = (showingComplete || isShowingStage || !isInSandbox) ? undefined
-    : value => { setCode(value); sandboxDraftRef.current.code = value }
+  const liveState = lesson?.type === 'python' ? code
+    : lesson?.type === 'scratch' ? scratchState
+    : lesson?.type === 'filesystem' ? fsState
+    : { files, entryFile: task?.entryFile ?? 'index.html' }
 
-  const onFilesChange = (showingComplete || isShowingStage || !isInSandbox) ? undefined
-    : (name, content) => setFiles(prev => {
-      const next = prev.map(f => f.name === name ? { ...f, content } : f)
-      sandboxDraftRef.current.files = cloneFiles(next)
-      return next
-    })
-
-  const onScratchChange = !isInSandbox ? undefined
-    : state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }
-
-  const onFsChange = !isInSandbox ? undefined
-    : newFs => { setFsState(newFs); sandboxDraftRef.current.fs = newFs }
+  const onChange = !isInSandbox ? undefined
+    : lesson?.type === 'python'
+      ? value => { setCode(value); sandboxDraftRef.current.code = value }
+      : lesson?.type === 'scratch'
+        ? state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }
+        : lesson?.type === 'filesystem'
+          ? newFs => { setFsState(newFs); sandboxDraftRef.current.fs = newFs }
+          : (name, content) => setFiles(prev => {
+              const next = prev.map(f => f.name === name ? { ...f, content } : f)
+              sandboxDraftRef.current.files = cloneFiles(next)
+              return next
+            })
 
   if (lessonLoading) {
     return <div style={s.centre}><p>Loading…</p></div>
@@ -514,26 +474,14 @@ export default function TeacherView({ lessonId }) {
             displayTaskId={displayTaskId}
             isInSandbox={isInSandbox}
             isInformationTask={isInformationTask}
-            showingComplete={showingComplete}
-            isShowingStage={isShowingStage}
             activeTeacherStage={activeTeacherStage}
             taskCodeStages={taskCodeStages}
             teacherCodeTab={teacherCodeTab}
             setTeacherCodeTab={setTeacherCodeTab}
             hasStudents={students.length > 0}
             onSendStageToAll={handleSendStageToAll}
-            code={code}
-            onCodeChange={onCodeChange}
-            files={files}
-            onFilesChange={onFilesChange}
-            activeFile={activeFile}
-            setActiveFile={setActiveFile}
-            activeCompleteFile={activeCompleteFile}
-            setActiveCompleteFile={setActiveCompleteFile}
-            scratchState={scratchState}
-            onScratchChange={onScratchChange}
-            fsState={fsState}
-            onFsChange={onFsChange}
+            liveState={liveState}
+            onChange={onChange}
             onActivity={setEditorActivity}
           />
           {task?.check != null && !isInSandbox && (
@@ -744,153 +692,60 @@ const sc = {
   },
 }
 
-// ─── Teacher editor panel (lesson.type dispatch) ─────────────────────────────
+// ─── Teacher editor panel (module-generic) ───────────────────────────────────
 
 function TeacherEditorPanel({
   lesson, task, displayTaskId,
   isInSandbox, isInformationTask,
-  showingComplete, isShowingStage, activeTeacherStage, taskCodeStages,
+  activeTeacherStage, taskCodeStages,
   teacherCodeTab, setTeacherCodeTab,
   hasStudents, onSendStageToAll,
-  code, onCodeChange,
-  files, onFilesChange,
-  activeFile, setActiveFile,
-  activeCompleteFile, setActiveCompleteFile,
-  scratchState, onScratchChange,
-  fsState, onFsChange,
-  onActivity,
+  liveState, onChange, onActivity,
 }) {
-  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
-  const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
-  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
-    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
-    : htmlTypeAssets
-  const htmlStorageAssets = [
-    ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
-    ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),
-  ]
+  const mod = getLessonModule(lesson?.type)
 
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
   if (!isInSandbox && task?.taskType === 'quiz') return <QuizTask task={task} showQuestion disabled />
+  if (!mod?.TeacherLiveView) return null
 
-  if (lesson.type === 'python') return (
-    <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
-      {!isInSandbox && (
-        <TeacherCodeTabs
-          activeTab={teacherCodeTab}
-          stages={taskCodeStages}
-          onStarter={() => setTeacherCodeTab('starter')}
-          onStage={i => setTeacherCodeTab(`stage_${i}`)}
-          onComplete={() => { setTeacherCodeTab('complete'); setActiveCompleteFile(task?.completeFiles?.[0]?.name ?? '') }}
-          onSendToAll={onSendStageToAll}
-          hasStudents={hasStudents}
-        />
-      )}
-      <PythonEditor
-        code={showingComplete ? (task?.completeCode ?? '') : isShowingStage ? (activeTeacherStage?.code ?? '') : code}
-        onChange={onCodeChange}
-        onActivity={onActivity}
-        readOnly={showingComplete || isShowingStage || !isInSandbox}
-        pyodideStatus="idle"
-        editorStyle={isInSandbox ? undefined : s.attachedCodeEditor}
-      />
-    </div>
-  )
+  const displayState = mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
+  const readOnly = !isInSandbox
+  const LiveView = mod.TeacherLiveView
+  const showCompleteTab = mod.type === 'python' || mod.type === 'html'
+    || (mod.type === 'scratch' && task?.completeBlocks != null)
+    || (mod.type === 'filesystem' && !!task?.completeFs)
 
-  if (lesson.type === 'scratch') return (
-    <div style={!isInSandbox ? s.codeWorkspaceStack : s.scratchWrap}>
-      {!isInSandbox && (
-        <TeacherCodeTabs
-          activeTab={teacherCodeTab}
-          stages={taskCodeStages}
-          onStarter={() => setTeacherCodeTab('starter')}
-          onStage={i => setTeacherCodeTab(`stage_${i}`)}
-          onComplete={task?.completeBlocks ? () => setTeacherCodeTab('complete') : undefined}
-          onSendToAll={onSendStageToAll}
-          hasStudents={hasStudents}
-          starterLabel="Starter blocks"
-          completeLabel="Complete blocks"
-        />
-      )}
-      <div style={s.scratchWrap}>
-        <ScratchWorkspace
-          key={`teacher-scratch-${displayTaskId}-${isInSandbox ? 'sandbox' : 'task'}`}
-          task={task}
-          predefinedBlocks={!isInSandbox ? [
-            ...(task?.predefinedBlocks ?? []),
-            ...(isShowingStage ? activeTeacherStage?.predefinedBlocks ?? [] : []),
-          ] : null}
-          prebuiltStacks={!isInSandbox ? [
-            ...(task?.prebuiltStacks ?? []),
-            ...(isShowingStage ? activeTeacherStage?.prebuiltStacks ?? [] : []),
-          ] : null}
-          unrestricted={isInSandbox}
-          assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-          initialState={scratchState}
-          externalState={isInSandbox ? scratchState : showingComplete ? (task?.completeBlocks ?? null) : isShowingStage ? (activeTeacherStage?.blocks ?? null) : (task?.starterBlocks ?? null)}
-          readOnly={!isInSandbox}
-          hideStage
-          onStateChange={onScratchChange}
-        />
-      </div>
-    </div>
-  )
-
-  if (lesson.type === 'filesystem') return (
-    <div style={!isInSandbox ? s.codeWorkspaceStack : undefined}>
-      {!isInSandbox && (
-        <TeacherCodeTabs
-          activeTab={teacherCodeTab}
-          stages={taskCodeStages}
-          onStarter={() => setTeacherCodeTab('starter')}
-          onStage={i => setTeacherCodeTab(`stage_${i}`)}
-          onComplete={task?.completeFs ? () => setTeacherCodeTab('complete') : undefined}
-          onSendToAll={onSendStageToAll}
-          hasStudents={hasStudents}
-          starterLabel="Starter folders"
-          completeLabel="Complete folders"
-        />
-      )}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        <FilesystemTask
-          key={`teacher-fs-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
-          fs={isInSandbox ? fsState : showingComplete ? (task?.completeFs ?? DEFAULT_FS) : isShowingStage ? (activeTeacherStage?.fs ?? DEFAULT_FS) : (task?.starterFs ?? DEFAULT_FS)}
-          onFsChange={onFsChange}
-          assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-          assets={lesson.assets}
-          disabled={!isInSandbox}
-        />
-      </div>
-    </div>
-  )
+  const wrapStyle = mod.type === 'scratch' || mod.type === 'html'
+    ? (isInSandbox ? s.scratchWrap : s.codeWorkspaceStack)
+    : s.codeWorkspaceStack
 
   return (
-    <div style={!isInSandbox ? s.codeWorkspaceStack : s.htmlLeft}>
+    <div style={wrapStyle}>
       {!isInSandbox && (
         <TeacherCodeTabs
           activeTab={teacherCodeTab}
           stages={taskCodeStages}
           onStarter={() => setTeacherCodeTab('starter')}
           onStage={i => setTeacherCodeTab(`stage_${i}`)}
-          onComplete={() => { setTeacherCodeTab('complete'); setActiveCompleteFile(task?.completeFiles?.[0]?.name ?? '') }}
+          onComplete={showCompleteTab ? () => setTeacherCodeTab('complete') : undefined}
           onSendToAll={onSendStageToAll}
           hasStudents={hasStudents}
+          starterLabel={mod.stageLabels?.starterLabel}
+          completeLabel={mod.stageLabels?.completeLabel}
         />
       )}
-      <div style={s.htmlLeft}>
-        <HtmlEditor
-          files={showingComplete ? (task?.completeFiles ?? []) : isShowingStage ? (activeTeacherStage?.files ?? []) : files}
-          activeFile={showingComplete ? activeCompleteFile : activeFile}
-          onTabChange={showingComplete ? setActiveCompleteFile : setActiveFile}
-          onFileChange={onFilesChange}
-          onActivity={onActivity}
-          readOnly={showingComplete || isShowingStage || !isInSandbox}
-          assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
-          assets={lesson.assets}
-          storageAssets={htmlStorageAssets}
-          attachedTop={!isInSandbox}
-        />
-      </div>
+      <LiveView
+        key={`teacher-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
+        task={task}
+        lesson={lesson}
+        displayState={displayState}
+        liveState={liveState}
+        readOnly={readOnly}
+        onChange={onChange}
+        onActivity={onActivity}
+        isInSandbox={isInSandbox}
+        activeStage={activeTeacherStage}
+      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { MarkdownFieldEditor } from '../ExplainerEditor'
+import { MarkdownFieldEditor } from '../../builder/components/ExplainerEditor'
 import {
   BLOCK_DISPLAY_TEMPLATES,
   DEFAULT_TOOLBOX,
@@ -9,8 +9,8 @@ import {
   createScratchBlockStack,
   loadBlocklyModules,
   predefinedBlockToStack,
-} from '../../../shared/scratch'
-import { normalizeSequenceItem } from '../../../modules/scratch/checks'
+} from './scratch'
+import { normalizeSequenceItem } from './checks'
 
 const SCRATCH_TOOLBOX_GROUPS = [
   {

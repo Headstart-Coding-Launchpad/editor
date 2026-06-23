@@ -1,5 +1,5 @@
 import React from 'react'
-import ScratchWorkspace from '../../app/components/ScratchWorkspace'
+import ScratchWorkspace from './ScratchWorkspace'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { loadPersonalSandboxCode } from '../../app/studentStorage'
 import { selectScratchInitialProject, selectScratchToolboxSnippets } from '../../app/studentTaskContent'

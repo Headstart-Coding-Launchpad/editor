@@ -11,7 +11,7 @@ import {
   entryName,
   parentPath,
   normaliseDirPath,
-} from '../../shared/filesystem.js'
+} from './filesystem.js'
 import { resolveAssetFileUrl } from '../../shared/assetPaths.js'
 
 const ICON_DIR = '📁'

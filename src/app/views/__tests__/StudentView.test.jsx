@@ -27,7 +27,7 @@ vi.mock('../../hooks/useIdentity', () => ({
   useIdentity: (...args) => mocks.useIdentity(...args),
 }))
 
-vi.mock('../../../shared/pyodide', () => ({
+vi.mock('../../../modules/python/pyodide', () => ({
   initPyodide: vi.fn(() => Promise.resolve()),
   runPython: vi.fn(),
   stopPython: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('../../../shared/pyodide', () => ({
   isPyodideReady: () => true,
 }))
 
-vi.mock('../../../shared/iframe', () => ({
+vi.mock('../../../modules/html/iframe', () => ({
   buildIframeSrc: vi.fn(() => 'blob:preview'),
   waitForIframeText: vi.fn(() => Promise.resolve('')),
 }))
@@ -44,7 +44,7 @@ vi.mock('../../components/TopBar', () => ({
   default: ({ lessonTitle, isSolo }) => <div>{lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}</div>,
 }))
 
-vi.mock('../../components/PythonEditor', () => ({
+vi.mock('../../../modules/python/PythonEditor', () => ({
   default: ({ code }) => <textarea aria-label="code" readOnly value={code} />,
 }))
 
@@ -80,7 +80,7 @@ vi.mock('../../components/InformationTask', () => ({
   default: () => <div>Information</div>,
 }))
 
-vi.mock('../../components/HtmlEditor', () => ({
+vi.mock('../../../modules/html/HtmlEditor', () => ({
   default: () => <div>HTML editor</div>,
 }))
 
@@ -88,7 +88,7 @@ vi.mock('../../components/CollapsibleIframePreview', () => ({
   default: () => <div>Preview</div>,
 }))
 
-vi.mock('../../components/ScratchWorkspace', () => ({
+vi.mock('../../../modules/scratch/ScratchWorkspace', () => ({
   default: props => {
     mocks.scratchWorkspace(props)
     return <div>Scratch</div>
@@ -100,7 +100,7 @@ vi.mock('../../components/QuizTask', () => ({
   default: () => <div>Quiz</div>,
 }))
 
-vi.mock('../../components/FilesystemTask', () => ({
+vi.mock('../../../modules/filesystem/FilesystemTask', () => ({
   default: () => <div>Filesystem</div>,
 }))
 

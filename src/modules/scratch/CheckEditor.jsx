@@ -1,7 +1,7 @@
 import React from 'react'
 import { normalizeChecks } from '../checks'
-import { ScratchCheckListEditor } from '../../builder/components/task-editor/ScratchEditors'
-import { DEFAULT_SPRITES } from '../../shared/scratch'
+import { ScratchCheckListEditor } from './scratchEditors'
+import { DEFAULT_SPRITES } from './scratch'
 
 export default function CheckEditor({ task, onUpdate }) {
   return (

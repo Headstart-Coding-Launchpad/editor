@@ -1,5 +1,5 @@
 import React from 'react'
-import HtmlEditor from '../../app/components/HtmlEditor'
+import HtmlEditor from './HtmlEditor'
 import CollapsibleIframePreview from '../../app/components/CollapsibleIframePreview'
 import SplitPane from '../../shared/SplitPane'
 import StudentEditorHeader from '../../app/components/StudentEditorHeader'

@@ -1,7 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { PrebuiltStacksEditor, PredefinedBlocksEditor, buildScratchToolboxXml } from '../ScratchEditors'
+import { PrebuiltStacksEditor, PredefinedBlocksEditor, buildScratchToolboxXml } from '../../../../modules/scratch/scratchEditors'
 
 describe('PredefinedBlocksEditor', () => {
   it('clears an in-progress block when the toolbox changes', async () => {

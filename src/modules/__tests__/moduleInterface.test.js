@@ -60,6 +60,59 @@ describe('module interface contract', () => {
         expect(typeof mod.getCarryThroughUpdates).toBe('function')
         expect(typeof mod.getNewStarterUpdates).toBe('function')
       })
+
+      // ── New interface fields ──────────────────────────────────────────────────
+
+      it('has TeacherLiveView as a function/component or null', () => {
+        expect(mod.TeacherLiveView === null || typeof mod.TeacherLiveView === 'function').toBe(true)
+      })
+
+      it('has getDisplayState as a function', () => {
+        expect(typeof mod.getDisplayState).toBe('function')
+      })
+
+      it('getDisplayState(task, stage, liveState, "starter") returns liveState', () => {
+        const liveState = 'test-live-state'
+        expect(mod.getDisplayState({}, null, liveState, 'starter')).toBe(liveState)
+      })
+
+      it('getDisplayState does not throw for complete/stage tabs', () => {
+        expect(() => mod.getDisplayState({}, null, null, 'complete')).not.toThrow()
+        expect(() => mod.getDisplayState({}, null, null, 'stage_0')).not.toThrow()
+      })
+
+      it('has defaultState defined on the module', () => {
+        expect('defaultState' in mod).toBe(true)
+      })
+
+      it('has initialState as a function returning a value for an empty task', () => {
+        expect(typeof mod.initialState).toBe('function')
+        const result = mod.initialState({})
+        expect(result !== undefined).toBe(true)
+      })
+
+      it('has serializeState and deserializeState (function or null)', () => {
+        const isFnOrNull = v => v === null || typeof v === 'function'
+        expect(isFnOrNull(mod.serializeState)).toBe(true)
+        expect(isFnOrNull(mod.deserializeState)).toBe(true)
+      })
+
+      it('has getSandboxState as a function', () => {
+        expect(typeof mod.getSandboxState).toBe('function')
+      })
+
+      it('getSandboxState returns a value for empty lesson/task', () => {
+        expect(() => mod.getSandboxState({}, {})).not.toThrow()
+      })
+
+      it('has runtime as null or an object with the expected shape', () => {
+        const { runtime } = mod
+        if (runtime === null) return
+        expect(typeof runtime).toBe('object')
+        expect(typeof runtime.init).toBe('function')
+        expect(typeof runtime.isReady).toBe('function')
+        expect(typeof runtime.stop).toBe('function')
+      })
     })
   }
 

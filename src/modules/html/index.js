@@ -1,6 +1,8 @@
 import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
+import HtmlTeacherLiveView from './TeacherLiveView.jsx'
+import { buildIframeSrc, waitForIframeText as waitForPreviewText } from './iframe'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
@@ -17,8 +19,25 @@ const htmlModule = {
   BuilderWorkspace,
   CheckEditor,
 
+  // ── Teacher-side editor ──────────────────────────────────────────────────────
+  TeacherLiveView: HtmlTeacherLiveView,
+
+  getDisplayState: (task, stage, liveState, tab) => {
+    if (tab === 'complete') return {
+      files: task?.completeFiles ?? [],
+      entryFile: task?.completeEntryFile ?? task?.entryFile ?? 'index.html',
+    }
+    if (tab?.startsWith('stage_')) return {
+      files: stage?.files ?? [],
+      entryFile: stage?.entryFile ?? task?.entryFile ?? 'index.html',
+    }
+    return liveState
+  },
+
+  // ── Layout ───────────────────────────────────────────────────────────────────
   getLayoutStyles: () => ({ taskContentStyle, editorAreaStyle }),
 
+  // ── Authoring ────────────────────────────────────────────────────────────────
   makeCodeTaskFields: (task) => ({
     starterFiles: task.starterFiles?.length ? task.starterFiles : [DEFAULT_HTML_FILE],
     entryFile: task.entryFile ?? 'index.html',
@@ -61,6 +80,7 @@ const htmlModule = {
     starterFiles: (task.starterFiles ?? []).map(f => ({ ...f, content: '' })),
   }),
 
+  // ── Feature flags ────────────────────────────────────────────────────────────
   supportsInteractionMode: true,
   supportsIncorrectChecks: true,
   supportsTests: false,
@@ -69,6 +89,35 @@ const htmlModule = {
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['html', 'javascript', 'css'],
+
+  // ── State helpers ────────────────────────────────────────────────────────────
+  defaultState: [DEFAULT_HTML_FILE],
+  initialState: (task) => ({
+    files: task.starterFiles?.length ? task.starterFiles : [DEFAULT_HTML_FILE],
+    entryFile: task.entryFile ?? 'index.html',
+  }),
+  serializeState: null,
+  deserializeState: null,
+
+  // ── Sandbox ──────────────────────────────────────────────────────────────────
+  getSandboxState: (lesson, task) => ({
+    files: lesson?.sandboxStarterFiles?.length
+      ? lesson.sandboxStarterFiles
+      : (task?.starterFiles ?? [DEFAULT_HTML_FILE]),
+    entryFile: task?.entryFile ?? 'index.html',
+  }),
+
+  // ── Runtime ──────────────────────────────────────────────────────────────────
+  runtime: {
+    init: () => Promise.resolve(),
+    isReady: () => true,
+    stop: () => {},
+    provideInput: null,
+    run: null,
+    buildPreviewSrc: (state, task, opts = {}) =>
+      buildIframeSrc(state?.files ?? state, state?.entryFile ?? task?.entryFile, opts),
+    waitForPreviewText,
+  },
 }
 
 export default htmlModule

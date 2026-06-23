@@ -1,6 +1,8 @@
 import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
+import PythonTeacherLiveView from './TeacherLiveView.jsx'
+import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from './pyodide'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
@@ -11,8 +13,19 @@ const pythonModule = {
   BuilderWorkspace,
   CheckEditor,
 
+  // ── Teacher-side editor ──────────────────────────────────────────────────────
+  TeacherLiveView: PythonTeacherLiveView,
+
+  getDisplayState: (task, stage, liveState, tab) => {
+    if (tab === 'complete') return task?.completeCode ?? ''
+    if (tab?.startsWith('stage_')) return stage?.code ?? ''
+    return liveState
+  },
+
+  // ── Layout ───────────────────────────────────────────────────────────────────
   getLayoutStyles: () => ({ taskContentStyle, editorAreaStyle }),
 
+  // ── Authoring ────────────────────────────────────────────────────────────────
   makeCodeTaskFields: (task) => ({
     starterCode: task.starterCode ?? '',
     carryCodeFrom: task.carryCodeFrom ?? null,
@@ -44,15 +57,7 @@ const pythonModule = {
     starterCode: '',
   }),
 
-  carryThroughField: 'carryCodeFrom',
-  carryThroughLabel: 'Carry code from task',
-  getCarryThroughUpdates: (sourceTask) => ({
-    starterCode: sourceTask.completeCode ?? sourceTask.starterCode ?? '',
-  }),
-  getNewStarterUpdates: () => ({
-    starterCode: '',
-  }),
-
+  // ── Feature flags ────────────────────────────────────────────────────────────
   supportsInteractionMode: true,
   supportsIncorrectChecks: true,
   supportsTests: true,
@@ -61,6 +66,26 @@ const pythonModule = {
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],
+
+  // ── State helpers ────────────────────────────────────────────────────────────
+  defaultState: '',
+  initialState: (task) => task.starterCode ?? '',
+  serializeState: (state) => state,
+  deserializeState: (raw) => typeof raw === 'string' ? raw : '',
+
+  // ── Sandbox ──────────────────────────────────────────────────────────────────
+  getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+
+  // ── Runtime ──────────────────────────────────────────────────────────────────
+  runtime: {
+    init: initPyodide,
+    isReady: isPyodideReady,
+    stop: stopPython,
+    provideInput,
+    run: (code, _task, callbacks) => runPython(code, callbacks),
+    buildPreviewSrc: null,
+    waitForPreviewText: null,
+  },
 }
 
 export default pythonModule

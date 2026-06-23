@@ -1,6 +1,6 @@
 import React from 'react'
-import FilesystemTask from '../../app/components/FilesystemTask'
-import { normaliseDirPath } from '../../shared/filesystem'
+import FilesystemTask from './FilesystemTask'
+import { normaliseDirPath } from './filesystem'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
 export default function StudentWorkspace({

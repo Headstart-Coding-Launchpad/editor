@@ -2,7 +2,7 @@ import {
   normaliseDirPath,
   normaliseFilePath,
   parentPath,
-} from '../../shared/filesystem.js'
+} from './filesystem.js'
 import { normalizeOutput } from '../../shared/checkHelpers.js'
 
 export const FS_CHECK_TYPES = [

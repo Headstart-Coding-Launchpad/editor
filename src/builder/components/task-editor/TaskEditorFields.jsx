@@ -3,7 +3,7 @@ import AssetBrowser from '../../../shared/AssetBrowser'
 import { useAssets } from '../../../shared/useAssets'
 import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
-import { SPRITE_TYPES } from '../../../app/components/ScratchWorkspace'
+import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { createSpriteFromPreset } from '../../spritePresets'
 import { flattenTasks } from '../../../shared/taskUtils'
 

@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
-import { initPyodide, runPython, stopPython, provideInput, isPyodideReady } from '../../shared/pyodide'
-import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
+import { getLessonModule } from '../../modules/registry'
 import { evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
 export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets = null }) {
+  const pythonMod = getLessonModule('python')
+  const htmlMod = getLessonModule('html')
   const [output, setOutput] = useState('')
   const [runStatus, setRunStatus] = useState(null)
   const [running, setRunning] = useState(false)
   const [runningTests, setRunningTests] = useState(false)
-  const [pyodideStatus, setPyodideStatus] = useState(isPyodideReady() ? 'ready' : 'idle')
+  const [pyodideStatus, setPyodideStatus] = useState(pythonMod.runtime.isReady() ? 'ready' : 'idle')
   const [inputPrompt, setInputPrompt] = useState(null)
   const [iframeSrc, setIframeSrc] = useState(null)
   const [checkResult, setCheckResult] = useState(null)
@@ -37,7 +38,7 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
   }
 
   function handleStop() {
-    stopPython()
+    pythonMod.runtime.stop()
   }
 
   async function handleRunTests() {
@@ -53,18 +54,18 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
 
     const results = []
     try {
-      if (!isPyodideReady()) {
+      if (!pythonMod.runtime.isReady()) {
         setPyodideStatus('loading')
-        await initPyodide(msg => setPyodideStatus(msg))
+        await pythonMod.runtime.init(msg => setPyodideStatus(msg))
         setPyodideStatus('ready')
       }
 
       for (const test of tests) {
         const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
         let accumulated = ''
-        const result = await runPython(activePythonCode, {
+        const result = await pythonMod.runtime.run(activePythonCode, task, {
           onOutput: text => { accumulated += text },
-          onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
+          onInputRequired: () => { pythonMod.runtime.provideInput(inputQueue.shift() ?? '') },
         })
         const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
         const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
@@ -79,7 +80,7 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
       setOutput(displayedOutput)
       setRunStatus(results.some(r => r.status === 'error') ? 'error' : results.some(r => r.status === 'stopped') ? 'stopped' : 'success')
     } catch {
-      stopPython()
+      pythonMod.runtime.stop()
       setRunStatus('error')
     } finally {
       setRunningTests(false)
@@ -98,16 +99,16 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     setIframeSrc(null)
 
     if (isPython) {
-      if (!isPyodideReady()) {
+      if (!pythonMod.runtime.isReady()) {
         setPyodideStatus('loading')
-        await initPyodide(msg => setPyodideStatus(msg))
+        await pythonMod.runtime.init(msg => setPyodideStatus(msg))
         setPyodideStatus('ready')
       }
 
       let accumulated = ''
       const echoOutput = text => { accumulated += text; setOutput(accumulated) }
       appendOutputRef.current = echoOutput
-      const result = await runPython(activePythonCode, {
+      const result = await pythonMod.runtime.run(activePythonCode, task, {
         onOutput: echoOutput,
         onInputRequired: p => setInputPrompt(p),
       })
@@ -135,18 +136,22 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
       }
     } else if (!isScratch) {
       setHtmlPreviewOpen(true)
-      const src = buildIframeSrc(activeFiles, activeEntryFile, {
-        assets: lesson.assets ?? [],
-        assetsPath: resolveAssetsPath(lesson.assetsPath),
-        storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []).filter(a => a.showInEditor),
-      })
+      const src = htmlMod.runtime.buildPreviewSrc(
+        { files: activeFiles, entryFile: activeEntryFile },
+        task,
+        {
+          assets: lesson.assets ?? [],
+          assetsPath: resolveAssetsPath(lesson.assetsPath),
+          storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []).filter(a => a.showInEditor),
+        }
+      )
       setIframeSrc(src)
       setRunStatus('success')
 
       const checksToEval = normalizeChecks(task.check)
       if (checksToEval.length > 0) {
         const codeStr = activeFiles.map(f => f.content).join('\n')
-        waitForIframeText().then(text => {
+        htmlMod.runtime.waitForPreviewText().then(text => {
           setOutput(text)
           const iframeDoc = iframeRef.current?.contentDocument ?? null
           const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }) }))
@@ -200,7 +205,7 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
   function handleInputSubmit(v) {
     appendOutputRef.current?.(v + '\n')
     setInputPrompt(null)
-    provideInput(v)
+    pythonMod.runtime.provideInput(v)
   }
 
   return {

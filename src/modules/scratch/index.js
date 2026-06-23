@@ -1,6 +1,11 @@
-import StudentWorkspace from './StudentWorkspace.jsx'
+import ScratchWorkspace from './StudentWorkspace.jsx'
+import { SPRITE_TYPES } from './ScratchWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
+import ScratchTeacherLiveView from './TeacherLiveView.jsx'
+import { DEFAULT_SPRITES } from './checks'
+
+export { DEFAULT_SPRITES, SPRITE_TYPES }
 
 const taskContentStyle = {
   flex: 1,
@@ -21,19 +26,29 @@ const editorAreaStyle = {
 
 const scratchModule = {
   type: 'scratch',
-  StudentWorkspace,
+  StudentWorkspace: ScratchWorkspace,
   BuilderWorkspace,
   CheckEditor,
 
+  // ── Teacher-side editor ──────────────────────────────────────────────────────
+  TeacherLiveView: ScratchTeacherLiveView,
+
+  getDisplayState: (task, stage, liveState, tab) => {
+    if (tab === 'complete') return task?.completeBlocks ?? null
+    if (tab?.startsWith('stage_')) return stage?.blocks ?? null
+    return liveState
+  },
+
+  // ── Layout ───────────────────────────────────────────────────────────────────
   getLayoutStyles: () => ({ taskContentStyle, editorAreaStyle }),
 
+  // ── Authoring ────────────────────────────────────────────────────────────────
   makeCodeTaskFields: (task) => ({
     toolbox: task.toolbox ?? '',
     starterBlocks: task.starterBlocks ?? null,
     carryBlocksFrom: task.carryBlocksFrom ?? null,
   }),
 
-  // ScratchTaskSetup manages its own stage list internally
   makeNewStage: null,
 
   initCompleteTab: null,
@@ -50,6 +65,7 @@ const scratchModule = {
     starterBlocks: null,
   }),
 
+  // ── Feature flags ────────────────────────────────────────────────────────────
   supportsInteractionMode: false,
   supportsIncorrectChecks: false,
   supportsTests: false,
@@ -58,6 +74,29 @@ const scratchModule = {
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['scratch'],
+
+  // ── State helpers ────────────────────────────────────────────────────────────
+  defaultState: null,
+  initialState: (task) => task.starterBlocks ?? null,
+  serializeState: (state) => state == null ? null : JSON.stringify(state),
+  deserializeState: (raw) => {
+    if (raw == null) return null
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return null }
+    }
+    return raw
+  },
+
+  // ── Sandbox ──────────────────────────────────────────────────────────────────
+  getSandboxState: (lesson, task) => {
+    if (lesson?.sandboxStarter != null) {
+      try { return JSON.parse(lesson.sandboxStarter) } catch {}
+    }
+    return task?.starterBlocks ?? null
+  },
+
+  // ── Runtime ──────────────────────────────────────────────────────────────────
+  runtime: null,
 }
 
 export default scratchModule

@@ -1,5 +1,5 @@
 import React from 'react'
-import { FsCheckListEditor } from '../../builder/components/task-editor/FilesystemEditors'
+import { FsCheckListEditor } from './filesystemEditors'
 
 export default function CheckEditor({ task, onUpdate }) {
   return (

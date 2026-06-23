@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react'
-import ScratchWorkspace from '../../../app/components/ScratchWorkspace'
-import { DEFAULT_SPRITES } from '../../../shared/scratch'
+import ScratchWorkspace from '../../../modules/scratch/ScratchWorkspace'
+import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
 import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager } from './TaskEditorFields'
-import { ScratchToolboxPicker, VariableManager, PrebuiltStacksEditor } from './ScratchEditors'
+import { ScratchToolboxPicker, VariableManager, PrebuiltStacksEditor } from '../../../modules/scratch/scratchEditors'
 
 export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, setCheckResult }) {
   const [testScratchBlocks, setTestScratchBlocks] = useState(null)

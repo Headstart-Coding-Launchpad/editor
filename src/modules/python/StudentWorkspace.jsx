@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import PythonEditor from '../../app/components/PythonEditor'
+import PythonEditor from './PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
 import SplitPane from '../../shared/SplitPane'
 import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'

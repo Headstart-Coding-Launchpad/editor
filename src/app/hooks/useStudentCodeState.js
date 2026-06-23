@@ -1,20 +1,18 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { runPython, stopPython, provideInput } from '../../shared/pyodide'
-import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
 import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
 import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
+import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
 import { getQuizSuggestion } from '../studentQuizContent'
-import { usePyodideState } from './usePyodideState'
 import { useCheckFeedback } from './useCheckFeedback'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useTypeAssets } from '../../shared/useTypeAssets'
+import { getLessonModule } from '../../modules/registry'
 
 /**
  * Owns all student editor/code workspace state: code, files, output, checks, personal sandbox,
@@ -120,9 +118,28 @@ export function useStudentCodeState({
   const fsInteractionRef     = useRef(fsInteraction)
   fsInteractionRef.current   = fsInteraction
 
-  // ─── Sub-hooks ────────────────────────────────────────────────────────────
+  // ─── Runtime status ───────────────────────────────────────────────────────
 
-  const { pyodideStatus, setPyodideStatus, initPyodideIfNeeded } = usePyodideState({ lesson })
+  const [pyodideStatus, setPyodideStatus] = useState('idle')
+
+  useEffect(() => {
+    const mod = getLessonModule(lesson?.type)
+    if (!lesson || !mod?.runtime?.init || mod.runtime.isReady()) return
+    setPyodideStatus('loading')
+    mod.runtime.init(msg => setPyodideStatus(msg))
+      .then(() => setPyodideStatus('ready'))
+      .catch(() => setPyodideStatus('error'))
+  }, [lesson])
+
+  async function initRuntimeIfNeeded() {
+    const mod = getLessonModule(lesson?.type)
+    if (!mod?.runtime?.isReady || mod.runtime.isReady()) return
+    setPyodideStatus('loading')
+    await mod.runtime.init()
+    setPyodideStatus('ready')
+  }
+
+  // ─── Sub-hooks ────────────────────────────────────────────────────────────
 
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson?.type === 'html' ? 'html' : null)
   const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
@@ -601,6 +618,7 @@ export function useStudentCodeState({
     const actor = effectiveIdentity
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
+    const mod = getLessonModule(lesson?.type)
     const isWatched = session?.activeStudentView === actor.anonymousId
     const alreadySolved = isAlreadySolved()
 
@@ -639,7 +657,7 @@ export function useStudentCodeState({
         }
       }
       appendOutputRef.current = echoOutput
-      const result = await runPython(code, {
+      const result = await mod.runtime.run(code, task, {
         onOutput: (text, _kind) => echoOutput(text),
         onInputRequired: (prompt) => setInputPrompt(prompt),
       })
@@ -687,16 +705,16 @@ export function useStudentCodeState({
     // HTML — build iframe
     setHtmlPreviewCollapsed(false)
     const currentFiles = filesRef.current
-    const src = buildIframeSrc(currentFiles, task?.entryFile ?? 'index.html', {
-      assets: lesson.assets ?? [],
-      assetsPath: resolveAssetsPath(lesson.assetsPath),
-      storageAssets: htmlIframeStorageAssets,
-    })
+    const src = mod.runtime.buildPreviewSrc(
+      { files: currentFiles, entryFile: task?.entryFile ?? 'index.html' },
+      task,
+      { assets: lesson.assets ?? [], assetsPath: resolveAssetsPath(lesson.assetsPath), storageAssets: htmlIframeStorageAssets }
+    )
     setIframeSrc(src)
     setRunStatus('success')
 
     const taskIdAtRunTime = currentTaskIdRef.current
-    waitForIframeText().then(text => {
+    mod.runtime.waitForPreviewText().then(text => {
       let passed, suggestion = ''
       if (!alreadySolved) {
         const codeStr = currentFiles.map(f => f.content).join('\n')
@@ -727,13 +745,13 @@ export function useStudentCodeState({
   }
 
   function handleStop() {
-    stopPython()
+    getLessonModule(lesson?.type)?.runtime?.stop()
   }
 
   function handleInputSubmit(value) {
     appendOutputRef.current?.(value + '\n')
     setInputPrompt(null)
-    provideInput(value)
+    getLessonModule(lesson?.type)?.runtime?.provideInput(value)
   }
 
   async function handleRunTests() {
@@ -751,15 +769,16 @@ export function useStudentCodeState({
     resetRunFeedback()
 
     const results = []
+    const mod = getLessonModule(lesson?.type)
     try {
-      await initPyodideIfNeeded()
+      await initRuntimeIfNeeded()
 
       for (const test of task.tests) {
         const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
         let accumulated = ''
-        const result = await runPython(code, {
+        const result = await mod.runtime.run(code, task, {
           onOutput: text => { accumulated += text },
-          onInputRequired: () => { provideInput(inputQueue.shift() ?? '') },
+          onInputRequired: () => { mod.runtime.provideInput(inputQueue.shift() ?? '') },
         })
         const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
         const checks = normalizeChecks(resolvedCheck)
@@ -791,7 +810,7 @@ export function useStudentCodeState({
         logAttempt(actor.anonymousId, currentTaskId, { submission: code, passed: allPassed, suggestion: failedTestNames })
       }
     } catch {
-      stopPython()
+      getLessonModule(lesson?.type)?.runtime?.stop()
       setRunStatus('error')
     } finally {
       setRunningTests(false)

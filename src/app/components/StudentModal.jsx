@@ -2,9 +2,6 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import OutputPanel from './OutputPanel'
 import IframePreview from './IframePreview'
-import ScratchWorkspace from './ScratchWorkspace'
-import FilesystemTask from './FilesystemTask'
-import { buildIframeSrc } from '../../shared/iframe'
 import { decodeFileKey } from '../../shared/fileKeys'
 import QuizTask from './QuizTask'
 import ExplainerPanel from './ExplainerPanel'
@@ -13,9 +10,11 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { findTaskById, deriveTaskContext, buildStageOptions } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
-import { DEFAULT_FS } from '../../shared/filesystem'
+import { DEFAULT_FS } from '../../modules/filesystem'
+import scratchModule from '../../modules/scratch'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
+import { getLessonModule } from '../../modules/registry'
 
 function parseSpriteState(raw) {
   if (!raw) return null
@@ -610,10 +609,10 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
   const studentFs = isFilesystem
-    ? (() => { try { return student.currentCode ? JSON.parse(student.currentCode) : DEFAULT_FS } catch { return DEFAULT_FS } })()
+    ? (student.currentCode ? getLessonModule('filesystem').deserializeState(student.currentCode) : DEFAULT_FS)
     : null
   const iframeSrc = !isPython && !isScratch && !isFilesystem && !isQuiz && files.length
-    ? buildIframeSrc(files, task?.entryFile ?? 'index.html')
+    ? getLessonModule('html').runtime.buildPreviewSrc({ files, entryFile: task?.entryFile ?? 'index.html' }, task)
     : null
 
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
@@ -1015,26 +1014,32 @@ function StudentWorkspaceBody({
     </>
   )
 
-  if (isScratch) return (
-    <ScratchWorkspace
-      key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
-      task={task}
-      readOnly
-      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-      initialState={scratchState}
-      externalState={scratchState}
-      initialSpriteState={spriteState}
-    />
-  )
+  if (isScratch) {
+    const ScratchStudentView = scratchModule.StudentWorkspace
+    return (
+      <ScratchStudentView
+        key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+        task={task}
+        readOnly
+        assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+        initialState={scratchState}
+        externalState={scratchState}
+        initialSpriteState={spriteState}
+      />
+    )
+  }
 
-  if (isFilesystem) return (
-    <FilesystemTask
-      fs={studentFs}
-      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-      assets={lesson?.assets}
-      disabled
-    />
-  )
+  if (isFilesystem) {
+    const FsLiveView = getLessonModule('filesystem').TeacherLiveView
+    return (
+      <FsLiveView
+        task={task} lesson={lesson}
+        displayState={studentFs} liveState={studentFs}
+        readOnly onChange={undefined} onActivity={undefined}
+        isInSandbox={false} activeStage={null}
+      />
+    )
+  }
 
   return (
     <>

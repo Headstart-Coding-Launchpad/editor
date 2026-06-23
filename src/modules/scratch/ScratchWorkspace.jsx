@@ -21,7 +21,7 @@ import {
   setBackdropContext,
   setCostumeContext,
   setVariableContext,
-} from '../../shared/scratch'
+} from './scratch'
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
 
 const STAGE_W = 480

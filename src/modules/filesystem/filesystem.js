@@ -135,4 +135,3 @@ export function updateFileContent(fs, path, content) {
   if (!fs[path] || fs[path].type !== 'file') return fs
   return { ...fs, [path]: { type: 'file', content } }
 }
-

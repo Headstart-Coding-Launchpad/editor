@@ -1,6 +1,6 @@
 import { CodeWorkspaceTabs } from './TaskEditorFields'
-import { FsTreeEditor } from './FilesystemEditors'
-import { DEFAULT_FS } from '../../../shared/filesystem'
+import { FsTreeEditor } from '../../../modules/filesystem/filesystemEditors'
+import { DEFAULT_FS } from '../../../modules/filesystem/filesystem'
 
 export default function FilesystemTaskWorkspace({
   task, lesson, onUpdate,

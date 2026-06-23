@@ -8,7 +8,7 @@ import {
   entryName,
   normaliseDirPath,
   normaliseFilePath,
-} from '../../../shared/filesystem.js'
+} from './filesystem.js'
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 const TEXT_EXTS = new Set(['txt', 'md', 'csv'])

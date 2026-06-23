@@ -1,7 +1,10 @@
-import { DEFAULT_FS } from '../../shared/filesystem'
+import { DEFAULT_FS } from './filesystem'
 import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
+import FilesystemTeacherLiveView from './TeacherLiveView.jsx'
+
+export { DEFAULT_FS }
 
 const taskContentStyle = {
   flex: 1,
@@ -26,8 +29,19 @@ const filesystemModule = {
   BuilderWorkspace,
   CheckEditor,
 
+  // ── Teacher-side editor ──────────────────────────────────────────────────────
+  TeacherLiveView: FilesystemTeacherLiveView,
+
+  getDisplayState: (task, stage, liveState, tab) => {
+    if (tab === 'complete') return task?.completeFs ?? DEFAULT_FS
+    if (tab?.startsWith('stage_')) return stage?.fs ?? DEFAULT_FS
+    return liveState
+  },
+
+  // ── Layout ───────────────────────────────────────────────────────────────────
   getLayoutStyles: () => ({ taskContentStyle, editorAreaStyle }),
 
+  // ── Authoring ────────────────────────────────────────────────────────────────
   makeCodeTaskFields: (task) => ({
     starterFs: task.starterFs ?? DEFAULT_FS,
     carryFsFrom: task.carryFsFrom ?? null,
@@ -52,6 +66,7 @@ const filesystemModule = {
     starterFs: DEFAULT_FS,
   }),
 
+  // ── Feature flags ────────────────────────────────────────────────────────────
   supportsInteractionMode: false,
   supportsIncorrectChecks: false,
   supportsTests: false,
@@ -60,6 +75,26 @@ const filesystemModule = {
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: [],
+
+  // ── State helpers ────────────────────────────────────────────────────────────
+  defaultState: DEFAULT_FS,
+  initialState: (task) => task.starterFs ?? DEFAULT_FS,
+  serializeState: (state) => JSON.stringify(state),
+  deserializeState: (raw) => {
+    try { return JSON.parse(raw) } catch { return DEFAULT_FS }
+  },
+
+  // ── Sandbox ──────────────────────────────────────────────────────────────────
+  getSandboxState: (lesson, task) => {
+    if (lesson?.sandboxStarterFs != null) {
+      try { return JSON.parse(JSON.stringify(lesson.sandboxStarterFs)) } catch {}
+    }
+    const fs = task?.starterFs ?? DEFAULT_FS
+    try { return JSON.parse(JSON.stringify(fs)) } catch { return DEFAULT_FS }
+  },
+
+  // ── Runtime ──────────────────────────────────────────────────────────────────
+  runtime: null,
 }
 
 export default filesystemModule
