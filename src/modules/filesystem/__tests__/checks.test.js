@@ -19,6 +19,24 @@ describe('evaluateFsCheck', () => {
     it('fails for a directory path', () => {
       expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/' }, fs)).toBe(false)
     })
+    it('passes with different casing (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/documents/NOTES.TXT' }, fs)).toBe(true)
+    })
+    it('passes with * wildcard matching filename', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/*.txt' }, fs)).toBe(true)
+    })
+    it('passes with * wildcard matching any file in dir', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/*' }, fs)).toBe(true)
+    })
+    it('passes with ** wildcard matching across dirs', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/**/*.txt' }, fs)).toBe(true)
+    })
+    it('passes with ? wildcard matching single char', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/notes.tx?' }, fs)).toBe(true)
+    })
+    it('fails when wildcard matches no file', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/*.py' }, fs)).toBe(false)
+    })
   })
 
   describe('fs_dir_exists', () => {
@@ -30,6 +48,15 @@ describe('evaluateFsCheck', () => {
     })
     it('normalises path without trailing slash', () => {
       expect(evaluateFsCheck({ type: 'fs_dir_exists', path: '/Documents' }, fs)).toBe(true)
+    })
+    it('passes with different casing (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_exists', path: '/DOCUMENTS/' }, fs)).toBe(true)
+    })
+    it('passes with * wildcard matching dir name', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_exists', path: '/Doc*/' }, fs)).toBe(true)
+    })
+    it('fails when wildcard matches no directory', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_exists', path: '/Pro*/' }, fs)).toBe(false)
     })
   })
 
@@ -43,6 +70,15 @@ describe('evaluateFsCheck', () => {
     it('fails when path exists as file', () => {
       expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/Documents/notes.txt' }, fs)).toBe(false)
     })
+    it('fails when path exists with different casing (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/DOCUMENTS/' }, fs)).toBe(false)
+    })
+    it('fails when wildcard matches an existing file', () => {
+      expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/Documents/*.txt' }, fs)).toBe(false)
+    })
+    it('passes when wildcard matches nothing', () => {
+      expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/Documents/*.py' }, fs)).toBe(true)
+    })
   })
 
   describe('fs_content_contains', () => {
@@ -55,6 +91,10 @@ describe('evaluateFsCheck', () => {
     it('fails for nonexistent file', () => {
       expect(evaluateFsCheck({ type: 'fs_content_contains', path: '/missing.txt', value: 'x' }, fs)).toBe(false)
     })
+    it('matches across Windows line endings (CRLF in content, LF in value)', () => {
+      const winFs = { '/f.txt': { type: 'file', content: 'Hello\r\nWorld' } }
+      expect(evaluateFsCheck({ type: 'fs_content_contains', path: '/f.txt', value: 'hello\nworld' }, winFs)).toBe(true)
+    })
   })
 
   describe('fs_content_equals', () => {
@@ -63,6 +103,10 @@ describe('evaluateFsCheck', () => {
     })
     it('fails when content does not match', () => {
       expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello' }, fs)).toBe(false)
+    })
+    it('matches across Windows line endings (CRLF in content, LF in value)', () => {
+      const winFs = { '/f.txt': { type: 'file', content: 'Hello\r\nWorld' } }
+      expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/f.txt', value: 'hello\nworld' }, winFs)).toBe(true)
     })
   })
 
@@ -76,6 +120,9 @@ describe('evaluateFsCheck', () => {
     it('fails when file does not exist', () => {
       expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/missing.txt', dir: '/' }, fs)).toBe(false)
     })
+    it('passes with different casing on path and dir (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/DOCUMENTS/notes.txt', dir: '/documents/' }, fs)).toBe(true)
+    })
   })
 
   describe('fs_dir_opened', () => {
@@ -85,6 +132,15 @@ describe('evaluateFsCheck', () => {
     it('fails when the student is viewing a different folder', () => {
       expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, { currentDir: '/Pictures/' })).toBe(false)
     })
+    it('passes when casing differs (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/documents/' }, fs, { currentDir: '/Documents/' })).toBe(true)
+    })
+    it('passes when wildcard matches the current dir', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Doc*/' }, fs, { currentDir: '/Documents/' })).toBe(true)
+    })
+    it('fails when wildcard does not match the current dir', () => {
+      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Pro*/' }, fs, { currentDir: '/Documents/' })).toBe(false)
+    })
   })
 
   describe('fs_file_opened', () => {
@@ -93,6 +149,15 @@ describe('evaluateFsCheck', () => {
     })
     it('fails when the student opened a different file', () => {
       expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, { openFile: '/Documents/other.txt' })).toBe(false)
+    })
+    it('passes when casing differs (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/documents/NOTES.TXT' }, fs, { openFile: '/Documents/notes.txt' })).toBe(true)
+    })
+    it('passes when wildcard matches the opened file', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/*.txt' }, fs, { openFile: '/Documents/notes.txt' })).toBe(true)
+    })
+    it('fails when wildcard does not match the opened file', () => {
+      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/*.py' }, fs, { openFile: '/Documents/notes.txt' })).toBe(false)
     })
   })
 
