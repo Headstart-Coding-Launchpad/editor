@@ -44,6 +44,15 @@ const pythonModule = {
     starterCode: '',
   }),
 
+  carryThroughField: 'carryCodeFrom',
+  carryThroughLabel: 'Carry code from task',
+  getCarryThroughUpdates: (sourceTask) => ({
+    starterCode: sourceTask.completeCode ?? sourceTask.starterCode ?? '',
+  }),
+  getNewStarterUpdates: () => ({
+    starterCode: '',
+  }),
+
   supportsInteractionMode: true,
   supportsIncorrectChecks: true,
   supportsTests: true,
