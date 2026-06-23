@@ -48,6 +48,20 @@ export default function DraftTaskEditor({ task, lesson, onUpdate }) {
         />
       </Field>
 
+      <Field label="Topic links" hint="one Topic Library ID per line">
+        <textarea
+          className="te-input"
+          rows={3}
+          value={Array.isArray(task.topicLinks) ? task.topicLinks.join('\n') : (task.topicLinks ?? '')}
+          onChange={e => set('topicLinks', e.target.value
+            .split(/[\n,]+/)
+            .map(value => value.trim())
+            .filter(Boolean))}
+          placeholder={'for-loop\nrange-function'}
+          style={{ resize: 'vertical', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.85rem' }}
+        />
+      </Field>
+
       {showDetailsTier ? (
         <>
           <div style={s.tierHeading}>Details template</div>
@@ -115,15 +129,6 @@ export default function DraftTaskEditor({ task, lesson, onUpdate }) {
               onChange={e => set('hintsAndSupport', e.target.value)}
               placeholder="Hint text, quiz feedback, code stages with content, recovery path, or key misconception note."
               style={{ resize: 'vertical' }}
-            />
-          </Field>
-
-          <Field label="Topic links" hint="optional">
-            <input
-              className="te-input"
-              value={task.topicLinks ?? ''}
-              onChange={e => set('topicLinks', e.target.value)}
-              placeholder="e.g. [[for-loop]], [[variables]]"
             />
           </Field>
 

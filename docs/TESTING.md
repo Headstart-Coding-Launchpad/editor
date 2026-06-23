@@ -33,8 +33,10 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |
 | `src/shared/workspaceData.js` | Scratch state parsing/cloning and decoded HTML file conversion |
 | `src/shared/topicLibrary.js` | Topic normalization/search, wiki-link expansion and builder link suggestion detection |
+| `src/shared/topicAudit.js` | Topic-link parsing across draft/final/grouped tasks, proposal matching, unused proposals, and stage/publication blocking |
 | `src/shared/lessonService.js` | Firestore lesson fetch/list helpers, including static JSON fallback for unavailable lesson reads |
 | `src/builder/lessonUtils.js` | Lesson validation messages and exported task JSON normalisation |
+| `cli/structured-input.mjs` | JSON/YAML file-extension handling, stdin auto-detection, and lesson YAML shorthand conversion |
 | `src/app/studentStorage.js` | Exact localStorage key formats plus saved task/file snapshot reads and writes |
 | `src/app/studentTaskContent.js` | Student Python/HTML/Scratch saved-work and carry-through selection precedence |
 | `src/app/studentLiveDisplay.js` | Teacher-live viewing eligibility, displayed workspace selection, and live HTML file conversion |

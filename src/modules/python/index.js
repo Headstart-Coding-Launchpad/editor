@@ -43,7 +43,7 @@ const pythonModule = {
 
   defaultCheck: (interactionMode) => interactionMode === 'submit'
     ? [{ type: 'code_contains', value: '' }]
-    : [{ type: 'code_no_error' }],
+    : [{ type: 'output_contains', value: '' }],
 
   supportsInteractionMode: true,
   supportsIncorrectChecks: true,

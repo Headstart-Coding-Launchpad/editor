@@ -8,7 +8,6 @@ export default function CheckEditor({ task, lesson, onUpdate, interactionMode, o
       checks={normalizeChecks(task.check)}
       onChange={checks => onUpdate({ ...task, check: checks })}
       interactionMode={interactionMode}
-      allowCodeNoError={interactionMode !== 'submit'}
       allowVariableChecks={interactionMode !== 'submit'}
       allowDomChecks={false}
       lessonType={lesson.type}

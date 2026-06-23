@@ -11,6 +11,14 @@ import { hideBin } from 'yargs/helpers'
 import yaml from 'js-yaml'
 import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { extname, basename, join, relative, sep } from 'node:path'
+import {
+  parseJson,
+  parseJsonOrYaml,
+  parseLessonJsonOrYaml,
+  parseTopicJsonOrYaml,
+  parseTopicLibraryJsonOrYaml,
+} from './structured-input.mjs'
+import { validateTopicStage } from '../src/shared/topicAudit.js'
 
 const MIME_MAP = {
   '.png': 'image/png',
@@ -51,26 +59,6 @@ async function exists(path) {
   } catch {
     return false
   }
-}
-
-function parseJson(text) {
-  try {
-    return JSON.parse(text.trim())
-  } catch (e) {
-    throw new Error(`Invalid JSON: ${e.message}`)
-  }
-}
-
-function parseJsonOrYaml(filePath, text) {
-  const ext = filePath ? extname(filePath).toLowerCase() : ''
-  if (ext === '.yaml' || ext === '.yml') {
-    try {
-      return yaml.load(text.trim()) ?? {}
-    } catch (e) {
-      throw new Error(`Invalid YAML: ${e.message}`)
-    }
-  }
-  return parseJson(text)
 }
 
 function currentOutputFormat() {
@@ -122,31 +110,6 @@ function inferYamlPath(jsonPath, lessonId) {
   return replaceArtifactSegment(jsonPath, 'JSON Files', 'YAML Files', '.yaml') ?? resolve(`${lessonId}.yaml`)
 }
 
-function extractTopicLinksFromText(text) {
-  const ids = new Set()
-  if (!text) return ids
-
-  const wikiLinkPattern = /\[\[([a-z0-9._-]+)(?:\|[^\]]+)?\]\]/gi
-  for (const match of text.matchAll(wikiLinkPattern)) ids.add(match[1])
-
-  const topicHrefPattern = /#topic\/([a-z0-9._-]+)/gi
-  for (const match of text.matchAll(topicHrefPattern)) ids.add(match[1])
-
-  return ids
-}
-
-function collectTopicLinksFromTasks(tasks, ids = new Set()) {
-  for (const task of tasks ?? []) {
-    if (task.type === 'group') {
-      collectTopicLinksFromTasks(task.subtasks, ids)
-      continue
-    }
-    for (const id of extractTopicLinksFromText(task.explainer)) ids.add(id)
-    for (const id of extractTopicLinksFromText(task.leftContent)) ids.add(id)
-  }
-  return ids
-}
-
 async function collectTopicIdsFromMarkdown(root, ids = new Set()) {
   if (!await exists(root)) return ids
   for (const entry of await readdir(root, { withFileTypes: true })) {
@@ -163,6 +126,7 @@ async function collectTopicIdsFromMarkdown(root, ids = new Set()) {
 async function loadLocalTopicIds() {
   const ids = await collectTopicIdsFromMarkdown(resolve('topic library'))
   const topicJsonPaths = [
+    resolve('public', 'assets', 'topic-library.json'),
     resolve('Old Lessons', 'JSON Files', 'topic-library.json'),
     resolve('New Lessons', 'JSON Files', 'topic-library.json'),
     resolve('JSON Files', 'topic-library.json'),
@@ -170,7 +134,7 @@ async function loadLocalTopicIds() {
   for (const topicJsonPath of topicJsonPaths) {
     if (!await exists(topicJsonPath)) continue
     const topicLibrary = parseJson(await readText(topicJsonPath))
-    for (const topic of topicLibrary.topics ?? []) {
+    for (const topic of Array.isArray(topicLibrary) ? topicLibrary : (topicLibrary.topics ?? [])) {
       if (topic.id) ids.add(topic.id)
     }
   }
@@ -202,20 +166,28 @@ async function preflightYamlLesson(file) {
   add(validation.valid, 'lesson validates', validation.valid ? `${validation.warnings.length} warning(s)` : validation.errors.join('; '))
 
   const localTopicIds = await loadLocalTopicIds()
-  const linkedTopicIds = [...collectTopicLinksFromTasks(lesson.tasks)]
-  const missingTopicIds = linkedTopicIds.filter(id => !localTopicIds.has(id))
+  const topicValidation = validateTopicStage(
+    lesson,
+    [...localTopicIds].map(id => ({ id })),
+    lesson.stage ?? 'published',
+  )
+  const linkedTopicIds = topicValidation.audit.references.map(reference => reference.id)
+  const missingTopicIds = topicValidation.audit.missing.map(reference => reference.id)
   add(
-    missingTopicIds.length === 0,
-    'topic links resolve locally',
-    missingTopicIds.length ? missingTopicIds.join(', ') : `${linkedTopicIds.length} link id(s)`,
+    topicValidation.valid,
+    'topic stage requirements pass',
+    missingTopicIds.length
+      ? `${missingTopicIds.join(', ')} (${topicValidation.errors.join('; ') || 'warning only at this stage'})`
+      : `${linkedTopicIds.length} link id(s)`,
   )
 
   return {
     valid: checks.every(check => check.ok),
     lessonId: lesson.id,
     checks,
-    warnings: validation.warnings,
-    errors: validation.errors,
+    warnings: [...validation.warnings, ...topicValidation.warnings],
+    errors: [...validation.errors, ...topicValidation.errors],
+    topicAudit: topicValidation.audit,
   }
 }
 
@@ -283,16 +255,16 @@ await yargs(hideBin(process.argv))
       print(await getLessonSkeleton(id))
     }))
 
-    .command('validate [file]', 'Validate a lesson JSON — file path or stdin', {}, cmd(async ({ file }) => {
+    .command('validate [file]', 'Validate a lesson from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
       const { validateLessonForMcp } = await loadValidate()
-      const result = validateLessonForMcp(parseJson(await readText(file)))
+      const result = validateLessonForMcp(parseLessonJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.valid) process.exit(1)
     }))
 
-    .command('upsert [file]', 'Publish a lesson JSON to Firestore — file path or stdin', {}, cmd(async ({ file }) => {
+    .command('upsert [file]', 'Create or update a lesson from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
       const { upsertLesson } = await loadLessons()
-      const result = await upsertLesson(parseJson(await readText(file)))
+      const result = await upsertLesson(parseLessonJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.success) process.exit(1)
     }))
@@ -384,6 +356,11 @@ await yargs(hideBin(process.argv))
       const { setLessonStage } = await loadLessons()
       const result = await setLessonStage(id, stage)
       print(result)
+    }))
+
+    .command('topics <id>', 'Audit lesson topic references against the Firestore Topic Library', {}, cmd(async ({ id }) => {
+      const { getLessonTopicAudit } = await loadLessons()
+      print(await getLessonTopicAudit(id))
     }))
 
     .command('review <id>', 'Show all tasks with their review notes', {
@@ -579,7 +556,7 @@ await yargs(hideBin(process.argv))
       .help()
     )
 
-    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | yaml-to-json | json-to-yaml | preflight | publish-yaml | draft')
+    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | yaml-to-json | json-to-yaml | preflight | publish-yaml | set-stage | topics | draft')
     .help()
   )
 
@@ -628,16 +605,16 @@ await yargs(hideBin(process.argv))
       print(topic, { yamlText: topicToYamlText(topic) })
     }))
 
-    .command('upsert [file]', 'Create or update a topic — file path or stdin', {}, cmd(async ({ file }) => {
+    .command('upsert [file]', 'Create or update one topic from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
       const { upsertTopic } = await loadTopics()
-      const result = await upsertTopic(parseJson(await readText(file)))
+      const result = await upsertTopic(parseTopicJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.success) process.exit(1)
     }))
 
-    .command('upsert-library [file]', 'Create or update many topics from JSON — array, { topics }, or stdin', {}, cmd(async ({ file }) => {
+    .command('upsert-library [file]', 'Create or update many topics from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
       const { upsertTopicLibrary } = await loadTopics()
-      const result = await upsertTopicLibrary(parseJson(await readText(file)))
+      const result = await upsertTopicLibrary(parseTopicLibraryJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.success) process.exit(1)
     }))

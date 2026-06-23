@@ -1,3 +1,5 @@
+import { validateTopicProposals } from '../src/shared/topicAudit.js'
+
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem']
 
 function flattenTasks(tasks) {
@@ -26,6 +28,7 @@ export function validateLessonForMcp(lesson) {
   }
 
   const { id, type, title, description, tasks } = lesson
+  errors.push(...validateTopicProposals(lesson.topicProposals))
 
   if (!id || !String(id).trim()) errors.push('id is required')
   else if (!/^[a-z0-9-]+$/.test(id)) errors.push('id must be a lowercase slug (letters, digits, hyphens only)')

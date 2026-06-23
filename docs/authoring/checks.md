@@ -30,6 +30,18 @@ incorrectChecks:
 
 **Wildcards:** `*` matches any sequence (including newlines) in `value` for containment/equality checks.
 
+For ordinary flexible code structure, prefer a wildcard `code_contains` check over regex. For example:
+
+```yaml
+check:
+  type: code_contains
+  value: "def *(*):"
+```
+
+This accepts learner-chosen function and parameter names while checking the function-header shape. Use `code_matches_regex` only when wildcard matching cannot express the required structure or relationship.
+
+Check taught structure rather than incidental example content. Even on a copy task, do not require a particular character name, custom string, or arbitrary number unless reproducing that exact value is itself the learning objective.
+
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
 
 **Case sensitivity:** Regex checks are case-sensitive. All other string comparisons are case-insensitive.
@@ -40,7 +52,6 @@ incorrectChecks:
 
 | Type | Fields | Run | Submit | Python | HTML | Notes |
 |---|---|:---:|:---:|:---:|:---:|---|
-| `code_no_error` | `type` | Y | N | Y | N | Python run status is `success` |
 | `output_contains` | `type`, `value` | Y | N | Y | Y | stdout / iframe body contains value |
 | `output_equals` | `type`, `value` | Y | N | Y | Y | Exact match (trailing newlines trimmed) |
 | `output_not_contains` | `type`, `value` | Y | N | Y | Y | Does not contain value |
@@ -55,6 +66,8 @@ incorrectChecks:
 | `code_equals` | `type`, `value` | Y | Y | Y | Y | Source equals value |
 | `code_not_equals` | `type`, `value` | Y | Y | Y | Y | Source does not equal value |
 | `code_matches_regex` | `type`, `value` | Y | Y | Y | Y | Source matches regex (whitespace normalised) |
+
+Python completion checks never pass when the code run ends with an error, even if the configured output, code, or variable criteria would otherwise match. A separate “code has no error” check is therefore not available or required.
 
 **Submit mode** only accepts: `code_contains`, `code_does_not_contain`, `code_equals`, `code_not_equals`, `code_matches_regex`.
 

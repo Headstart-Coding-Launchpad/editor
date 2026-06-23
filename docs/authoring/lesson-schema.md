@@ -6,7 +6,7 @@ Full JSON field reference. For YAML authoring see `docs/authoring/AUTHORING_GUID
 **Quiz sub-types:** `docs/authoring/quiz-tasks.md`
 **Scratch fields and opcodes:** `docs/authoring/scratch-reference.md`
 
-Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Local authoring files live in `lessons/JSON Files/`; use `node cli/cli.mjs lessons upsert` to publish.
+Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson, including lessons that still contain draft tasks.
 
 ---
 
@@ -20,6 +20,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | number | Difficulty badge in the TopBar. |
 | `stage` | No | string | Lesson lifecycle stage: `ideas`, `details`, `review`, `approved`, `published`. Defaults to `published` if absent. Controls which draft-task fields are unlocked in the builder. |
+| `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
 | `sandboxStarter` | No | string | Python/Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
 | `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. |
@@ -67,7 +68,9 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 
 ## Draft Task Fields
 
-Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always required, Tier 2 fields are unlocked when the lesson `stage` is `details` or later.
+Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always required, and Tier 2 fields are unlocked when the lesson `stage` is `details` or later.
+
+Tasks remain `taskType: "draft"` throughout Ideas, Details, and Review. Details-stage drafts are complete implementation specifications, not executable lesson tasks. Conversion to information, quiz, code, or other real task types happens only in the separate implementation handoff after the detailed draft has been reviewed and approved.
 
 ### Tier 1 — Ideas stage
 
@@ -77,6 +80,7 @@ Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always requi
 | `kind` | Intended task type: `information slide`, `code task`, `quiz`, `confidence check`, `project step`, `group heading`, `recap`, or `extension` |
 | `purpose` | Why this moment exists in the lesson |
 | `expectedOutcome` | What the learner produces or achieves (also appears in Tier 2 with richer context) |
+| `topicLinks` | Optional array of plain Topic Library IDs, e.g. `["for-loop", "range-function"]`. Available at every stage. |
 | `knownPitfalls` | Optional — common mistakes or misconceptions to watch for |
 
 ### Tier 2 — Details stage and later
@@ -89,12 +93,27 @@ Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always requi
 | `expectedOutcome` | Output, correct answers, page state, or completed work |
 | `checksAndSuccessSignals` | Check type and value, e.g. `output_contains: "X"` or `manual review` |
 | `hintsAndSupport` | Hint text, quiz feedback, code stages, or key misconception note |
-| `topicLinks` | Topic wiki links, e.g. `[[for-loop]]` |
 | `yamlHandoffNotes` | Task type, mode, grouping, carry-through, assets — anything the builder needs when converting to a real task |
+
+At Details:
+
+- Keep the Tier 1 `kind`, `purpose`, `knownPitfalls`, and `topicLinks`.
+- Fill every relevant Tier 2 field with final, implementation-ready detail.
+- Put exact quiz options and feedback, proposed checks and incorrect checks, code stages, and task configuration into the appropriate Tier 2 text fields.
+- Record the intended executable task type in `yamlHandoffNotes`; do not change `taskType` from `"draft"`.
 
 ---
 
 ## Review Note Object
+
+Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `[[topic-id|Custom label]]`, and `#topic/topic-id` links throughout draft and final task content, including nested hints and grouped tasks.
+
+Stage rules:
+
+- Ideas → Details: missing Topic Library entries warn.
+- Details → Review: every missing ID needs a matching `topicProposals` item with `status: proposed` or `status: deferred`.
+- Review → Approved: missing entries remain visible but do not block approval.
+- Approved → Published: every referenced ID must exist in Firestore; unused proposals only warn.
 
 Any task can carry a `reviewNote` for in-builder collaboration:
 
@@ -255,7 +274,7 @@ Groups may not be nested. `carryCodeFrom` / `carryBlocksFrom` references from wi
 - `carryCodeFrom` / `carryBlocksFrom` must reference an existing task ID.
 - Submit mode cannot use run-required checks.
 - DOM checks need a CSS `selector`.
-- Checks requiring a value must provide one (exceptions: `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `variable_exists`).
+- Checks requiring a value must provide one (exceptions: `output_not_empty`, `output_empty`, `element_exists`, `variable_exists`).
 - Scratch toolbox XML must parse if provided.
 - Scratch checks have their own required fields — see `docs/authoring/checks.md`.
 

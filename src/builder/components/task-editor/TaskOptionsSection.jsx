@@ -118,7 +118,6 @@ export default function TaskOptionsSection({
                 checks={normalizeChecks(task.incorrectChecks ?? [])}
                 onChange={checks => set('incorrectChecks', checks.length > 0 ? checks : null)}
                 interactionMode={task.interactionMode ?? 'run'}
-                allowCodeNoError={false}
                 allowVariableChecks={lessonMod?.supportsTests && task.interactionMode !== 'submit'}
                 allowDomChecks={!lessonMod?.supportsTests && task.interactionMode !== 'submit'}
                 lessonType={lesson.type}

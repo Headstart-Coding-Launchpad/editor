@@ -16,6 +16,8 @@ import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
+import { useTopicLibrary } from '../../shared/topicLibrary'
+import { collectLessonTopicReferences, validateTopicStage } from '../../shared/topicAudit'
 
 export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSaved }) {
   const [previewing, setPreviewing] = useState(false)
@@ -24,6 +26,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const [taskFeedback, setTaskFeedback] = useState([])
   const { role } = useAuth()
   const navigate = useNavigate()
+  const { allTopics, loading: topicsLoading, error: topicsError } = useTopicLibrary(lesson.type)
+  const hasTopicReferences = collectLessonTopicReferences(lesson).length > 0
 
   const { defaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
 
@@ -51,6 +55,23 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   } = useBuilderState({ lesson, onUpdate, defaultSprites })
 
   function handleSetStage(newStage) {
+    if (newStage === (lesson.stage ?? 'published')) return
+    if (hasTopicReferences && topicsLoading) {
+      alert('Please wait for the current Topic Library check to finish before changing stage.')
+      return
+    }
+    if (hasTopicReferences && topicsError) {
+      alert('Could not check the Topic Library, so the lesson stage was not changed: ' + topicsError.message)
+      return
+    }
+    const topicValidation = validateTopicStage(lesson, hasTopicReferences ? allTopics : [], newStage)
+    if (!topicValidation.valid) {
+      alert(topicValidation.errors.join('\n'))
+      return
+    }
+    if (topicValidation.warnings.length > 0 && !confirm(
+      topicValidation.warnings.join('\n') + `\n\nMove the lesson to ${newStage}?`
+    )) return
     handleLessonUpdate(prev => ({ ...prev, stage: newStage }))
   }
 
@@ -88,6 +109,21 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
 
   async function handleSave() {
     if (!lesson.id) { alert('Cannot save — lesson ID is required.'); return }
+    if ((lesson.stage ?? 'published') === 'published') {
+      if (hasTopicReferences && topicsLoading) {
+        alert('Please wait for the current Topic Library check to finish before publishing.')
+        return
+      }
+      if (hasTopicReferences && topicsError) {
+        alert('Could not verify Topic Library entries, so the published lesson was not saved: ' + topicsError.message)
+        return
+      }
+      const topicValidation = validateTopicStage(lesson, hasTopicReferences ? allTopics : [], 'published')
+      if (!topicValidation.valid) {
+        alert(topicValidation.errors.join('\n'))
+        return
+      }
+    }
     setSaveStatus('saving')
     try {
       const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }))
@@ -162,7 +198,13 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       <div style={{ ...s.body, gridTemplateColumns: metaOpen ? '320px 280px minmax(0, 1fr)' : '40px 280px minmax(0, 1fr)' }}>
         <aside style={metaOpen ? s.metaPane : s.metaPaneCollapsed}>
           {metaOpen ? (
-            <LessonMetaPanel lesson={lesson} onUpdate={onUpdate} onCollapse={() => setMetaOpen(false)} />
+            <LessonMetaPanel
+              lesson={lesson}
+              onUpdate={onUpdate}
+              onCollapse={() => setMetaOpen(false)}
+              onSetStage={handleSetStage}
+              topicState={{ topics: allTopics, loading: topicsLoading, error: topicsError }}
+            />
           ) : (
             <div style={s.collapsedMetaStrip}>
               <button type="button" style={s.expandMetaBtn} onClick={() => setMetaOpen(true)} title="Expand lesson details">

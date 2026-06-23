@@ -80,39 +80,39 @@ describe('typeFromSubjectOp', () => {
 })
 
 describe('getOperatorOptions', () => {
-  it('returns output operators without no_error by default', () => {
-    const opts = getOperatorOptions('output', { allowCodeNoError: false })
+  it('returns output operators without no_error', () => {
+    const opts = getOperatorOptions('output')
     expect(opts.map(o => o.value)).not.toContain('no_error')
     expect(opts.map(o => o.value)).toContain('contains')
     expect(opts.map(o => o.value)).toContain('equals')
   })
 
-  it('includes no_error first when allowCodeNoError is true', () => {
-    const opts = getOperatorOptions('output', { allowCodeNoError: true })
-    expect(opts[0].value).toBe('no_error')
+  it('shows no_error only for an existing legacy check', () => {
+    const opts = getOperatorOptions('output', 'no_error')
+    expect(opts[0]).toEqual({ value: 'no_error', label: 'no error (legacy)' })
   })
 
   it('returns code operators', () => {
-    const opts = getOperatorOptions('code', { allowCodeNoError: false })
+    const opts = getOperatorOptions('code')
     expect(opts.map(o => o.value)).toEqual(['contains', 'equals', 'not_contains', 'not_equals', 'matches_regex'])
   })
 
   it('returns element operators including attribute_equals', () => {
-    const opts = getOperatorOptions('element', { allowCodeNoError: false })
+    const opts = getOperatorOptions('element')
     expect(opts.map(o => o.value)).toContain('exists')
     expect(opts.map(o => o.value)).toContain('count')
     expect(opts.map(o => o.value)).toContain('attribute_equals')
   })
 
   it('returns variable operators', () => {
-    const opts = getOperatorOptions('variable', { allowCodeNoError: false })
+    const opts = getOperatorOptions('variable')
     expect(opts.map(o => o.value)).toContain('exists')
     expect(opts.map(o => o.value)).toContain('dict_key_value')
     expect(opts.map(o => o.value)).toContain('array_nth_item')
   })
 
   it('returns empty array for unknown subject', () => {
-    expect(getOperatorOptions('unknown', { allowCodeNoError: false })).toEqual([])
+    expect(getOperatorOptions('unknown')).toEqual([])
   })
 })
 

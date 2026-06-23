@@ -18,7 +18,7 @@ node cli/cli.mjs lessons publish-yaml lesson.yaml          # one step: convert, 
 # or step by step:
 node cli/cli.mjs lessons yaml-to-json lesson.yaml          # validate + preview JSON
 node cli/cli.mjs lessons yaml-to-json lesson.yaml --output lesson.json
-node cli/cli.mjs lessons upsert lesson.json
+node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JSON; saves draft tasks
 
 # fetch an existing lesson as YAML:
 node cli/cli.mjs lessons get python-for-loops --format yaml
@@ -298,12 +298,14 @@ incorrectChecks:
 
 | Task type | Common checks |
 |---|---|
-| Python run | `output_contains`, `output_line_count`, `code_contains`, `code_no_error` |
+| Python run | `output_contains`, `output_line_count`, `code_contains`, variable checks |
 | Python variable | `variable_equals`, `variable_exists`, `variable_type` |
 | Python submit | `code_contains`, `code_does_not_contain`, `code_matches_regex` |
 | HTML run | `element_exists`, `element_value`, `element_attribute`, `output_contains` |
 | Scratch | `sprite_property`, `block_used`, `variable_equals`, `blocks_in_order` |
 | Quiz | `answer_equals`, `answer_contains`, `quiz_result` |
+
+Python run-mode completion checks automatically fail if the code run ends with an error. Do not add a separate check for error-free execution; choose a check that describes the output, code, or variable state the task is intended to produce.
 
 For the full list of every check type and its fields see `docs/authoring/checks.md`.
 
@@ -374,7 +376,14 @@ When `tests` is present, a **Run Tests** button appears. Students must pass all 
 
 ## Draft Tasks and Lesson Stage
 
-The builder supports an authoring pipeline with `stage` on the lesson envelope and `type: draft` placeholder tasks.
+The builder supports an authoring pipeline with `stage` on the lesson envelope and `type: draft` tasks.
+
+Draft tasks serve two distinct levels of specification:
+
+- At `ideas`, they are provisional structural plans using Tier 1 fields.
+- At `details`, they remain `type: draft` but become complete execution-level specifications using Tier 2 fields.
+
+Do not convert detailed drafts into executable information, quiz, or code tasks during the Details stage. That conversion is a separate implementation step after review and approval.
 
 ### Lesson stages
 
@@ -388,6 +397,32 @@ node cli/cli.mjs lessons set-stage python-for-loops review
 
 ### Draft tasks in YAML
 
+At the Ideas stage, every draft task uses these Tier 1 fields:
+
+- `title`: working name for the learning moment
+- `kind`: one of the exact values below — this field is an enum, not free text
+- `purpose`: why the task exists
+- `expectedOutcome`: what the learner will achieve or produce
+- `knownPitfalls`: likely mistakes or misconceptions
+- `topicLinks`: likely Topic Library IDs used by this task; record these during Ideas
+
+Allowed `kind` values:
+
+| Value | Use for |
+|---|---|
+| `information slide` | Teaching or explanatory content |
+| `code task` | Runnable, editable, debugging, prediction, or build activities using code |
+| `quiz` | Any knowledge-check format, including prediction and debugging questions |
+| `confidence check` | Low-pressure learner readiness ratings |
+| `project step` | One stage of a larger build |
+| `group heading` | A planned navigation or section marker |
+| `recap` | Opening or final recap moments |
+| `extension` | Optional stretch work |
+
+Use `purpose` to describe the specific variation, such as a prediction quiz or code-edit task. Do not invent a more specific `kind` value.
+
+Add `knownPitfalls` to every learner activity where a realistic mistake or misconception can be anticipated, especially code tasks, quizzes, confidence checks, project steps, and extensions. It may be omitted from structural tasks such as introductions, objectives, group headings, and simple recap slides when there is no meaningful pitfall.
+
 ```yaml
 id: python-loops-draft
 type: python
@@ -398,20 +433,62 @@ tasks:
     title: Introduce for loops
     kind: information slide
     purpose: Set context before the first code task.
+    expectedOutcome: Students can describe what a for loop repeats.
+    knownPitfalls: Students may assume a loop always runs forever.
+    topicLinks:
+      - for-loop
+      - range-function
 
   - type: draft
     title: Write a basic for loop
     kind: code task
     purpose: Students write their first loop.
-    # Tier 2 fields (unlocked at 'details' stage and later):
+    expectedOutcome: Students produce five lines of numbered output.
+    knownPitfalls: Students may forget the colon or indentation.
+    # Tier 2 fields (unlocked at 'details' stage and later).
+    # The task remains type: draft:
     studentFacingContent: |
       Use `range()` to print the numbers 0–4.
-    expectedOutcome: Five lines of output, one number per line.
     checksAndSuccessSignals: "output_line_count: 5"
     hintsAndSupport: "Remind students that range(5) gives 0, 1, 2, 3, 4."
 ```
 
 `type: draft` tasks produce a validation **warning** (not an error) — `lessons upsert` saves them, `lessons publish-yaml` blocks them.
+
+At Details, complete the Tier 2 fields rather than replacing the draft task:
+
+- `studentFacingContent`: final learner-facing copy
+- `studentAction`: exact learner action where applicable
+- `starterState`: exact starter code/files/blocks/carry state
+- `expectedOutcome`: final output, answer, structure, or artefact
+- `checksAndSuccessSignals`: proposed checks with exact types and values
+- `hintsAndSupport`: hints, feedback, incorrect checks, and code stages
+- `yamlHandoffNotes`: intended real task type and all implementation configuration
+
+Real task fields are written only during the later implementation handoff.
+
+### Topic planning and stage validation
+
+Use task-level `topicLinks` as plain IDs from the Ideas stage onward. If an ID does not exist in the current Firestore Topic Library, describe it once at lesson level:
+
+```yaml
+topicProposals:
+  - id: range-function
+    title: The range() function
+    description: Produces a sequence of numbers commonly used by loops.
+    status: proposed
+```
+
+Use `status: deferred` when the missing topic is intentionally postponed. Do not put task usage in proposals; the builder derives that from every task's `topicLinks` and embedded `[[topic-id]]`, `[[topic-id|label]]`, or `#topic/topic-id` links.
+
+Missing topics warn during Ideas and Details. Moving to Review requires a matching proposed/deferred entry. Approval keeps missing topics visible. Publishing is blocked until every referenced topic exists in Firestore. Unused proposals warn but do not block.
+
+```bash
+node cli/cli.mjs lessons topics python-loops-draft
+node cli/cli.mjs lessons topics python-loops-draft --format yaml
+```
+
+At Details, embed topic links in the student-facing prose where they should appear to learners. Recreation, from-memory, and independent tasks should normally include a learner-facing topic link in the prompt or hint; `topicLinks` metadata alone does not provide learner support.
 
 ### Review notes via CLI
 
@@ -457,6 +534,7 @@ topics:
 ```bash
 node cli/cli.mjs topics publish-yaml topics.yaml   # upsert all topics to Firestore
 node cli/cli.mjs topics yaml-to-json topics.yaml   # validate without Firebase
+node cli/cli.mjs topics upsert-library topics.yaml # save a YAML or JSON topic library
 node cli/cli.mjs topics get for-loop --format yaml # fetch a topic as YAML
 ```
 
