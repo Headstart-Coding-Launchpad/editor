@@ -459,17 +459,19 @@ export default function TeacherView({ lessonId }) {
           )}
 
           {isInSandbox && (
-            <TeacherSandboxBanner
-              staging={sandboxStaging}
-              onCancel={handleCancelSandbox}
-              onReset={handleResetSandboxStarter}
-              onGoLive={handleGoLiveSandbox}
-              onPush={handlePushSandbox}
-              onDeactivate={handleDeactivateSandbox}
-              sandboxExplainer={session?.sandboxExplainer ?? ''}
-              onPushExplainer={pushSandboxExplainer}
-              lessonType={lesson.type}
-            />
+            <div style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <TeacherSandboxBanner
+                staging={sandboxStaging}
+                onCancel={handleCancelSandbox}
+                onReset={handleResetSandboxStarter}
+                onGoLive={handleGoLiveSandbox}
+                onPush={handlePushSandbox}
+                onDeactivate={handleDeactivateSandbox}
+                sandboxExplainer={session?.sandboxExplainer ?? ''}
+                onPushExplainer={pushSandboxExplainer}
+                lessonType={lesson.type}
+              />
+            </div>
           )}
 
           <TeacherEditorPanel

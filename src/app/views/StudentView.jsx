@@ -278,7 +278,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     : lesson.type === 'filesystem'
     ? !!(lesson.sandboxStarterFs != null)
     : false
-  const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
+  const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && !isQuizTask && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 

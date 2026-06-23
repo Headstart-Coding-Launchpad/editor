@@ -620,8 +620,8 @@ const s = {
     flexDirection: 'column',
     gap: 14,
     width: '100%',
-    flex: 1,
-    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 0,
   },
   question: {
     background: '#fff',
@@ -645,10 +645,10 @@ const s = {
   options: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gridAutoRows: 'minmax(0, 1fr)',
+    gridAutoRows: 'minmax(min-content, 1fr)',
     gap: 10,
-    flex: 1,
-    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 0,
   },
   option: {
     display: 'flex',
@@ -710,8 +710,8 @@ const sm = {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
-    flex: 1,
-    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 0,
   },
   promptList: {
     display: 'flex',
@@ -850,7 +850,8 @@ const sm = {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 0,
   },
   fillText: {
     background: '#fff',
@@ -944,7 +945,8 @@ const sm = {
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 0,
   },
   shortAnswerInput: {
     padding: '12px 14px',
@@ -974,7 +976,8 @@ const sc = {
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 0,
   },
   labelRow: {
     display: 'flex',
