@@ -282,13 +282,15 @@ export function useStudentCodeState({
     if (lesson?.type === 'html') setHtmlPreviewCollapsed(true)
   }, [lesson?.type, currentTaskId])
 
-  // Load task content when task or phase changes
+  // Load task content when task or phase changes.
+  // lesson is intentionally excluded: a lesson override push (lessonOverrideTasks) produces a new
+  // lesson reference but should not reload the student's current work mid-task.
   useEffect(() => {
     if ((phase === 'lesson' || phase === 'solo') && effectiveIdentity && lesson) {
       loadTaskContent(currentTaskId)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, currentTaskId, lesson, effectiveIdentity?.anonymousId])
+  }, [phase, currentTaskId, effectiveIdentity?.anonymousId])
 
   // When phase leaves lesson/solo, exit personal sandbox silently
   useEffect(() => {
