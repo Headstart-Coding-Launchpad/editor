@@ -7,6 +7,7 @@ Reusable workflow playbooks for the HSC platform. Each file can be read directly
 | `hsc-list.md` | List all published lessons and topics |
 | `hsc-author.md` | Author a new lesson from scratch |
 | `hsc-edit.md` | Edit an existing lesson or individual task |
+| `hsc-review.md` | Review a LaunchPad lesson and record task decisions |
 | `hsc-topics.md` | Manage the topic library |
 | `hsc-assets.md` | Upload, list, and delete lesson assets |
 | `hsc-feedback.md` | Read, create, delete, and bulk-clear feedback |
