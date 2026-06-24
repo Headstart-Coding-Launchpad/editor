@@ -64,6 +64,37 @@ describe('createSpriteState', () => {
     const b = createSpriteState()
     expect(a).not.toBe(b)
   })
+
+  it('includes all 7 graphic effect keys initialised to 0', () => {
+    const state = createSpriteState()
+    expect(state.effect_color).toBe(0)
+    expect(state.effect_fisheye).toBe(0)
+    expect(state.effect_whirl).toBe(0)
+    expect(state.effect_pixelate).toBe(0)
+    expect(state.effect_mosaic).toBe(0)
+    expect(state.effect_brightness).toBe(0)
+    expect(state.effect_ghost).toBe(0)
+  })
+})
+
+describe('sprite_property check on graphic effects', () => {
+  it('reads effect_ghost from sprite state via sprite_property check', () => {
+    const state = { ...createSpriteState(), effect_ghost: 50 }
+    const check = { type: 'sprite_property', property: 'effect_ghost', operator: 'equals', value: 50 }
+    expect(evaluateScratchCheck(check, null, state)).toBe(true)
+  })
+
+  it('returns false when effect value does not match', () => {
+    const state = { ...createSpriteState(), effect_ghost: 25 }
+    const check = { type: 'sprite_property', property: 'effect_ghost', operator: 'equals', value: 50 }
+    expect(evaluateScratchCheck(check, null, state)).toBe(false)
+  })
+
+  it('supports greater_than comparison on effect values', () => {
+    const state = { ...createSpriteState(), effect_brightness: 75 }
+    const check = { type: 'sprite_property', property: 'effect_brightness', operator: 'greater_than', value: 50 }
+    expect(evaluateScratchCheck(check, null, state)).toBe(true)
+  })
 })
 
 describe('compare', () => {
@@ -429,6 +460,38 @@ describe('evaluateScratchCheck', () => {
     it('returns true when block ran with empty fieldValues (no value constraint)', () => {
       const runState = { executedBlocks: new Set(['motion_movesteps']) }
       expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: {} }, null, null, runState)).toBe(true)
+    })
+  })
+
+  describe('wildcard * in fieldValues', () => {
+    it('block_used passes when field value matches a wildcard pattern', () => {
+      const ws = { getAllBlocks: () => [makeBlock('looks_saywaitfor', { MESSAGE: 'Hello world', SECS: '2' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'looks_saywaitfor', fieldValues: { MESSAGE: 'Hello*' } }, ws, null)).toBe(true)
+    })
+
+    it('block_used fails when field value does not match the wildcard', () => {
+      const ws = { getAllBlocks: () => [makeBlock('looks_saywaitfor', { MESSAGE: 'Goodbye world', SECS: '2' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'looks_saywaitfor', fieldValues: { MESSAGE: 'Hello*' } }, ws, null)).toBe(false)
+    })
+
+    it('block_used exact match still works when no wildcard', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '50' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null)).toBe(true)
+    })
+
+    it('blocks_in_order passes when a sequence item uses a wildcard field value', () => {
+      function makeChain(typeValuePairs) {
+        const blocks = typeValuePairs.map(([type, vals]) => makeBlock(type, vals ?? {}))
+        for (let i = 0; i < blocks.length; i++) {
+          const next = blocks[i + 1] ?? null
+          blocks[i].getNextBlock = () => next
+          if (i > 0) blocks[i].previousConnection = { isConnected: () => true }
+        }
+        return { getAllBlocks: () => blocks }
+      }
+      const ws = makeChain([['event_whenflagclicked', {}], ['looks_saywaitfor', { MESSAGE: 'Hi there', SECS: '3' }]])
+      const check = { type: 'blocks_in_order', sequence: ['event_whenflagclicked', { opcode: 'looks_saywaitfor', fieldValues: { MESSAGE: 'Hi*' } }] }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
     })
   })
 })

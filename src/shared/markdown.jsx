@@ -52,9 +52,10 @@ function categorize(text) {
 
   // Control
   if (t.startsWith('wait ') || t === 'stop all') return { color: '#FFAB19' }
-  if (t === 'forever' || t.startsWith('repeat ') || (t.startsWith('if ') && t.includes(' then')) || t === 'else') {
-    return { color: '#FFAB19', c: true }
-  }
+  if (
+    t === 'forever' || t.startsWith('repeat ') ||
+    (t.startsWith('if ') && t.includes(' then')) || t === 'else'
+  ) return { color: '#FFAB19', c: true }
   if (t === 'end') return null
 
   // Motion (check x/y before the generic variable catch-all below)
@@ -67,11 +68,17 @@ function categorize(text) {
     t.startsWith('change x by') || t.startsWith('change y by')
   ) return { color: '#4C97FF' }
 
-  // Looks (check size before variable catch-all)
+  // Looks (check size and effects before variable catch-all)
   if (
     t.startsWith('say ') || t.startsWith('think ') ||
     t === 'show' || t === 'hide' ||
-    t.startsWith('set size') || t.startsWith('change size')
+    t.startsWith('set size') || t.startsWith('change size') ||
+    (t.startsWith('set ') && t.includes(' effect')) ||
+    (t.startsWith('change ') && t.includes(' effect')) ||
+    t === 'clear graphic effects' ||
+    t.startsWith('switch costume') || t === 'next costume' ||
+    t.startsWith('costume [') || t.startsWith('backdrop [') ||
+    t.startsWith('switch backdrop') || t === 'next backdrop'
   ) return { color: '#9966FF' }
 
   // Sound
@@ -81,24 +88,31 @@ function categorize(text) {
 
   // Sensing
   if (t.startsWith('ask ') && t.endsWith(' and wait')) return { color: '#5CB1D6' }
-
-  // Variables (generic catch-all — after motion/looks specifics)
-  if (t === 'answer' || t === 'mouse down?' || t === 'touching edge?' || /^key\s+.+\s+pressed\?$/.test(t)) {
-    return { color: '#5CB1D6' }
-  }
+  if (
+    t === 'answer' || t === 'mouse down?' || t === 'touching edge?' ||
+    /^key\s+.+\s+pressed\?$/.test(t) ||
+    t === 'timer' || t === 'reset timer' ||
+    t.startsWith('distance to ')
+  ) return { color: '#5CB1D6' }
 
   // Operators
   if (
     t === 'join' || t.startsWith('join ') ||
     t.startsWith('not ') ||
-    /\s[+\-=<>]\s/.test(t) ||
+    t.startsWith('round ') ||
+    t.startsWith('letter ') ||
+    t.startsWith('length of') ||
+    t.includes(' contains ') || t.endsWith(' contains') ||
+    /\bmod\b/.test(t) ||
+    /\s[+\-=<>*/]\s/.test(t) ||
     /\s(?:and|or)\s/.test(t) ||
-    /\s[+\-=<>]\s/.test(unwrapped) ||
+    /\s[+\-=<>*/]\s/.test(unwrapped) ||
     /\s(?:and|or)\s/.test(unwrapped)
   ) return { color: '#59C059' }
 
   if (/^set\s+(?:\[[^\]]+\]|\S+)\s+to\b/.test(t)) return { color: '#FF8C1A' }
   if (/^change\s+(?:\[[^\]]+\]|\S+)\s+by\b/.test(t)) return { color: '#FF8C1A' }
+  if (t.startsWith('show variable') || t.startsWith('hide variable')) return { color: '#FF8C1A' }
 
   return null
 }

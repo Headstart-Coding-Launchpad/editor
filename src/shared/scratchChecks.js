@@ -6,7 +6,10 @@ export const DEFAULT_SPRITES = [
 ]
 
 export function createSpriteState() {
-  return { x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null }
+  return {
+    x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null,
+    effect_color: 0, effect_fisheye: 0, effect_whirl: 0, effect_pixelate: 0, effect_mosaic: 0, effect_brightness: 0, effect_ghost: 0,
+  }
 }
 
 // Normalize a blocks_in_order sequence item to {opcode, fieldValues}.
@@ -31,11 +34,17 @@ function getInputValue(block, inputName) {
   return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
 }
 
+function wildcardMatchField(actual, expected) {
+  if (!expected.includes('*')) return actual === expected
+  const re = new RegExp('^' + expected.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[\\s\\S]*') + '$')
+  return re.test(actual)
+}
+
 function blockMatchesFieldValues(block, fieldValues) {
   if (!fieldValues || Object.keys(fieldValues).length === 0) return true
   return Object.entries(fieldValues).every(([inputName, expectedValue]) => {
     const actual = getInputValue(block, inputName)
-    return actual !== null && String(actual) === String(expectedValue)
+    return actual !== null && wildcardMatchField(String(actual), String(expectedValue))
   })
 }
 

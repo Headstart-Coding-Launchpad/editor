@@ -123,27 +123,48 @@ Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_cou
 - `looks_sayforsecs` · `looks_say` · `looks_think` · `looks_thinkforsecs`
 - `looks_show` · `looks_hide`
 - `looks_setsizeto` · `looks_changesizeby`
-- `looks_switchcostumeto` · `looks_nextcostume` · `looks_costumenumber`
-- `looks_switchbackdropto` · `looks_nextbackdrop`
+- `looks_switchcostumeto` · `looks_nextcostume` · `looks_costumenumber` · `looks_costumenumbername`
+- `looks_switchbackdropto` · `looks_nextbackdrop` · `looks_backdropnumbername`
+- `looks_seteffectto` · `looks_changeeffectby` · `looks_cleargraphiceffects`
 
 **Sound**
 - `sound_play` · `sound_playuntildone` · `sound_stopallsounds`
 
 **Control**
-- `control_wait` · `control_repeat` · `control_forever`
+- `control_wait` · `control_wait_until` · `control_repeat` · `control_repeat_until` · `control_forever`
 - `control_if` · `control_if_else` · `control_stop`
 
 **Sensing**
 - `sensing_askandwait` · `sensing_answer` · `sensing_keypressed`
 - `sensing_mousedown` · `sensing_touchingedge` · `sensing_touchingobject`
+- `sensing_distanceto` · `sensing_timer` · `sensing_resettimer`
 
 **Operators**
 - `operator_equals` · `operator_gt` · `operator_lt`
 - `operator_and` · `operator_or` · `operator_not`
-- `operator_add` · `operator_subtract` · `operator_join`
+- `operator_add` · `operator_subtract` · `operator_multiply` · `operator_divide` · `operator_mod`
+- `operator_round` · `operator_mathop`
+- `operator_join` · `operator_letter_of` · `operator_length` · `operator_contains`
 
 **Variables**
 - `data_variable` · `data_setvariableto` · `data_changevariableby`
+- `data_showvariable` · `data_hidevariable`
+
+### Checking graphic effects
+
+Graphic effect state is stored as flat properties on the sprite, so `sprite_property` checks work directly:
+
+```yaml
+checks:
+  - type: sprite_property
+    spriteName: Sprite 1
+    property: effect_ghost
+    operator: greater_than
+    value: 0
+    evalMode: after_run
+```
+
+Supported effect property names: `effect_color`, `effect_fisheye`, `effect_whirl`, `effect_pixelate`, `effect_mosaic`, `effect_brightness`, `effect_ghost`.
 
 ---
 
