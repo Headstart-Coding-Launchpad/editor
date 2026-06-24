@@ -93,6 +93,11 @@ export default function HtmlTaskWorkspace({
           </div>
         )}
 
+        {isCompleteTab && task.check && (
+          <div style={{ padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 0, fontSize: '0.8rem', color: '#1d4ed8', fontFamily: 'var(--font-body)' }}>
+            Complete tab active — click Run to verify this solution passes all checks.
+          </div>
+        )}
         <div className="te-html-split">
           <SplitPane
             defaultSplit={34}

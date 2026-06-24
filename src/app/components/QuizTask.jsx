@@ -271,9 +271,12 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
 
 // ─── Fill in the Blank ────────────────────────────────────────────────────────
 
-// Parses fill-blank text into tokens: {type:'text'|'code'|'blank', text?, lang?, blankId?}
-// Handles backtick code spans atomically so `python:range(___, ___)` doesn't produce
-// orphaned backticks when the ___ markers fall inside a code span.
+// Parses fill-blank text into tokens:
+//   {type:'text'|'code'|'blank', text?, lang?, blankId?}
+//   {type:'codeBlock', lang, parts:[{type:'codeText'|'blank', text?, blankId?}]}
+// Triple-backtick blocks are detected before single backticks so ``` is never
+// misread as a code span. Blanks inside code blocks keep the pre-formatted
+// indentation intact because parts render as raw text nodes inside <pre>.
 function parseFillBlankSegments(text, blanks) {
   const tokens = []
   let blankCount = 0
@@ -287,6 +290,31 @@ function parseFillBlankSegments(text, blanks) {
       continue
     }
 
+    // Triple-backtick code block — must come before single-backtick check
+    if (text.startsWith('```', i)) {
+      const closeIdx = text.indexOf('\n```', i + 3)
+      if (closeIdx !== -1) {
+        const blockContent = text.slice(i + 3, closeIdx)
+        const nlIdx = blockContent.indexOf('\n')
+        const lang = nlIdx !== -1 ? blockContent.slice(0, nlIdx).trim() : ''
+        const body = nlIdx !== -1 ? blockContent.slice(nlIdx + 1) : blockContent
+        const bodyNoTrail = body.replace(/\n$/, '')
+        const parts = []
+        const bodyParts = bodyNoTrail.split('___')
+        bodyParts.forEach((part, j) => {
+          if (part) parts.push({ type: 'codeText', text: part })
+          if (j < bodyParts.length - 1) {
+            parts.push({ type: 'blank', blankId: blanks[blankCount]?.id ?? `b${blankCount + 1}` })
+            blankCount++
+          }
+        })
+        tokens.push({ type: 'codeBlock', lang, parts })
+        i = closeIdx + 4 // skip \n```
+        continue
+      }
+    }
+
+    // Single-backtick code span
     const close = text[i] === '`' ? text.indexOf('`', i + 1) : -1
     if (close !== -1) {
       const raw = text.slice(i + 1, close)
@@ -311,7 +339,7 @@ function parseFillBlankSegments(text, blanks) {
 
     const textStart = i
     i++
-    while (i < text.length && !text.startsWith('___', i) && text[i] !== '`') i++
+    while (i < text.length && !text.startsWith('___', i) && !text.startsWith('```', i) && text[i] !== '`') i++
     tokens.push({ type: 'text', text: text.slice(textStart, i) })
   }
 
@@ -387,6 +415,65 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
     onSelectAnswer?.(state, allCorrect)
   }
 
+  function renderBlank(blankId, key) {
+    const blank = blanks.find(b => b.id === blankId)
+    const placedTileId = state[blankId]
+    const placedText = tilePool.find(t => t.id === placedTileId)?.text
+    const activeId = draggingTile || touchSelectedTile
+    const canReceive = mode === 'drag' && !!(activeId && activeId !== placedTileId)
+    const isDragHighlight = canReceive && dragOverBlank === blankId && !blocked
+    const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
+    const isBlankCorrect = revealAnswers && placedTileId && (
+      mode === 'drag'
+        ? tilePool.find(t => t.id === placedTileId)?.text === blank?.answer
+        : String(placedTileId ?? '').trim().toLowerCase() === String(blank?.answer ?? '').trim().toLowerCase()
+    )
+    const isBlankWrong = revealAnswers && placedTileId && !isBlankCorrect
+
+    if (mode === 'type') {
+      return (
+        <input
+          key={key}
+          style={{
+            ...sm.fillInput,
+            ...(isBlankCorrect ? sm.fillInputCorrect : {}),
+            ...(isBlankWrong ? sm.fillInputWrong : {}),
+          }}
+          value={state[blankId] ?? ''}
+          onChange={e => handleTypeChange(blankId, e.target.value)}
+          disabled={blocked}
+          placeholder="..."
+        />
+      )
+    }
+
+    return (
+      <span
+        key={key}
+        style={{
+          ...sm.fillBlank,
+          ...(placedTileId ? sm.fillBlankFilled : sm.fillBlankEmpty),
+          ...(isBlankCorrect ? sm.fillBlankCorrect : {}),
+          ...(isBlankWrong ? sm.fillBlankWrong : {}),
+          ...((isDragHighlight || isTapHighlight) ? sm.fillBlankHighlight : {}),
+          cursor: blocked ? 'default' : (isTapHighlight || placedTileId) ? 'pointer' : 'copy',
+        }}
+        onDragOver={event => dnd.handleTargetDragOver(event, blankId)}
+        onDragLeave={dnd.clearDragOver}
+        onDrop={event => dnd.handleTargetDrop(event, blankId, state, publishState)}
+        onClick={() => dnd.handleTargetClick(blankId, state, publishState)}
+        draggable={!!placedTileId && !blocked}
+        onDragStart={event => placedTileId && dnd.handleDragStart(event, placedTileId)}
+        onDragEnd={dnd.handleDragEnd}
+        title={isBlankWrong && blank ? `Correct: ${blank.answer}` : undefined}
+      >
+        {placedText
+          ? <span style={sm.fillBlankMarkdown}><InlineMarkdown content={placedText} /></span>
+          : (canReceive && !blocked ? (touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here') : '___')}
+      </span>
+    )
+  }
+
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
@@ -401,65 +488,22 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
               const mdCode = `\`${seg.lang ? seg.lang + ':' : ''}${seg.text}\``
               return <span key={i}><InlineMarkdown content={mdCode} /></span>
             }
-
-            const { blankId } = seg
-            const blank = blanks.find(b => b.id === blankId)
-            const placedTileId = state[blankId]
-            const placedText = tilePool.find(t => t.id === placedTileId)?.text
-            const activeId = draggingTile || touchSelectedTile
-            const canReceive = mode === 'drag' && !!(activeId && activeId !== placedTileId)
-            const isDragHighlight = canReceive && dragOverBlank === blankId && !blocked
-            const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
-
-            const isBlankCorrect = revealAnswers && placedTileId && (
-              mode === 'drag'
-                ? tilePool.find(t => t.id === placedTileId)?.text === blank?.answer
-                : String(placedTileId ?? '').trim().toLowerCase() === String(blank?.answer ?? '').trim().toLowerCase()
-            )
-            const isBlankWrong = revealAnswers && placedTileId && !isBlankCorrect
-
-            if (mode === 'type') {
+            if (seg.type === 'codeBlock') {
               return (
-                <input
-                  key={i}
-                  style={{
-                    ...sm.fillInput,
-                    ...(isBlankCorrect ? sm.fillInputCorrect : {}),
-                    ...(isBlankWrong ? sm.fillInputWrong : {}),
-                  }}
-                  value={state[blankId] ?? ''}
-                  onChange={e => handleTypeChange(blankId, e.target.value)}
-                  disabled={blocked}
-                  placeholder="..."
-                />
+                <div key={i} style={sm.fillCodeBlock}>
+                  <pre style={sm.fillCodeBlockPre}>
+                    <code>
+                      {seg.parts.map((part, j) =>
+                        part.type === 'codeText'
+                          ? <span key={j}>{part.text}</span>
+                          : renderBlank(part.blankId, j)
+                      )}
+                    </code>
+                  </pre>
+                </div>
               )
             }
-
-            return (
-              <span
-                key={i}
-                style={{
-                  ...sm.fillBlank,
-                  ...(placedTileId ? sm.fillBlankFilled : sm.fillBlankEmpty),
-                  ...(isBlankCorrect ? sm.fillBlankCorrect : {}),
-                  ...(isBlankWrong ? sm.fillBlankWrong : {}),
-                  ...((isDragHighlight || isTapHighlight) ? sm.fillBlankHighlight : {}),
-                  cursor: blocked ? 'default' : (isTapHighlight || placedTileId) ? 'pointer' : 'copy',
-                }}
-                onDragOver={event => dnd.handleTargetDragOver(event, blankId)}
-                onDragLeave={dnd.clearDragOver}
-                onDrop={event => dnd.handleTargetDrop(event, blankId, state, publishState)}
-                onClick={() => dnd.handleTargetClick(blankId, state, publishState)}
-                draggable={!!placedTileId && !blocked}
-                onDragStart={event => placedTileId && dnd.handleDragStart(event, placedTileId)}
-                onDragEnd={dnd.handleDragEnd}
-                title={isBlankWrong && blank ? `Correct: ${blank.answer}` : undefined}
-              >
-                {placedText
-                  ? <span style={sm.fillBlankMarkdown}><InlineMarkdown content={placedText} /></span>
-                  : (canReceive && !blocked ? (touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here') : '___')}
-              </span>
-            )
+            return renderBlank(seg.blankId, i)
           })}
         </div>
 
@@ -846,6 +890,24 @@ const sm = {
     fontStyle: 'italic',
   },
   // Fill in the blank
+  fillCodeBlock: {
+    display: 'block',
+    margin: '10px 0',
+  },
+  fillCodeBlockPre: {
+    background: '#fafafa',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    padding: '12px 14px',
+    overflowX: 'auto',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontVariantLigatures: 'none',
+    fontFeatureSettings: '"liga" 0, "calt" 0',
+    fontSize: '0.88em',
+    margin: 0,
+    lineHeight: 1.8,
+    whiteSpace: 'pre',
+  },
   fillWrap: {
     display: 'flex',
     flexDirection: 'column',

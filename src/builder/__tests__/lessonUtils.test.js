@@ -53,6 +53,83 @@ describe('validateLesson', () => {
   })
 })
 
+describe('complete solution validation', () => {
+  function pythonTask(overrides) {
+    return { id: 1, title: 'Task', starterCode: 'print("hi")', _checkTested: true, ...overrides }
+  }
+
+  it('warns when Python complete code fails a code_contains check', () => {
+    const { warnings } = validateLesson(lesson('python', [pythonTask({
+      check: { type: 'code_contains', value: 'for' },
+      completeCode: 'print("done")',
+    })]))
+    expect(warnings).toContain('Task 1 complete solution fails a code check — review the complete code')
+  })
+
+  it('does not warn when Python complete code passes a code_contains check', () => {
+    const { warnings } = validateLesson(lesson('python', [pythonTask({
+      check: { type: 'code_contains', value: 'for' },
+      completeCode: 'for i in range(3): print(i)',
+    })]))
+    expect(warnings.some(w => w.includes('complete solution fails'))).toBe(false)
+  })
+
+  it('warns when Python has output checks, complete code set, and _checkTested is false', () => {
+    const { warnings } = validateLesson(lesson('python', [pythonTask({
+      check: { type: 'output_contains', value: 'Hello' },
+      completeCode: 'print("Hello")',
+      _checkTested: false,
+    })]))
+    expect(warnings).toContain('Task 1 has output checks — open the Complete tab and run to verify the complete solution')
+  })
+
+  it('does not warn about output checks when _checkTested is true', () => {
+    const { warnings } = validateLesson(lesson('python', [pythonTask({
+      check: { type: 'output_contains', value: 'Hello' },
+      completeCode: 'print("Hello")',
+      _checkTested: true,
+    })]))
+    expect(warnings.some(w => w.includes('output checks'))).toBe(false)
+  })
+
+  it('does not warn when Python task has no completeCode', () => {
+    const { warnings } = validateLesson(lesson('python', [pythonTask({
+      check: { type: 'code_contains', value: 'for' },
+    })]))
+    expect(warnings.some(w => w.includes('complete solution'))).toBe(false)
+  })
+
+  it('warns when HTML complete files fail a code_contains check', () => {
+    const { warnings } = validateLesson(lesson('html', [pythonTask({
+      starterCode: undefined,
+      starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }],
+      check: { type: 'code_contains', value: '<table>' },
+      completeFiles: [{ name: 'index.html', type: 'html', content: '<p>Done</p>' }],
+    })]))
+    expect(warnings).toContain('Task 1 complete solution fails a code check — review the complete files')
+  })
+
+  it('warns when filesystem complete solution fails an fs_file_exists check', () => {
+    const { warnings } = validateLesson(lesson('filesystem', [{
+      id: 1, title: 'FS', _checkTested: true,
+      starterFs: { '/': { type: 'dir' } },
+      check: { type: 'fs_file_exists', path: '/readme.txt' },
+      completeFs: { '/': { type: 'dir' } },
+    }]))
+    expect(warnings).toContain('Task 1 complete filesystem does not satisfy a check — review the complete filesystem')
+  })
+
+  it('does not warn when filesystem complete solution passes the fs_file_exists check', () => {
+    const { warnings } = validateLesson(lesson('filesystem', [{
+      id: 1, title: 'FS', _checkTested: true,
+      starterFs: { '/': { type: 'dir' } },
+      check: { type: 'fs_file_exists', path: '/readme.txt' },
+      completeFs: { '/': { type: 'dir' }, '/readme.txt': { type: 'file', content: 'hi' } },
+    }]))
+    expect(warnings.some(w => w.includes('complete filesystem'))).toBe(false)
+  })
+})
+
 describe('quiz helpers', () => {
   it('detect starter and check values for quiz variants', () => {
     expect(quizHasStarter({ quizType: 'fill_blank', text: 'Hi ___', blanks: [] })).toBe(true)

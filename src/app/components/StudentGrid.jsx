@@ -6,7 +6,7 @@ import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
 
@@ -14,6 +14,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
   const expandedStudent = expandedIndex >= 0 ? students[expandedIndex] : null
 
   function handleExpand(student) {
+    onGoLive?.(student.anonymousId)
     setExpandedStudentId(student.anonymousId)
   }
 
@@ -25,12 +26,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
   function handlePrev() {
     if (expandedIndex > 0) {
       const prevStudent = students[expandedIndex - 1]
-      const isLiveForMe = session?.activeStudentView === expandedStudentId && session?.teacherLive?.sourceStudentId !== expandedStudentId
-      if (isLiveForMe) {
-        onGoLive?.(prevStudent.anonymousId)
-      } else {
-        onStopLive?.()
-      }
+      onGoLive?.(prevStudent.anonymousId)
       setExpandedStudentId(prevStudent.anonymousId)
     }
   }
@@ -38,12 +34,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
   function handleNext() {
     if (expandedIndex < students.length - 1) {
       const nextStudent = students[expandedIndex + 1]
-      const isLiveForMe = session?.activeStudentView === expandedStudentId && session?.teacherLive?.sourceStudentId !== expandedStudentId
-      if (isLiveForMe) {
-        onGoLive?.(nextStudent.anonymousId)
-      } else {
-        onStopLive?.()
-      }
+      onGoLive?.(nextStudent.anonymousId)
       setExpandedStudentId(nextStudent.anonymousId)
     }
   }
@@ -194,6 +185,8 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           onPushTeacherLiveCode={onPushTeacherLiveCode}
           onCommitTeacherEdit={onCommitTeacherEdit}
           onCancelTeacherEdit={onCancelTeacherEdit}
+          onRequestTeacherStage={onRequestTeacherStage}
+          onClearTeacherStage={onClearTeacherStage}
         />
       )}
     </div>

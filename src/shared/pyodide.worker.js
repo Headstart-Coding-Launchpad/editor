@@ -59,6 +59,11 @@ _async_names.add('input')
 _Tx(_async_names).visit(_tree)
 ast.fix_missing_locations(_tree)
 
+_hs_capture = ast.parse(
+    "globals().update({_k: _v for _k, _v in locals().items() if not _k.startswith('_')})"
+).body[0]
+_tree.body.append(_hs_capture)
+
 _fn = ast.AsyncFunctionDef(
     name='__hs_run__',
     args=ast.arguments(

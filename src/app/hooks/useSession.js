@@ -124,11 +124,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/sentToTopicPushedAt`]    = null
       updates[`students/${anonymousId}/teacherMessage`]         = null
       updates[`students/${anonymousId}/teacherMessagePushedAt`] = null
-      updates[`students/${anonymousId}/teacherEditRequestedAt`] = null
+      updates[`students/${anonymousId}/teacherEditRequestedAt`]  = null
       updates[`students/${anonymousId}/teacherEditAcceptedAt`]  = null
       updates[`students/${anonymousId}/teacherLiveCode`]        = null
       updates[`students/${anonymousId}/teacherEditApplyCode`]   = null
       updates[`students/${anonymousId}/teacherEditAppliedAt`]   = null
+      updates[`students/${anonymousId}/teacherStageRequestedAt`]  = null
+      updates[`students/${anonymousId}/teacherStagePendingAction`] = null
+      updates[`students/${anonymousId}/teacherStageAcceptedAt`]   = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -282,6 +285,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherLiveCode:        null,
       teacherEditApplyCode:   code,
       teacherEditAppliedAt:   Date.now(),
+      currentCode:            code,
     })
   }
 
@@ -290,6 +294,22 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherEditRequestedAt: null,
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
+    })
+  }
+
+  async function requestTeacherStage(anonymousId, action) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherStageRequestedAt:  Date.now(),
+      teacherStagePendingAction: action,
+      teacherStageAcceptedAt:   null,
+    })
+  }
+
+  async function clearTeacherStage(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherStageRequestedAt:  null,
+      teacherStagePendingAction: null,
+      teacherStageAcceptedAt:   null,
     })
   }
 
@@ -402,6 +422,18 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function acceptTeacherStage(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherStageAcceptedAt`), Date.now())
+  }
+
+  async function declineTeacherStage(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherStageRequestedAt:  null,
+      teacherStagePendingAction: null,
+      teacherStageAcceptedAt:   null,
+    })
+  }
+
   return {
     session,
     loading,
@@ -413,9 +445,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
+    requestTeacherStage, clearTeacherStage,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
-    setStudentTopic, acceptTeacherEdit, declineTeacherEdit,
+    setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }

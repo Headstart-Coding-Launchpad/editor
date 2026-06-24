@@ -30,7 +30,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
-    acceptTeacherEdit, declineTeacherEdit,
+    acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
@@ -114,12 +114,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   // ─── Topic library tracking ────────────────────────────────────────────────
 
   const [openTopicId, setOpenTopicId] = useState(null)
+  const [pendingTopicId, setPendingTopicId] = useState(null)
   const sentToTopicPushedAt = session?.students?.[identity?.anonymousId]?.sentToTopicPushedAt
 
   useEffect(() => {
     if (!sentToTopicPushedAt) return
     const sentId = session?.students?.[identity?.anonymousId]?.sentToTopicId
-    if (sentId) setOpenTopicId(sentId)
+    if (sentId) setPendingTopicId(sentId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentToTopicPushedAt])
 
@@ -286,6 +287,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
   const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && lesson?.type === 'python' && (phase === 'lesson' || phase === 'solo')
   const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && lesson?.type === 'python'
+  const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
 
   const topBarRight = teacherPresentation ? (
@@ -373,7 +375,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             </div>
             <div style={s.consentBody}>
               <p style={s.consentText}>Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.</p>
-              <p style={s.consentText}>Your work is saved — you can continue from where you left off after.</p>
             </div>
             <div style={s.consentFooter}>
               <button
@@ -389,6 +390,64 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                 onClick={() => acceptTeacherEdit?.(identity?.anonymousId)}
               >
                 Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showStageChangeConsent && (
+        <div style={s.consentOverlay}>
+          <div style={s.consentModal}>
+            <div style={{ ...s.consentHeader, background: 'var(--colour-primary)' }}>
+              <span style={s.consentIcon}>📋</span>
+              <span style={s.consentTitle}>Your teacher wants to update your code</span>
+            </div>
+            <div style={s.consentBody}>
+              <p style={s.consentText}>Your teacher would like to set your code to a different stage. Your current work will be replaced.</p>
+            </div>
+            <div style={s.consentFooter}>
+              <button
+                className="btn-ghost-outline"
+                style={{ fontSize: 13 }}
+                onClick={() => declineTeacherStage?.(identity?.anonymousId)}
+              >
+                No thanks
+              </button>
+              <button
+                className="btn-primary"
+                style={{ fontSize: 13 }}
+                onClick={() => acceptTeacherStage?.(identity?.anonymousId)}
+              >
+                Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingTopicId && !teacherPresentation && (
+        <div style={s.consentOverlay}>
+          <div style={s.consentModal}>
+            <div style={s.consentHeader}>
+              <span style={s.consentIcon}>📚</span>
+              <span style={s.consentTitle}>Your teacher has a resource for you</span>
+            </div>
+            <div style={s.consentBody}>
+              <p style={s.consentText}>Your teacher would like you to read a topic article.</p>
+            </div>
+            <div style={s.consentFooter}>
+              <button
+                className="btn-ghost-outline"
+                style={{ fontSize: 13 }}
+                onClick={() => setPendingTopicId(null)}
+              >
+                Not now
+              </button>
+              <button
+                className="btn-primary"
+                style={{ fontSize: 13 }}
+                onClick={() => { setOpenTopicId(pendingTopicId); setPendingTopicId(null) }}
+              >
+                Open it
               </button>
             </div>
           </div>
