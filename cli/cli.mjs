@@ -695,25 +695,28 @@ await yargs(hideBin(process.argv))
       'lesson-id': { type: 'string', describe: 'Only include platform feedback linked to this lesson ID' },
       'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
       'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
-    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope }) => {
+      'include-archived': { type: 'boolean', default: false, describe: 'Include archived feedback items' },
+    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
       const { listPlatformFeedback } = await loadFeedback()
-      print(await listPlatformFeedback({ lessonId, taskId, scope }))
+      print(await listPlatformFeedback({ lessonId, taskId, scope, includeArchived }))
     }))
 
     .command('lesson <lessonId>', 'List all feedback saved under one lesson', {
       'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
       'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
-    }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
+      'include-archived': { type: 'boolean', default: false, describe: 'Include archived feedback items' },
+    }, cmd(async ({ lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
       const { listLessonFeedback } = await loadFeedback()
-      print(await listLessonFeedback(lessonId, { taskId, scope }))
+      print(await listLessonFeedback(lessonId, { taskId, scope, includeArchived }))
     }))
 
     .command('all [lessonId]', 'List platform and lesson feedback together', {
       'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
       'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
-    }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
+      'include-archived': { type: 'boolean', default: false, describe: 'Include archived feedback items' },
+    }, cmd(async ({ lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
       const { listAllFeedback } = await loadFeedback()
-      print(await listAllFeedback({ lessonId, taskId, scope }))
+      print(await listAllFeedback({ lessonId, taskId, scope, includeArchived }))
     }))
 
     .command('add-lesson <lessonId>', 'Add a feedback item to a lesson', {
@@ -739,34 +742,34 @@ await yargs(hideBin(process.argv))
       print(await addPlatformFeedback({ text, teacherEmail: email, lessonId, lessonTitle, taskId, taskTitle }))
     }))
 
-    .command('delete-lesson <lessonId> <id>', 'Delete a single feedback item from a lesson', {}, cmd(async ({ lessonId, id }) => {
-      const { deleteLessonFeedbackItem } = await loadFeedback()
-      print(await deleteLessonFeedbackItem(lessonId, id))
+    .command('archive-lesson <lessonId> <id>', 'Archive a single feedback item from a lesson', {}, cmd(async ({ lessonId, id }) => {
+      const { archiveLessonFeedbackItem } = await loadFeedback()
+      print(await archiveLessonFeedbackItem(lessonId, id))
     }))
 
-    .command('delete-platform <id>', 'Delete a single platform feedback item', {}, cmd(async ({ id }) => {
-      const { deletePlatformFeedbackItem } = await loadFeedback()
-      print(await deletePlatformFeedbackItem(id))
+    .command('archive-platform <id>', 'Archive a single platform feedback item', {}, cmd(async ({ id }) => {
+      const { archivePlatformFeedbackItem } = await loadFeedback()
+      print(await archivePlatformFeedbackItem(id))
     }))
 
-    .command('clear-lesson <lessonId>', 'Delete all feedback items from a lesson (supports filters)', {
-      'task-id': { type: 'string', describe: 'Only delete feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before deleting' },
+    .command('clear-lesson <lessonId>', 'Archive all feedback items from a lesson (supports filters)', {
+      'task-id': { type: 'string', describe: 'Only archive feedback linked to this task ID' },
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before archiving' },
     }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
       const { clearLessonFeedback } = await loadFeedback()
       print(await clearLessonFeedback(lessonId, { taskId, scope }))
     }))
 
-    .command('clear-platform', 'Delete all platform feedback items (supports filters)', {
-      'lesson-id': { type: 'string', describe: 'Only delete platform feedback linked to this lesson ID' },
-      'task-id': { type: 'string', describe: 'Only delete feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before deleting' },
+    .command('clear-platform', 'Archive all platform feedback items (supports filters)', {
+      'lesson-id': { type: 'string', describe: 'Only archive platform feedback linked to this lesson ID' },
+      'task-id': { type: 'string', describe: 'Only archive feedback linked to this task ID' },
+      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before archiving' },
     }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope }) => {
       const { clearPlatformFeedback } = await loadFeedback()
       print(await clearPlatformFeedback({ lessonId, taskId, scope }))
     }))
 
-    .demandCommand(1, 'Specify a subcommand: platform | lesson | all | add-lesson | add-platform | delete-lesson | delete-platform | clear-lesson | clear-platform')
+    .demandCommand(1, 'Specify a subcommand: platform | lesson | all | add-lesson | add-platform | archive-lesson | archive-platform | clear-lesson | clear-platform')
     .help()
   )
 
