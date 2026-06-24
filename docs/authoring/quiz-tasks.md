@@ -70,7 +70,7 @@ Tiles are shuffled on render. No `check` needed — completion is automatic when
 
 ## Fill Blank
 
-Student fills blanks in a sentence.
+Student fills blanks in a sentence or code snippet.
 
 ### Drag mode (default)
 
@@ -104,6 +104,45 @@ Student fills blanks in a sentence.
 ```
 
 One `___` in `text` per entry in `blanks`, in order. No `check` needed. `distractors` are ignored in type mode.
+
+### Code blocks in text
+
+Use triple-backtick fences in `text` to display a block of code. Blanks can appear inside the code block — they render inline at the correct position within the pre-formatted code.
+
+```yaml
+- type: quiz
+  quizType: fill_blank
+  title: Complete the loop
+  text: |
+    What goes inside the brackets?
+    ```python
+    for i in range(___):
+        print(i)
+    ```
+  mode: drag
+  blanks:
+    - id: "1"
+      answer: "10"
+  distractors:
+    - id: d1
+      text: "0"
+    - id: d2
+      text: i
+```
+
+Blanks inside the code block and blanks in surrounding text can be mixed freely — they are assigned to `blanks` entries in the order they appear top-to-bottom.
+
+Optionally specify a language after the opening fence for a styled code block (`python`, `html`, `css`, `js`). The closing ` ``` ` must be on its own line.
+
+### Line breaks in text
+
+A single newline in `text` renders as a line break. Use a YAML block scalar (`|`) to write multi-line text naturally:
+
+```yaml
+  text: |
+    First line of the question.
+    Second line with a ___ here.
+```
 
 ---
 

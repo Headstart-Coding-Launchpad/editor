@@ -8,10 +8,11 @@ export default function StudentWorkspace({
   isViewingPrev, isForcedTeacherLive,
   displayCode, displayOutput, displayRunStatus,
   displayCheckPassed, displayCheckAttempted, displaySelection,
+  isTeacherEditing, teacherLiveCode,
 }) {
   return (
     <>
-      {!isViewingPrev && !isForcedTeacherLive && (
+      {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && (
         <div style={s.editorHeader} className="ui-tabs ui-tabs--editor">
           <span style={s.editorTitle}>Code</span>
           <div style={s.editorActions}>
@@ -54,15 +55,15 @@ export default function StudentWorkspace({
         </div>
       )}
       <PythonEditor
-        code={isForcedTeacherLive ? displayCode : isViewingPrev ? (loadSavedCode(lessonId, viewingTaskId, identityId)?.code ?? '') : cs.code}
-        readOnly={isViewingPrev || isForcedTeacherLive}
-        onChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleCodeChange}
-        onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
-        onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
+        code={isForcedTeacherLive ? displayCode : isTeacherEditing ? (teacherLiveCode ?? '') : isViewingPrev ? (loadSavedCode(lessonId, viewingTaskId, identityId)?.code ?? '') : cs.code}
+        readOnly={isViewingPrev || isForcedTeacherLive || isTeacherEditing}
+        onChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleCodeChange}
+        onSelectionChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleEditorSelection}
+        onActivity={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}
         pyodideStatus={cs.pyodideStatus}
       />
-      {!isViewingPrev && !isForcedTeacherLive && (
+      {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && (
         task?.interactionMode === 'submit' ? (
           <>
             {cs.runStatus === 'submitted' && !task?.check && (
@@ -92,13 +93,13 @@ export default function StudentWorkspace({
           </>
         )
       )}
-      {isForcedTeacherLive && (
+      {(isForcedTeacherLive || isTeacherEditing) && (
         <OutputPanel
-          output={displayOutput}
-          runStatus={displayRunStatus}
-          checkPassed={displayCheckPassed}
+          output={isTeacherEditing ? '' : displayOutput}
+          runStatus={isTeacherEditing ? null : displayRunStatus}
+          checkPassed={isTeacherEditing ? false : displayCheckPassed}
           hasCheck={!!task?.check}
-          checkAttempted={displayCheckAttempted}
+          checkAttempted={isTeacherEditing ? false : displayCheckAttempted}
         />
       )}
       {isViewingPrev && (

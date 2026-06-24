@@ -1,7 +1,13 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeacherSessionControls from '../TeacherSessionControls'
+
+// Simulate a wide desktop viewport so secondary buttons render directly
+// rather than being collapsed into the Menu dropdown (threshold: 1300px).
+beforeEach(() => {
+  Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1400 })
+})
 
 function renderControls(overrides = {}) {
   const props = {

@@ -503,6 +503,21 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
+  // Apply teacher-committed code when teacher finishes a live edit
+  useEffect(() => {
+    if (!myStudentData?.teacherEditAppliedAt) return
+    const newCode = myStudentData?.teacherEditApplyCode
+    if (lesson?.type !== 'python' || newCode === undefined) return
+    setCode(newCode ?? '')
+    setOutput('')
+    setRunStatus(null)
+    resetCheckFeedback()
+    if (identity?.anonymousId && !previewMode && !teacherPresentation) {
+      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: newCode ?? '', output: '', runStatus: null })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.teacherEditAppliedAt])
+
   // ─── Personal sandbox ──────────────────────────────────────────────────────
 
   function handleEnterPersonalSandbox() {

@@ -524,6 +524,208 @@ describe('evaluateSingleCheck — variable checks', () => {
   })
 })
 
+// ─── variable_type checks ────────────────────────────────────────────────────
+
+describe('evaluateSingleCheck — variable_type', () => {
+  function makeVars(name, type, json) {
+    return { variables: { [name]: { type, json } } }
+  }
+
+  it('matches str with alias "string"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'string' }, '', makeVars('x', 'str', '"hi"'))).toBe(true)
+  })
+
+  it('matches str with alias "str"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'str' }, '', makeVars('x', 'str', '"hi"'))).toBe(true)
+  })
+
+  it('matches int with alias "number"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', makeVars('x', 'int', '5'))).toBe(true)
+  })
+
+  it('matches float with alias "number"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', makeVars('x', 'float', '3.14'))).toBe(true)
+  })
+
+  it('matches int with alias "int"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'int' }, '', makeVars('x', 'int', '5'))).toBe(true)
+  })
+
+  it('matches bool with alias "boolean"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'boolean' }, '', makeVars('x', 'bool', 'true'))).toBe(true)
+  })
+
+  it('matches bool with alias "bool"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'bool' }, '', makeVars('x', 'bool', 'true'))).toBe(true)
+  })
+
+  it('matches list with alias "array"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'array' }, '', makeVars('x', 'list', '[1,2,3]'))).toBe(true)
+  })
+
+  it('matches tuple with alias "array"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'array' }, '', makeVars('x', 'tuple', '[1,2]'))).toBe(true)
+  })
+
+  it('matches dict with alias "dictionary"', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'dictionary' }, '', makeVars('x', 'dict', '{"a":1}'))).toBe(true)
+  })
+
+  it('returns false when type does not match', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', makeVars('x', 'str', '"5"'))).toBe(false)
+  })
+
+  it('returns false when variable is missing', () => {
+    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', { variables: {} })).toBe(false)
+  })
+})
+
+// ─── variable_equals checks ──────────────────────────────────────────────────
+
+describe('evaluateSingleCheck — variable_equals', () => {
+  function makeVar(name, type, json) {
+    return { variables: { [name]: { type, json } } }
+  }
+
+  it('matches an integer value', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'score', value: '10' }, '', makeVar('score', 'int', '10'))).toBe(true)
+  })
+
+  it('does not match a different integer', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'score', value: '10' }, '', makeVar('score', 'int', '99'))).toBe(false)
+  })
+
+  it('matches a float value', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'pi', value: '3.14' }, '', makeVar('pi', 'float', '3.14'))).toBe(true)
+  })
+
+  it('matches a string value', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'name', value: 'Alice' }, '', makeVar('name', 'str', '"Alice"'))).toBe(true)
+  })
+
+  it('matches Python True via literal', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'flag', value: 'True' }, '', makeVar('flag', 'bool', 'true'))).toBe(true)
+  })
+
+  it('matches Python False via literal', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'flag', value: 'False' }, '', makeVar('flag', 'bool', 'false'))).toBe(true)
+  })
+
+  it('matches Python None via literal', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: 'None' }, '', makeVar('x', 'NoneType', 'null'))).toBe(true)
+  })
+
+  it('matches a JSON-encoded list', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'nums', value: '[1, 2, 3]' }, '', makeVar('nums', 'list', '[1,2,3]'))).toBe(true)
+  })
+
+  it('returns false when variable is missing', () => {
+    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: '5' }, '', { variables: {} })).toBe(false)
+  })
+})
+
+// ─── variable_array_* checks ─────────────────────────────────────────────────
+
+describe('evaluateSingleCheck — variable_array_*', () => {
+  const ctx = { variables: { items: { type: 'list', json: '[10, 20, 30]' } } }
+
+  it('variable_array_contains passes when item is in list', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '20' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_array_contains fails when item is not in list', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '99' }, '', ctx)).toBe(false)
+  })
+
+  it('variable_array_equals passes for exact match', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_equals', name: 'items', value: '[10, 20, 30]' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_array_equals fails when order differs', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_equals', name: 'items', value: '[30, 20, 10]' }, '', ctx)).toBe(false)
+  })
+
+  it('variable_array_nth_item passes for correct index', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_nth_item', name: 'items', index: 1, value: '20' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_array_nth_item fails for wrong value at index', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_nth_item', name: 'items', index: 1, value: '99' }, '', ctx)).toBe(false)
+  })
+
+  it('variable_array_nth_item fails for out-of-bounds index', () => {
+    expect(evaluateSingleCheck({ type: 'variable_array_nth_item', name: 'items', index: 10, value: '20' }, '', ctx)).toBe(false)
+  })
+
+  it('returns false when variable is not a list', () => {
+    const nonList = { variables: { items: { type: 'int', json: '5' } } }
+    expect(evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '5' }, '', nonList)).toBe(false)
+  })
+})
+
+// ─── variable_dict_* checks ──────────────────────────────────────────────────
+
+describe('evaluateSingleCheck — variable_dict_*', () => {
+  const ctx = { variables: { data: { type: 'dict', json: '{"name":"Alice","age":30}' } } }
+
+  it('variable_dict_contains passes when value exists in dict', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: 'Alice' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_dict_contains passes when numeric value exists in dict', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: '30' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_dict_contains fails when value is not in dict', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: 'Bob' }, '', ctx)).toBe(false)
+  })
+
+  it('variable_dict_equals passes for exact match', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_equals', name: 'data', value: '{"name":"Alice","age":30}' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_dict_equals fails when dict differs', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_equals', name: 'data', value: '{"name":"Bob"}' }, '', ctx)).toBe(false)
+  })
+
+  it('variable_dict_key_value passes when key has correct value', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_key_value', name: 'data', key: 'name', value: 'Alice' }, '', ctx)).toBe(true)
+  })
+
+  it('variable_dict_key_value fails when key has wrong value', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_key_value', name: 'data', key: 'name', value: 'Bob' }, '', ctx)).toBe(false)
+  })
+
+  it('variable_dict_key_value fails when key is missing', () => {
+    expect(evaluateSingleCheck({ type: 'variable_dict_key_value', name: 'data', key: 'missing', value: 'Alice' }, '', ctx)).toBe(false)
+  })
+
+  it('returns false when variable is not a dict', () => {
+    const nonDict = { variables: { data: { type: 'list', json: '[1,2,3]' } } }
+    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: '1' }, '', nonDict)).toBe(false)
+  })
+})
+
+// ─── variable_exists with missing/undefined context ──────────────────────────
+
+describe('evaluateSingleCheck — variable_exists edge cases', () => {
+  it('returns false when variables context is undefined', () => {
+    expect(evaluateSingleCheck({ type: 'variable_exists', name: 'x' }, '', {})).toBe(false)
+  })
+
+  it('returns false when variable name is undefined', () => {
+    expect(evaluateSingleCheck({ type: 'variable_exists' }, '', { variables: { x: { json: '1', type: 'int' } } })).toBe(false)
+  })
+
+  it('returns true for a variable with null json but valid repr', () => {
+    expect(evaluateSingleCheck(
+      { type: 'variable_exists', name: 'x' },
+      '',
+      { variables: { x: { type: 'function', json: null, repr: '<function foo>' } } },
+    )).toBe(true)
+  })
+})
+
 // ─── element_style_property with url() values ────────────────────────────────
 
 describe('evaluateSingleCheck — element_style_property url() normalisation', () => {

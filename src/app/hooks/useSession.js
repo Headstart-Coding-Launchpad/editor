@@ -124,6 +124,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/sentToTopicPushedAt`]    = null
       updates[`students/${anonymousId}/teacherMessage`]         = null
       updates[`students/${anonymousId}/teacherMessagePushedAt`] = null
+      updates[`students/${anonymousId}/teacherEditRequestedAt`]  = null
+      updates[`students/${anonymousId}/teacherEditAcceptedAt`]  = null
+      updates[`students/${anonymousId}/teacherLiveCode`]        = null
+      updates[`students/${anonymousId}/teacherEditApplyCode`]   = null
+      updates[`students/${anonymousId}/teacherEditAppliedAt`]   = null
+      updates[`students/${anonymousId}/teacherStageRequestedAt`]  = null
+      updates[`students/${anonymousId}/teacherStagePendingAction`] = null
+      updates[`students/${anonymousId}/teacherStageAcceptedAt`]   = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -256,6 +264,55 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function requestTeacherEdit(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherEditRequestedAt: Date.now(),
+      teacherEditAcceptedAt:  null,
+      teacherLiveCode:        null,
+      teacherEditApplyCode:   null,
+      teacherEditAppliedAt:   null,
+    })
+  }
+
+  async function pushTeacherLiveCode(anonymousId, code) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveCode`), code)
+  }
+
+  async function commitTeacherEdit(anonymousId, code) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherEditRequestedAt: null,
+      teacherEditAcceptedAt:  null,
+      teacherLiveCode:        null,
+      teacherEditApplyCode:   code,
+      teacherEditAppliedAt:   Date.now(),
+      currentCode:            code,
+    })
+  }
+
+  async function cancelTeacherEdit(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherEditRequestedAt: null,
+      teacherEditAcceptedAt:  null,
+      teacherLiveCode:        null,
+    })
+  }
+
+  async function requestTeacherStage(anonymousId, action) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherStageRequestedAt:  Date.now(),
+      teacherStagePendingAction: action,
+      teacherStageAcceptedAt:   null,
+    })
+  }
+
+  async function clearTeacherStage(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherStageRequestedAt:  null,
+      teacherStagePendingAction: null,
+      teacherStageAcceptedAt:   null,
+    })
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -354,6 +411,29 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function acceptTeacherEdit(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherEditAcceptedAt`), Date.now())
+  }
+
+  async function declineTeacherEdit(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherEditRequestedAt: null,
+      teacherEditAcceptedAt:  null,
+    })
+  }
+
+  async function acceptTeacherStage(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherStageAcceptedAt`), Date.now())
+  }
+
+  async function declineTeacherStage(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherStageRequestedAt:  null,
+      teacherStagePendingAction: null,
+      teacherStageAcceptedAt:   null,
+    })
+  }
+
   return {
     session,
     loading,
@@ -364,9 +444,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushLessonOverride, clearLessonOverride,
     setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic, sendMessageToStudent,
+    requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
+    requestTeacherStage, clearTeacherStage,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
-    setStudentTopic,
+    setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }
