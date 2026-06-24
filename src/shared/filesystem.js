@@ -5,7 +5,10 @@ export const FS_CHECK_TYPES = [
   'fs_dir_exists',
   'fs_not_exists',
   'fs_content_contains',
+  'fs_content_not_contains',
   'fs_content_equals',
+  'fs_content_not_equals',
+  'fs_content_matches_regex',
   'fs_file_in_dir',
   'fs_dir_opened',
   'fs_file_opened',
@@ -194,10 +197,25 @@ export function evaluateFsCheck(check, fs, context = {}) {
       if (!key) return false
       return (fs[key].content ?? '').toLowerCase().includes((value ?? '').toLowerCase())
     }
+    case 'fs_content_not_contains': {
+      const key = fsFindKey(fs, normaliseFilePath(path), 'file')
+      if (!key) return false
+      return !(fs[key].content ?? '').toLowerCase().includes((value ?? '').toLowerCase())
+    }
     case 'fs_content_equals': {
       const key = fsFindKey(fs, normaliseFilePath(path), 'file')
       if (!key) return false
       return (fs[key].content ?? '').trim().toLowerCase() === (value ?? '').trim().toLowerCase()
+    }
+    case 'fs_content_not_equals': {
+      const key = fsFindKey(fs, normaliseFilePath(path), 'file')
+      if (!key) return false
+      return (fs[key].content ?? '').trim().toLowerCase() !== (value ?? '').trim().toLowerCase()
+    }
+    case 'fs_content_matches_regex': {
+      const key = fsFindKey(fs, normaliseFilePath(path), 'file')
+      if (!key) return false
+      try { return new RegExp(value ?? '').test(fs[key].content ?? '') } catch { return false }
     }
     case 'fs_file_in_dir': {
       const key = fsFindKey(fs, normaliseFilePath(path), 'file')

@@ -31,11 +31,17 @@ function getInputValue(block, inputName) {
   return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
 }
 
+function wildcardMatchField(actual, expected) {
+  if (!expected.includes('*')) return actual === expected
+  const re = new RegExp('^' + expected.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[\\s\\S]*') + '$')
+  return re.test(actual)
+}
+
 function blockMatchesFieldValues(block, fieldValues) {
   if (!fieldValues || Object.keys(fieldValues).length === 0) return true
   return Object.entries(fieldValues).every(([inputName, expectedValue]) => {
     const actual = getInputValue(block, inputName)
-    return actual !== null && String(actual) === String(expectedValue)
+    return actual !== null && wildcardMatchField(String(actual), String(expectedValue))
   })
 }
 

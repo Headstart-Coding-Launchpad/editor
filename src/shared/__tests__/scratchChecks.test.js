@@ -431,4 +431,36 @@ describe('evaluateScratchCheck', () => {
       expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: {} }, null, null, runState)).toBe(true)
     })
   })
+
+  describe('wildcard * in fieldValues', () => {
+    it('block_used passes when field value matches a wildcard pattern', () => {
+      const ws = { getAllBlocks: () => [makeBlock('looks_saywaitfor', { MESSAGE: 'Hello world', SECS: '2' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'looks_saywaitfor', fieldValues: { MESSAGE: 'Hello*' } }, ws, null)).toBe(true)
+    })
+
+    it('block_used fails when field value does not match the wildcard', () => {
+      const ws = { getAllBlocks: () => [makeBlock('looks_saywaitfor', { MESSAGE: 'Goodbye world', SECS: '2' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'looks_saywaitfor', fieldValues: { MESSAGE: 'Hello*' } }, ws, null)).toBe(false)
+    })
+
+    it('block_used exact match still works when no wildcard', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '50' })] }
+      expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null)).toBe(true)
+    })
+
+    it('blocks_in_order passes when a sequence item uses a wildcard field value', () => {
+      function makeChain(typeValuePairs) {
+        const blocks = typeValuePairs.map(([type, vals]) => makeBlock(type, vals ?? {}))
+        for (let i = 0; i < blocks.length; i++) {
+          const next = blocks[i + 1] ?? null
+          blocks[i].getNextBlock = () => next
+          if (i > 0) blocks[i].previousConnection = { isConnected: () => true }
+        }
+        return { getAllBlocks: () => blocks }
+      }
+      const ws = makeChain([['event_whenflagclicked', {}], ['looks_saywaitfor', { MESSAGE: 'Hi there', SECS: '3' }]])
+      const check = { type: 'blocks_in_order', sequence: ['event_whenflagclicked', { opcode: 'looks_saywaitfor', fieldValues: { MESSAGE: 'Hi*' } }] }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+    })
+  })
 })

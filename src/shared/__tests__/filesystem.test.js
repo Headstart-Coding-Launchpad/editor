@@ -298,12 +298,51 @@ describe('evaluateFsCheck', () => {
     })
   })
 
+  describe('fs_content_not_contains', () => {
+    it('passes when content does not contain value', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_not_contains', path: '/Documents/notes.txt', value: 'goodbye' }, fs)).toBe(true)
+    })
+    it('fails when content contains value (case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_not_contains', path: '/Documents/notes.txt', value: 'HELLO' }, fs)).toBe(false)
+    })
+    it('fails for nonexistent file', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_not_contains', path: '/missing.txt', value: 'x' }, fs)).toBe(false)
+    })
+  })
+
   describe('fs_content_equals', () => {
     it('passes on exact match (trimmed, case-insensitive)', () => {
       expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello world' }, fs)).toBe(true)
     })
     it('fails when content does not match', () => {
       expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello' }, fs)).toBe(false)
+    })
+  })
+
+  describe('fs_content_not_equals', () => {
+    it('passes when content does not match', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_not_equals', path: '/Documents/notes.txt', value: 'goodbye world' }, fs)).toBe(true)
+    })
+    it('fails when content matches (trimmed, case-insensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_not_equals', path: '/Documents/notes.txt', value: 'HELLO WORLD' }, fs)).toBe(false)
+    })
+    it('fails for nonexistent file', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_not_equals', path: '/missing.txt', value: 'x' }, fs)).toBe(false)
+    })
+  })
+
+  describe('fs_content_matches_regex', () => {
+    it('passes when content matches regex (case-sensitive)', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_matches_regex', path: '/Documents/notes.txt', value: '^Hello' }, fs)).toBe(true)
+    })
+    it('fails when content does not match regex (case-sensitive — lowercase fails)', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_matches_regex', path: '/Documents/notes.txt', value: '^hello' }, fs)).toBe(false)
+    })
+    it('fails for nonexistent file', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_matches_regex', path: '/missing.txt', value: '.' }, fs)).toBe(false)
+    })
+    it('returns false for invalid regex', () => {
+      expect(evaluateFsCheck({ type: 'fs_content_matches_regex', path: '/Documents/notes.txt', value: '[invalid' }, fs)).toBe(false)
     })
   })
 

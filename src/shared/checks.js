@@ -40,6 +40,7 @@ export const CHECK_TYPES = {
     'element_exists',
     'element_count',
     'element_value',
+    'element_value_contains',
     'element_value_equals',
     'element_value_not_contains',
     'element_value_not_equals',
@@ -49,6 +50,7 @@ export const CHECK_TYPES = {
     'variable_exists',
     'variable_type',
     'variable_equals',
+    'variable_not_equals',
     'variable_dict_contains',
     'variable_dict_equals',
     'variable_dict_key_value',
@@ -59,6 +61,7 @@ export const CHECK_TYPES = {
   SUBMIT_ALLOWED: [
     'code_contains',
     'code_does_not_contain',
+    'code_not_contains',
     'code_equals',
     'code_not_equals',
     'code_matches_regex',
@@ -186,7 +189,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
     return wildcardContains(normalizeCode(context.code ?? ''), normalizeCode(check.value))
   }
 
-  if (check.type === 'code_does_not_contain') {
+  if (check.type === 'code_does_not_contain' || check.type === 'code_not_contains') {
     return !wildcardContains(normalizeCode(context.code ?? ''), normalizeCode(check.value))
   }
 
@@ -207,7 +210,7 @@ export function evaluateSingleCheck(check, output, context = {}) {
     try { return context.iframeDoc.querySelectorAll(check.selector).length === Number(check.value) } catch { return false }
   }
 
-  if (check.type === 'element_value') {
+  if (check.type === 'element_value' || check.type === 'element_value_contains') {
     if (!context.iframeDoc || !check.selector) return false
     try {
       const el = context.iframeDoc.querySelector(check.selector)
@@ -266,6 +269,11 @@ export function evaluateSingleCheck(check, output, context = {}) {
   if (check.type === 'variable_equals') {
     const variable = getVariableEntry(context.variables, check.name)
     return variable.exists && valueEquals(variable.value, parseCheckValue(check.value))
+  }
+
+  if (check.type === 'variable_not_equals') {
+    const variable = getVariableEntry(context.variables, check.name)
+    return variable.exists && !valueEquals(variable.value, parseCheckValue(check.value))
   }
 
   if (check.type === 'variable_dict_contains') {
