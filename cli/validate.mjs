@@ -1,4 +1,5 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
+import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/shared/checks.js'
 
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem']
 
@@ -137,6 +138,39 @@ export function validateLessonForMcp(lesson) {
         : task.starterFiles?.some(f => f.content?.trim())
       if (!hasStarter && type !== 'filesystem') {
         warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
+      }
+    }
+
+    if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check) {
+      const allChecks = normalizeChecks(task.check)
+      if (type === 'python' && task.completeCode != null) {
+        const staticChecks = allChecks.filter(c => checkAllowedForSubmit(c))
+        const dynamicChecks = allChecks.filter(c => checkRequiresRun(c))
+        if (staticChecks.length > 0 && staticChecks.some(c => !evaluateSingleCheck(c, '', { code: task.completeCode }))) {
+          warnings.push(`Task ${n} complete solution fails a code check — review the complete code`)
+        }
+        if (dynamicChecks.length > 0 && !task._checkTested) {
+          warnings.push(`Task ${n} has output checks — open the Complete tab and run to verify the complete solution`)
+        }
+      }
+      if (type === 'html' && task.completeFiles?.length > 0) {
+        const staticChecks = allChecks.filter(c => checkAllowedForSubmit(c))
+        const dynamicChecks = allChecks.filter(c => checkRequiresRun(c))
+        if (staticChecks.length > 0) {
+          const codeStr = task.completeFiles.map(f => f.content ?? '').join('\n')
+          if (staticChecks.some(c => !evaluateSingleCheck(c, '', { code: codeStr }))) {
+            warnings.push(`Task ${n} complete solution fails a code check — review the complete files`)
+          }
+        }
+        if (dynamicChecks.length > 0 && !task._checkTested) {
+          warnings.push(`Task ${n} has element/output checks — open the Complete tab and run to verify the complete solution`)
+        }
+      }
+      if (type === 'filesystem' && task.completeFs && typeof task.completeFs === 'object') {
+        const fsChecks = allChecks.filter(c => c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened')
+        if (fsChecks.length > 0 && fsChecks.some(c => !evaluateSingleCheck(c, '', { fs: task.completeFs }))) {
+          warnings.push(`Task ${n} complete filesystem does not satisfy a check — review the complete filesystem`)
+        }
       }
     }
   })
