@@ -324,12 +324,14 @@ export default function TaskList({
                   >
                     {subtasks.map((subtask, j) => {
                       const isActive = subtask.id === selectedTaskId
+                      const isSubDraft = subtask.taskType === 'draft'
                       return (
                         <div
                           key={subtask.id}
                           style={{
                             ...s.subtaskItem,
-                            ...(isActive ? s.subtaskItemActive : {}),
+                            ...(isSubDraft ? s.subtaskItemDraft : {}),
+                            ...(isActive ? (isSubDraft ? s.subtaskItemDraftActive : s.subtaskItemActive) : {}),
                             ...(dropStyle({ groupId: item.id, index: j }) ?? {}),
                           }}
                           draggable
@@ -339,13 +341,14 @@ export default function TaskList({
                           onDrop={e => { e.stopPropagation(); handleDrop(e, { groupId: item.id, index: j }) }}
                           onClick={() => onSelect(subtask.id)}
                         >
-                          <span style={s.subtaskNum}>{j + 1}</span>
-                          <span style={s.taskTypeIcon} title={`${taskIconType(subtask)} task`}>
+                          <span style={isSubDraft ? s.subtaskNumDraft : s.subtaskNum}>{j + 1}</span>
+                          <span style={{ ...s.taskTypeIcon, ...(isSubDraft ? s.taskTypeIconDraft : {}) }} title={`${taskIconType(subtask)} task`}>
                             <TaskFormatIcon type={taskIconType(subtask)} />
                           </span>
                           <span style={s.title}>
                             {subtask.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
                           </span>
+                          {isSubDraft && <DraftStatusBadge decision={subtask.reviewNote?.decision} />}
                           <div style={s.actions} onClick={e => e.stopPropagation()}>
                             <button style={s.iconBtn} onClick={() => moveSubtaskUp(item.id, j, subtasks)} title="Move up" disabled={j === 0}>▲</button>
                             <button style={s.iconBtn} onClick={() => moveSubtaskDown(item.id, j, subtasks)} title="Move down" disabled={j === subtasks.length - 1}>▼</button>
@@ -632,11 +635,35 @@ const s = {
     background: '#f0eafa',
     borderLeftColor: 'var(--colour-primary)',
   },
+  subtaskItemDraft: {
+    background: '#fafafa',
+    borderLeft: '2px solid #d1d5db',
+    opacity: 0.85,
+  },
+  subtaskItemDraftActive: {
+    background: '#f1f5f9',
+    borderLeftColor: '#6b7280',
+    opacity: 1,
+  },
   subtaskNum: {
     width: 18,
     height: 18,
     background: '#c4b5fd',
     color: '#4e1aa3',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.65rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  subtaskNumDraft: {
+    width: 18,
+    height: 18,
+    background: '#9ca3af',
+    color: '#fff',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
