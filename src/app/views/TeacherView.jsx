@@ -52,6 +52,7 @@ export default function TeacherView({ lessonId }) {
     pushLessonOverride, clearLessonOverride,
     setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic, sendMessageToStudent,
+    requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
   } = useSession(lessonId)
 
   const [baseLesson, setBaseLesson]     = useState(null)
@@ -528,6 +529,10 @@ export default function TeacherView({ lessonId }) {
             onSendTopicToAll={handleSendTopicToAll}
             onSendToIndividual={handleSendToIndividual}
             onSendMessage={sendMessageToStudent}
+            onRequestTeacherEdit={requestTeacherEdit}
+            onPushTeacherLiveCode={pushTeacherLiveCode}
+            onCommitTeacherEdit={commitTeacherEdit}
+            onCancelTeacherEdit={cancelTeacherEdit}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}

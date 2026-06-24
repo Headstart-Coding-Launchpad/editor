@@ -36,6 +36,8 @@ export default function LessonTaskContent({
   displayCheckSuggestion,
   displaySelection,
   displayFs,
+  isTeacherEditing,
+  teacherLiveCode,
   canOfferNextStage,
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
@@ -128,6 +130,8 @@ export default function LessonTaskContent({
             displayCheckAttempted={displayCheckAttempted}
             displaySelection={displaySelection}
             displayFs={displayFs}
+            isTeacherEditing={isTeacherEditing}
+            teacherLiveCode={teacherLiveCode}
           />
         )}
       </div>

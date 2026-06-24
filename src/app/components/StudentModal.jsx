@@ -482,10 +482,76 @@ const sLv = {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage }) {
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
+
+  // Teacher live-edit state machine
+  const [teacherEditState, setTeacherEditState] = useState('idle') // 'idle' | 'requesting' | 'editing'
+  const [teacherCode, setTeacherCode] = useState('')
+  const [declinedNotice, setDeclinedNotice] = useState(false)
+  const pushDebounceRef = useRef(null)
+
+  // React to student accepting or declining
+  useEffect(() => {
+    if (teacherEditState === 'requesting') {
+      if (student.teacherEditAcceptedAt) {
+        setTeacherCode(student.currentCode ?? '')
+        setTeacherEditState('editing')
+        setDeclinedNotice(false)
+      } else if (!student.teacherEditRequestedAt) {
+        setTeacherEditState('idle')
+        setDeclinedNotice(true)
+        setTimeout(() => setDeclinedNotice(false), 4000)
+      }
+    }
+    if (teacherEditState === 'editing' && !student.teacherEditAcceptedAt && !student.teacherEditRequestedAt) {
+      setTeacherEditState('idle')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.teacherEditRequestedAt, student.teacherEditAcceptedAt])
+
+  // Clean up edit state when navigating to a different student
+  useEffect(() => {
+    setTeacherEditState('idle')
+    setTeacherCode('')
+    setDeclinedNotice(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.anonymousId])
+
+  function handleTeacherCodeChange(newCode) {
+    setTeacherCode(newCode)
+    clearTimeout(pushDebounceRef.current)
+    pushDebounceRef.current = setTimeout(() => {
+      onPushTeacherLiveCode?.(student.anonymousId, newCode)
+    }, 120)
+  }
+
+  function handleStartEdit() {
+    onRequestTeacherEdit?.(student.anonymousId)
+    setTeacherEditState('requesting')
+    setDeclinedNotice(false)
+  }
+
+  function handleCommitEdit() {
+    clearTimeout(pushDebounceRef.current)
+    onCommitTeacherEdit?.(student.anonymousId, teacherCode)
+    setTeacherEditState('idle')
+    setTeacherCode('')
+  }
+
+  function handleCancelEdit() {
+    clearTimeout(pushDebounceRef.current)
+    onCancelTeacherEdit?.(student.anonymousId)
+    setTeacherEditState('idle')
+    setTeacherCode('')
+  }
+
+  function handleClose() {
+    if (teacherEditState !== 'idle') handleCancelEdit()
+    onClose?.()
+  }
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
@@ -516,16 +582,17 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const stageOptions = buildStageOptions(task, lesson?.type)
 
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose?.() }
+    function onKey(e) { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherEditState])
 
   return (
     <div
       ref={overlayRef}
       style={s.overlay}
-      onClick={e => { if (e.target === overlayRef.current) onClose?.() }}
+      onClick={e => { if (e.target === overlayRef.current) handleClose() }}
       role="dialog"
       aria-modal="true"
     >
@@ -607,8 +674,48 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               <MessageCompose student={student} onSendMessage={onSendMessage} />
             )}
 
+            {/* Teacher live-edit controls (Python only) */}
+            {onRequestTeacherEdit && isPython && !isInformation && !isQuiz && (() => {
+              if (teacherEditState === 'editing') return (
+                <>
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: 13, padding: '5px 12px', background: '#0f766e', borderColor: '#0f766e' }}
+                    onClick={handleCommitEdit}
+                  >
+                    Done Editing
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: 13, padding: '5px 10px' }}
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )
+              if (teacherEditState === 'requesting') return (
+                <>
+                  <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
+                  <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 10px' }} onClick={handleCancelEdit}>
+                    Cancel
+                  </button>
+                </>
+              )
+              return (
+                <button
+                  className="btn-ghost"
+                  style={{ fontSize: 13, padding: '5px 12px', ...(declinedNotice ? { color: '#ef4444', borderColor: '#ef4444' } : {}) }}
+                  onClick={handleStartEdit}
+                  title="Edit this student's code live"
+                >
+                  {declinedNotice ? 'Student declined' : '✏ Edit Code'}
+                </button>
+              )
+            })()}
+
             {/* Go Live / Stop Live */}
-            {!isInformation && !isQuiz && (
+            {!isInformation && !isQuiz && teacherEditState === 'idle' && (
               isLive ? (
                 <button
                   className="btn-danger"
@@ -625,7 +732,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             <button
               className="btn-ghost"
               style={{ fontSize: 13, padding: '5px 10px' }}
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close"
             >
               ✕
@@ -635,28 +742,40 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
         {/* Content */}
         <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
-          <StudentWorkspaceBody
-            lesson={lesson}
-            task={task}
-            student={student}
-            session={session}
-            isInformation={isInformation}
-            isQuiz={isQuiz}
-            isSessionSandbox={isSessionSandbox}
-            isPython={isPython}
-            isScratch={isScratch}
-            isFilesystem={isFilesystem}
-            files={files}
-            activeFile={activeFile}
-            setActiveFile={setActiveFile}
-            activeFileObj={activeFileObj}
-            remoteSelection={remoteSelection}
-            scratchState={scratchState}
-            spriteState={spriteState}
-            studentFs={studentFs}
-            iframeSrc={iframeSrc}
-            iframeRef={iframeRef}
-          />
+          {teacherEditState === 'editing' ? (
+            <div style={s.editorWrap}>
+              <CodeEditor
+                value={teacherCode}
+                language="python"
+                readOnly={false}
+                onChange={handleTeacherCodeChange}
+                style={{ height: '100%' }}
+              />
+            </div>
+          ) : (
+            <StudentWorkspaceBody
+              lesson={lesson}
+              task={task}
+              student={student}
+              session={session}
+              isInformation={isInformation}
+              isQuiz={isQuiz}
+              isSessionSandbox={isSessionSandbox}
+              isPython={isPython}
+              isScratch={isScratch}
+              isFilesystem={isFilesystem}
+              files={files}
+              activeFile={activeFile}
+              setActiveFile={setActiveFile}
+              activeFileObj={activeFileObj}
+              remoteSelection={remoteSelection}
+              scratchState={scratchState}
+              spriteState={spriteState}
+              studentFs={studentFs}
+              iframeSrc={iframeSrc}
+              iframeRef={iframeRef}
+            />
+          )}
         </div>
       </div>
 
@@ -1006,5 +1125,15 @@ const s = {
     color: '#1e40af',
     fontWeight: 600,
     flexShrink: 0,
+  },
+}
+
+const sEd = {
+  waitingText: {
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    fontStyle: 'italic',
+    whiteSpace: 'nowrap',
   },
 }

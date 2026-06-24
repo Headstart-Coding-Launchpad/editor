@@ -30,6 +30,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
+    acceptTeacherEdit, declineTeacherEdit,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
@@ -282,6 +283,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
+  const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
+  const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && lesson?.type === 'python' && (phase === 'lesson' || phase === 'solo')
+  const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && lesson?.type === 'python'
+  const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
+
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
       <button
@@ -358,6 +364,36 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           pushedAt={session?.students?.[identity?.anonymousId]?.teacherMessagePushedAt}
         />
       )}
+      {showTeacherEditConsent && (
+        <div style={s.consentOverlay}>
+          <div style={s.consentModal}>
+            <div style={s.consentHeader}>
+              <span style={s.consentIcon}>✏️</span>
+              <span style={s.consentTitle}>Your teacher wants to help</span>
+            </div>
+            <div style={s.consentBody}>
+              <p style={s.consentText}>Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.</p>
+              <p style={s.consentText}>Your work is saved — you can continue from where you left off after.</p>
+            </div>
+            <div style={s.consentFooter}>
+              <button
+                className="btn-ghost-outline"
+                style={{ fontSize: 13 }}
+                onClick={() => declineTeacherEdit?.(identity?.anonymousId)}
+              >
+                No thanks
+              </button>
+              <button
+                className="btn-primary"
+                style={{ fontSize: 13 }}
+                onClick={() => acceptTeacherEdit?.(identity?.anonymousId)}
+              >
+                Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <StudentStatusBanners
         isForcedTeacherLive={isForcedTeacherLive}
         isPresentationStudentViewer={isPresentationStudentViewer}
@@ -367,6 +403,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         onReturnToCurrentTask={() => setViewingTaskId(null)}
         inPersonalSandbox={cs.inPersonalSandbox}
         onLeavePersonalSandbox={cs.handleLeavePersonalSandbox}
+        isTeacherEditing={isTeacherEditing}
       />
       <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...s.body, overflow: 'hidden' } : s.body}>
         <LessonTaskContent
@@ -398,6 +435,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displayCheckSuggestion={displayCheckSuggestion}
           displaySelection={displaySelection}
           displayFs={displayFs}
+          isTeacherEditing={isTeacherEditing}
+          teacherLiveCode={teacherLiveCode}
           canOfferNextStage={canOfferNextStage}
           canOfferCompleteSolution={canOfferCompleteSolution}
           canOfferPersonalSandbox={canOfferPersonalSandbox}
@@ -487,5 +526,59 @@ const s = {
     fontSize: '1rem',
     color: 'rgba(255,255,255,0.75)',
     margin: 0,
+  },
+  consentOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.55)',
+    zIndex: 1300,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  consentModal: {
+    background: 'var(--ui-surface)',
+    borderRadius: 10,
+    width: 'min(420px, 92vw)',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    fontFamily: 'var(--font-body)',
+  },
+  consentHeader: {
+    background: '#0f766e',
+    padding: '14px 18px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: '10px 10px 0 0',
+  },
+  consentIcon: { fontSize: '1.2rem', lineHeight: 1 },
+  consentTitle: {
+    color: '#fff',
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1.05rem',
+  },
+  consentBody: {
+    padding: '18px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  consentText: {
+    color: 'var(--colour-text)',
+    fontSize: '0.95rem',
+    lineHeight: 1.55,
+    margin: 0,
+  },
+  consentFooter: {
+    padding: '12px 16px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+    borderTop: '1px solid var(--ui-border)',
+    borderRadius: '0 0 10px 10px',
   },
 }

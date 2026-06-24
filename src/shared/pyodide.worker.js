@@ -53,7 +53,7 @@ class _Tx(ast.NodeTransformer):
         ast.copy_location(new, node)
         return new
 
-_tree = ast.parse(_hs_user_code)
+_tree = ast.parse(_hs_user_code, filename='<student>')
 _async_names = {n.name for n in ast.walk(_tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
 _async_names.add('input')
 _Tx(_async_names).visit(_tree)

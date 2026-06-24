@@ -10,6 +10,7 @@ export default function StudentStatusBanners({
   onReturnToCurrentTask,
   inPersonalSandbox,
   onLeavePersonalSandbox,
+  isTeacherEditing,
 }) {
   return (
     <>
@@ -35,6 +36,13 @@ export default function StudentStatusBanners({
         </Banner>
       )}
 
+      {isTeacherEditing && (
+        <div style={s.teacherEditingBanner}>
+          <span className="live-dot" />
+          Your teacher is editing your code — you'll see their changes live
+        </div>
+      )}
+
       {inPersonalSandbox && (
         <Banner accent="#7c3aed" color="#5b21b6" style={{ fontWeight: 600 }}>
           <span>Personal Sandbox — your lesson progress is saved</span>
@@ -52,6 +60,20 @@ export default function StudentStatusBanners({
 }
 
 const s = {
+  teacherEditingBanner: {
+    background: '#0f766e',
+    color: '#fff',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '1.15rem',
+    padding: '16px 20px',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    letterSpacing: '0.01em',
+  },
   teacherLiveBanner: {
     background: 'var(--colour-primary)',
     color: '#fff',
