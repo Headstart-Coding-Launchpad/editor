@@ -342,10 +342,165 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   operator_add: operator('operator_add', '%1 + %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
   operator_subtract: operator('operator_subtract', '%1 - %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
   operator_join: operator('operator_join', 'join %1 %2', [stringInput('STRING1', 'apple'), stringInput('STRING2', 'banana')], 'String'),
+  operator_multiply: operator('operator_multiply', '%1 * %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
+  operator_divide: operator('operator_divide', '%1 / %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
+  operator_mod: operator('operator_mod', '%1 mod %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
+  operator_round: operator('operator_round', 'round %1', [numberInput('NUM', 0)], 'Number'),
+  operator_mathop: {
+    init() {
+      this.jsonInit({
+        type: 'operator_mathop',
+        message0: '%1 of %2',
+        args0: [
+          { type: 'field_dropdown', name: 'OPERATOR', options: [
+            ['abs', 'abs'], ['floor', 'floor'], ['ceiling', 'ceiling'], ['sqrt', 'sqrt'],
+            ['sin', 'sin'], ['cos', 'cos'], ['tan', 'tan'],
+            ['asin', 'asin'], ['acos', 'acos'], ['atan', 'atan'],
+            ['ln', 'ln'], ['log', 'log'], ['e ^', 'e ^'], ['10 ^', '10 ^'],
+          ]},
+          numberInput('NUM', 10),
+        ],
+        output: 'Number',
+        colour: '#59C059',
+        inputsInline: true,
+      })
+    },
+  },
+  operator_letter_of: operator('operator_letter_of', 'letter %1 of %2', [numberInput('LETTER', 1), stringInput('STRING', 'world')], 'String'),
+  operator_length: operator('operator_length', 'length of %1', [stringInput('STRING', 'world')], 'Number'),
+  operator_contains: operator('operator_contains', '%1 contains %2?', [stringInput('STRING1', 'apple'), stringInput('STRING2', 'a')], 'Boolean'),
+
+  control_wait_until: {
+    init() {
+      this.jsonInit({
+        type: 'control_wait_until',
+        message0: 'wait until %1',
+        args0: [boolInput('CONDITION')],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#FFAB19',
+      })
+    },
+  },
+  control_repeat_until: {
+    init() {
+      this.jsonInit({
+        type: 'control_repeat_until',
+        message0: 'repeat until %1',
+        args0: [boolInput('CONDITION')],
+        message1: '%1',
+        args1: [{ type: 'input_statement', name: 'SUBSTACK' }],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#FFAB19',
+      })
+    },
+  },
+
+  looks_seteffectto: {
+    init() {
+      this.jsonInit({
+        type: 'looks_seteffectto',
+        message0: 'set %1 effect to %2',
+        args0: [
+          { type: 'field_dropdown', name: 'EFFECT', options: [
+            ['color', 'color'], ['fisheye', 'fisheye'], ['whirl', 'whirl'],
+            ['pixelate', 'pixelate'], ['mosaic', 'mosaic'], ['brightness', 'brightness'], ['ghost', 'ghost'],
+          ]},
+          numberInput('VALUE', 0),
+        ],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#9966FF',
+      })
+    },
+  },
+  looks_changeeffectby: {
+    init() {
+      this.jsonInit({
+        type: 'looks_changeeffectby',
+        message0: 'change %1 effect by %2',
+        args0: [
+          { type: 'field_dropdown', name: 'EFFECT', options: [
+            ['color', 'color'], ['fisheye', 'fisheye'], ['whirl', 'whirl'],
+            ['pixelate', 'pixelate'], ['mosaic', 'mosaic'], ['brightness', 'brightness'], ['ghost', 'ghost'],
+          ]},
+          numberInput('VALUE', 25),
+        ],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#9966FF',
+      })
+    },
+  },
+  looks_cleargraphiceffects: blockStatement('looks_cleargraphiceffects', 'clear graphic effects', [], '#9966FF'),
+  looks_costumenumbername: {
+    init() {
+      this.jsonInit({
+        type: 'looks_costumenumbername',
+        message0: 'costume %1',
+        args0: [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }],
+        output: ['Number', 'String'],
+        colour: '#9966FF',
+      })
+    },
+  },
+  looks_backdropnumbername: {
+    init() {
+      this.jsonInit({
+        type: 'looks_backdropnumbername',
+        message0: 'backdrop %1',
+        args0: [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }],
+        output: ['Number', 'String'],
+        colour: '#9966FF',
+      })
+    },
+  },
+
+  sensing_timer: reporter('sensing_timer', 'timer', 'Number', '#5CB1D6'),
+  sensing_resettimer: blockStatement('sensing_resettimer', 'reset timer', [], '#5CB1D6'),
+  sensing_distanceto: {
+    init() {
+      this.jsonInit({
+        type: 'sensing_distanceto',
+        message0: 'distance to %1',
+        args0: [{ type: 'field_dropdown', name: 'DISTANCETOMENU', options: () => [
+          ['mouse-pointer', '_mouse_'],
+          ..._currentSprites.map(sp => [sp.name, sp.id]),
+        ]}],
+        output: 'Number',
+        colour: '#5CB1D6',
+      })
+    },
+  },
 
   data_variable: variableReporter(),
   data_setvariableto: variableStatement('data_setvariableto', 'set %1 to %2', stringInput('VALUE', 0)),
   data_changevariableby: variableStatement('data_changevariableby', 'change %1 by %2', numberInput('VALUE', 1)),
+  data_showvariable: {
+    init() {
+      this.jsonInit({
+        type: 'data_showvariable',
+        message0: 'show variable %1',
+        args0: [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#FF8C1A',
+      })
+    },
+  },
+  data_hidevariable: {
+    init() {
+      this.jsonInit({
+        type: 'data_hidevariable',
+        message0: 'hide variable %1',
+        args0: [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#FF8C1A',
+      })
+    },
+  },
 }
 
 const KEY_OPTIONS = [['space', 'space'], ['up arrow', 'up arrow'], ['down arrow', 'down arrow'], ['left arrow', 'left arrow'], ['right arrow', 'right arrow'], ['any', 'any']]
@@ -482,8 +637,13 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'looks_switchcostumeto' },
         { kind: 'block', type: 'looks_nextcostume' },
         { kind: 'block', type: 'looks_costumenumber' },
+        { kind: 'block', type: 'looks_costumenumbername' },
         { kind: 'block', type: 'looks_switchbackdropto' },
         { kind: 'block', type: 'looks_nextbackdrop' },
+        { kind: 'block', type: 'looks_backdropnumbername' },
+        { kind: 'block', type: 'looks_seteffectto' },
+        { kind: 'block', type: 'looks_changeeffectby' },
+        { kind: 'block', type: 'looks_cleargraphiceffects' },
       ],
     },
     {
@@ -498,7 +658,9 @@ export const DEFAULT_TOOLBOX = {
       kind: 'category', name: 'Control', colour: '#FFAB19',
       contents: [
         { kind: 'block', type: 'control_wait' },
+        { kind: 'block', type: 'control_wait_until' },
         { kind: 'block', type: 'control_repeat' },
+        { kind: 'block', type: 'control_repeat_until' },
         { kind: 'block', type: 'control_forever' },
         { kind: 'block', type: 'control_if' },
         { kind: 'block', type: 'control_if_else' },
@@ -512,7 +674,11 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'sensing_answer' },
         { kind: 'block', type: 'sensing_keypressed' },
         { kind: 'block', type: 'sensing_mousedown' },
+        { kind: 'block', type: 'sensing_touchingedge' },
         { kind: 'block', type: 'sensing_touchingobject' },
+        { kind: 'block', type: 'sensing_distanceto' },
+        { kind: 'block', type: 'sensing_timer' },
+        { kind: 'block', type: 'sensing_resettimer' },
       ],
     },
     {
@@ -526,7 +692,15 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'operator_not' },
         { kind: 'block', type: 'operator_add' },
         { kind: 'block', type: 'operator_subtract' },
+        { kind: 'block', type: 'operator_multiply' },
+        { kind: 'block', type: 'operator_divide' },
+        { kind: 'block', type: 'operator_mod' },
+        { kind: 'block', type: 'operator_round' },
+        { kind: 'block', type: 'operator_mathop' },
         { kind: 'block', type: 'operator_join' },
+        { kind: 'block', type: 'operator_letter_of' },
+        { kind: 'block', type: 'operator_length' },
+        { kind: 'block', type: 'operator_contains' },
       ],
     },
     {
@@ -535,6 +709,8 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'data_variable' },
         { kind: 'block', type: 'data_setvariableto' },
         { kind: 'block', type: 'data_changevariableby' },
+        { kind: 'block', type: 'data_showvariable' },
+        { kind: 'block', type: 'data_hidevariable' },
       ],
     },
   ],
@@ -571,7 +747,17 @@ export const VALUE_INPUT_DEFAULTS = {
   operator_lt: { OPERAND1: numberShadow(0), OPERAND2: numberShadow(50) },
   operator_add: { NUM1: numberShadow(1), NUM2: numberShadow(1) },
   operator_subtract: { NUM1: numberShadow(1), NUM2: numberShadow(1) },
+  operator_multiply: { NUM1: numberShadow(1), NUM2: numberShadow(1) },
+  operator_divide: { NUM1: numberShadow(1), NUM2: numberShadow(1) },
+  operator_mod: { NUM1: numberShadow(1), NUM2: numberShadow(1) },
+  operator_round: { NUM: numberShadow(0) },
+  operator_mathop: { NUM: numberShadow(0) },
   operator_join: { STRING1: textShadow('apple'), STRING2: textShadow('banana') },
+  operator_letter_of: { LETTER: numberShadow(1), STRING: textShadow('world') },
+  operator_length: { STRING: textShadow('world') },
+  operator_contains: { STRING1: textShadow('apple'), STRING2: textShadow('a') },
+  looks_seteffectto: { VALUE: numberShadow(0) },
+  looks_changeeffectby: { VALUE: numberShadow(25) },
   data_setvariableto: { VALUE: textShadow(0) },
   data_changevariableby: { VALUE: numberShadow(1) },
 }
@@ -604,7 +790,17 @@ export const BLOCK_DISPLAY_TEMPLATES = {
   operator_lt:             { message: '%1 < %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
   operator_add:            { message: '%1 + %2',                        inputOrder: ['NUM1', 'NUM2'] },
   operator_subtract:       { message: '%1 - %2',                        inputOrder: ['NUM1', 'NUM2'] },
+  operator_multiply:       { message: '%1 * %2',                        inputOrder: ['NUM1', 'NUM2'] },
+  operator_divide:         { message: '%1 / %2',                        inputOrder: ['NUM1', 'NUM2'] },
+  operator_mod:            { message: '%1 mod %2',                      inputOrder: ['NUM1', 'NUM2'] },
+  operator_round:          { message: 'round %1',                       inputOrder: ['NUM'] },
+  operator_mathop:         { message: '_ of %1',                        inputOrder: ['NUM'] },
   operator_join:           { message: 'join %1 %2',                     inputOrder: ['STRING1', 'STRING2'] },
+  operator_letter_of:      { message: 'letter %1 of %2',               inputOrder: ['LETTER', 'STRING'] },
+  operator_length:         { message: 'length of %1',                   inputOrder: ['STRING'] },
+  operator_contains:       { message: '%1 contains %2?',                inputOrder: ['STRING1', 'STRING2'] },
+  looks_seteffectto:       { message: 'set effect to %1',               inputOrder: ['VALUE'] },
+  looks_changeeffectby:    { message: 'change effect by %1',            inputOrder: ['VALUE'] },
   data_setvariableto:      { message: 'set variable to %1',             inputOrder: ['VALUE'] },
   data_changevariableby:   { message: 'change variable by %1',          inputOrder: ['VALUE'] },
 }
@@ -853,7 +1049,7 @@ function inputDefaultsForBlock(type, options = {}) {
 }
 
 export function createRunSignal() {
-  return { stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null, backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set() }
+  return { stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null, backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set(), timerStart: Date.now() }
 }
 
 export async function runWorkspace(workspace, spriteState, onUpdate, signal) {
@@ -1083,6 +1279,20 @@ async function runBlock(block, context) {
       await tick()
       break
     }
+    case 'looks_seteffectto': {
+      const effect = block.getFieldValue('EFFECT') ?? 'color'
+      state[`effect_${effect}`] = numberValue(block, 'VALUE', context, 0)
+      onUpdate({ ...state }); await tick(); break
+    }
+    case 'looks_changeeffectby': {
+      const effect = block.getFieldValue('EFFECT') ?? 'color'
+      state[`effect_${effect}`] = (state[`effect_${effect}`] ?? 0) + numberValue(block, 'VALUE', context, 0)
+      onUpdate({ ...state }); await tick(); break
+    }
+    case 'looks_cleargraphiceffects': {
+      for (const e of ['color', 'fisheye', 'whirl', 'pixelate', 'mosaic', 'brightness', 'ghost']) state[`effect_${e}`] = 0
+      onUpdate({ ...state }); await tick(); break
+    }
 
     case 'sound_play':
       playSound(block.getFieldValue('SOUND_MENU') ?? 'pop')
@@ -1099,6 +1309,17 @@ async function runBlock(block, context) {
     case 'control_wait':
       await sleep(numberValue(block, 'DURATION', context, 1) * 1000, signal)
       break
+    case 'control_wait_until':
+      while (!booleanValue(block, 'CONDITION', context) && !signal.stopped) await tick()
+      break
+    case 'control_repeat_until': {
+      const inner = block.getInputTargetBlock('SUBSTACK')
+      while (!booleanValue(block, 'CONDITION', context) && !signal.stopped) {
+        await runChain(inner, context)
+        await tick()
+      }
+      break
+    }
     case 'control_repeat': {
       const times = Math.max(0, Math.floor(numberValue(block, 'TIMES', context, 10)))
       const inner = block.getInputTargetBlock('SUBSTACK')
@@ -1171,6 +1392,26 @@ async function runBlock(block, context) {
       await tick()
       break
     }
+    case 'data_showvariable': {
+      const name = variableName(block)
+      signal.variableVisibility ??= {}
+      signal.variableVisibility[name] = true
+      signal.onVariablesChange?.({ ...signal.variables })
+      await tick()
+      break
+    }
+    case 'data_hidevariable': {
+      const name = variableName(block)
+      signal.variableVisibility ??= {}
+      signal.variableVisibility[name] = false
+      signal.onVariablesChange?.({ ...signal.variables })
+      await tick()
+      break
+    }
+    case 'sensing_resettimer':
+      signal.timerStart = Date.now()
+      await tick()
+      break
     default:
       break
   }
@@ -1235,6 +1476,69 @@ function evaluateReporter(block, context) {
       return Number(evaluateInput(block, 'NUM1', context)) - Number(evaluateInput(block, 'NUM2', context))
     case 'operator_join':
       return `${evaluateInput(block, 'STRING1', context)}${evaluateInput(block, 'STRING2', context)}`
+    case 'operator_multiply':
+      return Number(evaluateInput(block, 'NUM1', context)) * Number(evaluateInput(block, 'NUM2', context))
+    case 'operator_divide': {
+      const divisor = Number(evaluateInput(block, 'NUM2', context))
+      return divisor === 0 ? Infinity : Number(evaluateInput(block, 'NUM1', context)) / divisor
+    }
+    case 'operator_mod':
+      return Number(evaluateInput(block, 'NUM1', context)) % Number(evaluateInput(block, 'NUM2', context))
+    case 'operator_round':
+      return Math.round(Number(evaluateInput(block, 'NUM', context)))
+    case 'operator_mathop': {
+      const op = block.getFieldValue('OPERATOR') ?? 'abs'
+      const n = Number(evaluateInput(block, 'NUM', context))
+      const ops = {
+        abs: Math.abs,
+        floor: Math.floor,
+        ceiling: Math.ceil,
+        sqrt: Math.sqrt,
+        sin: x => Math.sin(x * Math.PI / 180),
+        cos: x => Math.cos(x * Math.PI / 180),
+        tan: x => Math.tan(x * Math.PI / 180),
+        asin: x => Math.asin(x) * 180 / Math.PI,
+        acos: x => Math.acos(x) * 180 / Math.PI,
+        atan: x => Math.atan(x) * 180 / Math.PI,
+        ln: Math.log,
+        log: x => Math.log10(x),
+        'e ^': x => Math.exp(x),
+        '10 ^': x => Math.pow(10, x),
+      }
+      return ops[op]?.(n) ?? 0
+    }
+    case 'operator_letter_of': {
+      const s = String(evaluateInput(block, 'STRING', context))
+      const idx = Number(evaluateInput(block, 'LETTER', context)) - 1
+      return s[idx] ?? ''
+    }
+    case 'operator_length':
+      return String(evaluateInput(block, 'STRING', context)).length
+    case 'operator_contains':
+      return String(evaluateInput(block, 'STRING1', context)).toLowerCase()
+        .includes(String(evaluateInput(block, 'STRING2', context)).toLowerCase())
+    case 'looks_costumenumbername': {
+      const costumes = context.costumes ?? []
+      const which = block.getFieldValue('WHICH') ?? 'number'
+      if (which === 'name') return state.costume ?? ''
+      const idx = costumes.findIndex(c => c.name === state.costume)
+      return idx >= 0 ? idx + 1 : 1
+    }
+    case 'looks_backdropnumbername': {
+      const bds = context.signal.backdrops ?? []
+      const which = block.getFieldValue('WHICH') ?? 'number'
+      if (which === 'name') return context.signal.backdrop ?? ''
+      const idx = bds.findIndex(b => b.name === context.signal.backdrop)
+      return idx >= 0 ? idx + 1 : 1
+    }
+    case 'sensing_timer':
+      return (Date.now() - (context.signal.timerStart ?? Date.now())) / 1000
+    case 'sensing_distanceto': {
+      const target = block.getFieldValue('DISTANCETOMENU')
+      if (target === '_mouse_') return Math.hypot(state.x - (signal.mouseX ?? 0), state.y - (signal.mouseY ?? 0))
+      const sp = allSprites?.find(s => s.id === target)
+      return sp ? Math.hypot(state.x - sp.state.x, state.y - sp.state.y) : 0
+    }
     default:
       return ''
   }
