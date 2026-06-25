@@ -9,7 +9,7 @@ Scratch-specific task fields, objects, and block opcodes.
 ```yaml
 - title: Move the Rocket
   explainer: Make the rocket move to the right.
-  toolbox: "<xml>...</xml>"   # optional — restricts blocks; empty/omitted = full toolbox
+  toolbox: "<xml>...</xml>"   # optional — restricts blocks; empty/omitted = full toolbox. See scratch-toolbox-xml.md
   sprites: []                  # optional — defaults to one cat sprite
   backdrops: []                # optional — defaults to plain white
   variables: []                # optional — defaults to a single 'score' variable

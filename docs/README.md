@@ -85,6 +85,11 @@ Scratch-specific task fields, sprite and backdrop objects, block opcodes accepte
 
 **Load when:** authoring or editing a Scratch lesson, or working on Scratch-related checks.
 
+### [authoring/scratch-toolbox-xml.md](authoring/scratch-toolbox-xml.md)
+How to write a Scratch toolbox XML string: XML structure, all categories with their colours, every available block opcode, and common toolbox patterns with copy-paste examples.
+
+**Load when:** writing a Scratch task `toolbox` field by hand, or troubleshooting a missing block in the student palette.
+
 ### [authoring/markdown-renderer.md](authoring/markdown-renderer.md)
 Supported Markdown features in the shared renderer: callout syntax, fenced code blocks, topic wiki-links (`[[id]]`), Scratch block pills, tables, and inline Markdown vs full Markdown contexts.
 

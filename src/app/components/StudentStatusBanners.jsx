@@ -39,7 +39,7 @@ export default function StudentStatusBanners({
       {isTeacherEditing && (
         <div style={s.teacherEditingBanner}>
           <span className="live-dot" />
-          Your teacher is editing your code — you'll see their changes live
+          Your teacher is making edits — you&apos;ll see their changes live
         </div>
       )}
 

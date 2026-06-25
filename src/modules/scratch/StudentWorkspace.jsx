@@ -3,11 +3,13 @@ import ScratchWorkspace from '../../app/components/ScratchWorkspace'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { loadSavedCode, loadPersonalSandboxCode } from '../../app/studentStorage'
 import { selectScratchInitialProject, selectScratchToolboxSnippets } from '../../app/studentTaskContent'
+import { parseScratchState } from '../../shared/workspaceData'
 
 export default function StudentWorkspace({
   lesson, task, cs, lessonId, identityId,
   activeStudentView, viewingTaskId, currentTaskId,
   isSandbox, isViewingPrev, isForcedTeacherLive, previewMode,
+  isTeacherEditing, teacherLiveCode,
 }) {
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
@@ -25,7 +27,7 @@ export default function StudentWorkspace({
 
   return (
     <>
-      {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && (
+      {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && !isTeacherEditing && (
         <div style={{ display: 'flex', flexShrink: 0, paddingBottom: 4 }}>
           <button
             className="btn-ghost-outline"
@@ -43,13 +45,13 @@ export default function StudentWorkspace({
         predefinedBlocks={predefinedBlocks}
         prebuiltStacks={prebuiltStacks}
         respectStudentEditable={!cs.inPersonalSandbox}
-        readOnly={isViewingPrev || isForcedTeacherLive}
+        readOnly={isViewingPrev || isForcedTeacherLive || isTeacherEditing}
         unrestricted={isSandbox || cs.inPersonalSandbox}
         assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
         initialState={initialProject}
-        onStateChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleScratchChange}
-        onCheckResult={isViewingPrev || isForcedTeacherLive || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
-        externalState={isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
+        onStateChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchChange}
+        onCheckResult={isViewingPrev || isForcedTeacherLive || isTeacherEditing || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
+        externalState={isTeacherEditing ? parseScratchState(teacherLiveCode) : isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
       />
     </>

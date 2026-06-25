@@ -285,8 +285,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && lesson?.type === 'python' && (phase === 'lesson' || phase === 'solo')
-  const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && lesson?.type === 'python'
+  const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && (lesson?.type === 'python' || lesson?.type === 'scratch') && (phase === 'lesson' || phase === 'solo')
+  const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && (lesson?.type === 'python' || lesson?.type === 'scratch')
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
 
@@ -374,7 +374,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               <span style={s.consentTitle}>Your teacher wants to help</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.</p>
+              <p style={s.consentText}>{lesson?.type === 'scratch' ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.' : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}</p>
             </div>
             <div style={s.consentFooter}>
               <button

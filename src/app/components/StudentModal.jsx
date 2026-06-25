@@ -444,6 +444,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   // Teacher live-edit state machine
   const [teacherEditState, setTeacherEditState] = useState('idle') // 'idle' | 'requesting' | 'editing'
   const [teacherCode, setTeacherCode] = useState('')
+  const [teacherScratchState, setTeacherScratchState] = useState(null)
   const [declinedNotice, setDeclinedNotice] = useState(false)
   const pushDebounceRef = useRef(null)
 
@@ -458,6 +459,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
       if (student.teacherEditAcceptedAt) {
         const initialCode = student.currentCode ?? ''
         setTeacherCode(initialCode)
+        if (isScratch) {
+          setTeacherScratchState(parseScratchState(initialCode))
+        }
         setTeacherEditState('editing')
         setDeclinedNotice(false)
         onPushTeacherLiveCode?.(student.anonymousId, initialCode)
@@ -495,6 +499,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   useEffect(() => {
     setTeacherEditState('idle')
     setTeacherCode('')
+    setTeacherScratchState(null)
     setDeclinedNotice(false)
     setStageRequestState('idle')
     setStagePendingAction(null)
@@ -511,6 +516,14 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     }, 120)
   }
 
+  function handleScratchStateChange(workspaceStates) {
+    setTeacherScratchState(workspaceStates)
+    clearTimeout(pushDebounceRef.current)
+    pushDebounceRef.current = setTimeout(() => {
+      onPushTeacherLiveCode?.(student.anonymousId, JSON.stringify(workspaceStates))
+    }, 300)
+  }
+
   function handleStartEdit() {
     onRequestTeacherEdit?.(student.anonymousId)
     setTeacherEditState('requesting')
@@ -519,7 +532,12 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
   function handleCommitEdit() {
     clearTimeout(pushDebounceRef.current)
-    onCommitTeacherEdit?.(student.anonymousId, teacherCode)
+    if (isScratch) {
+      onCommitTeacherEdit?.(student.anonymousId, JSON.stringify(teacherScratchState))
+      setTeacherScratchState(null)
+    } else {
+      onCommitTeacherEdit?.(student.anonymousId, teacherCode)
+    }
     setTeacherEditState('idle')
     setTeacherCode('')
   }
@@ -529,6 +547,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     onCancelTeacherEdit?.(student.anonymousId)
     setTeacherEditState('idle')
     setTeacherCode('')
+    setTeacherScratchState(null)
   }
 
   function handleRequestStage(action) {
@@ -669,7 +688,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             )}
 
             {/* Active edit states (shown outside More dropdown while in progress) */}
-            {onRequestTeacherEdit && isPython && !isInformation && !isQuiz && teacherEditState === 'editing' && (
+            {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && teacherEditState === 'editing' && (
               <>
                 <button
                   className="btn-primary"
@@ -687,7 +706,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 </button>
               </>
             )}
-            {onRequestTeacherEdit && isPython && !isInformation && !isQuiz && teacherEditState === 'requesting' && (
+            {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && teacherEditState === 'requesting' && (
               <>
                 <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
                 <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 10px' }} onClick={handleCancelEdit}>
@@ -697,13 +716,13 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             )}
 
             {/* Declined notice */}
-            {onRequestTeacherEdit && isPython && !isInformation && !isQuiz && declinedNotice && (
+            {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && declinedNotice && (
               <span style={sEd.declinedNotice}>Student declined</span>
             )}
 
             {/* More dropdown: topic, message, edit code — grouped when idle */}
             {teacherEditState === 'idle' && (() => {
-              const hasEdit = !!(onRequestTeacherEdit && isPython && !isInformation && !isQuiz)
+              const hasEdit = !!(onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz)
               const hasTopic = !!(onSendToTopic && topics?.length > 0)
               const hasMessage = !!onSendMessage
               if (!hasEdit && !hasTopic && !hasMessage) return null
@@ -713,7 +732,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                     <>
                       {hasEdit && (
                         <button style={sTo.toolBtn} onClick={() => { close(); handleStartEdit() }}>
-                          ✏ Edit Code
+                          {isScratch ? '✏ Edit Blocks' : '✏ Edit Code'}
                         </button>
                       )}
                       {hasTopic && (
@@ -765,7 +784,16 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
         {/* Content */}
         <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
-          {teacherEditState === 'editing' ? (
+          {teacherEditState === 'editing' && isScratch ? (
+            <ScratchWorkspace
+              key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+              task={task}
+              readOnly={false}
+              assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+              initialState={parseScratchState(student.currentCode)}
+              onStateChange={handleScratchStateChange}
+            />
+          ) : teacherEditState === 'editing' ? (
             <div style={s.editorWrap}>
               <CodeEditor
                 value={teacherCode}

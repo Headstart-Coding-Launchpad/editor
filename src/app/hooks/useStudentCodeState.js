@@ -8,6 +8,7 @@ import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, loadSavedFs, saveFsState } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
+import { parseScratchState } from '../../shared/workspaceData'
 import { getQuizSuggestion } from '../studentQuizContent'
 import { usePyodideState } from './usePyodideState'
 import { useCheckFeedback } from './useCheckFeedback'
@@ -507,13 +508,22 @@ export function useStudentCodeState({
   useEffect(() => {
     if (!myStudentData?.teacherEditAppliedAt) return
     const newCode = myStudentData?.teacherEditApplyCode
-    if (lesson?.type !== 'python' || newCode === undefined) return
-    setCode(newCode ?? '')
-    setOutput('')
-    setRunStatus(null)
-    resetCheckFeedback()
-    if (identity?.anonymousId && !previewMode && !teacherPresentation) {
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: newCode ?? '', output: '', runStatus: null })
+    if (newCode === undefined) return
+    if (lesson?.type === 'python') {
+      setCode(newCode ?? '')
+      setOutput('')
+      setRunStatus(null)
+      resetCheckFeedback()
+      if (identity?.anonymousId && !previewMode && !teacherPresentation) {
+        saveCode(lessonId, currentTaskId, identity.anonymousId, { code: newCode ?? '', output: '', runStatus: null })
+      }
+    } else if (lesson?.type === 'scratch') {
+      const newState = parseScratchState(newCode)
+      setScratchExternalState(newState)
+      resetCheckFeedback()
+      if (identity?.anonymousId && !previewMode && !teacherPresentation && newState) {
+        saveCode(lessonId, currentTaskId, identity.anonymousId, { state: newState })
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherEditAppliedAt])

@@ -30,6 +30,9 @@ const BLOCK_PLACED_CHECK_DEBOUNCE = 500
 const MIN_STAGE_SCALE = 0.35
 const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
+const MIN_EDITOR_WIDTH_COLLAPSED = 280
+const MIN_EDITOR_WIDTH_COLLAPSED_COMPACT = 180
+const NARROW_BREAKPOINT = 1000
 const STAGE_VERTICAL_CHROME = 112
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 const STAGE_RUNTIME_STATE = {
@@ -427,8 +430,17 @@ export default function ScratchWorkspace({
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(false)
   const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
   const [imageVersion, setImageVersion] = useState(0)
-  const canvasRef = useRef(null)
-  const rootRef   = useRef(null)
+  const canvasRef              = useRef(null)
+  const rootRef                = useRef(null)
+  const flyoutCollapsedRef     = useRef(false)
+  const prevWidthRef           = useRef(null)
+  const blockDragActiveRef     = useRef(false)
+  const pendingScaleRecalcRef  = useRef(false)
+  const hideStageRef           = useRef(hideStage)
+  const isWindowResizeRef      = useRef(false)
+
+  flyoutCollapsedRef.current = flyoutCollapsed
+  hideStageRef.current = hideStage
 
   statusRef.current = status
   runningRef.current = running
@@ -559,8 +571,22 @@ export default function ScratchWorkspace({
       if (Blockly.DropDownDiv?.hideWithoutAnimation) Blockly.DropDownDiv.hideWithoutAnimation()
       else Blockly.DropDownDiv?.hide?.()
     } catch {}
+    // Only preserve the scroll position for genuine window-resize events.
+    // Flyout toggles and post-drag recalcs must let Blockly reposition the canvas
+    // naturally so it accounts for the flyout appearing/disappearing.
+    const isWindowResize = isWindowResizeRef.current
+    isWindowResizeRef.current = false
     for (const ws of Object.values(workspaceRefs.current)) {
-      try { Blockly.svgResize(ws) } catch {}
+      try {
+        const scrollX = ws.scrollX
+        const scrollY = ws.scrollY
+        Blockly.svgResize(ws)
+        if (isWindowResize && flyoutCollapsedRef.current && Number.isFinite(scrollX) && Number.isFinite(scrollY)) {
+          ws.scrollX = scrollX
+          ws.scrollY = scrollY
+          ws.translate?.(scrollX, scrollY)
+        }
+      } catch {}
     }
   }, [])
 
@@ -702,6 +728,13 @@ export default function ScratchWorkspace({
             ws.addChangeListener((event) => {
               if (handleWorkspaceClickEvent(event, ws, sp.id, Blockly)) return
               if (suppressChangeRef.current) return
+              if (!flyoutCollapsedRef.current && event.type === 'create') {
+                const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
+                if (w < 1000) {
+                  setFlyoutCollapsed(true)
+                  flyoutCollapsedRef.current = true
+                }
+              }
               clearTimeout(syncTimerRef.current)
               syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
               clearTimeout(blockPlacedTimerRef.current)
@@ -738,6 +771,13 @@ export default function ScratchWorkspace({
               stageWs.addChangeListener((event) => {
                 if (handleWorkspaceClickEvent(event, stageWs, '__stage__', Blockly)) return
                 if (suppressChangeRef.current) return
+                if (!flyoutCollapsedRef.current && event.type === 'create') {
+                  const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
+                  if (w < 1000) {
+                    setFlyoutCollapsed(true)
+                    flyoutCollapsedRef.current = true
+                  }
+                }
                 clearTimeout(syncTimerRef.current)
                 syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
                 clearTimeout(blockPlacedTimerRef.current)
@@ -783,7 +823,13 @@ export default function ScratchWorkspace({
     if (!ws) return
     try {
       ws.getFlyout?.()?.setVisible(!flyoutCollapsed)
-      requestAnimationFrame(() => { try { BlocklyRef.current.svgResize(ws) } catch {} })
+      requestAnimationFrame(() => {
+        // Skip svgResize while a block is being dragged — svgResize shifts ws.scrollX
+        // by the flyout width, which would make the dragged block jump away from the cursor.
+        // The deferred recalc triggered on pointerup will run svgResize afterwards.
+        if (blockDragActiveRef.current) { pendingScaleRecalcRef.current = true; return }
+        try { BlocklyRef.current.svgResize(ws) } catch {}
+      })
     } catch {}
   }, [flyoutCollapsed, selectedSpriteId, status])
 
@@ -830,13 +876,26 @@ export default function ScratchWorkspace({
     const obs = new ResizeObserver(([entry]) => {
       const w = entry.contentRect.width
       const h = entry.contentRect.height
-      const editorReserve = w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH
+
+      // Auto-collapse block list when first rendering or transitioning to narrow
+      const wasNarrow = prevWidthRef.current !== null && prevWidthRef.current < NARROW_BREAKPOINT
+      if (w < NARROW_BREAKPOINT && !wasNarrow) {
+        setFlyoutCollapsed(true)
+        flyoutCollapsedRef.current = true
+      }
+      prevWidthRef.current = w
+
+      const collapsed = flyoutCollapsedRef.current
+      const editorReserve = collapsed
+        ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
+        : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
       const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
       const heightScale = hideStage ? 1 : (h - STAGE_VERTICAL_CHROME) / (STAGE_H + 2)
       const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
       const scale = Number.isFinite(nextScale) ? nextScale : 1
       setStageScale(scale)
       cancelAnimationFrame(resizeFrame)
+      isWindowResizeRef.current = true
       resizeFrame = requestAnimationFrame(resizeBlocklyWorkspaces)
     })
     obs.observe(el)
@@ -845,6 +904,65 @@ export default function ScratchWorkspace({
       cancelAnimationFrame(resizeFrame)
     }
   }, [hideStage, resizeBlocklyWorkspaces])
+
+  // Re-calculate stage scale when flyout collapses/expands (ResizeObserver won't re-fire).
+  // If a pointer drag is active (block being dragged from the palette), defer until pointerup
+  // so the editor pane doesn't resize mid-drag and break Blockly's coordinate conversion.
+  useEffect(() => {
+    if (hideStage) return
+    if (blockDragActiveRef.current) {
+      pendingScaleRecalcRef.current = true
+      return
+    }
+    const el = rootRef.current
+    if (!el) return
+    const { width: w, height: h } = el.getBoundingClientRect()
+    if (!w) return
+    const editorReserve = flyoutCollapsed
+      ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
+      : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
+    const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
+    const heightScale = (h - STAGE_VERTICAL_CHROME) / (STAGE_H + 2)
+    const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+    setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
+    requestAnimationFrame(resizeBlocklyWorkspaces)
+  }, [flyoutCollapsed, hideStage, resizeBlocklyWorkspaces])
+
+  // Track pointer drags on the root so scale recalc is deferred until the drag ends.
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+
+    const runPendingRecalc = () => {
+      if (!pendingScaleRecalcRef.current) return
+      pendingScaleRecalcRef.current = false
+      if (hideStageRef.current) return
+      const rootEl = rootRef.current
+      if (!rootEl) return
+      const { width: w, height: h } = rootEl.getBoundingClientRect()
+      if (!w) return
+      const editorReserve = flyoutCollapsedRef.current
+        ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
+        : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
+      const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
+      const heightScale = (h - STAGE_VERTICAL_CHROME) / (STAGE_H + 2)
+      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+      setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
+      requestAnimationFrame(resizeBlocklyWorkspaces)
+    }
+
+    const onDown = () => { blockDragActiveRef.current = true }
+    const onUp = () => { blockDragActiveRef.current = false; runPendingRecalc() }
+
+    el.addEventListener('pointerdown', onDown)
+    document.addEventListener('pointerup', onUp)
+    document.addEventListener('pointercancel', onUp)
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('pointerup', onUp)
+      document.removeEventListener('pointercancel', onUp)
+    }
+  }, [resizeBlocklyWorkspaces])
 
   // ── Signal factory ───────────────────────────────────────────────────────────
   const createSignal = useCallback(() => {
@@ -1344,10 +1462,20 @@ export default function ScratchWorkspace({
           <button
             type="button"
             onClick={() => setFlyoutCollapsed(c => !c)}
-            style={s.flyoutToggleBtn}
-            title={flyoutCollapsed ? 'Show blocks' : 'Hide blocks'}
+            style={flyoutCollapsed ? s.flyoutToggleBtnOpen : s.flyoutToggleBtnHide}
+            title={flyoutCollapsed ? 'Show blocks palette' : 'Hide blocks palette'}
           >
-            {flyoutCollapsed ? '▶ Blocks' : '◀ Hide'}
+            {flyoutCollapsed ? (
+              <>
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
+                  <rect x="0" y="0" width="6" height="6" rx="1"/>
+                  <rect x="8" y="0" width="6" height="6" rx="1"/>
+                  <rect x="0" y="8" width="6" height="6" rx="1"/>
+                  <rect x="8" y="8" width="6" height="6" rx="1"/>
+                </svg>
+                Blocks
+              </>
+            ) : '◀ Hide'}
           </button>
         </div>
         <div style={s.editorPaneBody}>
@@ -1476,7 +1604,8 @@ const s = {
   editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
   editorPaneHeader: { display: 'flex', alignItems: 'center', height: 30, padding: '0 6px', borderBottom: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 },
   editorPaneBody: { flex: 1, minHeight: 0, position: 'relative' },
-  flyoutToggleBtn: { padding: '3px 8px', fontSize: '0.72rem', fontFamily: 'var(--font-body)', fontWeight: 600, border: '1px solid #e5e7eb', borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 },
+  flyoutToggleBtnOpen: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'var(--colour-primary)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
+  flyoutToggleBtnHide: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: 'var(--colour-primary)', display: 'flex', alignItems: 'center', gap: 5 },
   stagePane: { display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: STAGE_W * MIN_STAGE_SCALE },
   stageToolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' },
   canvas: { display: 'block', width: STAGE_W, height: STAGE_H, border: '1px solid #e5e7eb', borderRadius: 8 },

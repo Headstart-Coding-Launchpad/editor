@@ -753,7 +753,7 @@ function ScratchCheckListEditor({ checks, onChange, sprites }) {
     onChange(checks.filter((_, i) => i !== index))
   }
   function addCheck() {
-    onChange([...checks, { type: 'block_used', evaluation: 'manual', opcode: 'motion_movesteps' }])
+    onChange([...checks, { type: 'block_used', evaluation: 'after_block_placed', opcode: 'motion_movesteps' }])
   }
 
   return (
@@ -790,7 +790,7 @@ const COMPARISON_OPERATORS = [
 function describeCheck(check, sprites) {
   const spriteName = check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'
   const propLabel = check.property ?? 'x'
-  const evalLabel = check.evaluation === 'after_run' ? 'After running' : 'When checked manually'
+  const evalLabel = check.evaluation === 'after_run' ? 'After running' : check.evaluation === 'after_block_placed' ? 'After block placed' : 'When checked manually'
 
   switch (check.type) {
     case 'block_used': {
@@ -871,11 +871,11 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
       return
     }
     if (nextType === 'blocks_in_order') {
-      onChange({ type: 'blocks_in_order', evaluation: 'manual', sequence: ['event_whenflagclicked', 'motion_movesteps'], ...hint })
+      onChange({ type: 'blocks_in_order', evaluation: 'after_block_placed', sequence: ['event_whenflagclicked', 'motion_movesteps'], ...hint })
       return
     }
     if (nextType === 'block_count') {
-      onChange({ type: 'block_count', evaluation: 'manual', opcode: 'motion_movesteps', operator: 'equals', value: 1, ...hint })
+      onChange({ type: 'block_count', evaluation: 'after_block_placed', opcode: 'motion_movesteps', operator: 'equals', value: 1, ...hint })
       return
     }
     if (nextType === 'variable_compare') {
@@ -890,7 +890,7 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
       onChange({ type: 'block_run', evaluation: 'after_run', opcode: 'motion_movesteps', ...hint })
       return
     }
-    onChange({ type: 'block_used', evaluation: 'manual', opcode: 'motion_movesteps', ...hint })
+    onChange({ type: 'block_used', evaluation: 'after_block_placed', opcode: 'motion_movesteps', ...hint })
   }
 
   const preview = describeCheck(check, sprites)
@@ -914,11 +914,12 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
         {type !== 'block_run' && (
           <select
             className="te-select"
-            value={check.evaluation ?? (type === 'block_used' || type === 'blocks_in_order' || type === 'block_count' ? 'manual' : 'after_run')}
+            value={check.evaluation ?? (type === 'block_used' || type === 'blocks_in_order' || type === 'block_count' ? 'after_block_placed' : 'after_run')}
             onChange={e => onChange({ ...check, evaluation: e.target.value })}
           >
             <option value="manual">manual</option>
             <option value="after_run">after run</option>
+            <option value="after_block_placed">after block placed</option>
           </select>
         )}
       </div>
