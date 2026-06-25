@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { collection, collectionGroup, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, collectionGroup, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 
 function builderUrl(lessonId) {
@@ -12,7 +12,7 @@ function PlatformCard({ item, onDelete }) {
       <div style={s.cardTop}>
         <span style={s.email}>{item.teacherEmail}</span>
         <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
-        <button style={s.deleteBtn} title="Delete feedback" onClick={() => onDelete(item.id)}>×</button>
+        <button style={s.deleteBtn} title="Archive feedback" onClick={() => onDelete(item.id)}>×</button>
       </div>
       {(item.lessonTitle || item.taskTitle) && (
         <div style={s.context}>
@@ -30,7 +30,7 @@ function LessonCard({ item, onDelete }) {
       <div style={s.cardTop}>
         <span style={s.email}>{item.teacherEmail}</span>
         <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
-        <button style={s.deleteBtn} title="Delete feedback" onClick={() => onDelete(item)}>×</button>
+        <button style={s.deleteBtn} title="Archive feedback" onClick={() => onDelete(item)}>×</button>
       </div>
       <div style={s.lessonRow}>
         {item.lessonTitle ? (
@@ -61,7 +61,7 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   useEffect(() => {
     const q = query(collection(firestore, 'platformFeedback'), orderBy('submittedAt', 'desc'))
     return onSnapshot(q, snap => {
-      setPlatform(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setPlatform(snap.docs.filter(d => !d.data().archived).map(d => ({ id: d.id, ...d.data() })))
       setLoadingPlatform(false)
     }, () => setLoadingPlatform(false))
   }, [])
@@ -69,11 +69,13 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   useEffect(() => {
     const q = collectionGroup(firestore, 'feedback')
     return onSnapshot(q, snap => {
-      const items = snap.docs.map(d => ({
-        id: d.id,
-        lessonId: d.ref.parent.parent?.id ?? null,
-        ...d.data(),
-      }))
+      const items = snap.docs
+        .filter(d => !d.data().archived)
+        .map(d => ({
+          id: d.id,
+          lessonId: d.ref.parent.parent?.id ?? null,
+          ...d.data(),
+        }))
       items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
       setAllLesson(items)
       setLoadingLesson(false)
@@ -81,12 +83,12 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   }, [])
 
   function handleDeletePlatform(id) {
-    deleteDoc(doc(firestore, 'platformFeedback', id))
+    updateDoc(doc(firestore, 'platformFeedback', id), { archived: true })
   }
 
   function handleDeleteLesson(item) {
     if (!item.lessonId) return
-    deleteDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id))
+    updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), { archived: true })
   }
 
   const lessonItems = allLesson.filter(item => !item.taskId)

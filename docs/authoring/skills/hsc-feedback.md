@@ -20,6 +20,7 @@ Both types share the same field shape:
 | `teacherEmail` | string | Submitting teacher's email |
 | `text` | string | Feedback body |
 | `submittedAt` | number | Unix ms timestamp |
+| `archived` | boolean | `true` when dismissed; hidden in UI and excluded from list commands by default |
 
 ---
 
@@ -39,6 +40,7 @@ All list commands support optional filters:
 | `--task-id <id>` | Only items with this task ID |
 | `--scope lesson` | Only lesson-level items (no taskId) |
 | `--scope task` | Only task-scoped items (has taskId) |
+| `--include-archived` | Include archived (dismissed) items (excluded by default) |
 
 Results are sorted newest-first.
 
@@ -108,40 +110,45 @@ Returns `{ success, id, lessonId?, source }`.
 
 ---
 
-## Delete a single item
+## Archive a single item
+
+Archiving hides feedback from the UI and from list commands (unless `--include-archived` is passed). The data remains in Firestore.
 
 Use the item's `id` from a list command.
 
 ```
-node cli/cli.mjs feedback delete-lesson <lessonId> <id>
-node cli/cli.mjs feedback delete-platform <id>
+node cli/cli.mjs feedback archive-lesson <lessonId> <id>
+node cli/cli.mjs feedback archive-platform <id>
 ```
 
 Throws an error if the item does not exist. Returns `{ success, id, lessonId? }`.
 
 ---
 
-## Clear all feedback (bulk delete)
+## Clear all feedback (bulk archive)
 
 ```
 node cli/cli.mjs feedback clear-lesson <lessonId>
 node cli/cli.mjs feedback clear-platform
 ```
 
-Both support `--task-id` and `--scope` to narrow what gets deleted. `clear-platform` also accepts `--lesson-id`.
+Both support `--task-id` and `--scope` to narrow what gets archived. `clear-platform` also accepts `--lesson-id`. Already-archived items are skipped.
 
-Returns `{ success, deleted }` with a count of items removed.
+Returns `{ success, archived }` with a count of items archived.
 
 ```bash
-# Remove all feedback from a lesson
+# Archive all feedback from a lesson
 node cli/cli.mjs feedback clear-lesson python-3-2
 
-# Remove only task-scoped feedback from a lesson
+# Archive only task-scoped feedback from a lesson
 node cli/cli.mjs feedback clear-lesson python-3-2 --scope task
 
-# Remove all platform feedback
+# Archive all platform feedback
 node cli/cli.mjs feedback clear-platform
 
-# Remove platform feedback linked to one lesson
+# Archive platform feedback linked to one lesson
 node cli/cli.mjs feedback clear-platform --lesson-id html-2-1
+
+# List feedback including archived items
+node cli/cli.mjs feedback lesson python-3-2 --include-archived
 ```
