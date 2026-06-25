@@ -1320,7 +1320,7 @@ export default function ScratchWorkspace({
               aria-label="Run"
               title="Run green flag scripts"
             >
-              <span style={s.flagPole} aria-hidden="true"><span style={s.flagBanner} /></span>
+              when <span style={{ fontFamily: "'Noto Color Emoji', serif", fontSize: '1rem', lineHeight: 1 }}>🚩</span> clicked
             </button>
             <button
               type="button"
@@ -1468,7 +1468,7 @@ const s = {
   askInput: { minWidth: 0, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: 14 },
   askBtn: { padding: '8px 12px', fontSize: 13, borderRadius: 6 },
   controls: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  greenFlagBtn: { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#22c55e', borderColor: '#16a34a' },
+  greenFlagBtn: { padding: '6px 10px', minWidth: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3, backgroundColor: '#22c55e', borderColor: '#16a34a', fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap' },
   stopFlagBtn:  { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ef4444', borderColor: '#dc2626', color: '#fff' },
   flagPole:   { width: 20, height: 18, display: 'inline-block', position: 'relative', borderLeft: '3px solid #fff' },
   flagBanner: { position: 'absolute', top: 1, left: 1, width: 15, height: 10, background: '#fff', borderRadius: '1px 5px 5px 1px' },

@@ -10,6 +10,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const [testScratchBlocks, setTestScratchBlocks] = useState(null)
   const [starterBlocksOpen, setStarterBlocksOpen] = useState(false)
   const [starterBlocksSyncKey, setStarterBlocksSyncKey] = useState(0)
+  const [stageReloadKey, setStageReloadKey] = useState(0)
   const [scratchModalTab, setScratchModalTab] = useState('starter')
   const [modalSelectedSpriteId, setModalSelectedSpriteId] = useState(null)
   const [modalSpritePanelTarget, setModalSpritePanelTarget] = useState(null)
@@ -121,6 +122,11 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
       : modalStageSpriteStatesRef.current[stageIndex]
     const sprites = task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
     set('sprites', copyScratchSpriteStateToStarters(sprites, spriteStates))
+  }
+
+  function handleCopyFromStarter(stageIdx) {
+    updateStage(stageIdx, { blocks: cloneBlocks(task.starterBlocks) })
+    setStageReloadKey(k => k + 1)
   }
 
   function handleRemoveScratchStage(idx) {
@@ -371,6 +377,14 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           onChange={e => updateStage(stageIdx, { label: e.target.value })}
                           placeholder={`Stage ${stageIdx + 1}`}
                         />
+                        <button
+                          type="button"
+                          className="btn-ghost te-secondary-btn"
+                          onClick={() => handleCopyFromStarter(stageIdx)}
+                          title="Replace this stage's blocks with a copy of the starter code"
+                        >
+                          Copy from starter code
+                        </button>
                         <div style={{ flex: '1 1 100%', padding: '4px 0 0' }}>
                           <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', display: 'block', marginBottom: 4 }}>Prebuilt stacks for this stage</span>
                           <PrebuiltStacksEditor
@@ -382,7 +396,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                         </div>
                       </div>
                       <ScratchWorkspace
-                        key={`builder-scratch-stage-${task.id}-${stageIdx}-${getScratchSprites().map(sp => sp.id).join(',')}`}
+                        key={`builder-scratch-stage-${task.id}-${stageIdx}-${getScratchSprites().map(sp => sp.id).join(',')}-${stageReloadKey}`}
                         task={{ ...task, sprites: getScratchSprites() }}
                         hideStage
                         assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}

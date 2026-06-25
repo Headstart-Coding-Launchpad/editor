@@ -60,6 +60,7 @@ function categorize(text) {
 
   // Motion (check x/y before the generic variable catch-all below)
   if (
+    t === 'x position' || t === 'y position' || t === 'direction' ||
     t.startsWith('move ') || t.startsWith('turn ') || t.startsWith('go to') ||
     t.startsWith('glide ') || t === 'if on edge, bounce' ||
     t.startsWith('point in direction') ||
@@ -90,6 +91,7 @@ function categorize(text) {
   if (t.startsWith('ask ') && t.endsWith(' and wait')) return { color: '#5CB1D6' }
   if (
     t === 'answer' || t === 'mouse down?' || t === 'touching edge?' ||
+    (t.startsWith('touching ') && t.endsWith('?')) ||
     /^key\s+.+\s+pressed\?$/.test(t) ||
     t === 'timer' || t === 'reset timer' ||
     t.startsWith('distance to ')
@@ -107,7 +109,8 @@ function categorize(text) {
     /\s[+\-=<>*/]\s/.test(t) ||
     /\s(?:and|or)\s/.test(t) ||
     /\s[+\-=<>*/]\s/.test(unwrapped) ||
-    /\s(?:and|or)\s/.test(unwrapped)
+    /\s(?:and|or)\s/.test(unwrapped) ||
+    /^(abs|floor|ceiling|sqrt|sin|cos|tan|asin|acos|atan|ln|log)\s+of\b/.test(t)
   ) return { color: '#59C059' }
 
   if (/^set\s+(?:\[[^\]]+\]|\S+)\s+to\b/.test(t)) return { color: '#FF8C1A' }
