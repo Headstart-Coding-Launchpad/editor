@@ -154,7 +154,15 @@ Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
 
 ## Scratch Check Types
 
-Scratch checks can be a single object or an array. `evaluation` accepts `manual`, `after_run`, or `continuous` (defaults to `manual`).
+Scratch checks can be a single object or an array. `evaluation` accepts `manual`, `after_run`, or `after_block_placed` (defaults to `manual`).
+
+| `evaluation` | When it fires | Best for |
+|---|---|---|
+| `manual` | Student clicks the **Check** button | Lessons where timing matters (run first, then check) |
+| `after_run` | Automatically after the green flag completes | Sprite position, variable value, costume, `block_run` |
+| `after_block_placed` | Automatically each time a block is added or moved | Structure checks (`block_used`, `blocks_in_order`, `block_count`) |
+
+**Smart pending logic for `after_block_placed`:** feedback is only shown when the result is definitive. If the student is still building the correct solution (e.g., they have placed the first block of a required sequence but not yet the rest), no fail is shown. A fail only appears when a placed block actively contradicts the requirement — for example, placing the wrong block after the correct starting block in a `blocks_in_order` sequence. As soon as the requirement is fully met, a pass appears instantly without requiring a button click or a run.
 
 ### `block_used`
 ```yaml

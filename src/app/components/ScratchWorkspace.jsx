@@ -15,6 +15,7 @@ import {
   saveWorkspace,
   loadWorkspace,
   evaluateScratchCheck,
+  partialEvaluateScratchCheck,
   setSpriteContext,
   setBackdropContext,
   setCostumeContext,
@@ -25,6 +26,7 @@ import { resolveAssetFileUrl } from '../../shared/assetPaths'
 const STAGE_W = 480
 const STAGE_H = 360
 const SYNC_DEBOUNCE = 1000
+const BLOCK_PLACED_CHECK_DEBOUNCE = 500
 const MIN_STAGE_SCALE = 0.35
 const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
@@ -137,6 +139,7 @@ function drawEmojiAtOrigin(ctx, emoji, r) {
   ctx.font = `${r * 2}px 'Noto Color Emoji', serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
+  ctx.scale(-1, 1)
   ctx.fillText(emoji, 0, 0)
 }
 
@@ -146,10 +149,12 @@ function drawSpriteShape(ctx, s, type, emoji) {
   const r  = Math.max(4, (s.size / 100) * 24)
   const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
   const rs  = s.rotationStyle ?? 'all around'
-  const rot = rs === "don't rotate" ? 0 : rs === 'left-right' ? (dir > 90 && dir < 270 ? Math.PI : 0) : (dir - 90) * (Math.PI / 180)
+  const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
+  const flipH = rs === 'left-right' && dir > 90 && dir < 270
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate(rot)
+  if (flipH) ctx.scale(-1, 1)
   if (emoji) drawEmojiAtOrigin(ctx, emoji, r)
   else drawScratchSpriteAtOrigin(ctx, type, r)
   ctx.restore()
@@ -198,11 +203,13 @@ function drawSpriteImage(ctx, s, img) {
   const r  = Math.max(4, (s.size / 100) * 24)
   const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
   const rs  = s.rotationStyle ?? 'all around'
-  const rot = rs === "don't rotate" ? 0 : rs === 'left-right' ? (dir > 90 && dir < 270 ? Math.PI : 0) : (dir - 90) * (Math.PI / 180)
+  const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
+  const flipH = rs === 'left-right' && dir > 90 && dir < 270
   const drawSize = r * 2
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate(rot)
+  if (flipH) ctx.scale(-1, 1)
   ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize)
   ctx.restore()
 }
@@ -222,7 +229,8 @@ function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
   const r  = Math.max(4, size * 0.35)
   const dir = Number.isFinite(Number(state?.direction)) ? Number(state.direction) : 90
   const rs  = state?.rotationStyle ?? 'all around'
-  const rot = rs === "don't rotate" ? 0 : rs === 'left-right' ? (dir > 90 && dir < 270 ? Math.PI : 0) : (dir - 90) * (Math.PI / 180)
+  const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
+  const flipH = rs === 'left-right' && dir > 90 && dir < 270
 
   const costumeEntry = sprite.costumes?.length > 0
     ? (sprite.costumes.find(c => c.name === state?.costume) ?? sprite.costumes[0])
@@ -232,12 +240,14 @@ function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
     const img = imageCache[url]
     if (img) {
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
+      if (flipH) ctx.scale(-1, 1)
       ctx.drawImage(img, -r, -r, r * 2, r * 2)
       ctx.restore(); return
     }
   }
 
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
+  if (flipH) ctx.scale(-1, 1)
   if (sprite.emoji) drawEmojiAtOrigin(ctx, sprite.emoji, r)
   else drawScratchSpriteAtOrigin(ctx, sprite.type ?? 'cat', r)
   ctx.restore()
@@ -300,6 +310,24 @@ function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {
   } catch { return false }
 }
 
+// Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation.
+function evalSingleCheckPartial(check, spriteWorkspaces) {
+  if (!check?.type) return 'fail'
+  try {
+    const bySprite = (fn) => {
+      if (check.spriteName) {
+        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        return target ? fn(target.workspace) : 'pending'
+      }
+      const results = spriteWorkspaces.map(sp => fn(sp.workspace))
+      if (results.some(r => r === 'pass')) return 'pass'
+      if (results.some(r => r === 'fail')) return 'fail'
+      return 'pending'
+    }
+    return bySprite(ws => partialEvaluateScratchCheck(check, ws))
+  } catch { return 'pending' }
+}
+
 function normalizeScratchChecks(check) {
   if (!check) return []
   if (Array.isArray(check)) return check.filter(c => c?.type)
@@ -353,6 +381,8 @@ export default function ScratchWorkspace({
   const syncTimerRef        = useRef(null)
   const suppressChangeRef   = useRef(false)
   const lastCheckRef        = useRef(null)
+  const blockPlacedTimerRef = useRef(null)
+  const evaluateBlockPlacedChecksRef = useRef(null)
   const lastEmittedStateRef = useRef(null)
   const statusRef           = useRef('loading')
   const runningRef          = useRef(false)
@@ -674,6 +704,8 @@ export default function ScratchWorkspace({
               if (suppressChangeRef.current) return
               clearTimeout(syncTimerRef.current)
               syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+              clearTimeout(blockPlacedTimerRef.current)
+              blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
             })
 
             div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, sp.id, Blockly))
@@ -708,6 +740,8 @@ export default function ScratchWorkspace({
                 if (suppressChangeRef.current) return
                 clearTimeout(syncTimerRef.current)
                 syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+                clearTimeout(blockPlacedTimerRef.current)
+                blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
               })
 
               stageDiv.addEventListener('click', event => handleWorkspaceDomClick(event, stageWs, '__stage__', Blockly))
@@ -782,6 +816,12 @@ export default function ScratchWorkspace({
     emitWorkspaceState()
   }, [syncNowKey, status, readOnly, emitWorkspaceState])
 
+  // Evaluate after_block_placed checks once the workspace is ready (handles pre-loaded blocks).
+  useEffect(() => {
+    if (status !== 'ready') return
+    evaluateBlockPlacedChecksRef.current?.()
+  }, [status])
+
   // Responsive stage scaling — shrink canvas CSS size to keep editor visible
   useEffect(() => {
     const el = rootRef.current
@@ -840,7 +880,9 @@ export default function ScratchWorkspace({
   // ── Check helpers ────────────────────────────────────────────────────────────
   const check = task?.check
   const scratchChecks = normalizeScratchChecks(check)
-  const hasAfterRunCheck = scratchChecks.some(c => c.evaluation !== 'manual')
+  // after_block_placed is handled via workspace change listener, not the run cycle.
+  const hasAfterRunCheck = scratchChecks.some(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
+  const hasAfterBlockPlacedCheck = scratchChecks.some(c => c.evaluation === 'after_block_placed')
 
   const notifyCheck = useCallback((passed, force = false) => {
     setCheckPassed(passed)
@@ -862,13 +904,39 @@ export default function ScratchWorkspace({
     })
   }, [])
 
+  // Clears any displayed check feedback — used when workspace returns to a pending state.
+  function clearCheckFeedback() {
+    setCheckPassed(false)
+    setCheckAttempted(false)
+    lastCheckRef.current = null
+  }
+
+  // Evaluates all after_block_placed checks and updates feedback.
+  // Called on every debounced workspace change when after_block_placed checks are present.
+  function evaluateBlockPlacedChecks() {
+    if (!BlocklyRef.current) return
+    const afterBlockChecks = scratchChecks.filter(c => c.evaluation === 'after_block_placed')
+    if (afterBlockChecks.length === 0) return
+    const sws = buildSpriteWorkspaces()
+    const results = afterBlockChecks.map(c => evalSingleCheckPartial(c, sws))
+    if (results.every(r => r === 'pass')) {
+      notifyCheck(true)
+    } else if (results.some(r => r === 'fail')) {
+      notifyCheck(false)
+    } else {
+      clearCheckFeedback()
+    }
+  }
+  evaluateBlockPlacedChecksRef.current = evaluateBlockPlacedChecks
+
   function finishRun(signal) {
     if (!signal.stopped) {
       runningRef.current = false
       setRunning(false)
       if (scratchChecks.length > 0 && hasAfterRunCheck) {
         const sws = buildSpriteWorkspaces()
-        notifyCheck(scratchChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)))
+        const afterRunChecks = scratchChecks.filter(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
+        notifyCheck(afterRunChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)))
       }
     }
   }
@@ -1320,7 +1388,7 @@ export default function ScratchWorkspace({
               aria-label="Run"
               title="Run green flag scripts"
             >
-              when <span style={{ fontFamily: "'Noto Color Emoji', serif", fontSize: '1rem', lineHeight: 1 }}>🚩</span> clicked
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 15 15"><rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151"/><polygon points="3,1 14,6 3,11" fill="#22c55e"/></svg>
             </button>
             <button
               type="button"
@@ -1390,6 +1458,9 @@ export default function ScratchWorkspace({
             )}
             {scratchChecks.length > 0 && !checkAttempted && hasAfterRunCheck && !showManualCheck && !running && (
               <span style={s.checkNone}>Run your code to check</span>
+            )}
+            {scratchChecks.length > 0 && !checkAttempted && hasAfterBlockPlacedCheck && !hasAfterRunCheck && !showManualCheck && !running && (
+              <span style={s.checkNone}>Place the blocks to check</span>
             )}
           </div>
         </div>
@@ -1468,10 +1539,8 @@ const s = {
   askInput: { minWidth: 0, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: 14 },
   askBtn: { padding: '8px 12px', fontSize: 13, borderRadius: 6 },
   controls: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  greenFlagBtn: { padding: '6px 10px', minWidth: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3, backgroundColor: '#22c55e', borderColor: '#16a34a', fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap' },
+  greenFlagBtn: { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderColor: '#9ca3af' },
   stopFlagBtn:  { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ef4444', borderColor: '#dc2626', color: '#fff' },
-  flagPole:   { width: 20, height: 18, display: 'inline-block', position: 'relative', borderLeft: '3px solid #fff' },
-  flagBanner: { position: 'absolute', top: 1, left: 1, width: 15, height: 10, background: '#fff', borderRadius: '1px 5px 5px 1px' },
   stopIcon:   { width: 14, height: 14, display: 'inline-block', background: '#fff', borderRadius: 2 },
   resetBtn:   { padding: '8px 14px', fontSize: 14 },
   checkBtn:   { padding: '10px 20px', fontSize: 15 },

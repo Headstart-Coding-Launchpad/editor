@@ -4,7 +4,7 @@
 // Re-exported here for backward compatibility.
 import * as Blockly from 'blockly'
 
-export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } from './scratchChecks'
+export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from './scratchChecks'
 export { saveWorkspace, loadWorkspace, migrateBroadcastState, migrateVariableFields } from './scratchPersistence'
 
 let _Blockly = null
@@ -66,10 +66,19 @@ function boolInput(name) {
   return { type: 'input_value', name, check: 'Boolean' }
 }
 
+const GREEN_FLAG_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151"/><polygon points="3,1 14,6 3,11" fill="#22c55e"/></svg>'
+const GREEN_FLAG_SRC = 'data:image/svg+xml,' + encodeURIComponent(GREEN_FLAG_SVG)
+
 export const SCRATCH_BLOCK_DEFINITIONS = {
   event_whenflagclicked: {
     init() {
-      this.jsonInit({ type: 'event_whenflagclicked', message0: 'when green flag clicked', nextStatement: null, colour: '#FFAB19' })
+      this.jsonInit({
+        type: 'event_whenflagclicked',
+        message0: 'when %1 clicked',
+        args0: [{ type: 'field_image', src: GREEN_FLAG_SRC, width: 15, height: 15, alt: 'green flag' }],
+        nextStatement: null,
+        colour: '#FFAB19',
+      })
     },
   },
   event_whenkeypressed: {

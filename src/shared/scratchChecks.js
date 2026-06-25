@@ -63,6 +63,64 @@ function containsSubsequence(haystack, needle) {
   return false
 }
 
+// Returns 'on_track', 'violation', or 'unrelated' for a chain against a required sequence.
+// Used by partialEvaluateScratchCheck to distinguish "still building" from "placed wrong block".
+function findChainStatus(chain, sequence) {
+  const normalized = sequence.map(normalizeSequenceItem)
+  for (let i = 0; i < chain.length; i++) {
+    if (chain[i].type !== normalized[0].opcode) continue
+    if (!blockMatchesFieldValues(chain[i], normalized[0].fieldValues)) continue
+    // Found sequence start at index i — verify that subsequent blocks continue correctly.
+    for (let j = 1; j < normalized.length && i + j < chain.length; j++) {
+      if (chain[i + j].type !== normalized[j].opcode) return 'violation'
+      if (!blockMatchesFieldValues(chain[i + j], normalized[j].fieldValues)) return 'violation'
+    }
+    return 'on_track'
+  }
+  return 'unrelated'
+}
+
+// Returns 'pass', 'pending', or 'fail' for after_block_placed evaluation.
+// 'pending' means the workspace is consistent with in-progress correct work — do not show a fail yet.
+export function partialEvaluateScratchCheck(check, workspace) {
+  if (!check?.type) return 'fail'
+  try {
+    switch (check.type) {
+      case 'block_used': {
+        if (!workspace) return 'pending'
+        const found = workspace.getAllBlocks(false).some(
+          b => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues)
+        )
+        return found ? 'pass' : 'pending'
+      }
+      case 'blocks_in_order': {
+        if (!workspace || !Array.isArray(check.sequence) || check.sequence.length === 0) return 'pending'
+        const topBlocks = workspace.getAllBlocks(false).filter(b => !b.previousConnection?.isConnected())
+        const chains = topBlocks.map(traverseChain)
+        if (chains.some(chain => containsSubsequence(chain, check.sequence))) return 'pass'
+        if (chains.some(chain => findChainStatus(chain, check.sequence) === 'violation')) return 'fail'
+        return 'pending'
+      }
+      case 'block_count': {
+        if (!workspace) return 'pending'
+        const count = workspace.getAllBlocks(false).filter(b => b.type === check.opcode).length
+        const target = Number(check.value)
+        if (check.operator === 'equals') {
+          if (count === target) return 'pass'
+          return count < target ? 'pending' : 'fail'
+        }
+        if (check.operator === 'greater_than') return count > target ? 'pass' : 'pending'
+        if (check.operator === 'less_than') return count < target ? 'pass' : 'fail'
+        return 'pending'
+      }
+      default:
+        return 'pending'
+    }
+  } catch {
+    return 'pending'
+  }
+}
+
 // preRunSpriteState is the state of the specific matched sprite before running (for delta checks).
 export function evaluateScratchCheck(check, workspace, spriteState, runState = null, preRunSpriteState = null) {
   if (!check?.type) return false

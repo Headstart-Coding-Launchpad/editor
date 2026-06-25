@@ -770,9 +770,7 @@ function ScratchCheckListEditor({ checks, onChange, sprites }) {
               sprites={sprites}
             />
           </div>
-          {checks.length > 1 && (
-            <button type="button" className="te-check-remove-btn" onClick={() => removeCheck(index)} title="Remove check">×</button>
-          )}
+          <button type="button" className="te-check-remove-btn" onClick={() => removeCheck(index)} title="Remove check">×</button>
         </div>
       ))}
       <button type="button" className="btn-ghost te-add-check-btn" onClick={addCheck}>

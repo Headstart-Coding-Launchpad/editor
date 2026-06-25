@@ -232,6 +232,16 @@ export default function TaskList({
     onReorderSubtask(groupId, reordered)
   }
 
+  const taskGlobalNums = {}
+  let globalNum = 0
+  tasks.forEach(item => {
+    if (item.type === 'group') {
+      ;(item.subtasks ?? []).forEach(subtask => { taskGlobalNums[subtask.id] = ++globalNum })
+    } else {
+      taskGlobalNums[item.id] = ++globalNum
+    }
+  })
+
   return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -341,7 +351,7 @@ export default function TaskList({
                           onDrop={e => { e.stopPropagation(); handleDrop(e, { groupId: item.id, index: j }) }}
                           onClick={() => onSelect(subtask.id)}
                         >
-                          <span style={isSubDraft ? s.subtaskNumDraft : s.subtaskNum}>{j + 1}</span>
+                          <span style={isSubDraft ? s.subtaskNumDraft : s.subtaskNum}>{taskGlobalNums[subtask.id]}</span>
                           <span style={{ ...s.taskTypeIcon, ...(isSubDraft ? s.taskTypeIconDraft : {}) }} title={`${taskIconType(subtask)} task`}>
                             <TaskFormatIcon type={taskIconType(subtask)} />
                           </span>
@@ -395,7 +405,7 @@ export default function TaskList({
               onDrop={e => handleDrop(e, { groupId: null, index: i })}
               onClick={() => onSelect(item.id)}
             >
-              <span style={isDraft ? s.numDraft : s.num}>{i + 1}</span>
+              <span style={isDraft ? s.numDraft : s.num}>{taskGlobalNums[item.id]}</span>
               <span style={{ ...s.taskTypeIcon, ...(isDraft ? s.taskTypeIconDraft : {}) }} title={`${taskIconType(item)} task`}>
                 <TaskFormatIcon type={taskIconType(item)} />
               </span>

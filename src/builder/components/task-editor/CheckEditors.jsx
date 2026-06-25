@@ -464,9 +464,7 @@ function CheckListEditor({ checks, onChange, interactionMode = 'run', allowVaria
                 />
               </div>
             </div>
-            {checks.length > 1 && (
-              <button type="button" className="te-check-remove-btn" onClick={() => removeCheck(index)} title="Remove check">×</button>
-            )}
+            <button type="button" className="te-check-remove-btn" onClick={() => removeCheck(index)} title="Remove check">×</button>
           </div>
         )
       })}

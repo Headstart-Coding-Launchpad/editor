@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, compare } from '../scratchChecks'
+import { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from '../scratchChecks'
 
 // Minimal workspace stub used by block_used / block_count checks.
 function makeWorkspace(blockTypes) {
@@ -460,6 +460,128 @@ describe('evaluateScratchCheck', () => {
     it('returns true when block ran with empty fieldValues (no value constraint)', () => {
       const runState = { executedBlocks: new Set(['motion_movesteps']) }
       expect(evaluateScratchCheck({ type: 'block_run', opcode: 'motion_movesteps', fieldValues: {} }, null, null, runState)).toBe(true)
+    })
+  })
+
+  describe('partialEvaluateScratchCheck', () => {
+    describe('block_used', () => {
+      it('returns pass when the required block is present', () => {
+        const ws = makeWorkspace(['motion_movesteps', 'looks_say'])
+        expect(partialEvaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps' }, ws)).toBe('pass')
+      })
+
+      it('returns pending when the required block is absent', () => {
+        const ws = makeWorkspace(['looks_say'])
+        expect(partialEvaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps' }, ws)).toBe('pending')
+      })
+
+      it('returns pending when workspace is null', () => {
+        expect(partialEvaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps' }, null)).toBe('pending')
+      })
+    })
+
+    describe('blocks_in_order', () => {
+      it('returns pass when the full sequence is present', () => {
+        const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps', 'motion_turnright']])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('pass')
+      })
+
+      it('returns pending when only the first block of the sequence is placed', () => {
+        const ws = makeChainWorkspace([['event_whenflagclicked']])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('pending')
+      })
+
+      it('returns pending when the first two blocks of the sequence are correctly placed', () => {
+        const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps']])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('pending')
+      })
+
+      it('returns fail when a wrong block follows the correct start', () => {
+        const ws = makeChainWorkspace([['event_whenflagclicked', 'looks_say']])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('fail')
+      })
+
+      it('returns fail when the second block is correct but the third is wrong', () => {
+        const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps', 'looks_say']])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('fail')
+      })
+
+      it('returns pending when workspace has an unrelated block (not the sequence start)', () => {
+        const ws = makeChainWorkspace([['looks_say']])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps'] }, ws)).toBe('pending')
+      })
+
+      it('returns pending when workspace is empty', () => {
+        const ws = makeChainWorkspace([])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps'] }, ws)).toBe('pending')
+      })
+
+      it('returns pending when an on-track chain coexists with an unrelated floating block', () => {
+        const ws = makeChainWorkspace([
+          ['event_whenflagclicked', 'motion_movesteps'],
+          ['looks_say'],
+        ])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('pending')
+      })
+
+      it('returns fail when an on-track chain has a violation even if another chain is unrelated', () => {
+        const ws = makeChainWorkspace([
+          ['event_whenflagclicked', 'looks_say'],
+          ['motion_turnright'],
+        ])
+        expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence: ['event_whenflagclicked', 'motion_movesteps', 'motion_turnright'] }, ws)).toBe('fail')
+      })
+    })
+
+    describe('block_count', () => {
+      it('returns pass when count matches equals target', () => {
+        const ws = makeWorkspace(['motion_movesteps', 'motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 2 }, ws)).toBe('pass')
+      })
+
+      it('returns pending when count is below equals target', () => {
+        const ws = makeWorkspace(['motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 2 }, ws)).toBe('pending')
+      })
+
+      it('returns fail when count exceeds equals target', () => {
+        const ws = makeWorkspace(['motion_movesteps', 'motion_movesteps', 'motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'equals', value: 2 }, ws)).toBe('fail')
+      })
+
+      it('returns pass when count satisfies greater_than', () => {
+        const ws = makeWorkspace(['motion_movesteps', 'motion_movesteps', 'motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'greater_than', value: 2 }, ws)).toBe('pass')
+      })
+
+      it('returns pending when count has not yet reached greater_than threshold', () => {
+        const ws = makeWorkspace(['motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'greater_than', value: 2 }, ws)).toBe('pending')
+      })
+
+      it('returns pass when count satisfies less_than', () => {
+        const ws = makeWorkspace(['motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'less_than', value: 3 }, ws)).toBe('pass')
+      })
+
+      it('returns fail when count violates less_than', () => {
+        const ws = makeWorkspace(['motion_movesteps', 'motion_movesteps', 'motion_movesteps'])
+        expect(partialEvaluateScratchCheck({ type: 'block_count', opcode: 'motion_movesteps', operator: 'less_than', value: 3 }, ws)).toBe('fail')
+      })
+    })
+
+    describe('unknown or non-block types', () => {
+      it('returns pending for sprite_property (not a block placement check)', () => {
+        expect(partialEvaluateScratchCheck({ type: 'sprite_property', property: 'x', operator: 'equals', value: 0 }, null)).toBe('pending')
+      })
+
+      it('returns fail when check has no type', () => {
+        expect(partialEvaluateScratchCheck({}, null)).toBe('fail')
+      })
+
+      it('returns fail when check is null', () => {
+        expect(partialEvaluateScratchCheck(null, null)).toBe('fail')
+      })
     })
   })
 

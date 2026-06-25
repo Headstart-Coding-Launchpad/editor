@@ -11,6 +11,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const [starterBlocksOpen, setStarterBlocksOpen] = useState(false)
   const [starterBlocksSyncKey, setStarterBlocksSyncKey] = useState(0)
   const [stageReloadKey, setStageReloadKey] = useState(0)
+  const [completeReloadKey, setCompleteReloadKey] = useState(0)
   const [scratchModalTab, setScratchModalTab] = useState('starter')
   const [modalSelectedSpriteId, setModalSelectedSpriteId] = useState(null)
   const [modalSpritePanelTarget, setModalSpritePanelTarget] = useState(null)
@@ -124,6 +125,14 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     set('sprites', copyScratchSpriteStateToStarters(sprites, spriteStates))
   }
 
+  function handleCopyFromStarterToComplete() {
+    const blocks = cloneBlocks(modalStarterBlocksRef.current ?? task.starterBlocks)
+    set('completeBlocks', blocks)
+    setTestScratchBlocks(blocks)
+    modalCompleteBlocksRef.current = blocks
+    setCompleteReloadKey(k => k + 1)
+  }
+
   function handleCopyFromStarter(stageIdx) {
     updateStage(stageIdx, { blocks: cloneBlocks(task.starterBlocks) })
     setStageReloadKey(k => k + 1)
@@ -173,6 +182,11 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               {scratchModalTab !== 'starter' && (
                 <button type="button" className="btn-ghost te-secondary-btn" onClick={handleCopySpriteInfoToStarter}>
                   Copy Sprite Info to Starter
+                </button>
+              )}
+              {scratchModalTab === 'complete' && (
+                <button type="button" className="btn-ghost te-secondary-btn" onClick={handleCopyFromStarterToComplete}>
+                  Copy from starter code
                 </button>
               )}
             </div>
@@ -326,7 +340,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   />
                 ) : scratchModalTab === 'complete' ? (
                   <ScratchWorkspace
-                    key={`builder-scratch-complete-${task.id}-${getScratchSprites().map(sp => sp.id).join(',')}`}
+                    key={`builder-scratch-complete-${task.id}-${getScratchSprites().map(sp => sp.id).join(',')}-${completeReloadKey}`}
                     task={{ ...task, sprites: getScratchSprites() }}
                     assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                     initialStates={testScratchBlocks}
