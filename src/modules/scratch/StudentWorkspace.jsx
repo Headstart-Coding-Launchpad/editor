@@ -1,23 +1,24 @@
 import React from 'react'
 import ScratchWorkspace from '../../app/components/ScratchWorkspace'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { loadSavedCode, loadPersonalSandboxCode } from '../../app/studentStorage'
+import { loadPersonalSandboxCode } from '../../app/studentStorage'
 import { selectScratchInitialProject, selectScratchToolboxSnippets } from '../../app/studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
 
 export default function StudentWorkspace({
   lesson, task, cs, lessonId, identityId,
   activeStudentView, viewingTaskId, currentTaskId,
-  isSandbox, isViewingPrev, isForcedTeacherLive, previewMode,
+  isSandbox, isViewingPrev, isForcedTeacherLive,
   isTeacherEditing, teacherLiveCode,
 }) {
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
     : null
   const initialProject = cs.inPersonalSandbox ? null : selectScratchInitialProject({
+    tasks: lesson.tasks,
     task,
     taskId: viewingTaskId ?? currentTaskId,
-    readSavedCode: previewMode ? () => null : sourceTaskId => loadSavedCode(lessonId, sourceTaskId, identityId),
+    readSavedCode: cs.readSavedTaskCode,
   })
   const { predefinedBlocks, prebuiltStacks } = selectScratchToolboxSnippets({
     task,

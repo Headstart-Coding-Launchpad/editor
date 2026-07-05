@@ -109,6 +109,40 @@ describe('selectScratchInitialProject', () => {
     })).toEqual({ selected: 'carry' })
     expect(selectScratchInitialProject({ task, taskId: 2, readSavedCode: () => null })).toBe(starterBlocks)
   })
+
+  it('falls back to the carry source\'s authored blocks when no saved work exists', () => {
+    const sourceComplete = { selected: 'source-complete' }
+    const tasks = [
+      { id: 1, completeBlocks: sourceComplete, starterBlocks: { selected: 'source-starter' } },
+      { id: 2, carryBlocksFrom: 1, starterBlocks },
+    ]
+    expect(selectScratchInitialProject({
+      tasks, task: tasks[1], taskId: 2, readSavedCode: () => null,
+    })).toBe(sourceComplete)
+  })
+
+  it('follows the carry chain to find authored blocks', () => {
+    const rootStarter = { selected: 'root-starter' }
+    const tasks = [
+      { id: 1, starterBlocks: rootStarter },
+      { id: 2, carryBlocksFrom: 1 },
+      { id: 3, carryBlocksFrom: 2, starterBlocks },
+    ]
+    expect(selectScratchInitialProject({
+      tasks, task: tasks[2], taskId: 3, readSavedCode: () => null,
+    })).toBe(rootStarter)
+  })
+
+  it('saved carry state still beats the authored fallback', () => {
+    const tasks = [
+      { id: 1, completeBlocks: { selected: 'source-complete' } },
+      { id: 2, carryBlocksFrom: 1, starterBlocks },
+    ]
+    expect(selectScratchInitialProject({
+      tasks, task: tasks[1], taskId: 2,
+      readSavedCode: id => id === 1 ? { state: { selected: 'carry' } } : null,
+    })).toEqual({ selected: 'carry' })
+  })
 })
 
 describe('selectScratchToolboxSnippets', () => {

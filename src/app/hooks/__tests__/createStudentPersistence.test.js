@@ -5,14 +5,27 @@ vi.mock('../../studentStorage', () => ({
   saveCode: vi.fn(),
   saveFile: vi.fn(),
   saveFsState: vi.fn(),
+  loadSavedCode: vi.fn(),
+  loadSavedFile: vi.fn(),
+  loadSavedFs: vi.fn(),
   savePersonalSandboxCode: vi.fn(),
   savePersonalSandboxFile: vi.fn(),
   savePersonalSandboxFs: vi.fn(),
+  ephemeralStorage: {
+    saveCode: vi.fn(),
+    saveFile: vi.fn(),
+    saveFsState: vi.fn(),
+    loadSavedCode: vi.fn(),
+    loadSavedFile: vi.fn(),
+    loadSavedFs: vi.fn(),
+  },
 }))
 
 import {
   saveCode, saveFile, saveFsState,
+  loadSavedCode, loadSavedFile, loadSavedFs,
   savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs,
+  ephemeralStorage,
 } from '../../studentStorage'
 
 function makeRef(value) {
@@ -45,17 +58,27 @@ describe('createStudentPersistence', () => {
       expect(saveCode).not.toHaveBeenCalled()
     })
 
-    it('skips when teacherPresentation', () => {
+    it('routes to ephemeral storage when teacherPresentation', () => {
       const { persistence } = setup({ teacherPresentation: true })
       persistence.savePythonCode('anon-1', 1, { code: 'x=1' })
+      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', { code: 'x=1' })
       expect(saveCode).not.toHaveBeenCalled()
       expect(savePersonalSandboxCode).not.toHaveBeenCalled()
     })
 
-    it('skips when previewMode', () => {
+    it('routes to ephemeral storage when previewMode', () => {
       const { persistence } = setup({ previewMode: true })
       persistence.savePythonCode('anon-1', 1, { code: 'x=1' })
+      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', { code: 'x=1' })
       expect(saveCode).not.toHaveBeenCalled()
+    })
+
+    it('skips sandbox saves in ephemeral modes', () => {
+      const { persistence } = setup({ previewMode: true, inPersonalSandbox: true })
+      persistence.savePythonCode('anon-1', 1, { code: 'x=1' })
+      expect(saveCode).not.toHaveBeenCalled()
+      expect(savePersonalSandboxCode).not.toHaveBeenCalled()
+      expect(ephemeralStorage.saveCode).not.toHaveBeenCalled()
     })
   })
 
@@ -73,9 +96,10 @@ describe('createStudentPersistence', () => {
       expect(saveFile).not.toHaveBeenCalled()
     })
 
-    it('skips when previewMode', () => {
+    it('routes to ephemeral storage when previewMode', () => {
       const { persistence } = setup({ previewMode: true })
       persistence.saveHtmlFile('anon-1', 2, 'index.html', '<p/>')
+      expect(ephemeralStorage.saveFile).toHaveBeenCalledWith('lesson-1', 2, 'index.html', 'anon-1', '<p/>')
       expect(saveFile).not.toHaveBeenCalled()
     })
   })
@@ -92,9 +116,10 @@ describe('createStudentPersistence', () => {
       expect(saveFile).toHaveBeenCalledWith('lesson-1', 3, 'style.css', 'anon-1', 'body{}')
     })
 
-    it('skips all files when teacherPresentation', () => {
+    it('routes each file to ephemeral storage when teacherPresentation', () => {
       const { persistence } = setup({ teacherPresentation: true })
       persistence.saveHtmlFiles('anon-1', 3, [{ name: 'index.html', content: '<h1/>' }])
+      expect(ephemeralStorage.saveFile).toHaveBeenCalledWith('lesson-1', 3, 'index.html', 'anon-1', '<h1/>')
       expect(saveFile).not.toHaveBeenCalled()
     })
   })
@@ -112,6 +137,14 @@ describe('createStudentPersistence', () => {
       const states = { blocks: [] }
       persistence.saveScratch('anon-1', 4, states)
       expect(savePersonalSandboxCode).toHaveBeenCalledWith('lesson-1', 'anon-1', { state: states })
+      expect(saveCode).not.toHaveBeenCalled()
+    })
+
+    it('routes to ephemeral storage when teacherPresentation', () => {
+      const { persistence } = setup({ teacherPresentation: true })
+      const states = { blocks: [] }
+      persistence.saveScratch('anon-1', 4, states)
+      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 4, 'anon-1', { state: states })
       expect(saveCode).not.toHaveBeenCalled()
     })
   })
@@ -132,10 +165,43 @@ describe('createStudentPersistence', () => {
       expect(saveFsState).not.toHaveBeenCalled()
     })
 
-    it('skips when previewMode', () => {
+    it('routes to ephemeral storage when previewMode', () => {
       const { persistence } = setup({ previewMode: true })
       persistence.saveFs('anon-1', 5, {})
+      expect(ephemeralStorage.saveFsState).toHaveBeenCalledWith('lesson-1', 5, 'anon-1', {})
       expect(saveFsState).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('readers', () => {
+    it('readSavedCode reads localStorage in normal mode', () => {
+      const { persistence } = setup()
+      loadSavedCode.mockReturnValue({ code: 'x=1' })
+      expect(persistence.readSavedCode('anon-1', 1)).toEqual({ code: 'x=1' })
+      expect(loadSavedCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1')
+      expect(ephemeralStorage.loadSavedCode).not.toHaveBeenCalled()
+    })
+
+    it('readSavedCode reads ephemeral storage in presentation/preview', () => {
+      const { persistence } = setup({ teacherPresentation: true })
+      ephemeralStorage.loadSavedCode.mockReturnValue({ state: { s1: {} } })
+      expect(persistence.readSavedCode('anon-1', 1)).toEqual({ state: { s1: {} } })
+      expect(ephemeralStorage.loadSavedCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1')
+      expect(loadSavedCode).not.toHaveBeenCalled()
+    })
+
+    it('readSavedFile and readSavedFs route by mode', () => {
+      const normal = setup().persistence
+      normal.readSavedFile('anon-1', 2, 'index.html')
+      normal.readSavedFs('anon-1', 3)
+      expect(loadSavedFile).toHaveBeenCalledWith('lesson-1', 2, 'index.html', 'anon-1')
+      expect(loadSavedFs).toHaveBeenCalledWith('lesson-1', 3, 'anon-1')
+
+      const ephemeral = setup({ previewMode: true }).persistence
+      ephemeral.readSavedFile('anon-1', 2, 'index.html')
+      ephemeral.readSavedFs('anon-1', 3)
+      expect(ephemeralStorage.loadSavedFile).toHaveBeenCalledWith('lesson-1', 2, 'index.html', 'anon-1')
+      expect(ephemeralStorage.loadSavedFs).toHaveBeenCalledWith('lesson-1', 3, 'anon-1')
     })
   })
 
