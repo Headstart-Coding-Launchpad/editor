@@ -372,7 +372,13 @@ export default function ScratchWorkspace({
   const variables = task?.variables ?? []
   const selectableSprites = getSelectableScratchSprites(sprites, respectStudentEditable)
 
-  const normInitStates  = normaliseInitialStates(initialStates ?? initialState, sprites)
+  // initialStates/initialState may be a function: it is resolved lazily inside the
+  // init effect, AFTER the previous task's workspace has unmounted and flushed its
+  // pending save — resolving during render would read storage before that flush.
+  const resolveInitStates = () => {
+    const raw = initialStates ?? initialState
+    return normaliseInitialStates(typeof raw === 'function' ? raw() : raw, sprites)
+  }
   const normExtStates   = externalStates ?? (externalState ? normaliseInitialStates(externalState, sprites) : null)
 
   const blocksDivRefs       = useRef({})
@@ -382,6 +388,7 @@ export default function ScratchWorkspace({
   const BlocklyRef          = useRef(null)
   const signalRef           = useRef(null)
   const syncTimerRef        = useRef(null)
+  const pendingSyncRef      = useRef(false)
   const suppressChangeRef   = useRef(false)
   const lastCheckRef        = useRef(null)
   const blockPlacedTimerRef = useRef(null)
@@ -557,6 +564,7 @@ export default function ScratchWorkspace({
       for (const [id, ws] of Object.entries(workspaceRefs.current)) {
         states[id] = saveWorkspace(BlocklyRef.current, ws)
       }
+      pendingSyncRef.current = false
       lastEmittedStateRef.current = states
       onStateChangeRef.current?.(states)
     } catch {}
@@ -699,6 +707,8 @@ export default function ScratchWorkspace({
         await new Promise(r => requestAnimationFrame(r))
         if (cancelled) return
 
+        const normInitStates = resolveInitStates()
+
         for (const sp of sprites) {
           const div = blocksDivRefs.current[sp.id]
           if (!div) continue
@@ -735,6 +745,10 @@ export default function ScratchWorkspace({
                   flyoutCollapsedRef.current = true
                 }
               }
+              // UI-only events (viewport, selection, toolbox) don't change the blocks —
+              // saving on them would persist an empty/no-op state on mere task visits.
+              if (event.isUiEvent) return
+              pendingSyncRef.current = true
               clearTimeout(syncTimerRef.current)
               syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
               clearTimeout(blockPlacedTimerRef.current)
@@ -778,6 +792,8 @@ export default function ScratchWorkspace({
                     flyoutCollapsedRef.current = true
                   }
                 }
+                if (event.isUiEvent) return
+                pendingSyncRef.current = true
                 clearTimeout(syncTimerRef.current)
                 syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
                 clearTimeout(blockPlacedTimerRef.current)
@@ -801,6 +817,10 @@ export default function ScratchWorkspace({
     return () => {
       cancelled = true
       clearTimeout(syncTimerRef.current)
+      // Flush any pending debounced save before disposing, otherwise edits made in
+      // the last SYNC_DEBOUNCE ms before a task change are silently lost and carry
+      // picks up a stale (possibly empty) earlier save.
+      if (pendingSyncRef.current) emitWorkspaceState()
       if (signalRef.current) signalRef.current.stopped = true
       for (const s of keySignalsRef.current.values()) s.stopped = true
       keySignalsRef.current.clear()

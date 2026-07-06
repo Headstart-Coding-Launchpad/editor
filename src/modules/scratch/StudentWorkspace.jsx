@@ -14,7 +14,9 @@ export default function StudentWorkspace({
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
     : null
-  const initialProject = cs.inPersonalSandbox ? null : selectScratchInitialProject({
+  // Passed as a thunk: ScratchWorkspace resolves it inside its init effect, after
+  // the previous task's workspace has unmounted and flushed its pending save.
+  const initialProject = cs.inPersonalSandbox ? null : () => selectScratchInitialProject({
     tasks: lesson.tasks,
     task,
     taskId: viewingTaskId ?? currentTaskId,
