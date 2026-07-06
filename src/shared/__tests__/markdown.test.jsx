@@ -189,4 +189,12 @@ describe('InlineMarkdown', () => {
     render(<InlineMarkdown content="Choose [[for-loop]]." topicType="python" />)
     expect(await screen.findByRole('button', { name: 'For loops' })).toBeInTheDocument()
   })
+
+  it('renders bare operator symbols instead of treating them as list/blockquote markers', () => {
+    const cases = ['-', '+', '*', '>', '>=', '- 1', 'n - 1', '1.', '# ']
+    for (const content of cases) {
+      const { container } = render(<InlineMarkdown content={content} />)
+      expect(container.textContent.trim()).toBe(content.trim())
+    }
+  })
 })
