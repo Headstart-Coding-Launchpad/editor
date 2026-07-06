@@ -361,6 +361,35 @@ function parseMarkdownTables(content) {
   return blocks
 }
 
+// InlineMarkdown only allows inline elements (see allowedElements below) — headings,
+// lists, blockquotes, and thematic breaks are never meant to render here. But short
+// literal answers like "-", ">", "==", or "1." are common in quiz tiles/blanks, and
+// each of those is also valid CommonMark syntax for an empty/near-empty block element
+// (bullet list, blockquote, heading, ordered list). Once parsed as a block, the marker
+// character is consumed as syntax and disappears instead of showing as text. Escape
+// leading block-marker syntax per line so these render as plain text.
+function escapeInlineBlockSyntax(text) {
+  return String(text ?? '').split('\n').map(line => {
+    const [, leading, rest] = line.match(/^( {0,3})(.*)$/s)
+
+    // Thematic break: 3+ of the same -, _, or * (optionally space-separated)
+    if (/^([-*_])( *\1){2,}$/.test(rest)) {
+      return leading + rest.replace(/[-*_]/g, m => `\\${m}`)
+    }
+    // ATX heading: 1-6 '#' followed by a space or end of line
+    if (/^#{1,6}(\s|$)/.test(rest)) return leading + '\\' + rest
+    // Blockquote marker
+    if (rest.startsWith('>')) return leading + '\\' + rest
+    // Bullet list marker: -, +, or * followed by a space or end of line
+    if (/^[-+*](\s|$)/.test(rest)) return leading + '\\' + rest
+    // Ordered list marker: digits followed by '.' or ')' then a space or end of line
+    const ordered = rest.match(/^(\d{1,9})([.)])(\s|$)/)
+    if (ordered) return leading + ordered[1] + '\\' + rest.slice(ordered[1].length)
+
+    return line
+  }).join('\n')
+}
+
 export function InlineMarkdown({ content, topicType = null }) {
   const topicEnabled = String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics } = useTopicLibrary(topicType, topicEnabled)
@@ -394,7 +423,7 @@ export function InlineMarkdown({ content, topicType = null }) {
         allowedElements={['strong', 'em', 'code', 'br', 'span', 'a']}
         unwrapDisallowed
       >
-        {topicEnabled ? expandTopicLinks(content, topics) : content}
+        {escapeInlineBlockSyntax(topicEnabled ? expandTopicLinks(content, topics) : content)}
       </ReactMarkdown>
       {libraryOpen && (
         <TopicLibraryDialog
