@@ -1532,7 +1532,7 @@ export default function ScratchWorkspace({
               type="button"
               className="btn-primary"
               style={s.greenFlagBtn}
-              onClick={handleRun}
+              onClick={e => { e.currentTarget.blur(); handleRun() }}
               aria-label="Run"
               title="Run green flag scripts"
             >
