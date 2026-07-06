@@ -6,7 +6,7 @@ import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../shared/filesystem'
 import { decodeFileKey } from '../../shared/fileKeys'
-import { loadSavedCode, loadSavedFile, saveCode, saveFile, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, loadSavedFs, saveFsState } from '../studentStorage'
+import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
 import { getQuizSuggestion } from '../studentQuizContent'
@@ -156,30 +156,36 @@ export function useStudentCodeState({
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
-  const shouldSkipLocalPersist = teacherPresentation || previewMode
+
+  // Presentation/preview persist to an in-memory store (see createStudentPersistence);
+  // start each such session clean so stale state from a previous preview can't leak in.
+  useEffect(() => {
+    if (teacherPresentation || previewMode) clearEphemeralStorage()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ─── localStorage snapshot helpers ────────────────────────────────────────
 
   function saveCurrentWorkSnapshot() {
-    const id = identityRef.current
+    const id = effectiveIdentity
     const currentLesson = lessonRef.current
     const taskId = currentTaskIdRef.current
-    if (!id || teacherPresentation || previewMode || !currentLesson) return
+    if (!id || !currentLesson) return
     if (inPersonalSandboxRef.current) return
 
     const task = flattenTasks(currentLesson.tasks).find(t => t.id === taskId)
     if (task?.taskType === 'quiz' || task?.taskType === 'information') return
 
     if (currentLesson.type === 'python') {
-      saveCode(lessonId, taskId, id.anonymousId, {
+      persistence.savePythonCode(id.anonymousId, taskId, {
         code: codeRef.current,
         output: outputRef.current,
         runStatus: runStatusRef.current,
       })
     } else if (currentLesson.type === 'html') {
-      filesRef.current.forEach(f => saveFile(lessonId, taskId, f.name, id.anonymousId, f.content))
-    } else if (currentLesson.type === 'filesystem' && !previewMode) {
-      saveFsState(lessonId, taskId, id.anonymousId, fsStateRef.current)
+      persistence.saveHtmlFiles(id.anonymousId, taskId, filesRef.current)
+    } else if (currentLesson.type === 'filesystem') {
+      persistence.saveFs(id.anonymousId, taskId, fsStateRef.current)
     }
     // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
   }
@@ -218,7 +224,7 @@ export function useStudentCodeState({
         task,
         taskId,
         phase,
-        readSavedCode: previewMode ? () => null : sourceTaskId => loadSavedCode(lessonId, sourceTaskId, activeIdentity.anonymousId),
+        readSavedCode: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
       }))
     } else if (lesson.type === 'scratch') {
       setFiles([])
@@ -226,8 +232,8 @@ export function useStudentCodeState({
       setScratchActiveStageIndex(null)
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
-      const ownSaved = previewMode ? null : loadSavedFs(lessonId, taskId, activeIdentity.anonymousId)
-      const savedFromCarry = (!previewMode && carryId != null) ? loadSavedFs(lessonId, carryId, activeIdentity.anonymousId) : null
+      const ownSaved = persistence.readSavedFs(activeIdentity.anonymousId, taskId)
+      const savedFromCarry = carryId != null ? persistence.readSavedFs(activeIdentity.anonymousId, carryId) : null
       let carryFallback = null
       if (carryId != null) {
         let resolveId = carryId
@@ -252,7 +258,7 @@ export function useStudentCodeState({
         task,
         taskId,
         phase,
-        readSavedFile: previewMode ? () => null : (sourceTaskId, filename) => loadSavedFile(lessonId, sourceTaskId, filename, activeIdentity.anonymousId),
+        readSavedFile: (sourceTaskId, filename) => persistence.readSavedFile(activeIdentity.anonymousId, sourceTaskId, filename),
       })
       setFiles(taskFiles)
       setActiveFile(task.entryFile ?? taskFiles[0]?.name ?? '')
@@ -266,6 +272,9 @@ export function useStudentCodeState({
     resetCheckFeedback()
     setSelectedAnswer('')
     setIframeSrc(null)
+    // Clear any pushed scratch state (reset/stage/solution/teacher edit) so it
+    // can't overwrite the next task's initial blocks after the workspace remounts.
+    setScratchExternalState(null)
   }
 
   function exitPersonalSandbox() {
@@ -514,15 +523,15 @@ export function useStudentCodeState({
       setOutput('')
       setRunStatus(null)
       resetCheckFeedback()
-      if (identity?.anonymousId && !previewMode && !teacherPresentation) {
-        saveCode(lessonId, currentTaskId, identity.anonymousId, { code: newCode ?? '', output: '', runStatus: null })
+      if (effectiveIdentity?.anonymousId) {
+        persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode ?? '', output: '', runStatus: null })
       }
     } else if (lesson?.type === 'scratch') {
       const newState = parseScratchState(newCode)
       setScratchExternalState(newState)
       resetCheckFeedback()
-      if (identity?.anonymousId && !previewMode && !teacherPresentation && newState) {
-        saveCode(lessonId, currentTaskId, identity.anonymousId, { state: newState })
+      if (effectiveIdentity?.anonymousId && newState) {
+        persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, newState)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -766,11 +775,10 @@ export function useStudentCodeState({
   function handleCodeChange(newCode) {
     setCode(newCode)
     if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
-    if (shouldSkipLocalPersist) return
-    if (identity && lesson?.type === 'python') {
-      persistence.savePythonCode(identity.anonymousId, currentTaskId, { code: newCode, output, runStatus })
+    if (effectiveIdentity && lesson?.type === 'python') {
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode, output, runStatus })
     }
-    if (session?.activeStudentView === identity?.anonymousId) {
+    if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, newCode)
     }
   }
@@ -811,11 +819,10 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
     }
-    if (shouldSkipLocalPersist) return
-    if (identity && lesson?.type === 'html') {
-      persistence.saveHtmlFile(identity.anonymousId, currentTaskId, filename, content)
+    if (effectiveIdentity && lesson?.type === 'html') {
+      persistence.saveHtmlFile(effectiveIdentity.anonymousId, currentTaskId, filename, content)
     }
-    if (session?.activeStudentView === identity?.anonymousId) {
+    if (identity && session?.activeStudentView === identity.anonymousId) {
       const filesMap = Object.fromEntries(
         filesRef.current.map(f => [f.name, f.name === filename ? content : f.content])
       )
@@ -825,10 +832,9 @@ export function useStudentCodeState({
 
   function handleScratchChange(workspaceStates) {
     if (canPublishTeacherLive()) publishTeacherLive({ code: JSON.stringify(workspaceStates) })
-    if (shouldSkipLocalPersist) return
-    if (!identity) return
-    persistence.saveScratch(identity.anonymousId, currentTaskId, workspaceStates)
-    if (activeStudentViewRef.current === identity.anonymousId) {
+    if (!effectiveIdentity) return
+    persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, workspaceStates)
+    if (identity && activeStudentViewRef.current === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, JSON.stringify(workspaceStates))
     }
   }
@@ -926,7 +932,7 @@ export function useStudentCodeState({
   }
 
   function handleShowCodeStage(stageIndex) {
-    if (!identity) return
+    if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
     const stage = task.codeStages?.[stageIndex]
@@ -937,29 +943,29 @@ export function useStudentCodeState({
       setCode(stageCode)
       setOutput('')
       setRunStatus(null)
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: stageCode, output: '', runStatus: null })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: stageCode, output: '', runStatus: null })
     } else if (lesson.type === 'html') {
       const stageFiles = (stage.files ?? []).map(f => ({ ...f }))
       setFiles(stageFiles)
       setActiveFile(stage.entryFile ?? task.entryFile ?? stageFiles[0]?.name ?? '')
       setIframeSrc(null)
       setRunStatus(null)
-      stageFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
+      persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, stageFiles)
     } else if (lesson.type === 'scratch') {
       const stageBlocks = stage.blocks ?? null
       setScratchExternalState(stageBlocks)
       setScratchActiveStageIndex(stageIndex)
-      if (stageBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: stageBlocks })
+      if (stageBlocks) persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, stageBlocks)
     } else if (lesson.type === 'filesystem') {
       const stageFs = stage.fs ?? DEFAULT_FS
       setFsState(stageFs)
-      if (!previewMode) saveFsState(lessonId, currentTaskId, identity.anonymousId, stageFs)
+      persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, stageFs)
     }
     setOfferedStageIndex(stageIndex)
   }
 
   function handleShowCompleteCode() {
-    if (!identity) return
+    if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
 
@@ -969,7 +975,7 @@ export function useStudentCodeState({
       setOutput('')
       setRunStatus(null)
       applyCheckFeedback(true)
-      saveCode(lessonId, currentTaskId, identity.anonymousId, { code: completeCode, output: '', runStatus: null })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: completeCode, output: '', runStatus: null })
     } else if (lesson.type === 'html') {
       const completeFiles = (task.completeFiles ?? []).map(f => ({ ...f }))
       setFiles(completeFiles)
@@ -977,18 +983,18 @@ export function useStudentCodeState({
       setIframeSrc(null)
       setRunStatus(null)
       applyCheckFeedback(true)
-      completeFiles.forEach(f => saveFile(lessonId, currentTaskId, f.name, identity.anonymousId, f.content))
+      persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, completeFiles)
     } else if (lesson.type === 'scratch') {
       const completeBlocks = task.completeBlocks ?? null
       setScratchExternalState(completeBlocks)
       setScratchActiveStageIndex(null)
       applyCheckFeedback(true)
-      if (completeBlocks) saveCode(lessonId, currentTaskId, identity.anonymousId, { state: completeBlocks })
+      if (completeBlocks) persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, completeBlocks)
     } else if (lesson.type === 'filesystem') {
       const completeFs = task.completeFs ?? DEFAULT_FS
       setFsState(completeFs)
       applyCheckFeedback(true)
-      if (!previewMode) saveFsState(lessonId, currentTaskId, identity.anonymousId, completeFs)
+      persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, completeFs)
     }
   }
 
@@ -1093,6 +1099,8 @@ export function useStudentCodeState({
     handleFsChange, handleFsInteraction,
     handleInputSubmit, handleResetCode, handleShowCodeStage, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
+    // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
+    readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,
     resetForTaskChange,

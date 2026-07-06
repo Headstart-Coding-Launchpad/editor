@@ -70,3 +70,39 @@ export function loadSavedFs(lessonId, taskId, anonymousId) {
 export function saveFsState(lessonId, taskId, anonymousId, fs) {
   localStorage.setItem(studentTaskStorageKey(lessonId, taskId, anonymousId), JSON.stringify({ fs }))
 }
+
+// ── Ephemeral (in-memory) storage ─────────────────────────────────────────────
+// Backing store for teacher presentation and builder preview: work persists for
+// the current page session only, so carry-through behaves like a real student
+// session without reading or polluting the browser's localStorage. Values are
+// JSON round-tripped to mirror localStorage semantics (no object aliasing).
+
+const ephemeralStore = new Map()
+
+export function clearEphemeralStorage() {
+  ephemeralStore.clear()
+}
+
+const ephemeralGet = key => {
+  const raw = ephemeralStore.get(key)
+  return raw ? JSON.parse(raw) : null
+}
+
+const ephemeralSet = (key, data) => {
+  ephemeralStore.set(key, JSON.stringify(data))
+}
+
+export const ephemeralStorage = {
+  loadSavedCode: (lessonId, taskId, anonymousId) =>
+    ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId)),
+  saveCode: (lessonId, taskId, anonymousId, data) =>
+    ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), data),
+  loadSavedFile: (lessonId, taskId, filename, anonymousId) =>
+    ephemeralGet(studentFileStorageKey(lessonId, taskId, filename, anonymousId))?.content ?? null,
+  saveFile: (lessonId, taskId, filename, anonymousId, content) =>
+    ephemeralSet(studentFileStorageKey(lessonId, taskId, filename, anonymousId), { content }),
+  loadSavedFs: (lessonId, taskId, anonymousId) =>
+    ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId))?.fs ?? null,
+  saveFsState: (lessonId, taskId, anonymousId, fs) =>
+    ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), { fs }),
+}

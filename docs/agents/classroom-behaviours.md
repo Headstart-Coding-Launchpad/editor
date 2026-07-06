@@ -8,6 +8,8 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - HTML lessons carry each file independently by filename.
 - Scratch `carryBlocksFrom` follows the same model.
 - Fallback chain: saved carry, then starter content, then empty editor.
+- Scratch and filesystem additionally fall back to the carry source's authored content (`completeBlocks`/`completeFs` then starter), following the carry chain, when no saved work exists.
+- Teacher presentation and builder preview persist to an in-memory ephemeral store (`ephemeralStorage` in `studentStorage.js`, routed via `createStudentPersistence`) so carry-through works there without reading or polluting real localStorage. The store is cleared on each presentation/preview mount. All persistence in these modes keys off `effectiveIdentity` (`teacher-presenter` in presentation).
 
 ## Live View: `activeStudentView`
 
