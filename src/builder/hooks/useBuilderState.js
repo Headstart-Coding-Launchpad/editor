@@ -42,11 +42,21 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       }
     }
     if (lesson.type === 'scratch') {
+      if (prevTask) {
+        return {
+          toolbox: '',
+          starterBlocks: prevTask.completeBlocks ?? prevTask.starterBlocks ?? null,
+          carryBlocksFrom: prevTask.id,
+          sprites: JSON.parse(JSON.stringify(prevTask.sprites ?? [])),
+          backdrops: JSON.parse(JSON.stringify(prevTask.backdrops ?? [])),
+          variables: JSON.parse(JSON.stringify(prevTask.variables ?? [])),
+        }
+      }
       const sprites = defaultSprites.length > 0 ? [createSpriteFromPreset([], defaultSprites[0])] : undefined
       return {
         toolbox: '',
-        starterBlocks: prevTask ? (prevTask.completeBlocks ?? prevTask.starterBlocks ?? null) : null,
-        carryBlocksFrom: prevTask?.id ?? null,
+        starterBlocks: null,
+        carryBlocksFrom: null,
         ...(sprites ? { sprites } : {}),
       }
     }
