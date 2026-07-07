@@ -102,6 +102,9 @@ function CarryThroughPicker({ task, lesson, onUpdate, isScratch, isPython, isFil
       updates.starterCode = sourceTask.completeCode ?? sourceTask.starterCode ?? ''
     } else if (isScratch) {
       updates.starterBlocks = sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null
+      updates.sprites = JSON.parse(JSON.stringify(sourceTask.sprites ?? []))
+      updates.backdrops = JSON.parse(JSON.stringify(sourceTask.backdrops ?? []))
+      updates.variables = JSON.parse(JSON.stringify(sourceTask.variables ?? []))
     } else if (isFilesystem) {
       updates.starterFs = sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS
     } else {

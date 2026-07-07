@@ -20,6 +20,8 @@ Scratch-specific task fields, objects, and block opcodes.
   carryBlocksFrom: null        # optional — carry saved blocks from task ID
 ```
 
+`carryBlocksFrom` only carries Blockly workspace state (blocks, keyed by sprite ID). It does **not** carry `sprites`, `backdrops`, or `variables` — those are always read from the current task's own fields, never from the carry source. When authoring a task that carries blocks from a previous task, its `sprites`/`backdrops`/`variables` must match the source task's, or the carried blocks will reference sprites/backdrops/variables that don't exist on the new task. The Lesson Builder does this automatically (new tasks inherit the previous task's stage, and picking "Carry blocks from task X" copies that task's stage too); hand-written YAML/AI-generated lessons must duplicate these arrays manually across a carry chain.
+
 ---
 
 ## Sprite Object
