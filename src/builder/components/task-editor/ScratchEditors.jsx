@@ -86,6 +86,9 @@ const SCRATCH_TOOLBOX_GROUPS = [
       ['control_if', 'if then'],
       ['control_if_else', 'if then else'],
       ['control_stop', 'stop all'],
+      ['control_create_clone_of', 'create a clone of'],
+      ['control_start_as_clone', 'when I start as a clone'],
+      ['control_delete_this_clone', 'delete this clone'],
     ],
   },
   {

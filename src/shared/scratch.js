@@ -309,7 +309,29 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       })
     },
   },
-  control_stop: blockStop(),
+  control_stop: blockStop('control_stop', 'stop all'),
+
+  control_create_clone_of: {
+    init() {
+      this.jsonInit({
+        type: 'control_create_clone_of',
+        message0: 'create a clone of %1',
+        args0: [{ type: 'field_dropdown', name: 'CLONE_OPTION', options: () => [
+          ['myself', '_myself_'],
+          ..._currentSprites.map(sp => [sp.name, sp.id]),
+        ]}],
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#FFAB19',
+      })
+    },
+  },
+  control_start_as_clone: {
+    init() {
+      this.jsonInit({ type: 'control_start_as_clone', message0: 'when I start as a clone', nextStatement: null, colour: '#FFAB19' })
+    },
+  },
+  control_delete_this_clone: blockStop('control_delete_this_clone', 'delete this clone'),
 
   sensing_askandwait: blockStatement('sensing_askandwait', 'ask %1 and wait', [stringInput('QUESTION', "What's your name?")], '#5CB1D6'),
   sensing_answer: reporter('sensing_answer', 'answer', 'String', '#5CB1D6'),
@@ -553,10 +575,10 @@ function soundBlock(type, message0) {
   }
 }
 
-function blockStop() {
+function blockStop(type, message0) {
   return {
     init() {
-      this.jsonInit({ type: 'control_stop', message0: 'stop all', previousStatement: null, colour: '#FFAB19' })
+      this.jsonInit({ type, message0, previousStatement: null, colour: '#FFAB19' })
     },
   }
 }
@@ -674,6 +696,9 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'control_if' },
         { kind: 'block', type: 'control_if_else' },
         { kind: 'block', type: 'control_stop' },
+        { kind: 'block', type: 'control_create_clone_of' },
+        { kind: 'block', type: 'control_start_as_clone' },
+        { kind: 'block', type: 'control_delete_this_clone' },
       ],
     },
     {
@@ -725,9 +750,13 @@ export const DEFAULT_TOOLBOX = {
   ],
 }
 
+const STAGE_EXCLUDED_CONTROL_BLOCKS = new Set(['control_start_as_clone', 'control_delete_this_clone'])
+
 export const STAGE_TOOLBOX = {
   kind: 'categoryToolbox',
-  contents: DEFAULT_TOOLBOX.contents.filter(c => c.name !== 'Motion'),
+  contents: DEFAULT_TOOLBOX.contents
+    .filter(c => c.name !== 'Motion')
+    .map(c => c.name !== 'Control' ? c : { ...c, contents: c.contents.filter(item => !STAGE_EXCLUDED_CONTROL_BLOCKS.has(item.type)) }),
 }
 
 export const VALUE_INPUT_DEFAULTS = {
@@ -1058,22 +1087,26 @@ function inputDefaultsForBlock(type, options = {}) {
 }
 
 export function createRunSignal() {
-  return { stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null, backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set(), timerStart: Date.now() }
+  return {
+    stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null,
+    backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set(), timerStart: Date.now(),
+    onCloneCreated: null, onCloneUpdated: null, onCloneDeleted: null, deletedClones: new Set(), cloneCount: 0, cloneSeq: 0,
+  }
 }
 
 export async function runWorkspace(workspace, spriteState, onUpdate, signal) {
-  const context = createRunContext(workspace, spriteState, onUpdate, signal)
+  const context = createRunContext(workspace, spriteState, onUpdate, signal, null, [], 'sprite')
   const hats = workspace.getBlocksByType('event_whenflagclicked', false)
   await Promise.all(hats.map(hat => runChain(hat.getNextBlock(), context)))
 }
 
 export async function runSingleBlock(block, spriteState, onUpdate, signal) {
-  const context = createRunContext(block?.workspace, spriteState, onUpdate, signal)
+  const context = createRunContext(block?.workspace, spriteState, onUpdate, signal, null, [], 'sprite')
   await runChain(block, context)
 }
 
 export async function runEvent(workspace, eventType, spriteState, onUpdate, signal, option = null) {
-  const context = createRunContext(workspace, spriteState, onUpdate, signal)
+  const context = createRunContext(workspace, spriteState, onUpdate, signal, null, [], 'sprite')
   let hats = workspace.getBlocksByType(eventType, false)
   if (eventType === 'event_whenkeypressed') {
     hats = hats.filter(hat => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
@@ -1088,7 +1121,7 @@ export async function runEvent(workspace, eventType, spriteState, onUpdate, sign
 export async function runAllSprites(spriteWorkspaces, signal) {
   signal.variables ??= {}
   await Promise.all(spriteWorkspaces.map(sp => {
-    const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, spriteWorkspaces, sp.costumes ?? [])
+    const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, spriteWorkspaces, sp.costumes ?? [], sp.id)
     const hats = sp.workspace.getBlocksByType('event_whenflagclicked', false)
     return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), context)))
   }))
@@ -1098,7 +1131,7 @@ export async function runAllSpritesEvent(spriteWorkspaces, eventType, signal, op
   const broadcastSprites = allSpritesContext ?? spriteWorkspaces
   signal.variables ??= {}
   await Promise.all(spriteWorkspaces.map(sp => {
-    const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, broadcastSprites, sp.costumes ?? [])
+    const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, broadcastSprites, sp.costumes ?? [], sp.id)
     let hats = sp.workspace.getBlocksByType(eventType, false)
     if (eventType === 'event_whenkeypressed') {
       hats = hats.filter(hat => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
@@ -1115,17 +1148,24 @@ export async function runBlockInContext(block, spriteWorkspaces, targetSpriteId,
   const sp = spriteWorkspaces.find(s => s.id === targetSpriteId)
   if (!sp) return
   signal.variables ??= {}
-  const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, spriteWorkspaces, sp.costumes ?? [])
+  const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, spriteWorkspaces, sp.costumes ?? [], sp.id)
   await runChain(block, context)
 }
 
-function createRunContext(workspace, state, onUpdate, signal, allSprites = null, costumes = []) {
+function createRunContext(workspace, state, onUpdate, signal, allSprites = null, costumes = [], spriteId = null) {
   signal.variables ??= {}
-  return { workspace, state, onUpdate, signal, allSprites, costumes }
+  return { workspace, state, onUpdate, signal, allSprites, costumes, spriteId }
+}
+
+// A chain is active while the run hasn't been globally stopped, and — if it belongs to a
+// clone — while that specific clone hasn't deleted itself (delete this clone must not halt
+// other sprites'/clones' scripts, so it can't use the shared signal.stopped flag).
+function isActive(context) {
+  return !context.signal.stopped && !(context.spriteId && context.signal.deletedClones?.has(context.spriteId))
 }
 
 async function runChain(block, context) {
-  while (block && !context.signal.stopped) {
+  while (block && isActive(context)) {
     await runBlock(block, context)
     block = block.getNextBlock()
   }
@@ -1133,7 +1173,7 @@ async function runChain(block, context) {
 
 async function runBlock(block, context) {
   const { state, onUpdate, signal, workspace } = context
-  if (signal.stopped) return
+  if (!isActive(context)) return
   signal.executedBlocks ??= new Set()
   signal.executedBlocks.add(block.type)
 
@@ -1319,11 +1359,11 @@ async function runBlock(block, context) {
       await sleep(numberValue(block, 'DURATION', context, 1) * 1000, signal)
       break
     case 'control_wait_until':
-      while (!booleanValue(block, 'CONDITION', context) && !signal.stopped) await tick()
+      while (!booleanValue(block, 'CONDITION', context) && isActive(context)) await tick()
       break
     case 'control_repeat_until': {
       const inner = block.getInputTargetBlock('SUBSTACK')
-      while (!booleanValue(block, 'CONDITION', context) && !signal.stopped) {
+      while (!booleanValue(block, 'CONDITION', context) && isActive(context)) {
         await runChain(inner, context)
         await tick()
       }
@@ -1332,12 +1372,12 @@ async function runBlock(block, context) {
     case 'control_repeat': {
       const times = Math.max(0, Math.floor(numberValue(block, 'TIMES', context, 10)))
       const inner = block.getInputTargetBlock('SUBSTACK')
-      for (let i = 0; i < times && !signal.stopped; i++) await runChain(inner, context)
+      for (let i = 0; i < times && isActive(context); i++) await runChain(inner, context)
       break
     }
     case 'control_forever': {
       const inner = block.getInputTargetBlock('SUBSTACK')
-      while (!signal.stopped) {
+      while (isActive(context)) {
         await runChain(inner, context)
         await tick()
       }
@@ -1353,6 +1393,42 @@ async function runBlock(block, context) {
       signal.stopped = true
       stopAllSounds()
       break
+
+    case 'control_create_clone_of': {
+      const option = block.getFieldValue('CLONE_OPTION') ?? '_myself_'
+      let source
+      if (option === '_myself_') {
+        source = { id: context.spriteId, workspace, state, costumes: context.costumes }
+      } else {
+        source = context.allSprites?.find(sp => sp.id === option)
+      }
+      if (source && source.workspace) {
+        signal.cloneCount = signal.cloneCount ?? 0
+        if (signal.cloneCount < 300) {
+          signal.cloneCount++
+          signal.cloneSeq = (signal.cloneSeq ?? 0) + 1
+          const cloneId = `${source.id}__clone${signal.cloneSeq}`
+          const cloneState = { ...source.state }
+          signal.onCloneCreated?.({ id: cloneId, baseId: source.id, state: { ...cloneState }, costumes: source.costumes ?? [] })
+          const cloneContext = createRunContext(
+            source.workspace, cloneState, s => signal.onCloneUpdated?.(cloneId, s),
+            signal, context.allSprites, source.costumes ?? [], cloneId,
+          )
+          const hats = source.workspace.getBlocksByType('control_start_as_clone', false)
+          // fire-and-forget: the clone's scripts run concurrently, the creator continues immediately
+          Promise.all(hats.map(hat => runChain(hat.getNextBlock(), cloneContext))).catch(() => {})
+        }
+      }
+      break
+    }
+    case 'control_delete_this_clone': {
+      if (context.spriteId && context.spriteId.includes('__clone')) {
+        signal.deletedClones ??= new Set()
+        signal.deletedClones.add(context.spriteId)
+        signal.onCloneDeleted?.(context.spriteId)
+      }
+      break
+    }
 
     case 'event_broadcast': {
       const msg = stringValue(block, 'BROADCAST_INPUT', context)
