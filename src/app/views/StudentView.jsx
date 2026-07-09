@@ -290,6 +290,27 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
 
+  const taskProgressControl = !isSandbox ? (
+    <TaskProgressDots
+      tasks={visibleTasks}
+      currentTaskId={currentTaskId}
+      viewingTaskId={viewingTaskId}
+      isSolo={isSolo}
+      canSelectTask={id => {
+        if (!isSolo) return true
+        const idIdx = flatTasks.findIndex(t => t.id === id)
+        return allowUnrestrictedTaskNavigation || idIdx <= currentIndex || (idIdx === currentIndex + 1 && canAdvanceSolo)
+      }}
+      onDotClick={id => {
+        if (isSolo) {
+          if (id !== currentTaskId) handleSoloNavigate(id)
+        } else if (id < currentTaskId) {
+          setViewingTaskId(id === currentTaskId ? null : id)
+        }
+      }}
+    />
+  ) : null
+
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
       <button
@@ -319,24 +340,22 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     </div>
   ) : (
     !isSandbox && (
-      <TaskProgressDots
-        tasks={visibleTasks}
-        currentTaskId={currentTaskId}
-        viewingTaskId={viewingTaskId}
-        isSolo={isSolo}
-        canSelectTask={id => {
-          if (!isSolo) return true
-          const idIdx = flatTasks.findIndex(t => t.id === id)
-          return allowUnrestrictedTaskNavigation || idIdx <= currentIndex || (idIdx === currentIndex + 1 && canAdvanceSolo)
-        }}
-        onDotClick={id => {
-          if (isSolo) {
-            if (id !== currentTaskId) handleSoloNavigate(id)
-          } else if (id < currentTaskId) {
-            setViewingTaskId(id === currentTaskId ? null : id)
-          }
-        }}
-      />
+      <div style={s.topBarTaskControls}>
+        {taskProgressControl}
+        {isSolo && (
+          <SoloNav
+            flatTasks={flatTasks}
+            currentIndex={currentIndex}
+            cs={cs}
+            hasPersonalSandbox={hasPersonalSandbox}
+            isQuizTask={isQuizTask}
+            isInformationTask={isInformationTask}
+            canNavigateNextSolo={canNavigateNextSolo}
+            onNavigate={handleSoloNavigate}
+            compact
+          />
+        )}
+      </div>
     )
   )
 
@@ -505,18 +524,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           openTopicId={phase === 'lesson' ? openTopicId : null}
         />
       </div>
-      {isSolo && (
-        <SoloNav
-          flatTasks={flatTasks}
-          currentIndex={currentIndex}
-          cs={cs}
-          hasPersonalSandbox={hasPersonalSandbox}
-          isQuizTask={isQuizTask}
-          isInformationTask={isInformationTask}
-          canNavigateNextSolo={canNavigateNextSolo}
-          onNavigate={handleSoloNavigate}
-        />
-      )}
     </div>
   )
 }
@@ -533,7 +540,7 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
-    padding: '16px',
+    padding: '8px 16px',
     minHeight: 0,
   },
   presentationControls: {
@@ -555,6 +562,13 @@ const s = {
     opacity: 0.9,
     minWidth: 72,
     textAlign: 'center',
+  },
+  topBarTaskControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   pauseOverlay: {
     position: 'fixed',

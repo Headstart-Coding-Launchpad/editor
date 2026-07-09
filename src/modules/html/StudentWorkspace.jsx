@@ -132,7 +132,7 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     flex: 1,
-    minHeight: 420,
+    minHeight: 0,
     overflow: 'visible',
     gap: 0,
     paddingBottom: 4,
@@ -142,6 +142,8 @@ const s = {
     flexDirection: 'column',
     gap: 8,
     minHeight: 0,
+    height: 'auto',
+    overflow: 'hidden',
   },
   htmlMobilePreview: {
     minHeight: 300,
@@ -150,10 +152,10 @@ const s = {
     flexDirection: 'column',
   },
   htmlSplitPane: {
-    flex: '0 0 auto',
-    minHeight: 520,
-    height: 520,
-    overflow: 'visible',
+    flex: '1 1 auto',
+    minHeight: 0,
+    height: 'auto',
+    overflow: 'hidden',
   },
   submitBanner: {
     display: 'flex',

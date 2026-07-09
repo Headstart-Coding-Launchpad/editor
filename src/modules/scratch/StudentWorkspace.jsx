@@ -29,7 +29,7 @@ export default function StudentWorkspace({
   })
 
   return (
-    <>
+    <div style={s.scratchStudentWorkspace}>
       {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && !isTeacherEditing && (
         <div style={{ display: 'flex', flexShrink: 0, paddingBottom: 4 }}>
           <button
@@ -56,12 +56,21 @@ export default function StudentWorkspace({
         onCheckResult={isViewingPrev || isForcedTeacherLive || isTeacherEditing || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
         externalState={isTeacherEditing ? parseScratchState(teacherLiveCode) : isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
+        preferStageSidePanel
       />
-    </>
+    </div>
   )
 }
 
 const s = {
+  scratchStudentWorkspace: {
+    flex: '1 1 auto',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    height: 'auto',
+    overflow: 'hidden',
+  },
   resetBtn: {
     fontSize: 14,
     padding: '9px 20px',

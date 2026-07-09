@@ -14,16 +14,20 @@ export default function OutputPanel({
   checkPassed = false,
   hasCheck = false,
   running = false,
+  fill = false,
+  collapsible = true,
+  defaultCollapsed = true,
+  leadingActions = null,
+  rightActions = null,
 }) {
   const [inputValue, setInputValue] = useState('')
-  const [isCollapsed, setIsCollapsed] = useState(true)
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [displayedOutput, setDisplayedOutput] = useState('')
-  
-  const preRef     = useRef(null)
-  const inputRef   = useRef(null)
+
+  const preRef = useRef(null)
+  const inputRef = useRef(null)
   const prevRunningRef = useRef(running)
 
-  // Auto-expand when code starts running
   useEffect(() => {
     if (running && !prevRunningRef.current) {
       setIsCollapsed(false)
@@ -31,7 +35,6 @@ export default function OutputPanel({
     prevRunningRef.current = running
   }, [running])
 
-  // Retro typing animation effect
   useEffect(() => {
     if (!output) {
       setDisplayedOutput('')
@@ -43,7 +46,7 @@ export default function OutputPanel({
     const timer = setTimeout(() => {
       setDisplayedOutput(prev => {
         if (prev === output) return prev
-        
+
         let current = prev
         if (!output.startsWith(prev)) {
           current = ''
@@ -52,7 +55,6 @@ export default function OutputPanel({
         const remaining = output.slice(current.length)
         if (remaining.length === 0) return current
 
-        // Speed adjustment so long outputs don't take forever
         let chunkSize = 1
         if (remaining.length > 500) {
           chunkSize = 25
@@ -73,13 +75,10 @@ export default function OutputPanel({
     return () => clearTimeout(timer)
   }, [output, displayedOutput])
 
-  // Snap scroll to bottom on every output update — smooth scrolling wobbles
-  // when updates arrive faster than the animation can complete (~60fps/12ms).
   useEffect(() => {
     if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
   }, [displayedOutput, inputPrompt])
 
-  // Focus input field when prompt appears or panel is expanded
   useEffect(() => {
     if (inputPrompt !== null && !isCollapsed) {
       inputRef.current?.focus()
@@ -93,35 +92,50 @@ export default function OutputPanel({
   }
 
   const statusColour = runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
-  const statusLabel  = runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
-  const showCursor   = running || (output && displayedOutput !== output)
+  const statusLabel = runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
+  const showCursor = running || (output && displayedOutput !== output)
+  const contentCollapsed = collapsible && isCollapsed
 
   return (
-    <div style={{ ...s.panel, minHeight: isCollapsed ? 'auto' : 140, maxHeight: isCollapsed ? 'auto' : 300 }} className="card">
-      {/* Header */}
-      <div 
-        style={{ ...s.header, borderRadius: isCollapsed ? '10px' : '10px 10px 0 0', cursor: 'pointer', userSelect: 'none' }}
-        onClick={() => setIsCollapsed(prev => !prev)}
+    <div
+      style={{
+        ...s.panel,
+        ...(fill ? s.panelFill : {}),
+        minHeight: contentCollapsed ? 'auto' : fill ? 0 : 140,
+        maxHeight: contentCollapsed ? 'auto' : fill ? 'none' : 300,
+      }}
+      className="card"
+    >
+      <div
+        style={{
+          ...s.header,
+          borderRadius: contentCollapsed ? '10px' : '10px 10px 0 0',
+          cursor: collapsible ? 'pointer' : 'default',
+          userSelect: 'none',
+        }}
+        onClick={collapsible ? () => setIsCollapsed(prev => !prev) : undefined}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
+          {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
           <span style={s.headerLabel}>Output</span>
-          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-            {isCollapsed ? '▶' : '▼'}
-          </span>
+          {collapsible && (
+            <span style={s.toggleIcon}>
+              {isCollapsed ? 'Show' : 'Hide'}
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
           <span style={{ ...s.statusDot, background: statusColour }} />
           <span style={s.statusLabel}>{statusLabel}</span>
+          {rightActions && <div style={s.trailingActions}>{rightActions}</div>}
         </div>
       </div>
 
-      {/* Output text (collapsible) */}
-      {!isCollapsed && (
+      {!contentCollapsed && (
         <pre ref={preRef} style={s.pre}>
           {displayedOutput || <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>}
           {showCursor && <span className="terminal-cursor" />}
 
-          {/* Input field appears inline when input() is waiting */}
           {inputPrompt !== null && (
             <form onSubmit={handleInputSubmit} style={s.inputRow}>
               <span style={s.prompt}>&gt;</span>
@@ -148,6 +162,11 @@ const s = {
     maxHeight: 300,
     overflow: 'hidden',
   },
+  panelFill: {
+    flex: 1,
+    minHeight: 0,
+    maxHeight: 'none',
+  },
   header: {
     background: 'var(--colour-primary)',
     color: '#fff',
@@ -163,6 +182,23 @@ const s = {
     fontWeight: 700,
     fontSize: '0.85rem',
     letterSpacing: '0.04em',
+  },
+  leadingActions: {
+    display: 'flex',
+    alignItems: 'stretch',
+    alignSelf: 'stretch',
+    marginLeft: -8,
+    marginRight: 2,
+  },
+  trailingActions: {
+    display: 'flex',
+    alignItems: 'stretch',
+    alignSelf: 'stretch',
+  },
+  toggleIcon: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.72rem',
+    opacity: 0.82,
   },
   statusDot: {
     width: 8,
@@ -187,6 +223,7 @@ const s = {
     wordBreak: 'break-word',
     background: '#fafafa',
     borderRadius: '0 0 10px 10px',
+    minHeight: 0,
   },
   inputRow: {
     display: 'flex',
