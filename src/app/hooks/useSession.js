@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ref, onValue, set, update, remove, serverTimestamp, onDisconnect } from 'firebase/database'
+import { ref, onValue, set, update, remove, push, serverTimestamp, onDisconnect } from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { encodeFileKey } from '../../shared/fileKeys'
 
@@ -132,6 +132,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStageRequestedAt`]  = null
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
       updates[`students/${anonymousId}/teacherStageAcceptedAt`]   = null
+      updates[`students/${anonymousId}/teacherHighlights`]        = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -313,6 +314,23 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function pushTeacherHighlight(anonymousId, { file, from, to, emoji, note } = {}) {
+    const newRef = push(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights`))
+    await set(newRef, {
+      file:      encodeFileKey(file),
+      from,
+      to,
+      emoji,
+      note:      note || null,
+      createdAt: Date.now(),
+    })
+    return newRef.key
+  }
+
+  async function removeTeacherHighlight(anonymousId, highlightId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`), null)
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -446,6 +464,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
+    pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,

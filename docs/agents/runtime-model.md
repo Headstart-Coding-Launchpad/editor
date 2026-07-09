@@ -68,7 +68,17 @@ Do not deviate from this shape.
           "sentToTopicId": "topicId | null",
           "sentToTopicPushedAt": "number | null",
           "teacherMessage": "string | null",
-          "teacherMessagePushedAt": "number | null"
+          "teacherMessagePushedAt": "number | null",
+          "teacherHighlights": {
+            "{highlightId}": {
+              "file": "index__dot__html (encodeFileKey'd; empty string for Python)",
+              "from": 12,
+              "to": 34,
+              "emoji": "✅ | ❌ | ❓ | 💡 | ⭐",
+              "note": "string | null",
+              "createdAt": 1234567890
+            }
+          }
         }
       }
     }
@@ -94,6 +104,7 @@ Teacher per-student actions:
 - Remote reset writes `remoteResetAction` and `remoteResetPushedAt`.
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; cleared by `setTaskId`.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
+- Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
 
 Student writes:
 
@@ -104,6 +115,7 @@ Student writes:
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
+- Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
 
 Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
 

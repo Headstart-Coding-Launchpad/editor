@@ -8,6 +8,7 @@ const firebaseMocks = vi.hoisted(() => ({
   set:         vi.fn(() => Promise.resolve()),
   update:      vi.fn(() => Promise.resolve()),
   remove:      vi.fn(() => Promise.resolve()),
+  push:        vi.fn(parentRef => ({ path: `${parentRef.path}/mockHighlightId`, key: 'mockHighlightId' })),
   onDisconnect: vi.fn(() => ({ set: vi.fn(), remove: vi.fn() })),
 }))
 
@@ -17,6 +18,7 @@ vi.mock('firebase/database', () => ({
   set:          (...args) => firebaseMocks.set(...args),
   update:       (...args) => firebaseMocks.update(...args),
   remove:       (...args) => firebaseMocks.remove(...args),
+  push:         (...args) => firebaseMocks.push(...args),
   serverTimestamp: vi.fn(),
   onDisconnect: (...args) => firebaseMocks.onDisconnect(...args),
 }))
@@ -274,6 +276,53 @@ describe('useSession', () => {
           remoteResetAction:   'complete',
           remoteResetPushedAt: expect.any(Number),
         }),
+      )
+    })
+  })
+
+  describe('pushTeacherHighlight', () => {
+    it('encodes the file key and writes a new entry under a push()-generated id', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherHighlight('student-xyz', {
+          file: 'index.html', from: 12, to: 34, emoji: '✅', note: 'Nice work',
+        })
+      })
+      expect(firebaseMocks.push).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights' },
+      )
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights/mockHighlightId', key: 'mockHighlightId' },
+        expect.objectContaining({
+          file: 'index__dot__html',
+          from: 12,
+          to: 34,
+          emoji: '✅',
+          note: 'Nice work',
+          createdAt: expect.any(Number),
+        }),
+      )
+    })
+
+    it('defaults a missing note to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherHighlight('student-xyz', { file: '', from: 0, to: 4, emoji: '❓' })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ note: null }),
+      )
+    })
+  })
+
+  describe('removeTeacherHighlight', () => {
+    it('clears a single highlight entry by id', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.removeTeacherHighlight('student-xyz', 'highlight-1') })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights/highlight-1' },
+        null,
       )
     })
   })

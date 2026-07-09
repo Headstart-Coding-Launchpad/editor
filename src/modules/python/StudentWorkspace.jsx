@@ -61,6 +61,8 @@ export default function StudentWorkspace({
         onSelectionChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleEditorSelection}
         onActivity={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}
+        teacherHighlights={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? [] : cs.teacherHighlights}
+        onHighlightDismiss={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight}
         pyodideStatus={cs.pyodideStatus}
       />
       {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && (

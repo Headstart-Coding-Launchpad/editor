@@ -49,6 +49,68 @@ const remoteSelectionField = StateField.define({
   provide: field => EditorView.decorations.from(field),
 })
 
+// Teacher-authored markup highlights: unlike remoteSelection, this holds
+// any number of ranges at once and each carries an emoji "badge" the
+// student clicks to dismiss.
+const setTeacherHighlights = StateEffect.define()
+
+class TeacherHighlightWidget extends WidgetType {
+  constructor(id, emoji, note) {
+    super()
+    this.id = id
+    this.emoji = emoji
+    this.note = note
+  }
+  eq(other) {
+    return other.id === this.id && other.emoji === this.emoji && other.note === this.note
+  }
+  toDOM() {
+    const badge = document.createElement('button')
+    badge.type = 'button'
+    badge.className = 'cm-teacherHighlightBadge'
+    badge.title = this.note ? this.note : 'Dismiss this highlight'
+    badge.dataset.highlightId = this.id
+
+    const emojiSpan = document.createElement('span')
+    emojiSpan.textContent = this.emoji || '★'
+    badge.appendChild(emojiSpan)
+
+    const labelSpan = document.createElement('span')
+    labelSpan.className = 'cm-teacherHighlightBadgeLabel'
+    labelSpan.textContent = 'Dismiss ✕'
+    badge.appendChild(labelSpan)
+
+    return badge
+  }
+  ignoreEvent() {
+    return false
+  }
+}
+
+const teacherHighlightsField = StateField.define({
+  create() {
+    return Decoration.none
+  },
+  update(marks, transaction) {
+    marks = marks.map(transaction.changes)
+    for (const effect of transaction.effects) {
+      if (!effect.is(setTeacherHighlights)) continue
+      const max = transaction.state.doc.length
+      const ranges = []
+      for (const h of effect.value ?? []) {
+        const from = Math.min(Math.max(h.from ?? 0, 0), max)
+        const to = Math.min(Math.max(h.to ?? from, 0), max)
+        if (from >= to) continue
+        ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(from, to))
+        ranges.push(Decoration.widget({ widget: new TeacherHighlightWidget(h.id, h.emoji, h.note), side: 1 }).range(to))
+      }
+      marks = Decoration.set(ranges, true)
+    }
+    return marks
+  },
+  provide: field => EditorView.decorations.from(field),
+})
+
 export function CodeEditor({
   value = '',
   language = 'python',
@@ -57,6 +119,8 @@ export function CodeEditor({
   onSelectionChange,
   onActivity,
   remoteSelection = null,
+  teacherHighlights = [],
+  onHighlightDismiss,
   style,
 }) {
   const containerRef = useRef(null)
@@ -64,9 +128,11 @@ export function CodeEditor({
   const onChangeRef  = useRef(onChange)
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onActivityRef = useRef(onActivity)
+  const onHighlightDismissRef = useRef(onHighlightDismiss)
   onChangeRef.current = onChange
   onSelectionChangeRef.current = onSelectionChange
   onActivityRef.current = onActivity
+  onHighlightDismissRef.current = onHighlightDismiss
 
   // Mount the editor once
   useEffect(() => {
@@ -78,6 +144,7 @@ export function CodeEditor({
         extensions: [
           ...createBaseExtensions(language, readOnly),
           remoteSelectionField,
+          teacherHighlightsField,
           EditorView.updateListener.of(update => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
@@ -90,7 +157,15 @@ export function CodeEditor({
           EditorView.domEventHandlers({
             copy: () => { onActivityRef.current?.({ type: 'copy', at: Date.now() }); return false },
             paste: () => { onActivityRef.current?.({ type: 'paste', at: Date.now() }); return false },
-            mousedown: () => { onActivityRef.current?.({ type: 'click', at: Date.now() }); return false },
+            mousedown: event => {
+              const badge = event.target.closest?.('.cm-teacherHighlightBadge')
+              if (badge) {
+                onHighlightDismissRef.current?.(badge.dataset.highlightId)
+                return true
+              }
+              onActivityRef.current?.({ type: 'click', at: Date.now() })
+              return false
+            },
           }),
         ],
       }),
@@ -143,6 +218,12 @@ export function CodeEditor({
     if (!view) return
     view.dispatch({ effects: setRemoteSelection.of(remoteSelection) })
   }, [remoteSelection])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({ effects: setTeacherHighlights.of(teacherHighlights) })
+  }, [teacherHighlights])
 
   return (
     <div

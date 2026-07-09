@@ -31,6 +31,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
     acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
+    removeTeacherHighlight,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
@@ -85,6 +86,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,
+    removeTeacherHighlight,
   })
 
   // Wire phase callbacks to latest code-state functions each render

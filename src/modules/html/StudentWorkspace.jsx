@@ -42,6 +42,8 @@ export default function StudentWorkspace({
             onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
             onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
             remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
+            teacherHighlights={isViewingPrev || isForcedTeacherLive ? [] : cs.teacherHighlights}
+            onHighlightDismiss={isViewingPrev || isForcedTeacherLive ? undefined : cs.dismissHighlight}
             readOnly={isViewingPrev || isForcedTeacherLive}
             assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
             assets={lesson.assets}

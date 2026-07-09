@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { runPython, stopPython, provideInput } from '../../shared/pyodide'
 import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
 import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../shared/checks'
@@ -54,6 +54,7 @@ export function useStudentCodeState({
   removeStudent,
   updateTeacherLive,
   setTeacherLive,
+  removeTeacherHighlight,
 }) {
   const [code, setCode]                   = useState('')
   const [files, setFiles]                 = useState([])
@@ -133,6 +134,20 @@ export function useStudentCodeState({
   ]
 
   const myStudentData = session?.students?.[identity?.anonymousId]
+
+  const teacherHighlights = useMemo(() => {
+    const raw = myStudentData?.teacherHighlights
+    if (!raw) return []
+    return Object.entries(raw)
+      .filter(([, h]) => decodeFileKey(h.file) === activeFile)
+      .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
+  }, [myStudentData?.teacherHighlights, activeFile])
+
+  const dismissHighlight = useCallback(highlightId => {
+    if (!identity?.anonymousId) return
+    removeTeacherHighlight?.(identity.anonymousId, highlightId)
+  }, [identity, removeTeacherHighlight])
+
   const {
     checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
     checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
@@ -1089,6 +1104,7 @@ export function useStudentCodeState({
     offeredStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
+    teacherHighlights, dismissHighlight,
     // Refs
     iframeRef,
     // Event handlers
