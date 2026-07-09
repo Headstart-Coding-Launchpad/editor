@@ -13,8 +13,8 @@ const LESSON_TYPES = [
 const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 
 function spriteVisualMode(sp) {
-  if (sp.costumes?.length > 0) return 'costume'
-  if (sp.emoji) return 'emoji'
+  if (sp.costumes?.some(c => c.image !== undefined)) return 'costume'
+  if (sp.emoji || sp.costumes?.some(c => c.emoji !== undefined)) return 'emoji'
   return 'preset'
 }
 
@@ -226,16 +226,27 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
 
   function setVisualMode(id, mode) {
     setSpriteModes(prev => ({ ...prev, [id]: mode }))
+    const sp = sprites.find(s => s.id === id)
+    const costumeKind = sp?.costumes?.[0]?.image !== undefined ? 'image' : sp?.costumes?.[0]?.emoji !== undefined ? 'emoji' : null
     if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
-    else if (mode === 'emoji') updateMany(id, { costumes: [] })
-    else updateMany(id, { emoji: '' })
+    else if (mode === 'emoji') updateMany(id, costumeKind === 'image' ? { costumes: [] } : {})
+    else updateMany(id, costumeKind === 'emoji' ? { emoji: '', costumes: [] } : { emoji: '' })
   }
 
   function addCostume(spriteId) {
     const sp = sprites.find(s => s.id === spriteId)
+    const mode = spriteModes[spriteId] ?? spriteVisualMode(sp)
+    if (mode === 'emoji' && (sp?.costumes ?? []).length === 0) {
+      onChange(sprites.map(s => s.id === spriteId
+        ? { ...s, costumes: [{ name: 'costume1', emoji: s.emoji || '' }, { name: 'costume2', emoji: '' }] }
+        : s
+      ))
+      return
+    }
     const next = (sp?.costumes ?? []).length + 1
+    const newCostume = mode === 'emoji' ? { name: `costume${next}`, emoji: '' } : { name: `costume${next}`, image: '' }
     onChange(sprites.map(s => s.id === spriteId
-      ? { ...s, costumes: [...(s.costumes ?? []), { name: `costume${next}`, image: '' }] }
+      ? { ...s, costumes: [...(s.costumes ?? []), newCostume] }
       : s
     ))
   }
@@ -311,7 +322,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
               </div>
             )}
 
-            {mode === 'emoji' && (
+            {mode === 'emoji' && (sp.costumes ?? []).length === 0 && (
               <div style={{ ...s.spriteRow, paddingLeft: 28 }}>
                 <input
                   style={{ ...s.spriteInput, width: 52, textAlign: 'center', fontSize: '20px' }}
@@ -319,6 +330,35 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
                   onChange={e => update(sp.id, 'emoji', e.target.value)}
                   placeholder="🐱"
                 />
+                <button className="btn-ghost" style={{ ...s.uploadBtn, alignSelf: 'flex-start' }} onClick={() => addCostume(sp.id)}>
+                  + Add costumes
+                </button>
+              </div>
+            )}
+
+            {mode === 'emoji' && (sp.costumes ?? []).length > 0 && (
+              <div style={s.costumeSection}>
+                {sp.costumes.map((c, idx) => (
+                  <div key={idx} style={s.costumeRow}>
+                    {idx === 0 && <span style={s.costumeTag}>Default</span>}
+                    <input
+                      style={s.spriteInput}
+                      value={c.name}
+                      onChange={e => updateCostume(sp.id, idx, 'name', e.target.value)}
+                      placeholder="Costume name"
+                    />
+                    <input
+                      style={{ ...s.spriteInput, flex: '0 0 52px', width: 52, textAlign: 'center', fontSize: '20px' }}
+                      value={c.emoji ?? ''}
+                      onChange={e => updateCostume(sp.id, idx, 'emoji', e.target.value)}
+                      placeholder="🐱"
+                    />
+                    <button style={s.removeBtn} onClick={() => removeCostume(sp.id, idx)} title="Remove costume">×</button>
+                  </div>
+                ))}
+                <button className="btn-ghost" style={{ ...s.uploadBtn, alignSelf: 'flex-start', marginTop: 4 }} onClick={() => addCostume(sp.id)}>
+                  + Add costume
+                </button>
               </div>
             )}
 

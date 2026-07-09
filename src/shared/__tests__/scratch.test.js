@@ -355,6 +355,36 @@ describe('operator_round', () => {
   })
 })
 
+describe('operator_random', () => {
+  it('returns the exact value when FROM equals TO', async () => {
+    const op = makeReporter('operator_random', {}, { FROM: makeNum(5), TO: makeNum(5) })
+    const { vars } = await runAndGetVars(makeSetVar('result', op))
+    expect(vars.result).toBe(5)
+  })
+
+  it('returns an integer within the inclusive range for integer inputs', async () => {
+    const op = makeReporter('operator_random', {}, { FROM: makeNum(1), TO: makeNum(10) })
+    const { vars } = await runAndGetVars(makeSetVar('result', op))
+    expect(Number.isInteger(vars.result)).toBe(true)
+    expect(vars.result).toBeGreaterThanOrEqual(1)
+    expect(vars.result).toBeLessThanOrEqual(10)
+  })
+
+  it('handles a reversed range (FROM greater than TO)', async () => {
+    const op = makeReporter('operator_random', {}, { FROM: makeNum(10), TO: makeNum(1) })
+    const { vars } = await runAndGetVars(makeSetVar('result', op))
+    expect(vars.result).toBeGreaterThanOrEqual(1)
+    expect(vars.result).toBeLessThanOrEqual(10)
+  })
+
+  it('returns a float within range when either input has a decimal', async () => {
+    const op = makeReporter('operator_random', {}, { FROM: makeNum(1), TO: makeNum(2.5) })
+    const { vars } = await runAndGetVars(makeSetVar('result', op))
+    expect(vars.result).toBeGreaterThanOrEqual(1)
+    expect(vars.result).toBeLessThanOrEqual(2.5)
+  })
+})
+
 describe('operator_mathop', () => {
   it('abs of negative', async () => {
     const op = makeReporter('operator_mathop', { OPERATOR: 'abs' }, { NUM: makeNum(-5) })
@@ -649,5 +679,75 @@ describe('Scratch clones', () => {
 
     expect(created).toHaveLength(300)
     expect(signal.cloneCount).toBe(300)
+  })
+})
+
+// ── "touching [sprite]?" against live clones ──────────────────────────────────
+
+describe('Scratch touching a sprite that has clones', () => {
+  function makeBlock(type, fields = {}, targets = {}, nextBlock = null) {
+    return {
+      type,
+      getFieldValue: name => fields[name] ?? null,
+      getInputTargetBlock: name => targets[name] ?? null,
+      getNextBlock: () => nextBlock,
+    }
+  }
+
+  function makeState(overrides = {}) {
+    return { x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null, ...overrides }
+  }
+
+  function buildWorkspace(target) {
+    const touchingCheck = makeBlock('sensing_touchingobject', { TOUCHINGOBJECTMENU: target })
+    const setVar = makeBlock('data_setvariableto', { VARIABLE: 'hit', VALUE: 1 })
+    const ifBlock = makeBlock('control_if', {}, { CONDITION: touchingCheck, SUBSTACK: setVar })
+    const flagHat = makeBlock('event_whenflagclicked', {}, {}, ifBlock)
+    return { getBlocksByType: type => (type === 'event_whenflagclicked' ? [flagHat] : []) }
+  }
+
+  it('reports touching when only a clone of the target sprite overlaps, not the (distant) original', async () => {
+    const workspace = buildWorkspace('rock')
+    const playerState = makeState({ x: 0, y: 0 })
+    const signal = createRunSignal()
+    signal.clones.set('rock__clone1', { id: 'rock__clone1', baseId: 'rock', workspace: null, state: makeState({ x: 0, y: 0 }), costumes: [] })
+
+    await runWorkspace(workspace, playerState, () => {}, signal)
+
+    expect(signal.variables.hit).toBe(1)
+  })
+
+  it('does not report touching when the clone has moved away and the original is also distant', async () => {
+    const workspace = buildWorkspace('rock')
+    const playerState = makeState({ x: 0, y: 0 })
+    const signal = createRunSignal()
+    signal.clones.set('rock__clone1', { id: 'rock__clone1', baseId: 'rock', workspace: null, state: makeState({ x: 300, y: 300 }), costumes: [] })
+
+    await runWorkspace(workspace, playerState, () => {}, signal)
+
+    expect(signal.variables.hit).toBeUndefined()
+  })
+
+  it('ignores a hidden clone of the target sprite', async () => {
+    const workspace = buildWorkspace('rock')
+    const playerState = makeState({ x: 0, y: 0 })
+    const signal = createRunSignal()
+    signal.clones.set('rock__clone1', { id: 'rock__clone1', baseId: 'rock', workspace: null, state: makeState({ x: 0, y: 0, visible: false }), costumes: [] })
+
+    await runWorkspace(workspace, playerState, () => {}, signal)
+
+    expect(signal.variables.hit).toBeUndefined()
+  })
+
+  it('deleting the clone removes it from consideration', async () => {
+    const workspace = buildWorkspace('rock')
+    const playerState = makeState({ x: 0, y: 0 })
+    const signal = createRunSignal()
+    signal.clones.set('rock__clone1', { id: 'rock__clone1', baseId: 'rock', workspace: null, state: makeState({ x: 0, y: 0 }), costumes: [] })
+    signal.clones.delete('rock__clone1')
+
+    await runWorkspace(workspace, playerState, () => {}, signal)
+
+    expect(signal.variables.hit).toBeUndefined()
   })
 })

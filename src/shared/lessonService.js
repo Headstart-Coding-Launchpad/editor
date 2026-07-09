@@ -3,6 +3,7 @@ import {
   serverTimestamp, setDoc, updateDoc,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
+import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from './lessonBlocksCodec'
 
 function makeEntryId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
@@ -11,13 +12,13 @@ function makeEntryId() {
 export async function fetchLessonById(lessonId) {
   if (!lessonId) return null
   const snap = await getDoc(doc(firestore, 'lessons', lessonId))
-  if (snap.exists()) return { id: snap.id, ...snap.data() }
+  if (snap.exists()) return decodeLessonBlocksFromFirestore({ id: snap.id, ...snap.data() })
   return null
 }
 
 export async function fetchLessonList() {
   const snap = await getDocs(collection(firestore, 'lessons'))
-  const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const items = snap.docs.map(d => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
   items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
   return items
 }
@@ -25,7 +26,8 @@ export async function fetchLessonList() {
 // Permanently persists an edited task list to a published lesson (admin-only,
 // enforced by Firestore rules). Only the tasks field is touched.
 export async function publishLessonTasks(lessonId, tasks) {
-  await setDoc(doc(firestore, 'lessons', lessonId), { tasks }, { merge: true })
+  const { tasks: encodedTasks } = encodeLessonBlocksForFirestore({ tasks })
+  await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
 }
 
 // Returns the lesson with its tasks swapped for a live session override, if

@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import { applyLessonOverride, publishLessonTasks } from '../../shared/lessonService'
+import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
@@ -89,7 +90,7 @@ export default function TeacherView({ lessonId }) {
     getDoc(doc(firestore, 'lessons', lessonId))
       .then(snap => {
         if (snap.exists()) {
-          setBaseLesson(snap.data())
+          setBaseLesson(decodeLessonBlocksFromFirestore(snap.data()))
         } else {
           setLessonError(true)
         }

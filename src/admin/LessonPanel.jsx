@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, onSnapshot, deleteDoc, doc, setDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
+import { encodeLessonBlocksForFirestore } from '../shared/lessonBlocksCodec'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -133,7 +134,7 @@ export default function LessonPanel() {
     const exists = lessons.some(l => l.id === lessonId)
     if (exists && !confirm(`A lesson with ID "${lessonId}" already exists in Firestore.\n\nOverwrite it?`)) return
     try {
-      await setDoc(doc(firestore, 'lessons', lessonId), parsed)
+      await setDoc(doc(firestore, 'lessons', lessonId), encodeLessonBlocksForFirestore(parsed))
     } catch (err) {
       alert('Failed to upload lesson: ' + err.message)
     }

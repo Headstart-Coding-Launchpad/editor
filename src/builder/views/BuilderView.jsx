@@ -14,6 +14,7 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildPrintHtml } from '../printLesson'
 import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
+import { encodeLessonBlocksForFirestore } from '../../shared/lessonBlocksCodec'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 import { useTopicLibrary } from '../../shared/topicLibrary'
@@ -127,7 +128,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     setSaveStatus('saving')
     try {
       const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }))
-      await setDoc(doc(firestore, 'lessons', lesson.id), exported)
+      await setDoc(doc(firestore, 'lessons', lesson.id), encodeLessonBlocksForFirestore(exported))
       setSaveStatus('done')
       onMarkSaved()
     } catch (err) {
