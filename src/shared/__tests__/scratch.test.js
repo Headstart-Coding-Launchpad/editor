@@ -566,3 +566,88 @@ describe('createRunSignal', () => {
     expect(signal.timerStart).toBeLessThanOrEqual(after)
   })
 })
+
+// ── Scratch clone blocks ──────────────────────────────────────────────────────
+
+describe('Scratch clones', () => {
+  function makeCloneWorkspace(blocks) {
+    return { getBlocksByType: type => blocks.filter(b => b.type === type) }
+  }
+
+  function makeCloneBlock(type, fields = {}, nextBlock = null) {
+    return { type, getFieldValue: name => fields[name] ?? null, getInputTargetBlock: () => null, getNextBlock: () => nextBlock }
+  }
+
+  function makeCloneState() {
+    return { x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null }
+  }
+
+  it('create clone of myself starts a "when I start as a clone" hat with an independent state copy', async () => {
+    const cloneMove = makeCloneBlock('motion_movesteps', { STEPS: '10' })
+    const startAsCloneHat = makeCloneBlock('control_start_as_clone', {}, cloneMove)
+    const createCloneBlock = makeCloneBlock('control_create_clone_of', { CLONE_OPTION: '_myself_' })
+    const flagHat = makeCloneBlock('event_whenflagclicked', {}, createCloneBlock)
+    const workspace = makeCloneWorkspace([flagHat, startAsCloneHat])
+
+    const spriteState = makeCloneState()
+    const signal = createRunSignal()
+    const created = []
+    const updated = []
+    signal.onCloneCreated = c => created.push(c)
+    signal.onCloneUpdated = (id, s) => updated.push({ id, state: s })
+
+    await runWorkspace(workspace, spriteState, () => {}, signal)
+
+    expect(created).toHaveLength(1)
+    expect(created[0].baseId).toBe('sprite')
+    expect(created[0].state.x).toBe(0)
+    expect(updated).toHaveLength(1)
+    expect(updated[0].id).toBe(created[0].id)
+    expect(updated[0].state.x).toBeCloseTo(10) // clone moved 10 steps facing direction 90 (+x)
+    expect(spriteState.x).toBe(0) // the original sprite's own state is untouched
+  })
+
+  it('delete this clone halts only that clone\'s own chain, leaving the global signal unaffected', async () => {
+    const moveAfterDelete = makeCloneBlock('motion_movesteps', { STEPS: '10' })
+    const deleteBlock = makeCloneBlock('control_delete_this_clone', {}, moveAfterDelete)
+    const startAsCloneHat = makeCloneBlock('control_start_as_clone', {}, deleteBlock)
+    const createCloneBlock = makeCloneBlock('control_create_clone_of', { CLONE_OPTION: '_myself_' })
+    const flagHat = makeCloneBlock('event_whenflagclicked', {}, createCloneBlock)
+    const workspace = makeCloneWorkspace([flagHat, startAsCloneHat])
+
+    const spriteState = makeCloneState()
+    const signal = createRunSignal()
+    const deleted = []
+    const updated = []
+    signal.onCloneDeleted = id => deleted.push(id)
+    signal.onCloneUpdated = (id, s) => updated.push({ id, state: s })
+
+    await runWorkspace(workspace, spriteState, () => {}, signal)
+
+    expect(deleted).toHaveLength(1)
+    expect(updated).toHaveLength(0) // the block after "delete this clone" never runs
+    expect(signal.stopped).toBe(false) // "delete this clone" must not act like "stop all"
+  })
+
+  it('caps concurrent clones at 300 and silently ignores further create-clone calls', async () => {
+    const createCloneBlock = makeCloneBlock('control_create_clone_of', { CLONE_OPTION: '_myself_' })
+    const repeatBlock = {
+      type: 'control_repeat',
+      getFieldValue: name => (name === 'TIMES' ? '301' : null),
+      getInputTargetBlock: name => (name === 'SUBSTACK' ? createCloneBlock : null),
+      getNextBlock: () => null,
+    }
+    const flagHat = makeCloneBlock('event_whenflagclicked', {}, repeatBlock)
+    const workspace = makeCloneWorkspace([flagHat])
+
+    const spriteState = makeCloneState()
+    const signal = createRunSignal()
+    const created = []
+    signal.onCloneCreated = c => created.push(c)
+
+    await runWorkspace(workspace, spriteState, () => {}, signal)
+
+    expect(created).toHaveLength(300)
+    expect(signal.cloneCount).toBe(300)
+  })
+})

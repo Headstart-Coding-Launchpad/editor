@@ -217,6 +217,21 @@ function drawSpriteImage(ctx, s, img) {
   ctx.restore()
 }
 
+// Shared by real sprites and clones: picks the current costume image (falling back to the
+// vector shape) and draws one instance. `state` may belong to a sprite or a clone of one.
+function drawSpriteVisual(ctx, state, costumes, fallbackType, fallbackEmoji, assetsPath, imageCache) {
+  if (!state?.visible) return
+  const costumeEntry = costumes?.length > 0
+    ? (costumes.find(c => c.name === state.costume) ?? costumes[0])
+    : null
+  if (costumeEntry?.image) {
+    const url = resolveAssetFileUrl(assetsPath, costumeEntry.image)
+    const img = imageCache[url]
+    if (img) { drawSpriteImage(ctx, state, img); return }
+  }
+  drawSpriteShape(ctx, state, fallbackType ?? 'cat', fallbackEmoji)
+}
+
 function spriteRadius(s) { return Math.max(4, (s.size / 100) * 24) }
 
 function hitTest(s, canvasX, canvasY) {
@@ -384,6 +399,7 @@ export default function ScratchWorkspace({
   const blocksDivRefs       = useRef({})
   const workspaceRefs       = useRef({})
   const spriteStatesRef     = useRef(initSpriteStates(sprites))
+  const clonesRef           = useRef({})
   const preRunSpriteStatesRef = useRef({})
   const BlocklyRef          = useRef(null)
   const signalRef           = useRef(null)
@@ -428,6 +444,7 @@ export default function ScratchWorkspace({
   const [checkPassed, setCheckPassed] = useState(false)
   const [checkAttempted, setCheckAttempted] = useState(false)
   const [spriteStates, setSpriteStates] = useState(() => initSpriteStates(sprites))
+  const [cloneStates, setCloneStates] = useState({})
   const [variableValues, setVariableValues] = useState({})
   const [askPrompt, setAskPrompt]   = useState(null)
   const [askValue, setAskValue]     = useState('')
@@ -476,7 +493,7 @@ export default function ScratchWorkspace({
   }, [respectStudentEditable, sprites, task?.enableStageCode])
 
   // ── Draw stage ──────────────────────────────────────────────────────────────
-  const drawStage = useCallback((states) => {
+  const drawStage = useCallback((states, clones = {}) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -500,25 +517,22 @@ export default function ScratchWorkspace({
     }
 
     for (const sp of sprites) {
-      const state = states[sp.id]
-      if (!state?.visible) continue
-      const costumeEntry = sp.costumes?.length > 0
-        ? (sp.costumes.find(c => c.name === state.costume) ?? sp.costumes[0])
-        : null
-      if (costumeEntry?.image) {
-        const url = resolveAssetFileUrl(assetsPath, costumeEntry.image)
-        const img = imageCacheRef.current[url]
-        if (img) { drawSpriteImage(ctx, state, img); continue }
-      }
-      drawSpriteShape(ctx, state, sp.type ?? 'cat', sp.emoji)
+      drawSpriteVisual(ctx, states[sp.id], sp.costumes, sp.type ?? 'cat', sp.emoji, assetsPath, imageCacheRef.current)
+    }
+    for (const clone of Object.values(clones)) {
+      const base = sprites.find(sp => sp.id === clone.baseId)
+      drawSpriteVisual(ctx, clone.state, clone.costumes, base?.type ?? 'cat', base?.emoji, assetsPath, imageCacheRef.current)
     }
     for (const sp of sprites) {
       const state = states[sp.id]
       if (state?.bubble) drawBubble(ctx, state)
     }
+    for (const clone of Object.values(clones)) {
+      if (clone.state?.bubble) drawBubble(ctx, clone.state)
+    }
   }, [sprites, backdrops, assetsPath])
 
-  useEffect(() => { drawStage(spriteStates) }, [spriteStates, backdropName, imageVersion, drawStage])
+  useEffect(() => { drawStage(spriteStates, cloneStates) }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage])
 
   // ── Preload backdrop images ──────────────────────────────────────────────────
   useEffect(() => {
@@ -1012,8 +1026,29 @@ export default function ScratchWorkspace({
       setBroadcastToasts(prev => [...prev, { id, message: msg }])
       setTimeout(() => setBroadcastToasts(prev => prev.filter(t => t.id !== id)), 2000)
     }
+    signal.onCloneCreated = clone => {
+      clonesRef.current = { ...clonesRef.current, [clone.id]: clone }
+      setCloneStates(clonesRef.current)
+    }
+    signal.onCloneUpdated = (id, state) => {
+      if (!clonesRef.current[id]) return
+      clonesRef.current = { ...clonesRef.current, [id]: { ...clonesRef.current[id], state } }
+      setCloneStates(clonesRef.current)
+    }
+    signal.onCloneDeleted = id => {
+      if (!clonesRef.current[id]) return
+      const next = { ...clonesRef.current }
+      delete next[id]
+      clonesRef.current = next
+      setCloneStates(next)
+    }
     return signal
   }, [backdrops])
+
+  function clearClones() {
+    clonesRef.current = {}
+    setCloneStates({})
+  }
 
   // ── Check helpers ────────────────────────────────────────────────────────────
   const check = task?.check
@@ -1090,6 +1125,7 @@ export default function ScratchWorkspace({
   async function handleRun() {
     if (status !== 'ready') return
     stopAll()
+    clearClones()
     lastCheckRef.current = null
     preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     runningRef.current = true
@@ -1133,6 +1169,7 @@ export default function ScratchWorkspace({
 
   function handleStop() {
     stopAll()
+    clearClones()
     runningRef.current = false
     setRunning(false)
     setAskPrompt(null)
@@ -1142,6 +1179,7 @@ export default function ScratchWorkspace({
 
   function handleResetStage() {
     stopAll()
+    clearClones()
     runningRef.current = false
     setRunning(false)
     setAskPrompt(null)

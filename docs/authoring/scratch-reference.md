@@ -135,6 +135,9 @@ Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_cou
 **Control**
 - `control_wait` · `control_wait_until` · `control_repeat` · `control_repeat_until` · `control_forever`
 - `control_if` · `control_if_else` · `control_stop`
+- `control_create_clone_of` · `control_start_as_clone` · `control_delete_this_clone` — clones share the
+  source sprite's scripts and costumes with an independent copy of its position/looks state at creation
+  time; capped at 300 concurrent clones as a runtime safety guard, cleared on green flag/stop
 
 **Sensing**
 - `sensing_askandwait` · `sensing_answer` · `sensing_keypressed`
