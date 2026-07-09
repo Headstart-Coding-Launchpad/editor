@@ -9,13 +9,18 @@ export default function SoloNav({
   isInformationTask,
   canNavigateNextSolo,
   onNavigate,
+  compact = false,
 }) {
+  const navStyle = compact ? s.soloNavCompact : s.soloNav
+  const btnStyle = compact ? s.soloNavBtnCompact : s.soloNavBtn
+  const labelStyle = compact ? s.soloNavLabelCompact : s.soloNavLabel
+
   return (
-    <div style={s.soloNav}>
+    <div style={navStyle}>
       {!cs.inPersonalSandbox && (
         <button
           className="btn-secondary"
-          style={s.soloNavBtn}
+          style={btnStyle}
           disabled={currentIndex <= 0}
           onClick={() => onNavigate(flatTasks[currentIndex - 1]?.id)}
         >
@@ -23,16 +28,16 @@ export default function SoloNav({
         </button>
       )}
       {cs.inPersonalSandbox ? (
-        <span style={s.soloNavLabel}>Personal Sandbox</span>
+        <span style={labelStyle}>Personal Sandbox</span>
       ) : (
-        <span style={s.soloNavLabel}>
+        <span style={labelStyle}>
           Task {currentIndex + 1} of {flatTasks.length}
         </span>
       )}
       {!cs.inPersonalSandbox && hasPersonalSandbox && !isQuizTask && !isInformationTask && (
         <button
           className="btn-ghost-outline"
-          style={{ ...s.soloNavBtn, fontSize: 14 }}
+          style={{ ...btnStyle, fontSize: compact ? 12 : 14 }}
           onClick={cs.handleEnterPersonalSandbox}
           title="Open your personal sandbox to experiment freely"
         >
@@ -43,8 +48,8 @@ export default function SoloNav({
         <button
           className={`btn-secondary${cs.checkPassed && currentIndex < flatTasks.length - 1 ? ' btn-next-success' : ''}`}
           style={{
-            ...s.soloNavBtn,
-            ...(canNavigateNextSolo && currentIndex < flatTasks.length - 1
+            ...btnStyle,
+            ...(!compact && canNavigateNextSolo && currentIndex < flatTasks.length - 1
               ? { fontSize: 18, padding: '14px 36px' }
               : {}),
           }}
@@ -69,10 +74,23 @@ const s = {
     background: '#f5f5f5',
     flexShrink: 0,
   },
+  soloNavCompact: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
   soloNavBtn: {
     fontSize: 16,
     padding: '12px 28px',
     fontWeight: 600,
+  },
+  soloNavBtnCompact: {
+    fontSize: 12,
+    padding: '6px 10px',
+    fontWeight: 700,
+    lineHeight: 1.1,
+    minHeight: 30,
   },
   soloNavLabel: {
     flex: 1,
@@ -81,5 +99,15 @@ const s = {
     fontSize: '1rem',
     fontWeight: 600,
     color: 'var(--colour-text)',
+  },
+  soloNavLabelCompact: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: '#fff',
+    opacity: 0.9,
+    whiteSpace: 'nowrap',
+    minWidth: 70,
+    textAlign: 'center',
   },
 }

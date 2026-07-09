@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,
@@ -381,6 +382,7 @@ export default function ScratchWorkspace({
   predefinedBlocks = null,   // Legacy PredefinedBlock[] merged for current tab
   prebuiltStacks = null,     // Visual stack snippets merged for current tab
   respectStudentEditable = false,
+  preferStageSidePanel = false,
 }) {
   const sprites = task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
   const backdrops = task?.backdrops?.length > 0 ? task.backdrops : []
@@ -452,11 +454,14 @@ export default function ScratchWorkspace({
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(false)
+  const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
   const [imageVersion, setImageVersion] = useState(0)
   const canvasRef              = useRef(null)
   const rootRef                = useRef(null)
   const flyoutCollapsedRef     = useRef(false)
+  const stagePanelCollapsedRef = useRef(false)
+  const stagePanelAutoCollapsedRef = useRef(false)
   const prevWidthRef           = useRef(null)
   const blockDragActiveRef     = useRef(false)
   const pendingScaleRecalcRef  = useRef(false)
@@ -464,6 +469,7 @@ export default function ScratchWorkspace({
   const isWindowResizeRef      = useRef(false)
 
   flyoutCollapsedRef.current = flyoutCollapsed
+  stagePanelCollapsedRef.current = stagePanelCollapsed
   hideStageRef.current = hideStage
 
   statusRef.current = status
@@ -534,6 +540,10 @@ export default function ScratchWorkspace({
   }, [sprites, backdrops, assetsPath])
 
   useEffect(() => { drawStage(spriteStates, cloneStates) }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage])
+
+  useEffect(() => {
+    if (!stagePanelCollapsed) drawStage(spriteStatesRef.current, clonesRef.current)
+  }, [stagePanelCollapsed, drawStage])
 
   // ── Preload backdrop images ──────────────────────────────────────────────────
   useEffect(() => {
@@ -612,6 +622,10 @@ export default function ScratchWorkspace({
       } catch {}
     }
   }, [])
+
+  useEffect(() => {
+    requestAnimationFrame(resizeBlocklyWorkspaces)
+  }, [stagePanelCollapsed, resizeBlocklyWorkspaces])
 
   const buildSpriteWorkspaces = useCallback(() => {
     const result = sprites.map(sp => ({
@@ -754,7 +768,7 @@ export default function ScratchWorkspace({
             ws.addChangeListener((event) => {
               if (handleWorkspaceClickEvent(event, ws, sp.id, Blockly)) return
               if (suppressChangeRef.current) return
-              if (!flyoutCollapsedRef.current && event.type === 'create') {
+              if (!preferStageSidePanel && !flyoutCollapsedRef.current && event.type === 'create') {
                 const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
                 if (w < 1000) {
                   setFlyoutCollapsed(true)
@@ -802,7 +816,7 @@ export default function ScratchWorkspace({
               stageWs.addChangeListener((event) => {
                 if (handleWorkspaceClickEvent(event, stageWs, '__stage__', Blockly)) return
                 if (suppressChangeRef.current) return
-                if (!flyoutCollapsedRef.current && event.type === 'create') {
+                if (!preferStageSidePanel && !flyoutCollapsedRef.current && event.type === 'create') {
                   const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
                   if (w < 1000) {
                     setFlyoutCollapsed(true)
@@ -916,9 +930,20 @@ export default function ScratchWorkspace({
     const obs = new ResizeObserver(([entry]) => {
       const w = entry.contentRect.width
 
-      // Auto-collapse block list when first rendering or transitioning to narrow
+      // In the student side-panel layout, keep the block palette visible and
+      // collapse the stage panel first when the workspace gets narrow.
       const wasNarrow = prevWidthRef.current !== null && prevWidthRef.current < NARROW_BREAKPOINT
-      if (w < NARROW_BREAKPOINT && !wasNarrow) {
+      if (preferStageSidePanel) {
+        if (w < NARROW_BREAKPOINT && !stagePanelCollapsedRef.current) {
+          setStagePanelCollapsed(true)
+          stagePanelCollapsedRef.current = true
+          stagePanelAutoCollapsedRef.current = true
+        } else if (w >= NARROW_BREAKPOINT && stagePanelAutoCollapsedRef.current) {
+          setStagePanelCollapsed(false)
+          stagePanelCollapsedRef.current = false
+          stagePanelAutoCollapsedRef.current = false
+        }
+      } else if (w < NARROW_BREAKPOINT && !wasNarrow) {
         setFlyoutCollapsed(true)
         flyoutCollapsedRef.current = true
       }
@@ -941,7 +966,7 @@ export default function ScratchWorkspace({
       obs.disconnect()
       cancelAnimationFrame(resizeFrame)
     }
-  }, [hideStage, resizeBlocklyWorkspaces])
+  }, [hideStage, preferStageSidePanel, resizeBlocklyWorkspaces])
 
   // Re-calculate stage scale when flyout collapses/expands (ResizeObserver won't re-fire).
   // If a pointer drag is active (block being dragged from the palette), defer until pointerup
@@ -1565,9 +1590,34 @@ export default function ScratchWorkspace({
       </div>
 
       {/* Stage + controls */}
-      {!hideStage && (
+      {!hideStage && preferStageSidePanel && stagePanelCollapsed && (
+        <div style={s.stageRailPane}>
+          <CollapsedPanelRail
+            onClick={() => {
+              stagePanelAutoCollapsedRef.current = false
+              setStagePanelCollapsed(false)
+            }}
+            label="Stage"
+            direction="left"
+            title="Show Stage"
+            ariaLabel="Show Stage"
+          />
+        </div>
+      )}
+      {!hideStage && (!preferStageSidePanel || !stagePanelCollapsed) && (
         <div style={s.stagePane}>
           <div style={s.stageToolbar}>
+            {preferStageSidePanel && (
+              <CollapseTabButton
+                onClick={() => {
+                  stagePanelAutoCollapsedRef.current = false
+                  setStagePanelCollapsed(true)
+                }}
+                direction="right"
+                title="Collapse Stage"
+                ariaLabel="Collapse Stage"
+              />
+            )}
             <button
               type="button"
               className="btn-primary"
@@ -1662,7 +1712,7 @@ const s = {
   // natural height — the stage stays a constant size and the editor pane (which stretches
   // to match via align-items:stretch) tracks it, instead of both being squeezed by
   // whatever vertical space sibling page content happens to leave.
-  root: { display: 'flex', flex: '1 0 auto', minWidth: 0, gap: 8, position: 'relative' },
+  root: { display: 'flex', flex: '1 1 auto', minWidth: 0, minHeight: 0, height: '100%', gap: 8, position: 'relative' },
   rootColumn: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 0, height: '100%', position: 'relative' },
   overlay: { position: 'absolute', inset: 0, zIndex: 10, background: '#f5f5f5', borderRadius: 8 },
   editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
@@ -1670,7 +1720,8 @@ const s = {
   editorPaneBody: { flex: 1, minHeight: 0, position: 'relative' },
   flyoutToggleBtnOpen: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'var(--colour-primary)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
   flyoutToggleBtnHide: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: 'var(--colour-primary)', display: 'flex', alignItems: 'center', gap: 5 },
-  stagePane: { display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: STAGE_W * MIN_STAGE_SCALE },
+  stagePane: { display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: STAGE_W * MIN_STAGE_SCALE, minHeight: 0, overflow: 'auto' },
+  stageRailPane: { width: 44, minWidth: 44, display: 'flex', flexDirection: 'column', flexShrink: 0 },
   stageToolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' },
   canvas: { display: 'block', width: STAGE_W, height: STAGE_H, border: '1px solid #e5e7eb', borderRadius: 8 },
   stageFrame: { position: 'relative', width: STAGE_W, height: STAGE_H },

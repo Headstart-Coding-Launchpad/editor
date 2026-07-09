@@ -1,11 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
+import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
 import QuizTask from './QuizTask'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
+import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
+
+const SIDE_EXPLAINER_TYPES = ['python', 'html', 'scratch']
 
 export default function LessonTaskContent({
   lesson,
@@ -46,8 +50,14 @@ export default function LessonTaskContent({
   onTopicClose,
   openTopicId,
 }) {
+  const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   const lessonMod = getLessonModule(lesson.type)
+  const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
+  const supportsSideExplainer = SIDE_EXPLAINER_TYPES.includes(lessonMod?.type ?? lesson.type)
+  const hasTaskExplainer = !!task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
+  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
+  const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
@@ -61,8 +71,109 @@ export default function LessonTaskContent({
     ? s.editorAreaInfo
     : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
 
+  const transitionStyle = useFluidWorkspace
+    ? { ...taskContentStyle, ...s.fluidTaskContent }
+    : taskContentStyle
+
+  const taskExplainer = hasTaskExplainer ? (
+    <div style={useSideExplainer ? s.sideExplainerShell : undefined}>
+      {useSideExplainer && (
+        <CollapseTabButton
+          onClick={() => setExplainerCollapsed(true)}
+          direction="left"
+          title="Collapse Explainer"
+          ariaLabel="Collapse Explainer"
+          style={s.sideExplainerCollapse}
+        />
+      )}
+      <ExplainerPanel
+        title={task.title}
+        content={task.explainer}
+        topicType={lesson.type}
+        onTopicOpen={onTopicOpen}
+        onTopicClose={onTopicClose}
+        openTopicId={openTopicId}
+        disableCopy
+        fill={useSideExplainer}
+        collapsible={!useSideExplainer}
+        markdownTextScale={useSideExplainer ? 1.08 : 1}
+      />
+    </div>
+  ) : null
+
+  const feedbackBanner = !isSandbox && !cs.inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted ? (
+    <CheckFeedbackBanner
+      passed={displayCheckPassed}
+      failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
+      suggestion={displayCheckSuggestion}
+      onShowCodeStage={canOfferNextStage ? () => cs.handleShowCodeStage(cs.offeredStageIndex + 1) : undefined}
+      onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
+      onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
+      onNeedHelp={onNeedHelp}
+    />
+  ) : null
+
+  const workspaceContent = (
+    <>
+      {isSandbox && sandboxExplainer && (
+        <ExplainerPanel title="Instructions" content={sandboxExplainer} topicType={lesson.type} disableCopy />
+      )}
+
+      {!isSandbox && isInformationTask ? (
+        <InformationTask task={task} lesson={lesson} fill disableCopy />
+      ) : !isSandbox && isQuizTask ? (
+        <QuizTask
+          task={task}
+          showQuestion
+          selectedAnswer={cs.selectedAnswer}
+          onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
+          submitted={cs.runStatus === 'submitted'}
+          checkPassed={cs.checkPassed}
+          disabled={isViewingPrev}
+          showResult={false}
+        />
+      ) : StudentWorkspace && (
+        <StudentWorkspace
+          lesson={lesson}
+          task={task}
+          cs={cs}
+          lessonId={lessonId}
+          identityId={identityId}
+          viewingTaskId={viewingTaskId}
+          currentTaskId={currentTaskId}
+          isSandbox={isSandbox}
+          isViewingPrev={isViewingPrev}
+          isForcedTeacherLive={isForcedTeacherLive}
+          isMobile={isMobile}
+          activeStudentView={activeStudentView}
+          previewMode={previewMode}
+          displayCode={displayCode}
+          displayFiles={displayFiles}
+          displayActiveFile={displayActiveFile}
+          displayOutput={displayOutput}
+          displayRunStatus={displayRunStatus}
+          displayCheckPassed={displayCheckPassed}
+          displayCheckAttempted={displayCheckAttempted}
+          displaySelection={displaySelection}
+          displayFs={displayFs}
+          isTeacherEditing={isTeacherEditing}
+          teacherLiveCode={teacherLiveCode}
+        />
+      )}
+    </>
+  )
+
+  const editorArea = (
+    <div
+      style={useFluidWorkspace ? { ...editorAreaStyle, ...s.fluidWorkspace } : editorAreaStyle}
+      className={isForcedTeacherLive ? 'live-view-active' : undefined}
+    >
+      {workspaceContent}
+    </div>
+  )
+
   return (
-    <TaskSlideTransition transitionKey={transitionKey} style={taskContentStyle}>
+    <TaskSlideTransition transitionKey={transitionKey} style={transitionStyle}>
       {previewMode && task && !isSandbox && (
         <Banner accent="#0ea5e9" color="#0369a1" style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}>
           {task.taskMode === 'live'
@@ -73,68 +184,32 @@ export default function LessonTaskContent({
         </Banner>
       )}
 
-      {task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && (
-        <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy />
+      {feedbackBanner}
+
+      {useSideExplainer ? (
+        <SplitPane
+          style={s.sideBySideLayout}
+          defaultSplit={25}
+          leftCollapsed={explainerCollapsed}
+          collapsedLeftWidth={44}
+          collapsedLeft={
+            <CollapsedPanelRail
+              onClick={() => setExplainerCollapsed(false)}
+              label="Explainer"
+              direction="right"
+              title="Show Explainer"
+              ariaLabel="Show Explainer"
+            />
+          }
+          left={taskExplainer}
+          right={editorArea}
+        />
+      ) : (
+        <>
+          {taskExplainer}
+          {editorArea}
+        </>
       )}
-
-      <div style={editorAreaStyle} className={isForcedTeacherLive ? 'live-view-active' : undefined}>
-        {!isSandbox && !cs.inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted && (
-          <CheckFeedbackBanner
-            passed={displayCheckPassed}
-            failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
-            suggestion={displayCheckSuggestion}
-            onShowCodeStage={canOfferNextStage ? () => cs.handleShowCodeStage(cs.offeredStageIndex + 1) : undefined}
-            onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
-            onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
-            onNeedHelp={onNeedHelp}
-          />
-        )}
-        {isSandbox && sandboxExplainer && (
-          <ExplainerPanel title="Instructions" content={sandboxExplainer} topicType={lesson.type} disableCopy />
-        )}
-
-        {!isSandbox && isInformationTask ? (
-          <InformationTask task={task} lesson={lesson} fill disableCopy />
-        ) : !isSandbox && isQuizTask ? (
-          <QuizTask
-            task={task}
-            showQuestion
-            selectedAnswer={cs.selectedAnswer}
-            onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
-            submitted={cs.runStatus === 'submitted'}
-            checkPassed={cs.checkPassed}
-            disabled={isViewingPrev}
-            showResult={false}
-          />
-        ) : lessonMod && (
-          <lessonMod.StudentWorkspace
-            lesson={lesson}
-            task={task}
-            cs={cs}
-            lessonId={lessonId}
-            identityId={identityId}
-            viewingTaskId={viewingTaskId}
-            currentTaskId={currentTaskId}
-            isSandbox={isSandbox}
-            isViewingPrev={isViewingPrev}
-            isForcedTeacherLive={isForcedTeacherLive}
-            isMobile={isMobile}
-            activeStudentView={activeStudentView}
-            previewMode={previewMode}
-            displayCode={displayCode}
-            displayFiles={displayFiles}
-            displayActiveFile={displayActiveFile}
-            displayOutput={displayOutput}
-            displayRunStatus={displayRunStatus}
-            displayCheckPassed={displayCheckPassed}
-            displayCheckAttempted={displayCheckAttempted}
-            displaySelection={displaySelection}
-            displayFs={displayFs}
-            isTeacherEditing={isTeacherEditing}
-            teacherLiveCode={teacherLiveCode}
-          />
-        )}
-      </div>
     </TaskSlideTransition>
   )
 }
@@ -182,6 +257,42 @@ const s = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  fluidTaskContent: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  sideBySideLayout: {
+    flex: 1,
+    minHeight: 0,
+    gap: 12,
+    overflow: 'hidden',
+  },
+  sideExplainerShell: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  sideExplainerCollapse: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 3,
+    width: 28,
+    height: 28,
+    alignSelf: 'auto',
+    color: '#fff',
+  },
+  fluidWorkspace: {
+    flex: '1 1 auto',
+    minWidth: 0,
     minHeight: 0,
     overflow: 'hidden',
   },

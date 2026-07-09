@@ -1,14 +1,25 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 
-export default function SplitPane({ left, right, defaultSplit = 50, style, rightCollapsed = false, collapsedRight = null, collapsedRightWidth = 44 }) {
+export default function SplitPane({
+  left,
+  right,
+  defaultSplit = 50,
+  style,
+  rightCollapsed = false,
+  collapsedRight = null,
+  collapsedRightWidth = 44,
+  leftCollapsed = false,
+  collapsedLeft = null,
+  collapsedLeftWidth = 44,
+}) {
   const [splitPct, setSplitPct] = useState(defaultSplit)
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef(null)
   const dragging = useRef(false)
 
   useEffect(() => {
-    if (!rightCollapsed) setSplitPct(defaultSplit)
-  }, [defaultSplit, rightCollapsed])
+    if (!rightCollapsed && !leftCollapsed) setSplitPct(defaultSplit)
+  }, [defaultSplit, leftCollapsed, rightCollapsed])
 
   const onMouseDown = useCallback((e) => {
     e.preventDefault()
@@ -38,19 +49,23 @@ export default function SplitPane({ left, right, defaultSplit = 50, style, right
   }, [])
 
   const paneStyle = isDragging ? { pointerEvents: 'none' } : undefined
-  const leftStyle = rightCollapsed
+  const leftStyle = leftCollapsed
+    ? { width: collapsedLeftWidth, minWidth: collapsedLeftWidth, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }
+    : rightCollapsed
     ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', ...paneStyle }
     : { width: `${splitPct}%`, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', ...paneStyle }
   const rightStyle = rightCollapsed
     ? { width: collapsedRightWidth, minWidth: collapsedRightWidth, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }
+    : leftCollapsed
+    ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...paneStyle }
     : { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...paneStyle }
 
   return (
     <div ref={containerRef} style={{ display: 'flex', minHeight: 0, overflow: 'hidden', ...style }}>
       <div style={leftStyle}>
-        {left}
+        {leftCollapsed ? collapsedLeft : left}
       </div>
-      {!rightCollapsed && (
+      {!rightCollapsed && !leftCollapsed && (
         <div
           onMouseDown={onMouseDown}
           onMouseEnter={e => { e.currentTarget.style.background = '#c4b5fd' }}
