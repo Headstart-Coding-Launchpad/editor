@@ -38,12 +38,19 @@ sprites:
     visible: true             # optional — initial visibility (default true)
     rotationStyle: all around # optional — all around | left-right | don't rotate
     costume: rocket           # optional — initial costume name
-    costumes:                 # optional — image costumes
+    costumes:                 # optional — costumes (image-based or emoji-based, not mixed)
       - name: rocket
         image: sprites/rocket.png   # relative to assetsPath, or /assets/shared/...
-    emoji: "🚀"               # optional — emoji rendered on stage when no costume image is active
+      - name: rocket-glow
+        emoji: "🌟"           # emoji costume — alternative to image, for emoji-mode sprites
+    emoji: "🚀"               # optional — base emoji rendered on stage when there is no costume list
     studentEditable: true     # optional — when false, students cannot select or view blocks (default true)
 ```
+
+A sprite in "emoji" mode can have alternate emoji costumes instead of a fixed single emoji: give
+each costume entry an `emoji` field instead of `image`. `looks_switchcostumeto` / `looks_nextcostume`
+/ `looks_costumenumber` work the same way for emoji costumes as they do for image costumes —
+they only ever address costumes by `name`.
 
 ---
 
@@ -141,14 +148,16 @@ Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_cou
 
 **Sensing**
 - `sensing_askandwait` · `sensing_answer` · `sensing_keypressed`
-- `sensing_mousedown` · `sensing_touchingedge` · `sensing_touchingobject`
+- `sensing_mousedown` · `sensing_touchingedge` · `sensing_touchingobject` — matches the named sprite's
+  original instance and any of its live clones (a hidden clone is excluded, matching Scratch's own rule
+  for `isTouchingSprite`)
 - `sensing_distanceto` · `sensing_timer` · `sensing_resettimer`
 
 **Operators**
 - `operator_equals` · `operator_gt` · `operator_lt`
 - `operator_and` · `operator_or` · `operator_not`
 - `operator_add` · `operator_subtract` · `operator_multiply` · `operator_divide` · `operator_mod`
-- `operator_round` · `operator_mathop`
+- `operator_round` · `operator_mathop` · `operator_random`
 - `operator_join` · `operator_letter_of` · `operator_length` · `operator_contains`
 
 **Variables**

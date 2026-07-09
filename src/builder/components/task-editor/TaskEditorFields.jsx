@@ -296,8 +296,8 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
 
 function spriteVisualMode(sp) {
-  if (sp.costumes?.length > 0) return 'costume'
-  if (sp.emoji) return 'emoji'
+  if (sp.costumes?.some(c => c.image !== undefined)) return 'costume'
+  if (sp.emoji || sp.costumes?.some(c => c.emoji !== undefined)) return 'emoji'
   return 'preset'
 }
 
@@ -346,7 +346,7 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
               <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
                 {imageUrl
                   ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                  : <span className="te-sprite-card__shape">{sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
+                  : <span className="te-sprite-card__shape">{sp.costumes?.[0]?.emoji || sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
                 }
                 <span className="te-sprite-card__name">{sp.name}</span>
               </button>
@@ -399,15 +399,26 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
 
   function setVisualMode(id, mode) {
     setSpriteModes(prev => ({ ...prev, [id]: mode }))
+    const sp = sprites.find(s => s.id === id)
+    const costumeKind = sp?.costumes?.[0]?.image !== undefined ? 'image' : sp?.costumes?.[0]?.emoji !== undefined ? 'emoji' : null
     if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
-    else if (mode === 'emoji') updateMany(id, { costumes: [] })
-    else updateMany(id, { emoji: '' })
+    else if (mode === 'emoji') updateMany(id, costumeKind === 'image' ? { costumes: [] } : {})
+    else updateMany(id, costumeKind === 'emoji' ? { emoji: '', costumes: [] } : { emoji: '' })
   }
 
   function addCostume(spriteId) {
     const sp = sprites.find(s => s.id === spriteId)
+    const mode = spriteModes[spriteId] ?? spriteVisualMode(sp)
+    if (mode === 'emoji' && (sp?.costumes ?? []).length === 0) {
+      onChange(sprites.map(s => s.id === spriteId
+        ? { ...s, costumes: [{ name: 'costume1', emoji: s.emoji || '' }, { name: 'costume2', emoji: '' }] }
+        : s
+      ))
+      return
+    }
     const next = (sp?.costumes ?? []).length + 1
-    onChange(sprites.map(s => s.id === spriteId ? { ...s, costumes: [...(s.costumes ?? []), { name: `costume${next}`, image: '' }] } : s))
+    const newCostume = mode === 'emoji' ? { name: `costume${next}`, emoji: '' } : { name: `costume${next}`, image: '' }
+    onChange(sprites.map(s => s.id === spriteId ? { ...s, costumes: [...(s.costumes ?? []), newCostume] } : s))
   }
 
   function removeCostume(spriteId, idx) {
@@ -429,7 +440,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
           <div className="te-sprite-entry__thumb">
             {sp.costumes?.[0]?.image
               ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-              : <span className="te-sprite-card__shape">{sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
+              : <span className="te-sprite-card__shape">{sp.costumes?.[0]?.emoji || sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
             }
             <button
               type="button"
@@ -470,7 +481,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
               </select>
             </div>
           )}
-          {mode === 'emoji' && (
+          {mode === 'emoji' && (sp.costumes?.length ?? 0) === 0 && (
             <div className="te-sprite-row">
               <input
                 className="te-input"
@@ -479,7 +490,19 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
                 onChange={e => update(sp.id, 'emoji', e.target.value)}
                 placeholder="🐱"
               />
+              <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addCostume(sp.id)}>
+                + Add costumes
+              </button>
             </div>
+          )}
+          {mode === 'emoji' && (sp.costumes?.length ?? 0) > 0 && (
+            <CostumeManager
+              kind="emoji"
+              costumes={sp.costumes ?? []}
+              onAdd={() => addCostume(sp.id)}
+              onRemove={idx => removeCostume(sp.id, idx)}
+              onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
+            />
           )}
           {!hidePosRow && (
             <div className="te-sprite-row">
@@ -529,21 +552,25 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
   )
 }
 
-function CostumeManager({ costumes, assetsPath, storageAssets, lessonId, lessonType, onAdd, onRemove, onUpdate }) {
+function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, lessonId, lessonType, onAdd, onRemove, onUpdate }) {
   const [browsingIdx, setBrowsingIdx] = React.useState(null)
   const { lessonAssets } = useAssets()
   const { typeStorageAssets } = useTypeAssets(lessonType)
-  const assets = lessonAssets(lessonId, lessonType)
-  const mergedStorageAssets = [...(storageAssets ?? []), ...typeStorageAssets.filter(a => !(storageAssets ?? []).some(b => b.name === a.name))]
+  const assets = kind === 'emoji' ? [] : lessonAssets(lessonId, lessonType)
+  const mergedStorageAssets = kind === 'emoji' ? [] : [...(storageAssets ?? []), ...typeStorageAssets.filter(a => !(storageAssets ?? []).some(b => b.name === a.name))]
   const hasAnyAssets = assets.length > 0 || mergedStorageAssets.length > 0
 
   return (
     <div className="te-costume-manager">
       {costumes.length === 0 && (
-        <p className="te-costume-empty">No costumes — sprite uses its built-in shape. Add a costume to use an image from the assets folder.</p>
+        <p className="te-costume-empty">
+          {kind === 'emoji'
+            ? 'No costumes yet — sprite uses a single emoji. Add a costume to give it alternate looks.'
+            : 'No costumes — sprite uses its built-in shape. Add a costume to use an image from the assets folder.'}
+        </p>
       )}
       {costumes.map((c, idx) => {
-        const resolvedUrl = resolveAssetFileUrl(assetsPath, c.image)
+        const resolvedUrl = kind === 'emoji' ? null : resolveAssetFileUrl(assetsPath, c.image)
         const isBrowsing = browsingIdx === idx
         return (
           <div key={idx} className="te-costume-block">
@@ -556,13 +583,23 @@ function CostumeManager({ costumes, assetsPath, storageAssets, lessonId, lessonT
                 onChange={e => onUpdate(idx, 'name', e.target.value)}
                 placeholder="Costume name"
               />
-              <input
-                className="te-input"
-                style={{ flex: '2 1 120px', minWidth: 0, fontFamily: 'var(--font-code)', fontSize: '0.8rem' }}
-                value={c.image ?? ''}
-                onChange={e => onUpdate(idx, 'image', e.target.value)}
-                placeholder="e.g. sprites/cat1.png"
-              />
+              {kind === 'emoji' ? (
+                <input
+                  className="te-input"
+                  style={{ width: 56, textAlign: 'center', fontSize: '20px', fontFamily: "'Noto Color Emoji', serif" }}
+                  value={c.emoji ?? ''}
+                  onChange={e => onUpdate(idx, 'emoji', e.target.value)}
+                  placeholder="🐱"
+                />
+              ) : (
+                <input
+                  className="te-input"
+                  style={{ flex: '2 1 120px', minWidth: 0, fontFamily: 'var(--font-code)', fontSize: '0.8rem' }}
+                  value={c.image ?? ''}
+                  onChange={e => onUpdate(idx, 'image', e.target.value)}
+                  placeholder="e.g. sprites/cat1.png"
+                />
+              )}
               {hasAnyAssets && (
                 <button
                   type="button"

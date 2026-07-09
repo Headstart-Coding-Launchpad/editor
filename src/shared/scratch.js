@@ -27,6 +27,15 @@ export function setCostumeContext(costumes) {
   _currentCostumes = costumes ?? []
 }
 
+// Human-readable dropdown option for a costume: a thumbnail image when one is
+// available, otherwise the emoji (already visual) or plain name as a fallback.
+const COSTUME_THUMB_SIZE = 20
+function costumeDropdownLabel(c) {
+  if (c.imageUrl) return { src: c.imageUrl, width: COSTUME_THUMB_SIZE, height: COSTUME_THUMB_SIZE, alt: c.name }
+  if (c.emoji) return `${c.emoji} ${c.name}`
+  return c.name
+}
+
 export function setVariableContext(variables) {
   _currentVariables = variables ?? []
 }
@@ -209,7 +218,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         type: 'looks_switchcostumeto',
         message0: 'switch costume to %1',
         args0: [{ type: 'field_dropdown', name: 'COSTUME', options: () =>
-          _currentCostumes.length ? _currentCostumes.map(c => [c.name, c.name]) : [['costume1', 'costume1']]
+          _currentCostumes.length ? _currentCostumes.map(c => [costumeDropdownLabel(c), c.name]) : [['costume1', 'costume1']]
         }],
         previousStatement: null,
         nextStatement: null,
@@ -377,6 +386,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   operator_divide: operator('operator_divide', '%1 / %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
   operator_mod: operator('operator_mod', '%1 mod %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
   operator_round: operator('operator_round', 'round %1', [numberInput('NUM', 0)], 'Number'),
+  operator_random: operator('operator_random', 'pick random %1 to %2', [numberInput('FROM', 1), numberInput('TO', 10)], 'Number'),
   operator_mathop: {
     init() {
       this.jsonInit({
@@ -731,6 +741,7 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'operator_mod' },
         { kind: 'block', type: 'operator_round' },
         { kind: 'block', type: 'operator_mathop' },
+        { kind: 'block', type: 'operator_random' },
         { kind: 'block', type: 'operator_join' },
         { kind: 'block', type: 'operator_letter_of' },
         { kind: 'block', type: 'operator_length' },
@@ -790,6 +801,7 @@ export const VALUE_INPUT_DEFAULTS = {
   operator_mod: { NUM1: numberShadow(1), NUM2: numberShadow(1) },
   operator_round: { NUM: numberShadow(0) },
   operator_mathop: { NUM: numberShadow(0) },
+  operator_random: { FROM: numberShadow(1), TO: numberShadow(10) },
   operator_join: { STRING1: textShadow('apple'), STRING2: textShadow('banana') },
   operator_letter_of: { LETTER: numberShadow(1), STRING: textShadow('world') },
   operator_length: { STRING: textShadow('world') },
@@ -833,6 +845,7 @@ export const BLOCK_DISPLAY_TEMPLATES = {
   operator_mod:            { message: '%1 mod %2',                      inputOrder: ['NUM1', 'NUM2'] },
   operator_round:          { message: 'round %1',                       inputOrder: ['NUM'] },
   operator_mathop:         { message: '_ of %1',                        inputOrder: ['NUM'] },
+  operator_random:         { message: 'pick random %1 to %2',           inputOrder: ['FROM', 'TO'] },
   operator_join:           { message: 'join %1 %2',                     inputOrder: ['STRING1', 'STRING2'] },
   operator_letter_of:      { message: 'letter %1 of %2',               inputOrder: ['LETTER', 'STRING'] },
   operator_length:         { message: 'length of %1',                   inputOrder: ['STRING'] },
@@ -1091,6 +1104,7 @@ export function createRunSignal() {
     stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null,
     backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set(), timerStart: Date.now(),
     onCloneCreated: null, onCloneUpdated: null, onCloneDeleted: null, deletedClones: new Set(), cloneCount: 0, cloneSeq: 0,
+    clones: new Map(),
   }
 }
 
@@ -1408,8 +1422,11 @@ async function runBlock(block, context) {
           signal.cloneCount++
           signal.cloneSeq = (signal.cloneSeq ?? 0) + 1
           const cloneId = `${source.id}__clone${signal.cloneSeq}`
+          const rootBaseId = source.id.includes('__clone') ? source.id.split('__clone')[0] : source.id
           const cloneState = { ...source.state }
           signal.onCloneCreated?.({ id: cloneId, baseId: source.id, state: { ...cloneState }, costumes: source.costumes ?? [] })
+          signal.clones ??= new Map()
+          signal.clones.set(cloneId, { id: cloneId, baseId: rootBaseId, workspace: source.workspace, state: cloneState, costumes: source.costumes ?? [] })
           const cloneContext = createRunContext(
             source.workspace, cloneState, s => signal.onCloneUpdated?.(cloneId, s),
             signal, context.allSprites, source.costumes ?? [], cloneId,
@@ -1425,6 +1442,7 @@ async function runBlock(block, context) {
       if (context.spriteId && context.spriteId.includes('__clone')) {
         signal.deletedClones ??= new Set()
         signal.deletedClones.add(context.spriteId)
+        signal.clones?.delete(context.spriteId)
         signal.onCloneDeleted?.(context.spriteId)
       }
       break
@@ -1541,7 +1559,13 @@ function evaluateReporter(block, context) {
       if (target === '_mouse_') return isTouchingMouse(state, signal.mouseX ?? 0, signal.mouseY ?? 0)
       if (target === '_edge_') return isTouchingEdge(state)
       const targetSprite = allSprites?.find(sp => sp.id === target)
-      return targetSprite ? isTouchingSprite(state, targetSprite.state) : false
+      if (targetSprite && isTouchingSprite(state, targetSprite.state)) return true
+      if (signal.clones) {
+        for (const clone of signal.clones.values()) {
+          if (clone.baseId === target && clone.id !== context.spriteId && isTouchingSprite(state, clone.state)) return true
+        }
+      }
+      return false
     }
     case 'operator_equals':
       return String(evaluateInput(block, 'OPERAND1', context)) === String(evaluateInput(block, 'OPERAND2', context))
@@ -1571,6 +1595,16 @@ function evaluateReporter(block, context) {
       return Number(evaluateInput(block, 'NUM1', context)) % Number(evaluateInput(block, 'NUM2', context))
     case 'operator_round':
       return Math.round(Number(evaluateInput(block, 'NUM', context)))
+    case 'operator_random': {
+      const from = Number(evaluateInput(block, 'FROM', context))
+      const to = Number(evaluateInput(block, 'TO', context))
+      const lo = Math.min(from, to)
+      const hi = Math.max(from, to)
+      if (Number.isInteger(from) && Number.isInteger(to)) {
+        return Math.floor(Math.random() * (hi - lo + 1)) + lo
+      }
+      return Math.random() * (hi - lo) + lo
+    }
     case 'operator_mathop': {
       const op = block.getFieldValue('OPERATOR') ?? 'abs'
       const n = Number(evaluateInput(block, 'NUM', context))

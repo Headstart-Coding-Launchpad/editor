@@ -229,7 +229,7 @@ function drawSpriteVisual(ctx, state, costumes, fallbackType, fallbackEmoji, ass
     const img = imageCache[url]
     if (img) { drawSpriteImage(ctx, state, img); return }
   }
-  drawSpriteShape(ctx, state, fallbackType ?? 'cat', fallbackEmoji)
+  drawSpriteShape(ctx, state, fallbackType ?? 'cat', costumeEntry?.emoji || fallbackEmoji)
 }
 
 function spriteRadius(s) { return Math.max(4, (s.size / 100) * 24) }
@@ -266,7 +266,8 @@ function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
 
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
   if (flipH) ctx.scale(-1, 1)
-  if (sprite.emoji) drawEmojiAtOrigin(ctx, sprite.emoji, r)
+  const thumbEmoji = costumeEntry?.emoji || sprite.emoji
+  if (thumbEmoji) drawEmojiAtOrigin(ctx, thumbEmoji, r)
   else drawScratchSpriteAtOrigin(ctx, sprite.type ?? 'cat', r)
   ctx.restore()
 }
@@ -481,9 +482,10 @@ export default function ScratchWorkspace({
   }, [sprites, backdrops, variables])
 
   useEffect(() => {
-    setCostumeContext((sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? [])
+    const costumes = (sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []
+    setCostumeContext(costumes.map(c => ({ ...c, imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined })))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sprites, selectedSpriteId])
+  }, [sprites, selectedSpriteId, assetsPath])
 
   useEffect(() => {
     if (controlledSpriteId !== null) return
@@ -731,7 +733,8 @@ export default function ScratchWorkspace({
             toolbox: buildToolboxForSprite(sp.id),
             renderer: 'zelos',
             grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
-            zoom: { startScale: 0.75 },
+            zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.35, scaleSpeed: 1.2 },
+            move: { scrollbars: true, drag: true, wheel: false },
             trashcan: true,
             readOnly,
           })
@@ -781,7 +784,8 @@ export default function ScratchWorkspace({
               toolbox: buildToolboxForSprite('__stage__'),
               renderer: 'zelos',
               grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
-              zoom: { startScale: 0.75 },
+              zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.35, scaleSpeed: 1.2 },
+              move: { scrollbars: true, drag: true, wheel: false },
               trashcan: true,
               readOnly,
             })

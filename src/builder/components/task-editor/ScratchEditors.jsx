@@ -123,6 +123,7 @@ const SCRATCH_TOOLBOX_GROUPS = [
       ['operator_mod', 'mod'],
       ['operator_round', 'round'],
       ['operator_mathop', 'math operation'],
+      ['operator_random', 'pick random'],
       ['operator_join', 'join'],
       ['operator_letter_of', 'letter of'],
       ['operator_length', 'length of'],
