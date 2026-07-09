@@ -33,7 +33,6 @@ const MIN_EDITOR_WIDTH_COMPACT = 320
 const MIN_EDITOR_WIDTH_COLLAPSED = 280
 const MIN_EDITOR_WIDTH_COLLAPSED_COMPACT = 180
 const NARROW_BREAKPOINT = 1000
-const STAGE_VERTICAL_CHROME = 112
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 const STAGE_RUNTIME_STATE = {
   x: 0,
@@ -906,14 +905,16 @@ export default function ScratchWorkspace({
     evaluateBlockPlacedChecksRef.current?.()
   }, [status])
 
-  // Responsive stage scaling — shrink canvas CSS size to keep editor visible
+  // Responsive stage scaling — shrink canvas CSS size to keep editor visible.
+  // Driven by available width only: the stage must hold a constant size when the
+  // page's vertical content changes (explainer text, check banners, etc.) so those
+  // elements shift/scroll around it instead of squeezing the stage smaller.
   useEffect(() => {
     const el = rootRef.current
     if (!el) return
     let resizeFrame = 0
     const obs = new ResizeObserver(([entry]) => {
       const w = entry.contentRect.width
-      const h = entry.contentRect.height
 
       // Auto-collapse block list when first rendering or transitioning to narrow
       const wasNarrow = prevWidthRef.current !== null && prevWidthRef.current < NARROW_BREAKPOINT
@@ -928,8 +929,7 @@ export default function ScratchWorkspace({
         ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
         : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
       const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
-      const heightScale = hideStage ? 1 : (h - STAGE_VERTICAL_CHROME) / (STAGE_H + 2)
-      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
       const scale = Number.isFinite(nextScale) ? nextScale : 1
       setStageScale(scale)
       cancelAnimationFrame(resizeFrame)
@@ -954,14 +954,13 @@ export default function ScratchWorkspace({
     }
     const el = rootRef.current
     if (!el) return
-    const { width: w, height: h } = el.getBoundingClientRect()
+    const { width: w } = el.getBoundingClientRect()
     if (!w) return
     const editorReserve = flyoutCollapsed
       ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
       : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
     const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
-    const heightScale = (h - STAGE_VERTICAL_CHROME) / (STAGE_H + 2)
-    const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+    const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
     setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
     requestAnimationFrame(resizeBlocklyWorkspaces)
   }, [flyoutCollapsed, hideStage, resizeBlocklyWorkspaces])
@@ -977,14 +976,13 @@ export default function ScratchWorkspace({
       if (hideStageRef.current) return
       const rootEl = rootRef.current
       if (!rootEl) return
-      const { width: w, height: h } = rootEl.getBoundingClientRect()
+      const { width: w } = rootEl.getBoundingClientRect()
       if (!w) return
       const editorReserve = flyoutCollapsedRef.current
         ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
         : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
       const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
-      const heightScale = (h - STAGE_VERTICAL_CHROME) / (STAGE_H + 2)
-      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
       setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
       requestAnimationFrame(resizeBlocklyWorkspaces)
     }
@@ -1660,7 +1658,11 @@ export default function ScratchWorkspace({
 }
 
 const s = {
-  root: { display: 'flex', flex: 1, minHeight: 0, minWidth: 0, gap: 8, height: '100%', position: 'relative' },
+  // flex: '1 0 auto' (not '1 1 0%'/height:100%) so this never shrinks below its content's
+  // natural height — the stage stays a constant size and the editor pane (which stretches
+  // to match via align-items:stretch) tracks it, instead of both being squeezed by
+  // whatever vertical space sibling page content happens to leave.
+  root: { display: 'flex', flex: '1 0 auto', minWidth: 0, gap: 8, position: 'relative' },
   rootColumn: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 0, height: '100%', position: 'relative' },
   overlay: { position: 'absolute', inset: 0, zIndex: 10, background: '#f5f5f5', borderRadius: 8 },
   editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
