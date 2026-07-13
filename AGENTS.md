@@ -56,9 +56,13 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Plain-language overview of quiz types (no field detail) | `docs/authoring/quiz-types.md` |
 | All check types | `docs/authoring/checks.md` |
 | Quiz sub-types in detail | `docs/authoring/quiz-tasks.md` |
+| Python code task fields, tests | `docs/authoring/python-tasks.md` |
+| HTML code task fields | `docs/authoring/html-tasks.md` |
+| Filesystem code task fields | `docs/authoring/filesystem-tasks.md` |
 | Scratch fields, opcodes, block explainer style | `docs/authoring/scratch-reference.md` |
 | Scratch toolbox XML format and examples | `docs/authoring/scratch-toolbox-xml.md` |
 | Lesson JSON field reference | `docs/authoring/lesson-schema.md` |
+| Lesson YAML basics (envelope, common fields, info/group/draft tasks) | `docs/authoring/lesson-schema-yaml.md` |
 | Topic library schema and YAML authoring | `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` |
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
 | Agent playbooks (author, edit, review, topics, assets, feedback) | `docs/authoring/skills/` |

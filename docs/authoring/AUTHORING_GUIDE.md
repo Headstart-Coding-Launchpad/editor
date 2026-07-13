@@ -3,6 +3,7 @@
 YAML-first reference for writing HSC lessons and topics. Use the CLI to convert YAML and publish to Firestore.
 
 **Full JSON field reference:** `docs/authoring/lesson-schema.md`
+**Basic YAML field reference:** `docs/authoring/lesson-schema-yaml.md`
 **All check types:** `docs/authoring/checks.md`
 **Quiz types in detail:** `docs/authoring/quiz-tasks.md`
 **Scratch fields and opcodes:** `docs/authoring/scratch-reference.md`

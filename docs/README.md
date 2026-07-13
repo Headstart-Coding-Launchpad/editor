@@ -80,6 +80,11 @@ Complete JSON field reference for lessons — every field on the lesson object, 
 
 **Load when:** you need the exact field name or shape for a lesson JSON property, or when validating a generated lesson against the schema.
 
+### [authoring/lesson-schema-yaml.md](authoring/lesson-schema-yaml.md)
+Basic YAML reference for the lesson envelope, common task fields, information tasks, task groups, review notes, and draft tasks — the non-code, non-quiz parts of a lesson file. Points to `quiz-tasks.md` and the per-type code task files for the rest.
+
+**Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
+
 ### [authoring/checks.md](authoring/checks.md)
 All completion check types across all lesson types (Python, HTML, Scratch, Filesystem, Quiz), with field names, operators, and example syntax. Covers both correct-answer checks and `incorrectChecks` patterns.
 
@@ -89,6 +94,21 @@ All completion check types across all lesson types (Python, HTML, Scratch, Files
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
 
 **Load when:** authoring or editing a quiz task.
+
+### [authoring/python-tasks.md](authoring/python-tasks.md)
+Python code task field reference: `starterCode`, `completeCode`, `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
+
+**Load when:** authoring or editing a Python code task, especially one with `tests`.
+
+### [authoring/html-tasks.md](authoring/html-tasks.md)
+HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, `codeStages`, and carry-through-by-filename behaviour. Includes a minimal full-lesson example.
+
+**Load when:** authoring or editing an HTML code task.
+
+### [authoring/filesystem-tasks.md](authoring/filesystem-tasks.md)
+Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
+
+**Load when:** authoring or editing a filesystem code task.
 
 ### [authoring/scratch-reference.md](authoring/scratch-reference.md)
 Scratch-specific task fields, sprite and backdrop objects, block opcodes accepted by the interpreter, toolbox configuration, and Scratch check field names.

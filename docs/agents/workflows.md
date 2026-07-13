@@ -111,7 +111,7 @@ Do not lower thresholds to make builds pass.
 After significant changes, update relevant docs:
 
 - `docs/CODEBASE_MAP.md` when files are added, moved, or removed.
-- `docs/authoring/lesson-schema.md`, `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, or `docs/authoring/scratch-reference.md` when lesson JSON fields or check types change.
+- `docs/authoring/lesson-schema.md`, `docs/authoring/lesson-schema-yaml.md`, `docs/authoring/checks.md`, `docs/authoring/quiz-tasks.md`, `docs/authoring/python-tasks.md`, `docs/authoring/html-tasks.md`, `docs/authoring/filesystem-tasks.md`, or `docs/authoring/scratch-reference.md` when lesson JSON fields or check types change.
 - `docs/authoring/AUTHORING_GUIDE.md` when YAML conversion rules or shorthands change.
 - `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` when topic structure changes.
 - `docs/FEATURES.md` when user-facing features change.

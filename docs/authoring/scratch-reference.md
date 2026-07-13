@@ -184,6 +184,36 @@ Supported effect property names: `effect_color`, `effect_fisheye`, `effect_whirl
 
 ---
 
+## Minimal Example
+
+```yaml
+id: scratch-minimal
+type: scratch
+title: Scratch Minimal
+description: A short Scratch lesson.
+tasks:
+  - id: 1
+    title: Move
+    explainer: Move the sprite to the right.
+    sprites:
+      - id: sprite1
+        name: Sprite 1
+        type: cat
+        x: 0
+        y: 0
+        size: 100
+        direction: 90
+    check:
+      type: sprite_property
+      evaluation: after_run
+      spriteName: Sprite 1
+      property: x
+      operator: greater_than
+      value: 50
+```
+
+---
+
 ## Writing Scratch Explainers
 
 Scratch tasks use the standard Markdown `explainer` field. Describe blocks by name in inline code rather than pasting XML.
