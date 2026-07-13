@@ -117,6 +117,8 @@ export default function StudentWorkspace({
         onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
         onActivity={readOnly ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}
+        teacherHighlights={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? [] : cs.teacherHighlights}
+        onHighlightDismiss={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight}
         pyodideStatus={cs.pyodideStatus}
       />
       {showSubmitBanner && (

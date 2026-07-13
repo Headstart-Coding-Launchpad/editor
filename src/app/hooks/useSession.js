@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ref, onValue, set, update, remove, serverTimestamp, onDisconnect } from 'firebase/database'
+import { ref, onValue, set, update, remove, push, serverTimestamp, onDisconnect } from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { encodeFileKey } from '../../shared/fileKeys'
 
@@ -16,6 +16,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
   const [loading, setLoading] = useState(enabled)
   const [connected, setConnected] = useState(null)
   const sessionRef = useRef(null)
+  const attemptCacheRef = useRef({})
 
   useEffect(() => {
     if (!enabled) {
@@ -132,6 +133,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStageRequestedAt`]  = null
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
       updates[`students/${anonymousId}/teacherStageAcceptedAt`]   = null
+      updates[`students/${anonymousId}/teacherHighlights`]        = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -313,6 +315,23 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function pushTeacherHighlight(anonymousId, { file, from, to, emoji, note } = {}) {
+    const newRef = push(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights`))
+    await set(newRef, {
+      file:      encodeFileKey(file),
+      from,
+      to,
+      emoji,
+      note:      note || null,
+      createdAt: Date.now(),
+    })
+    return newRef.key
+  }
+
+  async function removeTeacherHighlight(anonymousId, highlightId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`), null)
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -355,6 +374,41 @@ export function useSession(lessonId, { enabled = true } = {}) {
     if (output != null) updates.currentOutput = output
     if (answer != null) updates.currentAnswer = answer
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
+  }
+
+  // Logs one attempt for a task into sessions/{lessonId}/attemptLog/{anonymousId}/{taskId}.
+  // Deduplicates on the client: an unchanged submission just bumps "retries" on the
+  // existing entry instead of creating a new one, and no further attempts are logged
+  // once a task has been passed. Safe without an atomic increment because only this
+  // student's own tab ever writes to their own attemptLog entries.
+  async function logAttempt(anonymousId, taskId, { submission, passed, suggestion } = {}) {
+    const cacheKey = `${anonymousId}:${taskId}`
+    const cached = attemptCacheRef.current[cacheKey]
+    if (cached?.passed) return
+
+    const serialized = typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)
+    const basePath = `sessions/${lessonId}/attemptLog/${anonymousId}/${taskId}`
+
+    if (cached && cached.serialized === serialized) {
+      const nextRetries = cached.retries + 1
+      const updates = { retries: nextRetries }
+      if (passed) updates.passed = true
+      await update(ref(db, `${basePath}/${cached.key}`), updates)
+      attemptCacheRef.current[cacheKey] = { ...cached, retries: nextRetries, passed: passed || cached.passed }
+      return
+    }
+
+    const attemptNumber = (cached?.attemptNumber ?? 0) + 1
+    const newRef = push(ref(db, basePath))
+    await set(newRef, {
+      submission,
+      passed,
+      suggestion: suggestion || null,
+      attemptNumber,
+      retries: 0,
+      loggedAt: serverTimestamp(),
+    })
+    attemptCacheRef.current[cacheKey] = { serialized, key: newRef.key, attemptNumber, retries: 0, passed }
   }
 
   async function writeStudentAnswer(anonymousId, answer) {
@@ -446,9 +500,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
+    pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }

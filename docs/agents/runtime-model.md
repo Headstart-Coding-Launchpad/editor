@@ -42,6 +42,20 @@ Do not deviate from this shape.
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
       },
+      "attemptLog": {
+        "{anonymousId}": {
+          "{taskId}": {
+            "{pushId}": {
+              "submission": "string | object (code / files / scratch or fs state / quiz answer)",
+              "passed": true,
+              "suggestion": "string | null",
+              "attemptNumber": 1,
+              "retries": 0,
+              "loggedAt": "ServerValue.TIMESTAMP"
+            }
+          }
+        }
+      },
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
@@ -68,7 +82,17 @@ Do not deviate from this shape.
           "sentToTopicId": "topicId | null",
           "sentToTopicPushedAt": "number | null",
           "teacherMessage": "string | null",
-          "teacherMessagePushedAt": "number | null"
+          "teacherMessagePushedAt": "number | null",
+          "teacherHighlights": {
+            "{highlightId}": {
+              "file": "index__dot__html (encodeFileKey'd; empty string for Python)",
+              "from": 12,
+              "to": 34,
+              "emoji": "✅ | ❌ | ❓ | 💡 | ⭐",
+              "note": "string | null",
+              "createdAt": 1234567890
+            }
+          }
         }
       }
     }
@@ -94,18 +118,21 @@ Teacher per-student actions:
 - Remote reset writes `remoteResetAction` and `remoteResetPushedAt`.
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; cleared by `setTaskId`.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
+- Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
 
 Student writes:
 
 - On run: own `currentCode` / `currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`.
+- On a graded check result (lesson phase only, not sandbox): own `attemptLog/{taskId}/{pushId}` via `logAttempt` — deduplicated client-side, so an unchanged resubmission only bumps `retries` on the existing entry rather than pushing a new one, and no further entries are written once a task has passed. `attemptLog` is a sibling of `students`, not nested inside it, so it is untouched by `setTaskId`'s per-task field wipe and is still present in the teacher's in-memory `session` snapshot at the moment `endSession()` runs — that snapshot is what `buildSessionReport` (`src/shared/lessonReport.js`) reads to build the Firestore report described under "Session Reports" below.
 - When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
+- Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields. Students (anonymous auth) can write only to their own `students/{anonymousId}` node and their own `attemptLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
 
 ## onDisconnect Rules
 
@@ -114,6 +141,51 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 - Student `online` key is removed on disconnect, not set to false.
 - Session node is deleted when the teacher calls `endSession()` and disconnects.
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
+
+## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
+
+Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes the live session's `students`/`attemptLog` data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks (no `check`) are excluded — there is nothing to grade.
+
+Read/write access mirrors the `feedback` subcollection: teacher or admin only (see `firestore.rules`). Teachers view reports via `TeacherReportModal` (shown right after ending a session) and `TeacherReportsPanel` (a persistent list reachable any time from the lesson's Reports button, querying the subcollection ordered by `startedAt` desc). Export to YAML uses `reportToYamlText` with the same `js-yaml` options as `cli/yaml-converter.mjs`.
+
+```json
+{
+  "lessonId": "python-l3-09",
+  "lessonTitle": "Dictionaries",
+  "sessionId": "1234567890",
+  "startedAt": 1234567890,
+  "endedAt": 1234567999,
+  "students": [
+    {
+      "anonymousId": "uuid",
+      "displayName": "Jamie",
+      "tasks": [
+        {
+          "taskId": 1,
+          "title": "Task One",
+          "completed": true,
+          "attempts": 3,
+          "finalResult": "passed | failed | not attempted",
+          "distinctAttempts": [
+            { "attemptNumber": 1, "passed": false, "retries": 1, "suggestion": "string | null", "submission": "string | object | null" }
+          ]
+        }
+      ]
+    }
+  ],
+  "taskSummary": [
+    {
+      "taskId": 1,
+      "title": "Task One",
+      "totalStudents": 12,
+      "completedCount": 9,
+      "completionRate": 0.75,
+      "avgAttempts": 2.3,
+      "commonFailures": [{ "suggestion": "string", "count": 4 }]
+    }
+  ]
+}
+```
 
 ## Lesson Drafts (`lessonDrafts` collection)
 

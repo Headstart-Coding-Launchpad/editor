@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { runPython, stopPython, provideInput } from '../../shared/pyodide'
 import { buildIframeSrc, waitForIframeText } from '../../shared/iframe'
 import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../shared/checks'
@@ -43,6 +43,7 @@ export function useStudentCodeState({
   previewMode,
   // Session write commands
   writeStudentRun,
+  logAttempt,
   writeStudentAnswer,
   writeStudentCode,
   writeStudentFiles,
@@ -54,6 +55,7 @@ export function useStudentCodeState({
   removeStudent,
   updateTeacherLive,
   setTeacherLive,
+  removeTeacherHighlight,
 }) {
   const [code, setCode]                   = useState('')
   const [files, setFiles]                 = useState([])
@@ -133,6 +135,20 @@ export function useStudentCodeState({
   ]
 
   const myStudentData = session?.students?.[identity?.anonymousId]
+
+  const teacherHighlights = useMemo(() => {
+    const raw = myStudentData?.teacherHighlights
+    if (!raw) return []
+    return Object.entries(raw)
+      .filter(([, h]) => decodeFileKey(h.file) === activeFile)
+      .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
+  }, [myStudentData?.teacherHighlights, activeFile])
+
+  const dismissHighlight = useCallback(highlightId => {
+    if (!identity?.anonymousId) return
+    removeTeacherHighlight?.(identity.anonymousId, highlightId)
+  }, [identity, removeTeacherHighlight])
+
   const {
     checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
     checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
@@ -660,6 +676,9 @@ export function useStudentCodeState({
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
         await writeStudentRun(actor.anonymousId, { code, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
       }
+      if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && !hasTests && task?.check) {
+        logAttempt(actor.anonymousId, currentTaskId, { submission: code, passed, suggestion })
+      }
       setRunning(false)
       return
     }
@@ -696,6 +715,10 @@ export function useStudentCodeState({
           const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
           writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
         }
+      }
+      if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && task?.check && taskIdAtRunTime === currentTaskIdRef.current) {
+        const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
+        logAttempt(actor.anonymousId, taskIdAtRunTime, { submission: filesMap, passed, suggestion })
       }
       persistence.saveHtmlFiles(actor.anonymousId, taskIdAtRunTime, currentFiles)
       setRunning(false)
@@ -761,6 +784,10 @@ export function useStudentCodeState({
       persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: displayedOutput, runStatus: finalStatus })
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
         await writeStudentRun(actor.anonymousId, { code, output: displayedOutput, status: finalStatus, checkPassed: allPassed })
+      }
+      if (!teacherPresentation && phaseRef.current === 'lesson' && finalStatus !== 'stopped') {
+        const failedTestNames = results.filter(r => !r.passed).map(r => r.name).join(', ')
+        logAttempt(actor.anonymousId, currentTaskId, { submission: code, passed: allPassed, suggestion: failedTestNames })
       }
     } catch {
       stopPython()
@@ -855,6 +882,9 @@ export function useStudentCodeState({
         status: 'success',
         checkPassed: effectivePassed,
       })
+      if (!teacherPresentation && phase === 'lesson' && !alreadySolved && task?.check) {
+        logAttempt(identity.anonymousId, currentTaskId, { submission: states, passed, suggestion })
+      }
     }
   }
 
@@ -873,6 +903,9 @@ export function useStudentCodeState({
         status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
         checkPassed: evaluatedPassed,
       })
+      if (!alreadySolved && task?.check) {
+        logAttempt(effectiveIdentity.anonymousId, currentTaskId, { submission: context.fs, passed: evaluatedPassed, suggestion })
+      }
     }
   }
 
@@ -1037,6 +1070,10 @@ export function useStudentCodeState({
       const filesMap = isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : undefined
       await writeStudentRun(actor.anonymousId, { code: isHtml ? undefined : code, files: filesMap, output: isHtml ? undefined : '', status: 'submitted', checkPassed: passed })
     }
+    if (!teacherPresentation && phase === 'lesson' && !alreadySolved && task?.check) {
+      const submission = isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : code
+      logAttempt(actor.anonymousId, currentTaskId, { submission, passed, suggestion })
+    }
   }
 
   async function handleQuizSelect(answer, passedOverride) {
@@ -1079,6 +1116,9 @@ export function useStudentCodeState({
         checkPassed: passed,
       })
     }
+    if (!teacherPresentation && phase === 'lesson') {
+      logAttempt(actor.anonymousId, currentTaskId, { submission: serializedAnswer, passed, suggestion })
+    }
   }
 
   return {
@@ -1089,6 +1129,7 @@ export function useStudentCodeState({
     offeredStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
+    teacherHighlights, dismissHighlight,
     // Refs
     iframeRef,
     // Event handlers

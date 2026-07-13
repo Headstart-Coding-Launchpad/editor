@@ -209,3 +209,20 @@ export async function fetchLessonFeedbackItems(lessonId) {
   const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
+
+// ── Session Reports ───────────────────────────────────────────────────────────
+// Fetches/writes the per-session-run report stored under lessons/{lessonId}/sessionReports.
+// One doc per session run, doc ID = the report's sessionId (session.startedAt).
+
+export async function saveSessionReport(lessonId, sessionId, report) {
+  await setDoc(doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId), report)
+}
+
+export async function fetchSessionReports(lessonId) {
+  const q = query(
+    collection(firestore, 'lessons', lessonId, 'sessionReports'),
+    orderBy('startedAt', 'desc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}

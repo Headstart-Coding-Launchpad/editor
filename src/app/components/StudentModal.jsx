@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import OutputPanel from './OutputPanel'
 import IframePreview from './IframePreview'
@@ -435,11 +435,18 @@ const sSt = {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage }) {
+const HIGHLIGHT_EMOJI_OPTIONS = ['✅', '❌', '❓', '💡', '⭐']
+
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
+
+  // Teacher highlight: select a range in the mirrored view, tag it, send it
+  const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
+  const [highlightEmoji, setHighlightEmoji] = useState(HIGHLIGHT_EMOJI_OPTIONS[0])
+  const [highlightNote, setHighlightNote] = useState('')
 
   // Teacher live-edit state machine
   const [teacherEditState, setTeacherEditState] = useState('idle') // 'idle' | 'requesting' | 'editing'
@@ -505,6 +512,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setStagePendingAction(null)
     setStageDeclinedNotice(false)
     setShowMessageModal(false)
+    setPendingHighlight(null)
+    setHighlightNote('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.anonymousId])
 
@@ -569,6 +578,32 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     onClose?.()
   }
 
+  function handleMirrorSelectionChange({ from, to }) {
+    setPendingHighlight(from === to ? null : { from, to })
+  }
+
+  function handleSendHighlight(activeFile) {
+    if (!pendingHighlight) return
+    onAddHighlight?.(student.anonymousId, {
+      file: activeFile,
+      from: pendingHighlight.from,
+      to:   pendingHighlight.to,
+      emoji: highlightEmoji,
+      note:  highlightNote.trim() || null,
+    })
+    setPendingHighlight(null)
+    setHighlightNote('')
+  }
+
+  function handleCancelHighlight() {
+    setPendingHighlight(null)
+    setHighlightNote('')
+  }
+
+  function handleDismissHighlight(highlightId) {
+    onRemoveHighlight?.(student.anonymousId, highlightId)
+  }
+
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const { isPython, isScratch, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
@@ -588,6 +623,15 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const remoteSelection = !isLive || (!isPython && student.currentSelection?.file !== activeFile)
     ? null
     : student.currentSelection
+
+  const canHighlight = isLive && !isInformation && !isQuiz && !isScratch && !isFilesystem && teacherEditState === 'idle'
+  const highlightsForActiveFile = useMemo(() => {
+    const raw = student.teacherHighlights
+    if (!raw) return []
+    return Object.entries(raw)
+      .filter(([, h]) => (isPython ? true : decodeFileKey(h.file) === activeFile))
+      .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
+  }, [student.teacherHighlights, isPython, activeFile])
 
   useEffect(() => {
     const liveFile = student.currentActiveFile ?? student.currentSelection?.file ?? student.currentActivity?.file
@@ -686,6 +730,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             {onOverrideCheck && task?.check != null && (
               <OverrideDropdown student={student} task={task} onOverrideCheck={onOverrideCheck} />
             )}
+
 
             {/* Active edit states (shown outside More dropdown while in progress) */}
             {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && teacherEditState === 'editing' && (
@@ -825,6 +870,17 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               studentFs={studentFs}
               iframeSrc={iframeSrc}
               iframeRef={iframeRef}
+              canHighlight={canHighlight}
+              pendingHighlight={pendingHighlight}
+              highlights={highlightsForActiveFile}
+              onMirrorSelectionChange={handleMirrorSelectionChange}
+              onDismissHighlight={handleDismissHighlight}
+              highlightEmoji={highlightEmoji}
+              onHighlightEmojiChange={setHighlightEmoji}
+              highlightNote={highlightNote}
+              onHighlightNoteChange={setHighlightNote}
+              onSendHighlight={() => handleSendHighlight(activeFile)}
+              onCancelHighlight={handleCancelHighlight}
             />
           )}
         </div>
@@ -872,7 +928,47 @@ function StudentWorkspaceBody({
   files, activeFile, setActiveFile, activeFileObj,
   remoteSelection, scratchState, spriteState, studentFs,
   iframeSrc, iframeRef,
+  canHighlight, pendingHighlight, highlights, onMirrorSelectionChange, onDismissHighlight,
+  highlightEmoji, onHighlightEmojiChange, highlightNote, onHighlightNoteChange,
+  onSendHighlight, onCancelHighlight,
 }) {
+  const highlightComposer = canHighlight && (
+    <div style={s.highlightComposer}>
+      <div style={s.highlightEmojiRow}>
+        {HIGHLIGHT_EMOJI_OPTIONS.map(emoji => (
+          <button
+            key={emoji}
+            type="button"
+            style={{ ...s.highlightEmojiBtn, ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}) }}
+            onClick={() => onHighlightEmojiChange(emoji)}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+      <input
+        type="text"
+        style={s.highlightNoteInput}
+        placeholder={pendingHighlight ? 'Optional note…' : 'Select code above to highlight it…'}
+        value={highlightNote}
+        onChange={e => onHighlightNoteChange(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && pendingHighlight) onSendHighlight() }}
+      />
+      <button
+        className="btn-primary"
+        style={{ fontSize: 12, padding: '4px 10px' }}
+        onClick={onSendHighlight}
+        disabled={!pendingHighlight}
+      >
+        Send Highlight
+      </button>
+      {(pendingHighlight || highlightNote) && (
+        <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={onCancelHighlight}>
+          Clear
+        </button>
+      )}
+    </div>
+  )
   if (isInformation) return (
     <ExplainerPanel title={task?.title} content={task?.explainer ?? ''} collapsible={false} fill topicType={lesson?.type} />
   )
@@ -891,13 +987,17 @@ function StudentWorkspaceBody({
 
   if (isPython) return (
     <>
+      {highlightComposer}
       <div style={s.editorWrap}>
         <CodeEditor
           value={student.currentCode ?? ''}
           language="python"
           readOnly
           remoteSelection={remoteSelection}
-          style={{ height: '100%' }}
+          teacherHighlights={highlights}
+          onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+          onHighlightDismiss={onDismissHighlight}
+          style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
         />
       </div>
       {task?.interactionMode === 'submit' ? (
@@ -946,7 +1046,7 @@ function StudentWorkspaceBody({
                 key={f.name}
                 className={`ui-tab ui-tab--code${f.name === activeFile ? ' is-active' : ''}`}
                 style={{ ...s.tab, ...(f.name === activeFile ? s.tabActive : {}) }}
-                onClick={() => setActiveFile(f.name)}
+                onClick={() => { onCancelHighlight?.(); setActiveFile(f.name) }}
               >
                 {f.name}
               </button>
@@ -956,6 +1056,7 @@ function StudentWorkspaceBody({
         {files.length === 1 && (
           <div style={s.singleFileLabel}>{files[0]?.name}</div>
         )}
+        {highlightComposer}
         <div style={s.editorWrap}>
           {activeFileObj && (
             <CodeEditor
@@ -964,7 +1065,10 @@ function StudentWorkspaceBody({
               language={activeFileObj.type}
               readOnly
               remoteSelection={remoteSelection}
-              style={{ height: '100%' }}
+              teacherHighlights={highlights}
+              onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+              onHighlightDismiss={onDismissHighlight}
+              style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
             />
           )}
         </div>
@@ -1175,6 +1279,44 @@ const s = {
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+  },
+  editorHighlightMode: {
+    border: '1px solid rgba(37,99,235,0.5)',
+    boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
+  },
+  highlightComposer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 12px',
+    background: '#eff6ff',
+    borderBottom: '1px solid #bfdbfe',
+    flexShrink: 0,
+  },
+  highlightEmojiRow: {
+    display: 'flex',
+    gap: 2,
+  },
+  highlightEmojiBtn: {
+    border: '1px solid transparent',
+    background: 'transparent',
+    borderRadius: 6,
+    fontSize: '1rem',
+    padding: '2px 5px',
+    cursor: 'pointer',
+    lineHeight: 1,
+  },
+  highlightEmojiBtnActive: {
+    border: '1px solid rgba(37,99,235,0.5)',
+    background: 'rgba(37,99,235,0.1)',
+  },
+  highlightNoteInput: {
+    flex: 1,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    padding: '4px 8px',
+    border: '1px solid #bfdbfe',
+    borderRadius: 6,
   },
   submitNotice: {
     padding: '10px 14px',

@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
-import { applyLessonOverride, publishLessonTasks } from '../../shared/lessonService'
+import { applyLessonOverride, publishLessonTasks, saveSessionReport } from '../../shared/lessonService'
+import { buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
@@ -25,6 +26,8 @@ import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
 import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
+import TeacherReportModal from '../components/TeacherReportModal'
+import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import FilesystemTask from '../components/FilesystemTask'
 import { DEFAULT_FS } from '../../shared/filesystem'
 import { resolveAssetsPath } from '../../shared/assetPaths'
@@ -55,6 +58,7 @@ export default function TeacherView({ lessonId }) {
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
+    pushTeacherHighlight, removeTeacherHighlight,
   } = useSession(lessonId)
 
   const [baseLesson, setBaseLesson]     = useState(null)
@@ -71,6 +75,8 @@ export default function TeacherView({ lessonId }) {
   const [showEndModal, setShowEndModal]         = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
+  const [lastReport, setLastReport]             = useState(null)
+  const [showReportsPanel, setShowReportsPanel] = useState(false)
   const [leftCollapsed, setLeftCollapsed]   = useState(() => window.innerWidth < 860)
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1100)
   const [code, setCode]                 = useState('')
@@ -304,10 +310,13 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleEndSession(goHome) {
+    const report = session?.startedAt ? buildSessionReport({ session, lesson }) : null
+    if (report) await saveSessionReport(lessonId, report.sessionId, report)
     await endSession()
     presentationWindowRef.current?.close()
     presentationWindowRef.current = null
     setShowEndModal(false)
+    if (report && !goHome) setLastReport(report)
     if (goHome) navigate('/')
   }
 
@@ -424,6 +433,7 @@ export default function TeacherView({ lessonId }) {
             session={session}
             onOpenPresentationWindow={handleOpenPresentationWindow}
             onOpenFeedback={() => setShowFeedbackModal(true)}
+            onOpenReports={() => setShowReportsPanel(true)}
             onOpenEditLesson={() => setShowEditLessonModal(true)}
             onStartSession={startSession}
             onEndSession={() => setShowEndModal(true)}
@@ -546,6 +556,8 @@ export default function TeacherView({ lessonId }) {
             onCancelTeacherEdit={cancelTeacherEdit}
             onRequestTeacherStage={requestTeacherStage}
             onClearTeacherStage={clearTeacherStage}
+            onAddHighlight={pushTeacherHighlight}
+            onRemoveHighlight={removeTeacherHighlight}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
@@ -570,6 +582,14 @@ export default function TeacherView({ lessonId }) {
           teacherEmail={user?.email ?? ''}
           onClose={() => setShowFeedbackModal(false)}
         />
+      )}
+
+      {lastReport && (
+        <TeacherReportModal report={lastReport} onClose={() => setLastReport(null)} />
+      )}
+
+      {showReportsPanel && (
+        <TeacherReportsPanel lessonId={lessonId} onClose={() => setShowReportsPanel(false)} />
       )}
 
       {showEditLessonModal && (

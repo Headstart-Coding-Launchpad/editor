@@ -44,6 +44,33 @@ export const headstartTheme = EditorView.theme({
     display: 'inline-block',
     verticalAlign: 'text-bottom',
   },
+  '.cm-teacherHighlight': {
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    borderBottom: '2px solid rgba(37, 99, 235, 0.6)',
+  },
+  '.cm-teacherHighlightBadge': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    border: '1px solid rgba(37, 99, 235, 0.5)',
+    background: 'rgba(37, 99, 235, 0.12)',
+    color: '#1e40af',
+    borderRadius: '999px',
+    padding: '1px 8px 1px 6px',
+    margin: '0 3px',
+    fontSize: '0.78em',
+    fontWeight: 700,
+    fontFamily: 'var(--font-body)',
+    lineHeight: 1.6,
+    cursor: 'pointer',
+    verticalAlign: 'text-bottom',
+  },
+  '.cm-teacherHighlightBadge:hover': {
+    background: 'rgba(37, 99, 235, 0.22)',
+  },
+  '.cm-teacherHighlightBadgeLabel': {
+    letterSpacing: '0.01em',
+  },
   '.cm-cursor': { borderLeftColor: '#6222CC', borderLeftWidth: '2px' },
   '.cm-matchingBracket': { backgroundColor: '#e9d5ff', outline: 'none' },
   '.cm-tooltip.cm-tooltip-autocomplete': {

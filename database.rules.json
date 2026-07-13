@@ -26,6 +26,16 @@
           "$anonymousId": {
             ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
           }
+        },
+
+        // Per-task attempt history, keyed the same way as students so each
+        // student can only log their own attempts. Sibling of "students" (not
+        // nested inside it) so it survives setTaskId's per-task field wipe and
+        // is still readable by the teacher at the moment a session ends.
+        "attemptLog": {
+          "$anonymousId": {
+            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+          }
         }
       }
     }

@@ -7,6 +7,7 @@ export default function TeacherSessionControls({
   session,
   onOpenPresentationWindow,
   onOpenFeedback,
+  onOpenReports,
   onOpenEditLesson,
   onStartSession,
   onEndSession,
@@ -68,6 +69,9 @@ export default function TeacherSessionControls({
               <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenFeedback() }}>
                 Feedback
               </button>
+              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenReports() }}>
+                Reports
+              </button>
               <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenEditLesson() }}>
                 Edit Lesson
               </button>
@@ -84,6 +88,9 @@ export default function TeacherSessionControls({
           </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
             Feedback
+          </button>
+          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenReports}>
+            Reports
           </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenEditLesson}>
             Edit Lesson

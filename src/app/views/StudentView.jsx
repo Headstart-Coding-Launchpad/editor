@@ -28,9 +28,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
     acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
+    removeTeacherHighlight,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
@@ -81,10 +82,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     lessonId, lesson, currentTaskId, viewingTaskId, phase,
     effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
-    writeStudentRun, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput,
     writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,
+    removeTeacherHighlight,
   })
 
   // Wire phase callbacks to latest code-state functions each render

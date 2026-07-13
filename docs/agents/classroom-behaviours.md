@@ -21,6 +21,16 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Firebase `onDisconnect` clears `activeStudentView` on unexpected teacher tab close.
 - Only one student streams at a time.
 
+## Teacher Code Highlights: `teacherHighlights`
+
+- Independent of `activeStudentView`/`teacherLive` — a teacher watching a student live (`StudentModal`) can select a character range in the mirrored, read-only `CodeEditor` and tag it with an emoji + optional short note.
+- Stored as a map at `sessions/{lessonId}/students/{anonymousId}/teacherHighlights/{highlightId}` (RTDB `push()` keys, so any number can coexist across files/lines) — written by `pushTeacherHighlight`/`removeTeacherHighlight` in `useSession.js`.
+- Each entry: `{ file (encodeFileKey'd), from, to, emoji, note, createdAt }`. Python tasks use an empty string for `file` (single-file, no tabs).
+- Renders as a `Decoration.mark` + clickable emoji badge (`teacherHighlightsField` in `src/shared/CodeEditor.jsx`) in **both** the teacher's mirror and the student's own editable editor — the same dual-instance path `remoteSelection` already uses.
+- Clicking the emoji badge removes that highlight (`onHighlightDismiss`) — this lets the teacher retract their own highlight from the mirror, or the student dismiss it from their own editor. Either side writes the same RTDB removal.
+- Ranges are character offsets valid for the document as of creation; CodeMirror remaps them through edits within the same browser session, but a highlight can drift if the student reloads after edits happened elsewhere in the file — accepted tradeoff for character-exact (vs line-snapped) precision.
+- Cleared automatically on task advance (`setTaskId` nulls `teacherHighlights` alongside the other per-student teacher-owned fields).
+
 ## Teacher Live Broadcast: `teacherLive`
 
 - Separate from `activeStudentView`.

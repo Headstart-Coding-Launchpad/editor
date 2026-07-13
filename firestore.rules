@@ -39,6 +39,18 @@ service cloud.firestore {
                        || request.auth.token.role == 'admin');
     }
 
+    // Lesson report subcollection: one doc per ended session run, written once
+    // by the teacher when a session ends or is restarted. Teacher or admin can
+    // read/write; recursive wildcard supports a future collectionGroup() query.
+    match /{path=**}/sessionReports/{reportId} {
+      allow read: if request.auth != null
+                  && (request.auth.token.role == 'admin'
+                      || request.auth.token.role == 'teacher');
+      allow write: if request.auth != null
+                   && (request.auth.token.role == 'teacher'
+                       || request.auth.token.role == 'admin');
+    }
+
     // Lesson-type-wide shared assets and default sprites.
     // Public read so the builder can fetch them without auth.
     match /lessonTypeAssets/{lessonType} {
