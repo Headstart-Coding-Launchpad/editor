@@ -85,3 +85,13 @@ node cli/cli.mjs lessons skeleton <lessonId>
 ```
 
 Verify the task count and structure match the intent.
+
+---
+
+## Deleting a lesson
+
+```
+node cli/cli.mjs lessons delete <lessonId>
+```
+
+Permanently removes the lesson document from Firestore — not reversible. Confirm the ID with the user before running; this is different from removing/editing individual tasks (Path A above), which keeps the lesson itself intact.

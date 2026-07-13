@@ -67,6 +67,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
       lessonOverrideTasks:   null,
+      explainerShowComplete: false,
       students:              {},
     })
   }
@@ -97,6 +98,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
       lessonOverrideTasks:   null,
+      explainerShowComplete: false,
       students:              null,
     })
     // When the teacher closes the tab, remove the session entirely so the
@@ -105,7 +107,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function setTaskId(taskId) {
-    const updates = { currentTaskId: taskId, currentTaskStartedAt: Date.now() }
+    const updates = { currentTaskId: taskId, currentTaskStartedAt: Date.now(), explainerShowComplete: false }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
       updates[`students/${anonymousId}/checkPassed`]           = null
       updates[`students/${anonymousId}/lastRunStatus`]         = null
@@ -203,6 +205,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function setPaused(isPaused) {
     await update(ref(db, `sessions/${lessonId}`), { isPaused })
+  }
+
+  async function setExplainerShowComplete(showComplete) {
+    await update(ref(db, `sessions/${lessonId}`), { explainerShowComplete: !!showComplete })
   }
 
   async function setActiveStudentView(anonymousId) {
@@ -496,7 +502,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
-    setPaused, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
+    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,

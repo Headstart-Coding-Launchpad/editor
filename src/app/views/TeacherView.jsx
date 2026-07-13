@@ -54,7 +54,7 @@ export default function TeacherView({ lessonId }) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
-    setPaused, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
+    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
@@ -471,6 +471,18 @@ export default function TeacherView({ lessonId }) {
             <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
           )}
 
+          {lesson.type === 'python' && !!task?.completeCode && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
+            <div style={sc.explainerToggleRow}>
+              <button
+                type="button"
+                style={{ ...sc.explainerToggleBtn, ...(session?.explainerShowComplete ? sc.explainerToggleBtnActive : {}) }}
+                onClick={() => setExplainerShowComplete(!session?.explainerShowComplete)}
+              >
+                {session?.explainerShowComplete ? 'Showing complete code in students’ explainer — click to revert' : 'Show complete code in students’ explainer'}
+              </button>
+            </div>
+          )}
+
           {isPreviewing && (
             <TeacherPreviewBanner
               taskNumber={displayIndex + 1}
@@ -709,6 +721,23 @@ const sc = {
   },
   type: { color: '#6b7280', fontWeight: 600, fontSize: '0.75rem', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.03em' },
   value: { color: 'var(--colour-text)', fontFamily: 'var(--font-code)', fontSize: '0.8rem' },
+  explainerToggleRow: { flexShrink: 0 },
+  explainerToggleBtn: {
+    fontSize: 12,
+    padding: '5px 12px',
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    border: '1px solid rgba(124,58,237,0.35)',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+  },
+  explainerToggleBtnActive: {
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    borderColor: 'var(--colour-primary)',
+  },
 }
 
 // ─── Teacher editor panel (lesson.type dispatch) ─────────────────────────────

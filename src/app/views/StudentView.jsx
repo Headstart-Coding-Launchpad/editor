@@ -117,6 +117,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
+  // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
+  const [presenterLayout, setPresenterLayout] = useState('both')
   const sentToTopicPushedAt = session?.students?.[identity?.anonymousId]?.sentToTopicPushedAt
 
   useEffect(() => {
@@ -272,7 +274,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const taskCodeStages = task?.codeStages ?? []
   const nextStageIndex = cs.offeredStageIndex + 1
   const canOfferNextStage = isSolo && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
-  const canOfferCompleteSolution = isSolo && hasCompleteSolution && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex >= taskCodeStages.length
+  const stagesExhausted = isSolo && hasCompleteSolution && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex >= taskCodeStages.length
+  // Python previews the complete solution read-only in the explainer before offering
+  // to load it into the editor. Other lesson types have no such preview yet, so they
+  // keep the original single-step "load complete solution" offer.
+  const canOfferCompletePreview = lesson.type === 'python' && stagesExhausted && !cs.completePreviewShown
+  const canOfferCompleteSolution = lesson.type === 'python' ? (stagesExhausted && cs.completePreviewShown) : stagesExhausted
+  // Class-wide teacher toggle (live) or the student's own preview reveal (solo) —
+  // swaps the task explainer panel to show the read-only complete solution.
+  const explainerShowsComplete = lesson.type === 'python' && !!task?.completeCode && (
+    (!isSolo && !teacherPresentation && !!session?.explainerShowComplete) ||
+    (isSolo && cs.completePreviewShown)
+  )
   const hasPersonalSandbox = lesson.type === 'python'
     ? true
     : lesson.type === 'html'
@@ -339,6 +352,24 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       >
         {isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
       </button>
+      <div style={s.presenterLayoutGroup} role="group" aria-label="Presentation layout">
+        {[
+          { key: 'explainer', label: 'Explainer only' },
+          { key: 'both', label: 'Both' },
+          { key: 'code', label: 'Code only' },
+        ].map(opt => (
+          <button
+            key={opt.key}
+            type="button"
+            className="btn-ghost"
+            style={{ ...s.presentationBtn, ...(presenterLayout === opt.key ? s.presenterLayoutBtnActive : {}) }}
+            aria-pressed={presenterLayout === opt.key}
+            onClick={() => setPresenterLayout(opt.key)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   ) : (
     !isSandbox && (
@@ -518,8 +549,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
           canOfferNextStage={canOfferNextStage}
+          canOfferCompletePreview={canOfferCompletePreview}
           canOfferCompleteSolution={canOfferCompleteSolution}
           canOfferPersonalSandbox={canOfferPersonalSandbox}
+          explainerShowsComplete={explainerShowsComplete}
+          presenterLayout={teacherPresentation ? presenterLayout : 'both'}
           onNeedHelp={phase === 'lesson' && identity?.anonymousId ? () => requestHelp(identity.anonymousId) : undefined}
           onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
           onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
@@ -564,6 +598,18 @@ const s = {
     opacity: 0.9,
     minWidth: 72,
     textAlign: 'center',
+  },
+  presenterLayoutGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 4,
+    paddingLeft: 8,
+    borderLeft: '1px solid rgba(255,255,255,0.35)',
+  },
+  presenterLayoutBtnActive: {
+    background: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   topBarTaskControls: {
     display: 'flex',

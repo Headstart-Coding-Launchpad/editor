@@ -7,6 +7,7 @@ export default function CheckFeedbackBanner({
   successMessage = 'Correct!',
   suggestion,
   onShowCodeStage,
+  onPreviewCompleteCode,
   onShowCompleteCode,
   onGoPersonalSandbox,
   onNeedHelp,
@@ -31,12 +32,20 @@ export default function CheckFeedbackBanner({
           Move to next stage
         </button>
       )}
-      {!passed && onShowCompleteCode && (
+      {!passed && onPreviewCompleteCode && (
         <span style={s.completePrompt}>Want to see the complete code?</span>
+      )}
+      {!passed && onPreviewCompleteCode && (
+        <button type="button" style={s.actionLink} onClick={onPreviewCompleteCode}>
+          See complete code
+        </button>
+      )}
+      {!passed && onShowCompleteCode && (
+        <span style={s.completePrompt}>Ready to use it?</span>
       )}
       {!passed && onShowCompleteCode && (
         <button type="button" style={s.actionLink} onClick={onShowCompleteCode}>
-          See complete code
+          Load complete code into my editor
         </button>
       )}
       {!passed && onNeedHelp && (

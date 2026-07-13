@@ -65,10 +65,25 @@ The main YAML-first lesson authoring guide: how to structure a lesson YAML file,
 
 **Load when:** writing a new lesson or making structural edits to an existing one.
 
+### [authoring/task-types.md](authoring/task-types.md)
+Very high-level, non-technical overview of the kinds of tasks a lesson can contain (code, information, quiz, group, draft) — no field names or YAML.
+
+**Load when:** you just need a plain-language explanation of what a task type is, e.g. explaining lesson structure to a non-technical author.
+
+### [authoring/quiz-types.md](authoring/quiz-types.md)
+Very high-level, non-technical overview of the quiz styles (multiple choice, match, fill in the blank, short answer, confidence) — no field names or YAML.
+
+**Load when:** you just need a plain-language explanation of what a quiz type is, without the field-level detail in `quiz-tasks.md`.
+
 ### [authoring/lesson-schema.md](authoring/lesson-schema.md)
 Complete JSON field reference for lessons — every field on the lesson object, task object, group object, and nested structures. The ground truth for field names, types, and valid values.
 
 **Load when:** you need the exact field name or shape for a lesson JSON property, or when validating a generated lesson against the schema.
+
+### [authoring/lesson-schema-yaml.md](authoring/lesson-schema-yaml.md)
+Basic YAML reference for the lesson envelope, common task fields, information tasks, task groups, review notes, and draft tasks — the non-code, non-quiz parts of a lesson file. Points to `quiz-tasks.md` and the per-type code task files for the rest.
+
+**Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
 
 ### [authoring/checks.md](authoring/checks.md)
 All completion check types across all lesson types (Python, HTML, Scratch, Filesystem, Quiz), with field names, operators, and example syntax. Covers both correct-answer checks and `incorrectChecks` patterns.
@@ -79,6 +94,21 @@ All completion check types across all lesson types (Python, HTML, Scratch, Files
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
 
 **Load when:** authoring or editing a quiz task.
+
+### [authoring/python-tasks.md](authoring/python-tasks.md)
+Python code task field reference: `starterCode`, `completeCode`, `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
+
+**Load when:** authoring or editing a Python code task, especially one with `tests`.
+
+### [authoring/html-tasks.md](authoring/html-tasks.md)
+HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, `codeStages`, and carry-through-by-filename behaviour. Includes a minimal full-lesson example.
+
+**Load when:** authoring or editing an HTML code task.
+
+### [authoring/filesystem-tasks.md](authoring/filesystem-tasks.md)
+Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
+
+**Load when:** authoring or editing a filesystem code task.
 
 ### [authoring/scratch-reference.md](authoring/scratch-reference.md)
 Scratch-specific task fields, sprite and backdrop objects, block opcodes accepted by the interpreter, toolbox configuration, and Scratch check field names.
@@ -128,3 +158,8 @@ Read, create, delete, and bulk-clear feedback items in both the lesson feedback 
 Authoring guidelines (`authoring guidelines`) and the lesson draft pipeline (`lessons draft`, `lessons draft entry`, `lessons draft notes`). Covers the full Ideas → Details → Review → Approved → Published workflow with all commands, flags, YAML input formats, and a typical end-to-end example.
 
 **Load when:** managing authoring guidelines in the Admin Portal, or working with lesson drafts at any stage of the review pipeline.
+
+### [authoring/skills/hsc-review.md](authoring/skills/hsc-review.md)
+Workflow for reviewing a lesson at its current draft stage: fetching the live Authoring Guidelines, reading a lesson's tasks with review notes, and recording per-section review decisions via `lessons review`/`lessons draft notes`.
+
+**Load when:** asked to review a lesson draft against the platform's authoring guidelines.

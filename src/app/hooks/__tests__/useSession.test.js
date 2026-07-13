@@ -128,6 +128,35 @@ describe('useSession', () => {
         expect.objectContaining({ currentTaskId: 3, currentTaskStartedAt: expect.any(Number) }),
       )
     })
+
+    it('resets explainerShowComplete to false on task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.setTaskId(3) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ explainerShowComplete: false }),
+      )
+    })
+  })
+
+  describe('setExplainerShowComplete', () => {
+    it('writes explainerShowComplete: true via firebase update', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.setExplainerShowComplete(true) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { explainerShowComplete: true },
+      )
+    })
+
+    it('coerces truthy/falsy values to booleans', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.setExplainerShowComplete(0) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { explainerShowComplete: false },
+      )
+    })
   })
 
   describe('endSession', () => {
@@ -157,6 +186,15 @@ describe('useSession', () => {
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
         expect.objectContaining({ lessonOverrideTasks: null }),
+      )
+    })
+
+    it('initialises explainerShowComplete to false', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.createSession() })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ explainerShowComplete: false }),
       )
     })
   })

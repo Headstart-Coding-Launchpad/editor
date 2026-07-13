@@ -30,6 +30,7 @@ What the platform can do. For how to configure these features see **docs/authori
 - **Match** — drag-and-drop pairs
 - **Fill in the blank** — fill blanks by dragging tiles or typing
 - **Short answer** — free-text response
+- **Confidence** — 1–5 self-rating, no right/wrong answer
 
 ---
 
@@ -175,8 +176,10 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 - **Account management**: create teacher/admin accounts, set roles, disable/enable, delete
 - **Lesson management**: browse all lessons by type and level; launch as teacher or copy student link
+- **Authoring**: manage the lesson draft pipeline (Ideas → Details → Review → Approved → Published) — draft list with stage badges, Markdown plan viewer with per-section review notes, approve/request-changes/publish actions
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields
+- **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
 
 ---
 

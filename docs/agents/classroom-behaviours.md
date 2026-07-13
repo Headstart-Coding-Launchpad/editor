@@ -59,6 +59,20 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
   - Scratch uses `.blocks`.
   - Filesystem uses `.fs`.
 
+## Explainer Complete-Code Reveal
+
+Swaps the task explainer panel's content between the normal explanation and a read-only rendering of the complete solution — distinct from Remote Reset, which replaces the student's actual editor content. Python only.
+
+- **Live (class-wide)**: `session.explainerShowComplete` (boolean, session root) — toggled by the teacher from a control in `TeacherView.jsx` itself, rendered above `TeacherEditorPanel`/`TeacherCodeTabs` rather than inside that tab strip (`setExplainerShowComplete` in `useSession.js`). Affects every connected live student at once; there is no per-student variant. Resets to `false` on `setTaskId`, `createSession`, and `endSession`.
+- **Solo (self-serve)**: after interim `codeStages` are exhausted and `checkFailCount >= 2`, the student is offered "See complete code?" (`canOfferCompletePreview` in `StudentView.jsx`) before the existing "Load complete code into my editor" offer (`canOfferCompleteSolution`). Clicking preview sets local-only `completePreviewShown` state (`useCheckFeedback.js` / `cs.handlePreviewCompleteCode` in `useStudentCodeState.js`) — it does not touch the editor or mark the task solved. `completePreviewShown` resets on task change, code reset, or a passing check.
+- Both paths feed a single `explainerShowsComplete` boolean into `LessonTaskContent.jsx`, which swaps `ExplainerPanel`'s `title`/`content` to a fenced ` ```python ` block of `task.completeCode` when true.
+- Non-Python lesson types keep the original single-step "Load complete solution" offer (no preview step) since there's no read-only rendering for HTML/Scratch/filesystem solutions yet.
+
+## Presenter Layout Toggle
+
+- The presentation popup (`teacherPresentation`, `?teacher=true&present=true`) has a local-only three-way layout toggle in its top bar: **Explainer only / Both / Code only** (`presenterLayout` state in `StudentView.jsx`).
+- Purely a display concern for that popup window — it hides/shows `LessonTaskContent`'s explainer pane and/or editor pane and is never persisted to Firebase or reflected to real students.
+
 ## Teacher-Forced Sandbox
 
 - Student code is saved to localStorage before the editor clears on sandbox entry.

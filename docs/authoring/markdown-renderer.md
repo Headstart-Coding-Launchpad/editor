@@ -48,7 +48,7 @@ A bare backtick span renders in lavender-tinted monospace.
 | `js:` | `` `js:console.log(x)` `` | Syntax-highlighted JavaScript |
 | `scratch:` | `` `scratch:move (10) steps` `` | Coloured Scratch block pill |
 
-**Auto-Scratch detection:** inline code matching a recognised Scratch block pattern (e.g. `move (10) steps`, `when green flag clicked`) renders as a Scratch block pill automatically.
+Inline code does not auto-detect Scratch blocks by pattern — use the explicit `scratch:` prefix. Pattern-based auto-detection (no prefix needed) only applies to **fenced** code blocks with no language tag; see below.
 
 ---
 
@@ -175,7 +175,7 @@ Block-level, `max-width: 100%`, small border radius.
 [link text](https://example.com)
 ```
 
-Topic library links (within `description` and `syntax` fields):
+Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike:
 ```
 [link text](#topic/topic-id)
 ```

@@ -43,8 +43,11 @@ export default function LessonTaskContent({
   isTeacherEditing,
   teacherLiveCode,
   canOfferNextStage,
+  canOfferCompletePreview,
   canOfferCompleteSolution,
   canOfferPersonalSandbox,
+  explainerShowsComplete,
+  presenterLayout = 'both',
   onNeedHelp,
   onTopicOpen,
   onTopicClose,
@@ -55,9 +58,12 @@ export default function LessonTaskContent({
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
   const supportsSideExplainer = SIDE_EXPLAINER_TYPES.includes(lessonMod?.type ?? lesson.type)
-  const hasTaskExplainer = !!task?.explainer && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
+  const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
+  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
   const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
+  const showExplainerPane = presenterLayout !== 'code'
+  const showCodePane = presenterLayout !== 'explainer'
 
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
@@ -87,8 +93,8 @@ export default function LessonTaskContent({
         />
       )}
       <ExplainerPanel
-        title={task.title}
-        content={task.explainer}
+        title={showsCompleteCode ? 'Complete Code' : task.title}
+        content={showsCompleteCode ? '```python\n' + task.completeCode + '\n```' : task.explainer}
         topicType={lesson.type}
         onTopicOpen={onTopicOpen}
         onTopicClose={onTopicClose}
@@ -107,6 +113,7 @@ export default function LessonTaskContent({
       failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
       onShowCodeStage={canOfferNextStage ? () => cs.handleShowCodeStage(cs.offeredStageIndex + 1) : undefined}
+      onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
       onNeedHelp={onNeedHelp}
@@ -186,7 +193,7 @@ export default function LessonTaskContent({
 
       {feedbackBanner}
 
-      {useSideExplainer ? (
+      {useSideExplainer && showExplainerPane && showCodePane ? (
         <SplitPane
           style={s.sideBySideLayout}
           defaultSplit={25}
@@ -206,8 +213,8 @@ export default function LessonTaskContent({
         />
       ) : (
         <>
-          {taskExplainer}
-          {editorArea}
+          {showExplainerPane && taskExplainer}
+          {showCodePane && editorArea}
         </>
       )}
     </TaskSlideTransition>

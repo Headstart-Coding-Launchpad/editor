@@ -110,6 +110,8 @@ prebuiltStacks:
 
 Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_count`, and `block_run` checks.
 
+For full field references on all Scratch check types — `block_used`, `sprite_property`, `sprite_property_delta`, `sprite_property_changed`, `variable_equals`, `variable_compare`, `blocks_in_order`, `block_count`, `costume_is`, `block_run` — see `docs/authoring/checks.md`.
+
 **Events**
 - `event_whenflagclicked`
 - `event_whenkeypressed`
@@ -179,6 +181,36 @@ checks:
 ```
 
 Supported effect property names: `effect_color`, `effect_fisheye`, `effect_whirl`, `effect_pixelate`, `effect_mosaic`, `effect_brightness`, `effect_ghost`.
+
+---
+
+## Minimal Example
+
+```yaml
+id: scratch-minimal
+type: scratch
+title: Scratch Minimal
+description: A short Scratch lesson.
+tasks:
+  - id: 1
+    title: Move
+    explainer: Move the sprite to the right.
+    sprites:
+      - id: sprite1
+        name: Sprite 1
+        type: cat
+        x: 0
+        y: 0
+        size: 100
+        direction: 90
+    check:
+      type: sprite_property
+      evaluation: after_run
+      spriteName: Sprite 1
+      property: x
+      operator: greater_than
+      value: 50
+```
 
 ---
 
