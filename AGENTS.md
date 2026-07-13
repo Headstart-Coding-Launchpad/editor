@@ -52,6 +52,8 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Classroom live-view, sandbox, Pyodide, carry-through behaviours | `docs/agents/classroom-behaviours.md` |
 | Git, PRs, review comments, testing, doc hygiene | `docs/agents/workflows.md` |
 | Writing or editing a lesson (YAML-first) | `docs/authoring/AUTHORING_GUIDE.md` |
+| Plain-language overview of task types (no field detail) | `docs/authoring/task-types.md` |
+| Plain-language overview of quiz types (no field detail) | `docs/authoring/quiz-types.md` |
 | All check types | `docs/authoring/checks.md` |
 | Quiz sub-types in detail | `docs/authoring/quiz-tasks.md` |
 | Scratch fields, opcodes, block explainer style | `docs/authoring/scratch-reference.md` |
@@ -59,8 +61,9 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Lesson JSON field reference | `docs/authoring/lesson-schema.md` |
 | Topic library schema and YAML authoring | `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` |
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
-| Agent playbooks (author, edit, topics, assets, feedback) | `docs/authoring/skills/` |
+| Agent playbooks (author, edit, review, topics, assets, feedback) | `docs/authoring/skills/` |
 | Reading, creating, or clearing feedback via CLI | `docs/authoring/skills/hsc-feedback.md` |
+| Reviewing a lesson draft against authoring guidelines | `docs/authoring/skills/hsc-review.md` |
 | Authoring guidelines and lesson draft pipeline | `docs/authoring/skills/hsc-authoring.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |

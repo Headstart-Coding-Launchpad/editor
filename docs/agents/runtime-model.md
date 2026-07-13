@@ -18,6 +18,8 @@ Do not deviate from this shape.
       "endedAt": "1234567890 | null",
       "isPaused": false,
       "activeStudentView": "{anonymousId} | null",
+      "sandboxExplainer": "string | null",
+      "explainerShowComplete": false,
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -83,6 +85,16 @@ Do not deviate from this shape.
           "sentToTopicPushedAt": "number | null",
           "teacherMessage": "string | null",
           "teacherMessagePushedAt": "number | null",
+          "windowFocused": "boolean | null",
+          "lastActivityAt": "number | null",
+          "teacherEditRequestedAt": "number | null",
+          "teacherEditAcceptedAt": "number | null",
+          "teacherLiveCode": "string | null",
+          "teacherEditApplyCode": "string | null",
+          "teacherEditAppliedAt": "number | null",
+          "teacherStageRequestedAt": "number | null",
+          "teacherStagePendingAction": "string | null",
+          "teacherStageAcceptedAt": "number | null",
           "teacherHighlights": {
             "{highlightId}": {
               "file": "index__dot__html (encodeFileKey'd; empty string for Python)",
@@ -109,6 +121,7 @@ Teacher writes:
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `activeStudentView`, `teacherLive`
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
+- `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - any student's `displayName`
 - student node removal
@@ -119,6 +132,8 @@ Teacher per-student actions:
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; cleared by `setTaskId`.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
+- Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
+- Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 
 Student writes:
 
@@ -131,6 +146,8 @@ Student writes:
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
+- Presence: own `windowFocused` and `lastActivityAt` via `writeStudentPresence`, independent of the `online` onDisconnect key.
+- Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 
 Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields. Students (anonymous auth) can write only to their own `students/{anonymousId}` node and their own `attemptLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
 
@@ -262,7 +279,7 @@ No room IDs. There is one session per lesson.
 
 ## Identity Model
 
-- Anonymous ID is a random UUID generated on first visit and stored in `localStorage`.
+- Anonymous ID is the UID from a Firebase Anonymous Auth session (`signInAnonymously`, persisted via `browserLocalPersistence`), not a locally-generated UUID — this is what lets Realtime Database security rules require `$anonymousId === auth.uid`. It falls back to `crypto.randomUUID()` only if anonymous sign-in itself fails. A legacy locally-generated UUID found in `localStorage` is migrated to the current auth UID on load.
 - Display name is separate; teacher rename must not affect keys or localStorage.
 - Compare local `lastSessionTimestamp` with Firebase `createdAt`.
 - Matching timestamp means same session: skip name entry and restore work.

@@ -55,3 +55,16 @@ node cli/cli.mjs topics delete <id>
 ```
 
 Permanent — confirm the ID with the user before running.
+
+## Bulk import a whole topic library from YAML
+
+For authoring many topics at once as a single YAML file (an array of topic objects), rather than one at a time with `upsert`:
+
+```
+node cli/cli.mjs topics upsert-library topics.yaml   # accepts YAML or JSON; creates/updates each topic by id
+node cli/cli.mjs topics yaml-to-json topics.yaml -o topics.json   # validate + convert only, no publish
+node cli/cli.mjs topics json-to-yaml topics.json topics.yaml      # reverse conversion
+node cli/cli.mjs topics publish-yaml topics.yaml                 # convert + validate + upsert-library in one step
+```
+
+`publish-yaml` refuses to publish if any topic fails validation (same rules as `upsert-library`). Pass `--write-json` or `--json <path>` to also save the converted JSON alongside publishing.

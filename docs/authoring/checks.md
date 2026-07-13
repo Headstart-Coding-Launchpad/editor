@@ -66,8 +66,9 @@ Check taught structure rather than incidental example content. Even on a copy ta
 | `code_equals` | `type`, `value` | Y | Y | Y | Y | Source equals value |
 | `code_not_equals` | `type`, `value` | Y | Y | Y | Y | Source does not equal value |
 | `code_matches_regex` | `type`, `value` | Y | Y | Y | Y | Source matches regex (whitespace normalised) |
+| `code_no_error` | `type` | Y | N | Y | N | Code run completed without a Python error. Legacy — most checks already implicitly require this (see below), so this is only needed if a task wants to signal "no error" as its *entire* check with no other criteria |
 
-Python completion checks never pass when the code run ends with an error, even if the configured output, code, or variable criteria would otherwise match. A separate “code has no error” check is therefore not available or required.
+Python completion checks never pass when the code run ends with an error, even if the configured output, code, or variable criteria would otherwise match, so `code_no_error` is redundant on top of any other check type.
 
 **Submit mode** only accepts: `code_contains`, `code_does_not_contain`, `code_equals`, `code_not_equals`, `code_matches_regex`.
 
@@ -205,6 +206,28 @@ check:
   value: 5
 ```
 Use `variable_compare` for non-equality operators; `variable_equals` is legacy but still supported.
+
+### `sprite_property_delta`
+```yaml
+check:
+  type: sprite_property_delta
+  evaluation: after_run
+  spriteName: Rocket
+  property: x          # x | y | size | direction (not visible)
+  operator: greater_than   # equals | greater_than | less_than
+  value: 10
+```
+Compares the sprite's `property` before the run to its value after the run and checks the *change* (`after - before`) against `operator`/`value` — use this instead of `sprite_property` when the check should depend on how much a value moved rather than its absolute value.
+
+### `sprite_property_changed`
+```yaml
+check:
+  type: sprite_property_changed
+  evaluation: after_run
+  spriteName: Rocket
+  property: x          # x | y | size | direction | visible
+```
+Passes if `property` differs from its pre-run value at all, regardless of direction or amount. No `operator`/`value` needed.
 
 ### `blocks_in_order`
 ```yaml

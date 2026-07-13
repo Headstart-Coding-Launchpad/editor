@@ -154,6 +154,7 @@ export function useStudentCodeState({
     checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
     testResults, setTestResults, checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
+    completePreviewShown, setCompletePreviewShown,
     resetRunFeedback, resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
@@ -997,6 +998,12 @@ export function useStudentCodeState({
     setOfferedStageIndex(stageIndex)
   }
 
+  function handlePreviewCompleteCode() {
+    // Non-destructive: reveals the complete solution read-only in the explainer
+    // panel without touching the student's own editor or marking the task solved.
+    setCompletePreviewShown(true)
+  }
+
   function handleShowCompleteCode() {
     if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
@@ -1126,7 +1133,7 @@ export function useStudentCodeState({
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
     inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
-    offeredStageIndex,
+    offeredStageIndex, completePreviewShown,
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     teacherHighlights, dismissHighlight,
@@ -1138,7 +1145,7 @@ export function useStudentCodeState({
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
-    handleInputSubmit, handleResetCode, handleShowCodeStage, handleShowCompleteCode,
+    handleInputSubmit, handleResetCode, handleShowCodeStage, handlePreviewCompleteCode, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,

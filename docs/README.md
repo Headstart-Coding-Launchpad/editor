@@ -65,6 +65,16 @@ The main YAML-first lesson authoring guide: how to structure a lesson YAML file,
 
 **Load when:** writing a new lesson or making structural edits to an existing one.
 
+### [authoring/task-types.md](authoring/task-types.md)
+Very high-level, non-technical overview of the kinds of tasks a lesson can contain (code, information, quiz, group, draft) — no field names or YAML.
+
+**Load when:** you just need a plain-language explanation of what a task type is, e.g. explaining lesson structure to a non-technical author.
+
+### [authoring/quiz-types.md](authoring/quiz-types.md)
+Very high-level, non-technical overview of the quiz styles (multiple choice, match, fill in the blank, short answer, confidence) — no field names or YAML.
+
+**Load when:** you just need a plain-language explanation of what a quiz type is, without the field-level detail in `quiz-tasks.md`.
+
 ### [authoring/lesson-schema.md](authoring/lesson-schema.md)
 Complete JSON field reference for lessons — every field on the lesson object, task object, group object, and nested structures. The ground truth for field names, types, and valid values.
 
@@ -128,3 +138,8 @@ Read, create, delete, and bulk-clear feedback items in both the lesson feedback 
 Authoring guidelines (`authoring guidelines`) and the lesson draft pipeline (`lessons draft`, `lessons draft entry`, `lessons draft notes`). Covers the full Ideas → Details → Review → Approved → Published workflow with all commands, flags, YAML input formats, and a typical end-to-end example.
 
 **Load when:** managing authoring guidelines in the Admin Portal, or working with lesson drafts at any stage of the review pipeline.
+
+### [authoring/skills/hsc-review.md](authoring/skills/hsc-review.md)
+Workflow for reviewing a lesson at its current draft stage: fetching the live Authoring Guidelines, reading a lesson's tasks with review notes, and recording per-section review decisions via `lessons review`/`lessons draft notes`.
+
+**Load when:** asked to review a lesson draft against the platform's authoring guidelines.

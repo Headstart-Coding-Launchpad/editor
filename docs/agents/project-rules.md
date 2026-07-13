@@ -93,10 +93,13 @@ The `/admin` route is available only to users with the admin Firebase role.
 
 Tabs:
 
-- Accounts: create teacher/admin accounts, set roles, disable/enable, delete via Cloud Functions.
 - Lessons: browse Firestore lessons grouped by type and level; launch as teacher or copy student link.
+- Authoring: lesson draft workflow (Ideas → Details → Review → Approved → Published) — draft list with stage badges, Markdown plan viewer with per-section review notes, context tab, notes CRUD, approve/request-changes/publish actions.
+- Sessions: Realtime Database `sessions` list filtered to non-`ended` states — lesson, state, paused flag, student/online counts, open duration; "Close Session" removes an abandoned session node.
 - Topic Library: create, edit, and delete topics with Markdown description and syntax fields.
 - Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
+- Accounts: create teacher/admin accounts, set roles, disable/enable, delete via Cloud Functions.
+- Feedback: real-time list of `platformFeedback` — date, teacher email, lesson/task context, feedback text.
 
 ## CLI Tool
 
@@ -118,18 +121,20 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml|set-stage|topics`
+- `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml|set-stage|topics|review`
 - `lessons draft list|get|upsert|context|submit|request-changes|approve|publish`
 - `lessons draft entry list|get|add|update|delete`
 - `lessons draft notes list|add|update|delete`
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
-- `feedback platform|lesson|all|add-lesson|add-platform|delete-lesson|delete-platform|clear-lesson|clear-platform`
+- `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
 - `assets list|upload|delete`
 - `authoring guidelines list|get|upsert|delete`
 
+`feedback` never hard-deletes: `archive-lesson`/`archive-platform` (single item) and `clear-lesson`/`clear-platform` (bulk, with optional filters) all set an `archived: true` flag rather than removing the document.
+
 Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
-**Agent playbooks** (load when task matches): `docs/authoring/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`, `hsc-authoring.md`
+**Agent playbooks** (load when task matches): `docs/authoring/skills/hsc-author.md`, `hsc-edit.md`, `hsc-topics.md`, `hsc-assets.md`, `hsc-list.md`, `hsc-authoring.md`, `hsc-review.md`
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.

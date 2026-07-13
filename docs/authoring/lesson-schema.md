@@ -266,17 +266,26 @@ Groups may not be nested. `carryCodeFrom` / `carryBlocksFrom` references from wi
 
 ## Validation Rules
 
+Two separate validators exist and they do not enforce the same rules. `cli lessons validate|upsert|publish-yaml` runs `cli/validate.mjs` (`validateLessonForMcp`); the Lesson Builder runs a stricter, browser-only validator in `src/builder/lessonUtils.js`. A lesson can pass CLI validation and still trip builder-only rules — publish through the builder at least once, or check by hand, if you need those covered.
+
+**Enforced by both the CLI and the builder:**
+
 - Lesson `id`, `title`, and at least one task are required.
 - Every task needs a `title`.
 - Information tasks need an `explainer` unless `informationType` is `introduction`.
-- Multiple-choice quiz tasks need at least two non-empty options and an `answer_equals` check.
+- Multiple-choice quiz tasks need at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules.
 - HTML code tasks should have files with unique filenames and an HTML entry file.
+- Scratch `sprite_property` and `block_used` checks need their type-specific fields (`property`/`operator`/`value`, `opcode`) filled in.
+
+**Builder-only (not checked by the CLI):**
+
 - `carryCodeFrom` / `carryBlocksFrom` must reference an existing task ID.
 - Submit mode cannot use run-required checks.
-- DOM checks need a CSS `selector`.
-- Checks requiring a value must provide one (exceptions: `output_not_empty`, `output_empty`, `element_exists`, `variable_exists`).
+- DOM checks (`element_*`) need a CSS `selector`; `element_attribute` needs an `attribute` name; `element_style_property` needs a `property` name.
+- Variable checks (`variable_*`) need a `name`; `variable_dict_key_value` needs a `key`; `variable_array_nth_item` needs a valid `index`.
+- Checks requiring a value must provide one (exceptions: `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`).
 - Scratch toolbox XML must parse if provided.
-- Scratch checks have their own required fields — see `docs/authoring/checks.md`.
+- Scratch checks beyond `sprite_property`/`block_used` have their own required fields — see `docs/authoring/checks.md`.
 
 ---
 

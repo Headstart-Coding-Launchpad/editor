@@ -90,6 +90,40 @@ describe('useCheckFeedback', () => {
     })
   })
 
+  describe('completePreviewShown', () => {
+    it('starts false', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      expect(result.current.completePreviewShown).toBe(false)
+    })
+
+    it('can be set true via setCompletePreviewShown', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      act(() => { result.current.setCompletePreviewShown(true) })
+      expect(result.current.completePreviewShown).toBe(true)
+    })
+
+    it('resets to false when the check passes', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      act(() => { result.current.setCompletePreviewShown(true) })
+      act(() => { result.current.applyCheckFeedback(true) })
+      expect(result.current.completePreviewShown).toBe(false)
+    })
+
+    it('is not reset by a failing applyCheckFeedback call', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      act(() => { result.current.setCompletePreviewShown(true) })
+      act(() => { result.current.applyCheckFeedback(false, 'try again') })
+      expect(result.current.completePreviewShown).toBe(true)
+    })
+
+    it('resets to false via resetCheckFeedback', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      act(() => { result.current.setCompletePreviewShown(true) })
+      act(() => { result.current.resetCheckFeedback() })
+      expect(result.current.completePreviewShown).toBe(false)
+    })
+  })
+
   describe('checkPassedRef', () => {
     it('mirrors checkPassed synchronously', () => {
       const { result } = renderHook(() => useCheckFeedback())

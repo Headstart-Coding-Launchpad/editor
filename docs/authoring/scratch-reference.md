@@ -110,6 +110,8 @@ prebuiltStacks:
 
 Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_count`, and `block_run` checks.
 
+For full field references on all Scratch check types — `block_used`, `sprite_property`, `sprite_property_delta`, `sprite_property_changed`, `variable_equals`, `variable_compare`, `blocks_in_order`, `block_count`, `costume_is`, `block_run` — see `docs/authoring/checks.md`.
+
 **Events**
 - `event_whenflagclicked`
 - `event_whenkeypressed`

@@ -29,10 +29,10 @@ describe('CheckFeedbackBanner', () => {
       expect(screen.getByText('Well done!')).toBeInTheDocument()
     })
 
-    it('does not render the "See complete code" button on pass', () => {
+    it('does not render the "Load complete code" button on pass', () => {
       const handler = vi.fn()
       render(<CheckFeedbackBanner passed={true} onShowCompleteCode={handler} />)
-      expect(screen.queryByRole('button', { name: /See complete code/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Load complete code/i })).not.toBeInTheDocument()
     })
 
     it('renders the checkmark icon on pass', () => {
@@ -65,29 +65,62 @@ describe('CheckFeedbackBanner', () => {
       expect(screen.getByText('!')).toBeInTheDocument()
     })
 
-    it('does not render the "See complete code" button when onShowCompleteCode is not provided', () => {
+    it('does not render the "Load complete code" button when onShowCompleteCode is not provided', () => {
       render(<CheckFeedbackBanner passed={false} />)
-      expect(screen.queryByRole('button', { name: /See complete code/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Load complete code/i })).not.toBeInTheDocument()
     })
 
-    it('renders the "See complete code" button when onShowCompleteCode is provided and passed=false', () => {
+    it('renders the "Load complete code" button when onShowCompleteCode is provided and passed=false', () => {
       const handler = vi.fn()
       render(<CheckFeedbackBanner passed={false} onShowCompleteCode={handler} />)
-      expect(screen.getByRole('button', { name: /See complete code/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Load complete code/i })).toBeInTheDocument()
     })
 
     it('calls onShowCompleteCode when the button is clicked', async () => {
       const user = userEvent.setup()
       const handler = vi.fn()
       render(<CheckFeedbackBanner passed={false} onShowCompleteCode={handler} />)
+      await user.click(screen.getByRole('button', { name: /Load complete code/i }))
+      expect(handler).toHaveBeenCalledOnce()
+    })
+
+    it('renders the "Ready to use it?" prompt text alongside the button', () => {
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={false} onShowCompleteCode={handler} />)
+      expect(screen.getByText(/Ready to use it\?/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('onPreviewCompleteCode (non-destructive complete-code preview)', () => {
+    it('does not render the "See complete code" button when onPreviewCompleteCode is not provided', () => {
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.queryByRole('button', { name: /See complete code/i })).not.toBeInTheDocument()
+    })
+
+    it('renders the "See complete code" button when onPreviewCompleteCode is provided and passed=false', () => {
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={false} onPreviewCompleteCode={handler} />)
+      expect(screen.getByRole('button', { name: /See complete code/i })).toBeInTheDocument()
+    })
+
+    it('calls onPreviewCompleteCode when the button is clicked', async () => {
+      const user = userEvent.setup()
+      const handler = vi.fn()
+      render(<CheckFeedbackBanner passed={false} onPreviewCompleteCode={handler} />)
       await user.click(screen.getByRole('button', { name: /See complete code/i }))
       expect(handler).toHaveBeenCalledOnce()
     })
 
     it('renders the "Want to see the complete code?" prompt text alongside the button', () => {
       const handler = vi.fn()
-      render(<CheckFeedbackBanner passed={false} onShowCompleteCode={handler} />)
+      render(<CheckFeedbackBanner passed={false} onPreviewCompleteCode={handler} />)
       expect(screen.getByText(/Want to see the complete code\?/i)).toBeInTheDocument()
+    })
+
+    it('renders both the preview and load-into-editor buttons when both handlers are provided', () => {
+      render(<CheckFeedbackBanner passed={false} onPreviewCompleteCode={vi.fn()} onShowCompleteCode={vi.fn()} />)
+      expect(screen.getByRole('button', { name: /See complete code/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Load complete code/i })).toBeInTheDocument()
     })
   })
 
