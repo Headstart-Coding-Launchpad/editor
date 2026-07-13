@@ -316,6 +316,74 @@ describe('useSession', () => {
     })
   })
 
+  describe('logAttempt', () => {
+    it('pushes a new attempt entry on first submission for a task', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false, suggestion: 'try again' })
+      })
+      expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'sessions/lesson-1/attemptLog/student-abc/1' })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId', key: 'mockHighlightId' },
+        expect.objectContaining({
+          submission: 'code v1', passed: false, suggestion: 'try again', attemptNumber: 1, retries: 0,
+        }),
+      )
+    })
+
+    it('bumps retries instead of pushing a new entry when the submission is unchanged', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      firebaseMocks.push.mockClear()
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      expect(firebaseMocks.push).not.toHaveBeenCalled()
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
+        { retries: 1 },
+      )
+    })
+
+    it('pushes a new entry with an incremented attempt number when the submission changes', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false }) })
+      firebaseMocks.push.mockClear()
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: true }) })
+      expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'sessions/lesson-1/attemptLog/student-abc/1' })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ submission: 'code v2', passed: true, attemptNumber: 2, retries: 0 }),
+      )
+    })
+
+    it('marks the cached entry passed instead of pushing when a retried submission later passes', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false }) })
+      firebaseMocks.update.mockClear()
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
+        { retries: 1, passed: true },
+      )
+    })
+
+    it('stops logging further attempts once a task has been passed', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
+      firebaseMocks.push.mockClear()
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: false }) })
+      expect(firebaseMocks.push).not.toHaveBeenCalled()
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+  })
+
   describe('removeTeacherHighlight', () => {
     it('clears a single highlight entry by id', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

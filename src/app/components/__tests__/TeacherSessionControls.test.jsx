@@ -14,6 +14,7 @@ function renderControls(overrides = {}) {
     session: { state: 'active', isPaused: false },
     onOpenPresentationWindow: vi.fn(),
     onOpenFeedback: vi.fn(),
+    onOpenReports: vi.fn(),
     onOpenEditLesson: vi.fn(),
     onStartSession: vi.fn(),
     onEndSession: vi.fn(),
@@ -56,6 +57,12 @@ describe('TeacherSessionControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'End Session' }))
 
     expect(props.onEndSession).toHaveBeenCalledOnce()
+  })
+
+  it('delegates opening the reports panel', () => {
+    const props = renderControls()
+    fireEvent.click(screen.getByRole('button', { name: 'Reports' }))
+    expect(props.onOpenReports).toHaveBeenCalledOnce()
   })
 
   it('delegates opening the edit lesson modal', () => {
