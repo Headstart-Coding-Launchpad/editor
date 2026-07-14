@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { fetchSessionReports } from '../../shared/lessonService'
 import TeacherReportModal from './TeacherReportModal'
 
-export default function TeacherReportsPanel({ lessonId, onClose }) {
+export default function TeacherReportsPanel({ lessonId, liveReport, onClose }) {
   const overlayRef = useRef(null)
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
@@ -45,10 +45,10 @@ export default function TeacherReportsPanel({ lessonId, onClose }) {
         <div style={s.body}>
           {loading && <p style={s.muted}>Loading reports…</p>}
           {error && <p style={s.error}>Could not load reports: {error}</p>}
-          {!loading && !error && reports.length === 0 && (
+          {!loading && !error && reports.length === 0 && !liveReport && (
             <p style={s.muted}>No past session reports yet — a report is saved each time a session ends.</p>
           )}
-          {reports.length > 0 && (
+          {(reports.length > 0 || liveReport) && (
             <table style={s.table}>
               <thead>
                 <tr>
@@ -56,6 +56,16 @@ export default function TeacherReportsPanel({ lessonId, onClose }) {
                 </tr>
               </thead>
               <tbody>
+                {liveReport && (
+                  <tr>
+                    <td style={s.td}>{liveReport.startedAt ? new Date(liveReport.startedAt).toLocaleString() : '—'}</td>
+                    <td style={s.td}><span style={s.liveBadge}>In progress</span></td>
+                    <td style={s.td}>{liveReport.students?.length ?? 0}</td>
+                    <td style={s.td}>
+                      <button className="btn-ghost-outline" style={s.viewBtn} onClick={() => setSelectedReport(liveReport)}>View</button>
+                    </td>
+                  </tr>
+                )}
                 {reports.map(r => (
                   <tr key={r.id}>
                     <td style={s.td}>{r.startedAt ? new Date(r.startedAt).toLocaleString() : '—'}</td>
@@ -100,4 +110,8 @@ const s = {
   },
   td: { padding: '8px 10px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
   viewBtn: { padding: '4px 12px', fontSize: '0.8rem' },
+  liveBadge: {
+    display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem',
+    fontWeight: 600, background: '#dbeafe', color: '#1d4ed8',
+  },
 }

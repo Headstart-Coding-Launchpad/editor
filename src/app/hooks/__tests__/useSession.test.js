@@ -405,8 +405,26 @@ describe('useSession', () => {
       await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
-        { retries: 1, passed: true },
+        expect.objectContaining({ retries: 1, passed: true }),
       )
+    })
+
+    it('stamps passedAt the moment an attempt first becomes passed', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false }) })
+      firebaseMocks.update.mockClear()
+      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(Object.keys(updates)).toContain('passedAt')
+    })
+
+    it('stamps passedAt on a first-submission pass', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-xyz', 1, { submission: 'code v1', passed: true })
+      })
+      const [, entry] = firebaseMocks.set.mock.calls.at(-1)
+      expect(Object.keys(entry)).toContain('passedAt')
     })
 
     it('stops logging further attempts once a task has been passed', async () => {

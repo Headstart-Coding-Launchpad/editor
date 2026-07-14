@@ -46,4 +46,21 @@ describe('TeacherReportsPanel', () => {
       expect(screen.getByText(/Could not load reports: permission-denied/)).toBeInTheDocument()
     })
   })
+
+  it('shows a live report as an "In progress" row above past reports, and can open it', async () => {
+    fetchSessionReports.mockResolvedValue([])
+    const liveReport = {
+      lessonId: 'demo', lessonTitle: 'Demo Lesson (live)', sessionId: '3000', startedAt: 3000, endedAt: null,
+      students: [{ anonymousId: 'sam', displayName: 'Sam', tasks: [] }],
+      taskSummary: [],
+    }
+    render(<TeacherReportsPanel lessonId="demo" liveReport={liveReport} onClose={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('In progress')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/No past session reports yet/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'View' }))
+    expect(screen.getByText('Demo Lesson (live)')).toBeInTheDocument()
+  })
 })

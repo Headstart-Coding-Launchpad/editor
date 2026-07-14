@@ -15,6 +15,7 @@ const session = {
   lessonId: 'demo-lesson',
   startedAt: 1000,
   endedAt: 2000,
+  taskStartTimes: { 1: 1000 },
   students: {
     alice: { displayName: 'Alice' },
     bob: { displayName: 'Bob' },
@@ -22,13 +23,13 @@ const session = {
   attemptLog: {
     alice: {
       1: {
-        k1: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 1 },
-        k2: { submission: 'print("hello")', passed: true, suggestion: null, attemptNumber: 2, retries: 0 },
+        k1: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 1, loggedAt: 1100 },
+        k2: { submission: 'print("hello")', passed: true, suggestion: null, attemptNumber: 2, retries: 0, loggedAt: 1300, passedAt: 1300 },
       },
     },
     bob: {
       1: {
-        k3: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 0 },
+        k3: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 0, loggedAt: 1200 },
       },
     },
   },
@@ -69,6 +70,34 @@ describe('buildSessionReport', () => {
     expect(summary.completionRate).toBe(0.5)
     expect(summary.avgAttempts).toBe(2)
     expect(summary.commonFailures).toEqual([{ suggestion: 'missing hello', count: 2 }])
+  })
+
+  it('computes time on task from taskStartTimes to the passing attempt (or latest attempt if not completed)', () => {
+    const report = buildSessionReport({ session, lesson })
+    const alice = report.students.find(s => s.anonymousId === 'alice')
+    const bob = report.students.find(s => s.anonymousId === 'bob')
+    // Alice's task started at 1000, passed at 1300 -> 300ms on task
+    expect(alice.tasks[0].timeOnTaskMs).toBe(300)
+    // Bob hasn't passed; his latest (only) attempt was logged at 1200 -> 200ms so far
+    expect(bob.tasks[0].timeOnTaskMs).toBe(200)
+  })
+
+  it('averages time on task across students who have a value', () => {
+    const report = buildSessionReport({ session, lesson })
+    expect(report.taskSummary[0].avgTimeOnTaskMs).toBe(250)
+  })
+
+  it('leaves time on task null when the task never started or no attempt was logged', () => {
+    const withoutStart = { ...session, taskStartTimes: {} }
+    const report = buildSessionReport({ session: withoutStart, lesson })
+    expect(report.students.find(s => s.anonymousId === 'alice').tasks[0].timeOnTaskMs).toBeNull()
+
+    const withExtraStudent = {
+      ...session,
+      students: { ...session.students, cara: { displayName: 'Cara' } },
+    }
+    const withCara = buildSessionReport({ session: withExtraStudent, lesson })
+    expect(withCara.students.find(s => s.anonymousId === 'cara').tasks[0].timeOnTaskMs).toBeNull()
   })
 
   it('treats a student with no attemptLog entry as not attempted', () => {

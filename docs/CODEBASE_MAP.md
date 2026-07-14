@@ -38,6 +38,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
 | `LessonManagement.jsx` | Orphaned — not imported or rendered anywhere; `AdminPortal.jsx` uses `LessonPanel.jsx` for the Lessons tab instead |
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
+| `ReportsPanel.jsx` | Firestore `sessionReports` collection-group query across every lesson; filterable table (lesson title/ID), reuses `TeacherReportModal` for the detail view |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
 | `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite editor |
