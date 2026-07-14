@@ -68,6 +68,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxExplainer:      null,
       lessonOverrideTasks:   null,
       explainerShowComplete: false,
+      taskStartTimes:        {},
       students:              {},
     })
   }
@@ -83,6 +84,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       startedAt:            now,
       currentTaskStartedAt: now,
       endedAt:              null,
+      [`taskStartTimes/${session?.currentTaskId ?? 1}`]: now,
     })
   }
 
@@ -107,7 +109,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function setTaskId(taskId) {
-    const updates = { currentTaskId: taskId, currentTaskStartedAt: Date.now(), explainerShowComplete: false }
+    const now = Date.now()
+    const updates = {
+      currentTaskId: taskId,
+      currentTaskStartedAt: now,
+      explainerShowComplete: false,
+      [`taskStartTimes/${taskId}`]: now,
+    }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
       updates[`students/${anonymousId}/checkPassed`]           = null
       updates[`students/${anonymousId}/lastRunStatus`]         = null
@@ -398,7 +406,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     if (cached && cached.serialized === serialized) {
       const nextRetries = cached.retries + 1
       const updates = { retries: nextRetries }
-      if (passed) updates.passed = true
+      if (passed) {
+        updates.passed = true
+        updates.passedAt = serverTimestamp()
+      }
       await update(ref(db, `${basePath}/${cached.key}`), updates)
       attemptCacheRef.current[cacheKey] = { ...cached, retries: nextRetries, passed: passed || cached.passed }
       return
@@ -413,6 +424,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       attemptNumber,
       retries: 0,
       loggedAt: serverTimestamp(),
+      passedAt: passed ? serverTimestamp() : null,
     })
     attemptCacheRef.current[cacheKey] = { serialized, key: newRef.key, attemptNumber, retries: 0, passed }
   }

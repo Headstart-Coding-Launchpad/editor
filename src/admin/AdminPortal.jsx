@@ -7,6 +7,7 @@ import AccountManagement from './AccountManagement'
 import AuthoringPanel from './AuthoringPanel'
 import FeedbackPanel from './FeedbackPanel'
 import LessonPanel from './LessonPanel'
+import ReportsPanel from './ReportsPanel'
 import SessionsPanel from './SessionsPanel'
 import SharedAssetsPanel from './SharedAssetsPanel'
 import TopicLibraryPanel from './TopicLibraryPanel'
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'lessons', label: 'Lessons' },
   { id: 'authoring', label: 'Authoring' },
   { id: 'sessions', label: 'Sessions' },
+  { id: 'reports', label: 'Reports' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
   { id: 'accounts', label: 'Accounts' },
@@ -65,6 +67,7 @@ export default function AdminPortal() {
         {activeTab === 'lessons' && <LessonPanel />}
         {activeTab === 'authoring' && <AuthoringPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
         {activeTab === 'sessions' && <SessionsPanel />}
+        {activeTab === 'reports' && <ReportsPanel />}
         {activeTab === 'topics' && <TopicLibraryPanel />}
         {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
         {activeTab === 'accounts' && <AccountManagement />}

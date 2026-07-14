@@ -1,6 +1,14 @@
 import React, { useRef, useState } from 'react'
 import { reportToYamlText } from '../../shared/lessonReport'
 
+function formatDuration(ms) {
+  if (ms == null) return '—'
+  const totalSeconds = Math.round(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
+}
+
 function renderSubmission(submission) {
   if (submission == null) return '(none)'
   if (typeof submission === 'string') return submission
@@ -16,7 +24,13 @@ function StudentTaskRow({ task }) {
           {task.finalResult === 'not attempted' ? 'Not attempted' : task.completed ? 'Passed' : 'Failed'}
         </span>
         <span style={s.taskTitle}>{task.title}</span>
-        {task.attempts > 0 && <span style={s.attemptsCount}>{task.attempts} attempt{task.attempts === 1 ? '' : 's'}</span>}
+        {(task.attempts > 0 || task.timeOnTaskMs != null) && (
+          <span style={s.attemptsCount}>
+            {task.attempts > 0 ? `${task.attempts} attempt${task.attempts === 1 ? '' : 's'}` : ''}
+            {task.attempts > 0 && task.timeOnTaskMs != null ? ' · ' : ''}
+            {task.timeOnTaskMs != null ? formatDuration(task.timeOnTaskMs) : ''}
+          </span>
+        )}
         {task.distinctAttempts.length > 0 && <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>}
       </button>
       {expanded && task.distinctAttempts.length > 0 && (
@@ -100,7 +114,7 @@ export default function TeacherReportModal({ report, onClose }) {
             <table style={s.table}>
               <thead>
                 <tr>
-                  {['Task', 'Completed', 'Avg Attempts', 'Common Failures'].map(h => (
+                  {['Task', 'Completed', 'Avg Attempts', 'Avg Time', 'Common Failures'].map(h => (
                     <th key={h} style={s.th}>{h}</th>
                   ))}
                 </tr>
@@ -111,6 +125,7 @@ export default function TeacherReportModal({ report, onClose }) {
                     <td style={s.td}>{task.title}</td>
                     <td style={s.td}>{task.completedCount}/{task.totalStudents} ({Math.round(task.completionRate * 100)}%)</td>
                     <td style={s.td}>{task.avgAttempts}</td>
+                    <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
                     <td style={s.td}>
                       {task.commonFailures.length === 0 ? '—' : task.commonFailures.map(f => `${f.suggestion} (${f.count})`).join('; ')}
                     </td>

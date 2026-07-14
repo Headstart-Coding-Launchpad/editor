@@ -44,6 +44,9 @@ Do not deviate from this shape.
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
       },
+      "taskStartTimes": {
+        "{taskId}": 1234567890
+      },
       "attemptLog": {
         "{anonymousId}": {
           "{taskId}": {
@@ -53,7 +56,8 @@ Do not deviate from this shape.
               "suggestion": "string | null",
               "attemptNumber": 1,
               "retries": 0,
-              "loggedAt": "ServerValue.TIMESTAMP"
+              "loggedAt": "ServerValue.TIMESTAMP",
+              "passedAt": "ServerValue.TIMESTAMP | null"
             }
           }
         }
@@ -119,6 +123,7 @@ Firebase keys cannot contain dots. Store `index.html` as `index__dot__html`. Alw
 Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
+- `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
 - `activeStudentView`, `teacherLive`
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
@@ -138,7 +143,7 @@ Teacher per-student actions:
 Student writes:
 
 - On run: own `currentCode` / `currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`.
-- On a graded check result (lesson phase only, not sandbox): own `attemptLog/{taskId}/{pushId}` via `logAttempt` — deduplicated client-side, so an unchanged resubmission only bumps `retries` on the existing entry rather than pushing a new one, and no further entries are written once a task has passed. `attemptLog` is a sibling of `students`, not nested inside it, so it is untouched by `setTaskId`'s per-task field wipe and is still present in the teacher's in-memory `session` snapshot at the moment `endSession()` runs — that snapshot is what `buildSessionReport` (`src/shared/lessonReport.js`) reads to build the Firestore report described under "Session Reports" below.
+- On a graded check result (lesson phase only, not sandbox): own `attemptLog/{taskId}/{pushId}` via `logAttempt` — deduplicated client-side, so an unchanged resubmission only bumps `retries` on the existing entry rather than pushing a new one, and no further entries are written once a task has passed. The moment an attempt (new or retried-in-place) first becomes `passed`, `passedAt` is stamped alongside it — this is the timestamp `buildSessionReport` uses (together with `taskStartTimes`) to compute time-on-task. `attemptLog` is a sibling of `students`, not nested inside it, so it is untouched by `setTaskId`'s per-task field wipe and is still present in the teacher's in-memory `session` snapshot at the moment `endSession()` runs — that snapshot is what `buildSessionReport` (`src/shared/lessonReport.js`) reads to build the Firestore report described under "Session Reports" below.
 - When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
@@ -161,9 +166,13 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 
-Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes the live session's `students`/`attemptLog` data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks (no `check`) are excluded — there is nothing to grade.
+Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes the live session's `students`/`attemptLog` data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks (no `check`) are excluded — there is nothing to grade.
 
-Read/write access mirrors the `feedback` subcollection: teacher or admin only (see `firestore.rules`). Teachers view reports via `TeacherReportModal` (shown right after ending a session) and `TeacherReportsPanel` (a persistent list reachable any time from the lesson's Reports button, querying the subcollection ordered by `startedAt` desc). Export to YAML uses `reportToYamlText` with the same `js-yaml` options as `cli/yaml-converter.mjs`.
+`buildSessionReport` can also be called against a still-live session (state `active`/`sandbox`, not yet ended) to preview an in-progress session's report before it's saved — this is how the "current report" view works (see below); the result is never written to Firestore in that case.
+
+Each task result carries `timeOnTaskMs`: the gap between `taskStartTimes[taskId]` and either the passing attempt's `passedAt` (if completed) or the latest attempt's `loggedAt` (if not) — `null` if the task never started or nothing was logged. `taskSummary` carries the class average as `avgTimeOnTaskMs` (averaged only over students with a non-null value).
+
+Read/write access mirrors the `feedback` subcollection: teacher or admin only (see `firestore.rules`; the rule's recursive wildcard already supports admin-wide `collectionGroup()` reads). Teachers view reports via `TeacherReportModal` (shown right after ending a session) and `TeacherReportsPanel` (a persistent list reachable any time from the lesson's Reports button, querying the subcollection ordered by `startedAt` desc; while a session is running, `TeacherView` also passes it a `liveReport` built from the live session, shown as an "In progress" row above the saved reports). Admins can browse every lesson's saved reports at once via `/admin/reports` (`src/admin/ReportsPanel.jsx`), which queries the `sessionReports` collection group directly (no live/in-progress row — only sessions that have actually ended). Export to YAML uses `reportToYamlText` with the same `js-yaml` options as `cli/yaml-converter.mjs`.
 
 ```json
 {
@@ -183,6 +192,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
           "completed": true,
           "attempts": 3,
           "finalResult": "passed | failed | not attempted",
+          "timeOnTaskMs": "number | null",
           "distinctAttempts": [
             { "attemptNumber": 1, "passed": false, "retries": 1, "suggestion": "string | null", "submission": "string | object | null" }
           ]
@@ -198,6 +208,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "completedCount": 9,
       "completionRate": 0.75,
       "avgAttempts": 2.3,
+      "avgTimeOnTaskMs": "number | null",
       "commonFailures": [{ "suggestion": "string", "count": 4 }]
     }
   ]

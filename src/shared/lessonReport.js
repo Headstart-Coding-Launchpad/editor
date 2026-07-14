@@ -16,6 +16,8 @@ export function buildSessionReport({ session, lesson }) {
   const attemptLog = session?.attemptLog ?? {}
   const anonymousIds = Array.from(new Set([...Object.keys(studentsSnapshot), ...Object.keys(attemptLog)]))
 
+  const taskStartTimes = session?.taskStartTimes ?? {}
+
   const students = anonymousIds.map(anonymousId => {
     const studentSnap = studentsSnapshot[anonymousId] ?? {}
     const studentAttempts = attemptLog[anonymousId] ?? {}
@@ -26,12 +28,24 @@ export function buildSessionReport({ session, lesson }) {
       const attempts = entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
       const completed = entries.some(entry => entry.passed)
 
+      // Time on task: elapsed time between the task becoming current and either the
+      // moment a passing attempt was logged, or (if not yet completed) the latest attempt.
+      const startedAt = taskStartTimes[task.id] ?? null
+      const passingEntry = entries.find(entry => entry.passed)
+      const referenceTime = completed
+        ? (passingEntry?.passedAt ?? passingEntry?.loggedAt ?? null)
+        : (entries[entries.length - 1]?.loggedAt ?? null)
+      const timeOnTaskMs = (startedAt != null && typeof referenceTime === 'number')
+        ? Math.max(0, referenceTime - startedAt)
+        : null
+
       return {
         taskId: task.id,
         title: task.title ?? `Task ${task.id}`,
         completed,
         attempts,
         finalResult: entries.length === 0 ? 'not attempted' : (completed ? 'passed' : 'failed'),
+        timeOnTaskMs,
         distinctAttempts: entries.map(entry => ({
           attemptNumber: entry.attemptNumber,
           passed: !!entry.passed,
@@ -67,6 +81,11 @@ export function buildSessionReport({ session, lesson }) {
       .slice(0, 5)
       .map(([suggestion, count]) => ({ suggestion, count }))
 
+    const timedStudents = perStudent.filter(t => t.timeOnTaskMs != null)
+    const avgTimeOnTaskMs = timedStudents.length
+      ? Math.round(timedStudents.reduce((sum, t) => sum + t.timeOnTaskMs, 0) / timedStudents.length)
+      : null
+
     return {
       taskId: task.id,
       title: task.title ?? `Task ${task.id}`,
@@ -74,6 +93,7 @@ export function buildSessionReport({ session, lesson }) {
       completedCount,
       completionRate: perStudent.length ? Number((completedCount / perStudent.length).toFixed(2)) : 0,
       avgAttempts: attemptedStudents.length ? Number((totalAttempts / attemptedStudents.length).toFixed(2)) : 0,
+      avgTimeOnTaskMs,
       commonFailures,
     }
   })

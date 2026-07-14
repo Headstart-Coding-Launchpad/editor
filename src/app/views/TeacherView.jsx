@@ -601,7 +601,11 @@ export default function TeacherView({ lessonId }) {
       )}
 
       {showReportsPanel && (
-        <TeacherReportsPanel lessonId={lessonId} onClose={() => setShowReportsPanel(false)} />
+        <TeacherReportsPanel
+          lessonId={lessonId}
+          liveReport={(session?.state === 'active' || session?.state === 'sandbox') ? buildSessionReport({ session, lesson }) : null}
+          onClose={() => setShowReportsPanel(false)}
+        />
       )}
 
       {showEditLessonModal && (
