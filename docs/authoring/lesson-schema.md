@@ -13,7 +13,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `python`, `html`, `scratch`, or `filesystem`. |
+| `type` | Yes | string | `python`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | number | Difficulty badge in the TopBar. |
@@ -25,6 +25,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `sandboxSprites` | No | sprite array | Scratch sandbox sprites. |
 | `sandboxBackdrops` | No | backdrop array | Scratch sandbox backdrops. |
 | `sandboxStarterFs` | No | path map | Filesystem sandbox initial state. |
+| `sandboxStarterCircuit` | No | circuit object | Electronics sandbox initial breadboard. |
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
 | `storageAssets` | No | `{name, url, showInEditor?}[]` | Firebase Storage files for the lesson. When `showInEditor` is `true`, the asset appears in the web editor's asset panel and its filename is rewritten to the download URL on Run. |
@@ -57,8 +58,9 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `html` | Multi-file editor + iframe | Supported | Supported | Supported |
 | `scratch` | Scratch blocks + stage | Supported | Supported | Supported |
 | `filesystem` | Virtual file manager | Supported | Supported | Supported |
+| `electronics` | Editable breadboard | Supported | Supported | Supported |
 
-`information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, and carry-through fields.
+`information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
 `draft` tasks are planning placeholders — they block publishing (in the builder and via `lessons publish-yaml`) but can be saved via `lessons upsert`.
 

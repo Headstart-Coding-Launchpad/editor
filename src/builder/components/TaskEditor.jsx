@@ -136,7 +136,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       onUpdate({
         ...task, taskType: 'quiz', quizType, options,
         check: answer ? { type: 'answer_equals', value: answer } : null,
-        carryCodeFrom: null, carryBlocksFrom: null,
+        carryCodeFrom: null, carryBlocksFrom: null, carryFsFrom: null, carryCircuitFrom: null,
       })
       return
     }
@@ -147,6 +147,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         starterCode: _sc, completeCode: _cc, starterFiles: _sf, completeFiles: _cf,
         entryFile: _ef, completeEntryFile: _ce, toolbox: _tb,
         starterBlocks: _sb, completeBlocks: _cb, predefinedBlocks: _pb, prebuiltStacks: _ps,
+        starterFs: _starterFs, completeFs: _completeFs, carryFsFrom: _carryFsFrom,
+        starterCircuit: _starterCircuit, completeCircuit: _completeCircuit, carryCircuitFrom: _carryCircuitFrom,
+        microcontroller: _microcontroller,
         interactionMode: _im, _checkTested,
         ...rest
       } = task

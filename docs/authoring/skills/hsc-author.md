@@ -97,7 +97,7 @@ Skip the draft system when making small fixes or when you are confident the less
 
 Write the lesson in YAML following `docs/authoring/AUTHORING_GUIDE.md`. Key rules:
 - `id` must be a lowercase slug, e.g. `python-3-2`
-- `type` is one of `python | html | scratch | filesystem`
+- `type` is one of `python | html | scratch | filesystem | electronics`
 - Each task needs a `title`; code tasks need `starterCode` / `starterFiles`
 - Use `type: information` for explainer tasks, `type: quiz` for quiz tasks
 - Use `checks:` (plural) or `check:` (singular) for automated checks

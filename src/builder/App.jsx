@@ -6,6 +6,7 @@ import { fetchLessonList } from '../shared/lessonService'
 import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
+import { DEFAULT_CIRCUIT, cloneCircuit } from '../modules/electronics/circuit'
 
 export const LS_KEY = 'headstart_builder_current'
 
@@ -25,6 +26,7 @@ const blankLesson = (type, stage = 'ideas') => ({
   tasks: [],
   stage,
   ...(type === 'filesystem' ? { sandboxStarterFs: { '/': { type: 'dir' } } } : {}),
+  ...(type === 'electronics' ? { sandboxStarterCircuit: cloneCircuit(DEFAULT_CIRCUIT) } : {}),
 })
 
 export default function BuilderApp() {
@@ -208,6 +210,10 @@ function LessonTypeChooser({ onChoose, onUpload }) {
             <button style={s.choiceButton} onClick={() => onChoose('filesystem', selectedStage)}>
               <span style={s.choiceName}>Files/Folders</span>
               <span style={s.choiceDescription}>Virtual filesystem tasks — create, rename, move, and organise files and folders.</span>
+            </button>
+            <button style={s.choiceButton} onClick={() => onChoose('electronics', selectedStage)}>
+              <span style={s.choiceName}>Electronics</span>
+              <span style={s.choiceDescription}>Editable breadboard tasks with LEDs, motors, switches, pots, and future MicroPython support.</span>
             </button>
           </div>
           <div>

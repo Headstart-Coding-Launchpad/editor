@@ -26,6 +26,7 @@ import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import { DEFAULT_FS } from '../../modules/filesystem'
+import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
 import { cloneFiles, cloneScratchState, decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
@@ -127,6 +128,8 @@ export default function TeacherView({ lessonId }) {
       setScratchState(task.starterBlocks ?? null)
     } else if (lesson.type === 'filesystem') {
       setFsState(task.starterFs ?? DEFAULT_FS)
+    } else if (lesson.type === 'electronics') {
+      setCode(serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT))
     } else {
       setFiles(task.starterFiles ?? [])
     }
@@ -148,7 +151,7 @@ export default function TeacherView({ lessonId }) {
     const draft = sandboxDraftRef.current
     const sessionHasCode = session?.state === 'sandbox' && session.sandboxCode != null
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'electronics') {
       setCode(draft.code ?? (sessionHasCode ? session.sandboxCode : null) ?? configured)
     } else if (lesson.type === 'scratch') {
       setScratchState(draft.scratchState ?? (sessionHasCode ? parseScratchState(session.sandboxCode) : null) ?? configured)
@@ -200,7 +203,7 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleGoLiveSandbox() {
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'electronics') {
       sandboxDraftRef.current.code = code
       await enterSandbox({ code })
     } else if (lesson.type === 'scratch') {
@@ -217,7 +220,7 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handlePushSandbox() {
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'electronics') {
       sandboxDraftRef.current.code = code
       await pushSandboxCode(code)
     } else if (lesson.type === 'scratch') {
@@ -237,7 +240,7 @@ export default function TeacherView({ lessonId }) {
     const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
     const configured = mod.getSandboxState(lesson, task)
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'electronics') {
       sandboxDraftRef.current.code = configured
       setCode(configured)
       if (isSandbox) await pushSandboxCode(configured)
@@ -259,8 +262,9 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleDeactivateSandbox() {
-    if (lesson.type === 'python') sandboxDraftRef.current.code = code
+    if (lesson.type === 'python' || lesson.type === 'electronics') sandboxDraftRef.current.code = code
     else if (lesson.type === 'scratch') sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
+    else if (lesson.type === 'filesystem') sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
     else sandboxDraftRef.current.files = cloneFiles(files)
     setSandboxStaging(false)
     await exitSandbox()
@@ -360,16 +364,19 @@ export default function TeacherView({ lessonId }) {
   const liveState = lesson?.type === 'python' ? code
     : lesson?.type === 'scratch' ? scratchState
     : lesson?.type === 'filesystem' ? fsState
+    : lesson?.type === 'electronics' ? code
     : { files, entryFile: task?.entryFile ?? 'index.html' }
 
   const onChange = !isInSandbox ? undefined
     : lesson?.type === 'python'
       ? value => { setCode(value); sandboxDraftRef.current.code = value }
-      : lesson?.type === 'scratch'
-        ? state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }
-        : lesson?.type === 'filesystem'
-          ? newFs => { setFsState(newFs); sandboxDraftRef.current.fs = newFs }
-          : (name, content) => setFiles(prev => {
+    : lesson?.type === 'scratch'
+      ? state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }
+      : lesson?.type === 'filesystem'
+        ? newFs => { setFsState(newFs); sandboxDraftRef.current.fs = newFs }
+        : lesson?.type === 'electronics'
+          ? value => { setCode(value); sandboxDraftRef.current.code = value }
+        : (name, content) => setFiles(prev => {
               const next = prev.map(f => f.name === name ? { ...f, content } : f)
               sandboxDraftRef.current.files = cloneFiles(next)
               return next
@@ -426,7 +433,7 @@ export default function TeacherView({ lessonId }) {
         </aside>
 
         {/* Centre — Teacher Editor */}
-        <main style={{ ...s.centre, ...((isInformationTask || lesson.type === 'html' || lesson.type === 'scratch' || lesson.type === 'filesystem') && !(currentTask?.check != null && !isInSandbox) ? { overflow: 'hidden' } : {}) }}>
+        <main style={{ ...s.centre, ...((isInformationTask || lesson.type === 'html' || lesson.type === 'scratch' || lesson.type === 'filesystem' || lesson.type === 'electronics') && !(currentTask?.check != null && !isInSandbox) ? { overflow: 'hidden' } : {}) }}>
           {task?.explainer && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
             <ExplainerPanel title={task.title} content={task.explainer} topicType={lesson.type} />
           )}
@@ -714,6 +721,7 @@ function TeacherEditorPanel({
   const showCompleteTab = mod.type === 'python' || mod.type === 'html'
     || (mod.type === 'scratch' && task?.completeBlocks != null)
     || (mod.type === 'filesystem' && !!task?.completeFs)
+    || (mod.type === 'electronics' && !!task?.completeCircuit)
 
   const wrapStyle = mod.type === 'scratch' || mod.type === 'html'
     ? (isInSandbox ? s.scratchWrap : s.codeWorkspaceStack)

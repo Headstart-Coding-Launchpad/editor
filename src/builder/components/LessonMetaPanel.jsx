@@ -11,6 +11,8 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import AssetBrowser from '../../shared/AssetBrowser'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { FsTreeEditor } from '../../modules/filesystem/filesystemEditors'
+import ElectronicsWorkspace from '../../modules/electronics/ElectronicsWorkspace'
+import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from '../../modules/electronics/circuit'
 import { storage } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 import LessonTopicSummary from './LessonTopicSummary'
@@ -54,6 +56,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
   const isPython = lesson.type === 'python'
   const isScratch = lesson.type === 'scratch'
   const isFilesystem = lesson.type === 'filesystem'
+  const isElectronics = lesson.type === 'electronics'
   const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
     ? (lesson.sandboxStarter ?? '').split('\n').length
     : 0
@@ -72,7 +75,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
       </div>
       <div style={s.fields}>
         <Field label="Lesson type">
-          <div style={s.typeBadge}>{isPython ? 'Python' : isScratch ? 'Scratch' : isFilesystem ? 'Files & Folders' : 'Web'}</div>
+          <div style={s.typeBadge}>{isPython ? 'Python' : isScratch ? 'Scratch' : isFilesystem ? 'Files & Folders' : isElectronics ? 'Electronics' : 'Web'}</div>
         </Field>
 
         <Field label="Lesson ID" hint="e.g. python-intro">
@@ -176,7 +179,9 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
                   ? (lesson.sandboxStarter ? 'Scratch sandbox starter configured.' : 'No Scratch sandbox starter set.')
                   : isFilesystem
                     ? (sandboxFsCount ? `${sandboxFsCount} items configured` : 'No sandbox filesystem set.')
-                    : (sandboxFileCount ? `${sandboxFileCount} starter files configured` : 'No sandbox starter files set.')}
+                    : isElectronics
+                      ? (lesson.sandboxStarterCircuit ? 'Sandbox breadboard configured.' : 'No sandbox breadboard set.')
+                      : (sandboxFileCount ? `${sandboxFileCount} starter files configured` : 'No sandbox starter files set.')}
             </p>
           </div>
           <button className="btn-ghost" style={s.secondaryBtn} onClick={() => setSandboxOpen(true)}>
@@ -217,6 +222,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
                   fs={lesson.sandboxStarterFs ?? { '/': { type: 'dir' } }}
                   onFsChange={newFs => set('sandboxStarterFs', newFs)}
                   storageAssets={lesson.storageAssets ?? []}
+                />
+              </div>
+            ) : isElectronics ? (
+              <div style={s.modalEditor}>
+                <ElectronicsWorkspace
+                  circuit={parseCircuit(lesson.sandboxStarterCircuit, DEFAULT_CIRCUIT)}
+                  onChange={circuit => set('sandboxStarterCircuit', JSON.parse(serializeCircuit(circuit)))}
+                  title="Sandbox breadboard"
                 />
               </div>
             ) : (

@@ -1,6 +1,7 @@
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks } from '../modules/checks'
 import { flattenTasks } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
+import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 
@@ -26,6 +27,9 @@ export function copyStarterToComplete(task, lessonType) {
       completeFiles: (task.starterFiles ?? []).map(file => ({ ...file })),
       completeEntryFile: task.entryFile ?? 'index.html',
     }
+  }
+  if (lessonType === 'electronics') {
+    return { completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
   }
   return {}
 }
@@ -109,6 +113,26 @@ export function validateLesson(lesson) {
       if (carryFsFrom != null && !flat.some(t => t.id === carryFsFrom)) {
         errors.push(`Task ${n} references task ${carryFsFrom} for carry-through but that task does not exist`)
       }
+    } else if (task.taskType !== 'information' && type === 'electronics') {
+      if (!task.starterCircuit || !Array.isArray(task.starterCircuit.components)) {
+        errors.push(`Task ${n} has no starter breadboard`)
+      }
+      const carryCircuitFrom = task.carryCircuitFrom ?? null
+      if (carryCircuitFrom != null && !flat.some(t => t.id === carryCircuitFrom)) {
+        errors.push(`Task ${n} references task ${carryCircuitFrom} for circuit carry-through but that task does not exist`)
+      }
+      if (task.check) {
+        const checks = normalizeChecks(task.check)
+        if (checks.some(c => c.type === 'circuit_component_exists' && !c.id?.trim() && !c.componentType?.trim() && !c.label?.trim())) {
+          errors.push(`Task ${n} has a component-exists check but no component id, type, or label`)
+        }
+        if (checks.some(c => (c.type === 'circuit_connected' || c.type === 'circuit_not_connected') && (!c.from?.trim() || !c.to?.trim()))) {
+          errors.push(`Task ${n} has a circuit connection check but no source or destination pin`)
+        }
+        if (checks.some(c => c.type === 'circuit_component_state' && (!c.componentId?.trim() || !c.property?.trim()))) {
+          errors.push(`Task ${n} has a component-state check but no component id or state property`)
+        }
+      }
     } else if (task.taskType !== 'information' && type === 'html') {
       if (!task.starterFiles || task.starterFiles.length === 0) errors.push(`Task ${n} has no files`)
       else {
@@ -181,7 +205,7 @@ export function validateLesson(lesson) {
       })
     }
 
-    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || type === 'filesystem'
+    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || type === 'filesystem' || type === 'electronics'
       ? null
       : type === 'scratch' ? task.carryBlocksFrom : task.carryCodeFrom
     if (carryFrom != null && !flat.some(candidate => candidate.id === carryFrom)) {
@@ -198,8 +222,10 @@ export function validateLesson(lesson) {
             ? !!task.starterBlocks
             : type === 'filesystem'
               ? !!task.starterFs
-              : task.starterFiles?.some(file => file.content.trim())
-    if (!hasStarter && type !== 'filesystem') warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
+              : type === 'electronics'
+                ? !!task.starterCircuit
+                : task.starterFiles?.some(file => file.content.trim())
+    if (!hasStarter && type !== 'filesystem' && type !== 'electronics') warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
 
     if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check) {
       const allChecks = normalizeChecks(task.check)
@@ -234,6 +260,13 @@ export function validateLesson(lesson) {
       }
     }
 
+    if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check && type === 'electronics' && task.completeCircuit) {
+      const circuitChecks = normalizeChecks(task.check).filter(c => ELECTRONICS_CHECK_TYPES.includes(c.type))
+      if (circuitChecks.length > 0 && circuitChecks.some(c => !evaluateSingleCheck(c, '', { circuit: task.completeCircuit }))) {
+        warnings.push(`Task ${n} complete breadboard does not satisfy a check - review the complete circuit`)
+      }
+    }
+
     const checkHasValue = task.taskType === 'information'
       ? false
       : task.taskType === 'quiz'
@@ -242,7 +275,9 @@ export function validateLesson(lesson) {
           ? !!task.check
           : type === 'filesystem'
             ? !!task.check
-            : normalizeChecks(task.check).some(check => ['code_no_error', 'output_not_empty', 'output_empty', 'element_exists', 'element_attribute', 'element_style_property', 'variable_exists'].includes(check.type) || check.value)
+            : type === 'electronics'
+              ? !!task.check
+              : normalizeChecks(task.check).some(check => ['code_no_error', 'output_not_empty', 'output_empty', 'element_exists', 'element_attribute', 'element_style_property', 'variable_exists'].includes(check.type) || check.value)
     if (checkHasValue && !task._checkTested) {
       warnings.push(`Task ${n} has a completion check that hasn't been tested — run the task to verify it`)
     }
@@ -312,6 +347,7 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
     if (exported.carryCodeFrom != null) exported.carryCodeFrom = idMap[exported.carryCodeFrom] ?? exported.carryCodeFrom
     if (exported.carryBlocksFrom != null) exported.carryBlocksFrom = idMap[exported.carryBlocksFrom] ?? exported.carryBlocksFrom
     if (exported.carryFsFrom != null) exported.carryFsFrom = idMap[exported.carryFsFrom] ?? exported.carryFsFrom
+    if (exported.carryCircuitFrom != null) exported.carryCircuitFrom = idMap[exported.carryCircuitFrom] ?? exported.carryCircuitFrom
     if (Array.isArray(exported.check)) exported.check = exported.check.map(normalizeCheckForExport)
     else if (exported.check) exported.check = normalizeCheckForExport(exported.check)
     if (Array.isArray(exported.options)) {

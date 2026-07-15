@@ -3,6 +3,7 @@ import { flattenTasks, findGroupForTask, updateTaskInTasks, updateSubtaskTitles 
 import { validateLesson } from '../lessonUtils'
 import { HTML_ONLY } from '../components/FileManager'
 import { createSpriteFromPreset } from '../spritePresets'
+import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
 
 export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   const [selectedTaskId, setSelectedTaskId] = useState(() => {
@@ -58,6 +59,13 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
         starterBlocks: null,
         carryBlocksFrom: null,
         ...(sprites ? { sprites } : {}),
+      }
+    }
+    if (lesson.type === 'electronics') {
+      return {
+        starterCircuit: prevTask ? cloneCircuit(prevTask.completeCircuit ?? prevTask.starterCircuit ?? DEFAULT_CIRCUIT) : cloneCircuit(DEFAULT_CIRCUIT),
+        carryCircuitFrom: prevTask?.id ?? null,
+        microcontroller: prevTask?.microcontroller ? { ...prevTask.microcontroller } : { enabled: false, boardType: null, starterCode: '' },
       }
     }
     return {

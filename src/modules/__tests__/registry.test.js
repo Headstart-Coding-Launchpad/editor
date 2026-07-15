@@ -7,6 +7,7 @@ describe('getLessonModule', () => {
     expect(getLessonModule('html')).not.toBeNull()
     expect(getLessonModule('scratch')).not.toBeNull()
     expect(getLessonModule('filesystem')).not.toBeNull()
+    expect(getLessonModule('electronics')).not.toBeNull()
   })
 
   it('returns null for an unknown type', () => {
@@ -20,6 +21,7 @@ describe('getLessonModule', () => {
     expect(getLessonModule('html').type).toBe('html')
     expect(getLessonModule('scratch').type).toBe('scratch')
     expect(getLessonModule('filesystem').type).toBe('filesystem')
+    expect(getLessonModule('electronics').type).toBe('electronics')
   })
 })
 

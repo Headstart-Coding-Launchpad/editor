@@ -6,6 +6,7 @@ import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { createSpriteFromPreset } from '../../spritePresets'
 import { flattenTasks } from '../../../shared/taskUtils'
+import { getLessonModule } from '../../../modules/registry'
 
 function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
   return (
@@ -83,12 +84,13 @@ function Modal({ title, children, onClose }) {
 }
 
 function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
+  const resolvedLessonMod = lessonMod ?? getLessonModule(lesson.type)
   const flatTasks = flattenTasks(lesson.tasks)
   const taskIndex = flatTasks.findIndex(t => t.id === task.id)
   const prevTask = taskIndex > 0 ? flatTasks[taskIndex - 1] : null
   const otherTasks = flatTasks.filter(t => t.id !== task.id)
 
-  const carryField = lessonMod?.carryThroughField ?? 'carryCodeFrom'
+  const carryField = resolvedLessonMod?.carryThroughField ?? 'carryCodeFrom'
   const carryFrom = task[carryField]
 
   const mode = carryFrom == null
@@ -96,12 +98,12 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
     : (prevTask && carryFrom === prevTask.id ? 'last' : 'other')
 
   function copyCompleteCode(sourceTask) {
-    const updates = { [carryField]: sourceTask.id, ...lessonMod?.getCarryThroughUpdates?.(sourceTask) }
+    const updates = { [carryField]: sourceTask.id, ...resolvedLessonMod?.getCarryThroughUpdates?.(sourceTask) }
     onUpdate({ ...task, ...updates })
   }
 
   function handleNewStarterCode() {
-    const updates = { [carryField]: null, ...lessonMod?.getNewStarterUpdates?.(task) }
+    const updates = { [carryField]: null, ...resolvedLessonMod?.getNewStarterUpdates?.(task) }
     onUpdate({ ...task, ...updates })
   }
 
@@ -113,7 +115,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   const radioName = `carry-${task.id}`
 
   return (
-    <Field label={lessonMod?.carryThroughLabel ?? 'Carry code from task'}>
+    <Field label={resolvedLessonMod?.carryThroughLabel ?? 'Carry code from task'}>
       <div className="te-carry-radio-group">
         <label className={`te-option-choice-card${mode === 'last' ? ' te-option-choice-card--active' : ''}${!prevTask ? ' te-option-choice-card--disabled' : ''}`}>
           <input

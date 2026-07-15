@@ -8,6 +8,7 @@ This file does not cover code task fields or quiz task fields:
 - **Python code task fields:** `docs/authoring/python-tasks.md`
 - **HTML code task fields:** `docs/authoring/html-tasks.md`
 - **Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`
+- **Electronics code task fields:** `docs/authoring/electronics.md`
 - **Scratch code task fields:** `docs/authoring/scratch-reference.md`
 - **Check types:** `docs/authoring/checks.md`
 - **Full authoring walkthrough and CLI workflow:** `docs/authoring/AUTHORING_GUIDE.md`
@@ -20,7 +21,7 @@ Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lesso
 
 ```yaml
 id: python-for-loops         # required — lowercase slug, used in URLs
-type: python                 # required — python | html | scratch | filesystem
+type: python                 # required — python | html | scratch | filesystem | electronics
 title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
 level: 1                     # optional — difficulty badge in the TopBar
@@ -39,7 +40,7 @@ tasks: []                     # required — ordered task list (see below)
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `python`, `html`, `scratch`, or `filesystem`. |
+| `type` | Yes | string | `python`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | number | Difficulty badge in the TopBar. |
@@ -50,7 +51,7 @@ tasks: []                     # required — ordered task list (see below)
 | `storageAssets` | No | array | Firebase Storage files for the lesson. |
 | `tasks` | Yes | array | Ordered task list. May contain group objects. |
 
-Sandbox-mode envelope fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`) are type-specific — see `docs/authoring/AUTHORING_GUIDE.md`.
+Sandbox-mode envelope fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, `sandboxStarterCircuit`) are type-specific — see `docs/authoring/AUTHORING_GUIDE.md`.
 
 ---
 
@@ -174,5 +175,6 @@ A minimal full-lesson YAML example for each lesson type lives alongside its fiel
 - **HTML:** `docs/authoring/html-tasks.md`
 - **Scratch:** `docs/authoring/scratch-reference.md`
 - **Filesystem:** `docs/authoring/filesystem-tasks.md`
+- **Electronics:** `docs/authoring/electronics.md`
 
 For a complete lesson mixing information, quiz, code, and group tasks, see the **Full YAML Example** in `docs/authoring/AUTHORING_GUIDE.md`.

@@ -110,6 +110,11 @@ Filesystem code task field reference: the flat path-map state model, `starterFs`
 
 **Load when:** authoring or editing a filesystem code task.
 
+### [authoring/electronics.md](authoring/electronics.md)
+Electronics code task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, `codeStages`, `carryCircuitFrom`, checks, and future MicroPython code tab fields.
+
+**Load when:** authoring or editing an electronics breadboard task.
+
 ### [authoring/scratch-reference.md](authoring/scratch-reference.md)
 Scratch-specific task fields, sprite and backdrop objects, block opcodes accepted by the interpreter, toolbox configuration, and Scratch check field names.
 

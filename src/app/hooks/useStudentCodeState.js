@@ -3,6 +3,7 @@ import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncor
 import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
+import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
@@ -220,6 +221,8 @@ export function useStudentCodeState({
       persistence.saveHtmlFiles(id.anonymousId, taskId, filesRef.current)
     } else if (currentLesson.type === 'filesystem') {
       persistence.saveFs(id.anonymousId, taskId, fsStateRef.current)
+    } else if (currentLesson.type === 'electronics') {
+      persistence.savePythonCode(id.anonymousId, taskId, { code: codeRef.current })
     }
     // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
   }
@@ -233,6 +236,8 @@ export function useStudentCodeState({
       filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content))
     } else if (lessonRef.current.type === 'filesystem') {
       savePersonalSandboxFs(lessonId, id.anonymousId, fsStateRef.current)
+    } else if (lessonRef.current.type === 'electronics') {
+      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current })
     }
     // Scratch: saves incrementally via handleScratchChange
   }
@@ -285,6 +290,21 @@ export function useStudentCodeState({
       setFsState(initialFs)
       const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
       setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
+      resetCheckFeedback()
+    } else if (lesson.type === 'electronics') {
+      const carryId = task.carryCircuitFrom ?? null
+      const ownSaved = persistence.readSavedCode(activeIdentity.anonymousId, taskId)?.code ?? null
+      const savedFromCarry = carryId != null ? persistence.readSavedCode(activeIdentity.anonymousId, carryId)?.code : null
+      let carryFallback = null
+      if (carryId != null) {
+        const sourceTask = findTaskById(lesson.tasks, carryId)
+        const circuit = sourceTask?.completeCircuit ?? sourceTask?.starterCircuit
+        if (circuit) carryFallback = serializeCircuit(circuit)
+      }
+      const starter = serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT)
+      setCode(carryId != null ? (ownSaved ?? savedFromCarry ?? carryFallback ?? starter) : (ownSaved ?? starter))
+      setFiles([])
+      setActiveFile('')
       resetCheckFeedback()
     } else {
       const taskFiles = selectHtmlTaskFiles({
@@ -424,6 +444,8 @@ export function useStudentCodeState({
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
     } else if (lesson.type === 'filesystem') {
       writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
+    } else if (lesson.type === 'electronics') {
+      writeStudentCode(identity.anonymousId, codeRef.current)
     }
     writeStudentInteraction(identity.anonymousId, {
       selection: editorSelectionRef.current,
@@ -454,6 +476,13 @@ export function useStudentCodeState({
     try {
       setFsState(JSON.parse(session.sandboxCode))
     } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, session?.sandboxCodePushedAt])
+
+  // React to sandbox circuit pushes
+  useEffect(() => {
+    if (phase !== 'sandbox' || lesson?.type !== 'electronics' || !session?.sandboxCode) return
+    setCode(session.sandboxCode)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, session?.sandboxCodePushedAt])
 
@@ -543,6 +572,19 @@ export function useStudentCodeState({
       }
       setFsState(targetFs)
       resetCheckFeedback()
+    } else if (lesson.type === 'electronics') {
+      let targetCircuit
+      if (action === 'complete') {
+        targetCircuit = task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
+      } else if (action === 'starter') {
+        targetCircuit = task.starterCircuit ?? DEFAULT_CIRCUIT
+      } else {
+        const stageMatch = action.match(/^stage_(\d+)$/)
+        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
+        targetCircuit = stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
+      }
+      setCode(serializeCircuit(targetCircuit))
+      resetCheckFeedback()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
@@ -552,7 +594,7 @@ export function useStudentCodeState({
     if (!myStudentData?.teacherEditAppliedAt) return
     const newCode = myStudentData?.teacherEditApplyCode
     if (newCode === undefined) return
-    if (lesson?.type === 'python') {
+    if (lesson?.type === 'python' || lesson?.type === 'electronics') {
       setCode(newCode ?? '')
       setOutput('')
       setRunStatus(null)
@@ -591,6 +633,9 @@ export function useStudentCodeState({
     } else if (lesson.type === 'filesystem') {
       const savedFs = loadPersonalSandboxFs(lessonId, id)
       setFsState(savedFs ?? lesson.sandboxStarterFs ?? DEFAULT_FS)
+    } else if (lesson.type === 'electronics') {
+      const saved = loadPersonalSandboxCode(lessonId, id)
+      setCode(saved?.code ?? serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
     }
     setOutput('')
     setRunStatus(null)
@@ -822,7 +867,7 @@ export function useStudentCodeState({
   function handleCodeChange(newCode) {
     setCode(newCode)
     if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
-    if (effectiveIdentity && lesson?.type === 'python') {
+    if (effectiveIdentity && (lesson?.type === 'python' || lesson?.type === 'electronics')) {
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode, output, runStatus })
     }
     if (identity && session?.activeStudentView === identity.anonymousId) {
@@ -959,6 +1004,11 @@ export function useStudentCodeState({
       } else if (lesson.type === 'filesystem') {
         setFsState(lesson.sandboxStarterFs ?? DEFAULT_FS)
         resetCheckFeedback()
+      } else if (lesson.type === 'electronics') {
+        setCode(serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
+        setOutput('')
+        setRunStatus(null)
+        resetCheckFeedback()
       }
       return
     }
@@ -981,6 +1031,11 @@ export function useStudentCodeState({
     } else if (lesson.type === 'scratch') {
       setScratchExternalState(task?.starterBlocks ?? null)
       setScratchActiveStageIndex(null)
+    } else if (lesson.type === 'electronics') {
+      const starter = serializeCircuit(task?.starterCircuit ?? DEFAULT_CIRCUIT)
+      setCode(starter)
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: starter })
+      resetCheckFeedback()
     }
   }
 
@@ -1013,6 +1068,10 @@ export function useStudentCodeState({
       const stageFs = stage.fs ?? DEFAULT_FS
       setFsState(stageFs)
       persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, stageFs)
+    } else if (lesson.type === 'electronics') {
+      const stageCircuit = serializeCircuit(stage.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
+      setCode(stageCircuit)
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: stageCircuit })
     }
     setOfferedStageIndex(stageIndex)
   }
@@ -1054,6 +1113,11 @@ export function useStudentCodeState({
       setFsState(completeFs)
       applyCheckFeedback(true)
       persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, completeFs)
+    } else if (lesson.type === 'electronics') {
+      const completeCircuit = serializeCircuit(task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
+      setCode(completeCircuit)
+      applyCheckFeedback(true)
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: completeCircuit })
     }
   }
 

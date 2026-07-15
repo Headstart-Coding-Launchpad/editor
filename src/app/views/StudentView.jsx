@@ -270,6 +270,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!task?.completeBlocks
     : lesson.type === 'filesystem'
     ? !!task?.completeFs
+    : lesson.type === 'electronics'
+    ? !!task?.completeCircuit
     : (task?.completeFiles?.length > 0)
   const taskCodeStages = task?.codeStages ?? []
   const nextStageIndex = cs.offeredStageIndex + 1
@@ -294,14 +296,17 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!(lesson.sandboxStarter != null)
     : lesson.type === 'filesystem'
     ? !!(lesson.sandboxStarterFs != null)
+    : lesson.type === 'electronics'
+    ? !!(lesson.sandboxStarterCircuit != null)
     : false
   const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && !isQuizTask && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && (lesson?.type === 'python' || lesson?.type === 'scratch') && (phase === 'lesson' || phase === 'solo')
-  const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && (lesson?.type === 'python' || lesson?.type === 'scratch')
+  const canTeacherEditType = lesson?.type === 'python' || lesson?.type === 'scratch' || lesson?.type === 'electronics'
+  const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType && (phase === 'lesson' || phase === 'solo')
+  const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
 
@@ -426,7 +431,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               <span style={s.consentTitle}>Your teacher wants to help</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>{lesson?.type === 'scratch' ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.' : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}</p>
+              <p style={s.consentText}>{lesson?.type === 'scratch' ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.' : lesson?.type === 'electronics' ? 'Your teacher would like to edit your breadboard to help you. You will see their changes live.' : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}</p>
             </div>
             <div style={s.consentFooter}>
               <button

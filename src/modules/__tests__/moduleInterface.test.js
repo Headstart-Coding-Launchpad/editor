@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { getLessonModule } from '../registry.js'
 
-const LESSON_TYPES = ['python', 'html', 'scratch', 'filesystem']
+const LESSON_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
 describe('module interface contract', () => {
   for (const type of LESSON_TYPES) {

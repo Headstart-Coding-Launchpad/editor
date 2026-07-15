@@ -1,6 +1,7 @@
 import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem/checks.js'
 import { evaluatePythonCheck, PYTHON_CHECK_TYPES } from './python/checks.js'
 import { evaluateHtmlCheck, HTML_CHECK_TYPES } from './html/checks.js'
+import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics/circuit.js'
 import {
   wildcardContains,
   wildcardEquals,
@@ -75,6 +76,7 @@ export const CHECK_TYPES = {
     'code_matches_regex',
   ],
   FS: FS_CHECK_TYPES,
+  ELECTRONICS: ELECTRONICS_CHECK_TYPES,
 }
 
 export function checkRequiresRun(check) {
@@ -104,6 +106,10 @@ export function evaluateSingleCheck(check, output, context = {}) {
 
   if (HTML_CHECK_TYPES.includes(check.type)) {
     return evaluateHtmlCheck(check, output, context)
+  }
+
+  if (ELECTRONICS_CHECK_TYPES.includes(check.type)) {
+    return evaluateElectronicsCheck(check, context.circuit ?? context.code)
   }
 
   if (check.type === 'code_no_error') {
@@ -214,6 +220,6 @@ export function getIncorrectCheckHint(incorrectChecks, output, context = {}) {
 export function evaluateCheckWithCode(check, code) {
   const checks = normalizeChecks(check)
   if (checks.length === 0) return false
-  if (!checks.every(checkAllowedForSubmit)) return false
+  if (!checks.every(c => checkAllowedForSubmit(c) || ELECTRONICS_CHECK_TYPES.includes(c.type))) return false
   return checks.every(c => evaluateSingleCheck(c, '', { code }))
 }

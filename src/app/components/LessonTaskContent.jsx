@@ -9,7 +9,7 @@ import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 
-const SIDE_EXPLAINER_TYPES = ['python', 'html', 'scratch']
+const SIDE_EXPLAINER_TYPES = ['python', 'html', 'scratch', 'electronics']
 
 export default function LessonTaskContent({
   lesson,

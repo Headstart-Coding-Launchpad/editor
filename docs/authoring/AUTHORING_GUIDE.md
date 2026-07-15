@@ -7,6 +7,7 @@ YAML-first reference for writing HSC lessons and topics. Use the CLI to convert 
 - HTML: `docs/authoring/html.md`
 - Scratch: `docs/authoring/scratch.md`
 - Filesystem: `docs/authoring/filesystem.md`
+- Electronics: `docs/authoring/electronics.md`
 
 **Other references:** `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/markdown-renderer.md`
 
@@ -32,7 +33,7 @@ node cli/cli.mjs lessons get python-for-loops --format yaml
 
 ```yaml
 id: python-for-loops         # required — lowercase slug, used in URLs
-type: python                 # required — python | html | scratch | filesystem
+type: python                 # required — python | html | scratch | filesystem | electronics
 title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
 level: 1                     # optional — difficulty badge in the TopBar
@@ -49,7 +50,7 @@ storageAssets:               # optional — Firebase Storage files
 tasks: []                    # required — ordered task list (see below)
 ```
 
-Sandbox-mode fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`) are type-specific — see each per-type doc.
+Sandbox-mode fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, `sandboxStarterCircuit`) are type-specific — see each per-type doc.
 
 ---
 

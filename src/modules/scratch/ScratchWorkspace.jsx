@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
+import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,

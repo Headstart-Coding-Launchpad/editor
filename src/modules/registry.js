@@ -2,12 +2,14 @@ import pythonModule from './python/index.js'
 import htmlModule from './html/index.js'
 import scratchModule from './scratch/index.js'
 import filesystemModule from './filesystem/index.js'
+import electronicsModule from './electronics/index.js'
 
 const MODULES = {
   python: pythonModule,
   html: htmlModule,
   scratch: scratchModule,
   filesystem: filesystemModule,
+  electronics: electronicsModule,
 }
 
 export function getLessonModule(type) {

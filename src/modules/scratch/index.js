@@ -60,6 +60,9 @@ const scratchModule = {
   carryThroughLabel: 'Carry blocks from task',
   getCarryThroughUpdates: (sourceTask) => ({
     starterBlocks: sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null,
+    sprites: JSON.parse(JSON.stringify(sourceTask.sprites ?? [])),
+    backdrops: JSON.parse(JSON.stringify(sourceTask.backdrops ?? [])),
+    variables: JSON.parse(JSON.stringify(sourceTask.variables ?? [])),
   }),
   getNewStarterUpdates: () => ({
     starterBlocks: null,
