@@ -1,5 +1,5 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
-import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/shared/checks.js'
+import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
 
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem']
 
