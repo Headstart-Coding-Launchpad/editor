@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getLessonModule } from '../registry.js'
+import { buildMicroPythonProgram } from '../electronics/index.js'
 
 const LESSON_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
@@ -183,6 +184,20 @@ describe('module interface contract', () => {
     it('makeNewStage creates a stage with fs', () => {
       const result = mod.makeNewStage({}, [])
       expect(result).toHaveProperty('fs')
+    })
+  })
+
+  describe('electronics-specific', () => {
+    it('keeps the MicroPython Pin shim out of the async student-code transform', () => {
+      const program = buildMicroPythonProgram([
+        'from machine import Pin',
+        'led = Pin("GP0", Pin.OUT)',
+        'led.on()',
+      ].join('\n'))
+
+      expect(program.split('\n')[0]).toMatch(/^exec\("import sys, types/)
+      expect(program).not.toContain('\nclass _Pin:')
+      expect(program).toContain('from machine import Pin')
     })
   })
 })

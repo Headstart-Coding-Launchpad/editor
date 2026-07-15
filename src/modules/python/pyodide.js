@@ -23,6 +23,10 @@ let _loadReject = null
 let _runResolve = null      // resolves when the current run finishes
 let _onOutput = null
 let _onInputRequired = null
+let _onGpioWrite = null
+let _onGpioConfigure = null
+let _getGpioInputs = null
+let _gpioInputs = {}
 let _stopped = false
 let _progressCallback = null
 
@@ -71,6 +75,22 @@ function handleWorkerMessage({ data }) {
       if (!_stopped) _onOutput?.(data.text, data.kind)
       break
 
+    case 'gpio_write':
+      if (!_stopped) _onGpioWrite?.(data.pin, data.value)
+      break
+
+    case 'gpio_configure':
+      if (!_stopped) _onGpioConfigure?.(data.pin, data.mode, data.pull)
+      break
+
+    case 'gpio_poll': {
+      if (_stopped) break
+      const values = _getGpioInputs ? _getGpioInputs() : _gpioInputs
+      _gpioInputs = values ?? {}
+      _worker?.postMessage({ type: 'gpio_inputs', values: _gpioInputs, requestId: data.requestId })
+      break
+    }
+
     case 'input_required':
       if (!_stopped) _onInputRequired?.(data.prompt)
       break
@@ -111,12 +131,16 @@ export async function initPyodide(onProgress) {
  * Run a Python code string in the worker.
  * Waits for Pyodide to finish loading if a pre-warm is in progress.
  */
-export async function runPython(code, { onOutput, onInputRequired } = {}) {
+export async function runPython(code, { onOutput, onInputRequired, onGpioWrite, onGpioConfigure, gpioInputs, getGpioInputs, asyncNames } = {}) {
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
 
   _stopped = false
   _onOutput = onOutput
   _onInputRequired = onInputRequired
+  _onGpioWrite = onGpioWrite
+  _onGpioConfigure = onGpioConfigure
+  _gpioInputs = gpioInputs ?? {}
+  _getGpioInputs = getGpioInputs ?? null
 
   if (_loadingPromise) {
     try {
@@ -132,7 +156,12 @@ export async function runPython(code, { onOutput, onInputRequired } = {}) {
 
   return new Promise((resolve) => {
     _runResolve = resolve
-    _worker.postMessage({ type: 'run', code })
+    _worker.postMessage({
+      type: 'run',
+      code,
+      gpioInputs: _gpioInputs,
+      asyncNames: Array.isArray(asyncNames) ? asyncNames : [],
+    })
   })
 }
 
@@ -150,4 +179,9 @@ export function stopPython() {
 /** Supply the value for a pending input() call. */
 export function provideInput(value) {
   _worker?.postMessage({ type: 'input', value })
+}
+
+export function updateGpioInputs(values = {}) {
+  _gpioInputs = values ?? {}
+  _worker?.postMessage({ type: 'gpio_inputs', values: _gpioInputs })
 }

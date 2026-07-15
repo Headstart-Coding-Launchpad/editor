@@ -229,6 +229,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
                 <ElectronicsWorkspace
                   circuit={parseCircuit(lesson.sandboxStarterCircuit, DEFAULT_CIRCUIT)}
                   onChange={circuit => set('sandboxStarterCircuit', JSON.parse(serializeCircuit(circuit)))}
+                  setupMode
                   title="Sandbox breadboard"
                 />
               </div>

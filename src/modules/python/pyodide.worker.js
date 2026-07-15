@@ -21,6 +21,10 @@ const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 let pyodide = null
 let _inputResolve = null
 let _lastVariables = {}
+let _gpioInputs = {}
+let _gpioOutputs = {}
+let _gpioPollId = 0
+const _gpioPollResolvers = new Map()
 
 // Python wrapper — same AST-transform approach as before, but now running in a Worker.
 // `import js as _js` gives access to this worker's globalThis.
@@ -41,6 +45,8 @@ class _Tx(ast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.func, ast.Name) and node.func.id in self._async:
             return ast.Await(value=node)
+        if isinstance(node.func, ast.Attribute) and node.func.attr in self._async:
+            return ast.Await(value=node)
         return node
     def visit_FunctionDef(self, node):
         self.generic_visit(node)
@@ -54,7 +60,8 @@ class _Tx(ast.NodeTransformer):
         return new
 
 _tree = ast.parse(_hs_user_code, filename='<student>')
-_async_names = {n.name for n in ast.walk(_tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+_async_names = set(json.loads(_hs_async_names_json or '[]'))
+_async_names.update({n.name for n in ast.walk(_tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))})
 _async_names.add('input')
 _Tx(_async_names).visit(_tree)
 ast.fix_missing_locations(_tree)
@@ -124,6 +131,51 @@ globalThis.__hsSetVariables = (variables) => {
   _lastVariables = variables?.toJs ? variables.toJs({ dict_converter: Object.fromEntries }) : (variables ?? {})
 }
 
+function normalizeGpioInputs(values = {}) {
+  const source = values?.toJs ? values.toJs({ dict_converter: Object.fromEntries }) : values
+  return Object.fromEntries(Object.entries(source ?? {}).map(([pin, value]) => {
+    const key = String(pin ?? '').trim()
+    if (!key) return null
+    return [key, value == null ? null : (value ? 1 : 0)]
+  }).filter(Boolean))
+}
+
+globalThis.__hsGpioWrite = (pin, value) => {
+  const key = String(pin ?? '').trim()
+  if (!key) return
+  const nextValue = value ? 1 : 0
+  _gpioOutputs[key] = nextValue
+  self.postMessage({ type: 'gpio_write', pin: key, value: nextValue })
+}
+
+globalThis.__hsGpioConfigure = (pin, mode, pull) => {
+  const key = String(pin ?? '').trim()
+  if (!key) return
+  self.postMessage({
+    type: 'gpio_configure',
+    pin: key,
+    mode: Number(mode) || 0,
+    pull: pull == null ? null : Number(pull),
+  })
+}
+
+globalThis.__hsGpioRead = (pin) => {
+  const key = String(pin ?? '').trim()
+  if (!key) return null
+  if (_gpioOutputs[key] !== undefined) return _gpioOutputs[key]
+  return _gpioInputs[key] ?? null
+}
+
+globalThis.__hsGpioSleep = async (seconds) => {
+  const delayMs = Math.max(0, Number(seconds) || 0) * 1000
+  await new Promise(resolve => setTimeout(resolve, delayMs))
+  const requestId = ++_gpioPollId
+  self.postMessage({ type: 'gpio_poll', requestId })
+  return new Promise(resolve => {
+    _gpioPollResolvers.set(requestId, resolve)
+  })
+}
+
 self.onmessage = async ({ data }) => {
   if (data.type === 'init') {
     try {
@@ -147,6 +199,8 @@ self.onmessage = async ({ data }) => {
 
     _inputResolve = null
     _lastVariables = {}
+    _gpioInputs = normalizeGpioInputs(data.gpioInputs)
+    _gpioOutputs = {}
 
     let _stdoutBuf = ''
     let _stderrBuf = ''
@@ -198,6 +252,7 @@ self.onmessage = async ({ data }) => {
     })
 
     pyodide.globals.set('_hs_user_code', data.code)
+    pyodide.globals.set('_hs_async_names_json', JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : []))
 
     try {
       await pyodide.runPythonAsync(WRAPPER)
@@ -215,6 +270,15 @@ self.onmessage = async ({ data }) => {
   if (data.type === 'input') {
     _inputResolve?.(String(data.value))
     _inputResolve = null
+    return
+  }
+
+  if (data.type === 'gpio_inputs') {
+    _gpioInputs = normalizeGpioInputs(data.values)
+    if (data.requestId != null) {
+      _gpioPollResolvers.get(data.requestId)?.()
+      _gpioPollResolvers.delete(data.requestId)
+    }
     return
   }
 }

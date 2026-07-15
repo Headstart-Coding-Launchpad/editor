@@ -79,8 +79,11 @@ export function useStudentCodeState({
   const appendOutputRef        = useRef(null)
   const writeAnswerDebounceRef = useRef(null)
   const lastOutputWriteRef     = useRef(0)
+  const lastRuntimeCodeWriteRef = useRef(0)
   const outputCapReachedRef    = useRef(false)
   const outputRafIdRef         = useRef(null)
+  const runtimeCodeRafIdRef    = useRef(null)
+  const pendingRuntimeCodeRef  = useRef(null)
 
   const MAX_STREAMED_OUTPUT = 20_000
   const MAX_DISPLAY_LINES   = 100
@@ -434,7 +437,7 @@ export function useStudentCodeState({
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'electronics') {
       writeStudentCode(identity.anonymousId, code)
       writeStudentOutput(identity.anonymousId, output)
     } else if (lesson.type === 'html') {
@@ -444,8 +447,6 @@ export function useStudentCodeState({
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
     } else if (lesson.type === 'filesystem') {
       writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
-    } else if (lesson.type === 'electronics') {
-      writeStudentCode(identity.anonymousId, codeRef.current)
     }
     writeStudentInteraction(identity.anonymousId, {
       selection: editorSelectionRef.current,
@@ -673,7 +674,7 @@ export function useStudentCodeState({
     setTestResults(null)
     if (!alreadySolved) resetRunFeedback()
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'electronics') {
       lastOutputWriteRef.current = 0
       outputCapReachedRef.current = false
       if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
@@ -701,10 +702,38 @@ export function useStudentCodeState({
           if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
         }
       }
+      let latestRuntimeCode = code
+      const flushRuntimeCodeUpdate = () => {
+        if (runtimeCodeRafIdRef.current !== null) {
+          cancelAnimationFrame(runtimeCodeRafIdRef.current)
+          runtimeCodeRafIdRef.current = null
+        }
+        const pending = pendingRuntimeCodeRef.current
+        pendingRuntimeCodeRef.current = null
+        if (typeof pending !== 'string') return
+        latestRuntimeCode = pending
+        codeRef.current = pending
+        setCode(pending)
+        const now = Date.now()
+        if (now - lastRuntimeCodeWriteRef.current >= 200) {
+          lastRuntimeCodeWriteRef.current = now
+          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ code: pending }))
+          if (isWatched) writeStudentCode(actor.anonymousId, pending)
+        }
+      }
+      const scheduleRuntimeCodeUpdate = (nextCode) => {
+        if (lesson.type !== 'electronics' || typeof nextCode !== 'string' || nextCode === latestRuntimeCode) return
+        latestRuntimeCode = nextCode
+        pendingRuntimeCodeRef.current = nextCode
+        if (runtimeCodeRafIdRef.current !== null) return
+        runtimeCodeRafIdRef.current = requestAnimationFrame(flushRuntimeCodeUpdate)
+      }
       appendOutputRef.current = echoOutput
       const result = await mod.runtime.run(code, task, {
         onOutput: (text, _kind) => echoOutput(text),
         onInputRequired: (prompt) => setInputPrompt(prompt),
+        onCodeUpdate: scheduleRuntimeCodeUpdate,
+        getRuntimeCode: () => codeRef.current,
       })
       setInputPrompt(null)
 
@@ -712,18 +741,26 @@ export function useStudentCodeState({
       if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
 
       if (result.status === 'stopped') {
+        flushRuntimeCodeUpdate()
         setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
-        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
-        if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
+        if (lesson.type === 'electronics') persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: latestRuntimeCode, output: accumulated })
+        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ code: latestRuntimeCode, output: accumulated }))
+        if (isWatched) {
+          writeStudentCode(actor.anonymousId, latestRuntimeCode)
+          writeStudentOutput(actor.anonymousId, accumulated)
+        }
         setRunning(false)
         return
       }
 
+      flushRuntimeCodeUpdate()
       setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
       const status = result.status
       setRunStatus(status)
+      const nextCode = typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
+      if (nextCode !== code) setCode(nextCode)
 
-      const checkContext = { status, code, variables: result.variables ?? {} }
+      const checkContext = { status, code: nextCode, variables: result.variables ?? {} }
       const hasTests = task?.tests?.length > 0
       let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext))
       let suggestion = ''
@@ -734,14 +771,14 @@ export function useStudentCodeState({
       }
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
+        publishTeacherLive({ code: nextCode, output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
       }
-      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: accumulated, runStatus: status })
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: nextCode, output: accumulated, runStatus: status })
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
+        await writeStudentRun(actor.anonymousId, { code: nextCode, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
       }
       if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && !hasTests && task?.check) {
-        logAttempt(actor.anonymousId, currentTaskId, { submission: code, passed, suggestion })
+        logAttempt(actor.anonymousId, currentTaskId, { submission: nextCode, passed, suggestion })
       }
       setRunning(false)
       return

@@ -16,6 +16,13 @@ export default function StudentWorkspace({
     cs.handleCodeChange(serializeCircuit(nextCircuit))
   }
 
+  function handleLegacyCodeChange(nextCode) {
+    handleCircuitChange({
+      ...circuit,
+      microcontroller: { ...(circuit.microcontroller ?? {}), enabled: true, code: nextCode },
+    })
+  }
+
   return (
     <ElectronicsWorkspace
       circuit={circuit}
@@ -24,10 +31,14 @@ export default function StudentWorkspace({
       readOnly={readOnly}
       showCodeTab={showCodeTab}
       code={task?.microcontroller?.starterCode ?? ''}
+      onCodeChange={handleLegacyCodeChange}
+      onRunMicroPython={!readOnly ? cs.handleRun : undefined}
+      onStopMicroPython={!readOnly ? cs.handleStop : undefined}
       onCheck={!readOnly ? cs.handleSubmit : undefined}
       onReset={!readOnly ? cs.handleResetCode : undefined}
       output={isForcedTeacherLive ? displayOutput : cs.output}
       runStatus={isForcedTeacherLive ? displayRunStatus : cs.runStatus}
+      running={cs.running}
       checkPassed={isForcedTeacherLive ? displayCheckPassed : cs.checkPassed}
       title="Electronics"
     />

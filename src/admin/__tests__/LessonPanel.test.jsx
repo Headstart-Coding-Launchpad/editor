@@ -67,6 +67,17 @@ describe('LessonPanel', () => {
     expect(screen.getByText('Electronics')).toBeInTheDocument()
   })
 
+  it('renders registered module headings even when that type has no lessons', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireLessons([PYTHON_LESSON, HTML_LESSON])
+
+    await user.click(screen.getByRole('button', { name: /Electronics/i }))
+
+    expect(screen.getByText('Electronics')).toBeInTheDocument()
+    expect(screen.getByText('No lessons found for this lesson type.')).toBeInTheDocument()
+  })
+
   it('renders the lesson title for each lesson', async () => {
     const user = userEvent.setup()
     render(<LessonPanel />)

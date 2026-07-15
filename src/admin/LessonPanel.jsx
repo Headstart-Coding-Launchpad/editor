@@ -34,7 +34,7 @@ function levelSortKey(level) {
 }
 
 function groupByTypeAndLevel(lessons) {
-  const byType = {}
+  const byType = Object.fromEntries(TYPE_ORDER.map(type => [type, []]))
   for (const lesson of lessons) {
     const type = lesson.type || 'unknown'
     if (!byType[type]) byType[type] = []
@@ -143,13 +143,19 @@ export default function LessonPanel() {
   const [activeType, setActiveType] = useState(null)
   const [stageFilter, setStageFilter] = useState(null)
 
-  const groups = useMemo(
-    () => groupByTypeAndLevel(lessons.filter(l => !deletedIds.has(l.id))),
+  const visibleLessons = useMemo(
+    () => lessons.filter(l => !deletedIds.has(l.id)),
     [lessons, deletedIds],
   )
+  const groups = useMemo(
+    () => groupByTypeAndLevel(visibleLessons),
+    [visibleLessons],
+  )
 
-  const displayType = activeType ?? groups[0]?.type ?? null
+  const firstPopulatedGroup = groups.find(g => g.lessons.length > 0)
+  const displayType = activeType ?? firstPopulatedGroup?.type ?? groups[0]?.type ?? null
   const activeGroup = groups.find(g => g.type === displayType)
+  const showActiveGroup = activeGroup && (visibleLessons.length > 0 || activeType)
   const filteredLessons = useMemo(() => {
     const base = activeGroup?.lessons ?? []
     if (!stageFilter) return base
@@ -179,7 +185,7 @@ export default function LessonPanel() {
 
       {loading && <p style={s.muted}>Loading lessons…</p>}
       {error && <p style={s.error}>Could not load lessons: {error}</p>}
-      {!loading && !error && groups.length === 0 && (
+      {!loading && !error && visibleLessons.length === 0 && (
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
       )}
 
@@ -198,7 +204,7 @@ export default function LessonPanel() {
         </div>
       )}
 
-      {activeGroup && (
+      {showActiveGroup && (
         <div style={s.stageFilterRow}>
           {STAGE_FILTER_OPTIONS.map(opt => (
             <button
@@ -219,7 +225,7 @@ export default function LessonPanel() {
         </div>
       )}
 
-      {activeGroup && (
+      {showActiveGroup && (
         <div key={activeGroup.type} style={s.group}>
           <table style={s.table}>
             <colgroup>
@@ -240,7 +246,9 @@ export default function LessonPanel() {
               {filteredLessons.length === 0 && (
                 <tr>
                   <td colSpan={5} style={{ ...s.td, color: '#9ca3af', textAlign: 'center', padding: '20px 12px' }}>
-                    No lessons match the selected stage filter.
+                    {activeGroup.lessons.length === 0
+                      ? 'No lessons found for this lesson type.'
+                      : 'No lessons match the selected stage filter.'}
                   </td>
                 </tr>
               )}
