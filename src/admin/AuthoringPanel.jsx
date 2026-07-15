@@ -3,6 +3,7 @@ import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import { MarkdownRenderer } from '../shared/markdown'
+import { getLessonModules } from '../modules/registry'
 import {
   addDraftEntry,
   deleteDraft,
@@ -26,7 +27,8 @@ const STAGE_FILTERS = ['all', 'ideas', 'details', 'review', 'approved', 'publish
 const DECISION_LABELS = { pending: 'Pending', accepted: 'Accepted', rejected: 'Rejected' }
 const DECISION_COLORS = { pending: '#d97706', accepted: '#16a34a', rejected: '#dc2626' }
 const ENTRY_TYPES = ['information', 'code', 'quiz']
-const APPLIES_TO_OPTIONS = ['all', 'python', 'html', 'scratch']
+const LESSON_MODULE_OPTIONS = getLessonModules().map(module => ({ value: module.type, label: module.label }))
+const APPLIES_TO_OPTIONS = [{ value: 'all', label: 'All' }, ...LESSON_MODULE_OPTIONS]
 
 // ── Small shared components ────────────────────────────────────────────────────
 
@@ -442,10 +444,7 @@ function NewDraftModal({ onClose, onCreated }) {
             {field('Title', 'title', { placeholder: 'Python For Loops' })}
             <label style={s.label}>Type</label>
             <select style={s.select} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-              <option value="python">Python</option>
-              <option value="html">HTML</option>
-              <option value="scratch">Scratch</option>
-              <option value="filesystem">Filesystem</option>
+              {LESSON_MODULE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             {field('Module', 'module', { placeholder: 'Python Level 3' })}
             {field('Lesson number', 'lessonNumber', { type: 'number', placeholder: '9' })}
@@ -541,8 +540,8 @@ function GuidelinesSection() {
         </div>
         <div style={s.filterRow}>
           {APPLIES_TO_OPTIONS.map(o => (
-            <button key={o} style={s.filterChip(o === filter)} onClick={() => setFilter(o)}>
-              {o.charAt(0).toUpperCase() + o.slice(1)}
+            <button key={o.value} style={s.filterChip(o.value === filter)} onClick={() => setFilter(o.value)}>
+              {o.label}
             </button>
           ))}
         </div>
@@ -576,7 +575,7 @@ function GuidelinesSection() {
             <input style={s.input} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Python Style Guide" autoFocus={!isNew} />
             <label style={s.label}>Applies to</label>
             <select style={s.select} value={form.appliesTo} onChange={e => setForm(f => ({ ...f, appliesTo: e.target.value }))}>
-              {APPLIES_TO_OPTIONS.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+              {APPLIES_TO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <label style={s.label}>Body <span style={s.hint}>(Markdown)</span></label>
             <textarea

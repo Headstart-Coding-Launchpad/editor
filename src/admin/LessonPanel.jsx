@@ -3,12 +3,15 @@ import { collection, onSnapshot, deleteDoc, doc, setDoc } from 'firebase/firesto
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
 import { encodeLessonBlocksForFirestore } from '../shared/lessonBlocksCodec'
+import { getLessonModules } from '../modules/registry'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
 }
 
-const TYPE_ORDER = ['python', 'scratch', 'html', 'filesystem']
+const LESSON_MODULES = getLessonModules()
+const TYPE_ORDER = LESSON_MODULES.map(module => module.type)
+const TYPE_LABELS = Object.fromEntries(LESSON_MODULES.map(module => [module.type, module.label]))
 
 const STAGE_LABELS = { ideas: 'Ideas', details: 'Details', review: 'Review', approved: 'Approved', published: 'Published' }
 const STAGE_COLORS = { ideas: '#6b7280', details: '#2563eb', review: '#d97706', approved: '#16a34a', published: '#7c3aed' }
@@ -51,9 +54,6 @@ function groupByTypeAndLevel(lessons) {
 function makeTeacherUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
 }
-
-
-const TYPE_LABELS = { python: 'Python', scratch: 'Scratch', html: 'HTML', filesystem: 'Filesystem' }
 
 export default function LessonPanel() {
   const [lessons, setLessons] = useState([])

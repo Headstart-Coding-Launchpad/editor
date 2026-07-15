@@ -2,7 +2,7 @@ import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import TeacherLiveView from './TeacherLiveView.jsx'
-import { DEFAULT_CIRCUIT, cloneCircuit, evaluateElectronicsCheck, parseCircuit, serializeCircuit } from './circuit'
+import { DEFAULT_AVAILABLE_COMPONENTS, DEFAULT_CIRCUIT, cloneCircuit, evaluateElectronicsCheck, parseCircuit, serializeCircuit } from './circuit'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
@@ -24,6 +24,7 @@ const electronicsModule = {
 
   makeCodeTaskFields: (task) => ({
     starterCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
+    availableComponents: task.availableComponents ?? [...DEFAULT_AVAILABLE_COMPONENTS],
     carryCircuitFrom: task.carryCircuitFrom ?? null,
     microcontroller: task.microcontroller ?? { enabled: false, boardType: null, starterCode: '' },
   }),

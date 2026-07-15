@@ -232,7 +232,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
 | `electronics/index.js` | Electronics module definition: breadboard state helpers, builder/student/teacher workspaces, checks, carry-through, sandbox state, and future MicroPython tab metadata |
 | `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, and `circuit_*` check evaluation |
-| `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI: palette, board, component inspector, pin-to-pin wiring, optional Code tab, and output panel |
+| `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI: drag/drop palette and board, visual parts, animated pin-to-pin wiring, component inspector, optional Code tab, and output panel |
 | `electronics/StudentWorkspace.jsx` | Student electronics workspace wrapper: serialized circuit state, reset/check actions, teacher-live/read-only handling |
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs and future MicroPython enable toggle |
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |

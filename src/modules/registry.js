@@ -12,6 +12,22 @@ const MODULES = {
   electronics: electronicsModule,
 }
 
+const MODULE_ORDER = ['python', 'scratch', 'html', 'filesystem', 'electronics']
+const MODULE_LABELS = {
+  python: 'Python',
+  scratch: 'Scratch',
+  html: 'HTML',
+  filesystem: 'Filesystem',
+  electronics: 'Electronics',
+}
+
+export function getLessonModules() {
+  return MODULE_ORDER
+    .map(type => MODULES[type])
+    .filter(Boolean)
+    .map(module => ({ ...module, label: module.label ?? MODULE_LABELS[module.type] ?? module.type }))
+}
+
 export function getLessonModule(type) {
   return MODULES[type] ?? null
 }

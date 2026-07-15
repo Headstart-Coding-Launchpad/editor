@@ -20,6 +20,7 @@ export default function StudentWorkspace({
     <ElectronicsWorkspace
       circuit={circuit}
       onChange={handleCircuitChange}
+      availableComponents={task?.availableComponents}
       readOnly={readOnly}
       showCodeTab={showCodeTab}
       code={task?.microcontroller?.starterCode ?? ''}

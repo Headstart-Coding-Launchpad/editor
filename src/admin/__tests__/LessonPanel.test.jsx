@@ -40,6 +40,7 @@ function fireLessons(lessons) {
 const PYTHON_LESSON = { id: 'py-intro', title: 'Intro to Python', type: 'python', level: 1, tasks: [] }
 const HTML_LESSON   = { id: 'html-basics', title: 'HTML Basics', type: 'html', level: 1, tasks: [] }
 const SCRATCH_LESSON = { id: 'scratch-1', title: 'Scratch Starter', type: 'scratch', level: null, tasks: [] }
+const ELECTRONICS_LESSON = { id: 'electronics-led', title: 'LED Circuit', type: 'electronics', level: 1, tasks: [] }
 
 describe('LessonPanel', () => {
   beforeEach(() => {
@@ -58,11 +59,12 @@ describe('LessonPanel', () => {
 
   it('renders lessons grouped by type with correct group headings', () => {
     render(<LessonPanel />)
-    fireLessons([PYTHON_LESSON, HTML_LESSON, SCRATCH_LESSON])
+    fireLessons([PYTHON_LESSON, HTML_LESSON, SCRATCH_LESSON, ELECTRONICS_LESSON])
 
     expect(screen.getByText('Python')).toBeInTheDocument()
     expect(screen.getByText('HTML')).toBeInTheDocument()
     expect(screen.getByText('Scratch')).toBeInTheDocument()
+    expect(screen.getByText('Electronics')).toBeInTheDocument()
   })
 
   it('renders the lesson title for each lesson', async () => {

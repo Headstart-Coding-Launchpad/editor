@@ -5,6 +5,20 @@ import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modul
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 
+function hasCircuitSelectorTarget(selector) {
+  return !!(
+    selector?.type?.trim?.()
+    || selector?.componentType?.trim?.()
+    || selector?.typeName?.trim?.()
+    || selector?.label?.trim?.()
+    || selector?.id?.trim?.()
+  )
+}
+
+function hasCircuitEndpointTarget(endpoint) {
+  return hasCircuitSelectorTarget(endpoint?.component ?? endpoint) && !!endpoint?.pin?.trim?.()
+}
+
 export function copyScratchSpriteStateToStarters(sprites, spriteStates) {
   return sprites.map(sprite => {
     const state = spriteStates?.[sprite.id]
@@ -123,14 +137,20 @@ export function validateLesson(lesson) {
       }
       if (task.check) {
         const checks = normalizeChecks(task.check)
-        if (checks.some(c => c.type === 'circuit_component_exists' && !c.id?.trim() && !c.componentType?.trim() && !c.label?.trim())) {
-          errors.push(`Task ${n} has a component-exists check but no component id, type, or label`)
+        if (checks.some(c => c.type === 'circuit_has_component' && !hasCircuitSelectorTarget(c.component))) {
+          errors.push(`Task ${n} has a part-exists check but no part type or label`)
         }
-        if (checks.some(c => (c.type === 'circuit_connected' || c.type === 'circuit_not_connected') && (!c.from?.trim() || !c.to?.trim()))) {
-          errors.push(`Task ${n} has a circuit connection check but no source or destination pin`)
+        if (checks.some(c => (c.type === 'circuit_component_powered' || c.type === 'circuit_component_unpowered') && !hasCircuitSelectorTarget(c.component))) {
+          errors.push(`Task ${n} has a powered-part check but no part type or label`)
         }
-        if (checks.some(c => c.type === 'circuit_component_state' && (!c.componentId?.trim() || !c.property?.trim()))) {
-          errors.push(`Task ${n} has a component-state check but no component id or state property`)
+        if (checks.some(c => c.type === 'circuit_control_affects_power' && (!hasCircuitSelectorTarget(c.control) || !hasCircuitSelectorTarget(c.component)))) {
+          errors.push(`Task ${n} has a control check but no control or controlled part`)
+        }
+        if (checks.some(c => (c.type === 'circuit_path_exists' || c.type === 'circuit_path_includes') && (!hasCircuitEndpointTarget(c.from) || !hasCircuitEndpointTarget(c.to)))) {
+          errors.push(`Task ${n} has a circuit path check but no source or destination part/pin`)
+        }
+        if (checks.some(c => c.type === 'circuit_path_includes' && !hasCircuitSelectorTarget(c.includes))) {
+          errors.push(`Task ${n} has a circuit path-includes check but no required part`)
         }
       }
     } else if (task.taskType !== 'information' && type === 'html') {
