@@ -9,8 +9,8 @@ loadEnv({ path: resolve(__dirname, '.env') })
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 import yaml from 'js-yaml'
-import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
-import { extname, basename, join, relative, sep } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { extname, basename, relative, sep } from 'node:path'
 import {
   parseJson,
   parseJsonOrYaml,
@@ -50,15 +50,6 @@ async function readText(filePath) {
 async function writeText(filePath, text) {
   await mkdir(dirname(filePath), { recursive: true })
   await writeFile(filePath, text, 'utf-8')
-}
-
-async function exists(path) {
-  try {
-    await access(path)
-    return true
-  } catch {
-    return false
-  }
 }
 
 function currentOutputFormat() {
@@ -110,37 +101,6 @@ function inferYamlPath(jsonPath, lessonId) {
   return replaceArtifactSegment(jsonPath, 'JSON Files', 'YAML Files', '.yaml') ?? resolve(`${lessonId}.yaml`)
 }
 
-async function collectTopicIdsFromMarkdown(root, ids = new Set()) {
-  if (!await exists(root)) return ids
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    const fullPath = join(root, entry.name)
-    if (entry.isDirectory()) {
-      await collectTopicIdsFromMarkdown(fullPath, ids)
-    } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
-      ids.add(basename(entry.name, extname(entry.name)))
-    }
-  }
-  return ids
-}
-
-async function loadLocalTopicIds() {
-  const ids = await collectTopicIdsFromMarkdown(resolve('topic library'))
-  const topicJsonPaths = [
-    resolve('public', 'assets', 'topic-library.json'),
-    resolve('Old Lessons', 'JSON Files', 'topic-library.json'),
-    resolve('New Lessons', 'JSON Files', 'topic-library.json'),
-    resolve('JSON Files', 'topic-library.json'),
-  ]
-  for (const topicJsonPath of topicJsonPaths) {
-    if (!await exists(topicJsonPath)) continue
-    const topicLibrary = parseJson(await readText(topicJsonPath))
-    for (const topic of Array.isArray(topicLibrary) ? topicLibrary : (topicLibrary.topics ?? [])) {
-      if (topic.id) ids.add(topic.id)
-    }
-  }
-  return ids
-}
-
 async function preflightYamlLesson(file) {
   const checks = []
   const add = (ok, name, detail = '') => checks.push({ ok, name, detail })
@@ -165,10 +125,11 @@ async function preflightYamlLesson(file) {
   const validation = validateLessonForMcp(lesson)
   add(validation.valid, 'lesson validates', validation.valid ? `${validation.warnings.length} warning(s)` : validation.errors.join('; '))
 
-  const localTopicIds = await loadLocalTopicIds()
+  const { listTopics } = await loadTopics()
+  const topics = await listTopics()
   const topicValidation = validateTopicStage(
     lesson,
-    [...localTopicIds].map(id => ({ id })),
+    topics,
     lesson.stage ?? 'published',
   )
   const linkedTopicIds = topicValidation.audit.references.map(reference => reference.id)
@@ -308,7 +269,7 @@ await yargs(hideBin(process.argv))
       print({ success: true, outputPath: printRelativePath(outputPath) })
     }))
 
-    .command('preflight <file>', 'Run local YAML validation and topic-link checks', {}, cmd(async ({ file }) => {
+    .command('preflight <file>', 'Run YAML validation and check topic links against LaunchPad', {}, cmd(async ({ file }) => {
       const result = await preflightYamlLesson(file)
       print(result)
       if (!result.valid) process.exit(1)
