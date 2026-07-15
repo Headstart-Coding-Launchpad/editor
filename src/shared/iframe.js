@@ -155,7 +155,9 @@ function _injectSecurity(html, loadId) {
   // CSP blocks all outbound network requests (fetch, XHR, WebSocket).
   // blob: and 'unsafe-inline'/'unsafe-eval' are needed for the virtual filesystem
   // and typical student code patterns.
-    const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' blob:; connect-src 'self' ws://localhost:5173; img-src 'self' data: blob: https://firebasestorage.googleapis.com;">`  // Text reporter: fires on DOMContentLoaded and posts body text to the parent.
+    const devWs = import.meta.env.DEV ? ' ws://localhost:5173' : ''
+  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' blob:; connect-src 'self'${devWs}; img-src 'self' data: blob: https://firebasestorage.googleapis.com;">`
+  // Text reporter: fires on DOMContentLoaded and posts body text to the parent.
   // The parent's waitForIframeText() listens for this message to run output_contains checks.
   const textReporter = `<script>(function(){var s=function(){try{window.parent.postMessage({type:'__hsc_text__',id:'${loadId}',text:document.body?document.body.innerText:''},'*')}catch(e){}};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s)}else{s()}})()</script>`
 

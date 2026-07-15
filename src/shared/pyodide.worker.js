@@ -42,6 +42,10 @@ class _Tx(ast.NodeTransformer):
         if isinstance(node.func, ast.Name) and node.func.id in self._async:
             return ast.Await(value=node)
         return node
+    def visit_ClassDef(self, node):
+        # Do not descend into class bodies: methods must stay synchronous so
+        # that __init__ (and all other methods) are not turned into coroutines.
+        return node
     def visit_FunctionDef(self, node):
         self.generic_visit(node)
         new = ast.AsyncFunctionDef(

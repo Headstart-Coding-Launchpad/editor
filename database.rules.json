@@ -6,7 +6,7 @@
       ".read": "auth != null && auth.token.role === 'admin'",
 
       "$lessonId": {
-        ".read": true,
+        ".read": "auth != null",
 
         // Teachers and admins can write any session-level field
         // (state, currentTaskId, teacherLive, sandboxCode, etc.)
@@ -14,9 +14,11 @@
 
         // Any authenticated user can register their name-entry presence marker.
         // The tempId is a client-generated UUID so no UID match is enforced here.
+        // Shape is constrained to {joinedAt: <number>} to limit griefing.
         "joiningStudents": {
           "$tempId": {
-            ".write": "auth != null"
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['joinedAt']) && newData.child('joinedAt').isNumber()"
           }
         },
 
@@ -24,7 +26,19 @@
         // Teachers and admins retain write access for rename, reset, and check override.
         "students": {
           "$anonymousId": {
-            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')",
+            "displayName": {
+              ".validate": "newData.isString() && newData.val().length <= 100"
+            },
+            "checkPassed": {
+              ".validate": "newData.isBoolean()"
+            },
+            "needsHelp": {
+              ".validate": "newData.isBoolean()"
+            },
+            "inPersonalSandbox": {
+              ".validate": "newData.isBoolean()"
+            }
           }
         },
 
