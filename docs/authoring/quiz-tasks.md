@@ -45,7 +45,7 @@ Without the `answer:` shorthand:
 
 ## Match
 
-Student drags tiles to match each prompt with its answer. All pairs must be correct.
+Student drags tiles to match each prompt with its answer. Each placed tile gets immediate red/green feedback. All pairs must be correct.
 
 ```yaml
 - type: quiz
@@ -70,7 +70,7 @@ Tiles are shuffled on render. No `check` needed — completion is automatic when
 
 ## Fill Blank
 
-Student fills blanks in a sentence or code snippet.
+Student fills blanks in a sentence or code snippet. Each filled blank gets immediate red/green feedback.
 
 ### Drag mode (default)
 

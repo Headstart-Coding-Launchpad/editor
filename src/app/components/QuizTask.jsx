@@ -140,6 +140,14 @@ function checkPassedFromTask(task, selectedAnswer) {
   return task?.check?.type === 'answer_equals' && task.check.value === selectedAnswer
 }
 
+function fillDragTileMatchesBlank(tile, blank) {
+  return tile?.text === blank?.answer
+}
+
+function typedValueMatchesBlank(value, blank) {
+  return String(value ?? '').trim().toLowerCase() === String(blank?.answer ?? '').trim().toLowerCase()
+}
+
 // ─── Match ────────────────────────────────────────────────────────────────────
 
 function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
@@ -190,8 +198,8 @@ function MatchQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPasse
             const canReceive = !!(activeId && activeId !== placedId)
             const isDragHighlight = canReceive && dragOverSlot === pair.id && !blocked
             const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
-            const isSlotCorrect = revealAnswers && placedId === pair.id
-            const isSlotWrong = revealAnswers && isOccupied && placedId !== pair.id
+            const isSlotCorrect = isOccupied && placedId === pair.id
+            const isSlotWrong = isOccupied && placedId !== pair.id
             const correctPair = revealAnswers && !isSlotCorrect ? pair : null
 
             return (
@@ -384,7 +392,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
     if (allFilled) {
       const allCorrect = blanks.every(b => {
         const placedTile = tilePool.find(t => t.id === next[b.id])
-        return placedTile?.text === b.answer
+        return fillDragTileMatchesBlank(placedTile, b)
       })
       onSelectAnswer?.(next, allCorrect)
     } else {
@@ -408,9 +416,7 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
     const allFilled = blanks.every(b => String(state[b.id] ?? '').trim())
     if (!allFilled) return
     const allCorrect = blanks.every(b => {
-      const typed = String(state[b.id] ?? '').trim().toLowerCase()
-      const expected = String(b.answer ?? '').trim().toLowerCase()
-      return typed === expected
+      return typedValueMatchesBlank(state[b.id], b)
     })
     onSelectAnswer?.(state, allCorrect)
   }
@@ -423,12 +429,15 @@ function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkP
     const canReceive = mode === 'drag' && !!(activeId && activeId !== placedTileId)
     const isDragHighlight = canReceive && dragOverBlank === blankId && !blocked
     const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
-    const isBlankCorrect = revealAnswers && placedTileId && (
+    const hasBlankValue = mode === 'drag'
+      ? placedTileId !== undefined && placedTileId !== null
+      : String(placedTileId ?? '').trim() !== ''
+    const isBlankCorrect = hasBlankValue && (
       mode === 'drag'
-        ? tilePool.find(t => t.id === placedTileId)?.text === blank?.answer
-        : String(placedTileId ?? '').trim().toLowerCase() === String(blank?.answer ?? '').trim().toLowerCase()
+        ? fillDragTileMatchesBlank(tilePool.find(t => t.id === placedTileId), blank)
+        : typedValueMatchesBlank(placedTileId, blank)
     )
-    const isBlankWrong = revealAnswers && placedTileId && !isBlankCorrect
+    const isBlankWrong = hasBlankValue && !isBlankCorrect
 
     if (mode === 'type') {
       return (
