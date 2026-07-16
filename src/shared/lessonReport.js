@@ -7,6 +7,28 @@ function isGradedTask(task) {
   return !!task && task.taskType !== 'information' && task.check != null
 }
 
+function getAnonymousStudentLabel(index) {
+  return `Student ${index + 1}`
+}
+
+export function anonymizeSessionReport(report) {
+  if (!report) return report
+  const students = Array.isArray(report.students)
+    ? report.students.map((student, index) => {
+        const { anonymousId, displayName, studentLabel, ...rest } = student ?? {}
+        return {
+          studentLabel: getAnonymousStudentLabel(index),
+          ...rest,
+        }
+      })
+    : []
+
+  return {
+    ...report,
+    students,
+  }
+}
+
 // Combines a (possibly still-live) RTDB session snapshot with the lesson's task
 // list into a plain, serializable report object. Only tasks with a check are
 // included — information tasks have no pass/fail/attempts concept.
@@ -18,8 +40,7 @@ export function buildSessionReport({ session, lesson }) {
 
   const taskStartTimes = session?.taskStartTimes ?? {}
 
-  const students = anonymousIds.map(anonymousId => {
-    const studentSnap = studentsSnapshot[anonymousId] ?? {}
+  const students = anonymousIds.map((anonymousId, index) => {
     const studentAttempts = attemptLog[anonymousId] ?? {}
 
     const taskResults = tasks.map(task => {
@@ -57,8 +78,7 @@ export function buildSessionReport({ session, lesson }) {
     })
 
     return {
-      anonymousId,
-      displayName: studentSnap.displayName || anonymousId,
+      studentLabel: getAnonymousStudentLabel(index),
       tasks: taskResults,
     }
   })
@@ -110,5 +130,5 @@ export function buildSessionReport({ session, lesson }) {
 }
 
 export function reportToYamlText(report) {
-  return yaml.dump(report, YAML_OPTIONS)
+  return yaml.dump(anonymizeSessionReport(report), YAML_OPTIONS)
 }

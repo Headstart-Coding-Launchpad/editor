@@ -39,7 +39,8 @@ describe('TeacherReportModal', () => {
 
   it('expands a student and task row to reveal distinct attempts', () => {
     render(<TeacherReportModal report={report} onClose={vi.fn()} />)
-    fireEvent.click(screen.getByText('Alice'))
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Student 1'))
     fireEvent.click(screen.getByRole('button', { name: /Task One/ }))
     expect(screen.getByText('print("hi")')).toBeInTheDocument()
     expect(screen.getByText('print("hello")')).toBeInTheDocument()

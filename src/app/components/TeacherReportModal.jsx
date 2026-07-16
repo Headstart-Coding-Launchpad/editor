@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react'
-import { reportToYamlText } from '../../shared/lessonReport'
+import React, { useMemo, useRef, useState } from 'react'
+import { anonymizeSessionReport, reportToYamlText } from '../../shared/lessonReport'
 
 function formatDuration(ms) {
   if (ms == null) return '—'
@@ -59,7 +59,7 @@ function StudentSection({ student }) {
     <div style={s.studentSection}>
       <button style={s.studentHeader} onClick={() => setExpanded(v => !v)}>
         <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>
-        <span style={s.studentName}>{student.displayName}</span>
+        <span style={s.studentName}>{student.studentLabel}</span>
         <span style={s.studentSummary}>{completedCount}/{student.tasks.length} tasks completed</span>
       </button>
       {expanded && (
@@ -73,19 +73,20 @@ function StudentSection({ student }) {
 
 export default function TeacherReportModal({ report, onClose }) {
   const overlayRef = useRef(null)
+  const displayReport = useMemo(() => anonymizeSessionReport(report), [report])
 
   function handleExportYaml() {
-    const yamlText = reportToYamlText(report)
+    const yamlText = reportToYamlText(displayReport)
     const blob = new Blob([yamlText], { type: 'text/yaml' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${report.lessonId || 'lesson'}-report-${report.sessionId || Date.now()}.yaml`
+    a.download = `${displayReport.lessonId || 'lesson'}-report-${displayReport.sessionId || Date.now()}.yaml`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  if (!report) return null
+  if (!displayReport) return null
 
   return (
     <div
@@ -100,7 +101,7 @@ export default function TeacherReportModal({ report, onClose }) {
         <div style={s.header}>
           <div>
             <span style={s.title}>Session Report</span>
-            <div style={s.subtitle}>{report.lessonTitle}</div>
+            <div style={s.subtitle}>{displayReport.lessonTitle}</div>
           </div>
           <div style={s.headerActions}>
             <button className="btn-primary" style={s.exportBtn} onClick={handleExportYaml}>Export YAML</button>
@@ -120,7 +121,7 @@ export default function TeacherReportModal({ report, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {report.taskSummary.map(task => (
+                {displayReport.taskSummary.map(task => (
                   <tr key={task.taskId}>
                     <td style={s.td}>{task.title}</td>
                     <td style={s.td}>{task.completedCount}/{task.totalStudents} ({Math.round(task.completionRate * 100)}%)</td>
@@ -137,10 +138,12 @@ export default function TeacherReportModal({ report, onClose }) {
 
           <section>
             <h3 style={s.sectionTitle}>Students</h3>
-            {report.students.length === 0 ? (
+            {displayReport.students.length === 0 ? (
               <p style={s.muted}>No students joined this session.</p>
             ) : (
-              report.students.map(student => <StudentSection key={student.anonymousId} student={student} />)
+              displayReport.students.map((student, index) => (
+                <StudentSection key={`${student.studentLabel}-${index}`} student={student} />
+              ))
             )}
           </section>
         </div>
