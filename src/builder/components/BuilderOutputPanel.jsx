@@ -130,6 +130,7 @@ export default function BuilderOutputPanel({
                 <span style={s.prompt}>&gt;</span>
                 <input ref={inputRef} style={s.input} value={inputValue}
                   onChange={e => setInputValue(e.target.value)}
+                  autoFocus
                   placeholder="Type input and press Enter" />
               </form>
             )}

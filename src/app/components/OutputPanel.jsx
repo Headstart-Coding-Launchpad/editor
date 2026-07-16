@@ -27,6 +27,7 @@ export default function OutputPanel({
   const preRef = useRef(null)
   const inputRef = useRef(null)
   const prevRunningRef = useRef(running)
+  const contentCollapsed = collapsible && isCollapsed
 
   useEffect(() => {
     if (running && !prevRunningRef.current) {
@@ -80,10 +81,10 @@ export default function OutputPanel({
   }, [displayedOutput, inputPrompt])
 
   useEffect(() => {
-    if (inputPrompt !== null && !isCollapsed) {
+    if (inputPrompt !== null && !contentCollapsed) {
       inputRef.current?.focus()
     }
-  }, [inputPrompt, isCollapsed])
+  }, [inputPrompt, contentCollapsed])
 
   function handleInputSubmit(e) {
     e.preventDefault()
@@ -94,8 +95,6 @@ export default function OutputPanel({
   const statusColour = runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
   const statusLabel = runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
   const showCursor = running || (output && displayedOutput !== output)
-  const contentCollapsed = collapsible && isCollapsed
-
   return (
     <div
       style={{
@@ -145,6 +144,7 @@ export default function OutputPanel({
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 placeholder="Type your input and press Enter"
+                autoFocus
               />
             </form>
           )}
