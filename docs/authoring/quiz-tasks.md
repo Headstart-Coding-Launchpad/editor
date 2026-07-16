@@ -207,4 +207,4 @@ These check types apply to quiz tasks regardless of which lesson type contains t
 
 The `answer:` shorthand on multiple choice tasks auto-generates `check: { type: answer_equals, value: <id> }`.
 
-**Multi-option:** `"option1","option2"` format for `answer_contains` — passes if the answer contains any option. **Case sensitivity:** `answer_matches_regex` is case-sensitive; all other answer comparisons are case-insensitive.
+**Multi-option:** `"option1","option2"` format for `answer_contains` — passes if the answer contains any option. **Regex:** `answer_matches_regex` uses JavaScript `RegExp(pattern, flags)` with optional `flags`; it is case-sensitive unless `flags: i` is set. All other answer comparisons are case-insensitive.

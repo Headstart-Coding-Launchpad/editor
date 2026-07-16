@@ -1282,6 +1282,18 @@ select {
   align-items: start;
   flex: 1;
 }
+.te-check-value-editor {
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+}
+.te-scratch-inline-operator {
+  height: 24px;
+  min-height: 24px;
+  max-width: 92px;
+  padding: 2px 4px;
+  font-size: 0.72rem;
+}
 .te-check-value {
   padding: 8px 10px;
   border: 1px solid #e5e7eb;

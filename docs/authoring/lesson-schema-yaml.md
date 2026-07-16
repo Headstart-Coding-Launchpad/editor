@@ -10,7 +10,7 @@ This file does not cover code task fields or quiz task fields:
 - **Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`
 - **Electronics code task fields:** `docs/authoring/electronics.md`
 - **Scratch code task fields:** `docs/authoring/scratch-reference.md`
-- **Check types:** `docs/authoring/checks.md`
+- **Check types:** use the lesson-type docs above (`python.md`, `html.md`, `scratch.md`, `filesystem.md`, `electronics.md`, or `quiz-tasks.md`).
 - **Full authoring walkthrough and CLI workflow:** `docs/authoring/AUTHORING_GUIDE.md`
 
 Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lessons publish-yaml <file>` to validate and publish a YAML lesson, or `node cli/cli.mjs lessons upsert <file>` to save one that still contains draft tasks.
@@ -69,8 +69,8 @@ tasks:
     taskMode: both              # optional — both (default) | live | solo
     # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
     # or `type: draft` on the task; omit entirely for a code task.
-    check: {}                   # optional — completion check, see docs/authoring/checks.md
-    incorrectChecks: []         # optional — detect specific wrong patterns, each needs a `hint`
+    check: {}                   # optional — completion check, see the lesson-type docs
+    feedbackChecks: []          # optional — nudges or blocking wrong-pattern checks
 ```
 
 | Field | Required | Type | Notes |
@@ -81,7 +81,8 @@ tasks:
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
-| `incorrectChecks` | No | object or array | Detect specific wrong patterns. Each must have a non-empty `hint`. |
+| `feedbackChecks` | No | object or array | Supported by Python, HTML, Filesystem, Electronics, and Scratch. Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
+| `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. |
 
 ---
 
@@ -129,6 +130,7 @@ tasks:
         explainer: Use `range()` to repeat exactly N times.
         check:
           type: output_line_count
+          operator: equals
           value: 5
 ```
 

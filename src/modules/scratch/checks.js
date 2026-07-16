@@ -40,11 +40,36 @@ function wildcardMatchField(actual, expected) {
   return re.test(actual)
 }
 
+function fieldConditionMatches(actualValue, expectedConfig) {
+  const actual = String(actualValue)
+  const config = expectedConfig && typeof expectedConfig === 'object' && !Array.isArray(expectedConfig)
+    ? expectedConfig
+    : { operator: 'equals', value: expectedConfig }
+  const operator = config.operator ?? 'equals'
+  const expected = String(config.value ?? '')
+  const actualNumber = Number(actual)
+  const expectedNumber = Number(expected)
+  if (operator === 'contains') return actual.toLowerCase().includes(expected.toLowerCase())
+  if (operator === 'not_contains') return !actual.toLowerCase().includes(expected.toLowerCase())
+  if (operator === 'not_equals') return !wildcardMatchField(actual, expected)
+  if (operator === 'greater_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber > expectedNumber
+  if (operator === 'greater_than_or_equal' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber >= expectedNumber
+  if (operator === 'less_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber < expectedNumber
+  if (operator === 'less_than_or_equal' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber <= expectedNumber
+  if (operator === 'matches_regex') {
+    try { return new RegExp(expected).test(actual) } catch { return false }
+  }
+  if (operator === 'not_matches_regex') {
+    try { return !new RegExp(expected).test(actual) } catch { return false }
+  }
+  return wildcardMatchField(actual, expected)
+}
+
 function blockMatchesFieldValues(block, fieldValues) {
   if (!fieldValues || Object.keys(fieldValues).length === 0) return true
   return Object.entries(fieldValues).every(([inputName, expectedValue]) => {
     const actual = getInputValue(block, inputName)
-    return actual !== null && wildcardMatchField(String(actual), String(expectedValue))
+    return actual !== null && fieldConditionMatches(actual, expectedValue)
   })
 }
 

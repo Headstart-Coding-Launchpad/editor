@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   subjectOpFromType,
+  subjectOpFromCheck,
+  checkUiFromCheck,
   typeFromSubjectOp,
+  checkFromSubjectOp,
+  getAspectOptions,
   getOperatorOptions,
   makeCheckSkeleton,
   formatCheckFailure,
@@ -18,6 +22,7 @@ describe('subjectOpFromType', () => {
     expect(subjectOpFromType('output_not_contains')).toEqual({ subject: 'output', operator: 'not_contains' })
     expect(subjectOpFromType('output_not_equals')).toEqual({ subject: 'output', operator: 'not_equals' })
     expect(subjectOpFromType('output_matches_regex')).toEqual({ subject: 'output', operator: 'matches_regex' })
+    expect(subjectOpFromType('output_not_matches_regex')).toEqual({ subject: 'output', operator: 'not_matches_regex' })
     expect(subjectOpFromType('output_line_count')).toEqual({ subject: 'output', operator: 'line_count' })
   })
 
@@ -27,6 +32,7 @@ describe('subjectOpFromType', () => {
     expect(subjectOpFromType('code_does_not_contain')).toEqual({ subject: 'code', operator: 'not_contains' })
     expect(subjectOpFromType('code_not_equals')).toEqual({ subject: 'code', operator: 'not_equals' })
     expect(subjectOpFromType('code_matches_regex')).toEqual({ subject: 'code', operator: 'matches_regex' })
+    expect(subjectOpFromType('code_not_matches_regex')).toEqual({ subject: 'code', operator: 'not_matches_regex' })
   })
 
   it('maps element check types correctly', () => {
@@ -50,14 +56,43 @@ describe('subjectOpFromType', () => {
   })
 })
 
+describe('subjectOpFromCheck', () => {
+  it('uses canonical check operators when present', () => {
+    expect(subjectOpFromCheck({ type: 'output', operator: 'not_matches_regex' })).toEqual({ subject: 'output', operator: 'not_matches_regex' })
+    expect(subjectOpFromCheck({ type: 'code', operator: 'equals' })).toEqual({ subject: 'code', operator: 'equals' })
+    expect(subjectOpFromCheck({ type: 'output_line_count', operator: 'less_than' })).toEqual({ subject: 'output', operator: 'line_count_less_than' })
+  })
+
+  it('maps canonical html element checks to builder operators', () => {
+    expect(subjectOpFromCheck({ type: 'html_element', operator: 'exists' })).toEqual({ subject: 'element', operator: 'exists' })
+    expect(subjectOpFromCheck({ type: 'html_element_count', operator: 'greater_than_or_equal' })).toEqual({ subject: 'element', operator: 'count_greater_than_or_equal' })
+    expect(subjectOpFromCheck({ type: 'html_element_value', operator: 'matches_regex' })).toEqual({ subject: 'element', operator: 'value_matches_regex' })
+    expect(subjectOpFromCheck({ type: 'html_element_attribute', operator: 'not_equals' })).toEqual({ subject: 'element', operator: 'attribute_not_equals' })
+    expect(subjectOpFromCheck({ type: 'html_element_style_property', operator: 'contains' })).toEqual({ subject: 'element', operator: 'style_contains' })
+  })
+
+  it('displays legacy count checks as canonical count equals', () => {
+    expect(subjectOpFromCheck({ type: 'element_count' })).toEqual({ subject: 'element', operator: 'count_equals' })
+  })
+})
+
+describe('checkUiFromCheck', () => {
+  it('splits canonical checks into subject, field, and condition', () => {
+    expect(checkUiFromCheck({ type: 'html_element_attribute', operator: 'exists' })).toEqual({ subject: 'element', aspect: 'attribute', operator: 'attribute_exists' })
+    expect(checkUiFromCheck({ type: 'html_element_style_property', operator: 'not_equals' })).toEqual({ subject: 'element', aspect: 'style', operator: 'style_not_equals' })
+    expect(checkUiFromCheck({ type: 'output_line_count', operator: 'less_than_or_equal' })).toEqual({ subject: 'output', aspect: 'line_count', operator: 'line_count_less_than_or_equal' })
+    expect(checkUiFromCheck({ type: 'variable_dict_key_value' })).toEqual({ subject: 'variable', aspect: 'dictionary', operator: 'dict_key_value' })
+  })
+})
+
 describe('typeFromSubjectOp', () => {
   it('round-trips with subjectOpFromType for all canonical check types', () => {
     const types = [
       'output_contains', 'output_equals', 'output_not_contains', 'output_not_equals',
-      'output_matches_regex', 'output_not_empty', 'output_empty', 'output_line_count', 'output_line_count_at_least',
-      'code_contains', 'code_equals', 'code_not_contains', 'code_not_equals', 'code_matches_regex',
+      'output_matches_regex', 'output_not_matches_regex', 'output_not_empty', 'output_empty', 'output_line_count', 'output_line_count_at_least',
+      'code_contains', 'code_equals', 'code_not_contains', 'code_not_equals', 'code_matches_regex', 'code_not_matches_regex',
       'element_exists', 'element_count', 'element_value_contains', 'element_value_equals',
-      'element_value_not_contains', 'element_value_not_equals', 'element_value_matches_regex',
+      'element_value_not_contains', 'element_value_not_equals', 'element_value_matches_regex', 'element_value_not_matches_regex',
       'element_attribute', 'element_style_property',
       'variable_exists', 'variable_type', 'variable_equals', 'variable_not_equals', 'variable_dict_contains',
       'variable_dict_equals', 'variable_dict_key_value', 'variable_array_contains',
@@ -84,7 +119,40 @@ describe('typeFromSubjectOp', () => {
   })
 })
 
+describe('checkFromSubjectOp', () => {
+  it('writes canonical output and code checks', () => {
+    expect(checkFromSubjectOp('output', 'contains', { value: 'hello', hint: 'try' })).toEqual({ type: 'output', operator: 'contains', value: 'hello', hint: 'try' })
+    expect(checkFromSubjectOp('code', 'not_matches_regex', { value: 'eval\\(', flags: 'i' })).toEqual({ type: 'code', operator: 'not_matches_regex', value: 'eval\\(', flags: 'i' })
+  })
+
+  it('writes canonical line count checks', () => {
+    expect(checkFromSubjectOp('output', 'line_count_less_than', { value: '5' })).toEqual({ type: 'output_line_count', operator: 'less_than', value: '5' })
+  })
+
+  it('writes canonical html element checks with their extra fields', () => {
+    expect(checkFromSubjectOp('element', 'attribute_matches_regex', {
+      selector: 'a',
+      attribute: 'href',
+      value: '^https:',
+      flags: 'i',
+    })).toEqual({
+      type: 'html_element_attribute',
+      operator: 'matches_regex',
+      selector: 'a',
+      attribute: 'href',
+      value: '^https:',
+      flags: 'i',
+    })
+  })
+})
+
 describe('getOperatorOptions', () => {
+  it('returns aspect options for split check controls', () => {
+    expect(getAspectOptions('element').map(o => o.value)).toEqual(['element', 'value', 'attribute', 'style', 'count'])
+    expect(getAspectOptions('output').map(o => o.value)).toEqual(['text', 'line_count', 'output_state'])
+    expect(getAspectOptions('variable').map(o => o.value)).toEqual(['variable', 'dictionary', 'array'])
+  })
+
   it('returns output operators without no_error', () => {
     const opts = getOperatorOptions('output')
     expect(opts.map(o => o.value)).not.toContain('no_error')
@@ -93,27 +161,33 @@ describe('getOperatorOptions', () => {
   })
 
   it('shows no_error only for an existing legacy check', () => {
-    const opts = getOperatorOptions('output', 'no_error')
+    const opts = getOperatorOptions('output', 'no_error', 'status')
     expect(opts[0]).toEqual({ value: 'no_error', label: 'no error (legacy)' })
   })
 
   it('returns code operators', () => {
     const opts = getOperatorOptions('code')
-    expect(opts.map(o => o.value)).toEqual(['contains', 'equals', 'not_contains', 'not_equals', 'matches_regex'])
+    expect(opts.map(o => o.value)).toEqual(['contains', 'equals', 'not_contains', 'not_equals', 'matches_regex', 'not_matches_regex'])
   })
 
-  it('returns element operators including attribute_equals', () => {
-    const opts = getOperatorOptions('element')
-    expect(opts.map(o => o.value)).toContain('exists')
-    expect(opts.map(o => o.value)).toContain('count')
-    expect(opts.map(o => o.value)).toContain('attribute_equals')
+  it('returns element operators scoped by aspect', () => {
+    expect(getOperatorOptions('element', null, 'element').map(o => o.value)).toEqual(['exists'])
+    expect(getOperatorOptions('element', null, 'attribute').map(o => o.value)).toEqual([
+      'attribute_exists',
+      'attribute_contains',
+      'attribute_not_contains',
+      'attribute_equals',
+      'attribute_not_equals',
+      'attribute_matches_regex',
+      'attribute_not_matches_regex',
+    ])
+    expect(getOperatorOptions('element', null, 'count').map(o => o.value)).toContain('count_less_than_or_equal')
   })
 
-  it('returns variable operators', () => {
-    const opts = getOperatorOptions('variable')
-    expect(opts.map(o => o.value)).toContain('exists')
-    expect(opts.map(o => o.value)).toContain('dict_key_value')
-    expect(opts.map(o => o.value)).toContain('array_nth_item')
+  it('returns variable operators scoped by aspect', () => {
+    expect(getOperatorOptions('variable', null, 'variable').map(o => o.value)).toEqual(['exists', 'type', 'equals'])
+    expect(getOperatorOptions('variable', null, 'dictionary').map(o => o.value)).toContain('dict_key_value')
+    expect(getOperatorOptions('variable', null, 'array').map(o => o.value)).toContain('array_nth_item')
   })
 
   it('returns empty array for unknown subject', () => {

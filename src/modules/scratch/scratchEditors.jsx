@@ -275,6 +275,30 @@ function getBlockInputFields(type) {
 // Blocks that have configurable inputs (exclude pure dropdowns)
 const PREDEFINED_ELIGIBLE_TYPES = Object.keys(VALUE_INPUT_DEFAULTS)
 
+const FIELD_VALUE_OPERATOR_OPTIONS = [
+  { value: 'equals', label: '=' },
+  { value: 'not_equals', label: '!=' },
+  { value: 'contains', label: 'contains' },
+  { value: 'not_contains', label: 'not contains' },
+  { value: 'greater_than', label: '>' },
+  { value: 'greater_than_or_equal', label: '>=' },
+  { value: 'less_than', label: '<' },
+  { value: 'less_than_or_equal', label: '<=' },
+  { value: 'matches_regex', label: 'regex' },
+  { value: 'not_matches_regex', label: 'not regex' },
+]
+
+function readFieldValueCondition(raw) {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return { operator: raw.operator ?? 'equals', value: raw.value ?? '' }
+  }
+  return { operator: 'equals', value: raw ?? '' }
+}
+
+function writeFieldValueCondition(operator, value) {
+  return operator === 'equals' ? value : { operator, value }
+}
+
 function newPredefinedBlock(type) {
   const fields = getBlockInputFields(type)
   const inputs = {}
@@ -405,7 +429,7 @@ function blockColour(type) {
   return group?.colour ?? '#6b7280'
 }
 
-export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL_BLOCK_TYPES, compact = false, placeholder = 'Choose block', fieldValues, onChangeFieldValues }) {
+export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL_BLOCK_TYPES, compact = false, placeholder = 'Choose block', fieldValues, onChangeFieldValues, allowFieldOperators = false }) {
   const [open, setOpen] = React.useState(false)
   const [menuStyle, setMenuStyle] = React.useState(null)
   const wrapRef = React.useRef(null)
@@ -530,22 +554,40 @@ export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL
           aria-expanded={open}
         >
           {inlineParts.map((part, i) =>
-            part.inputName ? (
-              <input
-                key={i}
-                type="text"
-                className={`te-scratch-inline-input${part.isText ? ' te-scratch-inline-input--text' : ''}${compact ? ' te-scratch-inline-input--compact' : ''}`}
-                value={fieldValues?.[part.inputName] ?? ''}
-                onChange={e => {
-                  const fv = { ...fieldValues }
-                  if (e.target.value === '') delete fv[part.inputName]
-                  else fv[part.inputName] = e.target.value
-                  onChangeFieldValues?.(fv)
-                }}
-                onClick={e => e.stopPropagation()}
-                placeholder={part.placeholder}
-              />
-            ) : (
+            part.inputName ? (() => {
+              const condition = readFieldValueCondition(fieldValues?.[part.inputName])
+              return (
+                <React.Fragment key={i}>
+                  {allowFieldOperators && (
+                    <select
+                      className="te-select te-scratch-inline-operator"
+                      value={condition.operator}
+                      onChange={e => {
+                        const fv = { ...fieldValues }
+                        fv[part.inputName] = writeFieldValueCondition(e.target.value, condition.value)
+                        onChangeFieldValues?.(fv)
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {FIELD_VALUE_OPERATOR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  )}
+                  <input
+                    type="text"
+                    className={`te-scratch-inline-input${part.isText ? ' te-scratch-inline-input--text' : ''}${compact ? ' te-scratch-inline-input--compact' : ''}`}
+                    value={condition.value}
+                    onChange={e => {
+                      const fv = { ...fieldValues }
+                      if (e.target.value === '') delete fv[part.inputName]
+                      else fv[part.inputName] = writeFieldValueCondition(condition.operator, e.target.value)
+                      onChangeFieldValues?.(fv)
+                    }}
+                    onClick={e => e.stopPropagation()}
+                    placeholder={part.placeholder}
+                  />
+                </React.Fragment>
+              )
+            })() : (
               <span key={i} style={{ cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>{part.text}</span>
             )
           )}
@@ -749,7 +791,7 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
   )
 }
 
-function ScratchCheckListEditor({ checks, onChange, sprites }) {
+function ScratchCheckListEditor({ checks, onChange, sprites, feedbackEditor = false }) {
   function updateCheck(index, updated) {
     onChange(checks.map((c, i) => i === index ? updated : c))
   }
@@ -757,7 +799,8 @@ function ScratchCheckListEditor({ checks, onChange, sprites }) {
     onChange(checks.filter((_, i) => i !== index))
   }
   function addCheck() {
-    onChange([...checks, { type: 'block_used', evaluation: 'after_block_placed', opcode: 'motion_movesteps' }])
+    const nextCheck = { type: 'block_used', evaluation: 'after_block_placed', opcode: 'motion_movesteps' }
+    onChange([...checks, feedbackEditor ? { ...nextCheck, mode: 'blocking', show: 'after_attempt' } : nextCheck])
   }
 
   return (
@@ -772,6 +815,7 @@ function ScratchCheckListEditor({ checks, onChange, sprites }) {
               check={check}
               onChange={updated => updateCheck(index, updated)}
               sprites={sprites}
+              feedbackEditor={feedbackEditor}
             />
           </div>
           <button type="button" className="te-check-remove-btn" onClick={() => removeCheck(index)} title="Remove check">×</button>
@@ -784,7 +828,7 @@ function ScratchCheckListEditor({ checks, onChange, sprites }) {
   )
 }
 
-const SPRITE_PROPERTIES = ['x', 'y', 'size', 'direction', 'visible']
+const SPRITE_PROPERTIES = ['x', 'y', 'size', 'direction', 'visible', 'costume']
 const COMPARISON_OPERATORS = [
   { value: 'equals', label: 'equals' },
   { value: 'greater_than', label: 'greater than' },
@@ -853,48 +897,81 @@ function describeCheck(check, sprites) {
 }
 
 
-function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name: 'Sprite 1' }] }) {
+function preserveScratchMeta(check = {}) {
+  return {
+    ...(check.hint ? { hint: check.hint } : {}),
+    ...(check.mode ? { mode: check.mode } : {}),
+    ...(check.show ? { show: check.show } : {}),
+  }
+}
+
+function FeedbackControls({ check, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <select
+        className="te-select"
+        value={check.mode ?? 'blocking'}
+        onChange={e => onChange({ ...check, mode: e.target.value })}
+        title="Feedback behaviour"
+      >
+        <option value="blocking">Blocking</option>
+        <option value="nudge">Nudge</option>
+      </select>
+      <select
+        className="te-select"
+        value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
+        onChange={e => onChange({ ...check, show: e.target.value })}
+        title="When to show feedback"
+      >
+        <option value="after_attempt">After attempt</option>
+        <option value="on_idle">On idle</option>
+      </select>
+    </div>
+  )
+}
+
+function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name: 'Sprite 1' }], feedbackEditor = false }) {
   const type = check.type ?? 'block_used'
 
   function changeType(nextType) {
-    const hint = check.hint ? { hint: check.hint } : {}
+    const meta = preserveScratchMeta(check)
     if (nextType === 'sprite_property') {
-      onChange({ type: 'sprite_property', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', operator: 'greater_than', value: 50, ...hint })
+      onChange({ type: 'sprite_property', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', operator: 'greater_than', value: 50, ...meta })
       return
     }
     if (nextType === 'variable_equals') {
-      onChange({ type: 'variable_equals', evaluation: 'manual', variableName: 'score', value: 10, ...hint })
+      onChange({ type: 'variable_equals', evaluation: 'manual', variableName: 'score', value: 10, ...meta })
       return
     }
     if (nextType === 'sprite_property_delta') {
-      onChange({ type: 'sprite_property_delta', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', operator: 'greater_than', value: 10, ...hint })
+      onChange({ type: 'sprite_property_delta', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', operator: 'greater_than', value: 10, ...meta })
       return
     }
     if (nextType === 'sprite_property_changed') {
-      onChange({ type: 'sprite_property_changed', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', ...hint })
+      onChange({ type: 'sprite_property_changed', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'x', ...meta })
       return
     }
     if (nextType === 'blocks_in_order') {
-      onChange({ type: 'blocks_in_order', evaluation: 'after_block_placed', sequence: ['event_whenflagclicked', 'motion_movesteps'], ...hint })
+      onChange({ type: 'blocks_in_order', evaluation: 'after_block_placed', sequence: ['event_whenflagclicked', 'motion_movesteps'], ...meta })
       return
     }
     if (nextType === 'block_count') {
-      onChange({ type: 'block_count', evaluation: 'after_block_placed', opcode: 'motion_movesteps', operator: 'equals', value: 1, ...hint })
+      onChange({ type: 'block_count', evaluation: 'after_block_placed', opcode: 'motion_movesteps', operator: 'equals', value: 1, ...meta })
       return
     }
     if (nextType === 'variable_compare') {
-      onChange({ type: 'variable_compare', evaluation: 'after_run', variableName: 'score', operator: 'greater_than', value: 0, ...hint })
+      onChange({ type: 'variable_compare', evaluation: 'after_run', variableName: 'score', operator: 'greater_than', value: 0, ...meta })
       return
     }
     if (nextType === 'costume_is') {
-      onChange({ type: 'costume_is', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', value: 'costume2', ...hint })
+      onChange({ type: 'sprite_property', evaluation: 'after_run', spriteName: sprites[0]?.name ?? 'Sprite 1', property: 'costume', operator: 'equals', value: 'costume2', ...meta })
       return
     }
     if (nextType === 'block_run') {
-      onChange({ type: 'block_run', evaluation: 'after_run', opcode: 'motion_movesteps', ...hint })
+      onChange({ type: 'block_run', evaluation: 'after_run', opcode: 'motion_movesteps', ...meta })
       return
     }
-    onChange({ type: 'block_used', evaluation: 'after_block_placed', opcode: 'motion_movesteps', ...hint })
+    onChange({ type: 'block_used', evaluation: 'after_block_placed', opcode: 'motion_movesteps', ...meta })
   }
 
   const preview = describeCheck(check, sprites)
@@ -928,15 +1005,27 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
         )}
       </div>
 
-      {/* Row 2: type-specific fields */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {feedbackEditor && <FeedbackControls check={check} onChange={onChange} />}
+
+        {/* Row 2: type-specific fields */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {type === 'block_used' || type === 'block_run' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <select
+              className="te-select"
+              value={check.spriteName ?? ''}
+              onChange={e => onChange({ ...check, spriteName: e.target.value || undefined })}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              <option value="">Any sprite</option>
+              {sprites.map(sp => <option key={sp.id} value={sp.name}>{sp.name}</option>)}
+            </select>
             <ScratchBlockPicker
               value={check.opcode ?? 'motion_movesteps'}
               onChange={opcode => onChange({ ...check, opcode, fieldValues: undefined })}
               fieldValues={check.fieldValues}
               onChangeFieldValues={fv => onChange({ ...check, fieldValues: fv })}
+              allowFieldOperators
             />
             {VALUE_INPUT_DEFAULTS[check.opcode ?? 'motion_movesteps'] && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', cursor: 'pointer' }}>
@@ -1011,6 +1100,7 @@ function ScratchCheckEditor({ check, onChange, sprites = [{ id: 'sprite1', name:
                       next[idx] = { opcode, fieldValues: fv }
                       onChange({ ...check, sequence: next })
                     }}
+                    allowFieldOperators
                     compact
                   />
                   {hasInputs && (

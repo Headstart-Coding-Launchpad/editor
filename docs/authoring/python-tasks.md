@@ -1,6 +1,6 @@
 # Python Code Task Fields
 
-Field reference for `python`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For check types see `docs/authoring/checks.md`.
+Field reference for `python`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For Python check types see `docs/authoring/python.md`.
 
 ---
 
@@ -17,7 +17,7 @@ Field reference for `python`-type lesson code tasks. For the lesson envelope and
 
 **`interactionMode` combinations:**
 - `run` or omitted: Run executes Python; checks run against output/code/status.
-- `submit`: Submit checks code text only; use only submit-compatible check types (see `docs/authoring/checks.md`).
+- `submit`: Submit checks code text only; use `type: code` checks.
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
 
 ---
@@ -34,7 +34,8 @@ tests:
       - name: username
         value: Alice
     check:
-      type: output_contains
+      type: output
+      operator: contains
       value: "Hello {username}"
 ```
 
@@ -66,6 +67,7 @@ tasks:
     explainer: Print `Hello`.
     starterCode: ""
     check:
-      type: output_contains
+      type: output
+      operator: contains
       value: Hello
 ```

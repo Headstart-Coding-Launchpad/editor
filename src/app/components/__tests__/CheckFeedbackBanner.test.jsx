@@ -29,6 +29,12 @@ describe('CheckFeedbackBanner', () => {
       expect(screen.getByText('Well done!')).toBeInTheDocument()
     })
 
+    it('renders non-blocking nudge text on pass', () => {
+      render(<CheckFeedbackBanner passed={true} suggestion="Nice work. Try a clearer variable name." />)
+      expect(screen.getByText('Correct!')).toBeInTheDocument()
+      expect(screen.getByText(/clearer variable name/i)).toBeInTheDocument()
+    })
+
     it('does not render the "Load complete code" button on pass', () => {
       const handler = vi.fn()
       render(<CheckFeedbackBanner passed={true} onShowCompleteCode={handler} />)

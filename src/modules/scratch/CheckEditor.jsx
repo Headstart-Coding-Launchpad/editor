@@ -3,12 +3,16 @@ import { normalizeChecks } from '../checks'
 import { ScratchCheckListEditor } from './scratchEditors'
 import { DEFAULT_SPRITES } from './scratch'
 
-export default function CheckEditor({ task, onUpdate }) {
+export default function CheckEditor({ task, onUpdate, checks, onChange, feedbackEditor = false }) {
   return (
     <ScratchCheckListEditor
-      checks={normalizeChecks(task.check)}
-      onChange={checks => onUpdate({ ...task, check: checks })}
+      checks={normalizeChecks(checks ?? task.check)}
+      onChange={nextChecks => {
+        if (onChange) onChange(nextChecks)
+        else onUpdate({ ...task, check: nextChecks })
+      }}
       sprites={task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES}
+      feedbackEditor={feedbackEditor}
     />
   )
 }

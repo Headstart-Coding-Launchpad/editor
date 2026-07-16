@@ -209,7 +209,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
-| `checks.js` | Check evaluation dispatcher: `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `normalizeChecks`, `CHECK_TYPES` — delegates `fs_*` → `filesystem/checks.js`, `variable_*` → `python/checks.js`, `element_*` → `html/checks.js` |
+| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`, `CHECK_TYPES` — delegates filesystem, Python variable, HTML element, and electronics checks to their module evaluators |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
@@ -236,7 +236,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `electronics/StudentWorkspace.jsx` | Student electronics workspace wrapper: serialized circuit state, reset/check actions, teacher-live/read-only handling |
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs, board sizing, and available component controls |
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |
-| `electronics/CheckEditor.jsx` | Electronics check list editor for `circuit_*` completion checks |
+| `electronics/CheckEditor.jsx` | Electronics check list editor for `circuit_*` completion and feedback checks |
 
 ### Module interface
 

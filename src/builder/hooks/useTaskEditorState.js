@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getLessonModule } from '../../modules/registry'
-import { evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../modules/checks'
+import { evaluateFeedbackCheckResults, evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
 export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets = null }) {
@@ -127,11 +127,9 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
         const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) }))
         setCheckResults(results)
         set('_checkTested', true)
-        if (!results.every(r => r.passed)) {
-          const incorrectChecksToEval = normalizeChecks(task.incorrectChecks ?? [])
-          if (incorrectChecksToEval.length > 0) {
-            setIncorrectCheckResults(incorrectChecksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) })))
-          }
+        const feedbackResults = evaluateFeedbackCheckResults(task, accumulated, checkContext)
+        if (feedbackResults.length > 0) {
+          setIncorrectCheckResults(feedbackResults)
         }
       }
     } else if (!isScratch) {
@@ -157,11 +155,9 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
           const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }) }))
           setCheckResults(results)
           set('_checkTested', true)
-          if (!results.every(r => r.passed)) {
-            const incorrectChecksToEval = normalizeChecks(task.incorrectChecks ?? [])
-            if (incorrectChecksToEval.length > 0) {
-              setIncorrectCheckResults(incorrectChecksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }) })))
-            }
+          const feedbackResults = evaluateFeedbackCheckResults(task, text, { code: codeStr, iframeDoc })
+          if (feedbackResults.length > 0) {
+            setIncorrectCheckResults(feedbackResults)
           }
         })
       }
@@ -177,11 +173,9 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     setCheckResults(results)
     setIncorrectCheckResults(null)
     set('_checkTested', true)
-    if (!results.every(r => r.passed)) {
-      const incorrectChecksToEval = normalizeChecks(task.incorrectChecks ?? [])
-      if (incorrectChecksToEval.length > 0) {
-        setIncorrectCheckResults(incorrectChecksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, '', { code: codeStr }) })))
-      }
+    const feedbackResults = evaluateFeedbackCheckResults(task, '', { code: codeStr })
+    if (feedbackResults.length > 0) {
+      setIncorrectCheckResults(feedbackResults)
     }
   }
 

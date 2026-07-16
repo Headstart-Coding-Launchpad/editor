@@ -259,43 +259,204 @@ export function FsTreeEditor({ label, fs, onFsChange, storageAssets = [] }) {
 
 // ── Check editor for filesystem checks ───────────────────────────────────────
 
-const FS_CHECK_TYPE_OPTIONS = [
-  { value: 'fs_file_exists', label: 'File exists', fields: ['path'] },
-  { value: 'fs_dir_exists', label: 'Folder exists', fields: ['path'] },
-  { value: 'fs_not_exists', label: 'Path does not exist', fields: ['path'] },
-  { value: 'fs_content_contains', label: 'File content contains', fields: ['path', 'value'] },
-  { value: 'fs_content_not_contains', label: 'File content does not contain', fields: ['path', 'value'] },
-  { value: 'fs_content_equals', label: 'File content equals', fields: ['path', 'value'] },
-  { value: 'fs_content_not_equals', label: 'File content does not equal', fields: ['path', 'value'] },
-  { value: 'fs_content_matches_regex', label: 'File content matches regex', fields: ['path', 'value'] },
-  { value: 'fs_file_in_dir', label: 'File is inside folder', fields: ['path', 'dir'] },
-  { value: 'fs_dir_opened', label: 'Student opened folder', fields: ['path'] },
-  { value: 'fs_file_opened', label: 'Student opened file', fields: ['path'] },
+const COUNT_OPERATOR_OPTIONS = [
+  { value: 'equals', label: 'equals' },
+  { value: 'not_equals', label: 'does not equal' },
+  { value: 'greater_than', label: 'greater than' },
+  { value: 'greater_than_or_equal', label: 'at least' },
+  { value: 'less_than', label: 'less than' },
+  { value: 'less_than_or_equal', label: 'at most' },
 ]
 
-function FsSingleCheckEditor({ check, onChange, onRemove }) {
-  const opt = FS_CHECK_TYPE_OPTIONS.find(o => o.value === check.type) ?? FS_CHECK_TYPE_OPTIONS[0]
+const CONTENT_OPERATOR_OPTIONS = [
+  { value: 'contains', label: 'contains' },
+  { value: 'not_contains', label: 'does not contain' },
+  { value: 'equals', label: 'equals' },
+  { value: 'not_equals', label: 'does not equal' },
+  { value: 'matches_regex', label: 'matches regex' },
+  { value: 'not_matches_regex', label: 'does not match regex' },
+]
+
+function preserveFsMeta(prev) {
+  return {
+    ...(prev.hint ? { hint: prev.hint } : {}),
+    ...(prev.mode ? { mode: prev.mode } : {}),
+    ...(prev.show ? { show: prev.show } : {}),
+  }
+}
+
+function fsUiFromCheck(check) {
+  if (check.type === 'fs_file_exists') return { subject: 'file_path', aspect: 'path', operator: 'exists' }
+  if (check.type === 'fs_dir_exists') return { subject: 'folder_path', aspect: 'path', operator: 'exists' }
+  if (check.type === 'fs_not_exists') return { subject: 'any_path', aspect: 'path', operator: 'not_exists' }
+  if (check.type === 'fs_content_contains') return { subject: 'file', aspect: 'content', operator: 'contains' }
+  if (check.type === 'fs_content_not_contains') return { subject: 'file', aspect: 'content', operator: 'not_contains' }
+  if (check.type === 'fs_content_equals') return { subject: 'file', aspect: 'content', operator: 'equals' }
+  if (check.type === 'fs_content_matches_regex') return { subject: 'file', aspect: 'content', operator: 'matches_regex' }
+  if (check.type === 'fs_content_not_matches_regex') return { subject: 'file', aspect: 'content', operator: 'not_matches_regex' }
+  if (check.type === 'fs_content_line_count') return { subject: 'file', aspect: 'line_count', operator: check.operator ?? 'equals' }
+  if (check.type === 'fs_file_in_dir') return { subject: 'file', aspect: 'location', operator: 'in_folder' }
+  if (check.type === 'fs_file_count') return { subject: 'folder', aspect: 'file_count', operator: check.operator ?? 'equals' }
+  if (check.type === 'fs_dir_count') return { subject: 'folder', aspect: 'folder_count', operator: check.operator ?? 'equals' }
+  if (check.type === 'fs_dir_opened') return { subject: 'opened', aspect: 'folder', operator: 'is_open' }
+  if (check.type === 'fs_file_opened') return { subject: 'opened', aspect: 'file', operator: 'is_open' }
+
+  if (check.type === 'fs_path') {
+    const subject = check.itemType === 'dir' ? 'folder_path' : check.itemType === 'any' ? 'any_path' : 'file_path'
+    return { subject, aspect: 'path', operator: check.operator ?? 'exists' }
+  }
+  if (check.type === 'fs_file_content') return { subject: 'file', aspect: 'content', operator: check.operator ?? 'contains' }
+  if (check.type === 'fs_file_line_count') return { subject: 'file', aspect: 'line_count', operator: check.operator ?? 'equals' }
+  if (check.type === 'fs_file_location') return { subject: 'file', aspect: 'location', operator: 'in_folder' }
+  if (check.type === 'fs_folder_count') return { subject: 'folder', aspect: check.itemType === 'dir' ? 'folder_count' : 'file_count', operator: check.operator ?? 'equals' }
+  if (check.type === 'fs_opened') return { subject: 'opened', aspect: check.itemType === 'file' ? 'file' : 'folder', operator: 'is_open' }
+  return { subject: 'file_path', aspect: 'path', operator: 'exists' }
+}
+
+function getFsSubjectOptions() {
+  return [
+    { value: 'file_path', label: 'File path' },
+    { value: 'folder_path', label: 'Folder path' },
+    { value: 'any_path', label: 'Any path' },
+    { value: 'file', label: 'File' },
+    { value: 'folder', label: 'Folder' },
+    { value: 'opened', label: 'Opened' },
+  ]
+}
+
+function getFsAspectOptions(subject) {
+  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path') return [
+    { value: 'path', label: 'Path' },
+  ]
+  if (subject === 'file') return [
+    { value: 'content', label: 'Content' },
+    { value: 'line_count', label: 'Line count' },
+    { value: 'location', label: 'Location' },
+  ]
+  if (subject === 'folder') return [
+    { value: 'file_count', label: 'File count' },
+    { value: 'folder_count', label: 'Subfolder count' },
+  ]
+  if (subject === 'opened') return [
+    { value: 'file', label: 'File' },
+    { value: 'folder', label: 'Folder' },
+  ]
+  return []
+}
+
+function defaultFsOperator(subject, aspect) {
+  if (subject === 'file_path' || subject === 'folder_path') return 'exists'
+  if (subject === 'any_path') return 'not_exists'
+  if (subject === 'file' && aspect === 'content') return 'contains'
+  if (subject === 'file' && aspect === 'location') return 'in_folder'
+  if (subject === 'opened') return 'is_open'
+  return 'equals'
+}
+
+function getFsOperatorOptions(subject, aspect) {
+  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path') return [
+    { value: 'exists', label: 'exists' },
+    { value: 'not_exists', label: 'does not exist' },
+  ]
+  if (subject === 'file' && aspect === 'content') return CONTENT_OPERATOR_OPTIONS
+  if (subject === 'file' && aspect === 'location') return [{ value: 'in_folder', label: 'is inside' }]
+  if (subject === 'opened') return [{ value: 'is_open', label: 'is open' }]
+  return COUNT_OPERATOR_OPTIONS
+}
+
+function fsCheckFromUi(subject, aspect, operator, prev = {}) {
+  const meta = preserveFsMeta(prev)
+  const path = prev.path ?? ''
+
+  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path') {
+    const itemType = subject === 'folder_path' ? 'dir' : subject === 'any_path' ? 'any' : 'file'
+    return { type: 'fs_path', operator, itemType, path, ...meta }
+  }
+  if (subject === 'file' && aspect === 'content') {
+    return {
+      type: 'fs_file_content',
+      operator,
+      path,
+      value: prev.value ?? '',
+      ...(operator.includes('regex') && prev.flags ? { flags: prev.flags } : {}),
+      ...meta,
+    }
+  }
+  if (subject === 'file' && aspect === 'line_count') {
+    return { type: 'fs_file_line_count', operator, path, value: prev.value ?? '', ...meta }
+  }
+  if (subject === 'file' && aspect === 'location') {
+    return { type: 'fs_file_location', operator: 'in_folder', path, dir: prev.dir ?? '/', ...meta }
+  }
+  if (subject === 'folder') {
+    return {
+      type: 'fs_folder_count',
+      operator,
+      itemType: aspect === 'folder_count' ? 'dir' : 'file',
+      path,
+      value: prev.value ?? '',
+      ...meta,
+    }
+  }
+  if (subject === 'opened') {
+    return { type: 'fs_opened', operator: 'is_open', itemType: aspect === 'folder' ? 'dir' : aspect, path, ...meta }
+  }
+  return { type: 'fs_path', operator: 'exists', itemType: 'file', path, ...meta }
+}
+
+function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false }) {
+  const { subject, aspect, operator } = fsUiFromCheck(check)
+  const aspectOptions = getFsAspectOptions(subject)
+  const operatorOptions = getFsOperatorOptions(subject, aspect)
+  const needsValue = (subject === 'file' && (aspect === 'content' || aspect === 'line_count')) || subject === 'folder'
+  const needsDir = subject === 'file' && aspect === 'location'
+  const needsFlags = subject === 'file' && aspect === 'content' && operator.includes('regex')
+  const valueLabel = subject === 'file' && aspect === 'content' ? 'Expected content' : 'Expected count'
 
   function setField(field, val) {
     onChange({ ...check, [field]: val })
   }
 
+  function updateFromUi(nextSubject, nextAspect, nextOperator) {
+    onChange(fsCheckFromUi(nextSubject, nextAspect, nextOperator, check))
+  }
+
   return (
     <div style={{ border: '1px solid var(--ui-border)', borderRadius: 6, padding: 10, marginBottom: 8, background: '#fff' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
         <select
-          value={check.type}
+          value={subject}
           onChange={e => {
-            const next = FS_CHECK_TYPE_OPTIONS.find(o => o.value === e.target.value)
-            const skeleton = { type: e.target.value, path: check.path ?? '' }
-            if (next.fields.includes('value')) skeleton.value = check.value ?? ''
-            if (next.fields.includes('dir')) skeleton.dir = check.dir ?? '/'
-            if (check.hint) skeleton.hint = check.hint
-            onChange(skeleton)
+            const nextSubject = e.target.value
+            const nextAspect = getFsAspectOptions(nextSubject)[0]?.value ?? 'file'
+            updateFromUi(nextSubject, nextAspect, defaultFsOperator(nextSubject, nextAspect))
           }}
-          style={{ ...s.input, flex: 1, fontSize: '0.82rem' }}
+          style={{ ...s.input, flex: '1 1 120px', fontSize: '0.82rem' }}
         >
-          {FS_CHECK_TYPE_OPTIONS.map(o => (
+          {getFsSubjectOptions().map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        {aspectOptions.length > 1 && (
+          <select
+            value={aspect}
+            onChange={e => {
+              const nextAspect = e.target.value
+              updateFromUi(subject, nextAspect, defaultFsOperator(subject, nextAspect))
+            }}
+            style={{ ...s.input, flex: '1 1 140px', fontSize: '0.82rem' }}
+          >
+            {aspectOptions.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        )}
+        <select
+          value={operator}
+          onChange={e => updateFromUi(subject, aspect, e.target.value)}
+          style={{ ...s.input, flex: '1 1 140px', fontSize: '0.82rem' }}
+        >
+          {operatorOptions.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
@@ -308,14 +469,14 @@ function FsSingleCheckEditor({ check, onChange, onRemove }) {
           <input
             value={check.path ?? ''}
             onChange={e => setField('path', e.target.value)}
-            placeholder={opt.fields.includes('dir') ? '/Documents/notes.txt' : check.type === 'fs_dir_exists' ? '/Documents/' : '/file.txt'}
+            placeholder={needsDir ? '/Documents/notes.txt' : subject === 'folder_path' || (subject === 'opened' && aspect === 'folder') ? '/Documents/' : '/file.txt'}
             style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
           />
         </label>
 
-        {opt.fields.includes('value') && (
+        {needsValue && (
           <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            Expected content
+            {valueLabel}
             <input
               value={check.value ?? ''}
               onChange={e => setField('value', e.target.value)}
@@ -325,7 +486,19 @@ function FsSingleCheckEditor({ check, onChange, onRemove }) {
           </label>
         )}
 
-        {opt.fields.includes('dir') && (
+        {needsFlags && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Regex flags (optional)
+            <input
+              value={check.flags ?? ''}
+              onChange={e => setField('flags', e.target.value)}
+              placeholder="e.g. i, m, s"
+              style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
+            />
+          </label>
+        )}
+
+        {needsDir && (
           <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
             Parent folder
             <input
@@ -335,6 +508,29 @@ function FsSingleCheckEditor({ check, onChange, onRemove }) {
               style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
             />
           </label>
+        )}
+
+        {feedbackEditor && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select
+              className="te-select"
+              value={check.mode ?? 'blocking'}
+              onChange={e => setField('mode', e.target.value)}
+              title="Feedback behaviour"
+            >
+              <option value="blocking">Blocking</option>
+              <option value="nudge">Nudge</option>
+            </select>
+            <select
+              className="te-select"
+              value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
+              onChange={e => setField('show', e.target.value)}
+              title="When to show feedback"
+            >
+              <option value="after_attempt">After attempt</option>
+              <option value="on_idle">On idle</option>
+            </select>
+          </div>
         )}
 
         <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -351,7 +547,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove }) {
   )
 }
 
-export function FsCheckListEditor({ checks, onChange }) {
+export function FsCheckListEditor({ checks, onChange, feedbackEditor = false }) {
   const safeChecks = Array.isArray(checks) ? checks : checks ? [checks] : []
 
   function handleChange(i, updated) {
@@ -366,7 +562,8 @@ export function FsCheckListEditor({ checks, onChange }) {
   }
 
   function handleAdd() {
-    const next = [...safeChecks, { type: 'fs_file_exists', path: '' }]
+    const nextCheck = { type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }
+    const next = [...safeChecks, feedbackEditor ? { ...nextCheck, mode: 'blocking', show: 'after_attempt' } : nextCheck]
     onChange(next)
   }
 
@@ -378,6 +575,7 @@ export function FsCheckListEditor({ checks, onChange }) {
           check={c}
           onChange={updated => handleChange(i, updated)}
           onRemove={() => handleRemove(i)}
+          feedbackEditor={feedbackEditor}
         />
       ))}
       <button onClick={handleAdd} style={{ ...s.smallBtn, fontSize: '0.82rem', padding: '4px 10px' }}>
@@ -385,4 +583,12 @@ export function FsCheckListEditor({ checks, onChange }) {
       </button>
     </div>
   )
+}
+
+export {
+  fsUiFromCheck,
+  fsCheckFromUi,
+  getFsAspectOptions,
+  getFsOperatorOptions,
+  getFsSubjectOptions,
 }

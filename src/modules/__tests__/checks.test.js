@@ -4,6 +4,8 @@ import {
   evaluateSingleCheck,
   evaluateCheck,
   evaluateCheckResults,
+  evaluateCheckWithFeedback,
+  evaluateCheckWithCustomFeedback,
   evaluateCheckWithCode,
   checkRequiresRun,
   checkAllowedForSubmit,
@@ -12,6 +14,7 @@ import {
   getIncorrectCheckHint,
   substituteTestInputs,
   resolveTestCheck,
+  FEEDBACK_TIMING,
 } from '../checks.js'
 
 // ─── normalizeChecks ──────────────────────────────────────────────────────────
@@ -178,6 +181,30 @@ describe('evaluateSingleCheck — output_line_count_at_least', () => {
   it('returns false when line count is below minimum', () => {
     const check = { type: 'output_line_count_at_least', value: '3' }
     expect(evaluateSingleCheck(check, 'a\nb')).toBe(false)
+  })
+})
+
+describe('evaluateSingleCheck — canonical subject/operator checks', () => {
+  it('supports canonical output contains checks', () => {
+    expect(evaluateSingleCheck({ type: 'output', operator: 'contains', value: 'hello' }, 'Hello world')).toBe(true)
+  })
+
+  it('supports canonical output line count comparisons', () => {
+    expect(evaluateSingleCheck({ type: 'output_line_count', operator: 'less_than', value: '4' }, 'a\nb\nc')).toBe(true)
+    expect(evaluateSingleCheck({ type: 'output_line_count', operator: 'greater_than', value: '4' }, 'a\nb\nc')).toBe(false)
+  })
+
+  it('supports JavaScript regex flags on canonical output checks', () => {
+    expect(evaluateSingleCheck({ type: 'output', operator: 'matches_regex', value: '^hello', flags: 'i' }, 'Hello')).toBe(true)
+  })
+
+  it('supports canonical code checks with whitespace normalization', () => {
+    const code = 'for\titem  in\nrange(3):\n  print(item)'
+    expect(evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'for item in range(3):' }, '', { code })).toBe(true)
+  })
+
+  it('does not treat unknown check types as output contains checks', () => {
+    expect(evaluateSingleCheck({ type: 'output_contians', value: 'hello' }, 'hello world')).toBe(false)
   })
 })
 
@@ -489,6 +516,166 @@ describe('getIncorrectCheckHint', () => {
   it('returns empty string when no incorrect check matches', () => {
     const checks = [{ type: 'output_contains', value: 'missing', hint: 'Hint' }]
     expect(getIncorrectCheckHint(checks, 'hello')).toBe('')
+  })
+})
+
+describe('evaluateCheckWithFeedback', () => {
+  it('fails when completion passes but blocking feedback matches', () => {
+    const task = {
+      check: { type: 'output', operator: 'contains', value: 'hello' },
+      feedbackChecks: [
+        { type: 'output', operator: 'contains', value: 'hello wrong', mode: 'blocking', hint: 'Remove the extra word.' },
+      ],
+    }
+
+    const result = evaluateCheckWithFeedback(task, 'hello wrong')
+
+    expect(result.completionPassed).toBe(true)
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('Remove the extra word.')
+  })
+
+  it('uses a generic message when blocking feedback has no hint', () => {
+    const task = {
+      check: { type: 'output_contains', value: 'hello' },
+      feedbackChecks: [{ type: 'output_contains', value: 'hello' }],
+    }
+
+    expect(evaluateCheckWithFeedback(task, 'hello').suggestion).toBe('Not quite.')
+  })
+
+  it('does not fail completion when a nudge feedback check matches', () => {
+    const task = {
+      check: { type: 'output_contains', value: 'hello' },
+      feedbackChecks: [
+        { type: 'output_contains', value: 'hello', mode: 'nudge', hint: 'You are close.' },
+      ],
+    }
+
+    const result = evaluateCheckWithFeedback(task, 'hello')
+
+    expect(result.passed).toBe(true)
+    expect(result.suggestion).toBe('You are close.')
+    expect(result.nudgeFeedback).toMatchObject({ mode: 'nudge' })
+  })
+
+  it('treats legacy incorrectChecks as blocking feedback', () => {
+    const task = {
+      check: { type: 'output_contains', value: 'hello' },
+      incorrectChecks: [
+        { type: 'output_contains', value: 'hello', hint: 'That pattern is not allowed.' },
+      ],
+    }
+
+    const result = evaluateCheckWithFeedback(task, 'hello')
+
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('That pattern is not allowed.')
+  })
+
+  it('filters feedback checks by timing', () => {
+    const task = {
+      check: { type: 'code_contains', value: 'print' },
+      feedbackChecks: [
+        { type: 'code_contains', value: 'bad', show: 'after_attempt', hint: 'Attempt hint' },
+        { type: 'code_contains', value: 'bad', show: 'on_idle', hint: 'Idle hint' },
+      ],
+    }
+
+    const afterAttempt = evaluateCheckWithFeedback(task, '', { code: 'print("bad")' }, { completionPassed: true })
+    const onIdle = evaluateCheckWithFeedback(task, '', { code: 'print("bad")' }, {
+      completionPassed: true,
+      feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
+    })
+
+    expect(afterAttempt.suggestion).toBe('Attempt hint')
+    expect(onIdle.suggestion).toBe('Idle hint')
+  })
+
+  it('treats legacy on_pause feedback as on_idle', () => {
+    const task = {
+      check: { type: 'code_contains', value: 'print' },
+      feedbackChecks: [
+        { type: 'code_contains', value: 'bad', show: 'on_pause', hint: 'Pause hint' },
+      ],
+    }
+
+    const result = evaluateCheckWithFeedback(task, '', { code: 'print("bad")' }, {
+      completionPassed: true,
+      feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
+    })
+
+    expect(result.suggestion).toBe('Pause hint')
+  })
+
+  it('returns no feedback results for a task without feedback checks', () => {
+    const result = evaluateCheckWithFeedback({
+      check: { type: 'output_contains', value: 'hello' },
+    }, 'hello')
+
+    expect(result.feedbackResults).toEqual([])
+    expect(result.passed).toBe(true)
+  })
+
+  it('evaluates filesystem feedback checks', () => {
+    const task = {
+      check: { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/done.txt' },
+      feedbackChecks: [
+        { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/tmp.txt', show: 'on_idle', hint: 'Use the final filename.' },
+      ],
+    }
+    const fs = {
+      '/': { type: 'dir' },
+      '/tmp.txt': { type: 'file', content: '' },
+    }
+
+    const result = evaluateCheckWithFeedback(task, '', { fs }, { feedbackTiming: FEEDBACK_TIMING.ON_IDLE })
+
+    expect(result.feedbackResults[0].passed).toBe(true)
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('Use the final filename.')
+  })
+
+  it('evaluates electronics feedback checks', () => {
+    const task = {
+      check: { type: 'circuit_has_component', component: { type: 'battery' } },
+      feedbackChecks: [
+        { type: 'circuit_has_component', component: { type: 'led' }, show: 'on_idle', hint: 'Add power before the LED.' },
+      ],
+    }
+    const circuit = {
+      components: [{ id: 'led1', type: 'led', pins: ['anode', 'cathode'] }],
+      wires: [],
+      controls: {},
+    }
+
+    const result = evaluateCheckWithFeedback(task, '', { circuit }, { feedbackTiming: FEEDBACK_TIMING.ON_IDLE })
+
+    expect(result.feedbackResults[0].passed).toBe(true)
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('Add power before the LED.')
+  })
+
+  it('supports custom feedback evaluators for Scratch checks', () => {
+    const task = {
+      check: { type: 'block_used', opcode: 'motion_movesteps' },
+      feedbackChecks: [
+        { type: 'block_used', opcode: 'looks_say', show: 'on_idle', hint: 'Start with movement.' },
+      ],
+    }
+
+    const result = evaluateCheckWithCustomFeedback(
+      task,
+      false,
+      check => check.opcode === 'looks_say',
+      '',
+      {},
+      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE },
+    )
+
+    expect(result.feedbackResults[0].passed).toBe(true)
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('Start with movement.')
   })
 })
 

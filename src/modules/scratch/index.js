@@ -29,6 +29,7 @@ const scratchModule = {
   StudentWorkspace: ScratchWorkspace,
   BuilderWorkspace,
   CheckEditor,
+  FeedbackCheckEditor: CheckEditor,
 
   // ── Teacher-side editor ──────────────────────────────────────────────────────
   TeacherLiveView: ScratchTeacherLiveView,
@@ -70,7 +71,7 @@ const scratchModule = {
 
   // ── Feature flags ────────────────────────────────────────────────────────────
   supportsInteractionMode: false,
-  supportsIncorrectChecks: false,
+  supportsIncorrectChecks: true,
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: false,

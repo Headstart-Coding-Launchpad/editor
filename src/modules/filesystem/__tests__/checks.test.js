@@ -161,6 +161,41 @@ describe('evaluateFsCheck', () => {
     })
   })
 
+  describe('canonical fs checks', () => {
+    const richFs = {
+      ...fs,
+      '/Projects/': { type: 'dir' },
+      '/Projects/app.py': { type: 'file', content: 'print("Hello")\nprint("World")\n' },
+      '/Projects/index.html': { type: 'file', content: '<h1>Hello</h1>' },
+      '/Projects/assets/': { type: 'dir' },
+    }
+
+    it('checks path existence with an item type field', () => {
+      expect(evaluateFsCheck({ type: 'fs_path', operator: 'exists', path: '/Projects/app.py', itemType: 'file' }, richFs)).toBe(true)
+      expect(evaluateFsCheck({ type: 'fs_path', operator: 'exists', path: '/Projects/app.py', itemType: 'dir' }, richFs)).toBe(false)
+    })
+
+    it('checks file content with regex flags', () => {
+      const check = { type: 'fs_file_content', operator: 'matches_regex', path: '/Projects/app.py', value: '^print', flags: 'm' }
+      expect(evaluateFsCheck(check, richFs)).toBe(true)
+    })
+
+    it('checks file line counts with comparison operators', () => {
+      const check = { type: 'fs_file_line_count', operator: 'less_than_or_equal', path: '/Projects/app.py', value: '2' }
+      expect(evaluateFsCheck(check, richFs)).toBe(true)
+    })
+
+    it('checks folder child counts by item type', () => {
+      const check = { type: 'fs_folder_count', operator: 'greater_than_or_equal', path: '/Projects/', itemType: 'file', value: '2' }
+      expect(evaluateFsCheck(check, richFs)).toBe(true)
+    })
+
+    it('checks opened folders and files with the same canonical type', () => {
+      expect(evaluateFsCheck({ type: 'fs_opened', path: '/Projects/', itemType: 'dir' }, richFs, { currentDir: '/Projects/' })).toBe(true)
+      expect(evaluateFsCheck({ type: 'fs_opened', path: '/Projects/app.py', itemType: 'file' }, richFs, { openFile: '/Projects/app.py' })).toBe(true)
+    })
+  })
+
   it('returns false for null fs', () => {
     expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/x.txt' }, null)).toBe(false)
   })

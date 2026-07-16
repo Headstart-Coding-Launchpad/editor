@@ -601,6 +601,20 @@ describe('evaluateScratchCheck', () => {
       expect(evaluateScratchCheck({ type: 'block_used', opcode: 'motion_movesteps', fieldValues: { STEPS: '50' } }, ws, null)).toBe(true)
     })
 
+    it('block_used supports operator field value conditions', () => {
+      const ws = { getAllBlocks: () => [makeBlock('motion_movesteps', { STEPS: '50' })] }
+      expect(evaluateScratchCheck({
+        type: 'block_used',
+        opcode: 'motion_movesteps',
+        fieldValues: { STEPS: { operator: 'greater_than_or_equal', value: '50' } },
+      }, ws, null)).toBe(true)
+      expect(evaluateScratchCheck({
+        type: 'block_used',
+        opcode: 'motion_movesteps',
+        fieldValues: { STEPS: { operator: 'less_than', value: '10' } },
+      }, ws, null)).toBe(false)
+    })
+
     it('blocks_in_order passes when a sequence item uses a wildcard field value', () => {
       function makeChain(typeValuePairs) {
         const blocks = typeValuePairs.map(([type, vals]) => makeBlock(type, vals ?? {}))

@@ -10,6 +10,7 @@ export const PYTHON_CHECK_TYPES = [
   'variable_exists',
   'variable_type',
   'variable_equals',
+  'variable_not_equals',
   'variable_dict_contains',
   'variable_dict_equals',
   'variable_dict_key_value',
@@ -33,6 +34,11 @@ export function evaluatePythonCheck(check, output, context = {}) {
   if (check.type === 'variable_equals') {
     const variable = getVariableEntry(context.variables, check.name)
     return variable.exists && valueEquals(variable.value, parseCheckValue(check.value))
+  }
+
+  if (check.type === 'variable_not_equals') {
+    const variable = getVariableEntry(context.variables, check.name)
+    return variable.exists && !valueEquals(variable.value, parseCheckValue(check.value))
   }
 
   if (check.type === 'variable_dict_contains') {

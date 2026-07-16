@@ -1,6 +1,6 @@
 # HTML Code Task Fields
 
-Field reference for `html`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For check types see `docs/authoring/checks.md`.
+Field reference for `html`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For HTML check types see `docs/authoring/html.md`.
 
 ---
 
@@ -41,6 +41,7 @@ tasks:
         type: html
         content: "<!DOCTYPE html><html><body></body></html>"
     check:
-      type: element_exists
+      type: html_element
+      operator: exists
       selector: h1
 ```

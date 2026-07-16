@@ -31,13 +31,14 @@ sandboxStarter: |        # optional — pre-loaded code shown in the sandbox
     carryCodeFrom: 1          # optional — carry saved code from task ID
     interactionMode: run      # optional — run (default) | submit
     check:
-      type: output_contains
+      type: output
+      operator: contains
       value: Hello Headstart
 ```
 
 **`interactionMode` combinations:**
 - `run` or omitted: Run executes Python; checks run against output/code/variables/status.
-- `submit`: Submit checks code text only; use only submit-compatible check types (`code_contains`, `code_does_not_contain`, `code_equals`, `code_not_equals`, `code_matches_regex`).
+- `submit`: Submit checks code text only; use only submit-compatible checks (`type: code`).
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
 
 ---
@@ -57,7 +58,8 @@ sandboxStarter: |        # optional — pre-loaded code shown in the sandbox
           - name: username
             value: Alice
         check:
-          type: output_contains
+          type: output
+          operator: contains
           value: "Hello {username}"   # {username} substituted with Alice
 ```
 
@@ -94,26 +96,41 @@ Evaluated after the Python run completes. `value` accepts a JSON-encoded string 
 
 ## Output and Code Checks (shared with HTML)
 
-| Type | Fields | Run | Submit | Notes |
+Prefer the canonical `type` + `operator` form:
+
+| Type | Operators | Run | Submit | Fields |
 |---|---|:---:|:---:|---|
-| `code_no_error` | `type` | Y | N | Python run status is `success` |
-| `output_contains` | `type`, `value` | Y | N | stdout contains value |
-| `output_equals` | `type`, `value` | Y | N | Exact match (trailing newlines trimmed) |
-| `output_not_contains` | `type`, `value` | Y | N | Does not contain value |
-| `output_not_equals` | `type`, `value` | Y | N | Does not equal value |
-| `output_matches_regex` | `type`, `value` | Y | N | Matches regex (case-sensitive) |
-| `output_line_count` | `type`, `value` | Y | N | Exactly N lines |
-| `output_not_empty` | `type` | Y | N | Output is not empty |
-| `output_empty` | `type` | Y | N | Output is empty / whitespace-only |
-| `code_contains` | `type`, `value` | Y | Y | Source contains value (whitespace ignored outside quotes) |
-| `code_does_not_contain` | `type`, `value` | Y | Y | Source does not contain value |
-| `code_equals` | `type`, `value` | Y | Y | Source equals value |
-| `code_not_equals` | `type`, `value` | Y | Y | Source does not equal value |
-| `code_matches_regex` | `type`, `value` | Y | Y | Source matches regex (whitespace normalised) |
+| `output` | `contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`, `not_matches_regex` | Y | N | `value`, optional `flags` for regex |
+| `output_line_count` | `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal` | Y | N | `value` |
+| `code` | `contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`, `not_matches_regex` | Y | Y | `value`, optional `flags` for regex |
+| `code_no_error` | none | Y | N | Python run status is `success` |
+| `output_not_empty` / `output_empty` | none | Y | N | Legacy convenience checks |
 
-**Submit mode** only accepts: `code_contains`, `code_does_not_contain`, `code_equals`, `code_not_equals`, `code_matches_regex`.
+Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex`, `code_contains`, `code_does_not_contain`, and `code_matches_regex` still load, but new lessons should use the canonical form above.
 
-**Wildcards:** `*` matches any sequence (including newlines). **Multi-option:** `"opt1","opt2"` passes if the actual value contains any option (works for `output_contains`, `code_contains`). **Case sensitivity:** regex checks are case-sensitive; all other comparisons are case-insensitive.
+**Submit mode** only accepts `type: code` checks. Output and variable checks require a run.
+
+**Regex:** `matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`. Put the regex pattern in `value`; put flags such as `i`, `m`, or `s` in `flags`. Regex is case-sensitive unless `flags: i` is set. Anchors (`^`, `$`), groups, alternation, lookarounds, and backreferences follow the browser JavaScript regex engine.
+
+**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source.
+
+**Wildcards and multi-option contains:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present.
+
+## Feedback Checks
+
+Python tasks support `feedbackChecks`. They use the same check shapes as completion checks and require a completion `check`. `show: after_attempt` runs after Run/Submit; `show: on_idle` runs after the learner pauses editing and is most useful with code checks. `incorrectChecks` is a legacy alias for blocking feedback.
+
+```yaml
+feedbackChecks:
+  - type: code
+    operator: contains
+    value: input(
+    mode: blocking        # blocking | nudge
+    show: after_attempt   # after_attempt | on_idle
+    hint: This task should print a fixed message, not ask for input.
+```
+
+If a completion check passes but a blocking feedback check also matches, the task fails and the feedback hint is shown. A matching `mode: nudge` hint is shown without failing the task. If a blocking feedback check has no `hint`, students see `Not quite.` and the builder warns authors to add one.
 
 ---
 
@@ -131,7 +148,7 @@ Evaluated after the Python run completes. `value` accepts a JSON-encoded string 
       "title": "Hello",
       "explainer": "Print `Hello`.",
       "starterCode": "",
-      "check": { "type": "output_contains", "value": "Hello" }
+      "check": { "type": "output", "operator": "contains", "value": "Hello" }
     }
   ]
 }

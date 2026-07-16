@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { evaluateCheck, evaluateCheckWithCode, getFirstFailedCheckHint, getIncorrectCheckHint, normalizeChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
+import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
 import { flattenTasks, findTaskById } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
@@ -84,9 +84,11 @@ export function useStudentCodeState({
   const outputRafIdRef         = useRef(null)
   const runtimeCodeRafIdRef    = useRef(null)
   const pendingRuntimeCodeRef  = useRef(null)
+  const idleFeedbackTimerRef   = useRef(null)
 
   const MAX_STREAMED_OUTPUT = 20_000
   const MAX_DISPLAY_LINES   = 100
+  const IDLE_FEEDBACK_DELAY_MS = 900
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
   const identityRef          = useRef(identity)
@@ -194,6 +196,51 @@ export function useStudentCodeState({
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
+
+  function clearIdleFeedbackTimer() {
+    if (idleFeedbackTimerRef.current !== null) {
+      clearTimeout(idleFeedbackTimerRef.current)
+      idleFeedbackTimerRef.current = null
+    }
+  }
+
+  function scheduleIdleFeedback(contextBuilder, options = {}) {
+    clearIdleFeedbackTimer()
+    if (isAlreadySolved() || inPersonalSandboxRef.current) return
+    idleFeedbackTimerRef.current = setTimeout(() => {
+      idleFeedbackTimerRef.current = null
+      const currentLesson = lessonRef.current
+      const taskId = currentTaskIdRef.current
+      const task = findTaskById(currentLesson?.tasks, taskId)
+      if (!task?.feedbackChecks && !task?.incorrectChecks) return
+      const feedbackChecks = normalizeFeedbackChecks(task).filter(check => (
+        options.feedbackFilter ? options.feedbackFilter(check, task) : true
+      ))
+      if (feedbackChecks.length === 0) return
+      const feedbackTask = {
+        ...task,
+        feedbackChecks,
+        incorrectChecks: null,
+      }
+      const context = contextBuilder()
+      const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
+      const evaluation = evaluateCheckWithFeedback(feedbackTask, '', context, {
+        completionPassed,
+        feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
+      })
+      const matchedIdleFeedback = evaluation.feedbackResults.find(result => result.passed)
+      if (matchedIdleFeedback && !isAlreadySolved()) {
+        applyCheckFeedback(evaluation.passed, evaluation.suggestion)
+      }
+    }, IDLE_FEEDBACK_DELAY_MS)
+  }
+
+  useEffect(() => () => {
+    if (idleFeedbackTimerRef.current !== null) {
+      clearTimeout(idleFeedbackTimerRef.current)
+      idleFeedbackTimerRef.current = null
+    }
+  }, [lesson?.type, currentTaskId])
 
   // Presentation/preview persist to an in-memory store (see createStudentPersistence);
   // start each such session clean so stale state from a previous preview can't leak in.
@@ -762,11 +809,14 @@ export function useStudentCodeState({
 
       const checkContext = { status, code: nextCode, variables: result.variables ?? {} }
       const hasTests = task?.tests?.length > 0
-      let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheck(task?.check, accumulated, checkContext))
+      let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheckWithFeedback(task, accumulated, checkContext).passed)
       let suggestion = ''
       if (!alreadySolved) {
-        const incorrectHint = (!passed && !hasTests && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, accumulated, checkContext) : ''
-        suggestion = (!hasTests && task?.check) ? (incorrectHint || getFirstFailedCheckHint(task.check, accumulated, checkContext)) : ''
+        const evaluation = (!hasTests && status !== 'error' && task?.check) ? evaluateCheckWithFeedback(task, accumulated, checkContext) : null
+        if (evaluation) {
+          passed = evaluation.passed
+          suggestion = evaluation.suggestion
+        }
         if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
       }
 
@@ -801,9 +851,9 @@ export function useStudentCodeState({
       if (!alreadySolved) {
         const codeStr = currentFiles.map(f => f.content).join('\n')
         const iframeDoc = iframeRef.current?.contentDocument ?? null
-        passed = evaluateCheck(task?.check, text, { code: codeStr, iframeDoc })
-        const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, text, { code: codeStr, iframeDoc }) : ''
-        suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, text, { code: codeStr, iframeDoc })) : ''
+        const evaluation = evaluateCheckWithFeedback(task, text, { code: codeStr, iframeDoc })
+        passed = evaluation.passed
+        suggestion = task?.check ? evaluation.suggestion : ''
         if (task?.check) applyCheckFeedback(passed, suggestion)
       } else {
         passed = true
@@ -910,6 +960,13 @@ export function useStudentCodeState({
     if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, newCode)
     }
+    if (lesson?.type === 'python' || lesson?.type === 'electronics') {
+      scheduleIdleFeedback(() => (
+        lessonRef.current?.type === 'electronics'
+          ? { code: newCode, circuit: newCode }
+          : { code: newCode, status: runStatusRef.current }
+      ))
+    }
   }
 
   function handleEditorSelection(selection, filename = null) {
@@ -957,6 +1014,13 @@ export function useStudentCodeState({
       )
       writeStudentFiles(identity.anonymousId, filesMap)
     }
+    if (lesson?.type === 'html') {
+      scheduleIdleFeedback(() => ({
+        code: nextFiles.map(f => f.content).join('\n'),
+        output: outputRef.current,
+        iframeDoc: iframeRef.current?.contentDocument ?? null,
+      }), { feedbackFilter: checkAllowedForSubmit })
+    }
   }
 
   function handleScratchChange(workspaceStates) {
@@ -973,7 +1037,7 @@ export function useStudentCodeState({
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
     const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
-    const suggestion = effectivePassed ? '' : String(checks.find(c => c?.hint)?.hint ?? '').trim()
+    const suggestion = effectivePassed ? '' : (String(snapshot?.suggestion ?? '').trim() || String(checks.find(c => c?.hint)?.hint ?? '').trim())
     if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
     if (!identity || lesson?.type !== 'scratch') return
     if (phase === 'lesson' || phase === 'sandbox' || activeStudentViewRef.current === identity.anonymousId) {
@@ -995,9 +1059,13 @@ export function useStudentCodeState({
   function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
     const alreadySolved = isAlreadySolved()
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const evaluatedPassed = task?.check ? evaluateCheck(task.check, null, context) : false
+    const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
+    const evaluation = task?.check
+      ? evaluateCheckWithFeedback(task, '', context, { completionPassed, feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT })
+      : { passed: false, suggestion: '' }
+    const evaluatedPassed = evaluation.passed
     const passed = alreadySolved ? true : evaluatedPassed
-    const suggestion = passed ? '' : (task?.check ? getFirstFailedCheckHint(task.check, null, context) : '')
+    const suggestion = passed ? '' : evaluation.suggestion
     if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) applyCheckFeedback(evaluatedPassed, suggestion)
     if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
@@ -1015,11 +1083,13 @@ export function useStudentCodeState({
     setFsState(newFs)
     persistence.saveFs(effectiveIdentity?.anonymousId, currentTaskId, newFs)
     applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
+    scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...fsInteractionRef.current }))
   }
 
   const handleFsInteraction = useCallback((interaction) => {
     setFsInteraction(interaction)
     applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction }, { suppressFailFeedback: true })
+    scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...interaction }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity])
 
@@ -1169,9 +1239,10 @@ export function useStudentCodeState({
     let passed, suggestion = ''
     if (!alreadySolved) {
       const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code
-      passed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck) : false
-      const incorrectHint = (!passed && task?.incorrectChecks) ? getIncorrectCheckHint(task.incorrectChecks, '', { code: codeForCheck }) : ''
-      suggestion = task?.check ? (incorrectHint || getFirstFailedCheckHint(task.check, '', { code: codeForCheck })) : ''
+      const completionPassed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck) : false
+      const evaluation = evaluateCheckWithFeedback(task, '', { code: codeForCheck }, { completionPassed })
+      passed = task?.check ? evaluation.passed : false
+      suggestion = task?.check ? evaluation.suggestion : ''
       if (task?.check) applyCheckFeedback(passed, suggestion)
     } else {
       passed = true

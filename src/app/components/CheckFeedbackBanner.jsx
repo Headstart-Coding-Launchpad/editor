@@ -18,7 +18,12 @@ export default function CheckFeedbackBanner({
     <div style={{ ...s.banner, ...(passed ? s.pass : s.fail) }} role="status">
       <span style={{ ...s.icon, background: passed ? '#166534' : '#92400e' }}>{passed ? '✓' : '!'}</span>
       <div style={s.text}>
-        {passed ? successMessage : (
+        {passed ? (
+          <>
+            <div>{successMessage}</div>
+            {hint && <MarkdownRenderer content={hint} style={{ color: 'inherit', fontSize: '0.9em', fontWeight: 600 }} />}
+          </>
+        ) : (
           hint
             ? <MarkdownRenderer content={hint} style={{ color: 'inherit', fontSize: 'inherit' }} />
             : <div>{failureMessage}</div>

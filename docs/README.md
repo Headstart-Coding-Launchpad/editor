@@ -86,7 +86,7 @@ Basic YAML reference for the lesson envelope, common task fields, information ta
 **Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
 
 ### [authoring/checks.md](authoring/checks.md)
-All completion check types across all lesson types (Python, HTML, Scratch, Filesystem, Quiz), with field names, operators, and example syntax. Covers both correct-answer checks and `incorrectChecks` patterns.
+Completion and feedback checks are documented inside each lesson-type authoring doc (`python.md`, `html.md`, `scratch.md`, `filesystem.md`, `electronics.md`, and `quiz-tasks.md`) so authors can work from one self-contained page per lesson type.
 
 **Load when:** adding or editing checks on any task type.
 
