@@ -77,11 +77,13 @@ function subjectOpFromType(type) {
     'code_contains':               { subject: 'code',    operator: 'contains' },
     'code_equals':                 { subject: 'code',    operator: 'equals' },
     'code_does_not_contain':       { subject: 'code',    operator: 'not_contains' },
+    'code_not_contains':           { subject: 'code',    operator: 'not_contains' },
     'code_not_equals':             { subject: 'code',    operator: 'not_equals' },
     'code_matches_regex':          { subject: 'code',    operator: 'matches_regex' },
     'element_exists':              { subject: 'element', operator: 'exists' },
     'element_count':               { subject: 'element', operator: 'count' },
     'element_value':               { subject: 'element', operator: 'value_contains' },
+    'element_value_contains':      { subject: 'element', operator: 'value_contains' },
     'element_value_equals':        { subject: 'element', operator: 'value_equals' },
     'element_value_not_contains':  { subject: 'element', operator: 'value_not_contains' },
     'element_value_not_equals':    { subject: 'element', operator: 'value_not_equals' },
@@ -91,6 +93,7 @@ function subjectOpFromType(type) {
     'variable_exists':             { subject: 'variable', operator: 'exists' },
     'variable_type':               { subject: 'variable', operator: 'type' },
     'variable_equals':             { subject: 'variable', operator: 'equals' },
+    'variable_not_equals':         { subject: 'variable', operator: 'not_equals' },
     'variable_dict_contains':      { subject: 'variable', operator: 'dict_contains' },
     'variable_dict_equals':        { subject: 'variable', operator: 'dict_equals' },
     'variable_dict_key_value':     { subject: 'variable', operator: 'dict_key_value' },
@@ -118,14 +121,14 @@ function typeFromSubjectOp(subject, operator) {
     code: {
       contains:      'code_contains',
       equals:        'code_equals',
-      not_contains:  'code_does_not_contain',
+      not_contains:  'code_not_contains',
       not_equals:    'code_not_equals',
       matches_regex: 'code_matches_regex',
     },
     element: {
       exists:              'element_exists',
       count:               'element_count',
-      value_contains:      'element_value',
+      value_contains:      'element_value_contains',
       value_equals:        'element_value_equals',
       value_not_contains:  'element_value_not_contains',
       value_not_equals:    'element_value_not_equals',
@@ -137,6 +140,7 @@ function typeFromSubjectOp(subject, operator) {
       exists:          'variable_exists',
       type:            'variable_type',
       equals:          'variable_equals',
+      not_equals:      'variable_not_equals',
       dict_contains:   'variable_dict_contains',
       dict_equals:     'variable_dict_equals',
       dict_key_value:  'variable_dict_key_value',
@@ -183,6 +187,7 @@ function getOperatorOptions(subject, currentOperator = null) {
     { value: 'exists',          label: 'exists' },
     { value: 'type',            label: 'type is' },
     { value: 'equals',          label: 'equals' },
+    { value: 'not_equals',      label: 'does not equal' },
     { value: 'dict_contains',   label: 'dictionary contains' },
     { value: 'dict_equals',     label: 'dictionary equals' },
     { value: 'dict_key_value',  label: 'dictionary key value equals' },
@@ -204,7 +209,7 @@ function makeCheckSkeleton(type, prev = {}) {
   if (type === 'element_count') return { type, selector: prev.selector ?? '', value: prev.value ?? '1', ...hint }
   if (type === 'element_attribute') return { type, selector: prev.selector ?? '', attribute: prev.attribute ?? '', value: prev.value ?? '', ...hint }
   if (type === 'element_style_property') return { type, selector: prev.selector ?? '', property: prev.property ?? '', value: prev.value ?? '', ...hint }
-  if (type === 'element_value' || type === 'element_value_equals' || type === 'element_value_not_contains' || type === 'element_value_not_equals' || type === 'element_value_matches_regex') {
+  if (type === 'element_value' || type === 'element_value_contains' || type === 'element_value_equals' || type === 'element_value_not_contains' || type === 'element_value_not_equals' || type === 'element_value_matches_regex') {
     return { type, selector: prev.selector ?? '', value: prev.value ?? '', ...hint }
   }
   return { type, value: prev.value ?? '', ...hint }

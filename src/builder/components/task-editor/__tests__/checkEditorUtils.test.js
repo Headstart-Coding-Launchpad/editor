@@ -51,15 +51,15 @@ describe('subjectOpFromType', () => {
 })
 
 describe('typeFromSubjectOp', () => {
-  it('round-trips with subjectOpFromType for all known check types', () => {
+  it('round-trips with subjectOpFromType for all canonical check types', () => {
     const types = [
       'output_contains', 'output_equals', 'output_not_contains', 'output_not_equals',
       'output_matches_regex', 'output_not_empty', 'output_empty', 'output_line_count', 'output_line_count_at_least',
-      'code_contains', 'code_equals', 'code_does_not_contain', 'code_not_equals', 'code_matches_regex',
-      'element_exists', 'element_count', 'element_value', 'element_value_equals',
+      'code_contains', 'code_equals', 'code_not_contains', 'code_not_equals', 'code_matches_regex',
+      'element_exists', 'element_count', 'element_value_contains', 'element_value_equals',
       'element_value_not_contains', 'element_value_not_equals', 'element_value_matches_regex',
       'element_attribute', 'element_style_property',
-      'variable_exists', 'variable_type', 'variable_equals', 'variable_dict_contains',
+      'variable_exists', 'variable_type', 'variable_equals', 'variable_not_equals', 'variable_dict_contains',
       'variable_dict_equals', 'variable_dict_key_value', 'variable_array_contains',
       'variable_array_equals', 'variable_array_nth_item',
     ]
@@ -67,6 +67,11 @@ describe('typeFromSubjectOp', () => {
       const { subject, operator } = subjectOpFromType(type)
       expect(typeFromSubjectOp(subject, operator)).toBe(type)
     }
+  })
+
+  it('legacy aliases code_does_not_contain and element_value round-trip to their canonical names', () => {
+    expect(typeFromSubjectOp(...Object.values(subjectOpFromType('code_does_not_contain')))).toBe('code_not_contains')
+    expect(typeFromSubjectOp(...Object.values(subjectOpFromType('element_value')))).toBe('element_value_contains')
   })
 
   it('handles code_no_error — maps to output/no_error and back to code_no_error', () => {

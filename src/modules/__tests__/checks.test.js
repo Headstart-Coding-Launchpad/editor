@@ -219,6 +219,22 @@ describe('evaluateSingleCheck — code_does_not_contain', () => {
   })
 })
 
+// ─── code_not_contains (alias for code_does_not_contain) ─────────────────────
+
+describe('evaluateSingleCheck — code_not_contains', () => {
+  it('returns true when code does not contain the value', () => {
+    expect(evaluateSingleCheck({ type: 'code_not_contains', value: 'eval' }, '', { code: 'x = 1' })).toBe(true)
+  })
+
+  it('returns false when code contains the value', () => {
+    expect(evaluateSingleCheck({ type: 'code_not_contains', value: 'print("hi")' }, '', { code: 'print( "hi" )' })).toBe(false)
+  })
+
+  it('is listed in SUBMIT_ALLOWED', () => {
+    expect(checkAllowedForSubmit({ type: 'code_not_contains' })).toBe(true)
+  })
+})
+
 describe('evaluateSingleCheck — code equality checks', () => {
   it('ignores whitespace outside quoted text for equality', () => {
     const check = { type: 'code_equals', value: 'name = "Ada Lovelace"' }
@@ -490,6 +506,10 @@ describe('evaluateSingleCheck — DOM checks with null iframeDoc', () => {
   it('element_value returns false when iframeDoc is null', () => {
     expect(evaluateSingleCheck({ type: 'element_value', selector: '#out', value: 'hi' }, '', { iframeDoc: null })).toBe(false)
   })
+
+  it('element_value_contains returns false when iframeDoc is null', () => {
+    expect(evaluateSingleCheck({ type: 'element_value_contains', selector: '#out', value: 'hi' }, '', { iframeDoc: null })).toBe(false)
+  })
 })
 
 // ─── variable checks with empty context ───────────────────────────────────────
@@ -621,6 +641,24 @@ describe('evaluateSingleCheck — variable_equals', () => {
 
   it('returns false when variable is missing', () => {
     expect(evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: '5' }, '', { variables: {} })).toBe(false)
+  })
+})
+
+// ─── variable_not_equals ──────────────────────────────────────────────────────
+
+describe('evaluateSingleCheck — variable_not_equals', () => {
+  const makeVar = (name, type, json) => ({ variables: { [name]: { type, json } } })
+
+  it('returns true when variable value does not match', () => {
+    expect(evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '0' }, '', makeVar('score', 'int', '10'))).toBe(true)
+  })
+
+  it('returns false when variable value does match', () => {
+    expect(evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '10' }, '', makeVar('score', 'int', '10'))).toBe(false)
+  })
+
+  it('returns false when variable is missing', () => {
+    expect(evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '0' }, '', { variables: {} })).toBe(false)
   })
 })
 
