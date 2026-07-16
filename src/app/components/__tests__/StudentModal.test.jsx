@@ -13,8 +13,9 @@ vi.mock('../../../shared/iframe', () => ({
   waitForIframeText: vi.fn(),
 }))
 
-vi.mock('../ScratchWorkspace', () => ({
+vi.mock('../../../modules/scratch/ScratchWorkspace.jsx', () => ({
   default: () => <div data-testid="scratch-workspace" />,
+  SPRITE_TYPES: [],
 }))
 
 vi.mock('../FilesystemTask', () => ({
@@ -72,6 +73,11 @@ const BASE_STUDENT = {
 const PYTHON_LESSON = {
   type: 'python',
   tasks: [{ id: 1, title: 'Task 1' }],
+}
+
+const SCRATCH_LESSON = {
+  type: 'scratch',
+  tasks: [{ id: 1, title: 'Scratch Task', starterBlocks: { sprite1: { blocks: [] } } }],
 }
 
 const ACTIVE_SESSION = { state: 'active', currentTaskId: 1 }
@@ -240,6 +246,20 @@ describe('StudentModal', () => {
       rerender(<StudentModal {...props} student={{ ...props.student, teacherStageRequestedAt: 1, teacherStageAcceptedAt: 2 }} />)
       expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'starter')
       expect(onClearTeacherStage).toHaveBeenCalledWith('student-1')
+    })
+  })
+
+  describe('Scratch lessons', () => {
+    it('renders the Scratch workspace when opening the modal', () => {
+      render(<StudentModal {...mkProps({
+        lesson: SCRATCH_LESSON,
+        session: ACTIVE_SESSION,
+      }, {
+        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+        currentOutput: JSON.stringify({ x: 0, y: 0 }),
+      })} />)
+
+      expect(screen.getByTestId('scratch-workspace')).toBeInTheDocument()
     })
   })
 })

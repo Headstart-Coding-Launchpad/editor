@@ -11,7 +11,7 @@ import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceDat
 import { findTaskById, deriveTaskContext, buildStageOptions } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import { DEFAULT_FS } from '../../modules/filesystem'
-import scratchModule from '../../modules/scratch'
+import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getLessonModule } from '../../modules/registry'
@@ -1015,16 +1015,16 @@ function StudentWorkspaceBody({
   )
 
   if (isScratch) {
-    const ScratchStudentView = scratchModule.StudentWorkspace
     return (
-      <ScratchStudentView
+      <ScratchWorkspace
         key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
         task={task}
         readOnly
         assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
         initialState={scratchState}
         externalState={scratchState}
-        initialSpriteState={spriteState}
+        initialSpriteStates={spriteState}
+        unrestricted={isSessionSandbox}
       />
     )
   }
