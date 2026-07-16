@@ -23,11 +23,13 @@ import {
   setVariableContext,
 } from './scratch'
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
+import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 
 const STAGE_W = 480
 const STAGE_H = 360
 const SYNC_DEBOUNCE = 1000
 const BLOCK_PLACED_CHECK_DEBOUNCE = 500
+const IDLE_FEEDBACK_DEBOUNCE = 900
 const MIN_STAGE_SCALE = 0.35
 const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
@@ -308,10 +310,21 @@ function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {
   if (!check?.type) return false
   try {
     if (check.type === 'block_used') {
-      return spriteWorkspaces.some(sp => sp.workspace?.getAllBlocks(false).some(b => b.type === check.opcode))
+      if (check.spriteName) {
+        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        return target ? evaluateScratchCheck(check, target.workspace, null, null) : false
+      }
+      return spriteWorkspaces.some(sp => evaluateScratchCheck(check, sp.workspace, null, null))
     }
-    if (check.type === 'variable_equals' || check.type === 'variable_compare' || check.type === 'block_run') {
+    if (check.type === 'variable_equals' || check.type === 'variable_compare') {
       return evaluateScratchCheck(check, null, null, signal)
+    }
+    if (check.type === 'block_run') {
+      if (check.spriteName) {
+        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        return target ? evaluateScratchCheck(check, target.workspace, null, signal) : false
+      }
+      return spriteWorkspaces.some(sp => evaluateScratchCheck(check, sp.workspace, null, signal))
     }
     if (check.type === 'blocks_in_order' || check.type === 'block_count') {
       if (check.spriteName) {
@@ -409,8 +422,11 @@ export default function ScratchWorkspace({
   const pendingSyncRef      = useRef(false)
   const suppressChangeRef   = useRef(false)
   const lastCheckRef        = useRef(null)
+  const lastCheckSuggestionRef = useRef('')
   const blockPlacedTimerRef = useRef(null)
+  const idleFeedbackTimerRef = useRef(null)
   const evaluateBlockPlacedChecksRef = useRef(null)
+  const evaluateIdleFeedbackRef = useRef(null)
   const lastEmittedStateRef = useRef(null)
   const statusRef           = useRef('loading')
   const runningRef          = useRef(false)
@@ -783,6 +799,8 @@ export default function ScratchWorkspace({
               syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
               clearTimeout(blockPlacedTimerRef.current)
               blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
+              clearTimeout(idleFeedbackTimerRef.current)
+              idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
             })
 
             div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, sp.id, Blockly))
@@ -829,6 +847,8 @@ export default function ScratchWorkspace({
                 syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
                 clearTimeout(blockPlacedTimerRef.current)
                 blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
+                clearTimeout(idleFeedbackTimerRef.current)
+                idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
               })
 
               stageDiv.addEventListener('click', event => handleWorkspaceDomClick(event, stageWs, '__stage__', Blockly))
@@ -848,6 +868,8 @@ export default function ScratchWorkspace({
     return () => {
       cancelled = true
       clearTimeout(syncTimerRef.current)
+      clearTimeout(blockPlacedTimerRef.current)
+      clearTimeout(idleFeedbackTimerRef.current)
       // Flush any pending debounced save before disposing, otherwise edits made in
       // the last SYNC_DEBOUNCE ms before a task change are silently lost and carry
       // picks up a stale (possibly empty) earlier save.
@@ -1084,11 +1106,13 @@ export default function ScratchWorkspace({
   const hasAfterRunCheck = scratchChecks.some(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
   const hasAfterBlockPlacedCheck = scratchChecks.some(c => c.evaluation === 'after_block_placed')
 
-  const notifyCheck = useCallback((passed, force = false) => {
+  const notifyCheck = useCallback((passed, force = false, meta = {}) => {
+    const suggestion = meta.suggestion ?? ''
     setCheckPassed(passed)
     setCheckAttempted(true)
-    if (!force && lastCheckRef.current === passed) return
+    if (!force && lastCheckRef.current === passed && lastCheckSuggestionRef.current === suggestion) return
     lastCheckRef.current = passed
+    lastCheckSuggestionRef.current = suggestion
     let workspaceStates = null
     try {
       if (BlocklyRef.current) {
@@ -1101,6 +1125,7 @@ export default function ScratchWorkspace({
     onCheckResultRef.current?.(passed, {
       workspaceStates,
       spriteStates: { ...spriteStatesRef.current },
+      suggestion,
     })
   }, [])
 
@@ -1109,6 +1134,7 @@ export default function ScratchWorkspace({
     setCheckPassed(false)
     setCheckAttempted(false)
     lastCheckRef.current = null
+    lastCheckSuggestionRef.current = ''
   }
 
   // Evaluates all after_block_placed checks and updates feedback.
@@ -1119,15 +1145,50 @@ export default function ScratchWorkspace({
     if (afterBlockChecks.length === 0) return
     const sws = buildSpriteWorkspaces()
     const results = afterBlockChecks.map(c => evalSingleCheckPartial(c, sws))
+    const completionPassed = results.every(r => r === 'pass')
     if (results.every(r => r === 'pass')) {
-      notifyCheck(true)
+      const evaluation = evaluateCheckWithCustomFeedback(
+        task,
+        completionPassed,
+        feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+        '',
+        {},
+        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+      )
+      notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
     } else if (results.some(r => r === 'fail')) {
-      notifyCheck(false)
+      const evaluation = evaluateCheckWithCustomFeedback(
+        task,
+        false,
+        feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+        '',
+        {},
+        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+      )
+      notifyCheck(false, false, { suggestion: evaluation.suggestion })
     } else {
       clearCheckFeedback()
     }
   }
   evaluateBlockPlacedChecksRef.current = evaluateBlockPlacedChecks
+
+  function evaluateIdleFeedback() {
+    if (!BlocklyRef.current || (!task?.feedbackChecks && !task?.incorrectChecks)) return
+    const sws = buildSpriteWorkspaces()
+    const completionPassed = scratchChecks.length > 0 && scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
+    const evaluation = evaluateCheckWithCustomFeedback(
+      task,
+      completionPassed,
+      feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+      '',
+      {},
+      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE },
+    )
+    if (evaluation.feedbackResults.some(result => result.passed)) {
+      notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
+    }
+  }
+  evaluateIdleFeedbackRef.current = evaluateIdleFeedback
 
   function finishRun(signal) {
     if (!signal.stopped) {
@@ -1136,7 +1197,16 @@ export default function ScratchWorkspace({
       if (scratchChecks.length > 0 && hasAfterRunCheck) {
         const sws = buildSpriteWorkspaces()
         const afterRunChecks = scratchChecks.filter(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
-        notifyCheck(afterRunChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)))
+        const completionPassed = afterRunChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current))
+        const evaluation = evaluateCheckWithCustomFeedback(
+          task,
+          completionPassed,
+          feedbackCheck => evalSingleCheck(feedbackCheck, sws, signal, preRunSpriteStatesRef.current),
+          '',
+          {},
+          { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+        )
+        notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
       }
     }
   }
@@ -1154,6 +1224,7 @@ export default function ScratchWorkspace({
     stopAll()
     clearClones()
     lastCheckRef.current = null
+    lastCheckSuggestionRef.current = ''
     preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     runningRef.current = true
     setRunning(true)
@@ -1168,6 +1239,7 @@ export default function ScratchWorkspace({
     if (runningRef.current || statusRef.current !== 'ready') return
     stopAll()
     lastCheckRef.current = null
+    lastCheckSuggestionRef.current = ''
     preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     runningRef.current = true
     setRunning(true)
@@ -1220,13 +1292,23 @@ export default function ScratchWorkspace({
     variableRuntimeRef.current = {}
     setVariableValues({})
     lastCheckRef.current = null
+    lastCheckSuggestionRef.current = ''
     setCheckPassed(false)
     setCheckAttempted(false)
   }
 
   function handleCheck() {
     const sws = buildSpriteWorkspaces()
-    notifyCheck(scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current)), true)
+    const completionPassed = scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current))
+    const evaluation = evaluateCheckWithCustomFeedback(
+      task,
+      completionPassed,
+      feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+      '',
+      {},
+      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+    )
+    notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
   }
 
   // ── Pointer events on canvas ─────────────────────────────────────────────────
@@ -1307,6 +1389,7 @@ export default function ScratchWorkspace({
       if (statusRef.current === 'ready' && !runningRef.current) {
         if (signalRef.current) signalRef.current.stopped = true
         lastCheckRef.current = null
+        lastCheckSuggestionRef.current = ''
         preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
         runningRef.current = true
         setRunning(true)

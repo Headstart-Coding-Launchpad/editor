@@ -34,7 +34,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
   }
 
   function applyCheckFeedback(passed, suggestion = '') {
-    const nextSuggestion = passed ? '' : String(suggestion ?? '').trim()
+    const nextSuggestion = String(suggestion ?? '').trim()
     setCheckPassed(passed)
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)

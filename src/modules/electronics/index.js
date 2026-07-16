@@ -145,6 +145,7 @@ const electronicsModule = {
   StudentWorkspace,
   BuilderWorkspace,
   CheckEditor,
+  FeedbackCheckEditor: CheckEditor,
   TeacherLiveView,
 
   getDisplayState: (task, stage, liveState, tab) => {
@@ -182,7 +183,7 @@ const electronicsModule = {
   getNewStarterUpdates: () => ({ starterCircuit: cloneCircuit(DEFAULT_CIRCUIT) }),
 
   supportsInteractionMode: false,
-  supportsIncorrectChecks: false,
+  supportsIncorrectChecks: true,
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: false,

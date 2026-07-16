@@ -13,6 +13,69 @@ const CHECK_OPTIONS = [
   ['circuit_path_includes', 'Connection path includes part'],
 ]
 
+const SUBJECT_OPTIONS = [
+  { value: 'safety', label: 'Safety' },
+  { value: 'part', label: 'Part' },
+  { value: 'control', label: 'Control' },
+  { value: 'connection', label: 'Connection' },
+]
+
+function uiFromCheck(check) {
+  if (check.type === 'circuit_has_component') return { subject: 'part', aspect: 'presence', operator: 'exists' }
+  if (check.type === 'circuit_component_powered') return { subject: 'part', aspect: 'power', operator: 'powered' }
+  if (check.type === 'circuit_component_unpowered') return { subject: 'part', aspect: 'power', operator: 'unpowered' }
+  if (check.type === 'circuit_control_affects_power') return { subject: 'control', aspect: 'effect', operator: 'affects_power' }
+  if (check.type === 'circuit_path_exists') return { subject: 'connection', aspect: 'path', operator: 'exists' }
+  if (check.type === 'circuit_path_includes') return { subject: 'connection', aspect: 'path', operator: 'includes' }
+  return { subject: 'safety', aspect: 'short', operator: 'no_short' }
+}
+
+function aspectOptions(subject) {
+  if (subject === 'part') return [
+    { value: 'presence', label: 'Presence' },
+    { value: 'power', label: 'Power' },
+  ]
+  if (subject === 'control') return [{ value: 'effect', label: 'Effect' }]
+  if (subject === 'connection') return [{ value: 'path', label: 'Path' }]
+  return [{ value: 'short', label: 'Short circuit' }]
+}
+
+function defaultAspect(subject) {
+  return aspectOptions(subject)[0]?.value ?? 'short'
+}
+
+function defaultOperator(subject, aspect) {
+  if (subject === 'part' && aspect === 'power') return 'powered'
+  if (subject === 'part') return 'exists'
+  if (subject === 'control') return 'affects_power'
+  if (subject === 'connection') return 'exists'
+  return 'no_short'
+}
+
+function operatorOptions(subject, aspect) {
+  if (subject === 'part' && aspect === 'power') return [
+    { value: 'powered', label: 'is powered' },
+    { value: 'unpowered', label: 'is not powered' },
+  ]
+  if (subject === 'part') return [{ value: 'exists', label: 'exists' }]
+  if (subject === 'control') return [{ value: 'affects_power', label: 'turns part on/off' }]
+  if (subject === 'connection') return [
+    { value: 'exists', label: 'path exists' },
+    { value: 'includes', label: 'path includes part' },
+  ]
+  return [{ value: 'no_short', label: 'has no short' }]
+}
+
+function typeFromUi(subject, aspect, operator) {
+  if (subject === 'part' && aspect === 'presence') return 'circuit_has_component'
+  if (subject === 'part' && operator === 'unpowered') return 'circuit_component_unpowered'
+  if (subject === 'part' && aspect === 'power') return 'circuit_component_powered'
+  if (subject === 'control') return 'circuit_control_affects_power'
+  if (subject === 'connection' && operator === 'includes') return 'circuit_path_includes'
+  if (subject === 'connection') return 'circuit_path_exists'
+  return 'circuit_no_short'
+}
+
 const PIN_OPTIONS = {
   battery: ['positive', 'negative'],
   led: ['anode', 'cathode'],
@@ -38,13 +101,22 @@ function endpoint(type, pin) {
   return { type, pin }
 }
 
-function skeleton(type) {
-  if (type === 'circuit_no_short') return { type }
-  if (type === 'circuit_has_component') return { type, component: part('led'), minCount: '1' }
-  if (type === 'circuit_component_powered') return { type, component: part('motor') }
-  if (type === 'circuit_component_unpowered') return { type, component: part('motor') }
+function preserveFeedbackMeta(prev = {}) {
+  return {
+    ...(prev.hint ? { hint: prev.hint } : {}),
+    ...(prev.mode ? { mode: prev.mode } : {}),
+    ...(prev.show ? { show: prev.show } : {}),
+  }
+}
+
+function skeleton(type, prev = {}) {
+  const meta = preserveFeedbackMeta(prev)
+  if (type === 'circuit_no_short') return { type, ...meta }
+  if (type === 'circuit_has_component') return { type, component: part('led'), minCount: '1', ...meta }
+  if (type === 'circuit_component_powered') return { type, component: part('motor'), ...meta }
+  if (type === 'circuit_component_unpowered') return { type, component: part('motor'), ...meta }
   if (type === 'circuit_control_affects_power') {
-    return { type, control: part('slide_switch'), component: part('motor') }
+    return { type, control: part('slide_switch'), component: part('motor'), ...meta }
   }
   if (type === 'circuit_path_includes') {
     return {
@@ -52,9 +124,10 @@ function skeleton(type) {
       from: endpoint('battery', 'positive'),
       to: endpoint('motor', 'positive'),
       includes: part('slide_switch'),
+      ...meta,
     }
   }
-  return { type, from: endpoint('battery', 'positive'), to: endpoint('motor', 'positive') }
+  return { type, from: endpoint('battery', 'positive'), to: endpoint('motor', 'positive'), ...meta }
 }
 
 function componentTypeOptions(types = COMPONENT_TYPES) {
@@ -182,15 +255,45 @@ function CheckFields({ check, onChange }) {
   return null
 }
 
-export default function CheckEditor({ task, onUpdate }) {
-  const checks = normalize(task.check)
+function FeedbackControls({ check, onChange }) {
+  return (
+    <div style={s.feedbackControls}>
+      <select
+        className="te-select"
+        value={check.mode ?? 'blocking'}
+        onChange={e => onChange({ ...check, mode: e.target.value })}
+        title="Feedback behaviour"
+      >
+        <option value="blocking">Blocking</option>
+        <option value="nudge">Nudge</option>
+      </select>
+      <select
+        className="te-select"
+        value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
+        onChange={e => onChange({ ...check, show: e.target.value })}
+        title="When to show feedback"
+      >
+        <option value="after_attempt">After attempt</option>
+        <option value="on_idle">On idle</option>
+      </select>
+    </div>
+  )
+}
+
+export default function CheckEditor({ task, onUpdate, checks: checksProp, onChange, feedbackEditor = false }) {
+  const checks = normalize(checksProp ?? task.check)
 
   function setChecks(next) {
-    onUpdate({ ...task, check: next.length ? next : null, _checkTested: false })
+    if (onChange) onChange(next.length ? next : null)
+    else onUpdate({ ...task, check: next.length ? next : null, _checkTested: false })
   }
 
   function updateCheck(index, updated) {
     setChecks(checks.map((check, i) => i === index ? updated : check))
+  }
+
+  function updateFromUi(index, subject, aspect, operator, prev) {
+    updateCheck(index, skeleton(typeFromUi(subject, aspect, operator), prev))
   }
 
   return (
@@ -198,17 +301,42 @@ export default function CheckEditor({ task, onUpdate }) {
       {checks.map((check, index) => {
         const knownType = CHECK_OPTIONS.some(([value]) => value === check.type)
         const activeCheck = knownType ? check : skeleton('circuit_no_short')
+        const ui = uiFromCheck(activeCheck)
+        const aspects = aspectOptions(ui.subject)
+        const operators = operatorOptions(ui.subject, ui.aspect)
         return (
           <div key={index} style={s.card}>
             {checks.length > 1 && <span style={s.index}>#{index + 1}</span>}
             <select
               className="te-select"
-              value={activeCheck.type}
-              onChange={e => updateCheck(index, skeleton(e.target.value))}
+              value={ui.subject}
+              onChange={e => {
+                const nextSubject = e.target.value
+                const nextAspect = defaultAspect(nextSubject)
+                updateFromUi(index, nextSubject, nextAspect, defaultOperator(nextSubject, nextAspect), activeCheck)
+              }}
             >
-              {CHECK_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {SUBJECT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <select
+              className="te-select"
+              value={ui.aspect}
+              onChange={e => {
+                const nextAspect = e.target.value
+                updateFromUi(index, ui.subject, nextAspect, defaultOperator(ui.subject, nextAspect), activeCheck)
+              }}
+            >
+              {aspects.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <select
+              className="te-select"
+              value={ui.operator}
+              onChange={e => updateFromUi(index, ui.subject, ui.aspect, e.target.value, activeCheck)}
+            >
+              {operators.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <CheckFields check={activeCheck} onChange={updated => updateCheck(index, updated)} />
+            {feedbackEditor && <FeedbackControls check={activeCheck} onChange={updated => updateCheck(index, updated)} />}
             <input
               className="te-input"
               style={s.hint}
@@ -216,11 +344,17 @@ export default function CheckEditor({ task, onUpdate }) {
               value={activeCheck.hint ?? ''}
               onChange={e => updateCheck(index, { ...activeCheck, hint: e.target.value })}
             />
-            <button type="button" className="btn-ghost" onClick={() => setChecks(checks.filter((_, i) => i !== index))}>Remove</button>
+            <button type="button" className="te-check-remove-btn" onClick={() => setChecks(checks.filter((_, i) => i !== index))} title="Remove check">×</button>
           </div>
         )
       })}
-      <button type="button" className="btn-ghost" onClick={() => setChecks([...checks, skeleton('circuit_no_short')])}>+ Add electronics check</button>
+      <button
+        type="button"
+        className="btn-ghost te-add-check-btn"
+        onClick={() => setChecks([...checks, skeleton('circuit_no_short', feedbackEditor ? { mode: 'blocking', show: 'after_attempt' } : {})])}
+      >
+        + Add electronics check
+      </button>
     </div>
   )
 }
@@ -232,5 +366,6 @@ const s = {
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 },
   label: { fontFamily: 'var(--font-body)', fontSize: 12, color: '#475569', fontWeight: 700 },
   help: { fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.4, color: '#475569' },
+  feedbackControls: { gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap' },
   hint: { gridColumn: '1 / -1' },
 }

@@ -423,6 +423,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
     setCreating(null)
     setOpenFile(newPath)
     setSelected(newPath)
+    onInteraction?.({ currentDir, openFile: newPath })
   }
 
   function handleDeletePath(path) {
@@ -530,6 +531,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
         const np = isDirectory ? normaliseDirPath(parent + newName.trim()) : (parent === '/' ? '/' + newName.trim() : parent + newName.trim())
         setOpenFile(np)
         setSelected(np)
+        onInteraction?.({ currentDir, openFile: np })
       }
     }
   }
@@ -547,6 +549,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
       const newPath = destDirNorm === '/' ? '/' + name : destDirNorm + name
       setOpenFile(newPath)
       setSelected(newPath)
+      onInteraction?.({ currentDir, openFile: newPath })
     } else {
       setSelected(null)
     }

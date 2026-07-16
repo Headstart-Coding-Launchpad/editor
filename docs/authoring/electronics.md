@@ -82,6 +82,8 @@ When a student runs MicroPython, `Pin` output values are sent to the circuit thr
 
 ## Checks
 
+Electronics checks evaluate from the current board state after circuit edits, simulation updates, or the Check Circuit action. The builder groups them as Safety, Part, Control, and Connection checks, then stores the circuit-specific selector fields such as `component`, `control`, `from`, `to`, and `includes`. `feedbackChecks` use the same circuit check shapes and require a completion `check`. Use `show: on_idle` for guidance after a student pauses editing the circuit, or `show: after_attempt` for feedback after Check Circuit. `mode: nudge` shows guidance without failing; `incorrectChecks` is a legacy alias for blocking feedback.
+
 ```yaml
 checks:
   - type: circuit_no_short

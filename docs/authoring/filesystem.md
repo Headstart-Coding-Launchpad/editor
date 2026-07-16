@@ -36,7 +36,9 @@ sandboxStarterFs:            # optional — initial filesystem for sandbox
     carryFsFrom: null         # optional — carry filesystem from task ID
     startsInDir: /            # optional — which dir the explorer opens in (must end with /)
     check:
-      type: fs_dir_exists
+      type: fs_path
+      operator: exists
+      itemType: dir
       path: /Documents/
 ```
 
@@ -51,6 +53,8 @@ sandboxStarterFs:            # optional — initial filesystem for sandbox
 ```
 
 Checks evaluate **automatically** after each student operation — there is no Run button.
+
+`feedbackChecks` use the same filesystem check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses file operations or editing, or `show: after_attempt` for feedback when the automatic check cycle runs. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback.
 
 ---
 
@@ -68,16 +72,18 @@ All `path` and `dir` fields are matched **case-insensitively**, so `Documents` a
 
 Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
 
-| Type | Fields | Notes |
-|---|---|---|
-| `fs_file_exists` | `path` | File at path exists (wildcards supported) |
-| `fs_dir_exists` | `path` | Directory at path exists (wildcards supported) |
-| `fs_not_exists` | `path` | Path (file or dir) does not exist (wildcards supported) |
-| `fs_content_contains` | `path`, `value` | File content contains value (case-insensitive) |
-| `fs_content_equals` | `path`, `value` | File content equals value (trimmed, case-insensitive) |
-| `fs_file_in_dir` | `path`, `dir` | File exists and its direct parent equals dir (case-insensitive) |
-| `fs_dir_opened` | `path` | Student navigated to the folder (wildcards supported) |
-| `fs_file_opened` | `path` | Student opened the file (wildcards supported) |
+| Type | Operators | Fields | Notes |
+|---|---|---|---|
+| `fs_path` | `exists`, `not_exists` | `path`, `itemType: file \| dir \| any` | File path, folder path, or any path exists/does not exist (wildcards supported) |
+| `fs_file_content` | `contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`, `not_matches_regex` | `path`, `value`, optional `flags` | File content comparison |
+| `fs_file_line_count` | `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal` | `path`, `value` | Compare number of lines in a file |
+| `fs_file_location` | `in_folder` | `path`, `dir` | File exists and its direct parent equals `dir` |
+| `fs_folder_count` | `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal` | `path`, `itemType: file \| dir`, `value` | Count direct child files or folders |
+| `fs_opened` | `is_open` | `path`, `itemType: file \| dir` | Student opened the file or navigated to the folder |
+
+Legacy aliases such as `fs_file_exists`, `fs_dir_exists`, `fs_not_exists`, `fs_content_contains`, `fs_content_equals`, `fs_file_in_dir`, `fs_dir_opened`, and `fs_file_opened` still load, but new lessons should use the canonical form above.
+
+`matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`, with the pattern in `value` and optional flags such as `i` or `m` in `flags`. Non-regex content checks normalise `\r\n` to `\n` and compare case-insensitively. Line counts ignore trailing blank lines created only by final newline characters.
 
 ---
 
@@ -95,7 +101,7 @@ Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
       "title": "Create a Documents folder",
       "explainer": "Create a folder called **Documents** in the root folder.",
       "starterFs": { "/": { "type": "dir" } },
-      "check": { "type": "fs_dir_exists", "path": "/Documents/" }
+      "check": { "type": "fs_path", "operator": "exists", "itemType": "dir", "path": "/Documents/" }
     }
   ]
 }

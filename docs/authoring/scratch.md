@@ -137,18 +137,23 @@ prebuiltStacks:
 
 ## Scratch Check Types
 
-Scratch checks can be a single object or an array. `evaluation` accepts `manual`, `after_run`, or `continuous` (defaults to `manual`).
+Scratch checks can be a single object or an array. Prefer `evaluation: continuous` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
+
+Students should not see a failure just because they are still building. Continuous checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
+
+`feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback.
 
 ### `block_used`
 ```yaml
 check:
   type: block_used
-  evaluation: manual
+  evaluation: continuous
+  spriteName: Sprite 1  # optional
   opcode: control_repeat
   fieldValues:          # optional — require specific input values
     TIMES: "10"
 ```
-`fieldValues` keys are the Blockly input names (e.g. `STEPS`, `DEGREES`, `MESSAGE`). Omit to match any value.
+`fieldValues` keys are the Blockly input names (e.g. `STEPS`, `DEGREES`, `MESSAGE`). Omit to match any value. Values can be plain strings for equality/wildcard matching, or objects with `operator` and `value`, for example `STEPS: { operator: greater_than_or_equal, value: "10" }`.
 
 ### `sprite_property`
 ```yaml
@@ -156,7 +161,7 @@ check:
   type: sprite_property
   evaluation: after_run
   spriteName: Rocket
-  property: x          # x | y | size | direction | visible
+  property: x          # x | y | size | direction | visible | costume
   operator: greater_than   # equals | greater_than | less_than
   value: 50
 ```
@@ -185,7 +190,7 @@ Use `variable_compare` for non-equality operators; `variable_equals` is legacy b
 ```yaml
 check:
   type: blocks_in_order
-  evaluation: manual
+  evaluation: continuous
   spriteName: Sprite 1   # optional — if omitted, any sprite satisfying it passes
   sequence:
     - event_whenflagclicked
@@ -200,30 +205,36 @@ Passes if any connected stack contains the opcodes **consecutively** (no gaps). 
 ```yaml
 check:
   type: block_count
-  evaluation: manual
+  evaluation: continuous
   spriteName: Sprite 1   # optional
   opcode: motion_movesteps
   operator: equals
   value: 3
 ```
 
-### `costume_is`
+### Costume checks
 ```yaml
 check:
-  type: costume_is
+  type: sprite_property
   evaluation: after_run
-  spriteName: Sprite 1   # optional — falls back to first sprite
+  spriteName: Sprite 1
+  property: costume
+  operator: equals
   value: costume2        # exact costume name, case-sensitive
 ```
+Legacy `type: costume_is` still loads, but new lessons should use `sprite_property` with `property: costume`.
 
 ### `block_run`
 ```yaml
 check:
   type: block_run
   evaluation: after_run
+  spriteName: Sprite 1  # optional
   opcode: motion_movesteps
   fieldValues:          # optional — also require the block to have specific values in the workspace
-    STEPS: "50"
+    STEPS:
+      operator: greater_than_or_equal
+      value: "50"
 ```
 Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace.
 

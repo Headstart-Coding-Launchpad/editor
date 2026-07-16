@@ -10,6 +10,34 @@ export function wildcardEquals(text, pattern) {
   return new RegExp(`^${escaped}$`).test(text)
 }
 
+export function matchesRegex(value, pattern, flags = '') {
+  if (pattern == null) return false
+  try {
+    return new RegExp(String(pattern), String(flags ?? '')).test(String(value ?? ''))
+  } catch {
+    return false
+  }
+}
+
+export function compareValues(actual, operator = 'equals', expected) {
+  const a = Number(actual)
+  const e = Number(expected)
+  const numeric = !Number.isNaN(a) && !Number.isNaN(e)
+
+  if (numeric) {
+    if (operator === 'equals') return a === e
+    if (operator === 'not_equals') return a !== e
+    if (operator === 'greater_than') return a > e
+    if (operator === 'greater_than_or_equal') return a >= e
+    if (operator === 'less_than') return a < e
+    if (operator === 'less_than_or_equal') return a <= e
+  }
+
+  if (operator === 'equals') return String(actual) === String(expected)
+  if (operator === 'not_equals') return String(actual) !== String(expected)
+  return false
+}
+
 export function normalizeOutput(value, caseSensitive = false) {
   const s = String(value ?? '').replace(/\r\n?/g, '\n').trim()
   return caseSensitive ? s : s.toLowerCase()

@@ -30,7 +30,7 @@ describe('validateLesson', () => {
     expect(validateLesson(lesson('html', [{ id: 1, title: 'Web', starterFiles: [{ name: 'style.css', type: 'css', content: '' }] }])).errors)
       .toContain('Task 1 has no HTML file to use as entry point')
     expect(validateLesson(lesson('scratch', [{ id: 1, title: 'Blocks', toolbox: '<category>', check: { type: 'block_used' } }])).errors)
-      .toEqual(expect.arrayContaining(['Task 1 has invalid toolbox XML', 'Task 1 block-used check is missing a block opcode']))
+      .toEqual(expect.arrayContaining(['Task 1 has invalid toolbox XML', 'Task 1 has a Scratch check but no block opcode']))
     expect(validateLesson(lesson('python', [{ id: 1, title: 'Read', taskType: 'information', informationType: 'standard', explainer: '' }])).errors)
       .toContain('Task 1 is an information task but has no explainer')
   })
@@ -50,6 +50,47 @@ describe('validateLesson', () => {
       }],
     }]))
     expect(result).toEqual({ errors: [], warnings: [] })
+  })
+
+  it('validates feedback check fields using the same lesson-type rules', () => {
+    const fsResult = validateLesson(lesson('filesystem', [{
+      id: 1,
+      title: 'FS',
+      starterFs: { '/': { type: 'dir' } },
+      check: { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/done.txt' },
+      feedbackChecks: [{ type: 'fs_file_content', operator: 'contains', path: '/tmp.txt', value: '', hint: 'Add content.' }],
+    }]))
+    expect(fsResult.errors).toContain('Task 1 has a file-content feedback check but no expected value')
+
+    const electronicsResult = validateLesson(lesson('electronics', [{
+      id: 1,
+      title: 'Circuit',
+      starterCircuit: { components: [], wires: [], controls: {} },
+      check: { type: 'circuit_no_short' },
+      feedbackChecks: [{ type: 'circuit_path_exists', from: { type: 'battery' }, to: { type: 'led', pin: 'anode' }, hint: 'Wire both endpoints.' }],
+    }]))
+    expect(electronicsResult.errors).toContain('Task 1 has a circuit connection feedback check but no source or destination part/pin')
+
+    const htmlResult = validateLesson(lesson('html', [{
+      id: 1,
+      title: 'Web',
+      starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Hi</h1>' }],
+      check: { type: 'html_element', selector: 'h1' },
+      feedbackChecks: [{ type: 'html_element_value', operator: 'equals', selector: '', value: 'Hi', hint: 'Target the heading.' }],
+    }]))
+    expect(htmlResult.errors).toContain('Task 1 has an element feedback check but no CSS selector')
+  })
+
+  it('warns for blocking feedback checks without hints and requires a completion check', () => {
+    const result = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Python',
+      starterCode: 'print("hi")',
+      feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(' }],
+    }]))
+
+    expect(result.errors).toContain('Task 1 has feedback checks but no completion check')
+    expect(result.warnings).toContain('Task 1 has a blocking feedback check with no hint')
   })
 })
 
@@ -200,6 +241,8 @@ describe('normalizeTasksForExport', () => {
         starterCode: 'print(1)',
         _checkTested: true,
         check: { type: 'output_equals', value: '1', hint: '  keep  ' },
+        feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(', hint: '  avoid input  ' }],
+        incorrectChecks: [{ type: 'code_contains', value: 'legacy', hint: 'drop me' }],
         options: [{ text: 'A', feedback: '   ' }],
       }, {
         id: 90,
@@ -213,8 +256,10 @@ describe('normalizeTasksForExport', () => {
     expect(exported[0].subtasks[0]).toMatchObject({
       id: 1,
       check: { hint: 'keep' },
+      feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(', hint: 'avoid input' }],
       options: [{ text: 'A' }],
     })
+    expect(exported[0].subtasks[0].incorrectChecks).toBeUndefined()
     expect(exported[0].subtasks[1]).toMatchObject({ id: 2, carryCodeFrom: 1, check: [{ type: 'code_no_error' }] })
   })
 

@@ -28,6 +28,7 @@ const filesystemModule = {
   StudentWorkspace,
   BuilderWorkspace,
   CheckEditor,
+  FeedbackCheckEditor: CheckEditor,
 
   // ── Teacher-side editor ──────────────────────────────────────────────────────
   TeacherLiveView: FilesystemTeacherLiveView,
@@ -55,7 +56,7 @@ const filesystemModule = {
   initCompleteTab: null,
   initStageTab: null,
 
-  defaultCheck: () => [{ type: 'fs_file_exists', path: '' }],
+  defaultCheck: () => [{ type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }],
 
   carryThroughField: 'carryFsFrom',
   carryThroughLabel: 'Carry filesystem from task',
@@ -68,7 +69,7 @@ const filesystemModule = {
 
   // ── Feature flags ────────────────────────────────────────────────────────────
   supportsInteractionMode: false,
-  supportsIncorrectChecks: false,
+  supportsIncorrectChecks: true,
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: false,

@@ -1,7 +1,10 @@
-import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks } from '../modules/checks'
+import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks, normalizeFeedbackChecks } from '../modules/checks'
 import { flattenTasks } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
 import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
+import { normalizeFsCheck } from '../modules/filesystem/checks'
+import { normalizeHtmlCheck } from '../modules/html/checks'
+import { normalizeSequenceItem } from '../modules/scratch/checks'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 
@@ -17,6 +20,134 @@ function hasCircuitSelectorTarget(selector) {
 
 function hasCircuitEndpointTarget(endpoint) {
   return hasCircuitSelectorTarget(endpoint?.component ?? endpoint) && !!endpoint?.pin?.trim?.()
+}
+
+function hasValue(value) {
+  return value === 0 || value === false || String(value ?? '').trim() !== ''
+}
+
+function labelCheckKind(kind) {
+  return kind === 'feedback' ? 'feedback check' : 'check'
+}
+
+function collectFeedbackChecks(task) {
+  return normalizeFeedbackChecks(task)
+}
+
+function validateFeedbackBasics(task, n, errors, warnings) {
+  if (task.feedbackChecks == null && task.incorrectChecks == null) return []
+  const feedbackChecks = collectFeedbackChecks(task)
+  if (feedbackChecks.length === 0) return feedbackChecks
+  if (!task.check) errors.push(`Task ${n} has feedback checks but no completion check`)
+  if (feedbackChecks.some(check => (check.mode ?? 'blocking') === 'blocking' && !String(check.hint ?? '').trim())) {
+    warnings.push(`Task ${n} has a blocking feedback check with no hint`)
+  }
+  return feedbackChecks
+}
+
+function validateFilesystemChecks(checks, n, errors, kind = 'completion') {
+  const label = labelCheckKind(kind)
+  const normalized = normalizeChecks(checks).map(normalizeFsCheck)
+  if (normalized.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
+    errors.push(`Task ${n} has a filesystem ${label} but no path`)
+  }
+  if (normalized.some(c => c.type === 'fs_file_content' && !hasValue(c.value))) {
+    errors.push(`Task ${n} has a file-content ${label} but no expected value`)
+  }
+  if (normalized.some(c => c.type === 'fs_file_line_count' && !hasValue(c.value))) {
+    errors.push(`Task ${n} has a file line-count ${label} but no expected count`)
+  }
+  if (normalized.some(c => c.type === 'fs_file_location' && !c.dir?.trim())) {
+    errors.push(`Task ${n} has a file-location ${label} but no parent folder`)
+  }
+  if (normalized.some(c => c.type === 'fs_folder_count' && !hasValue(c.value))) {
+    errors.push(`Task ${n} has a folder-count ${label} but no expected count`)
+  }
+}
+
+function validateElectronicsChecks(checks, n, errors, kind = 'completion') {
+  const label = labelCheckKind(kind)
+  const normalized = normalizeChecks(checks)
+  if (normalized.some(c => c.type === 'circuit_has_component' && !hasCircuitSelectorTarget(c.component))) {
+    errors.push(`Task ${n} has a part-exists ${label} but no part type or label`)
+  }
+  if (normalized.some(c => (c.type === 'circuit_component_powered' || c.type === 'circuit_component_unpowered') && !hasCircuitSelectorTarget(c.component))) {
+    errors.push(`Task ${n} has a powered-part ${label} but no part type or label`)
+  }
+  if (normalized.some(c => c.type === 'circuit_control_affects_power' && (!hasCircuitSelectorTarget(c.control) || !hasCircuitSelectorTarget(c.component)))) {
+    errors.push(`Task ${n} has a control ${label} but no control or controlled part`)
+  }
+  if (normalized.some(c => (c.type === 'circuit_path_exists' || c.type === 'circuit_path_includes') && (!hasCircuitEndpointTarget(c.from) || !hasCircuitEndpointTarget(c.to)))) {
+    errors.push(`Task ${n} has a circuit connection ${label} but no source or destination part/pin`)
+  }
+  if (normalized.some(c => c.type === 'circuit_path_includes' && !hasCircuitSelectorTarget(c.includes))) {
+    errors.push(`Task ${n} has a circuit connection-includes ${label} but no required part`)
+  }
+}
+
+function validateScratchChecks(checks, n, errors, kind = 'completion') {
+  const label = labelCheckKind(kind)
+  for (const check of normalizeChecks(checks)) {
+    if ((check.type === 'block_used' || check.type === 'block_run' || check.type === 'block_count') && !check.opcode) {
+      errors.push(`Task ${n} has a Scratch ${label} but no block opcode`)
+    }
+    if (check.type === 'blocks_in_order') {
+      if (!Array.isArray(check.sequence) || check.sequence.length === 0) {
+        errors.push(`Task ${n} has a Scratch block-order ${label} but no block sequence`)
+      } else if (check.sequence.some(item => !normalizeSequenceItem(item).opcode)) {
+        errors.push(`Task ${n} has a Scratch block-order ${label} with an empty block opcode`)
+      }
+    }
+    if ((check.type === 'sprite_property' || check.type === 'sprite_property_delta') && (!check.property || !check.operator || !hasValue(check.value))) {
+      errors.push(`Task ${n} has a Scratch sprite-property ${label} with missing property, operator, or value`)
+    }
+    if (check.type === 'sprite_property_changed' && !check.property) {
+      errors.push(`Task ${n} has a Scratch sprite-changed ${label} but no property`)
+    }
+    if ((check.type === 'variable_equals' || check.type === 'variable_compare') && !(check.variableName ?? check.name)?.trim?.()) {
+      errors.push(`Task ${n} has a Scratch variable ${label} but no variable name`)
+    }
+    if ((check.type === 'variable_equals' || check.type === 'variable_compare') && !hasValue(check.value)) {
+      errors.push(`Task ${n} has a Scratch variable ${label} but no expected value`)
+    }
+    if (check.type === 'variable_compare' && !check.operator) {
+      errors.push(`Task ${n} has a Scratch variable ${label} but no operator`)
+    }
+    if (check.type === 'costume_is' && !hasValue(check.value)) {
+      errors.push(`Task ${n} has a Scratch costume ${label} but no costume name`)
+    }
+  }
+}
+
+function validateCodeChecks(checks, n, errors, { type, interactionMode, kind = 'completion' } = {}) {
+  const label = labelCheckKind(kind)
+  const normalized = normalizeChecks(checks).map(normalizeHtmlCheck)
+  if (interactionMode === 'submit' && normalized.some(check => !checkAllowedForSubmit(check))) {
+    errors.push(`Task ${n} uses submit mode but has a ${label} that requires running the code`)
+  }
+  if (normalized.some(check => check.type?.startsWith('html_element') && !check.selector?.trim())) {
+    errors.push(`Task ${n} has an element ${label} but no CSS selector`)
+  }
+  if (normalized.some(check => check.type === 'html_element_attribute' && !check.attribute?.trim())) {
+    errors.push(`Task ${n} has an element attribute ${label} but no attribute name`)
+  }
+  if (normalized.some(check => check.type === 'html_element_style_property' && !check.property?.trim())) {
+    errors.push(`Task ${n} has an element style ${label} but no CSS property`)
+  }
+  if (normalized.some(check => check.type?.startsWith('variable_') && !check.name?.trim())) {
+    errors.push(`Task ${n} has a variable ${label} but no variable name`)
+  }
+  if (normalized.some(check => check.type === 'variable_dict_key_value' && !check.key?.trim())) {
+    errors.push(`Task ${n} has a dictionary key-value ${label} but no key`)
+  }
+  if (normalized.some(check => check.type === 'variable_array_nth_item' && (check.index == null || check.index === '' || Number(check.index) < 0))) {
+    errors.push(`Task ${n} has an array N-th item ${label} but no valid index`)
+  }
+  const noValueTypes = ['code_no_error', 'output_not_empty', 'output_empty', 'html_element', 'variable_exists']
+  if (type === 'html') noValueTypes.push('html_element_attribute', 'html_element_style_property')
+  if (normalized.some(check => !noValueTypes.includes(check.type) && !hasValue(check.value))) {
+    errors.push(`Task ${n} has a ${label} enabled but no check value`)
+  }
 }
 
 export function copyScratchSpriteStateToStarters(sprites, spriteStates) {
@@ -71,6 +202,7 @@ export function validateLesson(lesson) {
   const flat = flattenTasks(tasks)
   flat.forEach((task, i) => {
     const n = i + 1
+    const feedbackChecks = validateFeedbackBasics(task, n, errors, warnings)
     if (!task.title) errors.push(`Task ${n} is missing a title`)
     if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
       errors.push(`Task ${n} estimated time must be a positive whole number of minutes`)
@@ -108,21 +240,8 @@ export function validateLesson(lesson) {
           if (!stage.fs || typeof stage.fs !== 'object') errors.push(`Task ${n} stage ${si + 1} has no filesystem state`)
         })
       }
-      if (task.check) {
-        const checks = normalizeChecks(task.check)
-        if (checks.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
-          errors.push(`Task ${n} has a filesystem check but no path`)
-        }
-        if (checks.some(c => c.type === 'fs_content_contains' && !c.value?.trim())) {
-          errors.push(`Task ${n} has a file content check but no expected value`)
-        }
-        if (checks.some(c => c.type === 'fs_content_equals' && !c.value?.trim())) {
-          errors.push(`Task ${n} has a file equals check but no expected value`)
-        }
-        if (checks.some(c => c.type === 'fs_file_in_dir' && !c.dir?.trim())) {
-          errors.push(`Task ${n} has a file-in-dir check but no parent folder`)
-        }
-      }
+      if (task.check) validateFilesystemChecks(task.check, n, errors)
+      if (feedbackChecks.length > 0) validateFilesystemChecks(feedbackChecks, n, errors, 'feedback')
       const carryFsFrom = task.carryFsFrom ?? null
       if (carryFsFrom != null && !flat.some(t => t.id === carryFsFrom)) {
         errors.push(`Task ${n} references task ${carryFsFrom} for carry-through but that task does not exist`)
@@ -135,24 +254,8 @@ export function validateLesson(lesson) {
       if (carryCircuitFrom != null && !flat.some(t => t.id === carryCircuitFrom)) {
         errors.push(`Task ${n} references task ${carryCircuitFrom} for circuit carry-through but that task does not exist`)
       }
-      if (task.check) {
-        const checks = normalizeChecks(task.check)
-        if (checks.some(c => c.type === 'circuit_has_component' && !hasCircuitSelectorTarget(c.component))) {
-          errors.push(`Task ${n} has a part-exists check but no part type or label`)
-        }
-        if (checks.some(c => (c.type === 'circuit_component_powered' || c.type === 'circuit_component_unpowered') && !hasCircuitSelectorTarget(c.component))) {
-          errors.push(`Task ${n} has a powered-part check but no part type or label`)
-        }
-        if (checks.some(c => c.type === 'circuit_control_affects_power' && (!hasCircuitSelectorTarget(c.control) || !hasCircuitSelectorTarget(c.component)))) {
-          errors.push(`Task ${n} has a control check but no control or controlled part`)
-        }
-        if (checks.some(c => (c.type === 'circuit_path_exists' || c.type === 'circuit_path_includes') && (!hasCircuitEndpointTarget(c.from) || !hasCircuitEndpointTarget(c.to)))) {
-          errors.push(`Task ${n} has a circuit path check but no source or destination part/pin`)
-        }
-        if (checks.some(c => c.type === 'circuit_path_includes' && !hasCircuitSelectorTarget(c.includes))) {
-          errors.push(`Task ${n} has a circuit path-includes check but no required part`)
-        }
-      }
+      if (task.check) validateElectronicsChecks(task.check, n, errors)
+      if (feedbackChecks.length > 0) validateElectronicsChecks(feedbackChecks, n, errors, 'feedback')
     } else if (task.taskType !== 'information' && type === 'html') {
       if (!task.starterFiles || task.starterFiles.length === 0) errors.push(`Task ${n} has no files`)
       else {
@@ -174,40 +277,11 @@ export function validateLesson(lesson) {
             errors.push(`Task ${n} has invalid toolbox XML`)
           }
         }
-        if (task.check?.type === 'sprite_property') {
-          if (!task.check.property) errors.push(`Task ${n} sprite check is missing a property`)
-          if (!task.check.operator) errors.push(`Task ${n} sprite check is missing an operator`)
-          if (task.check.value == null || task.check.value === '') errors.push(`Task ${n} sprite check is missing a value`)
-        }
-        if (task.check?.type === 'block_used' && !task.check.opcode) {
-          errors.push(`Task ${n} block-used check is missing a block opcode`)
-        }
-      } else if (task.check && type !== 'filesystem') {
-        const checks = normalizeChecks(task.check)
-        if (task.interactionMode === 'submit' && checks.some(check => !checkAllowedForSubmit(check))) {
-          errors.push(`Task ${n} uses submit mode but has a check that requires running the code`)
-        }
-        if (checks.some(check => check.type?.startsWith('element_') && !check.selector?.trim())) {
-          errors.push(`Task ${n} has an element check but no CSS selector`)
-        }
-        if (checks.some(check => check.type === 'element_attribute' && !check.attribute?.trim())) {
-          errors.push(`Task ${n} has an element attribute check but no attribute name`)
-        }
-        if (checks.some(check => check.type === 'element_style_property' && !check.property?.trim())) {
-          errors.push(`Task ${n} has an element style check but no CSS property`)
-        }
-        if (checks.some(check => check.type?.startsWith('variable_') && !check.name?.trim())) {
-          errors.push(`Task ${n} has a variable check but no variable name`)
-        }
-        if (checks.some(check => check.type === 'variable_dict_key_value' && !check.key?.trim())) {
-          errors.push(`Task ${n} has a dictionary key-value check but no key`)
-        }
-        if (checks.some(check => check.type === 'variable_array_nth_item' && (check.index == null || check.index === '' || Number(check.index) < 0))) {
-          errors.push(`Task ${n} has an array N-th item check but no valid index`)
-        }
-        if (checks.some(check => !['code_no_error', 'output_not_empty', 'output_empty', 'element_exists', 'element_attribute', 'element_style_property', 'variable_exists'].includes(check.type) && !check.value && check.value !== 0)) {
-          errors.push(`Task ${n} has a check enabled but no check value`)
-        }
+        if (task.check) validateScratchChecks(task.check, n, errors)
+        if (feedbackChecks.length > 0) validateScratchChecks(feedbackChecks, n, errors, 'feedback')
+      } else if (type !== 'filesystem' && type !== 'electronics') {
+        if (task.check) validateCodeChecks(task.check, n, errors, { type, interactionMode: task.interactionMode })
+        if (feedbackChecks.length > 0) validateCodeChecks(feedbackChecks, n, errors, { type, interactionMode: task.interactionMode, kind: 'feedback' })
       }
     }
 
@@ -370,6 +444,9 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
     if (exported.carryCircuitFrom != null) exported.carryCircuitFrom = idMap[exported.carryCircuitFrom] ?? exported.carryCircuitFrom
     if (Array.isArray(exported.check)) exported.check = exported.check.map(normalizeCheckForExport)
     else if (exported.check) exported.check = normalizeCheckForExport(exported.check)
+    if (Array.isArray(exported.feedbackChecks)) exported.feedbackChecks = exported.feedbackChecks.map(normalizeCheckForExport)
+    else if (exported.feedbackChecks) exported.feedbackChecks = normalizeCheckForExport(exported.feedbackChecks)
+    delete exported.incorrectChecks
     if (Array.isArray(exported.options)) {
       exported.options = exported.options.map(option => {
         const next = { ...option }

@@ -145,7 +145,8 @@ For full quiz detail and all answer check types see `docs/authoring/quiz-tasks.m
 
 ```yaml
 check:
-  type: output_contains
+  type: output
+  operator: contains
   value: Hello
   hint: Check that your print statement says `Hello`.   # optional
 ```
@@ -154,29 +155,37 @@ check:
 
 ```yaml
 checks:                       # plural — converter maps to check:
-  - type: code_contains
+  - type: code
+    operator: contains
     value: for
   - type: output_line_count
+    operator: equals
     value: 5
 ```
 
-### Incorrect pattern hints
+### Feedback checks
 
 ```yaml
 check:
-  type: output_contains
+  type: output
+  operator: contains
   value: Hello Headstart
-incorrectChecks:
-  - type: output_contains
+feedbackChecks:
+  - type: output
+    operator: contains
     value: Hello World
+    mode: blocking
+    show: after_attempt
     hint: Change `Hello World` to `Hello Headstart`.
 ```
+
+`feedbackChecks` are supported by Python, HTML, Filesystem, Electronics, and Scratch tasks and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
 
 **Wildcards:** `*` matches any sequence (including newlines) in `value` for containment/equality checks.
 
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
 
-**Case sensitivity:** Regex checks are case-sensitive. All other string comparisons are case-insensitive.
+**Case sensitivity:** Regex checks use JavaScript `RegExp`; add `flags: i` for case-insensitive regex. All other string comparisons are case-insensitive.
 
 ---
 
@@ -193,12 +202,14 @@ tasks:
         explainer: Use `range()` to repeat exactly N times.
         check:
           type: output_line_count
+          operator: equals
           value: 5
 
       - title: Loop variable
         explainer: Use the loop variable inside the loop body.
         check:
-          type: code_contains
+          type: code
+          operator: contains
           value: "print(i)"
 ```
 
@@ -423,9 +434,11 @@ tasks:
       for i in range(5):
           print(i)
     checks:
-      - type: code_contains
+      - type: code
+        operator: contains
         value: for
       - type: output_line_count
+        operator: equals
         value: 5
 
   - group: Challenge
@@ -433,6 +446,7 @@ tasks:
       - title: Sum a range
         explainer: Add up all numbers from 0 to 9 and print the total.
         check:
-          type: output_contains
+          type: output
+          operator: contains
           value: "45"
 ```

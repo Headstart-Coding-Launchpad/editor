@@ -29,12 +29,21 @@ describe('useCheckFeedback', () => {
   })
 
   describe('applyCheckFeedback', () => {
-    it('sets passed=true, clears suggestion', () => {
+    it('sets passed=true without a suggestion by default', () => {
       const { result } = renderHook(() => useCheckFeedback())
       act(() => { result.current.applyCheckFeedback(true) })
       expect(result.current.checkPassed).toBe(true)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('')
+      expect(result.current.repeatedSuggestionCount).toBe(0)
+    })
+
+    it('keeps a passing suggestion for non-blocking nudges', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      act(() => { result.current.applyCheckFeedback(true, 'Nice improvement: try a clearer name.') })
+      expect(result.current.checkPassed).toBe(true)
+      expect(result.current.checkAttempted).toBe(true)
+      expect(result.current.checkSuggestion).toBe('Nice improvement: try a clearer name.')
       expect(result.current.repeatedSuggestionCount).toBe(0)
     })
 
@@ -82,11 +91,11 @@ describe('useCheckFeedback', () => {
       expect(returned).toBe('tip')
     })
 
-    it('returns empty string when passing', () => {
+    it('returns the normalised suggestion when passing', () => {
       const { result } = renderHook(() => useCheckFeedback())
       let returned
-      act(() => { returned = result.current.applyCheckFeedback(true, 'ignored') })
-      expect(returned).toBe('')
+      act(() => { returned = result.current.applyCheckFeedback(true, '  keep nudging  ') })
+      expect(returned).toBe('keep nudging')
     })
   })
 

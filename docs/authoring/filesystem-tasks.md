@@ -1,6 +1,6 @@
 # Filesystem Code Task Fields
 
-Field reference for `filesystem`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For check types see `docs/authoring/checks.md`.
+Field reference for `filesystem`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For Filesystem check types see `docs/authoring/filesystem.md`.
 
 The `filesystem` type presents a virtual Windows Explorer-style file manager. Checks evaluate automatically — there is no Run button.
 
@@ -47,6 +47,8 @@ tasks:
       "/":
         type: dir
     check:
-      type: fs_dir_exists
+      type: fs_path
+      operator: exists
+      itemType: dir
       path: /Documents/
 ```

@@ -12,6 +12,7 @@ export default function TaskOptionsSection({
 }) {
   const lessonMod = getLessonModule(lesson.type)
   const CheckEditor = lessonMod?.CheckEditor ?? null
+  const FeedbackCheckEditor = lessonMod?.FeedbackCheckEditor ?? null
   const [optionsOpen, setOptionsOpen] = useState(false)
 
   function set(field, value) {
@@ -107,23 +108,42 @@ export default function TaskOptionsSection({
           </Field>
 
           {task.check && lessonMod?.supportsIncorrectChecks && (
-            <Field label="Incorrect checks">
+            <Field label="Feedback checks">
               <p className="te-option-note">
-                When the completion check fails, these detect specific mistakes and show a targeted hint in the feedback banner. Each check passes when it detects a particular wrong pattern.
+                Detect wrong patterns after an attempt or once the student pauses. Blocking feedback fails the task when it matches; nudges can guide without blocking.
               </p>
-              <CheckListEditor
-                checks={normalizeChecks(task.incorrectChecks ?? [])}
-                onChange={checks => set('incorrectChecks', checks.length > 0 ? checks : null)}
-                interactionMode={task.interactionMode ?? 'run'}
-                allowCodeNoError={false}
-                allowVariableChecks={lessonMod?.supportsVariableChecks && task.interactionMode !== 'submit'}
-                allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
-                lessonType={lesson.type}
-                output={output}
-                code={lessonMod?.supportsTests
-                  ? activePythonCode
-                  : (activeFiles ?? []).map(file => `--- ${file.name} ---\n${file.content ?? ''}`).join('\n\n')}
-              />
+              {FeedbackCheckEditor ? (
+                <FeedbackCheckEditor
+                  task={task}
+                  lesson={lesson}
+                  checks={normalizeChecks(task.feedbackChecks ?? task.incorrectChecks ?? [])}
+                  onChange={checks => onUpdate({
+                    ...task,
+                    feedbackChecks: checks?.length > 0 ? checks : null,
+                    incorrectChecks: undefined,
+                  })}
+                  feedbackEditor
+                />
+              ) : (
+                <CheckListEditor
+                  checks={normalizeChecks(task.feedbackChecks ?? task.incorrectChecks ?? [])}
+                  onChange={checks => onUpdate({
+                    ...task,
+                    feedbackChecks: checks.length > 0 ? checks : null,
+                    incorrectChecks: undefined,
+                  })}
+                  interactionMode={task.interactionMode ?? 'run'}
+                  allowCodeNoError={false}
+                  allowVariableChecks={lessonMod?.supportsVariableChecks && task.interactionMode !== 'submit'}
+                  allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
+                  lessonType={lesson.type}
+                  feedbackEditor
+                  output={output}
+                  code={lessonMod?.supportsTests
+                    ? activePythonCode
+                    : (activeFiles ?? []).map(file => `--- ${file.name} ---\n${file.content ?? ''}`).join('\n\n')}
+                />
+              )}
             </Field>
           )}
 

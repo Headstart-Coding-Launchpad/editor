@@ -44,9 +44,10 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
-| `incorrectChecks` | No | object or array | Detect specific wrong patterns. Each must have a non-empty `hint`. |
+| `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
+| `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
 | `reviewNote` | No | object | Builder review metadata: `{ decision, suggestedChange, extraNote }`. Not used by the student view. |
-| `_checkTested` | No | boolean | Builder-only validation flag. |
+| `_checkTested` | No | boolean | Builder-only validation flag set when an author has run/tested the completion checks in the builder. It is not read by the student experience. |
 
 ---
 
@@ -182,8 +183,9 @@ Two separate validators exist and they do not enforce the same rules. `cli lesso
 
 - `carryCodeFrom` / `carryBlocksFrom` must reference an existing task ID.
 - Submit mode cannot use run-required checks.
-- DOM checks (`element_*`) need a CSS `selector`; `element_attribute` needs an `attribute` name; `element_style_property` needs a `property` name.
+- DOM checks (`html_element_*`, legacy `element_*`) need a CSS `selector`; attribute checks need an `attribute` name; style-property checks need a `property` name.
 - Variable checks (`variable_*`) need a `name`; `variable_dict_key_value` needs a `key`; `variable_array_nth_item` needs a valid `index`.
 - Checks requiring a value must provide one (exceptions: `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`).
+- Feedback checks are validated against the same field rules as completion checks; blocking feedback without a `hint` is a builder warning.
 - Scratch toolbox XML must parse if provided.
 - Scratch checks have their own required fields — see `docs/authoring/scratch.md`.
