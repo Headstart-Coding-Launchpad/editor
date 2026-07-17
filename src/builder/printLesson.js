@@ -45,6 +45,172 @@ function mdToHtml(text) {
   catch { return esc(text) }
 }
 
+const COMPONENT_LABELS = {
+  battery: 'Battery',
+  resistor: 'Resistor',
+  led: 'LED',
+  push_button: 'Button',
+  slide_switch: 'Switch',
+  potentiometer: 'Potentiometer',
+  motor: 'Motor',
+  servo_motor: 'Servo',
+  buzzer: 'Buzzer',
+  rgb_led: 'RGB LED',
+  microcontroller: 'Micro Controller',
+  transistor: 'Transistor',
+  diode: 'Diode',
+  sensor: 'Sensor',
+  terminal: 'Junction',
+}
+
+function parseObjectLike(value, fallback = {}) {
+  if (value && typeof value === 'object') return value
+  if (typeof value !== 'string' || !value.trim()) return fallback
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function sortByPath(a, b) {
+  const aPath = a[0]
+  const bPath = b[0]
+  const aParts = aPath.split('/').filter(Boolean)
+  const bParts = bPath.split('/').filter(Boolean)
+  const length = Math.min(aParts.length, bParts.length)
+  for (let i = 0; i < length; i += 1) {
+    const cmp = aParts[i].localeCompare(bParts[i])
+    if (cmp !== 0) return cmp
+  }
+  return aParts.length - bParts.length || aPath.localeCompare(bPath)
+}
+
+function snippet(value, max = 140) {
+  if (value == null || value === '') return ''
+  const text = String(value).replace(/\s+/g, ' ').trim()
+  return text.length > max ? `${text.slice(0, max - 3)}...` : text
+}
+
+function formatSummary(value) {
+  if (value == null || value === '') return ''
+  if (Array.isArray(value)) return value.map(item => formatSummary(item)).filter(Boolean).join(', ')
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => `${key}: ${formatSummary(val)}`)
+      .filter(Boolean)
+      .join('; ')
+  }
+  return String(value)
+}
+
+function renderFilesystemField(label, fsValue) {
+  if (fsValue == null) return ''
+  const fs = parseObjectLike(fsValue)
+  const entries = Object.entries(fs)
+    .filter(([, entry]) => entry && typeof entry === 'object')
+    .sort(sortByPath)
+
+  if (!entries.length) {
+    return `<div class="field"><div class="field-label">${esc(label)}</div><div class="field-value">No files or folders.</div></div>`
+  }
+
+  const rows = entries.map(([path, entry]) => {
+    const type = entry.type === 'dir' ? 'Folder' : 'File'
+    const detail = entry.type === 'dir'
+      ? ''
+      : snippet(entry.content ?? entry.src ?? formatSummary(Object.fromEntries(Object.entries(entry).filter(([key]) => key !== 'type'))))
+    const depth = Math.max(0, path.split('/').filter(Boolean).length - 1)
+    const detailHtml = detail ? esc(detail) : `<span class="muted">${entry.type === 'dir' ? 'Folder' : 'Empty'}</span>`
+    return `<tr><td class="path-cell" style="padding-left:${8 + depth * 14}px"><code>${esc(path)}</code></td><td>${type}</td><td class="snippet-cell">${detailHtml}</td></tr>`
+  }).join('')
+
+  return `<div class="field"><div class="field-label">${esc(label)}</div><table class="data-table fs-table"><tr><th>Path</th><th>Type</th><th>Content snippet</th></tr>${rows}</table></div>`
+}
+
+function componentTypeLabel(type) {
+  return COMPONENT_LABELS[type] ?? String(type ?? '')
+}
+
+function renderAvailableParts(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) return ''
+  const rows = [...parts]
+    .sort((a, b) => String(a).localeCompare(String(b)))
+    .map(type => `<tr><td><code>${esc(type)}</code></td><td>${esc(componentTypeLabel(type))}</td></tr>`)
+    .join('')
+  return `<div class="field"><div class="field-label">Available Parts</div><table class="data-table parts-table"><tr><th>Type</th><th>Label</th></tr>${rows}</table></div>`
+}
+
+function renderComponentTable(components) {
+  if (!Array.isArray(components) || components.length === 0) {
+    return `<div class="field-value muted">No components.</div>`
+  }
+  const rows = [...components]
+    .sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))
+    .map(component => {
+      const position = component.position
+        ? `row ${component.position.row ?? ''}, col ${component.position.col ?? ''}`
+        : ''
+      const props = component.props && typeof component.props === 'object'
+        ? Object.fromEntries(Object.entries(component.props).filter(([key]) => key !== 'code' && key !== 'starterCode'))
+        : component.props
+      return `<tr><td><code>${esc(component.id ?? '')}</code></td><td>${esc(componentTypeLabel(component.type))}</td><td>${esc(component.label ?? '')}</td><td>${esc((component.pins ?? []).join(', '))}</td><td>${esc(position)}</td><td>${esc(formatSummary(props))}</td></tr>`
+    })
+    .join('')
+  return `<table class="data-table circuit-table"><tr><th>ID</th><th>Type</th><th>Label</th><th>Pins</th><th>Position</th><th>Properties</th></tr>${rows}</table>`
+}
+
+function renderWireTable(wires) {
+  if (!Array.isArray(wires) || wires.length === 0) {
+    return `<div class="field-value muted">No wires.</div>`
+  }
+  const rows = [...wires]
+    .sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))
+    .map(wire => `<tr><td><code>${esc(wire.id ?? '')}</code></td><td><code>${esc(wire.from ?? '')}</code></td><td><code>${esc(wire.to ?? '')}</code></td><td>${esc(wire.color ?? '')}</td></tr>`)
+    .join('')
+  return `<table class="data-table circuit-table"><tr><th>ID</th><th>From</th><th>To</th><th>Colour</th></tr>${rows}</table>`
+}
+
+function renderMicroPythonBlocks(label, circuit) {
+  const blocks = []
+  const components = Array.isArray(circuit.components) ? circuit.components : []
+  for (const component of components.filter(item => item?.type === 'microcontroller').sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))) {
+    const code = component.props?.code ?? component.props?.starterCode
+    if (code) {
+      blocks.push(`<div class="file-block"><div class="file-name">${esc(label)} - ${esc(component.id ?? 'microcontroller')}</div><pre class="code-block">${esc(code)}</pre></div>`)
+    }
+  }
+  const legacyCode = circuit.microcontroller?.starterCode ?? circuit.microcontroller?.code
+  if (legacyCode) {
+    blocks.push(`<div class="file-block"><div class="file-name">${esc(label)} - microcontroller</div><pre class="code-block">${esc(legacyCode)}</pre></div>`)
+  }
+  return blocks.join('')
+}
+
+function renderCircuitField(label, circuitValue) {
+  if (circuitValue == null) return ''
+  const circuit = parseObjectLike(circuitValue, { components: [], wires: [] })
+  const board = circuit.board && typeof circuit.board === 'object' ? circuit.board : {}
+  const boardSummary = [
+    board.type,
+    board.rows && board.cols ? `${board.rows} rows x ${board.cols} cols` : '',
+  ].filter(Boolean).join(', ')
+  const microPython = renderMicroPythonBlocks(label, circuit)
+
+  return [
+    `<div class="field circuit-field"><div class="field-label">${esc(label)}</div>`,
+    boardSummary ? `<div class="field-value circuit-board">Board: ${esc(boardSummary)}</div>` : '',
+    `<div class="subfield-label">Components</div>`,
+    renderComponentTable(circuit.components),
+    `<div class="subfield-label">Wires</div>`,
+    renderWireTable(circuit.wires),
+    microPython ? `<div class="subfield-label">MicroPython Code</div>${microPython}` : '',
+    `</div>`,
+  ].join('')
+}
+
 function renderCheckHtml(check) {
   if (!check) return '<em>None</em>'
   const checks = Array.isArray(check) ? check : [check]
@@ -223,6 +389,43 @@ export function buildPrintHtml(lesson) {
           parts.push(`</div>`)
         }
       }
+
+      if (lesson.type === 'filesystem') {
+        if (task.carryFsFrom != null) {
+          parts.push(`<div class="field"><div class="field-label">Carry Filesystem From</div><div class="field-value">Task ${esc(String(task.carryFsFrom))}</div></div>`)
+        }
+        parts.push(renderFilesystemField('Starter Filesystem', task.starterFs))
+        parts.push(renderFilesystemField('Complete Filesystem', task.completeFs))
+        if (task.codeStages?.length) {
+          parts.push(`<div class="field"><div class="field-label">Filesystem Stages (${task.codeStages.length})</div>`)
+          for (const stage of task.codeStages) {
+            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>${renderFilesystemField('Stage Filesystem', stage.fs ?? {})}</div>`)
+          }
+          parts.push(`</div>`)
+        }
+      }
+
+      if (lesson.type === 'electronics') {
+        if (task.carryCircuitFrom != null) {
+          parts.push(`<div class="field"><div class="field-label">Carry Circuit From</div><div class="field-value">Task ${esc(String(task.carryCircuitFrom))}</div></div>`)
+        }
+        parts.push(renderAvailableParts(task.availableComponents))
+        if (task.microcontroller?.enabled || task.microcontroller?.boardType || task.microcontroller?.starterCode) {
+          parts.push(`<div class="field"><div class="field-label">Microcontroller</div><div class="field-value">${esc(task.microcontroller.boardType || 'Enabled')}</div></div>`)
+          if (task.microcontroller.starterCode) {
+            parts.push(`<div class="field"><div class="field-label">MicroPython Starter Code</div><pre class="code-block">${esc(task.microcontroller.starterCode)}</pre></div>`)
+          }
+        }
+        parts.push(renderCircuitField('Starter Circuit', task.starterCircuit))
+        parts.push(renderCircuitField('Complete Circuit', task.completeCircuit))
+        if (task.codeStages?.length) {
+          parts.push(`<div class="field"><div class="field-label">Circuit Stages (${task.codeStages.length})</div>`)
+          for (const stage of task.codeStages) {
+            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>${renderCircuitField('Stage Circuit', stage.circuit ?? {})}</div>`)
+          }
+          parts.push(`</div>`)
+        }
+      }
     }
 
     const hints = (task.hints || []).filter(Boolean)
@@ -240,7 +443,13 @@ export function buildPrintHtml(lesson) {
     return parts.join('')
   }
 
-  const typeLabel = { python: 'Python', html: 'Web (HTML/CSS/JS)', scratch: 'Scratch' }[lesson.type] || lesson.type
+  const typeLabel = {
+    python: 'Python',
+    html: 'Web (HTML/CSS/JS)',
+    scratch: 'Scratch',
+    filesystem: 'Filesystem',
+    electronics: 'Electronics',
+  }[lesson.type] || lesson.type
   let taskNumber = 1
   const taskSections = []
 
@@ -304,6 +513,11 @@ h1 { font-size: 1.5em; margin-bottom: 6px; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.86em; margin-top: 4px; }
 .data-table th { text-align: left; background: #f3e8ff; color: #6200ea; padding: 5px 8px; border: 1px solid #d8b4fe; }
 .data-table td { padding: 4px 8px; border: 1px solid #e5e7eb; vertical-align: top; word-break: break-word; }
+.muted { color: #6b7280; }
+.path-cell code, .circuit-table code, .parts-table code { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.9em; }
+.snippet-cell { white-space: normal; }
+.subfield-label { font-size: 0.75em; font-weight: 700; color: #374151; margin-top: 7px; margin-bottom: 2px; }
+.circuit-board { margin-bottom: 4px; }
 ol { margin-left: 20px; font-size: 0.88em; line-height: 1.8; }
 @media print {
   body { padding: 0; font-size: 10pt; }

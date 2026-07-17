@@ -23,11 +23,23 @@ export async function fetchLessonList() {
   return items
 }
 
+// Publishes a full lesson document. Callers should validate the lesson before
+// invoking this helper so all direct lesson writes share encoding behaviour.
+export async function publishLesson(lesson) {
+  if (!lesson?.id) throw new Error('Lesson id is required')
+  await setDoc(doc(firestore, 'lessons', lesson.id), encodeLessonBlocksForFirestore(lesson))
+}
+
 // Permanently persists an edited task list to a published lesson (admin-only,
 // enforced by Firestore rules). Only the tasks field is touched.
 export async function publishLessonTasks(lessonId, tasks) {
   const { tasks: encodedTasks } = encodeLessonBlocksForFirestore({ tasks })
   await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
+}
+
+export async function deletePublishedLesson(lessonId) {
+  if (!lessonId) throw new Error('Lesson id is required')
+  await deleteDoc(doc(firestore, 'lessons', lessonId))
 }
 
 // Returns the lesson with its tasks swapped for a live session override, if

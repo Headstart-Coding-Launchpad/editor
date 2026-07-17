@@ -370,22 +370,32 @@ describe('filterTasksByMode', () => {
 describe('deriveTaskContext', () => {
   it('identifies python lessons', () => {
     const ctx = deriveTaskContext({ type: 'python' }, {})
-    expect(ctx).toMatchObject({ isPython: true, isScratch: false, isFilesystem: false, isHtml: false })
+    expect(ctx).toMatchObject({ isPython: true, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: false })
   })
 
   it('identifies scratch lessons', () => {
     const ctx = deriveTaskContext({ type: 'scratch' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: true, isFilesystem: false, isHtml: false })
+    expect(ctx).toMatchObject({ isPython: false, isScratch: true, isFilesystem: false, isElectronics: false, isHtml: false })
   })
 
   it('identifies filesystem lessons', () => {
     const ctx = deriveTaskContext({ type: 'filesystem' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: true, isHtml: false })
+    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: true, isElectronics: false, isHtml: false })
   })
 
-  it('treats html (and unknown) lesson types as isHtml', () => {
+  it('identifies electronics lessons without treating them as html', () => {
+    const ctx = deriveTaskContext({ type: 'electronics' }, {})
+    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: true, isHtml: false })
+  })
+
+  it('identifies html lessons explicitly', () => {
     const ctx = deriveTaskContext({ type: 'html' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isHtml: true })
+    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: true })
+  })
+
+  it('does not treat unknown lesson types as html', () => {
+    const ctx = deriveTaskContext({ type: 'mystery' }, {})
+    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: false })
   })
 
   it('identifies quiz task type', () => {
@@ -405,7 +415,7 @@ describe('deriveTaskContext', () => {
 
   it('handles null lesson and task gracefully', () => {
     const ctx = deriveTaskContext(null, null)
-    expect(ctx).toEqual({ isPython: false, isScratch: false, isFilesystem: false, isHtml: true, isQuiz: false, isInformation: false, isSessionSandbox: false })
+    expect(ctx).toEqual({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: false, isQuiz: false, isInformation: false, isSessionSandbox: false })
   })
 })
 
@@ -414,25 +424,36 @@ describe('deriveTaskContext', () => {
 describe('buildStageOptions', () => {
   it('returns [starter] when task has no stages and no complete', () => {
     const opts = buildStageOptions({ codeStages: [] }, 'python')
-    expect(opts).toEqual([{ value: 'starter', label: 'Starter code' }])
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
   })
 
-  it('uses scratch labels for scratch lessons', () => {
+  it('uses local stage metadata labels for scratch lessons', () => {
     const opts = buildStageOptions({ completeBlocks: 'x' }, 'scratch')
-    expect(opts[0].label).toBe('Starter blocks')
-    expect(opts[opts.length - 1].label).toBe('Complete blocks')
+    expect(opts[0].label).toBe('Starter')
+    expect(opts[opts.length - 1].label).toBe('Complete')
   })
 
-  it('uses filesystem labels for filesystem lessons', () => {
+  it('uses local stage metadata labels for filesystem lessons', () => {
     const opts = buildStageOptions({ completeFs: {} }, 'filesystem')
-    expect(opts[0].label).toBe('Starter folders')
-    expect(opts[opts.length - 1].label).toBe('Complete folders')
+    expect(opts[0].label).toBe('Starter')
+    expect(opts[opts.length - 1].label).toBe('Complete')
   })
 
-  it('uses code labels for python lessons', () => {
+  it('uses local stage metadata labels for python lessons', () => {
     const opts = buildStageOptions({ completeCode: 'x' }, 'python')
-    expect(opts[0].label).toBe('Starter code')
-    expect(opts[opts.length - 1].label).toBe('Complete code')
+    expect(opts[0].label).toBe('Starter')
+    expect(opts[opts.length - 1].label).toBe('Complete')
+  })
+
+  it('uses local stage metadata labels and completeCircuit for electronics lessons', () => {
+    const task = { completeCircuit: { components: [], wires: [] }, codeStages: [{ label: 'Wire LED' }, {}] }
+    const opts = buildStageOptions(task, 'electronics')
+    expect(opts).toEqual([
+      { value: 'starter', label: 'Starter board' },
+      { value: 'stage_0', label: 'Wire LED' },
+      { value: 'stage_1', label: 'Stage 2' },
+      { value: 'complete', label: 'Complete board' },
+    ])
   })
 
   it('includes intermediate stages with custom labels', () => {
@@ -455,17 +476,22 @@ describe('buildStageOptions', () => {
   it('appends complete option when html task has completeFiles', () => {
     const task = { completeFiles: [{ name: 'index.html', content: '' }] }
     const opts = buildStageOptions(task, 'html')
-    expect(opts[opts.length - 1]).toEqual({ value: 'complete', label: 'Complete code' })
+    expect(opts[opts.length - 1]).toEqual({ value: 'complete', label: 'Complete' })
   })
 
   it('returns only [starter] for quiz tasks regardless of other fields', () => {
     const task = { taskType: 'quiz', completeCode: 'x', codeStages: [{}] }
     const opts = buildStageOptions(task, 'python')
-    expect(opts).toEqual([{ value: 'starter', label: 'Starter code' }])
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
   })
 
   it('handles null task gracefully', () => {
     const opts = buildStageOptions(null, 'python')
-    expect(opts).toEqual([{ value: 'starter', label: 'Starter code' }])
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
+  })
+
+  it('does not treat unknown lesson types as html when checking complete content', () => {
+    const opts = buildStageOptions({ completeFiles: [{ name: 'index.html', content: '' }] }, 'mystery')
+    expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
   })
 })

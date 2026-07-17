@@ -14,6 +14,7 @@ import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { getLessonModule } from '../../modules/registry'
+import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
 
 /**
  * Owns all student editor/code workspace state: code, files, output, checks, personal sandbox,
@@ -21,13 +22,6 @@ import { getLessonModule } from '../../modules/registry'
  *
  * Receives currentTaskId, viewingTaskId, phase, and session write callbacks from the caller.
  */
-function collapseForDisplay(str, maxLines) {
-  const lines = str.split('\n')
-  if (lines.length <= maxLines) return str
-  const hidden = lines.length - maxLines
-  return `[${hidden} earlier lines hidden]\n` + lines.slice(-maxLines).join('\n')
-}
-
 export function useStudentCodeState({
   lessonId,
   lesson,
@@ -80,14 +74,11 @@ export function useStudentCodeState({
   const writeAnswerDebounceRef = useRef(null)
   const lastOutputWriteRef     = useRef(0)
   const lastRuntimeCodeWriteRef = useRef(0)
-  const outputCapReachedRef    = useRef(false)
   const outputRafIdRef         = useRef(null)
   const runtimeCodeRafIdRef    = useRef(null)
   const pendingRuntimeCodeRef  = useRef(null)
   const idleFeedbackTimerRef   = useRef(null)
 
-  const MAX_STREAMED_OUTPUT = 20_000
-  const MAX_DISPLAY_LINES   = 100
   const IDLE_FEEDBACK_DELAY_MS = 900
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
@@ -723,30 +714,26 @@ export function useStudentCodeState({
 
     if (lesson.type === 'python' || lesson.type === 'electronics') {
       lastOutputWriteRef.current = 0
-      outputCapReachedRef.current = false
       if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
-      let accumulated = ''
+      let outputBuffer = createStudentOutputBuffer()
       const echoOutput = (text) => {
-        if (outputCapReachedRef.current) return
-        accumulated += text
-        if (accumulated.length > MAX_STREAMED_OUTPUT) {
-          accumulated = accumulated.slice(0, MAX_STREAMED_OUTPUT) + '\n[Output truncated — stop the program to continue]'
-          outputCapReachedRef.current = true
-        }
+        const nextOutputBuffer = appendStudentOutput(outputBuffer, text)
+        if (nextOutputBuffer === outputBuffer) return
+        outputBuffer = nextOutputBuffer
         // Throttle React re-renders to one per animation frame (~60fps max).
-        // accumulated is a closure var so the RAF always reads the latest value.
+        // outputBuffer is a closure var so the RAF always reads the latest value.
         if (outputRafIdRef.current === null) {
           outputRafIdRef.current = requestAnimationFrame(() => {
             outputRafIdRef.current = null
-            setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
+            setOutput(outputBuffer.display)
           })
         }
         // Debounce Firebase writes independently at 200ms
         const now = Date.now()
         if (now - lastOutputWriteRef.current >= 200) {
           lastOutputWriteRef.current = now
-          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: accumulated }))
-          if (isWatched) writeStudentOutput(actor.anonymousId, accumulated)
+          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
+          if (isWatched) writeStudentOutput(actor.anonymousId, outputBuffer.raw)
         }
       }
       let latestRuntimeCode = code
@@ -789,19 +776,19 @@ export function useStudentCodeState({
 
       if (result.status === 'stopped') {
         flushRuntimeCodeUpdate()
-        setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
-        if (lesson.type === 'electronics') persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: latestRuntimeCode, output: accumulated })
-        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ code: latestRuntimeCode, output: accumulated }))
+        setOutput(outputBuffer.display)
+        if (lesson.type === 'electronics') persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: latestRuntimeCode, output: outputBuffer.raw })
+        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ code: latestRuntimeCode, output: outputBuffer.raw }))
         if (isWatched) {
           writeStudentCode(actor.anonymousId, latestRuntimeCode)
-          writeStudentOutput(actor.anonymousId, accumulated)
+          writeStudentOutput(actor.anonymousId, outputBuffer.raw)
         }
         setRunning(false)
         return
       }
 
       flushRuntimeCodeUpdate()
-      setOutput(collapseForDisplay(accumulated, MAX_DISPLAY_LINES))
+      setOutput(outputBuffer.display)
       const status = result.status
       setRunStatus(status)
       const nextCode = typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
@@ -809,10 +796,10 @@ export function useStudentCodeState({
 
       const checkContext = { status, code: nextCode, variables: result.variables ?? {} }
       const hasTests = task?.tests?.length > 0
-      let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheckWithFeedback(task, accumulated, checkContext).passed)
+      let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext).passed)
       let suggestion = ''
       if (!alreadySolved) {
-        const evaluation = (!hasTests && status !== 'error' && task?.check) ? evaluateCheckWithFeedback(task, accumulated, checkContext) : null
+        const evaluation = (!hasTests && status !== 'error' && task?.check) ? evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext) : null
         if (evaluation) {
           passed = evaluation.passed
           suggestion = evaluation.suggestion
@@ -821,11 +808,11 @@ export function useStudentCodeState({
       }
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ code: nextCode, output: accumulated, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
+        publishTeacherLive({ code: nextCode, output: outputBuffer.raw, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
       }
-      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: nextCode, output: accumulated, runStatus: status })
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: nextCode, output: outputBuffer.raw, runStatus: status })
       if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code: nextCode, output: accumulated, status, checkPassed: hasTests ? undefined : passed })
+        await writeStudentRun(actor.anonymousId, { code: nextCode, output: outputBuffer.raw, status, checkPassed: hasTests ? undefined : passed })
       }
       if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && !hasTests && task?.check) {
         logAttempt(actor.anonymousId, currentTaskId, { submission: nextCode, passed, suggestion })

@@ -14,8 +14,8 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{js,jsx}'],
       exclude: [
-        'src/shared/pyodide.worker.js',
-        'src/shared/scratch.js',
+        'src/modules/python/pyodide.worker.js',
+        'src/modules/scratch/scratch.js',
         'src/**/*.worker.js',
         'src/main.jsx',
         'src/builder/main.jsx',

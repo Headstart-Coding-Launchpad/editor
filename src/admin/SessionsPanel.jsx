@@ -3,6 +3,15 @@ import { ref, onValue, remove } from 'firebase/database'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db, firestore } from '../shared/firebase'
 import { formatClock } from '../app/components/TeacherTimers'
+import {
+  AdminBadge,
+  AdminCell,
+  AdminLessonIdPill,
+  AdminMessage,
+  AdminSection,
+  AdminTable,
+  adminUiStyles,
+} from './AdminUi'
 
 const STATE_LABELS = { waiting: 'Waiting', active: 'Active', sandbox: 'Sandbox' }
 const STATE_BADGE = {
@@ -77,85 +86,60 @@ export default function SessionsPanel() {
   }
 
   return (
-    <section style={s.section}>
-      <div style={s.titleRow}>
-        <h2 style={s.title}>Open Sessions</h2>
-        <span style={s.subtitle}>Live and waiting sessions left open by teachers</span>
-      </div>
-
-      {loading && <p style={s.muted}>Loading sessions…</p>}
-      {error && <p style={s.error}>Could not load sessions: {error}</p>}
-      {closeError && <p style={s.error}>{closeError}</p>}
+    <AdminSection
+      title="Open Sessions"
+      subtitle="Live and waiting sessions left open by teachers"
+    >
+      {loading && <AdminMessage>Loading sessions…</AdminMessage>}
+      {error && <AdminMessage tone="error">Could not load sessions: {error}</AdminMessage>}
+      {closeError && <AdminMessage tone="error">{closeError}</AdminMessage>}
 
       {!loading && !error && openSessions.length === 0 && (
-        <p style={s.muted}>No sessions are currently open.</p>
+        <AdminMessage>No sessions are currently open.</AdminMessage>
       )}
 
       {openSessions.length > 0 && (
-        <table style={s.table}>
-          <thead>
-            <tr>
-              {['Lesson', 'State', 'Students', 'Open for', 'Actions'].map(h => (
-                <th key={h} style={s.th}>{h}</th>
-              ))}
+        <AdminTable headers={['Lesson', 'State', 'Students', 'Open for', 'Actions']}>
+          {openSessions.map(session => (
+            <tr key={session.lessonId}>
+              <AdminCell>
+                <div style={adminUiStyles.lessonCell}>
+                  <a href={makeTeacherUrl(session.lessonId)} target="_blank" rel="noreferrer" style={adminUiStyles.linkText}>
+                    {titlesById[session.lessonId] || session.lessonId}
+                  </a>
+                  <AdminLessonIdPill>{session.lessonId}</AdminLessonIdPill>
+                </div>
+              </AdminCell>
+              <AdminCell>
+                <AdminBadge style={STATE_BADGE[session.state]}>
+                  {STATE_LABELS[session.state] || session.state}
+                </AdminBadge>
+                {session.isPaused && <AdminBadge style={s.pausedChip}>Paused</AdminBadge>}
+              </AdminCell>
+              <AdminCell>
+                {session.onlineCount} online · {session.studentCount} joined
+              </AdminCell>
+              <AdminCell>
+                {session.createdAt ? formatClock(Math.floor((now - session.createdAt) / 1000)) : '—'}
+              </AdminCell>
+              <AdminCell>
+                <button
+                  className="btn-danger"
+                  style={adminUiStyles.actionBtn}
+                  disabled={closingId === session.lessonId}
+                  onClick={() => handleClose(session.lessonId)}
+                >
+                  {closingId === session.lessonId ? '…' : 'Close Session'}
+                </button>
+              </AdminCell>
             </tr>
-          </thead>
-          <tbody>
-            {openSessions.map(session => (
-              <tr key={session.lessonId}>
-                <td style={s.td}>
-                  <div style={s.lessonCell}>
-                    <a href={makeTeacherUrl(session.lessonId)} target="_blank" rel="noreferrer" style={s.lessonLink}>
-                      {titlesById[session.lessonId] || session.lessonId}
-                    </a>
-                    <span style={s.lessonIdPill}>{session.lessonId}</span>
-                  </div>
-                </td>
-                <td style={s.td}>
-                  <span style={{ ...s.badge, ...(STATE_BADGE[session.state] || {}) }}>
-                    {STATE_LABELS[session.state] || session.state}
-                  </span>
-                  {session.isPaused && <span style={s.pausedChip}>Paused</span>}
-                </td>
-                <td style={s.td}>
-                  {session.onlineCount} online · {session.studentCount} joined
-                </td>
-                <td style={s.td}>
-                  {session.createdAt ? formatClock(Math.floor((now - session.createdAt) / 1000)) : '—'}
-                </td>
-                <td style={s.td}>
-                  <button
-                    className="btn-danger"
-                    style={s.actionBtn}
-                    disabled={closingId === session.lessonId}
-                    onClick={() => handleClose(session.lessonId)}
-                  >
-                    {closingId === session.lessonId ? '…' : 'Close Session'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          ))}
+        </AdminTable>
       )}
-    </section>
+    </AdminSection>
   )
 }
 
 const s = {
-  section:  { display: 'flex', flexDirection: 'column', gap: 16 },
-  titleRow: { display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' },
-  title:    { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
-  subtitle: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#6b7280' },
-  table:    { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
-  th:       { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
-  td:       { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
-  lessonCell: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  lessonLink: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.9rem', color: 'var(--colour-primary)', textDecoration: 'none' },
-  lessonIdPill: { fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '1px 6px' },
-  badge:    { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 },
-  pausedChip: { display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: '#fee2e2', color: '#b91c1c' },
-  actionBtn: { padding: '4px 10px', fontSize: '0.82rem' },
-  error:    { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
-  muted:    { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af', margin: 0 },
+  pausedChip: { marginLeft: 6, background: '#fee2e2', color: '#b91c1c' },
 }

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { collection, onSnapshot, deleteDoc, doc, setDoc } from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
-import { encodeLessonBlocksForFirestore } from '../shared/lessonBlocksCodec'
+import { deletePublishedLesson, publishLesson } from '../shared/lessonService'
 import { getLessonModules } from '../modules/registry'
+import { validateLesson } from '../builder/lessonUtils'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -81,7 +82,7 @@ export default function LessonPanel() {
     if (!confirm(`Delete lesson "${lesson.title || lesson.id}" from Firestore?\n\nThis cannot be undone.`)) return
     setDeletingId(lesson.id)
     try {
-      await deleteDoc(doc(firestore, 'lessons', lesson.id))
+      await deletePublishedLesson(lesson.id)
       setDeletedIds(prev => { const next = new Set(prev); next.add(lesson.id); return next })
     } catch (err) {
       alert('Failed to delete: ' + err.message)
@@ -130,11 +131,16 @@ export default function LessonPanel() {
       alert('Could not parse file: ' + err.message)
       return
     }
+    const validation = validateLesson(parsed)
+    if (validation.errors.length > 0) {
+      alert('Cannot upload lesson until these validation errors are fixed:\n\n' + validation.errors.join('\n'))
+      return
+    }
     const lessonId = parsed.id
     const exists = lessons.some(l => l.id === lessonId)
     if (exists && !confirm(`A lesson with ID "${lessonId}" already exists in Firestore.\n\nOverwrite it?`)) return
     try {
-      await setDoc(doc(firestore, 'lessons', lessonId), encodeLessonBlocksForFirestore(parsed))
+      await publishLesson(parsed)
     } catch (err) {
       alert('Failed to upload lesson: ' + err.message)
     }

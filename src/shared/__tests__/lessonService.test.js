@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockGetDoc = vi.fn()
 const mockGetDocs = vi.fn()
 const mockSetDoc = vi.fn()
+const mockDeleteDoc = vi.fn()
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((firestore, name) => ({ firestore, name })),
@@ -10,19 +11,21 @@ vi.mock('firebase/firestore', () => ({
   getDoc: (...args) => mockGetDoc(...args),
   getDocs: (...args) => mockGetDocs(...args),
   setDoc: (...args) => mockSetDoc(...args),
+  deleteDoc: (...args) => mockDeleteDoc(...args),
 }))
 
 vi.mock('../firebase', () => ({
   firestore: {},
 }))
 
-const { fetchLessonById, fetchLessonList, applyLessonOverride, publishLessonTasks } = await import('../lessonService')
+const { fetchLessonById, fetchLessonList, applyLessonOverride, publishLesson, publishLessonTasks, deletePublishedLesson } = await import('../lessonService')
 
 describe('lessonService', () => {
   beforeEach(() => {
     mockGetDoc.mockReset()
     mockGetDocs.mockReset()
     mockSetDoc.mockReset()
+    mockDeleteDoc.mockReset()
   })
 
   it('loads a lesson from Firestore by id', async () => {
@@ -66,6 +69,26 @@ describe('lessonService', () => {
   })
 })
 
+describe('publishLesson', () => {
+  it('writes an encoded full lesson document', async () => {
+    mockSetDoc.mockResolvedValue(undefined)
+    const lesson = { id: 'scratch-1', type: 'scratch', tasks: [{ id: 1, starterBlocks: { a: 1 } }] }
+
+    await publishLesson(lesson)
+
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      { firestore: {}, collectionName: 'lessons', id: 'scratch-1' },
+      expect.objectContaining({ id: 'scratch-1', type: 'scratch', tasks: expect.any(Array) }),
+    )
+  })
+
+  it('rejects lessons without an id', async () => {
+    mockSetDoc.mockClear()
+    await expect(publishLesson({ type: 'python', tasks: [] })).rejects.toThrow('Lesson id is required')
+    expect(mockSetDoc).not.toHaveBeenCalled()
+  })
+})
+
 describe('applyLessonOverride', () => {
   it('swaps in the override tasks when present', () => {
     const lesson = { id: 'l1', title: 'Lesson', tasks: [{ id: 1 }] }
@@ -81,6 +104,24 @@ describe('applyLessonOverride', () => {
 
   it('returns null/undefined lesson unchanged', () => {
     expect(applyLessonOverride(null, [{ id: 1 }])).toBeNull()
+  })
+})
+
+describe('deletePublishedLesson', () => {
+  it('deletes the lesson document by id', async () => {
+    mockDeleteDoc.mockResolvedValue(undefined)
+
+    await deletePublishedLesson('python-1-1')
+
+    expect(mockDeleteDoc).toHaveBeenCalledWith(
+      { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
+    )
+  })
+
+  it('rejects empty lesson ids', async () => {
+    mockDeleteDoc.mockClear()
+    await expect(deletePublishedLesson('')).rejects.toThrow('Lesson id is required')
+    expect(mockDeleteDoc).not.toHaveBeenCalled()
   })
 })
 

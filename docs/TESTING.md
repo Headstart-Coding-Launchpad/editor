@@ -146,7 +146,7 @@ global.URL.revokeObjectURL = vi.fn()
 ## What NOT to Test
 
 - Firebase `onDisconnect` behaviour (requires real network disconnection)
-- Pyodide WASM execution (Worker, not unit-testable; test the `pyodide.js` manager interface only via mock)
+- Pyodide WASM execution (Worker, not unit-testable; test the `src/modules/python/pyodide.js` manager interface only via mock)
 - Scratch VM rendering (canvas-based, not suitable for jsdom)
 - CodeMirror editor internals (test the config factories, not EditorView itself)
 - Lesson JSON schema validity (covered by the builder's own validation logic tests)
@@ -164,7 +164,7 @@ Set in `vitest.config.js`. Current thresholds reflect the initial test scope (pu
 | Phase 3 | 50% | StudentView, TeacherView partially covered |
 | Phase 4 | 70% | Builder views + remaining components |
 
-`pyodide.worker.js` and `scratch.js` are permanently excluded from coverage because they require Web Worker and canvas runtime environments that jsdom cannot measure.
+`src/modules/python/pyodide.worker.js` and `src/modules/scratch/scratch.js` are permanently excluded from coverage because they require Web Worker and canvas runtime environments that jsdom cannot measure.
 
 ---
 
