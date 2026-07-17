@@ -46,6 +46,8 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 |---|---|
 | Index of all docs | `docs/README.md` |
 | File ownership or locating code | `docs/CODEBASE_MAP.md` relevant section |
+| Feature impact analysis / change coupling | `docs/architecture/feature-impact-map.md` |
+| Design intent and architecture decisions | `docs/architecture/` and `docs/adr/` |
 | Product capabilities | `docs/FEATURES.md` |
 | Project rules, stack, shared modules, CLI tool, admin | `docs/agents/project-rules.md` |
 | Firebase, localStorage, URLs, session states, identity | `docs/agents/runtime-model.md` |
@@ -76,6 +78,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 - Preserve unrelated user changes in the worktree.
 - Add or update tests when behaviour changes.
 - Update relevant docs after significant changes.
+- Run `npm run docs:check` when docs, source files, or documented behaviours change.
 - Run `npm test` before handing work back.
 
 *Last updated: June 2026*

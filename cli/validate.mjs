@@ -1,7 +1,7 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
 
-const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem']
+const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
 function flattenTasks(tasks) {
   const result = []
@@ -135,8 +135,9 @@ export function validateLessonForMcp(lesson) {
       const hasStarter = type === 'python' ? !!task.starterCode
         : type === 'scratch' ? !!task.starterBlocks
         : type === 'filesystem' ? !!task.starterFs
+        : type === 'electronics' ? !!task.starterCircuit
         : task.starterFiles?.some(f => f.content?.trim())
-      if (!hasStarter && type !== 'filesystem') {
+      if (!hasStarter && type !== 'filesystem' && type !== 'electronics') {
         warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
       }
     }

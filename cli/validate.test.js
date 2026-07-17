@@ -40,4 +40,25 @@ describe('CLI lesson validation', () => {
     expect(result.valid).toBe(true)
     expect(result.warnings.some(w => w.includes('complete solution fails a code check'))).toBe(true)
   })
+
+  it('accepts electronics lessons supported by the app module registry', () => {
+    const result = validateLessonForMcp({
+      id: 'electronics-basics',
+      type: 'electronics',
+      title: 'Electronics basics',
+      description: 'A short breadboard lesson',
+      tasks: [
+        {
+          title: 'Light an LED',
+          starterCircuit: {
+            components: [],
+            wires: [],
+          },
+        },
+      ],
+    })
+
+    expect(result.valid).toBe(true)
+    expect(result.errors).toEqual([])
+  })
 })

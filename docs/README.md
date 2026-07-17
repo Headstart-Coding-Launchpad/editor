@@ -30,6 +30,62 @@ All third-party open-source libraries used in the project, their versions, and t
 
 ---
 
+## Architecture docs (`docs/architecture/`)
+
+These docs explain design intent and cross-system coupling. Use them before changing behavior that may affect more than one surface.
+
+### [architecture/feature-impact-map.md](architecture/feature-impact-map.md)
+Change-type map for finding adjacent code, docs, and tests that usually move together. This is the primary guardrail for keeping feature work from leaving related docs or behavior stale.
+
+**Load when:** starting feature work, changing runtime contracts, adding source files, or deciding which docs/tests a change should update.
+
+### [architecture/lesson-type-modules.md](architecture/lesson-type-modules.md)
+Design intent and contract for `src/modules/<type>/` lesson modules, including student, builder, teacher-live, persistence, check editor, runtime, sandbox, and carry-through responsibilities.
+
+**Load when:** adding or changing a lesson type, changing the module interface, or touching registry-driven classroom/builder behavior.
+
+### [architecture/runtime-flows.md](architecture/runtime-flows.md)
+High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
+
+**Load when:** changing classroom session behavior, student persistence, teacher live view, or Firebase ownership.
+
+---
+
+## Architecture decision records (`docs/adr/`)
+
+Short records of durable architecture decisions. Update or supersede these when the decision changes.
+
+### [adr/README.md](adr/README.md)
+Index of architecture decision records.
+
+**Load when:** looking for why a major architectural choice exists.
+
+### [adr/0001-frontend-only-firebase.md](adr/0001-frontend-only-firebase.md)
+Decision to keep the app frontend-only and use Firebase instead of adding a backend server or API.
+
+### [adr/0002-login-less-student-identity.md](adr/0002-login-less-student-identity.md)
+Decision to keep students login-less and persist anonymous identity in localStorage.
+
+### [adr/0003-realtime-database-for-live-sessions.md](adr/0003-realtime-database-for-live-sessions.md)
+Decision to use Realtime Database for live session state and Firestore for durable content.
+
+### [adr/0004-lesson-type-module-registry.md](adr/0004-lesson-type-module-registry.md)
+Decision to isolate code lesson behavior behind the lesson type module registry.
+
+### [adr/0005-worker-based-python-runtime.md](adr/0005-worker-based-python-runtime.md)
+Decision to run Pyodide through a Web Worker.
+
+### [adr/0006-sandboxed-iframe-web-preview.md](adr/0006-sandboxed-iframe-web-preview.md)
+Decision to render HTML previews with sandboxed Blob-backed iframes.
+
+### [adr/0007-custom-scratch-runtime.md](adr/0007-custom-scratch-runtime.md)
+Decision to use the custom Scratch runtime in `src/modules/scratch/`.
+
+### [adr/0008-split-cli-and-builder-validation.md](adr/0008-split-cli-and-builder-validation.md)
+Decision to keep CLI validation and Builder validation separate.
+
+---
+
 ## Agent reference docs (`docs/agents/`)
 
 These are dense technical references for AI agents and developers. Each covers a specific domain of platform knowledge that is not easily derived from the code alone.
@@ -85,10 +141,15 @@ Basic YAML reference for the lesson envelope, common task fields, information ta
 
 **Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
 
-### [authoring/checks.md](authoring/checks.md)
-Completion and feedback checks are documented inside each lesson-type authoring doc (`python.md`, `html.md`, `scratch.md`, `filesystem.md`, `electronics.md`, and `quiz-tasks.md`) so authors can work from one self-contained page per lesson type.
+### Per-type code task and check references
+Completion and feedback checks are documented inside each lesson-type authoring doc so authors can work from one self-contained page per lesson type.
 
 **Load when:** adding or editing checks on any task type.
+
+### [authoring/python.md](authoring/python.md)
+Python lesson authoring reference: task fields, checks, tests, examples, carry-through, and runtime behavior.
+
+**Load when:** authoring or editing a Python lesson.
 
 ### [authoring/quiz-tasks.md](authoring/quiz-tasks.md)
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
@@ -100,10 +161,20 @@ Python code task field reference: `starterCode`, `completeCode`, `codeStages`, `
 
 **Load when:** authoring or editing a Python code task, especially one with `tests`.
 
+### [authoring/html.md](authoring/html.md)
+HTML lesson authoring reference: task fields, file model, element checks, assets, examples, and preview behavior.
+
+**Load when:** authoring or editing an HTML lesson.
+
 ### [authoring/html-tasks.md](authoring/html-tasks.md)
 HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, `codeStages`, and carry-through-by-filename behaviour. Includes a minimal full-lesson example.
 
 **Load when:** authoring or editing an HTML code task.
+
+### [authoring/filesystem.md](authoring/filesystem.md)
+Filesystem lesson authoring reference: task fields, flat path-map state, filesystem checks, examples, and explorer behavior.
+
+**Load when:** authoring or editing a filesystem lesson.
 
 ### [authoring/filesystem-tasks.md](authoring/filesystem-tasks.md)
 Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
@@ -115,7 +186,7 @@ Electronics code task field reference: editable breadboard circuit shape, `start
 
 **Load when:** authoring or editing an electronics breadboard task.
 
-### [authoring/scratch-reference.md](authoring/scratch-reference.md)
+### [authoring/scratch.md](authoring/scratch.md)
 Scratch-specific task fields, sprite and backdrop objects, block opcodes accepted by the interpreter, toolbox configuration, and Scratch check field names.
 
 **Load when:** authoring or editing a Scratch lesson, or working on Scratch-related checks.
