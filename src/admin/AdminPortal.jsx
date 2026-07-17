@@ -1,16 +1,17 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { signOut } from 'firebase/auth'
 import { useNavigate, useParams } from 'react-router-dom'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
-import AccountManagement from './AccountManagement'
-import AuthoringPanel from './AuthoringPanel'
-import FeedbackPanel from './FeedbackPanel'
-import LessonPanel from './LessonPanel'
-import ReportsPanel from './ReportsPanel'
-import SessionsPanel from './SessionsPanel'
-import SharedAssetsPanel from './SharedAssetsPanel'
-import TopicLibraryPanel from './TopicLibraryPanel'
+
+const AccountManagement = lazy(() => import('./AccountManagement'))
+const AuthoringPanel = lazy(() => import('./AuthoringPanel'))
+const FeedbackPanel = lazy(() => import('./FeedbackPanel'))
+const LessonPanel = lazy(() => import('./LessonPanel'))
+const ReportsPanel = lazy(() => import('./ReportsPanel'))
+const SessionsPanel = lazy(() => import('./SessionsPanel'))
+const SharedAssetsPanel = lazy(() => import('./SharedAssetsPanel'))
+const TopicLibraryPanel = lazy(() => import('./TopicLibraryPanel'))
 
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
@@ -64,14 +65,16 @@ export default function AdminPortal() {
       </nav>
 
       <main style={s.main}>
-        {activeTab === 'lessons' && <LessonPanel />}
-        {activeTab === 'authoring' && <AuthoringPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
-        {activeTab === 'sessions' && <SessionsPanel />}
-        {activeTab === 'reports' && <ReportsPanel />}
-        {activeTab === 'topics' && <TopicLibraryPanel />}
-        {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
-        {activeTab === 'accounts' && <AccountManagement />}
-        {activeTab === 'feedback' && <FeedbackPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+        <Suspense fallback={<p style={s.panelFallback}>Loading panel...</p>}>
+          {activeTab === 'lessons' && <LessonPanel />}
+          {activeTab === 'authoring' && <AuthoringPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+          {activeTab === 'sessions' && <SessionsPanel />}
+          {activeTab === 'reports' && <ReportsPanel />}
+          {activeTab === 'topics' && <TopicLibraryPanel />}
+          {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+          {activeTab === 'accounts' && <AccountManagement />}
+          {activeTab === 'feedback' && <FeedbackPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+        </Suspense>
       </main>
     </div>
   )
@@ -132,5 +135,11 @@ const s = {
     maxWidth: 1100,
     width: '100%',
     margin: '0 auto',
+  },
+  panelFallback: {
+    margin: 0,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    color: '#6b7280',
   },
 }

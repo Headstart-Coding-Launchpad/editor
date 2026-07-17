@@ -10,7 +10,6 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { findTaskById, deriveTaskContext, buildStageOptions } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
-import { DEFAULT_FS } from '../../modules/filesystem'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
@@ -24,6 +23,12 @@ function parseSpriteState(raw) {
   } catch {
     return null
   }
+}
+
+function getModuleDisplayState(module, raw) {
+  if (!module) return null
+  if (raw != null && raw !== '') return module.deserializeState ? module.deserializeState(raw) : raw
+  return module.defaultState ?? null
 }
 
 // ─── Dropdown menu (shared pattern) ─────────────────────────────────────────
@@ -605,13 +610,15 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const { isPython, isScratch, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
+  const { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
+  const lessonModule = getLessonModule(lesson?.type)
+  const ModuleTeacherLiveView = !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
-  const studentFs = isFilesystem
-    ? (student.currentCode ? getLessonModule('filesystem').deserializeState(student.currentCode) : DEFAULT_FS)
+  const moduleDisplayState = ModuleTeacherLiveView
+    ? getModuleDisplayState(lessonModule, student.currentCode)
     : null
-  const iframeSrc = !isPython && !isScratch && !isFilesystem && !isQuiz && files.length
+  const iframeSrc = isHtml && !isQuiz && files.length
     ? getLessonModule('html').runtime.buildPreviewSrc({ files, entryFile: task?.entryFile ?? 'index.html' }, task)
     : null
 
@@ -623,7 +630,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     ? null
     : student.currentSelection
 
-  const canHighlight = isLive && !isInformation && !isQuiz && !isScratch && !isFilesystem && teacherEditState === 'idle'
+  const canHighlight = isLive && !isInformation && !isQuiz && (isPython || isHtml) && !isScratch && !isFilesystem && teacherEditState === 'idle'
   const highlightsForActiveFile = useMemo(() => {
     const raw = student.teacherHighlights
     if (!raw) return []
@@ -827,7 +834,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
         </div>
 
         {/* Content */}
-        <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : isFilesystem ? s.bodyFilesystem : s.bodyHtml}>
+        <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : ModuleTeacherLiveView ? s.bodyFilesystem : s.bodyHtml}>
           {teacherEditState === 'editing' && isScratch ? (
             <ScratchWorkspace
               key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
@@ -858,7 +865,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               isSessionSandbox={isSessionSandbox}
               isPython={isPython}
               isScratch={isScratch}
-              isFilesystem={isFilesystem}
+              isHtml={isHtml}
+              ModuleTeacherLiveView={ModuleTeacherLiveView}
+              moduleDisplayState={moduleDisplayState}
               files={files}
               activeFile={activeFile}
               setActiveFile={setActiveFile}
@@ -866,7 +875,6 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               remoteSelection={remoteSelection}
               scratchState={scratchState}
               spriteState={spriteState}
-              studentFs={studentFs}
               iframeSrc={iframeSrc}
               iframeRef={iframeRef}
               canHighlight={canHighlight}
@@ -923,9 +931,10 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
 function StudentWorkspaceBody({
   lesson, task, student, session,
-  isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isFilesystem,
+  isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isHtml,
+  ModuleTeacherLiveView, moduleDisplayState,
   files, activeFile, setActiveFile, activeFileObj,
-  remoteSelection, scratchState, spriteState, studentFs,
+  remoteSelection, scratchState, spriteState,
   iframeSrc, iframeRef,
   canHighlight, pendingHighlight, highlights, onMirrorSelectionChange, onDismissHighlight,
   highlightEmoji, onHighlightEmojiChange, highlightNote, onHighlightNoteChange,
@@ -1029,19 +1038,18 @@ function StudentWorkspaceBody({
     )
   }
 
-  if (isFilesystem) {
-    const FsLiveView = getLessonModule('filesystem').TeacherLiveView
+  if (ModuleTeacherLiveView) {
     return (
-      <FsLiveView
+      <ModuleTeacherLiveView
         task={task} lesson={lesson}
-        displayState={studentFs} liveState={studentFs}
+        displayState={moduleDisplayState} liveState={moduleDisplayState}
         readOnly onChange={undefined} onActivity={undefined}
         isInSandbox={false} activeStage={null}
       />
     )
   }
 
-  return (
+  if (isHtml) return (
     <>
       <div style={s.htmlEditorPane}>
         {files.length > 1 && (
@@ -1085,6 +1093,8 @@ function StudentWorkspaceBody({
       )}
     </>
   )
+
+  return null
 }
 
 const s = {

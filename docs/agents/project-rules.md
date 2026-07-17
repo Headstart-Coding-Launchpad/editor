@@ -75,7 +75,7 @@ The contract test at `src/modules/__tests__/moduleInterface.test.js` will automa
 
 ## Shared Modules
 
-All app sections should import shared logic from `src/shared/`. Do not duplicate:
+All app sections should import cross-cutting shared logic from `src/shared/` and type-specific runtime logic from `src/modules/<type>/`. Do not duplicate:
 
 - Pyodide execution
 - iframe construction
@@ -85,7 +85,7 @@ All app sections should import shared logic from `src/shared/`. Do not duplicate
 - Firebase file-key encoding
 - task flattening/group helpers
 
-Important shared files include `pyodide.js`, `iframe.js`, `CodeEditor.jsx`, `checks.js`, `markdown.jsx`, `fileKeys.js`, `taskUtils.js`, `lessonService.js`, and `workspaceData.js`.
+Important shared files include `iframe.js`, `CodeEditor.jsx`, `markdown.jsx`, `fileKeys.js`, `taskUtils.js`, `lessonService.js`, and `workspaceData.js`. Important module files include `src/modules/python/pyodide.js`, `src/modules/python/pyodide.worker.js`, `src/modules/scratch/scratch.js`, `src/modules/scratch/scratchPersistence.js`, and `src/modules/checks.js`.
 
 ## Admin Portal
 

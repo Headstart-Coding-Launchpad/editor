@@ -36,7 +36,6 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `AuthoringPanel.jsx` | Lesson authoring workflow: draft list with stage badges, Markdown plan viewer with per-section review notes, context tab, notes CRUD, approve/request-changes/publish actions |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
 | `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
-| `LessonManagement.jsx` | Orphaned — not imported or rendered anywhere; `AdminPortal.jsx` uses `LessonPanel.jsx` for the Lessons tab instead |
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
 | `ReportsPanel.jsx` | Firestore `sessionReports` collection-group query across every lesson; filterable table (lesson title/ID), reuses `TeacherReportModal` for the detail view |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
@@ -215,6 +214,8 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
+| `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
+| `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming |
 | `html/index.js` | HTML module definition |
 | `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck` — all `element_*` types |
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
@@ -222,6 +223,8 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
 | `scratch/index.js` | Scratch module definition |
 | `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
+| `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
+| `scratch/scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `scratch/StudentWorkspace.jsx` | Scratch workspace with Reset Blocks button (extracted from `LessonTaskContent`) |
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
@@ -248,6 +251,8 @@ Each `index.js` exports a default object with:
 | `StudentWorkspace` | `Component` | Student coding view |
 | `BuilderWorkspace` | `Component` | Builder task editor |
 | `CheckEditor` | `Component` | Check configuration UI |
+| `TeacherLiveView` | `Component \| null` | Teacher-side live/sandbox view for the module |
+| `getDisplayState(task, stage, liveState, tab)` | `fn` | Selects the displayed state for starter/complete/stage tabs |
 | `getLayoutStyles(isMobile)` | `fn → {taskContentStyle, editorAreaStyle}` | CSS layout for the task area |
 | `makeCodeTaskFields(task)` | `fn → object` | Initial fields when switching a task to code format |
 | `makeNewStage(task, existing)` | `fn \| null` | Initial fields for a new code stage |
@@ -257,8 +262,20 @@ Each `index.js` exports a default object with:
 | `supportsInteractionMode` | `boolean` | Show Run/Submit mode picker |
 | `supportsIncorrectChecks` | `boolean` | Show incorrect-checks section |
 | `supportsTests` | `boolean` | Show TestsEditor; also gates `allowVariableChecks` |
+| `supportsVariableChecks` | `boolean` | Allow Python-style variable checks |
+| `supportsDomChecks` | `boolean` | Allow HTML DOM/element checks |
+| `carryThroughField` | `string` | Task field used for carry-through source selection |
+| `carryThroughLabel` | `string` | Builder label for the carry-through picker |
+| `getCarryThroughUpdates(sourceTask)` | `fn` | Produces starter-state updates when carrying from another task |
+| `getNewStarterUpdates(task)` | `fn` | Produces starter-state updates for a fresh starter |
 | `stageLabels` | `{starterLabel, completeLabel}` | Tab label strings |
 | `explainerInlineCodeLanguages` | `string[]` | Languages offered in the explainer inline-code picker |
+| `defaultState` | `any` | Default student state value |
+| `initialState(task)` | `fn` | Initial student state for a task |
+| `serializeState(state)` | `fn \| null` | Optional persistence serializer |
+| `deserializeState(raw)` | `fn \| null` | Optional persistence deserializer |
+| `getSandboxState(lesson, task)` | `fn` | Initial sandbox state |
+| `runtime` | `object \| null` | Optional runtime bridge with `init`, `isReady`, `stop`, and module-specific helpers |
 
 ---
 
@@ -285,19 +302,14 @@ Each `index.js` exports a default object with:
 | `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
-| `pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
-| `pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming |
-| `scratch.js` | Custom Scratch interpreter: 88 block definitions, multi-sprite state, broadcast, sounds; re-exports check/state helpers from `modules/scratch/checks.js` and persistence helpers from `scratchPersistence.js` |
 | `lessonBlocksCodec.js` | Encodes/decodes Scratch block trees as JSON strings for Firestore storage, working around Firestore's nested map/array depth cap |
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, task summary); `reportToYamlText()` for YAML export |
-| `scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared lesson loading helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLessonTasks()`, `applyLessonOverride()`; also draft CRUD helpers: `fetchDraftList()`, `fetchLessonDraftById()`, `upsertDraft()`, `updateDraftStage()`, `addDraftReviewNote()`, `updateDraftReviewNote()`, `deleteDraftReviewNote()`; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `applyLessonOverride()`; also draft CRUD helpers: `fetchDraftList()`, `fetchLessonDraftById()`, `upsertDraft()`, `updateDraftStage()`, `addDraftReviewNote()`, `updateDraftReviewNote()`, `deleteDraftReviewNote()`; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
-| `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 
 ---
 

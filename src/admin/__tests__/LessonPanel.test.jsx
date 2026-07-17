@@ -25,7 +25,7 @@ vi.mock('../../shared/lessonLinks', () => ({
   }),
 }))
 
-import { onSnapshot } from 'firebase/firestore'
+import { onSnapshot, setDoc } from 'firebase/firestore'
 
 let snapshotCallback = null
 
@@ -133,5 +133,47 @@ describe('LessonPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Share Links' }))
     expect(screen.getAllByText(/\/lesson\/py-intro/).length).toBeGreaterThan(0)
+  })
+
+  it('blocks uploaded lessons that fail builder validation', async () => {
+    const user = userEvent.setup()
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    const { container } = render(<LessonPanel />)
+    fireLessons([])
+    const input = container.querySelector('input[type="file"]')
+    const file = new File(
+      [JSON.stringify({ id: 'bad-lesson', type: 'python', title: '', tasks: [] })],
+      'bad-lesson.json',
+      { type: 'application/json' },
+    )
+
+    await user.upload(input, file)
+
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot upload lesson until these validation errors are fixed'))
+    expect(setDoc).not.toHaveBeenCalled()
+  })
+
+  it('publishes a valid uploaded lesson through the shared lesson service', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<LessonPanel />)
+    fireLessons([])
+    const input = container.querySelector('input[type="file"]')
+    const file = new File(
+      [JSON.stringify({
+        id: 'python-upload',
+        type: 'python',
+        title: 'Uploaded Python',
+        tasks: [{ id: 1, title: 'Say hi', starterCode: 'print("hi")' }],
+      })],
+      'python-upload.json',
+      { type: 'application/json' },
+    )
+
+    await user.upload(input, file)
+
+    expect(setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ __collection: 'lessons', __id: 'python-upload' }),
+      expect.objectContaining({ id: 'python-upload', type: 'python', title: 'Uploaded Python' }),
+    )
   })
 })

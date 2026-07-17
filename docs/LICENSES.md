@@ -173,7 +173,7 @@ These libraries are loaded at runtime from a CDN and are not installed via npm.
 | **Version** | 0.26.4 |
 | **License** | Mozilla Public License 2.0 (MPL-2.0) |
 | **Loaded from** | `https://cdn.jsdelivr.net/pyodide/v0.26.4/full/` |
-| **Usage** | Python execution in a Web Worker (`src/shared/pyodide.worker.js`) |
+| **Usage** | Python execution in a Web Worker (`src/modules/python/pyodide.worker.js`) |
 
 Homepage: https://pyodide.org/
 License text: https://github.com/pyodide/pyodide/blob/main/LICENSE

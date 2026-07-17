@@ -54,33 +54,54 @@ export function deriveTaskContext(lesson, task, session) {
   const isPython     = lesson?.type === 'python'
   const isScratch    = lesson?.type === 'scratch'
   const isFilesystem = lesson?.type === 'filesystem'
-  const isHtml       = !isPython && !isScratch && !isFilesystem
+  const isElectronics = lesson?.type === 'electronics'
+  const isHtml       = lesson?.type === 'html'
   const isQuiz        = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'
-  return { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox }
+  return { isPython, isScratch, isFilesystem, isElectronics, isHtml, isQuiz, isInformation, isSessionSandbox }
+}
+
+const STAGE_OPTION_METADATA = {
+  python: {
+    completeField: 'completeCode',
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
+  scratch: {
+    completeField: 'completeBlocks',
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
+  filesystem: {
+    completeField: 'completeFs',
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
+  electronics: {
+    completeField: 'completeCircuit',
+    stageLabels: { starterLabel: 'Starter board', completeLabel: 'Complete board' },
+  },
+  html: {
+    hasComplete: task => task?.completeFiles?.length > 0,
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
 }
 
 // Build the ordered list of remote-reset stage options for a task.
-// lessonType: 'python' | 'html' | 'scratch' | 'filesystem'
+// lessonType: lesson module type, e.g. 'python' | 'html' | 'scratch' | 'filesystem' | 'electronics'
 export function buildStageOptions(task, lessonType) {
-  const isScratch    = lessonType === 'scratch'
-  const isFilesystem = lessonType === 'filesystem'
+  const metadata = STAGE_OPTION_METADATA[lessonType]
   const isQuiz       = task?.taskType === 'quiz'
 
   const hasComplete = isQuiz
     ? false
-    : lessonType === 'python'
-    ? !!task?.completeCode
-    : isScratch
-    ? !!task?.completeBlocks
-    : isFilesystem
-    ? !!task?.completeFs
-    : (task?.completeFiles?.length > 0)
+    : metadata?.hasComplete
+    ? metadata.hasComplete(task)
+    : metadata?.completeField
+    ? !!task?.[metadata.completeField]
+    : false
 
   const codeStages = isQuiz ? [] : (task?.codeStages ?? [])
-  const starterLabel  = isScratch ? 'Starter blocks'  : isFilesystem ? 'Starter folders'  : 'Starter code'
-  const completeLabel = isScratch ? 'Complete blocks' : isFilesystem ? 'Complete folders' : 'Complete code'
+  const starterLabel  = metadata?.stageLabels?.starterLabel ?? 'Starter'
+  const completeLabel = metadata?.stageLabels?.completeLabel ?? 'Complete'
 
   const opts = [{ value: 'starter', label: starterLabel }]
   codeStages.forEach((stage, i) => {
