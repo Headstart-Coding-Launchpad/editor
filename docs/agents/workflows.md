@@ -108,8 +108,12 @@ Do not lower thresholds to make builds pass.
 
 ## Doc Hygiene
 
+Before feature work, check `docs/architecture/feature-impact-map.md` for adjacent code, tests, and docs that usually change together.
+
 After significant changes, update relevant docs:
 
+- `docs/architecture/feature-impact-map.md` when a change reveals a new cross-system coupling.
+- `docs/architecture/*.md` or `docs/adr/*.md` when design intent or a durable architecture decision changes.
 - `docs/CODEBASE_MAP.md` when files are added, moved, or removed.
 - `docs/authoring/lesson-schema.md`, `docs/authoring/lesson-schema-yaml.md`, `docs/authoring/quiz-tasks.md`, or the relevant per-type doc (`docs/authoring/{python,html,scratch,filesystem}.md`) when lesson JSON fields or check types change.
 - `docs/authoring/AUTHORING_GUIDE.md` when YAML conversion rules or shorthands change.
@@ -125,3 +129,5 @@ After significant changes, update relevant docs:
 A significant change includes a new component, hook, or module; Firebase field change; URL parameter change; or change to a documented key behaviour.
 
 When a library or CDN module is added, removed, or upgraded to a new major version, update `docs/LICENSES.md` with package name, version, and license. Check for copyleft licenses before adding anything.
+
+Run `npm run docs:check` before handing work back. It checks local Markdown links, verifies every docs Markdown file is indexed by `docs/README.md`, and checks that source files are represented in `docs/CODEBASE_MAP.md`.

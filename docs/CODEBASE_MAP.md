@@ -33,6 +33,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons, Authoring, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
+| `AdminUi.jsx` | Shared Admin Portal UI primitives for panels, buttons, status pills, filters, and empty states |
 | `AuthoringPanel.jsx` | Lesson authoring workflow: draft list with stage badges, Markdown plan viewer with per-section review notes, context tab, notes CRUD, approve/request-changes/publish actions |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
 | `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
@@ -77,12 +78,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted |
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only) |
-| `PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status |
 | `OutputPanel.jsx` | Python output with retro typing animation and inline `input()` prompt |
-| `HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer |
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
-| `ScratchWorkspace.jsx` | Full Scratch IDE: multi-sprite Blockly workspaces, stage canvas, sprite drag, check evaluation |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
 | `CheckFeedbackBanner.jsx` | Pass/fail banner with optional hint and "see complete code" action |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message |
@@ -106,7 +104,6 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherReportsPanel.jsx` | Persistent list of past session reports for a lesson, reachable any time from the Reports button; queries `sessionReports` ordered by `startedAt` desc and opens `TeacherReportModal` per report |
 | `EditLessonModal.jsx` | Reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit a lesson's tasks from TeacherView; "Apply for This Session" broadcasts via the session's `lessonOverrideTasks` (teacher and admin), "Save Permanently" (admin only) also writes Firestore |
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow |
-| `FilesystemTask.jsx` | Student-facing Windows Explorer-style virtual filesystem UI: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor |
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
 | `TaskSlideTransition.jsx` | Animated slide transition wrapper used when switching between tasks |
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
@@ -159,6 +156,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers; composes the four sub-hooks below |
 | `usePyodideState.js` | Pyodide warm-up effect, `pyodideStatus` state, and `initPyodideIfNeeded()` helper |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
+| `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
 | `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects |
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `readDraggedTileId`, `writeDraggedTileId`, `setLiftedDragImage`, `removeTileFromState` |
@@ -228,8 +226,6 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `DraftTaskEditor.jsx` | Lightweight task editor for draft-stage lessons (`taskType: 'draft'`): kind/title/notes fields only, no code workspace |
 | `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor` |
-| `ScratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor` |
-| `FilesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` (visual starter/complete FS editor) and `FsCheckListEditor` (filesystem check builder) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
 | `TaskCheckResults.jsx` | Pass/fail check result banner shown after running or testing checks in the builder |
@@ -257,8 +253,10 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
 | `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`, `CHECK_TYPES` — delegates filesystem, Python variable, HTML element, and electronics checks to their module evaluators |
+| `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
+| `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status |
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
@@ -266,18 +264,25 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming |
 | `html/index.js` | HTML module definition |
 | `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck` — all `element_*` types |
+| `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
+| `html/HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer |
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
 | `html/BuilderWorkspace.jsx` | Re-export of `HtmlTaskWorkspace` |
 | `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
 | `scratch/index.js` | Scratch module definition |
 | `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
 | `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
+| `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |
 | `scratch/scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
+| `scratch/ScratchWorkspace.jsx` | Full Scratch IDE: multi-sprite Blockly workspaces, stage canvas, sprite drag, check evaluation |
 | `scratch/StudentWorkspace.jsx` | Scratch workspace with Reset Blocks button (extracted from `LessonTaskContent`) |
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
 | `filesystem/index.js` | Filesystem module definition |
 | `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `evaluateFsCheck` — all `fs_*` types |
+| `filesystem/filesystem.js` | Virtual filesystem engine: flat path-map state, CRUD helpers, path normalization, and parent/child lookup |
+| `filesystem/filesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` visual starter/complete editor and `FsCheckListEditor` filesystem check builder |
+| `filesystem/FilesystemTask.jsx` | Student-facing Windows Explorer-style virtual filesystem UI: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor |
 | `filesystem/StudentWorkspace.jsx` | `FilesystemTask` wrapper with initialDir derivation |
 | `filesystem/BuilderWorkspace.jsx` | Re-export of `FilesystemTaskWorkspace` |
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
@@ -344,10 +349,8 @@ Each `index.js` exports a default object with:
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeCode`, `parseMultipleContainOptions`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, and related helpers — used by `modules/checks.js` and sub-module evaluators |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
-| `filesystem.js` | Virtual filesystem engine: flat path-map state, `createEntry`, `deleteEntry`, `renameEntry`, `moveEntry`, `listChildren`, `normaliseDirPath`, `normaliseFilePath`, `parentPath` — CRUD helpers only; check evaluation lives in `modules/filesystem/checks.js` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
-| `iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
 | `lessonBlocksCodec.js` | Encodes/decodes Scratch block trees as JSON strings for Firestore storage, working around Firestore's nested map/array depth cap |
@@ -384,6 +387,7 @@ Each `index.js` exports a default object with:
 |---|---|
 | `scripts/yaml-to-json.mjs` | CLI tool: converts a YAML lesson file to lesson JSON — `node scripts/yaml-to-json.mjs input.yaml [output.json]` |
 | `scripts/download-scratch-sprites.mjs` | One-off tool: downloads Scratch's official sprite/costume assets from the Scratch CDN into `public/scratch-assets/sprites/` |
+| `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
 
 ---
 
@@ -424,6 +428,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | File | Role |
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
+| `src/test/setup.js` | Vitest/jsdom shared test setup: jest-dom matchers and browser API mocks used across component and hook tests |
 | `package.json` | Dependencies and scripts |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |

@@ -2,7 +2,7 @@
 
 This file lists all third-party open-source libraries used in this project, their versions, and their licenses.
 
-**Maintained rule:** Update this file whenever a library is added, removed, or upgraded to a new major version. See [AGENTS.md](AGENTS.md) Doc Hygiene section.
+**Maintained rule:** Update this file whenever a library is added, removed, or upgraded to a new major version. See [AGENTS.md](../AGENTS.md) Doc Hygiene section.
 
 ---
 

@@ -30,7 +30,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/shared/checkHelpers.js` | `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeExactOutput`, `countOutputLines`, `parseCheckValue`, `deepEqual` |
 | `src/shared/taskUtils.js` | `flattenTasks`, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, `updateSubtaskTitles` |
 | `src/shared/codemirror.js` | `getTabSize`, `getLanguageExtension`, `createBaseExtensions` |
-| `src/shared/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
+| `src/modules/html/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |
 | `src/shared/workspaceData.js` | Scratch state parsing/cloning and decoded HTML file conversion |
 | `src/shared/topicLibrary.js` | Topic normalization/search, wiki-link expansion and builder link suggestion detection |
@@ -41,7 +41,6 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/studentStorage.js` | Exact localStorage key formats plus saved task/file snapshot reads and writes |
 | `src/app/studentTaskContent.js` | Student Python/HTML/Scratch saved-work and carry-through selection precedence |
 | `src/app/studentLiveDisplay.js` | Teacher-live viewing eligibility, displayed workspace selection, and live HTML file conversion |
-| `src/app/teacherSandboxContent.js` | Teacher sandbox draft/live/configured/task fallback selection and defensive cloning |
 | `src/app/teacherLivePayload.js` | Decoded teacher-live payload construction from a student snapshot |
 
 **Placement:** `src/modules/__tests__/checks.test.js`, `src/shared/__tests__/taskUtils.test.js`, etc.
@@ -60,7 +59,8 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 |---|---|
 | `src/shared/useIsMobile.js` | Renders correctly at mobile/desktop breakpoints; responds to matchMedia change |
 | `src/app/hooks/useIdentity.js` | Creates identity on first use; restores from localStorage; `createIdentity`, `updateTimestamp`, `updateDisplayName` methods; handles corrupted JSON gracefully |
-| `src/app/hooks/useSession.js` | `encodeFileKey`/`decodeFileKey` helpers (pure — unit test these directly); Firebase methods mocked — test that correct Firebase calls are made for each teacher/student action |
+| `src/app/hooks/useSession.js` | Firebase methods mocked — test that correct Firebase calls are made for each teacher/student action |
+| `src/shared/fileKeys.js` | `encodeFileKey`/`decodeFileKey` helpers for Realtime Database-safe file keys |
 | `src/app/views/LandingPage.jsx` | Renders; navigates to `/lesson/:id` on submit |
 | `src/app/components/WaitingRoom.jsx` | Title and description rendering; animated dot progression |
 | `src/app/components/JoinChoiceScreen.jsx` | Session-state message variants; Wait/Solo callbacks |
@@ -76,7 +76,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/TeacherTimers.jsx` | Elapsed/countdown rendering and expired task state |
 | `src/app/components/TeacherSessionControls.jsx` | Navigation, share-link callbacks, and state-specific teacher session actions |
 | `src/app/components/EditLessonModal.jsx` | Role-based footer actions (teacher: session-only; admin: session-only + permanent), save validation gate, active-task delete confirmation; builder's `TaskList`/`TaskEditor`/`GroupEditor` are stubbed at the module boundary |
-| `src/app/components/FilesystemTask.jsx` | Folder navigation, image preview rendering, and browse interaction callbacks |
+| `src/modules/filesystem/FilesystemTask.jsx` | Folder navigation, image preview rendering, and browse interaction callbacks |
 | `src/shared/markdown.jsx` | `MarkdownRenderer` renders headings, tables, code fences, callouts and topic-library interaction; `InlineMarkdown` renders inline-only |
 | `src/builder/components/ExplainerEditor.jsx` | Markdown topic picker and recognised-term link prompt |
 | `src/builder/App.jsx` | Shows restore prompt when localStorage has saved lesson; auto-saves on lesson change; `beforeunload` fires when dirty |
@@ -168,4 +168,4 @@ Set in `vitest.config.js`. Current thresholds reflect the initial test scope (pu
 
 ---
 
-*Last updated: May 2026 — added characterization coverage for WaitingRoom, JoinChoiceScreen, JoinSessionPrompt, NameEntry, ExplainerPanel, and TopBar.*
+*Last updated: July 2026 — refreshed moved module paths and documentation hygiene expectations.*
