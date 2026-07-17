@@ -25,6 +25,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `AuthContext.jsx` | `AuthProvider` — `onAuthStateChanged` listener; provides `{ user, role, loading }` via React context |
 | `useAuth.js` | `useAuth()` hook — thin re-export of `AuthContext` |
 | `ProtectedRoute.jsx` | Route guard — shows loading screen, then redirects to `/login?redirect=…` if unauthenticated or wrong role |
+| `AccountSettings.jsx` | Authenticated account page where teachers/admins change their own Firebase Auth password |
 
 ---
 
@@ -32,13 +33,11 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with sign-out, tab switcher between Lessons, Authoring, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
+| `AdminPortal.jsx` | Admin portal shell: header with account/sign-out actions and tab switcher between Lessons, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
 | `AdminUi.jsx` | Shared Admin Portal UI primitives for panels, buttons, status pills, filters, and empty states |
-| `AuthoringPanel.jsx` | Lesson authoring workflow: draft list with stage badges, Markdown plan viewer with per-section review notes, context tab, notes CRUD, approve/request-changes/publish actions |
-| `AccountManagement.jsx` | Firestore `users` real-time list; create/role/disable/enable/delete via Cloud Functions |
-| `LessonPanel.jsx` | Firestore `lessons` list grouped by type then level; Launch as Teacher link and Copy Student Link per lesson |
+| `AccountManagement.jsx` | Firestore `users` real-time list; create/role/password/disable/enable/delete via Cloud Functions |
+| `LessonPanel.jsx` | Firestore `lessons`, `lessonLevels`, `sessionReports`, and feedback collection-group view; reusable level management, lesson actions, report/feedback collapsibles |
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
-| `ReportsPanel.jsx` | Firestore `sessionReports` collection-group query across every lesson; filterable table (lesson title/ID), reuses `TeacherReportModal` for the detail view |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
 | `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite editor |
@@ -107,7 +106,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
 | `TaskSlideTransition.jsx` | Animated slide transition wrapper used when switching between tasks |
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
-| `LoadingScreen.jsx` | Centred loading/error message screen for StudentView phases |
+| `LoadingScreen.jsx` | Branded reusable spinner/loading/error message screen for route, auth, and StudentView phases |
 | `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended' |
 | `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
 | `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz and Information rendered inline; all code types delegated to their module's `StudentWorkspace`) |
@@ -356,8 +355,9 @@ Each `index.js` exports a default object with:
 | `lessonBlocksCodec.js` | Encodes/decodes Scratch block trees as JSON strings for Firestore storage, working around Firestore's nested map/array depth cap |
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, task summary); `reportToYamlText()` for YAML export |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
+| `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `applyLessonOverride()`; also draft CRUD helpers: `fetchDraftList()`, `fetchLessonDraftById()`, `upsertDraft()`, `updateDraftStage()`, `addDraftReviewNote()`, `updateDraftReviewNote()`, `deleteDraftReviewNote()`; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `applyLessonOverride()`; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
@@ -376,7 +376,7 @@ Each `index.js` exports a default object with:
 
 | File | Role |
 |---|---|
-| `functions/index.js` | HTTPS callable functions: `createAccount`, `setUserRole`, `disableAccount`, `enableAccount`, `deleteAccount` |
+| `functions/index.js` | HTTPS callable functions: `createAccount`, `setUserRole`, `disableAccount`, `enableAccount`, `deleteAccount`, `updateAccountPassword` |
 | `functions/package.json` | Cloud Functions Node.js package (firebase-admin, firebase-functions) |
 
 ---
@@ -419,7 +419,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
 | `cli/feedback.mjs` | Exports Firestore feedback helpers: list (platform/lesson/all), add (lesson/platform), archive by ID (soft-delete via `archived: true`), and bulk-clear (archive) with optional filters |
 | `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |
-| `cli/authoring.mjs` | Exports Firestore CRUD for the `authoringGuidelines` collection: `listGuidelines`, `getGuideline`, `upsertGuideline`, `deleteGuideline` |
+| `cli/levels.mjs` | Exports Firestore reusable-level helpers: `listLevels`, `upsertLevel`, `deleteLevel` |
 
 ---
 

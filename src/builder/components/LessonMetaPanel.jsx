@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { useAssets } from '../../shared/useAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useAuth } from '../../auth/useAuth'
+import { firestore } from '../../shared/firebase'
+import { getLessonLevelRef, getLessonLevelScope, levelTitleFromLesson, LEVEL_COLLECTION, normalizeLevelRecord } from '../../shared/lessonLevels'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -21,9 +24,24 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
   const { typeStorageAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
+  const [levels, setLevels] = useState([])
 
   function set(field, value) {
     onUpdate(prev => ({ ...prev, [field]: value }))
+  }
+
+  function setLevel(levelId) {
+    const level = levels.find(item => item.id === levelId)
+    if (!level) {
+      onUpdate(prev => ({ ...prev, levelId: undefined, levelRef: undefined, level: undefined }))
+      return
+    }
+    onUpdate(prev => ({
+      ...prev,
+      levelId: level.id,
+      levelRef: { id: level.id, scopeType: level.scopeType, scopeId: level.scopeId },
+      level: level.title,
+    }))
   }
 
   // Keep assetsPath in sync with lesson ID for relative costume/backdrop resolution
@@ -47,7 +65,19 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
     }
   }, [lesson.id, lesson.type, assetsLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    return onSnapshot(collection(firestore, LEVEL_COLLECTION), snap => {
+      setLevels(snap.docs.map(d => normalizeLevelRecord({ id: d.id, ...d.data() })))
+    }, () => setLevels([]))
+  }, [])
+
   const lessonTypeLabel = getLessonTypeLabel(lesson.type)
+  const scope = getLessonLevelScope(lesson)
+  const availableLevels = levels
+    .filter(level => level.scopeType === scope.scopeType && level.scopeId === scope.scopeId)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  const levelRef = getLessonLevelRef(lesson)
+  const legacyLevel = levelTitleFromLesson(lesson, levels)
 
   return (
     <div style={s.panel}>
@@ -82,16 +112,20 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
           />
         </Field>
 
-        <Field label="Level" hint="optional, e.g. Level 1">
-          <input
+        <Field label="Level" hint={`Scoped to ${scope.scopeType}: ${scope.scopeId}. Create levels in Admin > Levels.`}>
+          <select
             style={s.input}
-            value={lesson.level ?? ''}
-            onChange={e => {
-              const v = e.target.value
-              set('level', v || undefined)
-            }}
-            placeholder="Level 1"
-          />
+            value={levelRef?.id ?? ''}
+            onChange={e => setLevel(e.target.value)}
+          >
+            <option value="">No level</option>
+            {availableLevels.map(level => (
+              <option key={level.id} value={level.id}>{level.title}</option>
+            ))}
+          </select>
+          {legacyLevel && !levelRef?.id && (
+            <span style={s.summaryText}>Legacy value: {legacyLevel}</span>
+          )}
         </Field>
 
         <Field label="Description">

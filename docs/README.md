@@ -18,6 +18,11 @@ Feature reference for the whole platform — lesson types, task types, quiz vari
 
 **Load when:** you need to understand product capabilities before making a change, or when checking whether a feature already exists.
 
+### [UI_STYLE_GUIDE.md](UI_STYLE_GUIDE.md)
+Style guide for app UI elements: theme tokens, typography, buttons, forms, tabs, panels, modals, status feedback, accessibility, reusable primitives, and recommendations for keeping classroom, builder, and admin UI consistent.
+
+**Load when:** adding or changing UI elements, creating a reusable component, or reviewing whether a new interface follows existing app patterns.
+
 ### [TESTING.md](TESTING.md)
 Testing strategy, tool choices, test file conventions, and what to test when behaviour changes. Read this before writing or significantly modifying tests.
 
@@ -229,13 +234,3 @@ Upload, list, and delete lesson asset files in Firebase Storage. Covers MIME typ
 
 ### [authoring/skills/hsc-feedback.md](authoring/skills/hsc-feedback.md)
 Read, create, delete, and bulk-clear feedback items in both the lesson feedback subcollection and the platform feedback collection. Full field reference, filter options, and example commands.
-
-### [authoring/skills/hsc-authoring.md](authoring/skills/hsc-authoring.md)
-Authoring guidelines (`authoring guidelines`) and the lesson draft pipeline (`lessons draft`, `lessons draft entry`, `lessons draft notes`). Covers the full Ideas → Details → Review → Approved → Published workflow with all commands, flags, YAML input formats, and a typical end-to-end example.
-
-**Load when:** managing authoring guidelines in the Admin Portal, or working with lesson drafts at any stage of the review pipeline.
-
-### [authoring/skills/hsc-review.md](authoring/skills/hsc-review.md)
-Workflow for reviewing a lesson at its current draft stage: fetching the live Authoring Guidelines, reading a lesson's tasks with review notes, and recording per-section review decisions via `lessons review`/`lessons draft notes`.
-
-**Load when:** asked to review a lesson draft against the platform's authoring guidelines.

@@ -159,14 +159,14 @@ Usually changes with:
 
 ## Admin Portal
 
-Changes include admin tabs, authoring workflow, lesson management, session cleanup, topics, shared assets, accounts, feedback, or reports.
+Changes include admin tabs, lesson management, reusable levels, session cleanup, topics, shared assets, accounts, feedback, or reports.
 
 Usually changes with:
 
 - `src/admin/`
 - `src/shared/lessonService.js`
 - `functions/index.js`
-- `cli/authoring.mjs`
+- `cli/levels.mjs`
 - `cli/feedback.mjs`
 - `docs/agents/project-rules.md`
 - `docs/authoring/skills/*.md`
@@ -175,7 +175,7 @@ Usually changes with:
 
 ## CLI Workflows
 
-Changes include command names, arguments, output format, validation, publishing, feedback, assets, authoring guidelines, or topic workflows.
+Changes include command names, arguments, output format, validation, publishing, feedback, assets, reusable levels, or topic workflows.
 
 Usually changes with:
 
@@ -230,7 +230,7 @@ Usually changes with:
 - `src/shared/lessonReport.js`
 - `src/app/components/TeacherReportModal.jsx`
 - `src/app/components/TeacherReportsPanel.jsx`
-- `src/admin/ReportsPanel.jsx`
+- `src/admin/LessonPanel.jsx`
 - `src/admin/FeedbackPanel.jsx`
 - `cli/feedback.mjs`
 - `docs/authoring/skills/hsc-feedback.md`

@@ -2,13 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
+import { getLessonModules } from '../modules/registry'
 
-const LESSON_TYPES = [
-  { id: 'python', label: 'Python' },
-  { id: 'scratch', label: 'Scratch' },
-  { id: 'html', label: 'HTML / Web' },
-  { id: 'filesystem', label: 'Files & Folders' },
-]
+const LESSON_TYPES = getLessonModules().map(module => ({ id: module.type, label: module.label }))
 
 const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 

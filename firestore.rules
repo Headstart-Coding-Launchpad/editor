@@ -18,6 +18,14 @@ service cloud.firestore {
                    && request.auth.token.role == 'admin';
     }
 
+    // Reusable lesson levels: public read so lesson lists/builders can display
+    // level labels; writes restricted to admins.
+    match /lessonLevels/{levelId} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.role == 'admin';
+    }
+
     // Users: mirrors the Firebase Auth user list.
     // Admins can read all; teachers can only read their own document.
     // Writes are exclusively via Cloud Functions (Admin SDK).
@@ -41,7 +49,7 @@ service cloud.firestore {
 
     // Lesson report subcollection: one doc per ended session run, written once
     // by the teacher when a session ends or is restarted. Teacher or admin can
-    // read/write; recursive wildcard supports a future collectionGroup() query.
+    // read/write; recursive wildcard supports collectionGroup() queries.
     match /{path=**}/sessionReports/{reportId} {
       allow read: if request.auth != null
                   && (request.auth.token.role == 'admin'
@@ -66,18 +74,6 @@ service cloud.firestore {
       allow write: if request.auth != null
                    && (request.auth.token.role == 'teacher'
                        || request.auth.token.role == 'admin');
-    }
-
-    // Lesson drafts: admin-only. Not public-read — draft content never reaches students.
-    match /lessonDrafts/{draftId} {
-      allow read, write: if request.auth != null
-                         && request.auth.token.role == 'admin';
-    }
-
-    // Authoring guidelines: admin-only. Internal reference docs for lesson authors.
-    match /authoringGuidelines/{guidelineId} {
-      allow read, write: if request.auth != null
-                         && request.auth.token.role == 'admin';
     }
   }
 }

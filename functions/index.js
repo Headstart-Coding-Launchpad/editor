@@ -82,3 +82,17 @@ exports.deleteAccount = onCall({ region: 'europe-west1', invoker: 'public', serv
   await getFirestore().collection('users').doc(uid).delete()
   await getAuth().deleteUser(uid)
 })
+
+// Allows an admin to set another account's password. Users change their own
+// password through Firebase Auth on the client so recent-login checks apply.
+exports.updateAccountPassword = onCall({ region: 'europe-west1', invoker: 'public', serviceAccount: SA }, async ({ data, auth }) => {
+  requireAdmin(auth)
+  const { uid, password } = data
+  if (!uid || !password || password.length < 8) {
+    throw new HttpsError('invalid-argument', 'uid and password (min 8 chars) are required.')
+  }
+  if (uid === auth.uid) {
+    throw new HttpsError('invalid-argument', 'Use account settings to change your own password.')
+  }
+  await getAuth().updateUser(uid, { password })
+})

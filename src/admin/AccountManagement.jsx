@@ -9,6 +9,7 @@ const setUserRole    = httpsCallable(functions, 'setUserRole')
 const disableAccount = httpsCallable(functions, 'disableAccount')
 const enableAccount  = httpsCallable(functions, 'enableAccount')
 const deleteAccount  = httpsCallable(functions, 'deleteAccount')
+const updateAccountPassword = httpsCallable(functions, 'updateAccountPassword')
 
 export default function AccountManagement() {
   const { user: currentUser } = useAuth()
@@ -22,6 +23,8 @@ export default function AccountManagement() {
   const [formLoading, setFormLoading] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [snapshotError, setSnapshotError] = useState(null)
+  const [passwordAccountId, setPasswordAccountId] = useState(null)
+  const [passwordValue, setPasswordValue] = useState('')
 
   useEffect(() => {
     return onSnapshot(
@@ -60,6 +63,21 @@ export default function AccountManagement() {
       await fn(payload)
     } catch (err) {
       setActionError(`${label}: ${err.message}`)
+    }
+  }
+
+  async function handlePasswordReset(account) {
+    if (passwordValue.length < 8) {
+      setActionError('Set password: password must be at least 8 characters.')
+      return
+    }
+    setActionError(null)
+    try {
+      await updateAccountPassword({ uid: account.id, password: passwordValue })
+      setPasswordAccountId(null)
+      setPasswordValue('')
+    } catch (err) {
+      setActionError(`Set password: ${err.message}`)
     }
   }
 
@@ -144,7 +162,8 @@ export default function AccountManagement() {
                   {account.disabled ? 'Disabled' : 'Active'}
                 </span>
               </td>
-              <td style={{ ...s.td, display: 'flex', gap: 6 }}>
+              <td style={{ ...s.td }}>
+                <div style={s.actionsCell}>
                 {account.disabled ? (
                   <button
                     className="btn-ghost-outline"
@@ -176,6 +195,33 @@ export default function AccountManagement() {
                 >
                   Delete
                 </button>
+                <button
+                  className="btn-ghost-outline"
+                  style={s.actionBtn}
+                  disabled={account.id === currentUser?.uid}
+                  onClick={() => {
+                    setPasswordAccountId(id => id === account.id ? null : account.id)
+                    setPasswordValue('')
+                  }}
+                >
+                  Password
+                </button>
+                </div>
+                {passwordAccountId === account.id && (
+                  <div style={s.passwordResetRow}>
+                    <input
+                      style={s.passwordInput}
+                      type="password"
+                      minLength={8}
+                      value={passwordValue}
+                      onChange={e => setPasswordValue(e.target.value)}
+                      placeholder="New password"
+                    />
+                    <button className="btn-secondary" style={s.actionBtn} onClick={() => handlePasswordReset(account)}>
+                      Set
+                    </button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}
@@ -209,5 +255,8 @@ const s = {
   badge:   { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 },
   roleSelect: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: '#fff' },
   actionBtn:  { padding: '4px 10px', fontSize: '0.82rem' },
+  actionsCell: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+  passwordResetRow: { display: 'flex', gap: 6, marginTop: 8 },
+  passwordInput: { width: 150, fontFamily: 'var(--font-body)', fontSize: '0.85rem', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4 },
   note:    { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: 0 },
 }

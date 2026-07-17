@@ -23,6 +23,7 @@ export default function TeacherSessionControls({
 
   const narrow  = width < BREAKPOINT_NARROW
   const compact = width < BREAKPOINT_COMPACT
+  const openAccount = () => { window.location.hash = '#/account' }
 
   useEffect(() => {
     function onResize() { setWidth(window.innerWidth) }
@@ -78,6 +79,9 @@ export default function TeacherSessionControls({
               <button style={sDD.item} onClick={() => { setMenuOpen(false); onReturnToAdmin() }}>
                 Admin
               </button>
+              <button style={sDD.item} onClick={() => { setMenuOpen(false); openAccount() }}>
+                Account
+              </button>
             </div>
           )}
         </div>
@@ -97,6 +101,9 @@ export default function TeacherSessionControls({
           </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onReturnToAdmin}>
             Admin
+          </button>
+          <button className="btn-ghost teacher-session-controls__action" onClick={openAccount}>
+            Account
           </button>
         </>
       )}

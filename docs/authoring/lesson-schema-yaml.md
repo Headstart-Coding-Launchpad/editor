@@ -24,7 +24,12 @@ id: python-for-loops         # required — lowercase slug, used in URLs
 type: python                 # required — python | html | scratch | filesystem | electronics
 title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
-level: 1                     # optional — difficulty badge in the TopBar
+level: Level 1               # optional legacy display fallback; prefer levelId/levelRef
+levelId: python-level-1      # optional reusable level id from lessonLevels/
+levelRef:                    # optional reusable level reference
+  id: python-level-1
+  scopeType: type            # type | module | course | collection
+  scopeId: python
 stage: published              # optional — ideas | details | review | approved | published (default)
 assetsPath: scratch-assets    # optional — base URL path for asset resolution
 assets:                       # optional — files shown in the AssetBrowser
@@ -43,7 +48,9 @@ tasks: []                     # required — ordered task list (see below)
 | `type` | Yes | string | `python`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
-| `level` | No | number | Difficulty badge in the TopBar. |
+| `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
+| `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
+| `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. |
 | `stage` | No | string | Lesson lifecycle stage. Controls which draft-task fields are unlocked in the builder. See `docs/authoring/AUTHORING_GUIDE.md` for the full stage pipeline. |
 | `topicProposals` | No | array | Missing Topic Library entries proposed by the lesson. See `docs/authoring/AUTHORING_GUIDE.md`. |
 | `assetsPath` | No | string | Base URL path for asset resolution. |

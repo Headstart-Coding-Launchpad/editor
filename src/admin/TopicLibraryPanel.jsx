@@ -3,8 +3,12 @@ import { collection, onSnapshot, setDoc, deleteDoc, doc, writeBatch } from 'fire
 import { firestore } from '../shared/firebase'
 import { clearTopicCache, normalizeTopicLibrary, searchTopics } from '../shared/topicLibrary'
 import { MarkdownFieldEditor } from '../shared/MarkdownFieldEditor'
+import { getLessonModules } from '../modules/registry'
 
-const LESSON_TYPES = ['python', 'html', 'scratch']
+const LESSON_MODULES = getLessonModules()
+const LESSON_TYPES = LESSON_MODULES.map(module => module.type)
+const LESSON_TYPE_LABELS = Object.fromEntries(LESSON_MODULES.map(module => [module.type, module.label]))
+const INLINE_CODE_LANGUAGES = [...new Set(LESSON_MODULES.flatMap(module => module.explainerInlineCodeLanguages ?? []))]
 const ID_PATTERN   = /^[a-z0-9][a-z0-9._-]*$/
 
 function emptyTopic() {
@@ -35,7 +39,7 @@ export default function TopicLibraryPanel() {
   const [deleting, setDeleting]   = useState(false)
   const [dirty, setDirty]         = useState(false)
   const [query, setQuery]         = useState('')
-  const [typeFilter, setTypeFilter] = useState(null) // null | 'python' | 'html' | 'scratch'
+  const [typeFilter, setTypeFilter] = useState(null)
   const [uploading, setUploading] = useState(false)
   const uploadRef                 = useRef(null)
 
@@ -211,7 +215,7 @@ export default function TopicLibraryPanel() {
       </div>
 
       <div className="ui-tabs">
-        {[{ key: null, label: 'All', count: typeCounts.all }, ...LESSON_TYPES.map(t => ({ key: t, label: t.charAt(0).toUpperCase() + t.slice(1), count: typeCounts[t] }))].map(({ key, label, count }) => (
+        {[{ key: null, label: 'All', count: typeCounts.all }, ...LESSON_TYPES.map(t => ({ key: t, label: LESSON_TYPE_LABELS[t] ?? t, count: typeCounts[t] }))].map(({ key, label, count }) => (
           <button
             key={label}
             className={`ui-tab${typeFilter === key ? ' is-active' : ''}`}
@@ -333,7 +337,7 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
                     onChange('types', next)
                   }}
                 />
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+                {LESSON_TYPE_LABELS[type] ?? type}
               </label>
             ))}
           </div>
@@ -350,7 +354,7 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
             height={120}
             minHeight={80}
             lessonType={lessonType}
-            inlineCodeLanguages={['python', 'html', 'css', 'javascript', 'scratch']}
+            inlineCodeLanguages={INLINE_CODE_LANGUAGES}
           />
         </div>
       </div>
@@ -365,7 +369,7 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
             height={260}
             minHeight={200}
             lessonType={lessonType}
-            inlineCodeLanguages={['python', 'html', 'css', 'javascript', 'scratch']}
+            inlineCodeLanguages={INLINE_CODE_LANGUAGES}
           />
         </div>
       </div>
@@ -380,7 +384,7 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
             height={180}
             minHeight={140}
             lessonType={lessonType}
-            inlineCodeLanguages={['python', 'html', 'css', 'javascript', 'scratch']}
+            inlineCodeLanguages={INLINE_CODE_LANGUAGES}
           />
         </div>
       </div>

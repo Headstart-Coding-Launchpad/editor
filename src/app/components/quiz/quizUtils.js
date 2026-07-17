@@ -153,6 +153,8 @@ export const baseStyles = {
   },
   questionBody: {
     padding: '14px 16px',
+    fontSize: '1.08rem',
+    lineHeight: 1.65,
   },
   options: {
     display: 'grid',

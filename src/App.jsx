@@ -9,6 +9,7 @@ const LandingPage = lazy(() => import('./app/views/LandingPage'))
 const LoginPage = lazy(() => import('./app/views/LoginPage'))
 const AdminPortal = lazy(() => import('./admin/AdminPortal'))
 const BuilderApp = lazy(() => import('./builder/App'))
+const AccountSettings = lazy(() => import('./auth/AccountSettings'))
 
 export default function App() {
   return (
@@ -17,6 +18,14 @@ export default function App() {
         <Suspense fallback={<LoadingScreen message="Loading..." />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute requiredRole="teacher">
+                  <AccountSettings />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/lesson/:lessonId" element={<LessonRoute />} />
             <Route
               path="/admin/:tab?/:subtab?"

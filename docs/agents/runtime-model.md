@@ -172,7 +172,7 @@ Written once per session run, when the teacher ends (or restarts, since restart 
 
 Each task result carries `timeOnTaskMs`: the gap between `taskStartTimes[taskId]` and either the passing attempt's `passedAt` (if completed) or the latest attempt's `loggedAt` (if not) — `null` if the task never started or nothing was logged. `taskSummary` carries the class average as `avgTimeOnTaskMs` (averaged only over students with a non-null value).
 
-Read/write access mirrors the `feedback` subcollection: teacher or admin only (see `firestore.rules`; the rule's recursive wildcard already supports admin-wide `collectionGroup()` reads). Teachers view reports via `TeacherReportModal` (shown right after ending a session) and `TeacherReportsPanel` (a persistent list reachable any time from the lesson's Reports button, querying the subcollection ordered by `startedAt` desc; while a session is running, `TeacherView` also passes it a `liveReport` built from the live session, shown as an "In progress" row above the saved reports). Admins can browse every lesson's saved reports at once via `/admin/reports` (`src/admin/ReportsPanel.jsx`), which queries the `sessionReports` collection group directly (no live/in-progress row — only sessions that have actually ended). Export to YAML uses `reportToYamlText` with the same `js-yaml` options as `cli/yaml-converter.mjs`.
+Read/write access mirrors the `feedback` subcollection: teacher or admin only (see `firestore.rules`; the rule's recursive wildcard already supports admin-wide `collectionGroup()` reads). Teachers view reports via `TeacherReportModal` (shown right after ending a session) and `TeacherReportsPanel` (a persistent list reachable any time from the lesson's Reports button, querying the subcollection ordered by `startedAt` desc; while a session is running, `TeacherView` also passes it a `liveReport` built from the live session, shown as an "In progress" row above the saved reports). Admins browse saved reports from the **Lessons** tab: expand a lesson row to see report counts and a collapsible report list. Export to YAML uses `reportToYamlText` with the same `js-yaml` options as `cli/yaml-converter.mjs`.
 
 ```json
 {
@@ -215,40 +215,38 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
 }
 ```
 
-## Lesson Drafts (`lessonDrafts` collection)
+## Lesson Levels (`lessonLevels` collection)
 
-Admin-only Firestore collection for the lesson authoring workflow (Ideas → Details → Review → Publish). Draft content is Markdown prose, not lesson JSON. Drafts never appear in the classroom.
+Reusable level records are stored in `lessonLevels/{levelId}` and linked from lessons. Legacy scalar `lesson.level` values are migrated automatically by the admin lesson list and by publish helpers.
 
 ```json
 {
-  "id": "python-l3-09",
-  "stage": "ideas | details | review | approved | published",
-  "title": "Dictionaries",
-  "type": "python",
-  "level": 3,
-  "content": "# Markdown lesson plan content (the Ideas or Details document)",
-  "context": "AI working notes: prerequisites, open decisions, author reasoning",
-  "reviewNotes": [
-    {
-      "sectionId": "4-runnable-reminder-rps-snippet",
-      "sectionTitle": "4. Runnable Reminder — RPS Snippet",
-      "decision": "pending | accepted | rejected",
-      "suggestedChange": "The recap code is too complex…",
-      "extraNote": "",
-      "createdAt": 1234567890
-    }
-  ],
-  "_meta": {
-    "authorEmail": "ai@headstart",
-    "createdAt": "Timestamp",
-    "updatedAt": "Timestamp",
-    "reviewedBy": "ryan@flemtech.co.uk",
-    "reviewedAt": "Timestamp | null"
+  "id": "python-level-1",
+  "title": "Level 1",
+  "description": "",
+  "order": 1,
+  "color": "#7c3aed",
+  "icon": "star",
+  "scopeType": "type | module | course | collection",
+  "scopeId": "python"
+}
+```
+
+Lessons keep a display fallback plus a reference:
+
+```json
+{
+  "level": "Level 1",
+  "levelId": "python-level-1",
+  "levelRef": {
+    "id": "python-level-1",
+    "scopeType": "type",
+    "scopeId": "python"
   }
 }
 ```
 
-Section IDs are slugified H3 headings from the Markdown stored in `content`. The CLI reads a YAML file on `lessons draft upsert`; fields: `title`, `type`, `level`, `stage`, `content` (Markdown body), `context`, `author`. Stage flow: `ideas → details → review → approved → published`.
+The builder and admin UI link lessons to existing levels; create/manage levels from the collapsible **Levels** section in Admin > Lessons or with `node cli/cli.mjs levels`.
 
 ## localStorage Keys
 
@@ -269,6 +267,7 @@ Do not deviate from these key formats.
 |---|---|
 | `/` | Landing page; student enters lesson ID |
 | `/login` | Email/password sign-in for teachers/admins; reads `?redirect` |
+| `/account` | Authenticated account settings; teachers/admins can change their own password |
 | `/admin` | Admin portal; admin role required |
 | `/lesson/:lessonId` | Solo student mode |
 | `/lesson/:lessonId?live=true` | Live student mode |

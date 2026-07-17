@@ -1,10 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
+import {
+  collection,
+  collectionGroup,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
 import { deletePublishedLesson, publishLesson } from '../shared/lessonService'
+import {
+  compareLevels,
+  getLessonLevelRef,
+  levelTitleFromLesson,
+  LEVEL_COLLECTION,
+  makeLevelId,
+  migrateLessonLevel,
+  normalizeLevelRecord,
+} from '../shared/lessonLevels'
 import { getLessonModules } from '../modules/registry'
 import { validateLesson } from '../builder/lessonUtils'
+import TeacherReportModal from '../app/components/TeacherReportModal'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -24,17 +44,11 @@ const STAGE_FILTER_OPTIONS = [
   { value: 'approved', label: 'Approved' },
   { value: 'published', label: 'Published' },
 ]
+const UNASSIGNED_LEVEL_ID = '__unassigned__'
+const COMMON_LEVEL_EMOJIS = ['⭐', '🌱', '🚀', '💡', '🎯', '🧩', '🏆', '📚', '🛠️', '⚡', '🎨', '🔬']
+const LEGACY_ICON_LABELS = { star: '⭐' }
 
-function levelSortKey(level) {
-  if (level === null || level === undefined) return Infinity
-  if (typeof level === 'number') return level
-  const s = String(level)
-  if (s.toLowerCase() === 'taster') return -1
-  const m = s.match(/[\d.]+/)
-  return m ? parseFloat(m[0]) : Infinity
-}
-
-function groupByTypeAndLevel(lessons) {
+function groupByTypeAndLevel(lessons, levels) {
   const byType = Object.fromEntries(TYPE_ORDER.map(type => [type, []]))
   for (const lesson of lessons) {
     const type = lesson.type || 'unknown'
@@ -42,7 +56,12 @@ function groupByTypeAndLevel(lessons) {
     byType[type].push(lesson)
   }
   for (const type of Object.keys(byType)) {
-    byType[type].sort((a, b) => levelSortKey(a.level) - levelSortKey(b.level))
+    byType[type].sort((a, b) => {
+      const levelA = findLessonLevel(a, levels)
+      const levelB = findLessonLevel(b, levels)
+      if (levelA || levelB) return compareLevels(levelA ?? {}, levelB ?? {})
+      return String(a.title ?? a.id).localeCompare(String(b.title ?? b.id))
+    })
   }
   const sortedTypes = Object.keys(byType).sort((a, b) => {
     const ai = TYPE_ORDER.indexOf(a)
@@ -52,19 +71,93 @@ function groupByTypeAndLevel(lessons) {
   return sortedTypes.map(type => ({ type, lessons: byType[type] }))
 }
 
+function makeLevelBuckets(lessons, levels, activeType) {
+  const lessonBuckets = new Map()
+  for (const lesson of lessons) {
+    const level = findLessonLevel(lesson, levels)
+    const fallbackTitle = levelTitleFromLesson(lesson, levels)
+    const bucketId = level?.id ?? (fallbackTitle ? `legacy:${fallbackTitle}` : UNASSIGNED_LEVEL_ID)
+    if (!lessonBuckets.has(bucketId)) {
+      lessonBuckets.set(bucketId, {
+        id: bucketId,
+        level,
+        title: level?.title ?? fallbackTitle ?? 'No level',
+        icon: level?.icon ?? '',
+        color: level?.color ?? '#9ca3af',
+        order: level?.order ?? Number.MAX_SAFE_INTEGER,
+        lessons: [],
+      })
+    }
+    lessonBuckets.get(bucketId).lessons.push(lesson)
+  }
+
+  for (const level of levels) {
+    if (level.scopeType !== 'type' || level.scopeId !== activeType) continue
+    if (!lessonBuckets.has(level.id)) {
+      lessonBuckets.set(level.id, {
+        id: level.id,
+        level,
+        title: level.title,
+        icon: level.icon,
+        color: level.color,
+        order: level.order ?? 0,
+        lessons: [],
+      })
+    }
+  }
+
+  return [...lessonBuckets.values()]
+    .sort((a, b) => {
+      if (a.id === UNASSIGNED_LEVEL_ID) return 1
+      if (b.id === UNASSIGNED_LEVEL_ID) return -1
+      const order = (a.order ?? 0) - (b.order ?? 0)
+      if (order !== 0) return order
+      return String(a.title).localeCompare(String(b.title))
+    })
+    .map(bucket => ({
+      ...bucket,
+      lessons: bucket.lessons.sort((a, b) => String(a.title ?? a.id).localeCompare(String(b.title ?? b.id))),
+    }))
+}
+
+function displayLevelIcon(icon) {
+  return LEGACY_ICON_LABELS[icon] ?? icon ?? ''
+}
+
 function makeTeacherUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
 }
 
-export default function LessonPanel() {
+function findLessonLevel(lesson, levels) {
+  const ref = getLessonLevelRef(lesson)
+  if (!ref?.id) return null
+  return levels.find(level => level.id === ref.id) ?? null
+}
+
+function openCount(items) {
+  return items.filter(item => !item.archived && !item.resolvedAt).length
+}
+
+export default function LessonPanel({ view = 'lessons' }) {
   const [lessons, setLessons] = useState([])
+  const [levels, setLevels] = useState([])
+  const [reports, setReports] = useState([])
+  const [feedback, setFeedback] = useState([])
   const [loading, setLoading] = useState(true)
+  const [levelsLoading, setLevelsLoading] = useState(true)
+  const [reportsLoading, setReportsLoading] = useState(true)
+  const [feedbackLoading, setFeedbackLoading] = useState(true)
   const [error, setError] = useState(null)
   const [shareOpenId, setShareOpenId] = useState(null)
-  const [copiedLink, setCopiedLink] = useState(null) // { id, type }
+  const [copiedLink, setCopiedLink] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [deletedIds, setDeletedIds] = useState(new Set())
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [activeType, setActiveType] = useState(null)
+  const [stageFilter, setStageFilter] = useState(null)
+  const [openLevelIds, setOpenLevelIds] = useState(() => new Set())
   const copyTimerRef = useRef(null)
+  const migratedRef = useRef(new Set())
 
   useEffect(() => {
     return onSnapshot(
@@ -77,6 +170,64 @@ export default function LessonPanel() {
       (err) => { setError(err.message); setLoading(false) },
     )
   }, [])
+
+  useEffect(() => {
+    return onSnapshot(
+      collection(firestore, LEVEL_COLLECTION),
+      (snap) => {
+        setLevels(snap.docs.map(d => normalizeLevelRecord({ id: d.id, ...d.data() })).sort(compareLevels))
+        setLevelsLoading(false)
+      },
+      () => setLevelsLoading(false),
+    )
+  }, [])
+
+  useEffect(() => {
+    const q = query(collectionGroup(firestore, 'sessionReports'), orderBy('startedAt', 'desc'))
+    return onSnapshot(
+      q,
+      snap => {
+        setReports(snap.docs.map(d => ({ id: d.id, lessonId: d.ref.parent.parent?.id ?? null, ...d.data() })))
+        setReportsLoading(false)
+      },
+      () => setReportsLoading(false),
+    )
+  }, [])
+
+  useEffect(() => {
+    const q = collectionGroup(firestore, 'feedback')
+    return onSnapshot(
+      q,
+      snap => {
+        const items = snap.docs.map(d => ({
+          id: d.id,
+          lessonId: d.ref.parent.parent?.id ?? null,
+          ...d.data(),
+        }))
+        items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
+        setFeedback(items)
+        setFeedbackLoading(false)
+      },
+      () => setFeedbackLoading(false),
+    )
+  }, [])
+
+  useEffect(() => {
+    if (loading || levelsLoading) return
+    for (const lesson of lessons) {
+      if (migratedRef.current.has(lesson.id)) continue
+      const { level, lesson: migrated } = migrateLessonLevel(lesson)
+      if (!level) continue
+      migratedRef.current.add(lesson.id)
+      setDoc(doc(firestore, LEVEL_COLLECTION, level.id), level, { merge: true })
+        .then(() => updateDoc(doc(firestore, 'lessons', lesson.id), {
+          level: migrated.level,
+          levelId: migrated.levelId,
+          levelRef: migrated.levelRef,
+        }))
+        .catch(err => console.warn('Could not migrate lesson level', lesson.id, err))
+    }
+  }, [lessons, levelsLoading, loading])
 
   async function handleDelete(lesson) {
     if (!confirm(`Delete lesson "${lesson.title || lesson.id}" from Firestore?\n\nThis cannot be undone.`)) return
@@ -140,22 +291,29 @@ export default function LessonPanel() {
     const exists = lessons.some(l => l.id === lessonId)
     if (exists && !confirm(`A lesson with ID "${lessonId}" already exists in Firestore.\n\nOverwrite it?`)) return
     try {
-      await publishLesson(parsed)
+      const { lesson, level } = migrateLessonLevel(parsed)
+      if (level) await setDoc(doc(firestore, LEVEL_COLLECTION, level.id), level, { merge: true })
+      await publishLesson(lesson)
     } catch (err) {
       alert('Failed to upload lesson: ' + err.message)
     }
   }
 
-  const [activeType, setActiveType] = useState(null)
-  const [stageFilter, setStageFilter] = useState(null)
+  async function handleResolveFeedback(item) {
+    if (!item.lessonId) return
+    await updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), {
+      archived: true,
+      resolvedAt: Date.now(),
+    })
+  }
 
   const visibleLessons = useMemo(
     () => lessons.filter(l => !deletedIds.has(l.id)),
     [lessons, deletedIds],
   )
   const groups = useMemo(
-    () => groupByTypeAndLevel(visibleLessons),
-    [visibleLessons],
+    () => groupByTypeAndLevel(visibleLessons, levels),
+    [visibleLessons, levels],
   )
 
   const firstPopulatedGroup = groups.find(g => g.lessons.length > 0)
@@ -167,6 +325,32 @@ export default function LessonPanel() {
     if (!stageFilter) return base
     return base.filter(l => (l.stage ?? 'published') === stageFilter)
   }, [activeGroup, stageFilter])
+  const levelBuckets = useMemo(
+    () => makeLevelBuckets(filteredLessons, levels, displayType),
+    [filteredLessons, levels, displayType],
+  )
+
+  function handleToggleLevel(levelId) {
+    setOpenLevelIds(prev => {
+      const next = new Set(prev)
+      if (next.has(levelId)) next.delete(levelId)
+      else next.add(levelId)
+      return next
+    })
+  }
+
+  if (view === 'levels') {
+    return (
+      <LevelManager
+        levels={levels}
+        lessons={visibleLessons}
+        activeType={displayType}
+        onTypeChange={setActiveType}
+        groups={groups}
+        loading={levelsLoading}
+      />
+    )
+  }
 
   return (
     <section style={s.section}>
@@ -189,7 +373,7 @@ export default function LessonPanel() {
         </div>
       </div>
 
-      {loading && <p style={s.muted}>Loading lessons…</p>}
+      {loading && <p style={s.muted}>Loading lessons...</p>}
       {error && <p style={s.error}>Could not load lessons: {error}</p>}
       {!loading && !error && visibleLessons.length === 0 && (
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
@@ -233,124 +417,583 @@ export default function LessonPanel() {
 
       {showActiveGroup && (
         <div key={activeGroup.type} style={s.group}>
-          <table style={s.table}>
-            <colgroup>
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '38%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                {['Title', 'Level', 'Stage', 'ID', 'Actions'].map(h => (
-                  <th key={h} style={s.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLessons.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ ...s.td, color: '#9ca3af', textAlign: 'center', padding: '20px 12px' }}>
-                    {activeGroup.lessons.length === 0
-                      ? 'No lessons found for this lesson type.'
-                      : 'No lessons match the selected stage filter.'}
-                  </td>
-                </tr>
-              )}
-              {filteredLessons.map(lesson => {
-                const stageKey = lesson.stage ?? 'published'
-                return (
-                <tr key={lesson.id}>
-                  <td style={s.td}>{lesson.title || lesson.id}</td>
-                  <td style={s.td}>
-                    {lesson.level != null
-                      ? <span style={s.levelBadge}>{lesson.level}</span>
-                      : <span style={s.dash}>—</span>}
-                  </td>
-                  <td style={s.td}>
-                    <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
-                      {STAGE_LABELS[stageKey] ?? stageKey}
-                    </span>
-                  </td>
-                  <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
-                  <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
-                    <div style={s.actions}>
-                      <a
-                        href={makeTeacherUrl(lesson.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary"
-                        style={s.actionBtn}
-                      >
-                        Launch as Teacher
-                      </a>
-                      <div className="teacher-share" style={{ position: 'relative' }}>
-                        <button
-                          className="btn-ghost-outline"
-                          style={s.actionBtn}
-                          onClick={() => handleToggleShare(lesson.id)}
-                          aria-expanded={shareOpenId === lesson.id}
-                        >
-                          Share Links
-                        </button>
-                        {shareOpenId === lesson.id && (
-                          <>
-                            <div className="teacher-share__overlay" onClick={() => setShareOpenId(null)} />
-                            <div className="teacher-share__panel" style={{ right: 0, left: 'auto', minWidth: 320 }}>
-                              <span className="teacher-share__title">Share lesson links</span>
-                              {(['live', 'solo']).map(type => (
-                                <div key={type} className="teacher-share__row">
-                                  <div className="teacher-share__info">
-                                    <span className="teacher-share__type">
-                                      {type === 'live' ? 'Live (with teacher)' : 'Solo (practice)'}
-                                    </span>
-                                    <span className="teacher-share__url">{getLessonLinks(lesson.id)[type]}</span>
-                                  </div>
-                                  <button
-                                    className="btn-secondary teacher-share__copy-btn"
-                                    onClick={() => handleCopyLink(lesson.id, type)}
-                                  >
-                                    {copiedLink?.id === lesson.id && copiedLink?.type === type ? 'Copied!' : 'Copy'}
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      <button
-                        className="btn-ghost-outline"
-                        style={s.actionBtn}
-                        onClick={() => handleEditInBuilder(lesson)}
-                      >
-                        Edit in Builder
-                      </button>
-                      <button
-                        className="btn-danger"
-                        style={s.actionBtn}
-                        disabled={deletingId === lesson.id || deletedIds.has(lesson.id)}
-                        onClick={() => handleDelete(lesson)}
-                      >
-                        {deletingId === lesson.id ? '…' : 'Delete'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-              })}
-            </tbody>
-          </table>
+          {filteredLessons.length === 0 ? (
+            <div style={s.emptyTableState}>
+              {activeGroup.lessons.length === 0
+                ? 'No lessons found for this lesson type.'
+                : 'No lessons match the selected stage filter.'}
+            </div>
+          ) : (
+            <div style={s.levelAccordion}>
+              {levelBuckets.map(bucket => (
+                <LevelLessonGroup
+                  key={bucket.id}
+                  bucket={bucket}
+                  open={openLevelIds.has(bucket.id)}
+                  onToggle={() => handleToggleLevel(bucket.id)}
+                  reports={reports}
+                  feedback={feedback}
+                  shareOpenId={shareOpenId}
+                  copiedLink={copiedLink}
+                  deletingId={deletingId}
+                  deletedIds={deletedIds}
+                  reportsLoading={reportsLoading}
+                  feedbackLoading={feedbackLoading}
+                  onToggleShare={handleToggleShare}
+                  onCloseShare={() => setShareOpenId(null)}
+                  onCopyLink={handleCopyLink}
+                  onEditInBuilder={handleEditInBuilder}
+                  onDelete={handleDelete}
+                  onViewReport={setSelectedReport}
+                  onResolveFeedback={handleResolveFeedback}
+                />
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {selectedReport && (
+        <TeacherReportModal report={selectedReport} onClose={() => setSelectedReport(null)} />
       )}
     </section>
   )
 }
 
+function ShareMenu({ lessonId, open, copiedLink, onToggle, onClose, onCopy }) {
+  return (
+    <div className="teacher-share" style={{ position: 'relative' }}>
+      <button
+        className="btn-ghost-outline"
+        style={s.actionBtn}
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        Share Links
+      </button>
+      {open && (
+        <>
+          <div className="teacher-share__overlay" onClick={onClose} />
+          <div className="teacher-share__panel" style={{ right: 0, left: 'auto', minWidth: 320 }}>
+            <span className="teacher-share__title">Share lesson links</span>
+            {(['live', 'solo']).map(type => (
+              <div key={type} className="teacher-share__row">
+                <div className="teacher-share__info">
+                  <span className="teacher-share__type">
+                    {type === 'live' ? 'Live (with teacher)' : 'Solo (practice)'}
+                  </span>
+                  <span className="teacher-share__url">{getLessonLinks(lessonId)[type]}</span>
+                </div>
+                <button
+                  className="btn-secondary teacher-share__copy-btn"
+                  onClick={() => onCopy(lessonId, type)}
+                >
+                  {copiedLink?.id === lessonId && copiedLink?.type === type ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function LevelLessonGroup({
+  bucket,
+  open,
+  onToggle,
+  reports,
+  feedback,
+  shareOpenId,
+  copiedLink,
+  deletingId,
+  deletedIds,
+  reportsLoading,
+  feedbackLoading,
+  onToggleShare,
+  onCloseShare,
+  onCopyLink,
+  onEditInBuilder,
+  onDelete,
+  onViewReport,
+  onResolveFeedback,
+}) {
+  const [openLessonIds, setOpenLessonIds] = useState(() => new Set())
+
+  function handleToggleLesson(lessonId) {
+    setOpenLessonIds(prev => {
+      const next = new Set(prev)
+      if (next.has(lessonId)) next.delete(lessonId)
+      else next.add(lessonId)
+      return next
+    })
+  }
+
+  return (
+    <div style={s.levelLessonGroup}>
+      <button
+        type="button"
+        style={s.levelLessonToggle}
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        <span style={s.levelLessonTitleWrap}>
+          <span style={{ ...s.levelColourDot, background: bucket.color }} />
+          <span style={s.levelEmoji}>{displayLevelIcon(bucket.icon)}</span>
+          <span>{bucket.title}</span>
+        </span>
+        <span style={s.levelLessonMeta}>
+          {bucket.lessons.length} {bucket.lessons.length === 1 ? 'lesson' : 'lessons'}
+          <span style={s.chevron}>{open ? '▾' : '▸'}</span>
+        </span>
+      </button>
+      {open && (
+        <div style={s.levelLessonBody}>
+          {bucket.lessons.length === 0 ? (
+            <p style={s.detailEmpty}>No lessons in this level yet.</p>
+          ) : (
+            <table style={s.table}>
+              <colgroup>
+                <col style={{ width: '38%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '28%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  {['Title', 'Stage', 'ID', 'Actions'].map(h => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bucket.lessons.map(lesson => {
+                  const stageKey = lesson.stage ?? 'published'
+                  const lessonReports = reports.filter(report => report.lessonId === lesson.id)
+                  const lessonFeedback = feedback.filter(item => item.lessonId === lesson.id)
+                  const lessonOpen = openLessonIds.has(lesson.id)
+                  return (
+                    <React.Fragment key={lesson.id}>
+                      <tr>
+                        <td style={s.td}>
+                          <button
+                            type="button"
+                            style={s.lessonToggle}
+                            onClick={() => handleToggleLesson(lesson.id)}
+                            aria-expanded={lessonOpen}
+                          >
+                            <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
+                            <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
+                          </button>
+                        </td>
+                        <td style={s.td}>
+                          <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
+                            {STAGE_LABELS[stageKey] ?? stageKey}
+                          </span>
+                        </td>
+                        <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
+                        <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
+                          <div style={s.actions}>
+                            <a
+                              href={makeTeacherUrl(lesson.id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-primary"
+                              style={s.actionBtn}
+                            >
+                              Launch as Teacher
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                      {lessonOpen && (
+                        <tr>
+                          <td colSpan={4} style={s.lessonDetailCell}>
+                            <LessonAdminPanel
+                              lesson={lesson}
+                              reports={lessonReports}
+                              feedback={lessonFeedback}
+                              reportsLoading={reportsLoading}
+                              feedbackLoading={feedbackLoading}
+                              shareOpen={shareOpenId === lesson.id}
+                              copiedLink={copiedLink}
+                              deleting={deletingId === lesson.id || deletedIds.has(lesson.id)}
+                              onToggleShare={() => onToggleShare(lesson.id)}
+                              onCloseShare={onCloseShare}
+                              onCopyLink={onCopyLink}
+                              onEditInBuilder={() => onEditInBuilder(lesson)}
+                              onDelete={() => onDelete(lesson)}
+                              onViewReport={onViewReport}
+                              onResolveFeedback={onResolveFeedback}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loading }) {
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    order: '',
+    color: '#7c3aed',
+    icon: '⭐',
+  })
+  const [saveState, setSaveState] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaveState(null)
+    const scopeId = activeType || 'python'
+    try {
+      const level = normalizeLevelRecord({
+        ...form,
+        scopeType: 'type',
+        scopeId,
+        id: makeLevelId(form.title, scopeId),
+        order: form.order === '' ? levels.filter(item => item.scopeType === 'type' && item.scopeId === scopeId).length + 1 : Number(form.order),
+      })
+      await setDoc(doc(firestore, LEVEL_COLLECTION, level.id), level, { merge: true })
+      setForm(prev => ({ ...prev, title: '', description: '', order: '' }))
+      setSaveState({ type: 'success', message: `Saved ${level.title}.` })
+    } catch (err) {
+      setSaveState({ type: 'error', message: err.message || 'Could not save level.' })
+    }
+  }
+
+  async function handleDeleteLevel(bucket) {
+    const level = bucket.level
+    if (!level?.id) return
+    const assignedLessons = lessons.filter(lesson => getLessonLevelRef(lesson)?.id === level.id)
+    const lessonWord = assignedLessons.length === 1 ? 'lesson' : 'lessons'
+    const assignedText = assignedLessons.length > 0
+      ? `\n\nThis will remove the level from ${assignedLessons.length} ${lessonWord}.`
+      : ''
+    if (!confirm(`Delete level "${level.title}"?${assignedText}`)) return
+    setSaveState(null)
+    try {
+      await Promise.all(assignedLessons.map(lesson => updateDoc(doc(firestore, 'lessons', lesson.id), {
+        level: null,
+        levelId: null,
+        levelRef: null,
+      })))
+      await deleteDoc(doc(firestore, LEVEL_COLLECTION, level.id))
+      setSaveState({ type: 'success', message: `Deleted ${level.title}.` })
+    } catch (err) {
+      setSaveState({ type: 'error', message: err.message || 'Could not delete level.' })
+    }
+  }
+
+  const activeLessons = useMemo(
+    () => lessons.filter(lesson => (lesson.type || 'unknown') === activeType),
+    [lessons, activeType],
+  )
+  const activeBuckets = useMemo(
+    () => makeLevelBuckets(activeLessons, levels, activeType),
+    [activeLessons, levels, activeType],
+  )
+  const typeOptions = groups?.length ? groups : TYPE_ORDER.map(type => ({ type, lessons: [] }))
+
+  return (
+    <section style={s.section}>
+      <div style={s.titleRow}>
+        <div>
+          <h2 style={s.title}>Levels</h2>
+          <p style={s.subtitle}>Levels group lessons inside each lesson type. Lower order numbers appear first.</p>
+        </div>
+        <span style={s.levelManagerMeta}>{loading ? 'Loading...' : `${levels.length} total`}</span>
+      </div>
+
+      <div style={s.levelManager}>
+        <div style={s.levelManagerBody}>
+          <div className="ui-tabs" style={s.levelTypeTabs}>
+            {typeOptions.map(({ type, lessons: groupLessons }) => (
+              <button
+                key={type}
+                className={`ui-tab${activeType === type ? ' is-active' : ''}`}
+                onClick={() => onTypeChange(type)}
+                type="button"
+              >
+                {TYPE_LABELS[type] ?? type}
+                <span style={s.tabCount}>{groupLessons.length}</span>
+              </button>
+            ))}
+          </div>
+
+          <form style={s.levelForm} onSubmit={handleSubmit}>
+            <label style={s.levelField}>
+              <span style={s.levelLabel}>Level title</span>
+              <input
+                style={s.levelInput}
+                value={form.title}
+                onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Beginner"
+                required
+              />
+            </label>
+
+            <label style={s.levelField}>
+              <span style={s.levelLabel}>Order</span>
+              <input
+                style={s.levelInput}
+                type="number"
+                value={form.order}
+                onChange={e => setForm(prev => ({ ...prev, order: e.target.value }))}
+                placeholder="1"
+                min="0"
+              />
+              <span style={s.fieldHint}>Lower numbers show first.</span>
+            </label>
+
+            <label style={s.levelField}>
+              <span style={s.levelLabel}>Colour</span>
+              <div style={s.colorControl}>
+                <input
+                  style={s.colorPicker}
+                  type="color"
+                  value={form.color}
+                  onChange={e => setForm(prev => ({ ...prev, color: e.target.value }))}
+                  aria-label="Level colour"
+                />
+                <input
+                  style={{ ...s.levelInput, flex: 1 }}
+                  value={form.color}
+                  onChange={e => setForm(prev => ({ ...prev, color: e.target.value }))}
+                  placeholder="#7c3aed"
+                />
+              </div>
+            </label>
+
+            <label style={{ ...s.levelField, gridColumn: '1 / -1' }}>
+              <span style={s.levelLabel}>Icon</span>
+              <div style={s.emojiPicker} role="group" aria-label="Choose level icon">
+                {COMMON_LEVEL_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    style={{
+                      ...s.emojiOption,
+                      ...(form.icon === emoji ? s.emojiOptionActive : {}),
+                    }}
+                    onClick={() => setForm(prev => ({ ...prev, icon: emoji }))}
+                    aria-label={`Use ${emoji} icon`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+                <input
+                  style={s.emojiInput}
+                  value={form.icon}
+                  onChange={e => setForm(prev => ({ ...prev, icon: e.target.value }))}
+                  aria-label="Custom level emoji"
+                  maxLength={4}
+                />
+              </div>
+            </label>
+
+            <label style={{ ...s.levelField, gridColumn: '1 / -1' }}>
+              <span style={s.levelLabel}>Description</span>
+              <input
+                style={s.levelInput}
+                value={form.description}
+                onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Short description for admins"
+              />
+            </label>
+
+            <div style={s.levelFormFooter}>
+              {saveState && (
+                <span style={saveState.type === 'error' ? s.formError : s.formSuccess}>
+                  {saveState.message}
+                </span>
+              )}
+              <button className="btn-secondary" style={s.levelSubmit}>Create Level</button>
+            </div>
+          </form>
+
+          {activeBuckets.length === 0 ? (
+            <p style={s.muted}>Create a level for {TYPE_LABELS[activeType] ?? activeType}, then assign lessons to it in the Builder lesson details.</p>
+          ) : (
+            <div style={s.levelPreviewList}>
+              {activeBuckets.map(bucket => (
+                <div key={bucket.id} style={s.levelPreviewItem}>
+                  <span style={{ ...s.levelColourDot, background: bucket.color }} />
+                  <span style={s.levelEmoji}>{displayLevelIcon(bucket.icon)}</span>
+                  <strong>{bucket.title}</strong>
+                  <span style={s.levelPreviewMeta}>{bucket.lessons.length} {bucket.lessons.length === 1 ? 'lesson' : 'lessons'}</span>
+                  {bucket.level && (
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      style={s.levelDeleteBtn}
+                      onClick={() => handleDeleteLevel(bucket)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function LessonAdminPanel({
+  lesson,
+  reports,
+  feedback,
+  reportsLoading,
+  feedbackLoading,
+  shareOpen,
+  copiedLink,
+  deleting,
+  onToggleShare,
+  onCloseShare,
+  onCopyLink,
+  onEditInBuilder,
+  onDelete,
+  onViewReport,
+  onResolveFeedback,
+}) {
+  return (
+    <div style={s.lessonAdminPanel}>
+      <div style={s.lessonAdminActions}>
+        <ShareMenu
+          lessonId={lesson.id}
+          open={shareOpen}
+          copiedLink={copiedLink}
+          onToggle={onToggleShare}
+          onClose={onCloseShare}
+          onCopy={onCopyLink}
+        />
+        <button
+          className="btn-ghost-outline"
+          style={s.actionBtn}
+          onClick={onEditInBuilder}
+        >
+          Edit in Builder
+        </button>
+        <button
+          className="btn-danger"
+          style={s.actionBtn}
+          disabled={deleting}
+          onClick={onDelete}
+        >
+          {deleting ? '...' : 'Delete'}
+        </button>
+      </div>
+      {reports.length > 0 && (
+        <LessonReportsSection
+          lesson={lesson}
+          reports={reports}
+          loading={reportsLoading}
+          onViewReport={onViewReport}
+        />
+      )}
+      {feedback.length > 0 && (
+        <LessonFeedbackSection
+          feedback={feedback}
+          loading={feedbackLoading}
+          onResolveFeedback={onResolveFeedback}
+        />
+      )}
+    </div>
+  )
+}
+
+function LessonReportsSection({ lesson, reports, loading, onViewReport }) {
+  return (
+    <CollapsibleDetail
+      title="Reports"
+      meta={loading ? 'Loading...' : `${reports.length} total`}
+    >
+      {reports.map(report => (
+        <div key={report.id} style={s.detailItem}>
+          <div>
+            <strong>{report.lessonTitle || lesson.title || lesson.id}</strong>
+            <span style={s.detailMeta}>
+              {report.startedAt ? new Date(report.startedAt).toLocaleString() : 'No start time'} - {report.students?.length ?? 0} students
+            </span>
+          </div>
+          <button className="btn-ghost-outline" style={s.detailBtn} onClick={() => onViewReport(report)}>View</button>
+        </div>
+      ))}
+    </CollapsibleDetail>
+  )
+}
+
+function LessonFeedbackSection({ feedback, loading, onResolveFeedback }) {
+  const openFeedback = openCount(feedback)
+
+  return (
+    <CollapsibleDetail
+      title="Feedback"
+      meta={loading ? 'Loading...' : `${openFeedback} open / ${feedback.length} total`}
+    >
+      {feedback.map(item => (
+        <div key={item.id} style={{ ...s.detailItem, opacity: item.archived || item.resolvedAt ? 0.62 : 1 }}>
+          <div>
+            <strong>{item.taskTitle || 'Lesson feedback'}</strong>
+            <span style={s.detailMeta}>
+              {item.teacherEmail || 'Unknown teacher'} - {item.submittedAt ? new Date(item.submittedAt).toLocaleString() : 'No date'}
+            </span>
+            <p style={s.feedbackText}>{item.text}</p>
+          </div>
+          <button
+            className="btn-ghost-outline"
+            style={s.detailBtn}
+            disabled={item.archived || item.resolvedAt}
+            onClick={() => onResolveFeedback(item)}
+          >
+            {item.archived || item.resolvedAt ? 'Resolved' : 'Resolve'}
+          </button>
+        </div>
+      ))}
+    </CollapsibleDetail>
+  )
+}
+
+function CollapsibleDetail({ title, meta, children }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div style={s.detailPanel}>
+      <button
+        type="button"
+        style={{ ...s.detailToggle, ...(open ? s.detailToggleOpen : {}) }}
+        onClick={() => setOpen(open => !open)}
+        aria-expanded={open}
+      >
+        <span style={s.detailToggleTitle}>
+          <span style={s.detailToggleIcon}>{open ? '-' : '+'}</span>
+          <span>{title}</span>
+        </span>
+        <span style={s.detailToggleMeta}>{meta}</span>
+      </button>
+      {open && <div style={s.detailBody}>{children}</div>}
+    </div>
+  )
+}
+
 const s = {
-  section:      { display: 'flex', flexDirection: 'column', gap: 24 },
+  section:      { display: 'flex', flexDirection: 'column', gap: 20 },
   titleRow:     { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title:        { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
+  subtitle:     { margin: '4px 0 0', fontFamily: 'var(--font-body)', fontSize: '0.84rem', color: '#6b7280' },
   headerActions:{ display: 'flex', gap: 8 },
   headerBtn:    { padding: '6px 14px', fontSize: '0.85rem' },
   group:      { display: 'flex', flexDirection: 'column', gap: 0 },
@@ -358,11 +1001,15 @@ const s = {
   table:      { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem', tableLayout: 'fixed' },
   th:         { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
   td:         { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
-  levelBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: '#ede9fe', color: '#7c3aed' },
   stageBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, color: '#fff', letterSpacing: '0.02em' },
-  dash:       { color: '#d1d5db' },
   actions:    { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
-  actionBtn:  { padding: '4px 7px', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 },
+  actionBtn:  { padding: '4px 7px', fontSize: '0.76rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 },
+  lessonToggle: { width: '100%', border: 'none', background: 'transparent', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 8, textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', fontSize: '0.9rem' },
+  lessonToggleIcon: { width: 18, height: 18, borderRadius: 999, border: '1px solid #e5e7eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1, flexShrink: 0, background: '#fff' },
+  lessonToggleTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  lessonDetailCell: { padding: '0 12px 10px 38px', background: '#fbfbfd', borderBottom: '1px solid #eef0f4' },
+  lessonAdminPanel: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 },
+  lessonAdminActions: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   error:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
   muted:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af', margin: 0 },
   stageFilterRow: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
@@ -378,4 +1025,49 @@ const s = {
     cursor: 'pointer',
     transition: 'all 0.1s',
   },
+  emptyTableState: { border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', padding: '20px 12px', textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: '#9ca3af' },
+  levelAccordion: { display: 'flex', flexDirection: 'column', gap: 8 },
+  levelLessonGroup: { border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', overflow: 'hidden' },
+  levelLessonToggle: { width: '100%', border: 'none', background: '#fff', padding: '11px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', fontFamily: 'var(--font-title)', fontWeight: 700, color: 'var(--colour-text)' },
+  levelLessonTitleWrap: { display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 },
+  levelColourDot: { width: 12, height: 12, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.12)', flexShrink: 0 },
+  levelEmoji: { width: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 },
+  levelLessonMeta: { display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' },
+  chevron: { color: '#9ca3af', fontSize: '0.9rem' },
+  levelLessonBody: { borderTop: '1px solid #f3f4f6', padding: 10, overflowX: 'auto' },
+  levelManager: { border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', overflow: 'hidden' },
+  levelManagerMeta: { fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 },
+  levelManagerBody: { padding: 14, display: 'flex', flexDirection: 'column', gap: 14 },
+  levelTypeTabs: { flexWrap: 'wrap' },
+  levelForm: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, alignItems: 'start', padding: 12, border: '1px solid #f3f4f6', borderRadius: 8, background: '#fafafa' },
+  levelField: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5, fontFamily: 'var(--font-body)' },
+  levelLabel: { fontSize: '0.76rem', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.04em' },
+  fieldHint: { fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.35 },
+  levelInput: { minWidth: 0, padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--colour-text)' },
+  levelSubmit: { padding: '7px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap' },
+  colorControl: { display: 'flex', alignItems: 'center', gap: 8 },
+  colorPicker: { width: 40, height: 34, padding: 2, border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', flexShrink: 0 },
+  emojiPicker: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  emojiOption: { width: 32, height: 32, border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif' },
+  emojiOptionActive: { borderColor: 'var(--colour-primary)', background: '#f0eafa', boxShadow: '0 0 0 1px var(--colour-primary)' },
+  emojiInput: { width: 54, height: 32, border: '1px solid #d1d5db', borderRadius: 6, textAlign: 'center', fontSize: '1rem', background: '#fff' },
+  levelFormFooter: { gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  formSuccess: { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#15803d', fontWeight: 600 },
+  formError: { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#dc2626', fontWeight: 600 },
+  levelPreviewList: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 },
+  levelPreviewItem: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 10px', background: '#fff', fontFamily: 'var(--font-body)', color: 'var(--colour-text)' },
+  levelPreviewMeta: { marginLeft: 'auto', color: '#6b7280', fontSize: '0.78rem', fontWeight: 600 },
+  levelDeleteBtn: { padding: '4px 9px', fontSize: '0.76rem', flexShrink: 0 },
+  detailPanel: { background: 'transparent', overflow: 'hidden' },
+  detailToggle: { width: '100%', padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', fontFamily: 'var(--font-title)', fontWeight: 700, color: '#374151', fontSize: '0.86rem' },
+  detailToggleOpen: { borderColor: '#ddd6fe', background: '#fbfaff' },
+  detailToggleTitle: { display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 },
+  detailToggleIcon: { width: 18, height: 18, borderRadius: 999, border: '1px solid #d8b4fe', background: '#faf5ff', color: 'var(--colour-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem', fontWeight: 800, lineHeight: 1, flexShrink: 0 },
+  detailToggleMeta: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', fontWeight: 600 },
+  detailBody: { padding: '4px 10px 6px', display: 'flex', flexDirection: 'column', gap: 0 },
+  detailItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'start', gap: 12, padding: '9px 0', borderBottom: '1px solid #eef0f4', fontFamily: 'var(--font-body)', fontSize: '0.84rem', color: 'var(--colour-text)' },
+  detailMeta: { display: 'block', marginTop: 2, color: '#6b7280', fontSize: '0.76rem' },
+  detailBtn: { padding: '4px 10px', fontSize: '0.78rem' },
+  detailEmpty: { margin: 0, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af' },
+  feedbackText: { margin: '5px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.45, color: '#374151' },
 }

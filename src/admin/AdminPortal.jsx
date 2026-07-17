@@ -3,21 +3,19 @@ import { signOut } from 'firebase/auth'
 import { useNavigate, useParams } from 'react-router-dom'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
+import LoadingScreen from '../app/components/LoadingScreen'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
-const AuthoringPanel = lazy(() => import('./AuthoringPanel'))
 const FeedbackPanel = lazy(() => import('./FeedbackPanel'))
 const LessonPanel = lazy(() => import('./LessonPanel'))
-const ReportsPanel = lazy(() => import('./ReportsPanel'))
 const SessionsPanel = lazy(() => import('./SessionsPanel'))
 const SharedAssetsPanel = lazy(() => import('./SharedAssetsPanel'))
 const TopicLibraryPanel = lazy(() => import('./TopicLibraryPanel'))
 
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
-  { id: 'authoring', label: 'Authoring' },
+  { id: 'levels', label: 'Levels' },
   { id: 'sessions', label: 'Sessions' },
-  { id: 'reports', label: 'Reports' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
   { id: 'accounts', label: 'Accounts' },
@@ -44,6 +42,9 @@ export default function AdminPortal() {
         <span style={s.brand}>Headstart Coding — Admin</span>
         <div style={s.headerRight}>
           <span style={s.userEmail}>{user?.email}</span>
+          <button className="btn-ghost-outline" style={s.logoutBtn} onClick={() => navigate('/account')}>
+            Account
+          </button>
           <button className="btn-ghost-outline" style={s.logoutBtn} onClick={handleLogout}>
             Sign out
           </button>
@@ -65,11 +66,10 @@ export default function AdminPortal() {
       </nav>
 
       <main style={s.main}>
-        <Suspense fallback={<p style={s.panelFallback}>Loading panel...</p>}>
+        <Suspense fallback={<LoadingScreen compact message="Loading panel..." />}>
           {activeTab === 'lessons' && <LessonPanel />}
-          {activeTab === 'authoring' && <AuthoringPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+          {activeTab === 'levels' && <LessonPanel view="levels" />}
           {activeTab === 'sessions' && <SessionsPanel />}
-          {activeTab === 'reports' && <ReportsPanel />}
           {activeTab === 'topics' && <TopicLibraryPanel />}
           {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
           {activeTab === 'accounts' && <AccountManagement />}
@@ -135,11 +135,5 @@ const s = {
     maxWidth: 1100,
     width: '100%',
     margin: '0 auto',
-  },
-  panelFallback: {
-    margin: 0,
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.9rem',
-    color: '#6b7280',
   },
 }

@@ -12,6 +12,7 @@ What the platform can do. For how to configure these features see **docs/authori
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
 | Scratch | Drag-and-drop block programming with a live stage canvas |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |
+| Electronics | Build and test breadboard-style circuits with guided checks |
 
 ---
 
@@ -132,7 +133,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Lesson Builder Features
 
 ### Lesson Configuration
-- ID, lesson type, title, description, and level
+- ID, lesson type, title, description, stage, and a reusable referenced level
 - Asset list for the in-lesson asset browser
 - Sandbox starter: code, HTML files, Scratch state, toolbox, sprites, and backdrops
 
@@ -174,11 +175,10 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 ## Admin Portal Features
 
-- **Account management**: create teacher/admin accounts, set roles, disable/enable, delete
-- **Lesson management**: browse all lessons by type and level; launch as teacher or copy student link
-- **Authoring**: manage the lesson draft pipeline (Ideas → Details → Review → Approved → Published) — draft list with stage badges, Markdown plan viewer with per-section review notes, approve/request-changes/publish actions
+- **Account management**: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete. Signed-in users can change their own password from Account settings.
+- **Lesson management**: browse all lessons by type and referenced level; manage collapsible reusable levels; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher or copy student links
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
-- **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields
+- **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
 - **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
 
 ---
@@ -197,7 +197,7 @@ Each submission captures the teacher's email, the lesson and task context, the f
 
 ### Viewing and deleting feedback (admin)
 
-The Admin Portal's **Feedback** tab shows three sub-tabs:
+The Admin Portal's **Feedback** tab still shows three sub-tabs. Lesson and task feedback also appears under each lesson in the **Lessons** tab, with open/total counts and the same resolve/archive action:
 
 - **Platform** — all entries from `platformFeedback`, sorted newest-first; each card shows email, date, lesson/task context, and text; admins can delete individual items
 - **Lesson** — lesson-level entries from across all lesson subcollections (no task ID)
@@ -217,7 +217,8 @@ The CLI can list, create, delete, and bulk-clear feedback items in both collecti
 
 ## CLI Features
 
-- Manage live lessons, tasks, topics, assets, and feedback through `node cli/cli.mjs`
+- Manage live lessons, reusable levels, tasks, topics, assets, and feedback through `node cli/cli.mjs`
 - Convert lesson and topic-library YAML to JSON for validation and publishing
 - Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
 - Read, create, delete, and bulk-clear platform and per-lesson feedback from Firestore via the CLI
+- Create/list/delete reusable lesson levels with `node cli/cli.mjs levels`

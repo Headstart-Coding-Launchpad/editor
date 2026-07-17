@@ -11,6 +11,10 @@ Before writing code:
 - Run `npm test`; the suite must pass before changes.
 - Use `docs/CODEBASE_MAP.md` as an index. Search or open only the relevant sections instead of reading the whole map by default.
 
+## Request Clarification
+
+- Before acting on any user request, think through the goal, likely affected areas, and assumptions. Quiz the user with concise clarifying questions when missing details could change the implementation, scope, or success criteria; wait for answers before making changes unless the user explicitly asks the agent to use best judgment.
+
 ## Project Summary
 
 Headstart Coding is a browser-based classroom coding platform for live sessions and solo study. It is one React/Vite app deployed to GitHub Pages with these route-based areas:

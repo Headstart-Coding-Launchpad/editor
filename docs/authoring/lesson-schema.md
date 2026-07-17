@@ -16,7 +16,9 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `type` | Yes | string | `python`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
-| `level` | No | number | Difficulty badge in the TopBar. |
+| `level` | No | string/number | Legacy display fallback for the difficulty badge. New lessons should link a reusable level with `levelId`/`levelRef`; legacy scalar values are migrated automatically when published through the app or CLI. |
+| `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
+| `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. `scopeType` is `type`, `module`, `course`, or `collection`. |
 | `stage` | No | string | Lesson lifecycle stage: `ideas`, `details`, `review`, `approved`, `published`. Defaults to `published` if absent. Controls which draft-task fields are unlocked in the builder. |
 | `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
 | `sandboxStarter` | No | string | Python/Scratch sandbox starter code or state. |
