@@ -116,6 +116,36 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz and Information rendered inline; all code types delegated to their module's `StudentWorkspace`) |
 | `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut |
 
+### Quiz Components (`src/app/components/quiz/`)
+
+| File | Role |
+|---|---|
+| `MultipleChoiceQuiz.jsx` | Multiple-choice quiz renderer with stable per-task option shuffle and answer reveal states |
+| `MatchQuiz.jsx` | Drag/tap match quiz renderer using `useTileDragAndDrop` |
+| `FillBlankQuiz.jsx` | Fill-in-the-blank quiz renderer for drag and typed modes, including inline/code-block blank parsing |
+| `ShortAnswerQuiz.jsx` | Short-answer quiz renderer with submit and result feedback |
+| `ConfidenceQuiz.jsx` | Confidence-scale quiz renderer |
+| `quizUtils.js` | Shared quiz constants, styles, answer parsing, option lookup, fill-blank helpers, and question panel |
+
+### Student Modal Sub-components (`src/app/components/student-modal/`)
+
+| File | Role |
+|---|---|
+| `DropdownMenu.jsx` | Reusable popover/dropdown primitive used by StudentModal actions |
+| `OverrideDropdown.jsx` | Teacher check-override menu and fail-hint modal |
+| `MessageCompose.jsx` | Personal teacher message composer for one student |
+| `StageDropdown.jsx` | Teacher request menu for sending starter/stage/complete code to a student |
+| `StudentWorkspaceBody.jsx` | Lesson-type-specific student workspace display inside the teacher modal |
+| `constants.js` | StudentModal highlight emoji options and shared modal constants |
+
+### Teacher View Sub-modules (`src/app/views/teacher/`)
+
+| File | Role |
+|---|---|
+| `TeacherEditorPanel.jsx` | Module-generic teacher editor/live-view panel, including starter/stage/complete tabs |
+| `CheckConditionsPanel.jsx` | Collapsible teacher-facing display of current task check conditions |
+| `checkFormatting.js` | Human-readable check formatting helper used by `CheckConditionsPanel` |
+
 ---
 
 ## Classroom Hooks (`src/app/hooks/`)
@@ -178,6 +208,18 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskFeedbackPanel.jsx` | Collapsible panel showing teacher-submitted lesson feedback items for the selected task |
 | `BuilderToolbar.jsx` | Top toolbar: branding, dirty indicator, and all action buttons (new/upload/preview/print/download/publish) |
 
+### Lesson Meta Sub-components (`src/builder/components/lesson-meta/`)
+
+| File | Role |
+|---|---|
+| `SandboxStarterModal.jsx` | Type-specific sandbox starter editor for Python, HTML, Scratch, Filesystem, and Electronics lessons |
+| `StorageAssetUploader.jsx` | Firebase Storage upload/delete UI for lesson-level assets |
+| `SharedAssetsSelector.jsx` | Lesson-level selector for type-wide shared HTML assets |
+| `AssetSummary.jsx` | Lesson asset summary and embedded read-only asset browser |
+| `Field.jsx` | Shared labelled field wrapper for lesson metadata forms |
+| `Modal.jsx` | Shared modal shell used by lesson metadata editors |
+| `styles.js` | Shared inline style objects for lesson metadata sub-components |
+
 ### Task Editor Sub-modules (`src/builder/components/task-editor/`)
 
 | File | Role |
@@ -198,6 +240,12 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
 | `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |
 | `ScratchTaskSetup.jsx` | Scratch block editor modal and setup summary; owns all scratch-specific state and handlers |
+
+### Check Editor Helpers (`src/builder/components/task-editor/check-editors/`)
+
+| File | Role |
+|---|---|
+| `checkEditorUtils.js` | Pure check editor mapping helpers: subject/operator/type conversion, option lists, check skeletons, regex detection, and failure formatting |
 
 ---
 
@@ -310,6 +358,14 @@ Each `index.js` exports a default object with:
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
+
+### Markdown Helpers (`src/shared/markdown/`)
+
+| File | Role |
+|---|---|
+| `editorOptions.js` | Markdown editor option data and helpers: image extensions, code block options, inline code options, Scratch insertion categories, and Scratch fence detection |
+| `ScratchBlocks.jsx` | Scratch block pill/code-block rendering helpers used by MarkdownRenderer |
+| `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
 
 ---
 
