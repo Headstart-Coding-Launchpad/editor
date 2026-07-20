@@ -352,6 +352,7 @@ Each `index.js` exports a default object with:
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
+| `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
 | `lessonBlocksCodec.js` | Encodes/decodes Scratch block trees as JSON strings for Firestore storage, working around Firestore's nested map/array depth cap |
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, task summary); `reportToYamlText()` for YAML export |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
@@ -367,7 +368,7 @@ Each `index.js` exports a default object with:
 | File | Role |
 |---|---|
 | `editorOptions.js` | Markdown editor option data and helpers: image extensions, code block options, inline code options, Scratch insertion categories, and Scratch fence detection |
-| `ScratchBlocks.jsx` | Scratch block pill/code-block rendering helpers used by MarkdownRenderer |
+| `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
 
 ---

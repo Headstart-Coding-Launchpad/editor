@@ -266,41 +266,70 @@ Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_cou
 - `looks_sayforsecs` · `looks_say` · `looks_think` · `looks_thinkforsecs`
 - `looks_show` · `looks_hide`
 - `looks_setsizeto` · `looks_changesizeby`
-- `looks_switchcostumeto` · `looks_nextcostume` · `looks_costumenumber`
-- `looks_switchbackdropto` · `looks_nextbackdrop`
+- `looks_switchcostumeto` · `looks_nextcostume`
+- `looks_costumenumber` · `looks_costumenumbername`
+- `looks_switchbackdropto` · `looks_nextbackdrop` · `looks_backdropnumbername`
+- `looks_seteffectto` · `looks_changeeffectby` · `looks_cleargraphiceffects`
 
 **Sound**
 - `sound_play` · `sound_playuntildone` · `sound_stopallsounds`
 
 **Control**
-- `control_wait` · `control_repeat` · `control_forever`
+- `control_wait` · `control_wait_until`
+- `control_repeat` · `control_repeat_until` · `control_forever`
 - `control_if` · `control_if_else` · `control_stop`
+- `control_create_clone_of` · `control_start_as_clone` · `control_delete_this_clone`
 
 **Sensing**
 - `sensing_askandwait` · `sensing_answer` · `sensing_keypressed`
 - `sensing_mousedown` · `sensing_touchingedge` · `sensing_touchingobject`
+- `sensing_distanceto` · `sensing_timer` · `sensing_resettimer`
 
 **Operators**
 - `operator_equals` · `operator_gt` · `operator_lt`
 - `operator_and` · `operator_or` · `operator_not`
-- `operator_add` · `operator_subtract` · `operator_join`
+- `operator_add` · `operator_subtract` · `operator_multiply` · `operator_divide`
+- `operator_mod` · `operator_round` · `operator_mathop` · `operator_random`
+- `operator_join` · `operator_letter_of` · `operator_length` · `operator_contains`
 
 **Variables**
 - `data_variable` · `data_setvariableto` · `data_changevariableby`
+- `data_showvariable` · `data_hidevariable`
+
+---
+
+## Adding or Changing Scratch Blocks
+
+Any change to the Scratch block set must update both the Scratch implementation and the authoring surface. Treat the markdown renderer as part of the block feature, especially for blocks that can sit inside other blocks or contain statement mouths.
+
+When adding, renaming, or removing a Scratch block:
+
+1. Update the runtime/editor sources: `SCRATCH_BLOCK_DEFINITIONS`, `DEFAULT_TOOLBOX` or `STAGE_TOOLBOX`, value defaults, display templates, checks, and interpreter handling as needed.
+2. Update `src/shared/scratchBlockCatalog.js`; this feeds the markdown renderer, markdown toolbar insertion menu, and Scratch toolbox picker.
+3. Confirm the renderer metadata includes the block colour, visual shape, display text, inputs, and mouths:
+   - Hat blocks use `shape: hat`.
+   - Stack blocks use `shape: stack`.
+   - Stop/end blocks use `shape: cap`.
+   - Reporter blocks use `shape: reporter`.
+   - Boolean blocks use `shape: boolean`.
+   - C-blocks use `shape: c` with one mouth; if/else blocks use `shape: c` with two mouths.
+4. Add or update markdown renderer examples for blocks that contain reporters, Boolean conditions, variables, dropdowns, or nested statement mouths.
+5. Update this opcode list, `docs/authoring/scratch-toolbox-xml.md`, and the Scratch section of `docs/authoring/markdown-renderer.md`.
+6. Add tests that prove every toolbox opcode has renderer metadata, and that representative nested blocks render without falling back to grey unknown blocks.
 
 ---
 
 ## Writing Scratch Explainers
 
-Scratch tasks use the standard Markdown `explainer` field. Describe blocks by name in inline code rather than pasting XML.
+Scratch tasks use the standard Markdown `explainer` field. Describe blocks with Scratch markdown, not Blockly XML.
 
 ```markdown
 ## Move the Sprite
 
 Use these blocks:
 
-1. Add `when green flag clicked`.
-2. Add `move [] steps` underneath it.
+1. Add `scratch:when green flag clicked`.
+2. Add `scratch:move (10) steps` underneath it.
 3. Change the number to `150`.
 
 > The check passes when the sprite moves far enough to the right.
@@ -315,7 +344,7 @@ Use these blocks:
 | `set [score] to []` | Dropdown or variable field + input slot |
 | `key [space] pressed?` | Dropdown value |
 
-Recognised block names are automatically rendered as coloured Scratch block pills. See `docs/authoring/markdown-renderer.md` for the full Scratch block rendering reference.
+Inline Scratch blocks must use the `scratch:` prefix. Fenced `scratch` code blocks are the right format for full stacks, nested C-block mouths, and reporter/Boolean inputs. See `docs/authoring/markdown-renderer.md` for the full Scratch block rendering reference.
 
 ---
 

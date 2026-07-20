@@ -2,6 +2,9 @@ import React from 'react'
 import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MarkdownRenderer, InlineMarkdown } from '../markdown'
+import { SCRATCH_BLOCK_CATALOG, SCRATCH_BLOCK_BY_OPCODE, SCRATCH_MARKDOWN_BLOCK_CATEGORIES, SCRATCH_TOOLBOX_GROUPS } from '../scratchBlockCatalog'
+import { looksLikeScratchBlocks } from '../markdown/ScratchBlocks'
+import { SCRATCH_BLOCK_DEFINITIONS } from '../../modules/scratch/scratch'
 
 const MOCK_TOPICS = [{
   id: 'for-loop',
@@ -153,6 +156,137 @@ describe('MarkdownRenderer', () => {
       'print()',
       'for i in range(3):',
     ]))
+  })
+
+  it('renders Scratch blocks with mouths and nested reporter/boolean shapes', () => {
+    const content = [
+      '```scratch',
+      'when green flag clicked',
+      'forever',
+      '  repeat until <(score) > (10)>',
+      '    change [score] by (1)',
+      '  end',
+      '  if <touching [edge]?> then',
+      '    move (pick random (1) to (10)) steps',
+      '  else',
+      '    turn right (15) degrees',
+      '  end',
+      'end',
+      '```',
+    ].join('\n')
+    const { container } = render(<MarkdownRenderer content={content} />)
+
+    expect(container.querySelector('[data-scratch-opcode="event_whenflagclicked"][data-scratch-shape="hat"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-opcode="control_forever"][data-scratch-shape="c"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-opcode="control_if"][data-scratch-shape="c"][data-scratch-mouths="2"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-opcode="sensing_touchingobject"][data-scratch-shape="boolean"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-opcode="operator_gt"][data-scratch-shape="boolean"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-opcode="operator_random"][data-scratch-shape="reporter"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-stack="true"] svg path')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-unknown="true"]')).not.toBeInTheDocument()
+  })
+
+  it('renders inline Scratch reporter blocks with their own shape', () => {
+    const { container } = render(<MarkdownRenderer content="Use `scratch:distance to [mouse-pointer]` here." />)
+    expect(container.querySelector('[data-scratch-opcode="sensing_distanceto"][data-scratch-shape="reporter"]')).toBeInTheDocument()
+  })
+
+  it('treats variable names in set blocks as dropdown fields, not guessed reporter blocks', () => {
+    const { container } = render(<MarkdownRenderer content={'```scratch\nset [score] to (0)\n```'} />)
+    expect(container.querySelector('[data-scratch-opcode="data_setvariableto"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-slot="dropdown"]')).toHaveTextContent('score')
+    expect(looksLikeScratchBlocks('score')).toBe(false)
+  })
+
+  it('renders Scratch event affordances like Blockly fields', () => {
+    const content = [
+      '```scratch',
+      'when green flag clicked',
+      'broadcast [message1]',
+      '```',
+    ].join('\n')
+    const { container } = render(<MarkdownRenderer content={content} />)
+
+    const flagBlock = container.querySelector('[data-scratch-opcode="event_whenflagclicked"]')
+    expect(flagBlock.querySelector('[data-scratch-flag="true"]')).toBeInTheDocument()
+    expect(flagBlock).not.toHaveTextContent('green flag')
+    expect(container.querySelector('[data-scratch-opcode="event_broadcast"] [data-scratch-slot="dropdown"]')).toHaveAttribute('data-scratch-slot-tone', 'light')
+  })
+
+  it('keeps inline Scratch operator booleans tightly block-sized', () => {
+    const { container } = render(<MarkdownRenderer content={'```scratch\nrepeat until <(1) = (2)>\nend\n```'} />)
+    const operator = container.querySelector('[data-scratch-opcode="operator_equals"][data-scratch-shape="boolean"]')
+    const valueSlots = operator.querySelectorAll('[data-scratch-slot="value"]')
+
+    expect(Number.parseFloat(operator.style.width)).toBeGreaterThanOrEqual(150)
+    expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(168)
+    expect(valueSlots).toHaveLength(2)
+    expect(valueSlots[0]).toHaveAttribute('data-scratch-slot-shadow', 'text')
+    expect(Number.parseFloat(valueSlots[0].querySelector('[data-scratch-slot-field="true"]').style.minWidth)).toBeGreaterThanOrEqual(18)
+  })
+
+  it('keeps Scratch C-block mouths snug around nested stack blocks', () => {
+    const content = [
+      '```scratch',
+      'repeat until <(1) = (2)>',
+      '  broadcast [message1]',
+      '  go to [random position]',
+      'end',
+      '```',
+    ].join('\n')
+    const { container } = render(<MarkdownRenderer content={content} />)
+    const repeat = container.querySelector('[data-scratch-opcode="control_repeat_until"][data-scratch-shape="c"]')
+    const mouthStack = repeat.querySelector('[data-scratch-mouth-stack="children"]')
+    const cSvg = Array.from(repeat.children).find(child => child.tagName.toLowerCase() === 'svg')
+
+    expect(Number.parseFloat(repeat.style.height)).toBeLessThanOrEqual(131)
+    expect(Number.parseFloat(mouthStack.style.left)).toBe(14)
+    expect(Array.from(cSvg.querySelectorAll('[data-scratch-c-path]')).map(path => path.dataset.scratchCPath)).toEqual([
+      'shadow',
+      'fill',
+      'outer',
+      'highlight',
+    ])
+  })
+
+  it('snaps the next root block tightly after a Scratch C-block', () => {
+    const content = [
+      '```scratch',
+      'repeat until <(1) = (2)>',
+      '  broadcast [message1]',
+      '  go to [random position]',
+      'end',
+      'move (10) steps',
+      '```',
+    ].join('\n')
+    const { container } = render(<MarkdownRenderer content={content} />)
+    const moveBlock = container.querySelector('[data-scratch-opcode="motion_movesteps"]')
+    const moveRoot = moveBlock.parentElement
+
+    expect(Number.parseFloat(moveRoot.style.marginTop)).toBe(-10)
+  })
+})
+
+describe('Scratch markdown block catalog', () => {
+  it('covers every Scratch runtime block definition', () => {
+    const missing = Object.keys(SCRATCH_BLOCK_DEFINITIONS)
+      .filter(opcode => !SCRATCH_BLOCK_BY_OPCODE[opcode])
+    expect(missing).toEqual([])
+  })
+
+  it('covers every block exposed by the toolbox groups', () => {
+    const missing = SCRATCH_TOOLBOX_GROUPS
+      .flatMap(group => group.blocks.map(([opcode]) => opcode))
+      .filter(opcode => !SCRATCH_BLOCK_BY_OPCODE[opcode])
+    expect(missing).toEqual([])
+  })
+
+  it('keeps markdown toolbar samples recognizable as Scratch blocks', () => {
+    const samples = SCRATCH_MARKDOWN_BLOCK_CATEGORIES.flatMap(category => category.blocks)
+    expect(samples).toHaveLength(SCRATCH_BLOCK_CATALOG.length)
+    for (const sample of samples) {
+      expect(looksLikeScratchBlocks(sample)).toBe(true)
+    }
   })
 })
 
