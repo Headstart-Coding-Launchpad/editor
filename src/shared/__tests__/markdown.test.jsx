@@ -47,6 +47,17 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByText('This is a paragraph.')).toBeInTheDocument()
   })
 
+  it('constrains markdown images without distorting them', () => {
+    render(<MarkdownRenderer content="![Tall diagram](images/tall-diagram.png)" />)
+    const image = screen.getByRole('img', { name: 'Tall diagram' })
+    expect(image).toHaveStyle({
+      maxWidth: '100%',
+      maxHeight: 'min(420px, 60vh)',
+      height: 'auto',
+      objectFit: 'contain',
+    })
+  })
+
   it('renders bold text inside a paragraph', () => {
     render(<MarkdownRenderer content="This is **important**." />)
     const bold = screen.getByText('important')

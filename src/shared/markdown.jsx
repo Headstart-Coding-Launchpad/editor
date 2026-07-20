@@ -405,6 +405,9 @@ const components = {
         alt={alt ?? ''}
         style={{
           maxWidth: '100%',
+          maxHeight: 'min(420px, 60vh)',
+          height: 'auto',
+          objectFit: 'contain',
           borderRadius: 6,
           display: 'block',
           margin: '10px 0',
