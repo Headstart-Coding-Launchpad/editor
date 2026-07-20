@@ -305,3 +305,4 @@ The `>-` scalar folds the XML into a single line and strips the trailing newline
 - **Include the hat block.** Always include at least one event block (`event_whenflagclicked` is almost always needed) or students will have no way to start their script.
 - **Match checks to the toolbox.** If a `block_used` check requires a block, that block must appear in the toolbox. A block missing from the toolbox can never satisfy the check.
 - **Use the builder.** The Lesson Builder has a visual toolbox picker that generates the XML for you. Copy the output into your YAML when you need the raw string.
+- **Keep explainers in sync.** When platform code adds or changes a Scratch opcode, update the markdown renderer metadata and `docs/authoring/markdown-renderer.md` in the same change so explainers can render the block correctly.

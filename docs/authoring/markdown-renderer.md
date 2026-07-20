@@ -74,7 +74,7 @@ for i in range(5):
 
 ## Scratch Blocks (fenced)
 
-The `scratch` fenced block renders each non-empty line as a coloured, stacked Scratch block. Indent with two spaces per level to show nesting inside C-blocks. The special text `end` closes C-block indentation without rendering an extra block.
+The `scratch` fenced block renders each non-empty line as a coloured Scratch block. Indent with two spaces per level to place blocks inside C-block mouths. Use `else` for the second mouth of an if/else block, and `end` to close the current mouth without rendering an extra block.
 
 ````
 ```scratch
@@ -100,13 +100,59 @@ end
 | Amber `#FF8C1A` | Variables | `set [score] to (0)`, `change [score] by (1)` |
 | Grey `#7c7c7c` | Unknown | Any unrecognised block text |
 
-Hat blocks (`when …`) have rounded top corners. C-blocks (`forever`, `repeat`, `if … then`) show a chevron indicator.
+Scratch block bodies are drawn with SVG paths for Blockly-like geometry. Hat blocks (`when ...`) have rounded tops. Stack blocks have top notch cut-outs and bottom connector tabs, and connected blocks sit tightly together. Cap blocks have rounded bottoms and no bottom connector. Reporter blocks render as ovals, Boolean blocks render as hexagons, and C-blocks draw a continuous shape with one or two transparent statement mouths.
 
 **Value pills inside block text:**
-- Numbers and quoted strings → white pill with dark text
-- `(input)` and `[dropdown]` spans → white pill
-- `<condition>` spans → green pill
-- `(answer)` → light-blue pill (sensing reporter style)
+- Numbers and quoted strings -> white pill with dark text
+- `(input)` spans -> white rounded input bubble with dark text
+- `[dropdown]` spans -> darker coloured dropdown field with a small arrow
+- `<condition>` spans -> Boolean-shaped slot; recognised Boolean blocks render as nested hexagonal blocks
+
+**Scratch block system:**
+
+The renderer is backed by `src/shared/scratchBlockCatalog.js`. The catalog stores each block's opcode, category, colour, author-facing sample text, visual shape, aliases, and mouth metadata. `src/shared/markdown/ScratchBlocks.jsx` uses that catalog to parse inline Scratch blocks and fenced Scratch stacks, then renders SVG/path block bodies with HTML overlays for text and input fields. `src/shared/markdown/editorOptions.js` uses the same catalog for the markdown toolbar insertion menu.
+
+The catalog currently covers every opcode in `SCRATCH_BLOCK_DEFINITIONS` and every block exposed by the Scratch toolbox picker. Tests in `src/shared/__tests__/markdown.test.jsx` enforce that coverage.
+
+**Supported Scratch shapes:**
+
+| Shape | Used for | Example |
+|---|---|---|
+| `hat` | Event starters | `when green flag clicked`, `when I start as a clone` |
+| `stack` | Normal command blocks | `move (10) steps`, `broadcast [message1]` |
+| `cap` | Ending blocks | `stop all`, `delete this clone` |
+| `reporter` | Value blocks that fit inside inputs | `x position`, `pick random (1) to (10)` |
+| `boolean` | Condition blocks that fit inside `<...>` inputs | `touching [edge]?`, `(1) > (2)` |
+| `c` | Blocks with statement mouths | `forever`, `repeat (10)`, `if <> then` |
+
+**Maintenance contract:**
+
+When adding, renaming, or removing Scratch blocks, update `src/shared/scratchBlockCatalog.js` in the same change as the runtime/editor block definitions. A new Scratch block is not complete until the markdown renderer, toolbar insertion list, opcode references, and tests are updated together.
+
+**Nested fenced syntax examples:**
+
+````markdown
+```scratch
+when green flag clicked
+forever
+  if <touching [edge]?> then
+    turn right (15) degrees
+  else
+    move (pick random (1) to (10)) steps
+  end
+end
+```
+````
+
+````markdown
+```scratch
+when I start as a clone
+repeat until <(score) > (10)>
+  change [score] by (1)
+end
+delete this clone
+```
+````
 
 ---
 
