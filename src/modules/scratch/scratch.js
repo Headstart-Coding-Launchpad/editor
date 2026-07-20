@@ -3,6 +3,7 @@
 // Pure check/state helpers are in scratchChecks.js; persistence helpers are in scratchPersistence.js.
 // Re-exported here for backward compatibility.
 import * as Blockly from 'blockly'
+import { SCRATCH_BLOCK_BY_OPCODE, scratchBlockBadgeIcon } from '../../shared/scratchBlockCatalog'
 
 export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from './checks'
 export { saveWorkspace, loadWorkspace, migrateBroadcastState, migrateVariableFields } from './scratchPersistence'
@@ -14,6 +15,9 @@ let _currentSprites = []
 let _currentBackdrops = []
 let _currentCostumes = []
 let _currentVariables = []
+
+const BLOCKLY_ICON_BADGE_SIZE = 48
+const BLOCKLY_ICON_BADGE_RADIUS = 23
 
 export function setSpriteContext(sprites) {
   _currentSprites = sprites ?? []
@@ -75,6 +79,37 @@ function boolInput(name) {
   return { type: 'input_value', name, check: 'Boolean' }
 }
 
+function shiftMessagePlaceholders(message, amount = 1) {
+  return String(message).replace(/%(\d+)/g, (_, index) => `%${Number(index) + amount}`)
+}
+
+function scratchBlocklyIconField(type) {
+  const block = SCRATCH_BLOCK_BY_OPCODE[type]
+  const icon = scratchBlockBadgeIcon(block)
+  if (!icon) return null
+  const compact = Array.from(icon.replace(/\uFE0F/g, '')).length > 1
+  const center = BLOCKLY_ICON_BADGE_SIZE / 2
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${BLOCKLY_ICON_BADGE_SIZE}" height="${BLOCKLY_ICON_BADGE_SIZE}" viewBox="0 0 ${BLOCKLY_ICON_BADGE_SIZE} ${BLOCKLY_ICON_BADGE_SIZE}"><circle cx="${center}" cy="${center}" r="${BLOCKLY_ICON_BADGE_RADIUS}" fill="#fff" stroke="rgba(15,23,42,.26)" stroke-width="1.25"/><text x="${center}" y="${center + 0.75}" text-anchor="middle" dominant-baseline="central" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif" font-size="${compact ? 23 : 30}">${icon}</text></svg>`
+  return {
+    type: 'field_image',
+    src: 'data:image/svg+xml,' + encodeURIComponent(svg),
+    width: BLOCKLY_ICON_BADGE_SIZE,
+    height: BLOCKLY_ICON_BADGE_SIZE,
+    alt: `${block.label} icon`,
+  }
+}
+
+function blockMessage(type, message) {
+  return SCRATCH_BLOCK_BY_OPCODE[type]?.icon
+    ? `%1 ${shiftMessagePlaceholders(message)}`
+    : message
+}
+
+function blockArgs(type, args = []) {
+  const iconField = scratchBlocklyIconField(type)
+  return iconField ? [iconField, ...args] : args
+}
+
 const GREEN_FLAG_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151"/><polygon points="3,1 14,6 3,11" fill="#22c55e"/></svg>'
 const GREEN_FLAG_SRC = 'data:image/svg+xml,' + encodeURIComponent(GREEN_FLAG_SVG)
 
@@ -83,8 +118,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'event_whenflagclicked',
-        message0: 'when %1 clicked',
-        args0: [{ type: 'field_image', src: GREEN_FLAG_SRC, width: 15, height: 15, alt: 'green flag' }],
+        message0: blockMessage('event_whenflagclicked', 'when %1 clicked'),
+        args0: blockArgs('event_whenflagclicked', [{ type: 'field_image', src: GREEN_FLAG_SRC, width: 15, height: 15, alt: 'green flag' }]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -94,8 +129,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'event_whenkeypressed',
-        message0: 'when %1 key pressed',
-        args0: [{ type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS }],
+        message0: blockMessage('event_whenkeypressed', 'when %1 key pressed'),
+        args0: blockArgs('event_whenkeypressed', [{ type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS }]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -103,15 +138,15 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   },
   event_whenthisspriteclicked: {
     init() {
-      this.jsonInit({ type: 'event_whenthisspriteclicked', message0: 'when this sprite clicked', nextStatement: null, colour: '#FFAB19' })
+      this.jsonInit({ type: 'event_whenthisspriteclicked', message0: blockMessage('event_whenthisspriteclicked', 'when this sprite clicked'), args0: blockArgs('event_whenthisspriteclicked'), nextStatement: null, colour: '#FFAB19' })
     },
   },
   event_broadcast: {
     init() {
       this.jsonInit({
         type: 'event_broadcast',
-        message0: 'broadcast %1',
-        args0: [{ type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' }],
+        message0: blockMessage('event_broadcast', 'broadcast %1'),
+        args0: blockArgs('event_broadcast', [{ type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -122,8 +157,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'event_broadcastandwait',
-        message0: 'broadcast %1 and wait',
-        args0: [{ type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' }],
+        message0: blockMessage('event_broadcastandwait', 'broadcast %1 and wait'),
+        args0: blockArgs('event_broadcastandwait', [{ type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -134,8 +169,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'event_whenbroadcastreceived',
-        message0: 'when I receive %1',
-        args0: [{ type: 'field_input', name: 'BROADCAST_OPTION', text: 'message1' }],
+        message0: blockMessage('event_whenbroadcastreceived', 'when I receive %1'),
+        args0: blockArgs('event_whenbroadcastreceived', [{ type: 'field_input', name: 'BROADCAST_OPTION', text: 'message1' }]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -150,12 +185,12 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'motion_goto',
-        message0: 'go to %1',
-        args0: [{ type: 'field_dropdown', name: 'TO', options: () => [
+        message0: blockMessage('motion_goto', 'go to %1'),
+        args0: blockArgs('motion_goto', [{ type: 'field_dropdown', name: 'TO', options: () => [
           ['random position', '_random_'],
           ['mouse pointer', '_mouse_'],
           ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}],
+        ]}]),
         previousStatement: null,
         nextStatement: null,
         colour: '#4C97FF',
@@ -167,15 +202,15 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'motion_glideto',
-        message0: 'glide %1 secs to %2',
-        args0: [
+        message0: blockMessage('motion_glideto', 'glide %1 secs to %2'),
+        args0: blockArgs('motion_glideto', [
           numberInput('SECS', 1),
           { type: 'field_dropdown', name: 'TO', options: () => [
             ['random position', '_random_'],
             ['mouse pointer', '_mouse_'],
             ..._currentSprites.map(sp => [sp.name, sp.id]),
           ]},
-        ],
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#4C97FF',
@@ -195,8 +230,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'motion_setrotationstyle',
-        message0: 'set rotation style %1',
-        args0: [{ type: 'field_dropdown', name: 'STYLE', options: [['left-right', 'left-right'], ["don't rotate", "don't rotate"], ['all around', 'all around']] }],
+        message0: blockMessage('motion_setrotationstyle', 'set rotation style %1'),
+        args0: blockArgs('motion_setrotationstyle', [{ type: 'field_dropdown', name: 'STYLE', options: [['left-right', 'left-right'], ["don't rotate", "don't rotate"], ['all around', 'all around']] }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#4C97FF',
@@ -216,10 +251,10 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'looks_switchcostumeto',
-        message0: 'switch costume to %1',
-        args0: [{ type: 'field_dropdown', name: 'COSTUME', options: () =>
+        message0: blockMessage('looks_switchcostumeto', 'switch costume to %1'),
+        args0: blockArgs('looks_switchcostumeto', [{ type: 'field_dropdown', name: 'COSTUME', options: () =>
           _currentCostumes.length ? _currentCostumes.map(c => [costumeDropdownLabel(c), c.name]) : [['costume1', 'costume1']]
-        }],
+        }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#9966FF',
@@ -232,10 +267,10 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'looks_switchbackdropto',
-        message0: 'switch backdrop to %1',
-        args0: [{ type: 'field_dropdown', name: 'BACKDROP', options: () =>
+        message0: blockMessage('looks_switchbackdropto', 'switch backdrop to %1'),
+        args0: blockArgs('looks_switchbackdropto', [{ type: 'field_dropdown', name: 'BACKDROP', options: () =>
           _currentBackdrops.length ? _currentBackdrops.map(b => [b.name, b.name]) : [['Backdrop 1', 'Backdrop 1']]
-        }],
+        }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#9966FF',
@@ -247,10 +282,10 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'event_whenbackdropswitchesto',
-        message0: 'when backdrop switches to %1',
-        args0: [{ type: 'field_dropdown', name: 'BACKDROP', options: () =>
+        message0: blockMessage('event_whenbackdropswitchesto', 'when backdrop switches to %1'),
+        args0: blockArgs('event_whenbackdropswitchesto', [{ type: 'field_dropdown', name: 'BACKDROP', options: () =>
           _currentBackdrops.length ? _currentBackdrops.map(b => [b.name, b.name]) : [['Backdrop 1', 'Backdrop 1']]
-        }],
+        }]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -266,8 +301,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_repeat',
-        message0: 'repeat %1',
-        args0: [numberInput('TIMES', 10)],
+        message0: blockMessage('control_repeat', 'repeat %1'),
+        args0: blockArgs('control_repeat', [numberInput('TIMES', 10)]),
         message1: '%1',
         args1: [{ type: 'input_statement', name: 'SUBSTACK' }],
         previousStatement: null,
@@ -280,7 +315,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_forever',
-        message0: 'forever',
+        message0: blockMessage('control_forever', 'forever'),
+        args0: blockArgs('control_forever'),
         message1: '%1',
         args1: [{ type: 'input_statement', name: 'SUBSTACK' }],
         previousStatement: null,
@@ -292,8 +328,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_if',
-        message0: 'if %1 then',
-        args0: [boolInput('CONDITION')],
+        message0: blockMessage('control_if', 'if %1 then'),
+        args0: blockArgs('control_if', [boolInput('CONDITION')]),
         message1: '%1',
         args1: [{ type: 'input_statement', name: 'SUBSTACK' }],
         previousStatement: null,
@@ -306,8 +342,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_if_else',
-        message0: 'if %1 then',
-        args0: [boolInput('CONDITION')],
+        message0: blockMessage('control_if_else', 'if %1 then'),
+        args0: blockArgs('control_if_else', [boolInput('CONDITION')]),
         message1: '%1',
         args1: [{ type: 'input_statement', name: 'SUBSTACK' }],
         message2: 'else %1',
@@ -324,11 +360,11 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_create_clone_of',
-        message0: 'create a clone of %1',
-        args0: [{ type: 'field_dropdown', name: 'CLONE_OPTION', options: () => [
+        message0: blockMessage('control_create_clone_of', 'create a clone of %1'),
+        args0: blockArgs('control_create_clone_of', [{ type: 'field_dropdown', name: 'CLONE_OPTION', options: () => [
           ['myself', '_myself_'],
           ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}],
+        ]}]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -337,7 +373,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   },
   control_start_as_clone: {
     init() {
-      this.jsonInit({ type: 'control_start_as_clone', message0: 'when I start as a clone', nextStatement: null, colour: '#FFAB19' })
+      this.jsonInit({ type: 'control_start_as_clone', message0: blockMessage('control_start_as_clone', 'when I start as a clone'), args0: blockArgs('control_start_as_clone'), nextStatement: null, colour: '#FFAB19' })
     },
   },
   control_delete_this_clone: blockStop('control_delete_this_clone', 'delete this clone'),
@@ -348,8 +384,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'sensing_keypressed',
-        message0: 'key %1 pressed?',
-        args0: [{ type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS }],
+        message0: blockMessage('sensing_keypressed', 'key %1 pressed?'),
+        args0: blockArgs('sensing_keypressed', [{ type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS }]),
         output: 'Boolean',
         colour: '#5CB1D6',
       })
@@ -361,12 +397,12 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'sensing_touchingobject',
-        message0: 'touching %1?',
-        args0: [{ type: 'field_dropdown', name: 'TOUCHINGOBJECTMENU', options: () => [
+        message0: blockMessage('sensing_touchingobject', 'touching %1?'),
+        args0: blockArgs('sensing_touchingobject', [{ type: 'field_dropdown', name: 'TOUCHINGOBJECTMENU', options: () => [
           ['mouse-pointer', '_mouse_'],
           ['edge', '_edge_'],
           ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}],
+        ]}]),
         output: 'Boolean',
         colour: '#5CB1D6',
       })
@@ -391,8 +427,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'operator_mathop',
-        message0: '%1 of %2',
-        args0: [
+        message0: blockMessage('operator_mathop', '%1 of %2'),
+        args0: blockArgs('operator_mathop', [
           { type: 'field_dropdown', name: 'OPERATOR', options: [
             ['abs', 'abs'], ['floor', 'floor'], ['ceiling', 'ceiling'], ['sqrt', 'sqrt'],
             ['sin', 'sin'], ['cos', 'cos'], ['tan', 'tan'],
@@ -400,7 +436,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
             ['ln', 'ln'], ['log', 'log'], ['e ^', 'e ^'], ['10 ^', '10 ^'],
           ]},
           numberInput('NUM', 10),
-        ],
+        ]),
         output: 'Number',
         colour: '#59C059',
         inputsInline: true,
@@ -415,8 +451,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_wait_until',
-        message0: 'wait until %1',
-        args0: [boolInput('CONDITION')],
+        message0: blockMessage('control_wait_until', 'wait until %1'),
+        args0: blockArgs('control_wait_until', [boolInput('CONDITION')]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -427,8 +463,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'control_repeat_until',
-        message0: 'repeat until %1',
-        args0: [boolInput('CONDITION')],
+        message0: blockMessage('control_repeat_until', 'repeat until %1'),
+        args0: blockArgs('control_repeat_until', [boolInput('CONDITION')]),
         message1: '%1',
         args1: [{ type: 'input_statement', name: 'SUBSTACK' }],
         previousStatement: null,
@@ -442,14 +478,14 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'looks_seteffectto',
-        message0: 'set %1 effect to %2',
-        args0: [
+        message0: blockMessage('looks_seteffectto', 'set %1 effect to %2'),
+        args0: blockArgs('looks_seteffectto', [
           { type: 'field_dropdown', name: 'EFFECT', options: [
             ['color', 'color'], ['fisheye', 'fisheye'], ['whirl', 'whirl'],
             ['pixelate', 'pixelate'], ['mosaic', 'mosaic'], ['brightness', 'brightness'], ['ghost', 'ghost'],
           ]},
           numberInput('VALUE', 0),
-        ],
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#9966FF',
@@ -460,14 +496,14 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'looks_changeeffectby',
-        message0: 'change %1 effect by %2',
-        args0: [
+        message0: blockMessage('looks_changeeffectby', 'change %1 effect by %2'),
+        args0: blockArgs('looks_changeeffectby', [
           { type: 'field_dropdown', name: 'EFFECT', options: [
             ['color', 'color'], ['fisheye', 'fisheye'], ['whirl', 'whirl'],
             ['pixelate', 'pixelate'], ['mosaic', 'mosaic'], ['brightness', 'brightness'], ['ghost', 'ghost'],
           ]},
           numberInput('VALUE', 25),
-        ],
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#9966FF',
@@ -479,8 +515,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'looks_costumenumbername',
-        message0: 'costume %1',
-        args0: [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }],
+        message0: blockMessage('looks_costumenumbername', 'costume %1'),
+        args0: blockArgs('looks_costumenumbername', [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }]),
         output: ['Number', 'String'],
         colour: '#9966FF',
       })
@@ -490,8 +526,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'looks_backdropnumbername',
-        message0: 'backdrop %1',
-        args0: [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }],
+        message0: blockMessage('looks_backdropnumbername', 'backdrop %1'),
+        args0: blockArgs('looks_backdropnumbername', [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }]),
         output: ['Number', 'String'],
         colour: '#9966FF',
       })
@@ -504,11 +540,11 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'sensing_distanceto',
-        message0: 'distance to %1',
-        args0: [{ type: 'field_dropdown', name: 'DISTANCETOMENU', options: () => [
+        message0: blockMessage('sensing_distanceto', 'distance to %1'),
+        args0: blockArgs('sensing_distanceto', [{ type: 'field_dropdown', name: 'DISTANCETOMENU', options: () => [
           ['mouse-pointer', '_mouse_'],
           ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}],
+        ]}]),
         output: 'Number',
         colour: '#5CB1D6',
       })
@@ -522,8 +558,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'data_showvariable',
-        message0: 'show variable %1',
-        args0: [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }],
+        message0: blockMessage('data_showvariable', 'show variable %1'),
+        args0: blockArgs('data_showvariable', [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FF8C1A',
@@ -534,8 +570,8 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     init() {
       this.jsonInit({
         type: 'data_hidevariable',
-        message0: 'hide variable %1',
-        args0: [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }],
+        message0: blockMessage('data_hidevariable', 'hide variable %1'),
+        args0: blockArgs('data_hidevariable', [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FF8C1A',
@@ -549,7 +585,7 @@ const KEY_OPTIONS = [['space', 'space'], ['up arrow', 'up arrow'], ['down arrow'
 function blockStatement(type, message0, args0, colour) {
   return {
     init() {
-      this.jsonInit({ type, message0, args0, previousStatement: null, nextStatement: null, colour })
+      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type, args0), previousStatement: null, nextStatement: null, colour })
     },
   }
 }
@@ -557,7 +593,7 @@ function blockStatement(type, message0, args0, colour) {
 function reporter(type, message0, output, colour) {
   return {
     init() {
-      this.jsonInit({ type, message0, output, colour })
+      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type), output, colour })
     },
   }
 }
@@ -565,7 +601,7 @@ function reporter(type, message0, output, colour) {
 function operator(type, message0, args0, output) {
   return {
     init() {
-      this.jsonInit({ type, message0, args0, output, colour: '#59C059', inputsInline: true })
+      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type, args0), output, colour: '#59C059', inputsInline: true })
     },
   }
 }
@@ -575,8 +611,8 @@ function soundBlock(type, message0) {
     init() {
       this.jsonInit({
         type,
-        message0,
-        args0: [{ type: 'field_dropdown', name: 'SOUND_MENU', options: [['pop', 'pop'], ['meow', 'meow'], ['click', 'click'], ['chime', 'chime']] }],
+        message0: blockMessage(type, message0),
+        args0: blockArgs(type, [{ type: 'field_dropdown', name: 'SOUND_MENU', options: [['pop', 'pop'], ['meow', 'meow'], ['click', 'click'], ['chime', 'chime']] }]),
         previousStatement: null,
         nextStatement: null,
         colour: '#CF63CF',
@@ -588,7 +624,7 @@ function soundBlock(type, message0) {
 function blockStop(type, message0) {
   return {
     init() {
-      this.jsonInit({ type, message0, previousStatement: null, colour: '#FFAB19' })
+      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type), previousStatement: null, colour: '#FFAB19' })
     },
   }
 }
@@ -604,8 +640,8 @@ function variableReporter() {
     init() {
       this.jsonInit({
         type: 'data_variable',
-        message0: '%1',
-        args0: [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }],
+        message0: blockMessage('data_variable', '%1'),
+        args0: blockArgs('data_variable', [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }]),
         output: ['Number', 'String'],
         colour: '#FF8C1A',
       })
@@ -618,8 +654,8 @@ function variableStatement(type, message0, valueInput) {
     init() {
       this.jsonInit({
         type,
-        message0,
-        args0: [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }, valueInput],
+        message0: blockMessage(type, message0),
+        args0: blockArgs(type, [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }, valueInput]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FF8C1A',

@@ -54,6 +54,11 @@ High-level route, student phase, persistence, teacher-live, and Firebase ownersh
 
 **Load when:** changing classroom session behavior, student persistence, teacher live view, or Firebase ownership.
 
+### [architecture/scratch-block-icons-plan.md](architecture/scratch-block-icons-plan.md)
+Review draft for adding readable emoji/icon cues to Scratch blocks across Markdown, editor pickers, and Blockly labels.
+
+**Load when:** reviewing or implementing the Scratch block icon mapping.
+
 ---
 
 ## Architecture decision records (`docs/adr/`)

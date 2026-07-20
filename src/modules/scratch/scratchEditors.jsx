@@ -1,7 +1,7 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { MarkdownFieldEditor } from '../../builder/components/ExplainerEditor'
-import { SCRATCH_TOOLBOX_GROUPS } from '../../shared/scratchBlockCatalog'
+import { SCRATCH_BLOCK_BY_OPCODE, SCRATCH_TOOLBOX_GROUPS, scratchBlockBadgeIcon } from '../../shared/scratchBlockCatalog'
 import {
   BLOCK_DISPLAY_TEMPLATES,
   DEFAULT_TOOLBOX,
@@ -15,6 +15,44 @@ import { normalizeSequenceItem } from './checks'
 
 const SCRATCH_BLOCK_OPTIONS = SCRATCH_TOOLBOX_GROUPS.flatMap(group => group.blocks)
 const SCRATCH_ALL_BLOCK_TYPES = SCRATCH_BLOCK_OPTIONS.map(([type]) => type)
+
+function ScratchIconBadge({ icon, compact = false }) {
+  if (!icon) return null
+  const size = compact ? 22 : 28
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        flex: `0 0 ${size}px`,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#0f172a',
+        background: '#fff',
+        borderRadius: '50%',
+        boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.22), 0 1px 1px rgba(15,23,42,0.16)',
+        fontSize: compact ? 16 : 20,
+        lineHeight: 1,
+        fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+      }}
+    >
+      {icon}
+    </span>
+  )
+}
+
+function ScratchBlockLabel({ type, compact = false, fallback = null }) {
+  const block = SCRATCH_BLOCK_BY_OPCODE[type]
+  const text = block?.label ?? fallback ?? type
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: compact ? 5 : 7, minWidth: 0 }}>
+      <ScratchIconBadge icon={scratchBlockBadgeIcon(block)} compact={compact} />
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</span>
+    </span>
+  )
+}
 
 function buildScratchToolboxXml(selectedTypes) {
   const selected = new Set(selectedTypes)
@@ -108,7 +146,7 @@ export function ScratchToolboxPicker({ toolbox, onChange }) {
                       disabled={usesAllBlocks}
                       onChange={e => toggleBlock(type, e.target.checked)}
                     />
-                    <span>{label}</span>
+                    <ScratchBlockLabel type={type} fallback={label} compact />
                   </label>
                 ))}
               </div>
@@ -227,7 +265,7 @@ export function PredefinedBlocksEditor({ predefinedBlocks = [], toolbox = '', on
         const fields = getBlockInputFields(pb.type)
         return (
           <div key={pb.id} className="te-predefined-block-row">
-            <span className="te-predefined-block-label">{blockLabel(pb.type)}</span>
+            <span className="te-predefined-block-label"><ScratchBlockLabel type={pb.type} compact /></span>
             {fields.map(f => (
               <label key={f.name} className="te-predefined-block-field">
                 <span className="te-predefined-block-field-name">{f.name.toLowerCase()}</span>
@@ -394,7 +432,7 @@ export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL
                 role="option"
                 aria-selected={value === type}
               >
-                {label}
+                <ScratchBlockLabel type={type} fallback={label} />
               </button>
             ))}
           </div>
@@ -414,6 +452,9 @@ export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL
           style={{ backgroundColor: currentColour, display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}
           aria-expanded={open}
         >
+          <span style={{ cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>
+            <ScratchIconBadge icon={scratchBlockBadgeIcon(value)} compact={compact} />
+          </span>
           {inlineParts.map((part, i) =>
             part.inputName ? (() => {
               const condition = readFieldValueCondition(fieldValues?.[part.inputName])
@@ -461,7 +502,7 @@ export function ScratchBlockPicker({ value, onChange, allowedTypes = SCRATCH_ALL
           onClick={() => setOpen(o => !o)}
           aria-expanded={open}
         >
-          {currentLabel}
+          {value ? <ScratchBlockLabel type={value} compact={compact} /> : currentLabel}
         </button>
       )}
       {menu}
@@ -601,7 +642,7 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
               className="te-scratch-block-chip te-scratch-block-chip--compact"
               style={{ backgroundColor: blockColour(type), flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {blockLabel(type)}
+              <ScratchBlockLabel type={type} compact />
             </span>
             <button
               type="button"
@@ -634,7 +675,7 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
           <div className="te-stack-edit-modal">
             <div className="te-stack-edit-modal__header">
               <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.9rem' }}>
-                Edit prebuilt stack: {blockLabel(editingStack.stack?.type ?? '')}
+                Edit prebuilt stack: <ScratchBlockLabel type={editingStack.stack?.type ?? ''} compact />
               </span>
               <button type="button" className="btn-ghost" onClick={() => setEditingStackId(null)}>Done</button>
             </div>

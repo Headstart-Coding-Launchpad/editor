@@ -53,11 +53,11 @@ describe('PrebuiltStacksEditor', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /\+ add stack/i }))
-    fireEvent.click(screen.getByRole('option', { name: 'say' }))
+    fireEvent.click(screen.getByRole('option', { name: /say/i }))
 
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({
-        label: 'say',
+        label: '💬 say',
         stack: expect.objectContaining({ type: 'looks_say' }),
       }),
     ])

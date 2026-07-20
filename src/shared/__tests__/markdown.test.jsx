@@ -2,7 +2,7 @@ import React from 'react'
 import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MarkdownRenderer, InlineMarkdown } from '../markdown'
-import { SCRATCH_BLOCK_CATALOG, SCRATCH_BLOCK_BY_OPCODE, SCRATCH_MARKDOWN_BLOCK_CATEGORIES, SCRATCH_TOOLBOX_GROUPS } from '../scratchBlockCatalog'
+import { SCRATCH_BLOCK_CATALOG, SCRATCH_BLOCK_BY_OPCODE, SCRATCH_MARKDOWN_BLOCK_CATEGORIES, SCRATCH_TOOLBOX_GROUPS, scratchBlockBadgeIcon, scratchBlockDisplaySample } from '../scratchBlockCatalog'
 import { looksLikeScratchBlocks } from '../markdown/ScratchBlocks'
 import { SCRATCH_BLOCK_DEFINITIONS } from '../../modules/scratch/scratch'
 
@@ -184,6 +184,7 @@ describe('MarkdownRenderer', () => {
     expect(container.querySelector('[data-scratch-opcode="operator_random"][data-scratch-shape="reporter"]')).toBeInTheDocument()
     expect(container.querySelector('[data-scratch-stack="true"] svg path')).toBeInTheDocument()
     expect(container.querySelector('[data-scratch-unknown="true"]')).not.toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-opcode="motion_movesteps"]')).toHaveTextContent(SCRATCH_BLOCK_BY_OPCODE.motion_movesteps.icon)
   })
 
   it('renders inline Scratch reporter blocks with their own shape', () => {
@@ -219,7 +220,7 @@ describe('MarkdownRenderer', () => {
     const valueSlots = operator.querySelectorAll('[data-scratch-slot="value"]')
 
     expect(Number.parseFloat(operator.style.width)).toBeGreaterThanOrEqual(150)
-    expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(168)
+    expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(190)
     expect(valueSlots).toHaveLength(2)
     expect(valueSlots[0]).toHaveAttribute('data-scratch-slot-shadow', 'text')
     expect(Number.parseFloat(valueSlots[0].querySelector('[data-scratch-slot-field="true"]').style.minWidth)).toBeGreaterThanOrEqual(18)
@@ -286,6 +287,47 @@ describe('Scratch markdown block catalog', () => {
     expect(samples).toHaveLength(SCRATCH_BLOCK_CATALOG.length)
     for (const sample of samples) {
       expect(looksLikeScratchBlocks(sample)).toBe(true)
+    }
+  })
+
+  it('keeps plain and icon-prefixed Scratch samples recognizable', () => {
+    for (const block of SCRATCH_BLOCK_CATALOG) {
+      expect(block.icon).toEqual(expect.any(String))
+      expect(block.icon.length).toBeGreaterThan(0)
+      expect(looksLikeScratchBlocks(block.sample)).toBe(true)
+      expect(looksLikeScratchBlocks(scratchBlockDisplaySample(block))).toBe(true)
+    }
+  })
+
+  it('uses single-purpose badge icons for multi-icon Scratch blocks', () => {
+    expect(scratchBlockBadgeIcon('event_broadcastandwait')).toBe('⏳')
+    expect(scratchBlockBadgeIcon('looks_hide')).toBe('🚫')
+    expect(scratchBlockBadgeIcon('sound_playuntildone')).toBe('▶️')
+    expect(scratchBlockBadgeIcon('control_repeat_until')).toBe('⏱️')
+    expect(scratchBlockBadgeIcon('sensing_resettimer')).toBe('🔄')
+    expect(scratchBlockBadgeIcon('data_hidevariable')).toBe('🚫')
+  })
+
+  it('exposes icon-prefixed toolbox labels', () => {
+    for (const [opcode, label] of SCRATCH_TOOLBOX_GROUPS.flatMap(group => group.blocks)) {
+      expect(label).toBe(`${SCRATCH_BLOCK_BY_OPCODE[opcode].icon} ${SCRATCH_BLOCK_BY_OPCODE[opcode].label}`)
+    }
+  })
+
+  it('keeps Blockly icon fields aligned with shifted message placeholders', () => {
+    for (const [opcode, definition] of Object.entries(SCRATCH_BLOCK_DEFINITIONS)) {
+      const context = { jsonInit: vi.fn() }
+      definition.init.call(context)
+      const config = context.jsonInit.mock.calls[0]?.[0]
+      const message = config?.message0 ?? ''
+      const placeholders = Array.from(String(message).matchAll(/%(\d+)/g), match => Number(match[1]))
+      const maxPlaceholder = Math.max(0, ...placeholders)
+
+      expect(config?.args0 ?? []).toHaveLength(maxPlaceholder)
+      if (SCRATCH_BLOCK_BY_OPCODE[opcode]?.icon) {
+        expect(config.args0[0]).toMatchObject({ type: 'field_image', width: 48, height: 48 })
+        expect(config.message0).toMatch(/^%1 /)
+      }
     }
   })
 })

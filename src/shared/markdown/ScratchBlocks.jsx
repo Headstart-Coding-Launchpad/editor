@@ -1,5 +1,5 @@
 import React from 'react'
-import { findScratchBlock } from '../scratchBlockCatalog'
+import { findScratchBlock, scratchBlockBadgeIcon, scratchBlockTextWithoutIcon } from '../scratchBlockCatalog'
 
 const BODY_H = 34
 const HAT_H = 38
@@ -18,6 +18,8 @@ const ROOT_GAP = 9
 const C_CHILD_X = 14
 const OPERATOR_COLOR = '#59C059'
 const TEXT_SHADOW_OPERATORS = new Set(['operator_equals', 'operator_join', 'operator_contains'])
+const ICON_BADGE_SIZE = 30
+const INLINE_ICON_BADGE_SIZE = 22
 
 function darkenColor(hex) {
   const num = parseInt(hex.replace('#', ''), 16)
@@ -148,9 +150,10 @@ function contentPaddingFor(shape, info) {
 }
 
 function measureInlineBlock(text, info) {
+  text = scratchBlockTextWithoutIcon(text, info)
   const shape = info.shape ?? 'stack'
   const h = INLINE_H
-  const textWidth = measurePartsWidth(text, 11, 1, info)
+  const textWidth = iconBadgeMeasure(info, true) + measurePartsWidth(text, 11, 1, info)
   if (shape === 'reporter') return { width: Math.max(48, textWidth + 26), height: h + 1 }
   if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, true), textWidth + booleanExtraWidth(info)), height: h + 8 }
   if (shape === 'hat') return { width: Math.max(68, textWidth + 24), height: h + 4 }
@@ -158,11 +161,12 @@ function measureInlineBlock(text, info) {
 }
 
 function measureSimpleBlock(text, info, inline = false) {
+  text = scratchBlockTextWithoutIcon(text, info)
   if (inline) return measureInlineBlock(text, info)
   const shape = info.shape ?? 'stack'
   const bodyH = shape === 'hat' ? HAT_H : BODY_H
   const bottomTab = shape === 'stack' || shape === 'hat'
-  const textWidth = measurePartsWidth(text, 13, 0, info)
+  const textWidth = iconBadgeMeasure(info, false) + measurePartsWidth(text, 13, 0, info)
   if (shape === 'reporter') return { width: Math.max(60, textWidth + 30), height: 31, bodyH: 31, bottomTab: false }
   if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, false), textWidth + booleanExtraWidth(info)), height: 34, bodyH: 34, bottomTab: false }
   if (shape === 'cap') return { width: Math.max(60, textWidth + 30), height: BODY_H, bodyH: BODY_H, bottomTab: false }
@@ -385,6 +389,39 @@ function SlotArrow({ tone = 'light' }) {
   )
 }
 
+function iconBadgeMeasure(info, inline) {
+  return info?.icon ? (inline ? INLINE_ICON_BADGE_SIZE + 5 : ICON_BADGE_SIZE + 6) : 0
+}
+
+function ScratchIconBadge({ icon, inline = false }) {
+  if (!icon) return null
+  const size = inline ? INLINE_ICON_BADGE_SIZE : ICON_BADGE_SIZE
+  return (
+    <span
+      aria-hidden="true"
+      data-scratch-icon-badge="true"
+      style={{
+        width: size,
+        height: size,
+        flex: `0 0 ${size}px`,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: inline ? 5 : 6,
+        color: '#0f172a',
+        background: '#fff',
+        borderRadius: '50%',
+        boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.22), 0 1px 1px rgba(15,23,42,0.18)',
+        fontSize: inline ? 16 : 21,
+        lineHeight: 1,
+        fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+      }}
+    >
+      {icon}
+    </span>
+  )
+}
+
 function usesLightDropdown(hostInfo) {
   const opcode = hostInfo?.opcode ?? ''
   return hostInfo?.category === 'Events' ||
@@ -572,7 +609,8 @@ function ShapeSvg({ shape, color, width, bodyH, height, bottomTab }) {
 
 function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride = null }) {
   const shape = shapeOverride ?? info.shape ?? 'stack'
-  const size = measureSimpleBlock(text, { ...info, shape }, inline)
+  const displayText = scratchBlockTextWithoutIcon(text, info)
+  const size = measureSimpleBlock(displayText, { ...info, shape }, inline)
   const bodyH = size.bodyH ?? size.height
   const contentTop = 0
   const contentHeight = Math.max(0, bodyH - contentTop)
@@ -616,7 +654,8 @@ function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride
           boxSizing: 'border-box',
         }}
       >
-        {renderBlockText(text, depth, info)}
+        <ScratchIconBadge icon={scratchBlockBadgeIcon(info)} inline={inline} />
+        {renderBlockText(displayText, depth, info)}
       </span>
     </span>
   )
@@ -638,6 +677,7 @@ function RenderNodeList({ nodes }) {
 function ScratchCBlock({ node }) {
   const size = measureCBlock(node)
   const color = node.info.color
+  const displayText = scratchBlockTextWithoutIcon(node.text, node.info)
   const elseY = BODY_H + size.mouthH
   const secondMouthY = elseY + ELSE_H
 
@@ -710,7 +750,8 @@ function ScratchCBlock({ node }) {
           whiteSpace: 'nowrap',
         }}
       >
-        {renderBlockText(node.text, 0, node.info)}
+        <ScratchIconBadge icon={scratchBlockBadgeIcon(node.info)} />
+        {renderBlockText(displayText, 0, node.info)}
       </div>
 
       <div
