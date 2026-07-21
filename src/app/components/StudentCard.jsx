@@ -477,6 +477,8 @@ const s = {
     display: '-webkit-box',
     WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
     fontStyle: 'italic',
   },
   matchSummaryText: {

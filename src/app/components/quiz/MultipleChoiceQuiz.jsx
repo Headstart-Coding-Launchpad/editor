@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
-import { baseStyles as s, OPTION_COLOURS, QuestionPanel } from './quizUtils'
+import { baseStyles as s, normalizeQuizAnswerText, OPTION_COLOURS, QuestionPanel } from './quizUtils'
 
 export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
   const options = task?.options ?? []
@@ -32,6 +32,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
           const bg = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : active ? colour.active : colour.background
           const border = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : colour.border
           const textColour = isCorrect || isWrong || active ? '#fff' : colour.text
+          const optionText = normalizeQuizAnswerText(option.text)
 
           return (
             <button
@@ -54,7 +55,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
               </span>
               <span style={s.optionText}>
                 <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
-                  <InlineMarkdown content={option.text} />
+                  <InlineMarkdown content={optionText} />
                 </span>
               </span>
             </button>
@@ -63,7 +64,10 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
       </div>
       {revealAnswers && !checkPassed && (
         <div style={s.correctAnswerNote}>
-          Correct answer: <strong>{options.find(o => o.id === correctId)?.text ?? correctId}</strong>
+          Correct answer:{' '}
+          <span style={s.correctAnswerText}>
+            <InlineMarkdown content={normalizeQuizAnswerText(options.find(o => o.id === correctId)?.text ?? correctId)} />
+          </span>
         </div>
       )}
       {showResult && submitted && (

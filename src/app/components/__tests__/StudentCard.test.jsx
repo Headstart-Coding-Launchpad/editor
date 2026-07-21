@@ -118,6 +118,24 @@ describe('StudentCard', () => {
       render(<StudentCard {...mkProps({ lesson: QUIZ_LESSON })} />)
       expect(screen.getByText('No answer yet')).toBeInTheDocument()
     })
+
+    it('preserves line breaks in short-answer responses', () => {
+      const shortAnswerLesson = {
+        type: 'python',
+        tasks: [{
+          id: 1,
+          taskType: 'quiz',
+          quizType: 'short_answer',
+          title: 'Quiz',
+        }],
+      }
+
+      render(<StudentCard {...mkProps({ lesson: shortAnswerLesson }, { currentAnswer: 'line one\nline two', lastRunStatus: 'submitted' })} />)
+
+      const answer = screen.getByText((_, element) => element?.tagName === 'SPAN' && element.textContent === 'line one\nline two')
+
+      expect(answer).toHaveStyle({ whiteSpace: 'pre-wrap' })
+    })
   })
 
   describe('expand button', () => {

@@ -14,6 +14,16 @@ const MULTIPLE_CHOICE_TASK = {
   ],
 }
 
+const MULTILINE_MULTIPLE_CHOICE_TASK = {
+  title: 'Pick output',
+  taskType: 'quiz',
+  quizType: 'multiple_choice',
+  options: [
+    { id: 'a', text: '`sunny\nall week`' },
+    { id: 'b', text: '`sunny\\n all week`' },
+  ],
+}
+
 const IMAGE_QUESTION_TASK = {
   ...MULTIPLE_CHOICE_TASK,
   title: 'Image question',
@@ -53,6 +63,12 @@ const FILL_TYPE_TASK = {
   blanks: [
     { id: 'print', answer: 'print' },
   ],
+}
+
+const SHORT_ANSWER_TASK = {
+  title: 'Explain it',
+  taskType: 'quiz',
+  quizType: 'short_answer',
 }
 
 function closestOutlinedElement(text) {
@@ -111,6 +127,14 @@ describe('QuizTask multiple choice', () => {
     expect(questionPanel.style.maxHeight).toBe('min(360px, 48vh)')
     expect(questionTextWrap.style.fontSize).toBe('17.25px')
   })
+
+  it('preserves real and escaped newlines in answer option code', () => {
+    const { container } = render(<QuizTask task={MULTILINE_MULTIPLE_CHOICE_TASK} />)
+    const codeElements = Array.from(container.querySelectorAll('code'))
+
+    expect(codeElements.map(code => code.textContent)).toEqual(expect.arrayContaining(['sunny\nall week', 'sunny\n all week']))
+    expect(codeElements.map(code => code.style.whiteSpace)).toEqual(expect.arrayContaining(['pre-wrap']))
+  })
 })
 
 describe('QuizTask drag-and-drop feedback', () => {
@@ -148,5 +172,15 @@ describe('QuizTask drag-and-drop feedback', () => {
     rerender(<QuizTask task={FILL_TYPE_TASK} selectedAnswer={{ print: 'PRINT' }} />)
 
     expect(screen.getByPlaceholderText('...')).toHaveStyle({ borderColor: '#16a34a' })
+  })
+})
+
+describe('QuizTask short answer', () => {
+  it('preserves submitted answer line breaks in the rendered answer', () => {
+    render(<QuizTask task={SHORT_ANSWER_TASK} selectedAnswer={'first line\nsecond line'} submitted />)
+
+    const answer = screen.getByText((_, element) => element?.tagName === 'STRONG' && element.textContent === 'first line\nsecond line')
+
+    expect(answer).toHaveStyle({ whiteSpace: 'pre-wrap' })
   })
 })

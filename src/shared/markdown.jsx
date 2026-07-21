@@ -26,6 +26,7 @@ const CODE_FONT_STYLE = {
 
 function InlineHighlightedCode({ lang, code }) {
   const hljsLang = INLINE_LANG_MAP[lang]
+  const multiline = String(code ?? '').includes('\n')
   let highlighted
   try {
     highlighted = hljs.highlight(code, { language: hljsLang }).value
@@ -43,7 +44,9 @@ function InlineHighlightedCode({ lang, code }) {
         border: '1px solid #e5e7eb',
         padding: '2px 6px',
         borderRadius: '4px',
-        display: 'inline',
+        display: multiline ? 'inline-block' : 'inline',
+        whiteSpace: 'pre-wrap',
+        textAlign: 'left',
       }}
       dangerouslySetInnerHTML={{ __html: highlighted }}
     />
@@ -56,6 +59,7 @@ const BlockCodeContext = React.createContext(false)
 const MarkdownScaleContext = React.createContext(1)
 const MarkdownInheritColorContext = React.createContext(false)
 const MarkdownImageMaxHeightContext = React.createContext('min(420px, 60vh)')
+const INLINE_CODE_LINE_BREAK = '@@HSC_INLINE_CODE_LINE_BREAK@@'
 
 // InlineMarkdown only allows inline elements (see allowedElements below) — headings,
 // lists, blockquotes, and thematic breaks are never meant to render here. But short
@@ -84,6 +88,38 @@ function escapeInlineBlockSyntax(text) {
 
     return line
   }).join('\n')
+}
+
+function preserveInlineCodeLineBreaks(text) {
+  const source = String(text ?? '')
+  let output = ''
+  let i = 0
+
+  while (i < source.length) {
+    if (source[i] !== '`') {
+      output += source[i]
+      i++
+      continue
+    }
+
+    let runLength = 1
+    while (source[i + runLength] === '`') runLength++
+
+    const marker = '`'.repeat(runLength)
+    const close = source.indexOf(marker, i + runLength)
+    if (close === -1) {
+      output += marker
+      i += runLength
+      continue
+    }
+
+    const rawCode = source.slice(i + runLength, close).replace(/\r\n?/g, '\n')
+    const code = (runLength >= 3 ? rawCode.replace(/^\n+|\n+$/g, '') : rawCode).replace(/\n/g, INLINE_CODE_LINE_BREAK)
+    output += marker + code + marker
+    i = close + runLength
+  }
+
+  return output
 }
 
 export function InlineMarkdown({ content, topicType = null }) {
@@ -119,7 +155,7 @@ export function InlineMarkdown({ content, topicType = null }) {
         allowedElements={['strong', 'em', 'code', 'br', 'span', 'a']}
         unwrapDisallowed
       >
-        {escapeInlineBlockSyntax(topicEnabled ? expandTopicLinks(content, topics) : content)}
+        {escapeInlineBlockSyntax(preserveInlineCodeLineBreaks(topicEnabled ? expandTopicLinks(content, topics) : content))}
       </ReactMarkdown>
       {libraryOpen && (
         <TopicLibraryDialog
@@ -283,8 +319,9 @@ const components = {
   code({ node, className, children, ...props }) {
     const isInBlock = React.useContext(BlockCodeContext)
     const isInline = !isInBlock && !className
+    const text = String(children).replaceAll(INLINE_CODE_LINE_BREAK, '\n')
+    const multiline = text.includes('\n')
     if (isInline) {
-      const text = String(children)
       if (text.startsWith('scratch:')) {
         return <InlineScratchBlock text={text.slice('scratch:'.length).trim()} />
       }
@@ -302,10 +339,13 @@ const components = {
             color: inheritColor ? 'inherit' : '#4e1aa3',
             padding: '2px 6px',
             borderRadius: '4px',
+            display: multiline ? 'inline-block' : undefined,
+            whiteSpace: 'pre-wrap',
+            textAlign: 'left',
           }}
           {...props}
         >
-          {children}
+          {text}
         </code>
       )
     }

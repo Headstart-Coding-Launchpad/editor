@@ -15,6 +15,8 @@ export default function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, 
     onSelectAnswer?.(trimmed)
   }
 
+  const submittedAnswer = localAnswer || (typeof selectedAnswer === 'string' ? selectedAnswer : '')
+
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
@@ -40,7 +42,7 @@ export default function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, 
         )}
         {submitted && (
           <div style={sm.submittedAnswer}>
-            Your answer: <strong>{localAnswer || (typeof selectedAnswer === 'string' ? selectedAnswer : '')}</strong>
+            Your answer: <strong style={sm.submittedAnswerText}>{submittedAnswer}</strong>
           </div>
         )}
       </div>
