@@ -212,6 +212,19 @@ describe('LessonPanel', () => {
     expect(screen.getAllByText(/\/lesson\/py-intro/).length).toBeGreaterThan(0)
   })
 
+  it('floats the share panel outside scrollable lesson containers', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+
+    await openFirstLevel(user)
+    await openLesson(user)
+    await user.click(screen.getByRole('button', { name: 'Share Links' }))
+
+    const panel = screen.getByText('Share lesson links').closest('.teacher-share__panel')
+    expect(panel).toHaveStyle({ position: 'fixed' })
+  })
+
   it('does not show report or feedback rows when a lesson has none', async () => {
     const user = userEvent.setup()
     render(<LessonPanel />)

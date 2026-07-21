@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   collection,
   collectionGroup,
@@ -571,9 +571,48 @@ export default function LessonPanel({ view = 'lessons' }) {
 }
 
 function ShareMenu({ lessonId, open, copiedLink, onToggle, onClose, onCopy }) {
+  const buttonRef = useRef(null)
+  const panelRef = useRef(null)
+  const [panelPosition, setPanelPosition] = useState(null)
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPanelPosition(null)
+      return undefined
+    }
+
+    function updatePanelPosition() {
+      const button = buttonRef.current
+      if (!button) return
+
+      const rect = button.getBoundingClientRect()
+      const margin = 12
+      const gap = 8
+      const panelWidth = panelRef.current?.offsetWidth || 360
+      const panelHeight = panelRef.current?.offsetHeight || 0
+      const maxLeft = Math.max(margin, window.innerWidth - panelWidth - margin)
+      const left = Math.min(Math.max(margin, rect.right - panelWidth), maxLeft)
+      const belowTop = rect.bottom + gap
+      const top = panelHeight && belowTop + panelHeight > window.innerHeight - margin
+        ? Math.max(margin, rect.top - panelHeight - gap)
+        : belowTop
+
+      setPanelPosition({ top, left })
+    }
+
+    updatePanelPosition()
+    window.addEventListener('resize', updatePanelPosition)
+    window.addEventListener('scroll', updatePanelPosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition)
+      window.removeEventListener('scroll', updatePanelPosition, true)
+    }
+  }, [open])
+
   return (
     <div className="teacher-share" style={{ position: 'relative' }}>
       <button
+        ref={buttonRef}
         className="btn-ghost-outline"
         style={s.actionBtn}
         onClick={onToggle}
@@ -584,7 +623,19 @@ function ShareMenu({ lessonId, open, copiedLink, onToggle, onClose, onCopy }) {
       {open && (
         <>
           <div className="teacher-share__overlay" onClick={onClose} />
-          <div className="teacher-share__panel" style={{ right: 0, left: 'auto', minWidth: 320 }}>
+          <div
+            ref={panelRef}
+            className="teacher-share__panel"
+            style={{
+              position: 'fixed',
+              top: panelPosition?.top ?? 0,
+              left: panelPosition?.left ?? 0,
+              right: 'auto',
+              minWidth: 320,
+              maxWidth: 'calc(100vw - 24px)',
+              visibility: panelPosition ? 'visible' : 'hidden',
+            }}
+          >
             <span className="teacher-share__title">Share lesson links</span>
             {(['live', 'solo']).map(type => (
               <div key={type} className="teacher-share__row">
