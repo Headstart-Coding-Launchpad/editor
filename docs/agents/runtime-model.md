@@ -248,6 +248,40 @@ Lessons keep a display fallback plus a reference:
 
 The builder and admin UI link lessons to existing levels; create/manage levels from the collapsible **Levels** section in Admin > Lessons or with `node cli/cli.mjs levels`.
 
+## Classes (`classes` collection)
+
+Durable class records are admin-only organisational data used to create reusable lesson forks. Students never read class records directly and do not select classes in the student flow. A forked lesson is still a normal public lesson under `lessons/{sourceLessonId}-{classId}`.
+
+```json
+{
+  "id": "maple",
+  "name": "Maple",
+  "archived": false,
+  "createdAt": 1234567890,
+  "updatedAt": 1234567890
+}
+```
+
+Class forks keep lineage on the lesson document:
+
+```json
+{
+  "id": "python-l3-09-maple",
+  "title": "Dictionaries - Maple",
+  "fork": {
+    "sourceLessonId": "python-l3-09",
+    "sourceLessonTitle": "Dictionaries",
+    "classId": "maple",
+    "className": "Maple",
+    "taskLinks": [
+      { "taskId": 1, "sourceTaskId": 1, "relation": "copied" }
+    ]
+  }
+}
+```
+
+Creating a fork again overwrites the fork lesson document, resets the title from the source lesson and class name, sets `stage` to `published`, rebuilds exact 1:1 task lineage, and clears the fork lesson's `sessionReports` and `feedback` subcollections. It does not copy stock lesson reports, feedback, or live session data.
+
 ## localStorage Keys
 
 Do not deviate from these key formats.

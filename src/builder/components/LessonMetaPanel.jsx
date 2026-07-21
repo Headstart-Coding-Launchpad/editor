@@ -112,6 +112,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
           />
         </Field>
 
+        {lesson.fork?.sourceLessonId && (
+          <Field label="Class fork">
+            <div style={s.summaryText}>
+              {lesson.fork.sourceLessonTitle || lesson.fork.sourceLessonId} / {lesson.fork.className || lesson.fork.classId}
+            </div>
+          </Field>
+        )}
+
         <Field label="Level" hint={`Scoped to ${scope.scopeType}: ${scope.scopeId}. Create levels in Admin > Levels.`}>
           <select
             style={s.input}

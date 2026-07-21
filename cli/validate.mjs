@@ -1,5 +1,6 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
+import { makeForkLessonId } from '../src/shared/lessonForks.js'
 
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
@@ -39,6 +40,7 @@ export function validateLessonForMcp(lesson) {
 
   if (!title || !String(title).trim()) errors.push('title is required')
   if (!description || !String(description).trim()) errors.push('description is required')
+  if (lesson.fork != null) validateLessonFork(lesson, errors)
 
   if (!tasks || !Array.isArray(tasks)) {
     errors.push('tasks is required and must be an array')
@@ -177,4 +179,25 @@ export function validateLessonForMcp(lesson) {
   })
 
   return { valid: errors.length === 0, errors, warnings }
+}
+
+function validateLessonFork(lesson, errors) {
+  const fork = lesson.fork
+  if (!fork || typeof fork !== 'object' || Array.isArray(fork)) {
+    errors.push('fork must be an object when provided')
+    return
+  }
+  if (!fork.sourceLessonId || !String(fork.sourceLessonId).trim()) {
+    errors.push('fork.sourceLessonId is required')
+  }
+  if (!fork.classId || !String(fork.classId).trim()) {
+    errors.push('fork.classId is required')
+  }
+  if (fork.sourceLessonId && fork.classId) {
+    const expectedId = makeForkLessonId(fork.sourceLessonId, fork.classId)
+    if (lesson.id !== expectedId) errors.push(`forked lesson id must be '${expectedId}'`)
+  }
+  if (fork.taskLinks != null && !Array.isArray(fork.taskLinks)) {
+    errors.push('fork.taskLinks must be an array when provided')
+  }
 }

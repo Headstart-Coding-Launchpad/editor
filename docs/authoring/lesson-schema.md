@@ -31,7 +31,28 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
 | `storageAssets` | No | `{name, url, showInEditor?}[]` | Firebase Storage files for the lesson. When `showInEditor` is `true`, the asset appears in the web editor's asset panel and its filename is rewritten to the download URL on Run. |
+| `fork` | No | object | Metadata for admin-created class forks. Forked lesson IDs must be `{sourceLessonId}-{classId}` and the fork is still a normal public lesson with its own URL. |
 | `tasks` | Yes | array | Ordered task list. IDs are sequential integers starting at `1`. May contain group objects. |
+
+### Fork Metadata
+
+```json
+{
+  "fork": {
+    "sourceLessonId": "python-l3-09",
+    "sourceLessonTitle": "Dictionaries",
+    "classId": "maple",
+    "className": "Maple",
+    "createdAt": 1234567890,
+    "updatedAt": 1234567890,
+    "taskLinks": [
+      { "taskId": 1, "sourceTaskId": 1, "relation": "copied" }
+    ]
+  }
+}
+```
+
+Class forks are created by admins through Admin or the CLI. Creating the same fork again overwrites the lesson document, resets the title to `{source title} - {class name}`, keeps `stage: "published"`, and rebuilds 1:1 `taskLinks`. Reports and feedback start empty for the overwritten fork.
 
 ---
 
