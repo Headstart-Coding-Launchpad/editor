@@ -77,6 +77,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted |
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only) |
+| `CopyCodePanel.jsx` | Student-facing read-only reference code block with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
 | `OutputPanel.jsx` | Python output with retro typing animation and inline `input()` prompt |
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
@@ -316,6 +317,7 @@ Each `index.js` exports a default object with:
 | `supportsTests` | `boolean` | Show TestsEditor; also gates `allowVariableChecks` |
 | `supportsVariableChecks` | `boolean` | Allow Python-style variable checks |
 | `supportsDomChecks` | `boolean` | Allow HTML DOM/element checks |
+| `supportsCopyCode` | `boolean` | Show the builder field and student copy-code panel for task-level `copyCode` snippets |
 | `carryThroughField` | `string` | Task field used for carry-through source selection |
 | `carryThroughLabel` | `string` | Builder label for the carry-through picker |
 | `getCarryThroughUpdates(sourceTask)` | `fn` | Produces starter-state updates when carrying from another task |

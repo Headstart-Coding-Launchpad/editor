@@ -43,6 +43,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const isPython     = lessonMod?.type === 'python'
   const isScratch    = lessonMod?.type === 'scratch'
   const isFilesystem = lessonMod?.type === 'filesystem'
+  const supportsCopyCode = lessonMod?.supportsCopyCode === true
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
   const isDraft = task.taskType === 'draft'
@@ -71,6 +72,15 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
+  }
+
+  function handleCopyCodeToggle(enabled) {
+    if (enabled) {
+      onUpdate({ ...task, copyCode: task.copyCode ?? '' })
+      return
+    }
+    const { copyCode: _copyCode, ...rest } = task
+    onUpdate(rest)
   }
 
   const {
@@ -133,8 +143,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       const quizType = task.taskType === 'quiz' ? (task.quizType ?? 'multiple_choice') : 'multiple_choice'
       const options = task.options?.length ? renumberQuizOptions(task.options) : makeDefaultQuizOptions()
       const answer = options.some(option => option.id === task.check?.value) ? task.check.value : ''
+      const { copyCode: _copyCode, ...rest } = task
       onUpdate({
-        ...task, taskType: 'quiz', quizType, options,
+        ...rest, taskType: 'quiz', quizType, options,
         check: answer ? { type: 'answer_equals', value: answer } : null,
         carryCodeFrom: null, carryBlocksFrom: null, carryFsFrom: null, carryCircuitFrom: null,
       })
@@ -149,7 +160,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         starterBlocks: _sb, completeBlocks: _cb, predefinedBlocks: _pb, prebuiltStacks: _ps,
         starterFs: _starterFs, completeFs: _completeFs, carryFsFrom: _carryFsFrom,
         starterCircuit: _starterCircuit, completeCircuit: _completeCircuit, carryCircuitFrom: _carryCircuitFrom,
-        microcontroller: _microcontroller,
+        microcontroller: _microcontroller, copyCode: _copyCode,
         interactionMode: _im, _checkTested,
         ...rest
       } = task
@@ -382,6 +393,27 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
         </div>
       )}
 
+      {!isQuiz && !isInformation && supportsCopyCode && (
+        <Field label="Copy code panel" hint="optional">
+          <div style={s.copyCodeEditor}>
+            <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+              <input type="checkbox" checked={task.copyCode !== null && task.copyCode !== undefined} onChange={e => handleCopyCodeToggle(e.target.checked)} />
+              Enable
+            </label>
+            {task.copyCode !== null && task.copyCode !== undefined && (
+              <textarea
+                className="te-input"
+                style={s.copyCodeTextarea}
+                value={task.copyCode ?? ''}
+                onChange={e => set('copyCode', e.target.value)}
+                spellCheck={false}
+                placeholder={lesson.type === 'python' ? 'Code students can copy...' : '<!-- Code students can copy... -->'}
+              />
+            )}
+          </div>
+        </Field>
+      )}
+
       {isInformation && (
         <TaskPreviewPanel>
           <div className="te-info-preview"><InformationTask task={task} lesson={lesson} /></div>
@@ -458,4 +490,21 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       )}
     </div>
   )
+}
+
+const s = {
+  copyCodeEditor: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  copyCodeTextarea: {
+    minHeight: 150,
+    resize: 'vertical',
+    fontFamily: 'var(--font-code)',
+    fontSize: '0.84rem',
+    lineHeight: 1.45,
+    whiteSpace: 'pre',
+    overflow: 'auto',
+  },
 }

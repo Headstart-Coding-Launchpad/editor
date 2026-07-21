@@ -306,6 +306,7 @@ describe('normalizeTasksForExport', () => {
         id: 40,
         title: 'First',
         starterCode: 'print(1)',
+        copyCode: 'print("copy me")',
         _checkTested: true,
         check: { type: 'output_equals', value: '1', hint: '  keep  ' },
         feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(', hint: '  avoid input  ' }],
@@ -315,6 +316,7 @@ describe('normalizeTasksForExport', () => {
         id: 90,
         title: 'Second',
         starterCode: '',
+        copyCode: '   ',
         carryCodeFrom: 40,
         check: [{ type: 'code_no_error', hint: ' ' }],
       }],
@@ -322,12 +324,14 @@ describe('normalizeTasksForExport', () => {
 
     expect(exported[0].subtasks[0]).toMatchObject({
       id: 1,
+      copyCode: 'print("copy me")',
       check: { hint: 'keep' },
       feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(', hint: 'avoid input' }],
       options: [{ text: 'A' }],
     })
     expect(exported[0].subtasks[0].incorrectChecks).toBeUndefined()
     expect(exported[0].subtasks[1]).toMatchObject({ id: 2, carryCodeFrom: 1, check: [{ type: 'code_no_error' }] })
+    expect(exported[0].subtasks[1].copyCode).toBeUndefined()
   })
 
   it('exports information tasks with only public fields', () => {

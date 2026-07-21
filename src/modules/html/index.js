@@ -86,6 +86,7 @@ const htmlModule = {
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: true,
+  supportsCopyCode: true,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['html', 'javascript', 'css'],

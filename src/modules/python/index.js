@@ -63,6 +63,7 @@ const pythonModule = {
   supportsTests: true,
   supportsVariableChecks: true,
   supportsDomChecks: false,
+  supportsCopyCode: true,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],

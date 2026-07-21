@@ -298,6 +298,9 @@ export function buildPrintHtml(lesson) {
         if (task.completeCode != null) {
           parts.push(`<div class="field"><div class="field-label">Complete Code</div><pre class="code-block">${esc(task.completeCode)}</pre></div>`)
         }
+        if (task.copyCode?.trim?.()) {
+          parts.push(`<div class="field"><div class="field-label">Copy Code Panel</div><pre class="code-block">${esc(task.copyCode)}</pre></div>`)
+        }
         if (task.codeStages?.length) {
           parts.push(`<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`)
           for (const stage of task.codeStages) {
@@ -327,6 +330,9 @@ export function buildPrintHtml(lesson) {
             parts.push(`<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`)
           }
           parts.push(`</div>`)
+        }
+        if (task.copyCode?.trim?.()) {
+          parts.push(`<div class="field"><div class="field-label">Copy Code Panel</div><pre class="code-block">${esc(task.copyCode)}</pre></div>`)
         }
         if (task.codeStages?.length) {
           parts.push(`<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`)

@@ -3,11 +3,12 @@ import HtmlEditor from './HtmlEditor'
 import CollapsibleIframePreview from '../../app/components/CollapsibleIframePreview'
 import SplitPane from '../../shared/SplitPane'
 import StudentEditorHeader from '../../app/components/StudentEditorHeader'
+import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 
 export default function StudentWorkspace({
-  lesson, task, cs,
+  lesson, task, cs, isSandbox,
   isViewingPrev, isForcedTeacherLive, isMobile,
   displayFiles, displayActiveFile, displayRunStatus, displaySelection,
 }) {
@@ -20,11 +21,13 @@ export default function StudentWorkspace({
     ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
     ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),
   ]
+  const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
   if (isMobile) {
     return (
       <div style={s.htmlMobile}>
         <div style={s.htmlLeft}>
+          {showCopyCode && <CopyCodePanel code={task.copyCode} language="html" />}
           {!isViewingPrev && !isForcedTeacherLive && (
             <StudentEditorHeader
               task={task}
@@ -87,6 +90,7 @@ export default function StudentWorkspace({
         }
         left={
           <div style={s.htmlLeft}>
+            {showCopyCode && <CopyCodePanel code={task.copyCode} language="html" />}
             {!isViewingPrev && !isForcedTeacherLive && (
               <StudentEditorHeader
                 task={task}

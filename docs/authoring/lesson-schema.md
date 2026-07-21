@@ -45,6 +45,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
+| `copyCode` | No | string | Python/HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |

@@ -3,10 +3,11 @@ import PythonEditor from './PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
 import SplitPane from '../../shared/SplitPane'
 import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
+import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { loadSavedCode } from '../../app/studentStorage'
 
 export default function StudentWorkspace({
-  task, cs, lessonId, identityId, viewingTaskId,
+  task, cs, lessonId, identityId, viewingTaskId, isSandbox,
   isViewingPrev, isForcedTeacherLive, isMobile,
   displayCode, displayOutput, displayRunStatus,
   displayCheckPassed, displayCheckAttempted, displaySelection,
@@ -25,6 +26,7 @@ export default function StudentWorkspace({
   const showEditableHeader = !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing
   const showSubmitBanner = showEditableHeader && task?.interactionMode === 'submit' && cs.runStatus === 'submitted' && !task?.check
   const shouldShowOutput = task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
+  const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
   const outputProps = isForcedTeacherLive || isTeacherEditing
     ? {
       output: isTeacherEditing ? '' : displayOutput,
@@ -68,6 +70,7 @@ export default function StudentWorkspace({
 
   const editor = (
     <div style={s.editorPane}>
+      {showCopyCode && <CopyCodePanel code={task.copyCode} language="python" />}
       {showEditableHeader && (
         <div style={s.editorHeader} className="ui-tabs ui-tabs--editor">
           <span style={s.editorTitle}>Code</span>
