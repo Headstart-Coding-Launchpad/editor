@@ -368,6 +368,23 @@ describe('InlineMarkdown', () => {
     expect(screen.getByText('len()')).toBeInTheDocument()
   })
 
+  it('preserves line breaks inside inline code', () => {
+    const { container } = render(<InlineMarkdown content={'Output: `line one\nline two`'} />)
+    const code = container.querySelector('code')
+
+    expect(code.textContent).toBe('line one\nline two')
+    expect(code).toHaveStyle({ display: 'inline-block', whiteSpace: 'pre-wrap', textAlign: 'left' })
+  })
+
+  it('trims outer blank lines from fenced code in inline contexts', () => {
+    const { container } = render(<InlineMarkdown content={'```\nline one\nline two\n```'} />)
+    const code = container.querySelector('code')
+
+    expect(code.textContent).toBe('line one\nline two')
+    expect(code.textContent.startsWith('\n')).toBe(false)
+    expect(code).toHaveStyle({ display: 'inline-block', textAlign: 'left' })
+  })
+
   it('renders without crashing when content is undefined', () => {
     render(<InlineMarkdown content={undefined} />)
   })

@@ -2,7 +2,11 @@ import React from 'react'
 import { MarkdownRenderer } from '../../../shared/markdown'
 
 export function getQuizOptionText(task, answerId) {
-  return task?.options?.find(option => option.id === answerId)?.text ?? ''
+  return normalizeQuizAnswerText(task?.options?.find(option => option.id === answerId)?.text ?? '')
+}
+
+export function normalizeQuizAnswerText(value) {
+  return String(value ?? '').replace(/\\r\\n|\\n|\\r/g, '\n')
 }
 
 export const CONFIDENCE_COLOURS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
@@ -214,6 +218,8 @@ export const baseStyles = {
   optionText: {
     minWidth: 0,
     lineHeight: 1.35,
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   },
   markdownOnDark: {
     '--colour-text': '#ffffff',
@@ -228,6 +234,11 @@ export const baseStyles = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.88rem',
     fontWeight: 600,
+  },
+  correctAnswerText: {
+    fontWeight: 700,
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   },
 }
 
@@ -510,6 +521,10 @@ export const interactionStyles = {
     background: '#f9fafb',
     border: '1px solid #e5e7eb',
     borderRadius: 6,
+  },
+  submittedAnswerText: {
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   },
 }
 
