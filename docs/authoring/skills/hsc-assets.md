@@ -2,7 +2,7 @@
 
 Use with a lesson ID and an asset action: list, upload `<file>`, or delete `<filename>`.
 
-Upload, list, and delete image or file assets attached to a lesson. Assets are stored in Firebase Storage and their download URLs are recorded in the lesson's `storageAssets` field.
+Upload, list, and delete image or file assets attached to a lesson. Assets are stored in Firebase Storage under `lessons/{lessonId}/assets/`. The Storage folder is the asset inventory; `lesson.storageAssets` is only preserved as optional metadata such as `showInEditor`.
 
 ## List assets for a lesson
 
@@ -10,7 +10,7 @@ Upload, list, and delete image or file assets attached to a lesson. Assets are s
 node cli/cli.mjs assets list <lessonId>
 ```
 
-Returns the `storageAssets` array — each entry has `name`, `url`, and `showInEditor`.
+Returns the lesson's Storage folder assets merged with any `storageAssets` metadata. Each entry has `name`, `url`, and `showInEditor`.
 
 ## Upload a file
 
@@ -26,7 +26,7 @@ node cli/cli.mjs assets upload python-3-2 ./hero.png
 node cli/cli.mjs assets upload html-2-1 ./diagram.svg --filename step1.svg
 ```
 
-After uploading, the returned `url` can be referenced in lesson task content (e.g. in a Markdown `![alt](url)` in an `explainer` field). The asset is automatically added to the lesson's `storageAssets` in Firestore.
+After uploading, the returned `url` can be referenced in lesson task content (e.g. in a Markdown `![alt](url)` in an `explainer` field). The CLI also writes a metadata entry so existing tools can preserve the `showInEditor` preference.
 
 ## Delete a file
 
@@ -34,4 +34,4 @@ After uploading, the returned `url` can be referenced in lesson task content (e.
 node cli/cli.mjs assets delete <lessonId> <filename>
 ```
 
-Removes the file from Firebase Storage and removes it from `storageAssets` on the lesson document. If the file is referenced in any task content, remove those references first.
+Removes the file from Firebase Storage and removes matching metadata from `storageAssets` on the lesson document. If the file is referenced in any task content, remove those references first.

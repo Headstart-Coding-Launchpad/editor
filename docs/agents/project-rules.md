@@ -109,7 +109,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 - Reusable levels → Firestore `lessonLevels/`
 - Classes → Firestore `classes/`
 - Topics → Firestore `topicLibrary/`
-- Assets → Firebase Storage, referenced from `lesson.storageAssets`
+- Assets → Firebase Storage under `lessons/{lessonId}/assets/`; `lesson.storageAssets` is optional metadata, not the source-of-truth inventory
 
 **Auth:**
 - Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.

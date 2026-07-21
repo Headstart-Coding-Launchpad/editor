@@ -4,6 +4,7 @@ import ExplainerEditor from './ExplainerEditor'
 import QuizTask from '../../app/components/QuizTask'
 import InformationTask from '../../app/components/InformationTask'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
@@ -23,7 +24,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   const [codeTab, setCodeTab] = useState('starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
   const { typeStorageAssets } = useTypeAssets(lesson.type)
-  const lessonStorageAssets = lesson.storageAssets ?? []
+  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
+  const lessonWithStorageAssets = { ...lesson, storageAssets: lessonStorageAssets }
   const allStorageAssets = [
     ...lessonStorageAssets,
     ...typeStorageAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
@@ -39,7 +41,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     ...includedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
 
-  const lessonMod = getLessonModule(lesson.type)
+  const lessonMod = getLessonModule(lessonWithStorageAssets.type)
   const isPython     = lessonMod?.type === 'python'
   const isScratch    = lessonMod?.type === 'scratch'
   const isFilesystem = lessonMod?.type === 'filesystem'
@@ -90,7 +92,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     setCheckResults, setRunStatus, setCheckResult, setIframeSrc, setHtmlPreviewOpen, setQuizSelectedAnswer,
     handleRun, handleRunTests, handleStop, handleTestChecks, handleQuizPreviewSelect, handleInputSubmit,
     resetRunState,
-  } = useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets })
+  } = useTaskEditorState({ task, lesson: lessonWithStorageAssets, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets })
 
   function handleCodeTabChange(tab) {
     if (tab === codeTab) return
@@ -422,7 +424,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
 
       {!isQuiz && !isInformation && (
         <TaskOptionsSection
-          task={task} lesson={lesson} onUpdate={onUpdate}
+          task={task} lesson={lessonWithStorageAssets} onUpdate={onUpdate}
           activePythonCode={activePythonCode} activeFiles={activeFiles} output={output}
           setCheckResults={setCheckResults} setRunStatus={setRunStatus}
           handleInteractionModeChange={handleInteractionModeChange}

@@ -3,16 +3,19 @@ import AssetBrowser from '../../../shared/AssetBrowser'
 import { s } from './styles'
 
 export default function AssetSummary({ assets, assetsPath, storageAssets }) {
-  const count = assets?.length ?? 0
+  const staticCount = assets?.length ?? 0
+  const storageCount = storageAssets?.length ?? 0
 
   let text
-  if (count > 0) {
-    text = `${count} asset${count !== 1 ? 's' : ''} listed in lesson JSON`
+  if (staticCount > 0) {
+    text = `${staticCount} static asset${staticCount !== 1 ? 's' : ''} listed in lesson JSON`
+  } else if (storageCount > 0) {
+    text = `${storageCount} Firebase Storage asset${storageCount !== 1 ? 's' : ''} found for this lesson`
   } else {
-    text = 'No static assets listed. Upload files via Firebase Storage above.'
+    text = 'No assets found. Upload files via Firebase Storage above.'
   }
 
-  const showBrowser = (count > 0 && assetsPath) || storageAssets?.length > 0
+  const showBrowser = (staticCount > 0 && assetsPath) || storageCount > 0
 
   return (
     <div style={s.assetSummary}>

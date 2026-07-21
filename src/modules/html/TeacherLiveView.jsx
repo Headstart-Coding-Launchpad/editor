@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import HtmlEditor from './HtmlEditor.jsx'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 
 export default function HtmlTeacherLiveView({ lesson, displayState, readOnly, onChange, onActivity }) {
@@ -16,13 +17,14 @@ export default function HtmlTeacherLiveView({ lesson, displayState, readOnly, on
   }, [fileNamesKey])
 
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
+  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson?.id, lesson?.storageAssets ?? [])
   const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
   const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
     ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
     : htmlTypeAssets
   const storageAssets = [
-    ...(lesson?.storageAssets ?? []).filter(a => a.showInEditor),
-    ...htmlIncludedTypeAssets.filter(a => !(lesson?.storageAssets ?? []).some(b => b.name === a.name)),
+    ...lessonStorageAssets.filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
 
   return (

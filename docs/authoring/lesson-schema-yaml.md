@@ -34,7 +34,7 @@ stage: published              # optional — ideas | details | review | approved
 assetsPath: scratch-assets    # optional — base URL path for asset resolution
 assets:                       # optional — files shown in the AssetBrowser
   - sprites/rocket.png
-storageAssets:                 # optional — Firebase Storage files
+storageAssets:                 # optional — metadata for Firebase Storage files
   - name: logo.png
     url: https://firebasestorage.googleapis.com/...
     showInEditor: true        # optional — show in web editor asset panel
@@ -55,7 +55,7 @@ tasks: []                     # required — ordered task list (see below)
 | `topicProposals` | No | array | Missing Topic Library entries proposed by the lesson. See `docs/authoring/AUTHORING_GUIDE.md`. |
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
-| `storageAssets` | No | array | Firebase Storage files for the lesson. |
+| `storageAssets` | No | array | Optional metadata for files stored at `lessons/{lessonId}/assets/`; the Storage folder is the asset inventory. |
 | `tasks` | Yes | array | Ordered task list. May contain group objects. |
 
 Sandbox-mode envelope fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, `sandboxStarterCircuit`) are type-specific — see `docs/authoring/AUTHORING_GUIDE.md`.

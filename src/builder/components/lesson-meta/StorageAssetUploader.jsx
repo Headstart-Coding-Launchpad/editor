@@ -3,7 +3,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { storage } from '../../../shared/firebase'
 import { s } from './styles'
 
-export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate }) {
+export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate, onRefresh }) {
   const [uploads, setUploads] = useState({})
 
   function handleFileSelect() {
@@ -40,7 +40,8 @@ export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate
           delete next[file.name]
           return next
         })
-        onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url, showInEditor: false }])
+        onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url, showInEditor: true }])
+        onRefresh?.()
       }
     )
   }
@@ -56,6 +57,7 @@ export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate
       }
     }
     onUpdate(prev => prev.filter(a => a.name !== asset.name))
+    onRefresh?.()
   }
 
   const activeUploads = Object.entries(uploads)
@@ -89,7 +91,10 @@ export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate
             <input
               type="checkbox"
               checked={!!asset.showInEditor}
-              onChange={e => onUpdate(prev => prev.map(a => a.name === asset.name ? { ...a, showInEditor: e.target.checked } : a))}
+              onChange={e => onUpdate(prev => [
+                ...prev.filter(a => a.name !== asset.name),
+                { ...asset, showInEditor: e.target.checked },
+              ])}
             />
             Web editor
           </label>

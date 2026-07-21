@@ -105,9 +105,18 @@ async function fetchTopicLibrary() {
 
 async function publishLesson(lesson) {
   const migrated = migrateLessonLevel(lesson)
-  const { valid, errors, warnings } = validateLessonForMcp(migrated.lesson)
+  const existingSnap = migrated.lesson.id
+    ? await db.collection('lessons').doc(migrated.lesson.id).get()
+    : null
+  const existingLesson = existingSnap?.exists ? existingSnap.data() : null
+  const lessonToPublish = (
+    existingLesson?.storageAssets && migrated.lesson.storageAssets === undefined
+      ? { ...migrated.lesson, storageAssets: existingLesson.storageAssets }
+      : migrated.lesson
+  )
+  const { valid, errors, warnings } = validateLessonForMcp(lessonToPublish)
   if (!valid) return { success: false, valid, errors, warnings }
-  const topicValidation = validateTopicStage(migrated.lesson, await fetchTopicLibrary(), migrated.lesson.stage ?? 'published')
+  const topicValidation = validateTopicStage(lessonToPublish, await fetchTopicLibrary(), lessonToPublish.stage ?? 'published')
   if (!topicValidation.valid) {
     return {
       success: false,
@@ -120,13 +129,13 @@ async function publishLesson(lesson) {
   if (migrated.level) {
     await db.collection(LEVEL_COLLECTION).doc(migrated.level.id).set(migrated.level, { merge: true })
   }
-  await db.collection('lessons').doc(migrated.lesson.id).set(migrated.lesson)
-  const snap = await db.collection('lessons').doc(migrated.lesson.id).get()
+  await db.collection('lessons').doc(lessonToPublish.id).set(lessonToPublish)
+  const snap = await db.collection('lessons').doc(lessonToPublish.id).get()
   const published = snap.exists ? summarize(snap.id, snap.data()) : null
   return {
     success: true,
     valid,
-    id: migrated.lesson.id,
+    id: lessonToPublish.id,
     warnings: [...warnings, ...topicValidation.warnings],
     level: migrated.level ?? null,
     published,

@@ -12,6 +12,7 @@ import { getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { getLessonModule } from '../../modules/registry'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
@@ -139,13 +140,14 @@ export function useStudentCodeState({
   // ─── Sub-hooks ────────────────────────────────────────────────────────────
 
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson?.type === 'html' ? 'html' : null)
+  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson?.id ?? lessonId, lesson?.storageAssets ?? [])
   const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
   const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
     ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
     : htmlTypeAssets
   const htmlIframeStorageAssets = [
-    ...(lesson?.storageAssets ?? []).filter(a => a.showInEditor),
-    ...htmlIncludedTypeAssets.filter(a => !(lesson?.storageAssets ?? []).some(b => b.name === a.name)),
+    ...lessonStorageAssets.filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
 
   const myStudentData = session?.students?.[identity?.anonymousId]

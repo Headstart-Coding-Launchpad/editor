@@ -32,6 +32,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/shared/codemirror.js` | `getTabSize`, `getLanguageExtension`, `createBaseExtensions` |
 | `src/modules/html/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |
+| `src/shared/storageAssets.js` | Firebase Storage folder inventory merged with optional schema metadata |
 | `src/shared/workspaceData.js` | Scratch state parsing/cloning and decoded HTML file conversion |
 | `src/shared/topicLibrary.js` | Topic normalization/search, wiki-link expansion and builder link suggestion detection |
 | `src/shared/topicAudit.js` | Topic-link parsing across draft/final/grouped tasks, proposal matching, unused proposals, and stage/publication blocking |

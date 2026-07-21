@@ -106,7 +106,7 @@ export function useTeacherLivePublish({
       { assets: lesson.assets ?? [], assetsPath: resolveAssetsPath(lesson.assetsPath), storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []) }
     ))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt])
+  }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt, JSON.stringify(iframeStorageAssets ?? [])])
 
   // Publish the current payload whenever any tracked value changes
   useEffect(() => {

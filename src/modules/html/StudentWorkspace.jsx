@@ -5,6 +5,7 @@ import SplitPane from '../../shared/SplitPane'
 import StudentEditorHeader from '../../app/components/StudentEditorHeader'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 
 export default function StudentWorkspace({
@@ -13,13 +14,14 @@ export default function StudentWorkspace({
   displayFiles, displayActiveFile, displayRunStatus, displaySelection,
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
+  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
   const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
   const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
     ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
     : htmlTypeAssets
   const htmlStorageAssets = [
-    ...(lesson.storageAssets ?? []).filter(a => a.showInEditor),
-    ...htmlIncludedTypeAssets.filter(a => !(lesson.storageAssets ?? []).some(b => b.name === a.name)),
+    ...lessonStorageAssets.filter(a => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 

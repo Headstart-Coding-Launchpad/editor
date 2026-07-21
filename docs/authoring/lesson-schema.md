@@ -30,7 +30,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `sandboxStarterCircuit` | No | circuit object | Electronics sandbox initial breadboard. |
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
-| `storageAssets` | No | `{name, url, showInEditor?}[]` | Firebase Storage files for the lesson. When `showInEditor` is `true`, the asset appears in the web editor's asset panel and its filename is rewritten to the download URL on Run. |
+| `storageAssets` | No | `{name, url, showInEditor?}[]` | Optional metadata for files in Firebase Storage at `lessons/{lessonId}/assets/`. The Storage folder is the asset inventory; this field only preserves per-file settings such as `showInEditor`. Folder-discovered files default to `showInEditor: true`; explicit `false` keeps them out of the web editor rewrite set. |
 | `fork` | No | object | Metadata for admin-created class forks. Forked lesson IDs must be `{sourceLessonId}-{classId}` and the fork is still a normal public lesson with its own URL. |
 | `tasks` | Yes | array | Ordered task list. IDs are sequential integers starting at `1`. May contain group objects. |
 

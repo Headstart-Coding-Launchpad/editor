@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { useAssets } from '../../shared/useAssets'
+import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useAuth } from '../../auth/useAuth'
@@ -21,6 +22,10 @@ const STAGE_ORDER = ['ideas', 'details', 'review', 'approved', 'published']
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetStage, topicState }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
+  const {
+    storageAssets: lessonStorageAssets,
+    refresh: refreshLessonStorageAssets,
+  } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
   const { typeStorageAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
@@ -180,14 +185,15 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
         <AssetSummary
           assets={lesson.assets}
           assetsPath={resolveAssetsPath(lesson.assetsPath)}
-          storageAssets={lesson.storageAssets ?? []}
+          storageAssets={lessonStorageAssets}
         />
 
         {role === 'admin' && (
           <StorageAssetUploader
             lessonId={lesson.id}
-            storageAssets={lesson.storageAssets ?? []}
+            storageAssets={lessonStorageAssets}
             onUpdate={updater => onUpdate(prev => ({ ...prev, storageAssets: typeof updater === 'function' ? updater(prev.storageAssets ?? []) : updater }))}
+            onRefresh={refreshLessonStorageAssets}
           />
         )}
 
