@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import LessonPanel from '../LessonPanel'
@@ -10,6 +10,7 @@ vi.mock('firebase/firestore', () => ({
   query:           vi.fn(q => q),
   orderBy:         vi.fn(),
   onSnapshot:      vi.fn(() => vi.fn()),
+  getDocs:         vi.fn(() => Promise.resolve({ docs: [], size: 0 })),
   deleteDoc:       vi.fn(() => Promise.resolve()),
   setDoc:          vi.fn(() => Promise.resolve()),
   updateDoc:       vi.fn(() => Promise.resolve()),
@@ -29,7 +30,7 @@ vi.mock('../../shared/lessonLinks', () => ({
   }),
 }))
 
-import { deleteDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import { deleteDoc, getDocs, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 
 let snapshotCallbacks = {}
 
@@ -45,6 +46,14 @@ function fireLevels(levels = []) {
   act(() => {
     snapshotCallbacks.lessonLevels?.({
       docs: levels.map(l => ({ id: l.id, data: () => l })),
+    })
+  })
+}
+
+function fireClasses(classes = []) {
+  act(() => {
+    snapshotCallbacks.classes?.({
+      docs: classes.map(c => ({ id: c.id, data: () => c })),
     })
   })
 }
@@ -73,9 +82,10 @@ function fireFeedback(feedback = []) {
   })
 }
 
-function fireAll({ lessons = [], levels = [], reports = [], feedback = [] } = {}) {
+function fireAll({ lessons = [], levels = [], classes = [], reports = [], feedback = [] } = {}) {
   fireLessons(lessons)
   fireLevels(levels)
+  fireClasses(classes)
   fireReports(reports)
   fireFeedback(feedback)
 }
@@ -358,6 +368,68 @@ describe('LessonPanel', () => {
     )
     expect(deleteDoc).toHaveBeenCalledWith(
       expect.objectContaining({ __collection: 'lessonLevels', __id: 'python-beginner' }),
+    )
+  })
+
+  it('creates a class from the Classes view', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel view="classes" />)
+    fireAll()
+
+    await user.type(screen.getByPlaceholderText('Maple'), 'Maple Class')
+    expect(screen.getByDisplayValue('maple-class')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save Class' }))
+
+    expect(setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ __collection: 'classes', __id: 'maple-class' }),
+      expect.objectContaining({
+        id: 'maple-class',
+        name: 'Maple Class',
+        archived: false,
+      }),
+      { merge: true },
+    )
+  })
+
+  it('forks a stock lesson for a class and opens the fork in Builder', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    getDocs.mockResolvedValue({ docs: [], size: 0 })
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [{
+        ...PYTHON_LESSON,
+        description: 'Intro lesson',
+        tasks: [{ id: 1, title: 'Say hi', starterCode: 'print("hi")' }],
+      }],
+      classes: [{ id: 'maple', name: 'Maple', archived: false }],
+    })
+
+    await openFirstLevel(user)
+    await openLesson(user)
+    await user.selectOptions(screen.getByRole('combobox'), 'maple')
+    await user.click(screen.getByRole('button', { name: /Create py-intro-maple/i }))
+
+    await waitFor(() => {
+      expect(setDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ __collection: 'lessons', __id: 'py-intro-maple' }),
+        expect.objectContaining({
+          id: 'py-intro-maple',
+          title: 'Intro to Python - Maple',
+          stage: 'published',
+          fork: expect.objectContaining({
+            sourceLessonId: 'py-intro',
+            classId: 'maple',
+            taskLinks: [{ taskId: 1, sourceTaskId: 1, relation: 'copied' }],
+          }),
+        }),
+      )
+    })
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringContaining('#/builder?load=py-intro-maple'),
+      '_blank',
+      'noopener,noreferrer',
     )
   })
 

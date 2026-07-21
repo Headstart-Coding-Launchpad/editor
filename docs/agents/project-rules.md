@@ -107,6 +107,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 **Storage model:**
 - Lessons → Firestore `lessons/`
 - Reusable levels → Firestore `lessonLevels/`
+- Classes → Firestore `classes/`
 - Topics → Firestore `topicLibrary/`
 - Assets → Firebase Storage, referenced from `lesson.storageAssets`
 
@@ -121,12 +122,13 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list|get|skeleton|validate|upsert|delete|yaml-to-json|json-to-yaml|preflight|publish-yaml|set-stage|topics|review`
+- `lessons list|get|skeleton|validate|upsert|delete|fork|forks|lineage|yaml-to-json|json-to-yaml|preflight|publish-yaml|set-stage|topics|review`
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
 - `assets list|upload|delete`
 - `levels list|upsert|delete`
+- `classes list|upsert|archive`
 
 `feedback` never hard-deletes: `archive-lesson`/`archive-platform` (single item) and `clear-lesson`/`clear-platform` (bulk, with optional filters) all set an `archived: true` flag rather than removing the document.
 

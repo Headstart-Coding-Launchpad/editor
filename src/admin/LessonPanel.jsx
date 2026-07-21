@@ -12,7 +12,8 @@ import {
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
-import { deletePublishedLesson, publishLesson } from '../shared/lessonService'
+import { deletePublishedLesson, publishLesson, publishLessonFork, saveClassRecord } from '../shared/lessonService'
+import { CLASS_COLLECTION, makeClassRecord, makeForkLessonId, slugifyClassId } from '../shared/lessonForks'
 import {
   compareLevels,
   DEFAULT_LEVEL_COLOUR,
@@ -147,19 +148,71 @@ function openCount(items) {
   return items.filter(item => !item.archived && !item.resolvedAt).length
 }
 
+function isLessonFork(lesson) {
+  return Boolean(lesson?.fork?.sourceLessonId)
+}
+
+function getForkClassLabel(lesson, classes) {
+  if (!isLessonFork(lesson)) return 'Stock'
+  const cls = classes.find(item => item.id === lesson.fork.classId)
+  return cls?.name ?? lesson.fork.className ?? lesson.fork.classId ?? 'Class fork'
+}
+
+function makeLessonFamilyGroups(lessons) {
+  const byId = new Map(lessons.map(lesson => [lesson.id, lesson]))
+  const forksBySource = new Map()
+  const families = []
+
+  for (const lesson of lessons) {
+    if (!isLessonFork(lesson)) continue
+    const sourceId = lesson.fork.sourceLessonId
+    if (!forksBySource.has(sourceId)) forksBySource.set(sourceId, [])
+    forksBySource.get(sourceId).push(lesson)
+  }
+
+  const stockLessons = lessons
+    .filter(lesson => !isLessonFork(lesson))
+    .sort((a, b) => String(a.title ?? a.id).localeCompare(String(b.title ?? b.id)))
+
+  for (const lesson of stockLessons) {
+    const forks = (forksBySource.get(lesson.id) ?? [])
+      .sort((a, b) => String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title)))
+    families.push({
+      id: lesson.id,
+      title: lesson.title ?? lesson.id,
+      items: [lesson, ...forks],
+    })
+    forksBySource.delete(lesson.id)
+  }
+
+  for (const [sourceId, forks] of forksBySource) {
+    const source = byId.get(sourceId)
+    families.push({
+      id: sourceId,
+      title: source?.title ?? forks[0]?.fork?.sourceLessonTitle ?? sourceId,
+      items: forks.sort((a, b) => String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title))),
+    })
+  }
+
+  return families
+}
+
 export default function LessonPanel({ view = 'lessons' }) {
   const [lessons, setLessons] = useState([])
   const [levels, setLevels] = useState([])
+  const [classes, setClasses] = useState([])
   const [reports, setReports] = useState([])
   const [feedback, setFeedback] = useState([])
   const [loading, setLoading] = useState(true)
   const [levelsLoading, setLevelsLoading] = useState(true)
+  const [classesLoading, setClassesLoading] = useState(true)
   const [reportsLoading, setReportsLoading] = useState(true)
   const [feedbackLoading, setFeedbackLoading] = useState(true)
   const [error, setError] = useState(null)
   const [shareOpenId, setShareOpenId] = useState(null)
   const [copiedLink, setCopiedLink] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [forkingId, setForkingId] = useState(null)
   const [deletedIds, setDeletedIds] = useState(new Set())
   const [selectedReport, setSelectedReport] = useState(null)
   const [activeType, setActiveType] = useState(null)
@@ -188,6 +241,17 @@ export default function LessonPanel({ view = 'lessons' }) {
         setLevelsLoading(false)
       },
       () => setLevelsLoading(false),
+    )
+  }, [])
+
+  useEffect(() => {
+    return onSnapshot(
+      collection(firestore, CLASS_COLLECTION),
+      (snap) => {
+        setClasses(snap.docs.map(d => makeClassRecord({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name)))
+        setClassesLoading(false)
+      },
+      () => setClassesLoading(false),
     )
   }, [])
 
@@ -248,6 +312,30 @@ export default function LessonPanel({ view = 'lessons' }) {
       alert('Failed to delete: ' + err.message)
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function handleForkForClass(lesson, classId) {
+    const cls = classes.find(item => item.id === classId)
+    if (!cls) {
+      alert('Choose a class before forking this lesson.')
+      return
+    }
+    const forkId = makeForkLessonId(lesson.id, cls.id)
+    const exists = lessons.some(item => item.id === forkId)
+    const message = exists
+      ? `Overwrite fork "${forkId}" with a fresh copy of "${lesson.title || lesson.id}" for ${cls.name}? Existing fork edits, reports, and feedback will be cleared.`
+      : `Create fork "${forkId}" from "${lesson.title || lesson.id}" for ${cls.name}?`
+    if (!confirm(message)) return
+
+    setForkingId(lesson.id)
+    try {
+      const { fork } = await publishLessonFork(lesson, cls)
+      window.open(makeBuilderUrl(fork.id), '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      alert('Failed to fork lesson: ' + err.message)
+    } finally {
+      setForkingId(null)
     }
   }
 
@@ -361,6 +449,15 @@ export default function LessonPanel({ view = 'lessons' }) {
     )
   }
 
+  if (view === 'classes') {
+    return (
+      <ClassManager
+        classes={classes}
+        loading={classesLoading}
+      />
+    )
+  }
+
   return (
     <section style={s.section}>
       <div style={s.titleRow}>
@@ -453,8 +550,12 @@ export default function LessonPanel({ view = 'lessons' }) {
                   onCopyLink={handleCopyLink}
                   onEditInBuilder={handleEditInBuilder}
                   onDelete={handleDelete}
+                  onForkForClass={handleForkForClass}
                   onViewReport={setSelectedReport}
                   onResolveFeedback={handleResolveFeedback}
+                  classes={classes}
+                  classesLoading={classesLoading}
+                  forkingId={forkingId}
                 />
               ))}
             </div>
@@ -525,8 +626,12 @@ function LevelLessonGroup({
   onCopyLink,
   onEditInBuilder,
   onDelete,
+  onForkForClass,
   onViewReport,
   onResolveFeedback,
+  classes,
+  classesLoading,
+  forkingId,
 }) {
   const [openLessonIds, setOpenLessonIds] = useState(() => new Set())
 
@@ -577,71 +682,90 @@ function LevelLessonGroup({
                 </tr>
               </thead>
               <tbody>
-                {bucket.lessons.map(lesson => {
-                  const stageKey = lesson.stage ?? 'published'
-                  const lessonReports = reports.filter(report => report.lessonId === lesson.id)
-                  const lessonFeedback = feedback.filter(item => item.lessonId === lesson.id)
-                  const lessonOpen = openLessonIds.has(lesson.id)
-                  return (
-                    <React.Fragment key={lesson.id}>
+                {makeLessonFamilyGroups(bucket.lessons).map(family => (
+                  <React.Fragment key={family.id}>
+                    {family.items.length > 1 && (
                       <tr>
-                        <td style={s.td}>
-                          <button
-                            type="button"
-                            style={s.lessonToggle}
-                            onClick={() => handleToggleLesson(lesson.id)}
-                            aria-expanded={lessonOpen}
-                          >
-                            <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
-                            <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
-                          </button>
-                        </td>
-                        <td style={s.td}>
-                          <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
-                            {STAGE_LABELS[stageKey] ?? stageKey}
-                          </span>
-                        </td>
-                        <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
-                        <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
-                          <div style={s.actions}>
-                            <a
-                              href={makeTeacherUrl(lesson.id)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="btn-primary"
-                              style={s.actionBtn}
-                            >
-                              Launch as Teacher
-                            </a>
-                          </div>
+                        <td colSpan={4} style={s.familyRow}>
+                          <span style={s.familyTitle}>{family.title}</span>
+                          <span style={s.familyMeta}>{family.items.length - 1} class {family.items.length === 2 ? 'fork' : 'forks'}</span>
                         </td>
                       </tr>
-                      {lessonOpen && (
-                        <tr>
-                          <td colSpan={4} style={s.lessonDetailCell}>
-                            <LessonAdminPanel
-                              lesson={lesson}
-                              reports={lessonReports}
-                              feedback={lessonFeedback}
-                              reportsLoading={reportsLoading}
-                              feedbackLoading={feedbackLoading}
-                              shareOpen={shareOpenId === lesson.id}
-                              copiedLink={copiedLink}
-                              deleting={deletingId === lesson.id || deletedIds.has(lesson.id)}
-                              onToggleShare={() => onToggleShare(lesson.id)}
-                              onCloseShare={onCloseShare}
-                              onCopyLink={onCopyLink}
-                              onEditInBuilder={() => onEditInBuilder(lesson)}
-                              onDelete={() => onDelete(lesson)}
-                              onViewReport={onViewReport}
-                              onResolveFeedback={onResolveFeedback}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  )
-                })}
+                    )}
+                    {family.items.map(lesson => {
+                      const stageKey = lesson.stage ?? 'published'
+                      const lessonReports = reports.filter(report => report.lessonId === lesson.id)
+                      const lessonFeedback = feedback.filter(item => item.lessonId === lesson.id)
+                      const lessonOpen = openLessonIds.has(lesson.id)
+                      return (
+                        <React.Fragment key={lesson.id}>
+                          <tr>
+                            <td style={s.td}>
+                              <button
+                                type="button"
+                                style={{ ...s.lessonToggle, ...(isLessonFork(lesson) ? s.forkLessonToggle : {}) }}
+                                onClick={() => handleToggleLesson(lesson.id)}
+                                aria-expanded={lessonOpen}
+                              >
+                                <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
+                                <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
+                                {isLessonFork(lesson) && (
+                                  <span style={s.classPill}>{getForkClassLabel(lesson, classes)}</span>
+                                )}
+                              </button>
+                            </td>
+                            <td style={s.td}>
+                              <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
+                                {STAGE_LABELS[stageKey] ?? stageKey}
+                              </span>
+                            </td>
+                            <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
+                            <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
+                              <div style={s.actions}>
+                                <a
+                                  href={makeTeacherUrl(lesson.id)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-primary"
+                                  style={s.actionBtn}
+                                >
+                                  Launch as Teacher
+                                </a>
+                              </div>
+                            </td>
+                          </tr>
+                          {lessonOpen && (
+                            <tr>
+                              <td colSpan={4} style={s.lessonDetailCell}>
+                                <LessonAdminPanel
+                                  lesson={lesson}
+                                  reports={lessonReports}
+                                  feedback={lessonFeedback}
+                                  reportsLoading={reportsLoading}
+                                  feedbackLoading={feedbackLoading}
+                                  shareOpen={shareOpenId === lesson.id}
+                                  copiedLink={copiedLink}
+                                  deleting={deletingId === lesson.id || deletedIds.has(lesson.id)}
+                                  classes={classes}
+                                  classesLoading={classesLoading}
+                                  forking={forkingId === lesson.id}
+                                  onToggleShare={() => onToggleShare(lesson.id)}
+                                  onCloseShare={onCloseShare}
+                                  onCopyLink={onCopyLink}
+                                  onEditInBuilder={() => onEditInBuilder(lesson)}
+                                  onDelete={() => onDelete(lesson)}
+                                  onForkForClass={classId => onForkForClass(lesson, classId)}
+                                  onViewReport={onViewReport}
+                                  onResolveFeedback={onResolveFeedback}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      )
+                    })}
+                  </React.Fragment>
+                ))}
               </tbody>
             </table>
           )}
@@ -921,6 +1045,126 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
   )
 }
 
+function ClassManager({ classes, loading }) {
+  const [form, setForm] = useState({ id: '', name: '' })
+  const [idTouched, setIdTouched] = useState(false)
+  const [saveState, setSaveState] = useState(null)
+  const activeClasses = classes.filter(cls => !cls.archived)
+  const archivedClasses = classes.filter(cls => cls.archived)
+
+  function setName(value) {
+    setForm(prev => ({
+      name: value,
+      id: idTouched ? prev.id : slugifyClassId(value),
+    }))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaveState(null)
+    try {
+      const record = await saveClassRecord({ id: form.id, name: form.name, archived: false })
+      setForm({ id: '', name: '' })
+      setIdTouched(false)
+      setSaveState({ type: 'success', message: `Saved ${record.name}.` })
+    } catch (err) {
+      setSaveState({ type: 'error', message: err.message })
+    }
+  }
+
+  async function handleArchive(cls) {
+    if (!confirm(`Archive class "${cls.name}"? Existing lesson forks will remain available.`)) return
+    try {
+      await saveClassRecord({ ...cls, archived: true, updatedAt: Date.now() })
+    } catch (err) {
+      alert('Failed to archive class: ' + err.message)
+    }
+  }
+
+  return (
+    <section style={s.section}>
+      <div style={s.titleRow}>
+        <div>
+          <h2 style={s.title}>Classes</h2>
+          <p style={s.subtitle}>Admin-only class records used to organise reusable lesson forks.</p>
+        </div>
+      </div>
+
+      <form style={s.levelForm} onSubmit={handleSubmit}>
+        <label style={s.levelField}>
+          <span style={s.levelLabel}>Class name</span>
+          <input
+            style={s.levelInput}
+            value={form.name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Maple"
+            required
+          />
+        </label>
+        <label style={s.levelField}>
+          <span style={s.levelLabel}>Class ID</span>
+          <input
+            style={s.levelInput}
+            value={form.id}
+            onChange={e => {
+              setIdTouched(true)
+              setForm(prev => ({ ...prev, id: slugifyClassId(e.target.value) }))
+            }}
+            placeholder="maple"
+            required
+          />
+        </label>
+        <div style={s.levelFormFooter}>
+          {saveState && (
+            <span style={saveState.type === 'error' ? s.formError : s.formSuccess}>
+              {saveState.message}
+            </span>
+          )}
+          <button type="submit" className="btn-secondary" style={s.levelSubmit}>Save Class</button>
+        </div>
+      </form>
+
+      {loading ? (
+        <p style={s.muted}>Loading classes...</p>
+      ) : activeClasses.length === 0 ? (
+        <p style={s.muted}>No classes yet.</p>
+      ) : (
+        <div style={s.levelPreviewList}>
+          {activeClasses.map(cls => (
+            <div key={cls.id} style={s.classPreviewItem}>
+              <span style={s.levelPreviewText}>
+                <strong style={s.levelPreviewTitle}>{cls.name}</strong>
+                <span style={s.levelPreviewMeta}>{cls.id}</span>
+              </span>
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.levelDeleteBtn}
+                onClick={() => handleArchive(cls)}
+              >
+                Archive
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {archivedClasses.length > 0 && (
+        <CollapsibleDetail title="Archived" meta={`${archivedClasses.length} total`}>
+          {archivedClasses.map(cls => (
+            <div key={cls.id} style={s.detailItem}>
+              <div>
+                <strong>{cls.name}</strong>
+                <span style={s.detailMeta}>{cls.id}</span>
+              </div>
+            </div>
+          ))}
+        </CollapsibleDetail>
+      )}
+    </section>
+  )
+}
+
 function LessonAdminPanel({
   lesson,
   reports,
@@ -930,14 +1174,22 @@ function LessonAdminPanel({
   shareOpen,
   copiedLink,
   deleting,
+  classes,
+  classesLoading,
+  forking,
   onToggleShare,
   onCloseShare,
   onCopyLink,
   onEditInBuilder,
   onDelete,
+  onForkForClass,
   onViewReport,
   onResolveFeedback,
 }) {
+  const activeClasses = (classes ?? []).filter(cls => !cls.archived)
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const selectedClass = activeClasses.find(cls => cls.id === selectedClassId)
+
   return (
     <div style={s.lessonAdminPanel}>
       <div style={s.lessonAdminActions}>
@@ -965,6 +1217,40 @@ function LessonAdminPanel({
           {deleting ? '...' : 'Delete'}
         </button>
       </div>
+      {isLessonFork(lesson) ? (
+        <div style={s.forkMetaPanel}>
+          <span style={s.forkMetaLabel}>Fork</span>
+          <span style={s.forkMetaText}>
+            {lesson.fork.sourceLessonTitle || lesson.fork.sourceLessonId} / {lesson.fork.className || lesson.fork.classId}
+          </span>
+        </div>
+      ) : (
+        <div style={s.forkActionPanel}>
+          <label style={s.forkSelectLabel}>
+            <span style={s.forkMetaLabel}>Fork for class</span>
+            <select
+              style={s.forkSelect}
+              value={selectedClassId}
+              disabled={classesLoading || activeClasses.length === 0 || forking}
+              onChange={e => setSelectedClassId(e.target.value)}
+            >
+              <option value="">{classesLoading ? 'Loading classes...' : 'Choose class'}</option>
+              {activeClasses.map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={s.actionBtn}
+            disabled={!selectedClass || forking}
+            onClick={() => onForkForClass(selectedClassId)}
+          >
+            {forking ? 'Forking...' : selectedClass ? `Create ${makeForkLessonId(lesson.id, selectedClass.id)}` : 'Create Fork'}
+          </button>
+        </div>
+      )}
       {reports.length > 0 && (
         <LessonReportsSection
           lesson={lesson}
@@ -1074,11 +1360,22 @@ const s = {
   actions:    { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
   actionBtn:  { padding: '4px 7px', fontSize: '0.76rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 },
   lessonToggle: { width: '100%', border: 'none', background: 'transparent', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 8, textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', fontSize: '0.9rem' },
+  forkLessonToggle: { paddingLeft: 18 },
   lessonToggleIcon: { width: 18, height: 18, borderRadius: 999, border: '1px solid #e5e7eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1, flexShrink: 0, background: '#fff' },
   lessonToggleTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  classPill: { border: '1px solid #bfdbfe', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8', fontSize: '0.68rem', fontWeight: 700, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0 },
+  familyRow: { padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontFamily: 'var(--font-body)' },
+  familyTitle: { fontWeight: 800, color: '#374151', marginRight: 8 },
+  familyMeta: { color: '#6b7280', fontSize: '0.76rem', fontWeight: 700 },
   lessonDetailCell: { padding: '0 12px 10px 38px', background: '#fbfbfd', borderBottom: '1px solid #eef0f4' },
   lessonAdminPanel: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 },
   lessonAdminActions: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  forkActionPanel: { display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' },
+  forkSelectLabel: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 220, fontFamily: 'var(--font-body)' },
+  forkSelect: { minWidth: 220, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--colour-text)', background: '#fff' },
+  forkMetaPanel: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', fontFamily: 'var(--font-body)' },
+  forkMetaLabel: { fontSize: '0.72rem', color: '#6b7280', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' },
+  forkMetaText: { fontSize: '0.84rem', color: '#374151', fontWeight: 600 },
   error:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
   muted:      { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af', margin: 0 },
   stageFilterRow: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
@@ -1126,6 +1423,7 @@ const s = {
   formError: { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#dc2626', fontWeight: 600 },
   levelPreviewList: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 8 },
   levelPreviewItem: { display: 'grid', gridTemplateColumns: '12px 22px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 10px', background: '#fff', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', minWidth: 0 },
+  classPreviewItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 10px', background: '#fff', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', minWidth: 0 },
   levelPreviewText: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.2 },
   levelPreviewTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   levelPreviewMeta: { color: '#6b7280', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' },

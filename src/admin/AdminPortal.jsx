@@ -15,6 +15,7 @@ const TopicLibraryPanel = lazy(() => import('./TopicLibraryPanel'))
 const TABS = [
   { id: 'lessons', label: 'Lessons' },
   { id: 'levels', label: 'Levels' },
+  { id: 'classes', label: 'Classes' },
   { id: 'sessions', label: 'Sessions' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
@@ -69,6 +70,7 @@ export default function AdminPortal() {
         <Suspense fallback={<LoadingScreen compact message="Loading panel..." />}>
           {activeTab === 'lessons' && <LessonPanel />}
           {activeTab === 'levels' && <LessonPanel view="levels" />}
+          {activeTab === 'classes' && <LessonPanel view="classes" />}
           {activeTab === 'sessions' && <SessionsPanel />}
           {activeTab === 'topics' && <TopicLibraryPanel />}
           {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}

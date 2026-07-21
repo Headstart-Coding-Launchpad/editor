@@ -1,6 +1,7 @@
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks, normalizeFeedbackChecks } from '../modules/checks'
 import { flattenTasks } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
+import { makeForkLessonId } from '../shared/lessonForks'
 import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
 import { normalizeFsCheck } from '../modules/filesystem/checks'
 import { normalizeHtmlCheck } from '../modules/html/checks'
@@ -207,6 +208,7 @@ export function validateLesson(lesson) {
   if (!id) errors.push('Lesson ID is required')
   else if (!/^[a-z0-9-]+$/.test(id)) errors.push('Lesson ID must be lowercase with hyphens only')
   if (!title) errors.push('Lesson title is required')
+  if (lesson.fork != null) validateLessonFork(lesson, errors)
   if (!tasks || tasks.length === 0) errors.push('Lesson must have at least one task')
 
   tasks.forEach((item, i) => {
@@ -398,6 +400,23 @@ export function validateLesson(lesson) {
   })
 
   return { errors, warnings }
+}
+
+function validateLessonFork(lesson, errors) {
+  const fork = lesson.fork
+  if (!fork || typeof fork !== 'object' || Array.isArray(fork)) {
+    errors.push('Fork metadata must be an object')
+    return
+  }
+  if (!fork.sourceLessonId?.trim()) errors.push('Fork metadata needs a source lesson ID')
+  if (!fork.classId?.trim()) errors.push('Fork metadata needs a class ID')
+  if (fork.sourceLessonId && fork.classId) {
+    const expectedId = makeForkLessonId(fork.sourceLessonId, fork.classId)
+    if (lesson.id !== expectedId) errors.push(`Forked lesson ID must be ${expectedId}`)
+  }
+  if (fork.taskLinks != null && !Array.isArray(fork.taskLinks)) {
+    errors.push('Fork task links must be an array')
+  }
 }
 
 export function renumberTasks(tasks) {

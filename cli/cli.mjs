@@ -175,6 +175,7 @@ const loadAssets = () => import('./assets.mjs')
 const loadFeedback = () => import('./feedback.mjs')
 const loadTopicUtils = () => import('./topic-utils.mjs')
 const loadLevels = () => import('./levels.mjs')
+const loadClasses = () => import('./classes.mjs')
 
 // validate and yaml-to-json don't touch Firebase, so import directly.
 const loadValidate = () => import('./validate.mjs')
@@ -233,6 +234,44 @@ await yargs(hideBin(process.argv))
     .command('delete <id>', 'Permanently delete a lesson from Firestore', {}, cmd(async ({ id }) => {
       const { deleteLesson } = await loadLessons()
       print(await deleteLesson(id))
+    }))
+
+    .command('fork <sourceLessonId>', 'Create or overwrite a published class fork of a stock lesson', {
+      'class-id': { type: 'string', demandOption: true, describe: 'Class id; fork lesson id becomes sourceLessonId-classId' },
+      output: { alias: 'o', type: 'string', describe: 'Write the generated fork lesson to this JSON/YAML file' },
+      publish: { type: 'boolean', default: true, describe: 'Publish the generated fork immediately; use --no-publish to only write/print it' },
+      'include-lesson': { type: 'boolean', default: false, describe: 'Include the generated lesson in command output' },
+    }, cmd(async ({ sourceLessonId, 'class-id': classId, output, publish, 'include-lesson': includeLesson }) => {
+      const { forkLesson } = await loadLessons()
+      const result = await forkLesson(sourceLessonId, classId, { publish, includeLesson: includeLesson || !publish || Boolean(output) })
+      if (output) {
+        const outputPath = resolve(output)
+        const lesson = result.lesson
+        if (!lesson) throw new Error('Could not write output without generated lesson data')
+        if (['.yaml', '.yml'].includes(extname(outputPath).toLowerCase())) {
+          const { lessonToYamlText } = await loadYaml()
+          await writeText(outputPath, lessonToYamlText(lesson))
+        } else {
+          await writeText(outputPath, JSON.stringify(lesson, null, 2))
+        }
+        result.outputPath = printRelativePath(outputPath)
+      }
+      print(result, {
+        yamlText: result.lesson
+          ? yamlDump({ ...result, lesson: result.lesson })
+          : yamlDump(result),
+      })
+      if (!result.success) process.exit(1)
+    }))
+
+    .command('forks <sourceLessonId>', 'List forks created from a stock lesson', {}, cmd(async ({ sourceLessonId }) => {
+      const { listLessonForks } = await loadLessons()
+      print(await listLessonForks(sourceLessonId))
+    }))
+
+    .command('lineage <id>', 'Show whether a lesson is stock or a fork and its lineage metadata', {}, cmd(async ({ id }) => {
+      const { getLessonLineage } = await loadLessons()
+      print(await getLessonLineage(id))
     }))
 
     .command('yaml-to-json [file]', 'Convert a YAML lesson to JSON - file path or stdin', {
@@ -345,7 +384,7 @@ await yargs(hideBin(process.argv))
       }
     }))
 
-    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | yaml-to-json | json-to-yaml | preflight | publish-yaml | set-stage | topics | review')
+    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | set-stage | topics | review')
     .help()
   )
 
@@ -625,6 +664,33 @@ await yargs(hideBin(process.argv))
     .demandCommand(1, 'Specify a subcommand: list | upsert | delete')
     .help()
   )
-  .demandCommand(1, 'Specify a command: lessons | tasks | topics | feedback | assets | levels')
+  // --- CLASSES --------------------------------------------------------------
+
+  .command('classes', 'Manage admin-only durable class records used for lesson forks', yargs => yargs
+
+    .command('list', 'List classes', {
+      'include-archived': { type: 'boolean', default: false, describe: 'Include archived class records' },
+    }, cmd(async ({ 'include-archived': includeArchived }) => {
+      const { listClasses } = await loadClasses()
+      print(await listClasses({ includeArchived }))
+    }))
+
+    .command('upsert', 'Create or update a class record', {
+      id: { type: 'string', demandOption: true, describe: 'Class id used in fork lesson ids' },
+      name: { type: 'string', demandOption: true, describe: 'Class display name' },
+    }, cmd(async ({ id, name }) => {
+      const { upsertClass } = await loadClasses()
+      print(await upsertClass({ id, name, archived: false }))
+    }))
+
+    .command('archive <id>', 'Archive a class record', {}, cmd(async ({ id }) => {
+      const { archiveClass } = await loadClasses()
+      print(await archiveClass(id))
+    }))
+
+    .demandCommand(1, 'Specify a subcommand: list | upsert | archive')
+    .help()
+  )
+  .demandCommand(1, 'Specify a command: lessons | tasks | topics | feedback | assets | levels | classes')
   .help()
   .parseAsync()

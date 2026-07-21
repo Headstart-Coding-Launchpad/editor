@@ -2,7 +2,9 @@ import { db } from './firebase.mjs'
 import { validateLessonForMcp } from './validate.mjs'
 import { parseYamlLesson } from './yaml-converter.mjs'
 import { auditLessonTopics, validateTopicStage } from '../src/shared/topicAudit.js'
+import { buildLessonFork, makeForkLessonId } from '../src/shared/lessonForks.js'
 import { LEVEL_COLLECTION, migrateLessonLevel } from '../src/shared/lessonLevels.js'
+import { getClass } from './classes.mjs'
 
 export { validateLessonForMcp as validateLesson }
 
@@ -131,6 +133,20 @@ async function publishLesson(lesson) {
   }
 }
 
+async function clearLessonChildCollection(lessonId, collectionName) {
+  const snap = await db.collection('lessons').doc(lessonId).collection(collectionName).get()
+  await Promise.all(snap.docs.map(doc => doc.ref.delete()))
+  return snap.size
+}
+
+async function clearLessonRunData(lessonId) {
+  const [reportsDeleted, feedbackDeleted] = await Promise.all([
+    clearLessonChildCollection(lessonId, 'sessionReports'),
+    clearLessonChildCollection(lessonId, 'feedback'),
+  ])
+  return { reportsDeleted, feedbackDeleted }
+}
+
 export async function listLessons() {
   const snap = await db.collection('lessons').get()
   return snap.docs
@@ -139,7 +155,19 @@ export async function listLessons() {
       const taskCount = (d.tasks ?? []).reduce(
         (acc, t) => acc + (t.type === 'group' ? (t.subtasks?.length ?? 0) : 1), 0
       )
-      return { id: doc.id, title: d.title ?? '', type: d.type ?? '', level: d.level ?? null, levelId: d.levelId ?? null, taskCount }
+      return {
+        id: doc.id,
+        title: d.title ?? '',
+        type: d.type ?? '',
+        level: d.level ?? null,
+        levelId: d.levelId ?? null,
+        fork: d.fork ? {
+          sourceLessonId: d.fork.sourceLessonId,
+          classId: d.fork.classId,
+          className: d.fork.className ?? '',
+        } : null,
+        taskCount,
+      }
     })
     .sort((a, b) => a.title.localeCompare(b.title))
 }
@@ -211,6 +239,61 @@ export async function deleteLesson(id) {
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
   await db.collection('lessons').doc(id).delete()
   return { success: true, id }
+}
+
+export async function forkLesson(sourceLessonId, classId, { publish = true, includeLesson = false } = {}) {
+  const source = await getLesson(sourceLessonId)
+  const cls = await getClass(classId)
+  const fork = buildLessonFork(source, cls)
+  if (!publish) {
+    return { success: true, published: false, id: fork.id, sourceLessonId, classId: cls.id, lesson: fork }
+  }
+  const result = await publishLesson(fork)
+  if (!result.success) return result
+  const cleared = await clearLessonRunData(fork.id)
+  return {
+    ...result,
+    forkId: fork.id,
+    sourceLessonId,
+    classId: cls.id,
+    cleared,
+    lesson: includeLesson ? fork : undefined,
+  }
+}
+
+export async function listLessonForks(sourceLessonId) {
+  const snap = await db.collection('lessons').get()
+  return snap.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(lesson => lesson.fork?.sourceLessonId === sourceLessonId)
+    .sort((a, b) => String(a.fork?.className ?? a.title ?? a.id).localeCompare(String(b.fork?.className ?? b.title ?? b.id)))
+    .map(lesson => ({
+      ...summarize(lesson.id, lesson),
+      sourceLessonId: lesson.fork.sourceLessonId,
+      classId: lesson.fork.classId,
+      className: lesson.fork.className ?? '',
+    }))
+}
+
+export async function getLessonLineage(id) {
+  const lesson = await getLesson(id)
+  if (!lesson.fork?.sourceLessonId) {
+    const forks = await listLessonForks(id)
+    return {
+      id,
+      title: lesson.title ?? '',
+      kind: 'stock',
+      forkCount: forks.length,
+      forks,
+    }
+  }
+  return {
+    id,
+    title: lesson.title ?? '',
+    kind: 'fork',
+    expectedId: makeForkLessonId(lesson.fork.sourceLessonId, lesson.fork.classId),
+    fork: lesson.fork,
+  }
 }
 
 const VALID_STAGES = ['ideas', 'details', 'review', 'approved', 'published']

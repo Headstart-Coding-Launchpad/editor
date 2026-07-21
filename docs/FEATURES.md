@@ -134,6 +134,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 ### Lesson Configuration
 - ID, lesson type, title, description, stage, and a reusable referenced level
+- Forked lessons show their stock lesson and class lineage in Lesson Details
 - Asset list for the in-lesson asset browser
 - Sandbox starter: code, HTML files, Scratch state, toolbox, sprites, and backdrops
 
@@ -176,7 +177,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Admin Portal Features
 
 - **Account management**: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete. Signed-in users can change their own password from Account settings.
-- **Lesson management**: browse all lessons by type and referenced level; manage collapsible reusable levels; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher or copy student links
+- **Lesson management**: browse all lessons by type and referenced level; group stock lessons with class forks; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, copy student links, or create/overwrite a class fork
+- **Class management**: create and archive admin-only class records used for reusable lesson forks
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
 - **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
@@ -217,8 +219,9 @@ The CLI can list, create, delete, and bulk-clear feedback items in both collecti
 
 ## CLI Features
 
-- Manage live lessons, reusable levels, tasks, topics, assets, and feedback through `node cli/cli.mjs`
+- Manage live lessons, reusable levels, classes, tasks, topics, assets, and feedback through `node cli/cli.mjs`
 - Convert lesson and topic-library YAML to JSON for validation and publishing
 - Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
 - Read, create, delete, and bulk-clear platform and per-lesson feedback from Firestore via the CLI
 - Create/list/delete reusable lesson levels with `node cli/cli.mjs levels`
+- Create/archive classes and create/list/inspect lesson forks with `node cli/cli.mjs classes` and `node cli/cli.mjs lessons fork`

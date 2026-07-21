@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore'
 import { firestore } from './firebase'
 import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from './lessonBlocksCodec'
+import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
 import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
 
 export async function fetchLessonById(lessonId) {
@@ -41,6 +42,40 @@ export async function publishLessonTasks(lessonId, tasks) {
 export async function deletePublishedLesson(lessonId) {
   if (!lessonId) throw new Error('Lesson id is required')
   await deleteDoc(doc(firestore, 'lessons', lessonId))
+}
+
+export async function fetchClassList() {
+  const snap = await getDocs(collection(firestore, CLASS_COLLECTION))
+  return snap.docs
+    .map(d => makeClassRecord({ id: d.id, ...d.data() }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function saveClassRecord(input) {
+  const record = makeClassRecord(input)
+  await setDoc(doc(firestore, CLASS_COLLECTION, record.id), record, { merge: true })
+  return record
+}
+
+async function clearLessonChildCollection(lessonId, collectionName) {
+  const snap = await getDocs(collection(firestore, 'lessons', lessonId, collectionName))
+  await Promise.all(snap.docs.map(item => deleteDoc(item.ref)))
+  return snap.size
+}
+
+export async function clearLessonRunData(lessonId) {
+  const [reportsDeleted, feedbackDeleted] = await Promise.all([
+    clearLessonChildCollection(lessonId, 'sessionReports'),
+    clearLessonChildCollection(lessonId, 'feedback'),
+  ])
+  return { reportsDeleted, feedbackDeleted }
+}
+
+export async function publishLessonFork(sourceLesson, classRecord) {
+  const fork = buildLessonFork(sourceLesson, classRecord)
+  await publishLesson(fork)
+  const cleared = await clearLessonRunData(fork.id)
+  return { fork, cleared }
 }
 
 // Returns the lesson with its tasks swapped for a live session override, if

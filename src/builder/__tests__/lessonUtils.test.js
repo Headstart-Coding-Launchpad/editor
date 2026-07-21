@@ -113,6 +113,29 @@ describe('validateLesson', () => {
 
     expect(result.warnings).toContain('Task ID 2 is used by task 1 "Intro" and task 2 "Code" - renumber task IDs before publishing')
   })
+
+  it('validates class fork metadata', () => {
+    const result = validateLesson({
+      id: 'test-lesson-maple',
+      title: 'Test lesson - Maple',
+      type: 'python',
+      fork: { sourceLessonId: 'test-lesson', classId: 'maple', taskLinks: [] },
+      tasks: [{ id: 1, title: 'Code', starterCode: 'print("hi")' }],
+    })
+    expect(result.errors).toEqual([])
+
+    const invalid = validateLesson({
+      id: 'wrong',
+      title: 'Test lesson - Maple',
+      type: 'python',
+      fork: { sourceLessonId: 'test-lesson', classId: 'maple', taskLinks: {} },
+      tasks: [{ id: 1, title: 'Code', starterCode: 'print("hi")' }],
+    })
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'Forked lesson ID must be test-lesson-maple',
+      'Fork task links must be an array',
+    ]))
+  })
 })
 
 describe('complete solution validation', () => {

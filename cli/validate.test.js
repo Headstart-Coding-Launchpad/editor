@@ -61,4 +61,29 @@ describe('CLI lesson validation', () => {
     expect(result.valid).toBe(true)
     expect(result.errors).toEqual([])
   })
+
+  it('validates class fork metadata and deterministic ids', () => {
+    const valid = validateLessonForMcp({
+      id: 'python-basics-maple',
+      type: 'python',
+      title: 'Python basics - Maple',
+      description: 'A forked lesson',
+      fork: { sourceLessonId: 'python-basics', classId: 'maple', taskLinks: [] },
+      tasks: [{ id: 1, title: 'Print hello', starterCode: 'print("hello")' }],
+    })
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLessonForMcp({
+      id: 'wrong-id',
+      type: 'python',
+      title: 'Python basics - Maple',
+      description: 'A forked lesson',
+      fork: { sourceLessonId: 'python-basics', classId: 'maple', taskLinks: {} },
+      tasks: [{ id: 1, title: 'Print hello', starterCode: 'print("hello")' }],
+    })
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      "forked lesson id must be 'python-basics-maple'",
+      'fork.taskLinks must be an array when provided',
+    ]))
+  })
 })

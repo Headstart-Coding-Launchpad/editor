@@ -33,10 +33,10 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `AdminPortal.jsx` | Admin portal shell: header with account/sign-out actions and tab switcher between Lessons, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
+| `AdminPortal.jsx` | Admin portal shell: header with account/sign-out actions and tab switcher between Lessons, Levels, Classes, Sessions, Topics, Shared Assets, Accounts, and Feedback panels |
 | `AdminUi.jsx` | Shared Admin Portal UI primitives for panels, buttons, status pills, filters, and empty states |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/password/disable/enable/delete via Cloud Functions |
-| `LessonPanel.jsx` | Firestore `lessons`, `lessonLevels`, `sessionReports`, and feedback collection-group view; reusable level management, lesson actions, report/feedback collapsibles |
+| `LessonPanel.jsx` | Firestore `lessons`, `lessonLevels`, `classes`, `sessionReports`, and feedback collection-group view; reusable level/class management, class fork creation, lesson actions, report/feedback collapsibles |
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
@@ -359,8 +359,9 @@ Each `index.js` exports a default object with:
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, task summary); `reportToYamlText()` for YAML export |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
+| `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration total and formatting |
-| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `applyLessonOverride()`; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
@@ -423,6 +424,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/feedback.mjs` | Exports Firestore feedback helpers: list (platform/lesson/all), add (lesson/platform), archive by ID (soft-delete via `archived: true`), and bulk-clear (archive) with optional filters |
 | `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |
 | `cli/levels.mjs` | Exports Firestore reusable-level helpers: `listLevels`, `upsertLevel`, `deleteLevel` |
+| `cli/classes.mjs` | Exports Firestore class helpers for lesson forks: `listClasses`, `getClass`, `upsertClass`, `archiveClass` |
 
 ---
 

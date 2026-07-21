@@ -26,6 +26,14 @@ service cloud.firestore {
                    && request.auth.token.role == 'admin';
     }
 
+    // Durable class records used to group admin-created lesson forks.
+    // Public read keeps the Builder/Admin selectors simple; writes are admin-only.
+    match /classes/{classId} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.role == 'admin';
+    }
+
     // Users: mirrors the Firebase Auth user list.
     // Admins can read all; teachers can only read their own document.
     // Writes are exclusively via Cloud Functions (Admin SDK).
