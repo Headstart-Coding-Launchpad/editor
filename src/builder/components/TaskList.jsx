@@ -130,6 +130,7 @@ export default function TaskList({
   onDeleteGroup,
   onReorder,
   onReorderSubtask,
+  onRenumber,
 }) {
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const map = {}
@@ -232,6 +233,12 @@ export default function TaskList({
     onReorderSubtask(groupId, reordered)
   }
 
+  function handleRenumberClick() {
+    if (!onRenumber) return
+    if (!confirm('Renumber task IDs from 1 to N and update carry-through references?')) return
+    onRenumber()
+  }
+
   const taskGlobalNums = {}
   let globalNum = 0
   tasks.forEach(item => {
@@ -249,7 +256,17 @@ export default function TaskList({
           <span style={s.label}>Tasks</span>
           <span style={s.totalTime}>Total: {formatEstimatedMinutes(totalEstimatedMinutes)}</span>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={s.headerActions}>
+          {onRenumber && (
+            <button
+              type="button"
+              style={s.renumberBtn}
+              onClick={handleRenumberClick}
+              title="Renumber task IDs from 1 to N"
+            >
+              1..N
+            </button>
+          )}
           <button className="btn-primary" style={s.addBtn} onClick={onAdd} title="Add standalone task">
             + Task
           </button>
@@ -446,7 +463,19 @@ const s = {
   label: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.04em' },
   headerTitle: { display: 'flex', flexDirection: 'column', gap: 2 },
   totalTime: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.7rem', opacity: 0.84 },
+  headerActions: { display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' },
   addBtn: { fontSize: 11, padding: '4px 8px' },
+  renumberBtn: {
+    fontSize: 11,
+    padding: '4px 7px',
+    background: 'rgba(255,255,255,0.22)',
+    border: '1px solid rgba(255,255,255,0.48)',
+    color: '#fff',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+  },
   addGroupBtn: {
     fontSize: 11,
     padding: '4px 8px',

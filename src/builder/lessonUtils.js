@@ -7,6 +7,7 @@ import { normalizeHtmlCheck } from '../modules/html/checks'
 import { normalizeSequenceItem } from '../modules/scratch/checks'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
+const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
 
 function hasCircuitSelectorTarget(selector) {
   return !!(
@@ -150,6 +151,24 @@ function validateCodeChecks(checks, n, errors, { type, interactionMode, kind = '
   }
 }
 
+function describeTaskForWarning(task, index) {
+  return `task ${index + 1}${task.title ? ` "${task.title}"` : ''}`
+}
+
+function warnDuplicateTaskIds(flat, warnings) {
+  const firstById = new Map()
+  flat.forEach((task, index) => {
+    if (task.id == null || task.id === '') return
+    const key = String(task.id)
+    const first = firstById.get(key)
+    if (first) {
+      warnings.push(`Task ID ${key} is used by ${describeTaskForWarning(first.task, first.index)} and ${describeTaskForWarning(task, index)} - renumber task IDs before publishing`)
+    } else {
+      firstById.set(key, { task, index })
+    }
+  })
+}
+
 export function copyScratchSpriteStateToStarters(sprites, spriteStates) {
   return sprites.map(sprite => {
     const state = spriteStates?.[sprite.id]
@@ -200,6 +219,7 @@ export function validateLesson(lesson) {
   })
 
   const flat = flattenTasks(tasks)
+  warnDuplicateTaskIds(flat, warnings)
   flat.forEach((task, i) => {
     const n = i + 1
     const feedbackChecks = validateFeedbackBasics(task, n, errors, warnings)
@@ -378,6 +398,40 @@ export function validateLesson(lesson) {
   })
 
   return { errors, warnings }
+}
+
+export function renumberTasks(tasks) {
+  const idMap = new Map()
+  let nextId = 1
+
+  function assignIds(items) {
+    return (items ?? []).map(item => {
+      if (item.type === 'group') {
+        return { ...item, subtasks: assignIds(item.subtasks ?? []) }
+      }
+      const oldKey = String(item.id)
+      const newId = nextId++
+      if (!idMap.has(oldKey)) idMap.set(oldKey, newId)
+      return { ...item, id: newId }
+    })
+  }
+
+  function updateCarryReferences(items) {
+    return items.map(item => {
+      if (item.type === 'group') {
+        return { ...item, subtasks: updateCarryReferences(item.subtasks ?? []) }
+      }
+      const next = { ...item }
+      for (const field of TASK_CARRY_FIELDS) {
+        if (next[field] == null) continue
+        const mapped = idMap.get(String(next[field]))
+        if (mapped != null) next[field] = mapped
+      }
+      return next
+    })
+  }
+
+  return updateCarryReferences(assignIds(tasks))
 }
 
 export function quizHasStarter(task) {

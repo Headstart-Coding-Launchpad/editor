@@ -15,6 +15,8 @@ import { getLessonLinks } from '../shared/lessonLinks'
 import { deletePublishedLesson, publishLesson } from '../shared/lessonService'
 import {
   compareLevels,
+  DEFAULT_LEVEL_COLOUR,
+  DEFAULT_LEVEL_ICON,
   getLessonLevelRef,
   levelTitleFromLesson,
   LEVEL_COLLECTION,
@@ -47,6 +49,13 @@ const STAGE_FILTER_OPTIONS = [
 const UNASSIGNED_LEVEL_ID = '__unassigned__'
 const COMMON_LEVEL_EMOJIS = ['⭐', '🌱', '🚀', '💡', '🎯', '🧩', '🏆', '📚', '🛠️', '⚡', '🎨', '🔬']
 const LEGACY_ICON_LABELS = { star: '⭐' }
+const makeBlankLevelForm = () => ({
+  title: '',
+  description: '',
+  order: '',
+  color: DEFAULT_LEVEL_COLOUR,
+  icon: DEFAULT_LEVEL_ICON,
+})
 
 function groupByTypeAndLevel(lessons, levels) {
   const byType = Object.fromEntries(TYPE_ORDER.map(type => [type, []]))
@@ -643,33 +652,67 @@ function LevelLessonGroup({
 }
 
 function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loading }) {
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    order: '',
-    color: '#7c3aed',
-    icon: '⭐',
-  })
+  const [form, setForm] = useState(() => makeBlankLevelForm())
+  const [editingLevelId, setEditingLevelId] = useState(null)
   const [saveState, setSaveState] = useState(null)
+
+  useEffect(() => {
+    setEditingLevelId(null)
+    setForm(makeBlankLevelForm())
+    setSaveState(null)
+  }, [activeType])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setSaveState(null)
     const scopeId = activeType || 'python'
+    const existingLevel = editingLevelId ? levels.find(level => level.id === editingLevelId) : null
     try {
       const level = normalizeLevelRecord({
+        ...(existingLevel ?? {}),
         ...form,
         scopeType: 'type',
-        scopeId,
-        id: makeLevelId(form.title, scopeId),
-        order: form.order === '' ? levels.filter(item => item.scopeType === 'type' && item.scopeId === scopeId).length + 1 : Number(form.order),
+        scopeId: existingLevel?.scopeId ?? scopeId,
+        id: editingLevelId ?? makeLevelId(form.title, scopeId),
+        order: form.order === ''
+          ? existingLevel?.order ?? levels.filter(item => item.scopeType === 'type' && item.scopeId === scopeId).length + 1
+          : Number(form.order),
       })
       await setDoc(doc(firestore, LEVEL_COLLECTION, level.id), level, { merge: true })
-      setForm(prev => ({ ...prev, title: '', description: '', order: '' }))
-      setSaveState({ type: 'success', message: `Saved ${level.title}.` })
+      if (editingLevelId) {
+        const assignedLessons = lessons.filter(lesson => getLessonLevelRef(lesson)?.id === editingLevelId)
+        await Promise.all(assignedLessons.map(lesson => updateDoc(doc(firestore, 'lessons', lesson.id), {
+          level: level.title,
+          levelId: level.id,
+          levelRef: { id: level.id, scopeType: level.scopeType, scopeId: level.scopeId },
+        })))
+      }
+      setEditingLevelId(null)
+      setForm(makeBlankLevelForm())
+      setSaveState({ type: 'success', message: `${editingLevelId ? 'Updated' : 'Saved'} ${level.title}.` })
     } catch (err) {
       setSaveState({ type: 'error', message: err.message || 'Could not save level.' })
     }
+  }
+
+  function handleEditLevel(bucket) {
+    const level = bucket.level
+    if (!level?.id) return
+    setEditingLevelId(level.id)
+    setSaveState(null)
+    setForm({
+      title: level.title ?? '',
+      description: level.description ?? '',
+      order: level.order == null ? '' : String(level.order),
+      color: level.color ?? DEFAULT_LEVEL_COLOUR,
+      icon: level.icon ?? DEFAULT_LEVEL_ICON,
+    })
+  }
+
+  function handleCancelEdit() {
+    setEditingLevelId(null)
+    setSaveState(null)
+    setForm(makeBlankLevelForm())
   }
 
   async function handleDeleteLevel(bucket) {
@@ -818,7 +861,21 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
                   {saveState.message}
                 </span>
               )}
-              <button className="btn-secondary" style={s.levelSubmit}>Create Level</button>
+              <div style={s.levelFormActions}>
+                {editingLevelId && (
+                  <button
+                    type="button"
+                    className="btn-ghost-outline"
+                    style={s.levelSubmit}
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button type="submit" className="btn-secondary" style={s.levelSubmit}>
+                  {editingLevelId ? 'Save Changes' : 'Create Level'}
+                </button>
+              </div>
             </div>
           </form>
 
@@ -830,17 +887,29 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
                 <div key={bucket.id} style={s.levelPreviewItem}>
                   <span style={{ ...s.levelColourDot, background: bucket.color }} />
                   <span style={s.levelEmoji}>{displayLevelIcon(bucket.icon)}</span>
-                  <strong>{bucket.title}</strong>
-                  <span style={s.levelPreviewMeta}>{bucket.lessons.length} {bucket.lessons.length === 1 ? 'lesson' : 'lessons'}</span>
+                  <span style={s.levelPreviewText}>
+                    <strong style={s.levelPreviewTitle}>{bucket.title}</strong>
+                    <span style={s.levelPreviewMeta}>{bucket.lessons.length} {bucket.lessons.length === 1 ? 'lesson' : 'lessons'}</span>
+                  </span>
                   {bucket.level && (
-                    <button
-                      type="button"
-                      className="btn-danger"
-                      style={s.levelDeleteBtn}
-                      onClick={() => handleDeleteLevel(bucket)}
-                    >
-                      Delete
-                    </button>
+                    <div style={s.levelPreviewActions}>
+                      <button
+                        type="button"
+                        className="btn-ghost-outline"
+                        style={s.levelDeleteBtn}
+                        onClick={() => handleEditLevel(bucket)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-danger"
+                        style={s.levelDeleteBtn}
+                        onClick={() => handleDeleteLevel(bucket)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -1052,11 +1121,15 @@ const s = {
   emojiOptionActive: { borderColor: 'var(--colour-primary)', background: '#f0eafa', boxShadow: '0 0 0 1px var(--colour-primary)' },
   emojiInput: { width: 54, height: 32, border: '1px solid #d1d5db', borderRadius: 6, textAlign: 'center', fontSize: '1rem', background: '#fff' },
   levelFormFooter: { gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  levelFormActions: { marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
   formSuccess: { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#15803d', fontWeight: 600 },
   formError: { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#dc2626', fontWeight: 600 },
-  levelPreviewList: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 },
-  levelPreviewItem: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 10px', background: '#fff', fontFamily: 'var(--font-body)', color: 'var(--colour-text)' },
-  levelPreviewMeta: { marginLeft: 'auto', color: '#6b7280', fontSize: '0.78rem', fontWeight: 600 },
+  levelPreviewList: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 8 },
+  levelPreviewItem: { display: 'grid', gridTemplateColumns: '12px 22px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 10px', background: '#fff', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', minWidth: 0 },
+  levelPreviewText: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.2 },
+  levelPreviewTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  levelPreviewMeta: { color: '#6b7280', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' },
+  levelPreviewActions: { display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, justifyContent: 'flex-end' },
   levelDeleteBtn: { padding: '4px 9px', fontSize: '0.76rem', flexShrink: 0 },
   detailPanel: { background: 'transparent', overflow: 'hidden' },
   detailToggle: { width: '100%', padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', fontFamily: 'var(--font-title)', fontWeight: 700, color: '#374151', fontSize: '0.86rem' },

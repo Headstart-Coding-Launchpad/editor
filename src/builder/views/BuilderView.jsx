@@ -47,6 +47,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     handleDeleteGroup,
     handleReorder,
     handleReorderSubtask,
+    handleRenumberTasks,
     errors,
     warnings,
     selectedTask,
@@ -231,6 +232,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             onDeleteGroup={handleDeleteGroup}
             onReorder={handleReorder}
             onReorderSubtask={handleReorderSubtask}
+            onRenumber={handleRenumberTasks}
           />
           <ValidationPanel key={selectedTaskId ?? 'none'} errors={errors} warnings={warnings} />
         </aside>

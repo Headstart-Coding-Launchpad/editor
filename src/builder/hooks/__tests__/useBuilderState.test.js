@@ -79,3 +79,47 @@ describe('useBuilderState scratch task creation', () => {
     expect(newTask.sprites[0].name).toBe('Cat')
   })
 })
+
+describe('useBuilderState task renumbering', () => {
+  it('renumbers lesson tasks and keeps the selected task selected by position', () => {
+    const lesson = {
+      type: 'python',
+      tasks: [
+        { id: 5, title: 'First', starterCode: '' },
+        {
+          id: 'group-a',
+          type: 'group',
+          title: 'Group',
+          subtasks: [
+            { id: 9, title: 'Second', starterCode: '' },
+            { id: 10, title: 'Third', starterCode: '', carryCodeFrom: 9 },
+          ],
+        },
+      ],
+    }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.selectTask(10)
+    })
+    rerender({ lesson: currentLesson })
+
+    act(() => {
+      result.current.handleRenumberTasks()
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0].id).toBe(1)
+    expect(currentLesson.tasks[1].subtasks[0].id).toBe(2)
+    expect(currentLesson.tasks[1].subtasks[1]).toMatchObject({ id: 3, carryCodeFrom: 2 })
+    expect(result.current.selectedTaskId).toBe(3)
+  })
+})

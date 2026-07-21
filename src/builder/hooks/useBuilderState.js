@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { flattenTasks, findGroupForTask, updateTaskInTasks, updateSubtaskTitles } from '../../shared/taskUtils'
-import { validateLesson } from '../lessonUtils'
+import { renumberTasks, validateLesson } from '../lessonUtils'
 import { HTML_ONLY } from '../components/FileManager'
 import { createSpriteFromPreset } from '../spritePresets'
 import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
@@ -240,6 +240,14 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     onUpdate(prev => ({ ...prev, tasks: updated }))
   }
 
+  function handleRenumberTasks() {
+    const selectedIndex = selectedTaskId != null
+      ? flattenTasks(lesson.tasks).findIndex(task => task.id === selectedTaskId)
+      : -1
+    handleLessonUpdate(prev => ({ ...prev, tasks: renumberTasks(prev.tasks) }))
+    if (selectedIndex >= 0) selectTask(selectedIndex + 1)
+  }
+
   // Derived state
   const { errors, warnings } = validateLesson(lesson)
   const flatTasks = flattenTasks(lesson.tasks)
@@ -267,6 +275,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     handleDeleteGroup,
     handleReorder,
     handleReorderSubtask,
+    handleRenumberTasks,
     errors,
     warnings,
     flatTasks,

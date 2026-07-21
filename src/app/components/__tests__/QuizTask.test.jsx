@@ -14,6 +14,12 @@ const MULTIPLE_CHOICE_TASK = {
   ],
 }
 
+const IMAGE_QUESTION_TASK = {
+  ...MULTIPLE_CHOICE_TASK,
+  title: 'Image question',
+  explainer: 'What does this show?\n\n![diagram](diagram.png)',
+}
+
 const MATCH_TASK = {
   title: 'Match parts',
   taskType: 'quiz',
@@ -57,6 +63,14 @@ function closestOutlinedElement(text) {
   return element
 }
 
+function closestElementWithFontSize(text) {
+  let element = screen.getByText(text)
+  while (element && !element.style?.fontSize) {
+    element = element.parentElement
+  }
+  return element
+}
+
 describe('QuizTask multiple choice', () => {
   it('renders each answer as a radio option and publishes a selection', async () => {
     const user = userEvent.setup()
@@ -84,6 +98,18 @@ describe('QuizTask multiple choice', () => {
     expect(loops.style.boxShadow).toContain('inset')
     expect(loops.style.transform).toBe('')
     expect(loops.style.fontSize).toBe(arrays.style.fontSize)
+  })
+
+  it('keeps question images compact and renders larger quiz question text', () => {
+    render(<QuizTask task={IMAGE_QUESTION_TASK} showQuestion />)
+
+    const image = screen.getByRole('img', { name: /diagram/i })
+    const questionPanel = screen.getByText('Question').parentElement
+    const questionTextWrap = closestElementWithFontSize(/what does this show/i)
+
+    expect(image.style.maxHeight).toBe('min(240px, 32vh)')
+    expect(questionPanel.style.maxHeight).toBe('min(360px, 48vh)')
+    expect(questionTextWrap.style.fontSize).toBe('17.25px')
   })
 })
 

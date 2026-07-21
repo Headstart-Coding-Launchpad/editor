@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { copyScratchSpriteStateToStarters, copyStarterToComplete, normalizeTasksForExport, quizHasCheckValue, quizHasStarter, validateLesson } from '../lessonUtils'
+import { copyScratchSpriteStateToStarters, copyStarterToComplete, normalizeTasksForExport, quizHasCheckValue, quizHasStarter, renumberTasks, validateLesson } from '../lessonUtils'
 
 function lesson(type, tasks) {
   return { id: 'test-lesson', title: 'Test lesson', type, tasks }
@@ -91,6 +91,27 @@ describe('validateLesson', () => {
 
     expect(result.errors).toContain('Task 1 has feedback checks but no completion check')
     expect(result.warnings).toContain('Task 1 has a blocking feedback check with no hint')
+  })
+
+  it('warns when two flat tasks use the same ID', () => {
+    const result = validateLesson(lesson('python', [{
+      id: 2,
+      title: 'Intro',
+      taskType: 'information',
+      informationType: 'introduction',
+      explainer: 'Welcome',
+    }, {
+      id: 'group-a',
+      type: 'group',
+      title: 'Group',
+      subtasks: [{
+        id: 2,
+        title: 'Code',
+        starterCode: 'print("hi")',
+      }],
+    }]))
+
+    expect(result.warnings).toContain('Task ID 2 is used by task 1 "Intro" and task 2 "Code" - renumber task IDs before publishing')
   })
 })
 
@@ -226,6 +247,52 @@ describe('copyStarterToComplete', () => {
       completeFiles: [{ name: 'home.html', type: 'html', content: '<h1>Hello</h1>' }],
     })
     expect(result.completeFiles[0]).not.toBe(task.starterFiles[0])
+  })
+})
+
+describe('renumberTasks', () => {
+  it('renumbers flat task order and updates carry-through references', () => {
+    const result = renumberTasks([{
+      id: 70,
+      type: 'group',
+      title: 'Group',
+      subtasks: [{
+        id: 40,
+        title: 'First',
+      }, {
+        id: 90,
+        title: 'Second',
+        carryCodeFrom: 40,
+        carryBlocksFrom: 40,
+        carryFsFrom: 40,
+        carryCircuitFrom: 40,
+      }],
+    }, {
+      id: 100,
+      title: 'Third',
+      carryCodeFrom: 90,
+    }])
+
+    expect(result).toEqual([{
+      id: 70,
+      type: 'group',
+      title: 'Group',
+      subtasks: [{
+        id: 1,
+        title: 'First',
+      }, {
+        id: 2,
+        title: 'Second',
+        carryCodeFrom: 1,
+        carryBlocksFrom: 1,
+        carryFsFrom: 1,
+        carryCircuitFrom: 1,
+      }],
+    }, {
+      id: 3,
+      title: 'Third',
+      carryCodeFrom: 2,
+    }])
   })
 })
 

@@ -55,6 +55,7 @@ function InlineHighlightedCode({ lang, code }) {
 const BlockCodeContext = React.createContext(false)
 const MarkdownScaleContext = React.createContext(1)
 const MarkdownInheritColorContext = React.createContext(false)
+const MarkdownImageMaxHeightContext = React.createContext('min(420px, 60vh)')
 
 // InlineMarkdown only allows inline elements (see allowedElements below) — headings,
 // lists, blockquotes, and thematic breaks are never meant to render here. But short
@@ -399,13 +400,14 @@ const components = {
     return <em>{children}</em>
   },
   img({ src, alt }) {
+    const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
     return (
       <img
         src={src}
         alt={alt ?? ''}
         style={{
           maxWidth: '100%',
-          maxHeight: 'min(420px, 60vh)',
+          maxHeight: imageMaxHeight,
           height: 'auto',
           objectFit: 'contain',
           borderRadius: 6,
@@ -417,7 +419,7 @@ const components = {
   },
 }
 
-export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId, disableCopy = false }) {
+export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageMaxHeight = 'min(420px, 60vh)' }) {
   const topicEnabled = showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics, loading } = useTopicLibrary(topicType, topicEnabled)
   const [libraryOpen, setLibraryOpen] = React.useState(false)
@@ -465,6 +467,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
 
   return (
     <MarkdownInheritColorContext.Provider value={inheritColor}>
+    <MarkdownImageMaxHeightContext.Provider value={imageMaxHeight}>
     <MarkdownScaleContext.Provider value={textScale}>
       <div
         style={{
@@ -537,6 +540,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
         />
       )}
     </MarkdownScaleContext.Provider>
+    </MarkdownImageMaxHeightContext.Provider>
     </MarkdownInheritColorContext.Provider>
   )
 }

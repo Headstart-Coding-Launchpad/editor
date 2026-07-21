@@ -276,6 +276,58 @@ describe('LessonPanel', () => {
     )
   })
 
+  it('edits a level and updates assigned lesson badge text', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel view="levels" />)
+    fireAll({
+      lessons: [{
+        ...PYTHON_LESSON,
+        level: 'Beginner',
+        levelId: 'python-beginner',
+        levelRef: { id: 'python-beginner', scopeType: 'type', scopeId: 'python' },
+      }],
+      levels: [{
+        id: 'python-beginner',
+        title: 'Beginner',
+        description: 'First steps',
+        scopeType: 'type',
+        scopeId: 'python',
+        order: 1,
+        color: '#16a34a',
+        icon: '⭐',
+      }],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.clear(screen.getByLabelText('Level title'))
+    await user.type(screen.getByLabelText('Level title'), 'Foundations')
+    await user.clear(screen.getByLabelText(/Order/))
+    await user.type(screen.getByLabelText(/Order/), '2')
+    fireEvent.change(screen.getByLabelText('Level colour'), { target: { value: '#2563eb' } })
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    expect(setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ __collection: 'lessonLevels', __id: 'python-beginner' }),
+      expect.objectContaining({
+        id: 'python-beginner',
+        title: 'Foundations',
+        scopeType: 'type',
+        scopeId: 'python',
+        order: 2,
+        color: '#2563eb',
+      }),
+      { merge: true },
+    )
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ __collection: 'lessons', __id: 'py-intro' }),
+      {
+        level: 'Foundations',
+        levelId: 'python-beginner',
+        levelRef: { id: 'python-beginner', scopeType: 'type', scopeId: 'python' },
+      },
+    )
+  })
+
   it('deletes a level and clears that level from assigned lessons', async () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
