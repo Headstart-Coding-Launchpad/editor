@@ -19,7 +19,7 @@ vi.mock('firebase/database', () => ({
   update:       (...args) => firebaseMocks.update(...args),
   remove:       (...args) => firebaseMocks.remove(...args),
   push:         (...args) => firebaseMocks.push(...args),
-  serverTimestamp: vi.fn(),
+  serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
   onDisconnect: (...args) => firebaseMocks.onDisconnect(...args),
 }))
 
@@ -281,6 +281,120 @@ describe('useSession', () => {
   })
 
   // ─── Student sync ───────────────────────────────────────────────────────────
+
+  describe('overrideStudentCheck', () => {
+    it('records override metadata when a teacher manually passes a failed student', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: { 'student-abc': { checkPassed: false } },
+        attemptLog: {
+          'student-abc': {
+            1: {
+              k1: { attemptNumber: 1, retries: 2, passed: false },
+            },
+          },
+        },
+      })
+
+      await act(async () => {
+        await result.current.overrideStudentCheck('student-abc', true, null, 1)
+      })
+
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({
+          'students/student-abc/checkOverridePassed': true,
+          'students/student-abc/checkOverrideHint': null,
+          'students/student-abc/checkOverridePushedAt': expect.any(Number),
+          'overrideLog/student-abc/1': {
+            taskId: 1,
+            overriddenAt: { '.sv': 'timestamp' },
+            attemptNumber: 3,
+            previousCheckState: 'failed',
+          },
+        }),
+      )
+    })
+
+    it('does not record override metadata when the teacher applies a fail override', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 1, students: { 'student-abc': { checkPassed: false } } })
+
+      await act(async () => {
+        await result.current.overrideStudentCheck('student-abc', false, 'Try again', 1)
+      })
+
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(updates).toMatchObject({
+        'students/student-abc/checkOverridePassed': false,
+        'students/student-abc/checkOverrideHint': 'Try again',
+      })
+      expect(updates).not.toHaveProperty('overrideLog/student-abc/1')
+    })
+  })
+
+  describe('recordClassAdvanceOverrides', () => {
+    it('records overrides for students who have not passed the task being left', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: {
+          alice: { checkPassed: false },
+          bob: { checkPassed: true },
+          cara: { checkPassed: false },
+          dana: { checkOverridePassed: true },
+        },
+        attemptLog: {
+          alice: {
+            1: {
+              k1: { attemptNumber: 1, retries: 0, passed: false },
+              k2: { attemptNumber: 2, retries: 1, passed: false },
+            },
+          },
+        },
+      })
+
+      await act(async () => {
+        await result.current.recordClassAdvanceOverrides(1)
+      })
+
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'overrideLog/alice/1': {
+            taskId: 1,
+            overriddenAt: { '.sv': 'timestamp' },
+            attemptNumber: 3,
+            previousCheckState: 'failed',
+          },
+          'overrideLog/cara/1': {
+            taskId: 1,
+            overriddenAt: { '.sv': 'timestamp' },
+            attemptNumber: 0,
+            previousCheckState: 'unattempted',
+          },
+        },
+      )
+    })
+
+    it('does nothing when every student has already passed or been manually passed', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: {
+          alice: { checkPassed: true },
+          bob: { checkOverridePassed: true },
+        },
+      })
+
+      await act(async () => {
+        await result.current.recordClassAdvanceOverrides(1)
+      })
+
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+  })
 
   describe('writeStudentCode', () => {
     it('writes code to the student currentCode path', async () => {

@@ -68,9 +68,9 @@ Implement:
 - T3: Record submissions for check-less task types.
 - T4: Fix summary aggregates for no-pass/fail tasks.
 
-Prepare for but do not fully implement:
+Prepared during Phase 1 and completed during Phase 2:
 
-- T23 override recording. Phase 1 should define/report override-aware result values if data exists, but session write routes are Phase 2.
+- T23 override recording. Phase 1 defined override-aware report values; Phase 2 added the session write routes.
 
 ### Primary Surfaces
 
@@ -238,6 +238,25 @@ pairFailures:
 - Unit tests cover the new report shapes.
 
 ## Phase 2: Override Recording
+
+Status: Complete on branch `codex/platform-phase-2-overrides` on 22 July 2026.
+
+Completed implementation:
+
+- Added teacher/admin-only `overrideLog/{anonymousId}/{taskId}` records in Realtime Database.
+- Manual pass overrides write an override record when the student has no real passing attempt.
+- Whole-class task advance writes override records for each student who has not passed the task being left.
+- Override records include task id, server timestamp, total attempt count at the moment of override, and previous check state (`failed` or `unattempted`).
+- Reports map overrides to `overridden_failed` or `overridden_unattempted`, keep `completed: true`, and do not mark failed `distinctAttempts` as passed.
+- Task summaries include `overrideCount`, `overriddenFailedCount`, and `overriddenUnattemptedCount`.
+- Teacher report UI shows override counts and per-student override detail.
+- Runtime docs, RTDB rules, and focused tests were updated.
+
+Verification:
+
+- `npm test -- src/app/hooks/__tests__/useSession.test.js src/shared/__tests__/lessonReport.test.js src/app/components/__tests__/TeacherReportModal.test.jsx`
+- `npm run docs:check`
+- `npm test`
 
 Goal: Reports must distinguish tasks students genuinely passed from tasks teachers moved them past.
 

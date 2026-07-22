@@ -109,16 +109,60 @@ function entryReportPassed(task, entry) {
   return !!entry.passed
 }
 
-function getFinalResult(task, entries) {
-  if (entries.length === 0) return 'not_attempted'
-  if (isNotApplicableTask(task)) return 'not_applicable'
-  return entries.some(entry => entry.passed) ? 'passed' : 'failed'
+function countAttempts(entries) {
+  return entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
 }
 
-function getCompleted(task, entries) {
-  if (entries.length === 0) return false
-  if (isNotApplicableTask(task)) return true
-  return entries.some(entry => entry.passed)
+function normalizeOverrideRecord(raw, taskId, entries) {
+  if (!raw) return null
+  const attempts = countAttempts(entries)
+  const previousCheckState = raw.previousCheckState === 'failed' || raw.previousCheckState === 'unattempted'
+    ? raw.previousCheckState
+    : attempts > 0 ? 'failed' : 'unattempted'
+  return {
+    taskId,
+    overriddenAt: raw.overriddenAt ?? raw.timestamp ?? null,
+    attemptNumber: Number.isFinite(raw.attemptNumber) ? raw.attemptNumber : attempts,
+    previousCheckState,
+  }
+}
+
+function getOverrideFinalResult(override) {
+  if (!override) return null
+  return override.previousCheckState === 'failed' ? 'overridden_failed' : 'overridden_unattempted'
+}
+
+function getStudentTaskOverride(overrides, anonymousId, taskId, entries, task) {
+  if (entries.some(entry => entry.passed) || isNotApplicableTask(task)) return null
+  return normalizeOverrideRecord(overrides?.[anonymousId]?.[taskId], taskId, entries)
+}
+
+function addOverrideSummaryFields(summary, perStudent) {
+  const overrideCounts = perStudent.reduce((counts, task) => {
+    if (task.finalResult === 'overridden_failed') counts.failed += 1
+    if (task.finalResult === 'overridden_unattempted') counts.unattempted += 1
+    return counts
+  }, { failed: 0, unattempted: 0 })
+  return {
+    ...summary,
+    overrideCount: overrideCounts.failed + overrideCounts.unattempted,
+    overriddenFailedCount: overrideCounts.failed,
+    overriddenUnattemptedCount: overrideCounts.unattempted,
+  }
+}
+
+function getFinalResult(task, entries, override) {
+  if (isNotApplicableTask(task)) return entries.length > 0 ? 'not_applicable' : 'not_attempted'
+  if (entries.some(entry => entry.passed)) return 'passed'
+  const overrideResult = getOverrideFinalResult(override)
+  if (overrideResult) return overrideResult
+  if (entries.length === 0) return 'not_attempted'
+  return 'failed'
+}
+
+function getCompleted(task, entries, override) {
+  if (isNotApplicableTask(task)) return entries.length > 0
+  return entries.some(entry => entry.passed) || !!override
 }
 
 function countValues(values) {
@@ -210,7 +254,12 @@ export function buildSessionReport({ session, lesson }) {
   const tasks = flattenTasks(lesson?.tasks ?? []).filter(isReportableTask)
   const studentsSnapshot = session?.students ?? {}
   const attemptLog = session?.attemptLog ?? {}
-  const anonymousIds = Array.from(new Set([...Object.keys(studentsSnapshot), ...Object.keys(attemptLog)]))
+  const overrideLog = session?.overrideLog ?? {}
+  const anonymousIds = Array.from(new Set([
+    ...Object.keys(studentsSnapshot),
+    ...Object.keys(attemptLog),
+    ...Object.keys(overrideLog),
+  ]))
 
   const taskStartTimes = session?.taskStartTimes ?? {}
 
@@ -220,15 +269,16 @@ export function buildSessionReport({ session, lesson }) {
     const taskResults = tasks.map(task => {
       const entries = Object.values(studentAttempts[task.id] ?? {})
         .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
-      const attempts = entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
-      const completed = getCompleted(task, entries)
+      const override = getStudentTaskOverride(overrideLog, anonymousId, task.id, entries, task)
+      const attempts = countAttempts(entries)
+      const completed = getCompleted(task, entries, override)
 
       // Time on task: elapsed time between the task becoming current and either the
-      // moment a passing attempt was logged, or (if not yet completed) the latest attempt.
+      // moment a passing attempt/override was logged, or (if not yet completed) the latest attempt.
       const startedAt = taskStartTimes[task.id] ?? null
       const passingEntry = entries.find(entry => entry.passed)
       const referenceTime = completed
-        ? (passingEntry?.passedAt ?? passingEntry?.loggedAt ?? null)
+        ? (passingEntry?.passedAt ?? passingEntry?.loggedAt ?? override?.overriddenAt ?? null)
         : (entries[entries.length - 1]?.loggedAt ?? null)
       const timeOnTaskMs = (startedAt != null && typeof referenceTime === 'number')
         ? Math.max(0, referenceTime - startedAt)
@@ -240,8 +290,9 @@ export function buildSessionReport({ session, lesson }) {
         ...getTypeFields(task),
         completed,
         attempts,
-        finalResult: getFinalResult(task, entries),
+        finalResult: getFinalResult(task, entries, override),
         timeOnTaskMs,
+        ...(override ? { override } : {}),
         distinctAttempts: entries.map(entry => ({
           attemptNumber: entry.attemptNumber,
           passed: entryReportPassed(task, entry),
@@ -300,6 +351,9 @@ export function buildSessionReport({ session, lesson }) {
         ratingDistribution,
         avgTimeOnTaskMs,
         commonFailures: [],
+        overrideCount: 0,
+        overriddenFailedCount: 0,
+        overriddenUnattemptedCount: 0,
       }
     }
 
@@ -312,10 +366,13 @@ export function buildSessionReport({ session, lesson }) {
         respondedCount: attemptedStudents.length,
         avgTimeOnTaskMs,
         commonFailures: [],
+        overrideCount: 0,
+        overriddenFailedCount: 0,
+        overriddenUnattemptedCount: 0,
       }
     }
 
-    const summary = {
+    const summary = addOverrideSummaryFields({
       taskId: task.id,
       title: task.title ?? `Task ${task.id}`,
       ...typeFields,
@@ -325,7 +382,7 @@ export function buildSessionReport({ session, lesson }) {
       avgAttempts: attemptedStudents.length ? Number((totalAttempts / attemptedStudents.length).toFixed(2)) : 0,
       avgTimeOnTaskMs,
       commonFailures,
-    }
+    }, perStudent)
     if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
       summary.blankFailures = summarizeFillBlankFailures(task, perStudent)
     }

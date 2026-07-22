@@ -36,6 +36,16 @@
           "$anonymousId": {
             ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
           }
+        },
+
+        // Teacher/admin-only record of students moved past a reportable task
+        // without a real passing attempt. Students never write overrides.
+        "overrideLog": {
+          "$anonymousId": {
+            "$taskId": {
+              ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')"
+            }
+          }
         }
       }
     }

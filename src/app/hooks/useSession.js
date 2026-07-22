@@ -7,6 +7,15 @@ function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
 }
 
+function getAttemptEntries(session, anonymousId, taskId) {
+  return Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})
+    .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
+}
+
+function countAttemptRuns(entries) {
+  return entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
+}
+
 /**
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
@@ -102,6 +111,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       lessonOverrideTasks:   null,
       explainerShowComplete: false,
       students:              null,
+      overrideLog:           null,
     })
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
@@ -148,12 +158,49 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
-  async function overrideStudentCheck(anonymousId, passed, hint = null) {
-    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      checkOverridePassed:   passed,
-      checkOverrideHint:     hint || null,
-      checkOverridePushedAt: Date.now(),
-    })
+  function buildOverrideRecord(anonymousId, taskId) {
+    if (taskId == null) return null
+    if (session?.overrideLog?.[anonymousId]?.[taskId]) return null
+    if (session?.students?.[anonymousId]?.checkPassed === true) return null
+
+    const entries = getAttemptEntries(session, anonymousId, taskId)
+    if (entries.some(entry => entry.passed)) return null
+
+    const attemptNumber = countAttemptRuns(entries)
+    return {
+      taskId,
+      overriddenAt:        serverTimestamp(),
+      attemptNumber,
+      previousCheckState:  attemptNumber > 0 ? 'failed' : 'unattempted',
+    }
+  }
+
+  async function overrideStudentCheck(anonymousId, passed, hint = null, taskId = session?.currentTaskId) {
+    const now = Date.now()
+    const updates = {
+      [`students/${anonymousId}/checkOverridePassed`]:   passed,
+      [`students/${anonymousId}/checkOverrideHint`]:     hint || null,
+      [`students/${anonymousId}/checkOverridePushedAt`]: now,
+    }
+    if (passed) {
+      const record = buildOverrideRecord(anonymousId, taskId)
+      if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  async function recordClassAdvanceOverrides(taskId, anonymousIds = Object.keys(session?.students ?? {})) {
+    if (taskId == null) return
+    const updates = {}
+    for (const anonymousId of anonymousIds) {
+      const student = session?.students?.[anonymousId] ?? {}
+      if (student.checkPassed === true || student.checkOverridePassed === true) continue
+      const record = buildOverrideRecord(anonymousId, taskId)
+      if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
+    }
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db, `sessions/${lessonId}`), updates)
+    }
   }
 
   async function enterSandbox({ code = null, files = null } = {}) {
@@ -514,7 +561,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
-    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
+    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,

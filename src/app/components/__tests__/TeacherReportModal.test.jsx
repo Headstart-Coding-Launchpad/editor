@@ -37,6 +37,32 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText('1m 30s')).toBeInTheDocument()
   })
 
+  it('renders override counts and per-student override detail', () => {
+    const overriddenReport = {
+      ...report,
+      students: [{
+        ...report.students[0],
+        tasks: [{
+          ...report.students[0].tasks[0],
+          completed: true,
+          finalResult: 'overridden_failed',
+          override: { taskId: 1, overriddenAt: 1900, attemptNumber: 2, previousCheckState: 'failed' },
+        }],
+      }],
+      taskSummary: [{
+        ...report.taskSummary[0],
+        overrideCount: 1,
+        overriddenFailedCount: 1,
+        overriddenUnattemptedCount: 0,
+      }],
+    }
+
+    render(<TeacherReportModal report={overriddenReport} onClose={vi.fn()} />)
+    expect(screen.getByText('1/1 (100%), 1 override')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Student 1'))
+    expect(screen.getByText('Teacher moved on after 2 attempts')).toBeInTheDocument()
+  })
+
   it('expands a student and task row to reveal distinct attempts', () => {
     render(<TeacherReportModal report={report} onClose={vi.fn()} />)
     expect(screen.queryByText('Alice')).not.toBeInTheDocument()

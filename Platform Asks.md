@@ -26,7 +26,7 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 | T2  | [Done] Add `taskType` to every report entry               | PA3  | S    | T1          |
 | T3  | [Done] Record submissions for check-less task types       | PA3  | M    | T1          |
 | T4  | [Done] Fix `taskSummary` aggregates for no-pass/fail tasks | PA3  | S    | T1, T2      |
-| T23 | Record teacher check overrides in the report              | PA3  | M    | T1          |
+| T23 | [Done] Record teacher check overrides in the report        | PA3  | M    | T1          |
 | T5  | Regression-test PA3 against Python Level 1 Lesson 2       | PA3  | S    | T1–T4       |
 | T24 | Carry code through a skipped task                         | PA5  | M    | —           |
 | T6  | Add `priority` to the task schema and CLI validator       | PA2  | S    | —           |
@@ -53,7 +53,7 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 
 **Do this first.** It is small, it is a bug, and nothing else on this list can be evaluated without it — the platform currently cannot tell anyone whether PA1 or PA4 worked.
 
-**Status update, 22 July 2026.** T1–T4 are complete on branch `codex/platform-phase-1-reports`. Reports now include all non-information tasks, add `taskType`/`quizType`, record detailed fill-blank and match submissions, record confidence/open short-answer responses, use `not_applicable` for response-only tasks, and add response/failure summaries. T23 and T5 remain open.
+**Status update, 22 July 2026.** T1–T4 are complete on branch `codex/platform-phase-1-reports`. Reports now include all non-information tasks, add `taskType`/`quizType`, record detailed fill-blank and match submissions, record confidence/open short-answer responses, use `not_applicable` for response-only tasks, and add response/failure summaries. T23 is complete on branch `codex/platform-phase-2-overrides`; T5 remains open.
 
 ## T1 — Fix the report task-inclusion rule
 
@@ -146,13 +146,15 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 
 ## T23 — Record teacher check overrides in the report
 
+**Status: Done, 22 July 2026.** Implemented in `src/app/hooks/useSession.js`, `src/app/views/TeacherView.jsx`, and `src/shared/lessonReport.js`. Manual pass overrides and whole-class advance now write `overrideLog` records; reports map them to `overridden_failed` or `overridden_unattempted`, keep `completed: true`, and add override summary counts without claiming a real pass.
+
 **Why.** A tutor can pass a student on without the check passing — to keep the class together, because the check is wrong, or because the student has clearly understood it and the check is being pedantic. The report currently cannot tell that apart from a genuine pass, so `completionRate` reads as evidence of learning when some of it is evidence of triage. This blocks the same thing T1 blocks: nothing on this list can be evaluated if the pass data is not honest. It is also the other half of T18 — a completion rate is uninterpretable if you know neither which check a student was graded against nor whether they were graded at all.
 
 **Where to look.** Teacher session UI and the report generator (*both unknown paths*).
 
 **Steps.**
 1. Establish what the override routes actually are before designing the record. Cover **every** way a task reaches completed without its own check passing — manual mark-complete, force-advance, advancing the whole class past a task, and anything else found. Do not assume there is only one.
-2. Record per student per task: that an override happened, who triggered it, at what attempt number, and what the check state was at that moment — still failing, or never attempted at all. Those two are different situations and should not collapse into one flag.
+2. Record per student per task: that an override happened, at what attempt number, and what the check state was at that moment — still failing, or never attempted at all. Those two are different situations and should not collapse into one flag. Do not store teacher identity.
 3. **Keep `finalResult` truthful.** An overridden task must not report `passed`. Suggest a distinct value alongside the existing ones, with `completed` staying separately true — the student did move on, they just did not pass.
 4. In `taskSummary`, add an override count per task and keep it visible next to `completionRate`. Whether overrides also count toward `completionRate` matters less than being able to net them off.
 
@@ -162,7 +164,7 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 - A task summary shows how many of its completions were overrides.
 - A lesson with no overrides produces reports identical to before.
 
-**Decision needed.** The exact `finalResult` value, and whether an override on a task the student never attempted should record separately from one on a task they attempted and failed. Suggest yes — "skipped for this student" and "rescued after five failures" are the two most useful signals in the whole report, and they are the same field otherwise.
+**Decision resolved.** Override `finalResult` values are `overridden_failed` and `overridden_unattempted`; teacher identity is not stored.
 
 **Worth flagging.** Once this exists, a task overridden for most of the class most of the time is the clearest possible signal that the task or its check is wrong. That is a reporting question, not a platform one — noted so it is not lost.
 

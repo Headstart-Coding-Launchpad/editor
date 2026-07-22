@@ -41,13 +41,24 @@ function attemptBadgeStyle(attempt) {
 }
 
 function formatSummaryCompletion(task) {
+  const overrideLabel = task.overrideCount > 0
+    ? `, ${task.overrideCount} override${task.overrideCount === 1 ? '' : 's'}`
+    : ''
   if (typeof task.completionRate === 'number') {
-    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)`
+    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}`
   }
   if (typeof task.respondedCount === 'number') {
-    return `${task.respondedCount}/${task.totalStudents} responded`
+    return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}`
   }
   return '-'
+}
+
+function formatOverrideDetail(task) {
+  if (!task.override) return null
+  const attempts = task.override.attemptNumber ?? 0
+  return task.override.previousCheckState === 'failed'
+    ? `Teacher moved on after ${attempts} attempt${attempts === 1 ? '' : 's'}`
+    : 'Teacher moved on before an attempt'
 }
 
 function formatSummaryFailures(task) {
@@ -84,6 +95,7 @@ function StudentTaskRow({ task }) {
             {task.timeOnTaskMs != null ? formatDuration(task.timeOnTaskMs) : ''}
           </span>
         )}
+        {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}
         {task.distinctAttempts.length > 0 && <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>}
       </button>
       {expanded && task.distinctAttempts.length > 0 && (
@@ -246,6 +258,7 @@ const s = {
   },
   taskTitle: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)' },
   attemptsCount: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', marginLeft: 'auto' },
+  overrideNote: { fontFamily: 'var(--font-body)', fontSize: '0.76rem', color: '#1d4ed8', marginLeft: 'auto' },
   badge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 600, flexShrink: 0 },
   badgePass: { background: '#dcfce7', color: '#15803d' },
   badgeFail: { background: '#fee2e2', color: '#b91c1c' },

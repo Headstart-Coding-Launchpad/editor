@@ -62,6 +62,16 @@ Do not deviate from this shape.
           }
         }
       },
+      "overrideLog": {
+        "{anonymousId}": {
+          "{taskId}": {
+            "taskId": 1,
+            "overriddenAt": "ServerValue.TIMESTAMP",
+            "attemptNumber": 1,
+            "previousCheckState": "failed | unattempted"
+          }
+        }
+      },
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
@@ -134,7 +144,8 @@ Teacher writes:
 Teacher per-student actions:
 
 - Remote reset writes `remoteResetAction` and `remoteResetPushedAt`.
-- Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; cleared by `setTaskId`.
+- Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; a manual pass also writes `overrideLog/{anonymousId}/{taskId}` when the student has no real passing attempt. The per-student visible override fields are cleared by `setTaskId`; `overrideLog` is not, so the end-of-session report can read it.
+- Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
@@ -155,7 +166,7 @@ Student writes:
 - Presence: own `windowFocused` and `lastActivityAt` via `writeStudentPresence`, independent of the `online` onDisconnect key.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields. Students (anonymous auth) can write only to their own `students/{anonymousId}` node and their own `attemptLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields and `overrideLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node and their own `attemptLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
 
 ## onDisconnect Rules
 
@@ -169,7 +180,9 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 
 Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns.
 
-Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes the live session's `students`/`attemptLog` data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks (no `check`) are excluded — there is nothing to grade.
+Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
+
+Override records make moved-on tasks complete without claiming a real pass. If a student had at least one failed attempt before the teacher moved them on, the task reports `finalResult: overridden_failed`; if they had no attempt, it reports `finalResult: overridden_unattempted`. `distinctAttempts[].passed` remains `false` unless an actual check passed.
 
 `buildSessionReport` can also be called against a still-live session (state `active`/`sandbox`, not yet ended) to preview an in-progress session's report before it's saved — this is how the "current report" view works (see below); the result is never written to Firestore in that case.
 
@@ -198,6 +211,12 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
           "attempts": 3,
           "finalResult": "passed | failed | not_attempted | not_applicable | overridden_failed | overridden_unattempted",
           "timeOnTaskMs": "number | null",
+          "override": {
+            "taskId": 1,
+            "overriddenAt": 1234567890,
+            "attemptNumber": 1,
+            "previousCheckState": "failed | unattempted"
+          },
           "distinctAttempts": [
             { "attemptNumber": 1, "passed": "boolean | null", "retries": 1, "suggestion": "string | null", "submission": "string | object | number | null" }
           ]
@@ -214,6 +233,9 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "totalStudents": 12,
       "completedCount": 9,
       "completionRate": 0.75,
+      "overrideCount": 2,
+      "overriddenFailedCount": 1,
+      "overriddenUnattemptedCount": 1,
       "avgAttempts": 2.3,
       "avgTimeOnTaskMs": "number | null",
       "commonFailures": [{ "suggestion": "string", "count": 4 }],

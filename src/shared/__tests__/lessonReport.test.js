@@ -264,6 +264,67 @@ describe('buildSessionReport', () => {
     expect(taskById(studentByLabel(withCara, 'Student 3').tasks, 1).timeOnTaskMs).toBeNull()
   })
 
+  it('reports teacher overrides after failed attempts without marking attempts passed', () => {
+    const withOverride = {
+      ...session,
+      overrideLog: {
+        bob: {
+          1: { taskId: 1, overriddenAt: 1500, attemptNumber: 1, previousCheckState: 'failed' },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: withOverride, lesson })
+    const bobCode = taskById(studentByLabel(report, 'Student 2').tasks, 1)
+
+    expect(bobCode).toMatchObject({
+      completed: true,
+      attempts: 1,
+      finalResult: 'overridden_failed',
+      timeOnTaskMs: 500,
+      override: { taskId: 1, overriddenAt: 1500, attemptNumber: 1, previousCheckState: 'failed' },
+    })
+    expect(bobCode.distinctAttempts).toEqual([
+      { attemptNumber: 1, passed: false, retries: 0, suggestion: 'missing hello', submission: 'print("hi")' },
+    ])
+    expect(taskById(report.taskSummary, 1)).toMatchObject({
+      completedCount: 2,
+      completionRate: 1,
+      overrideCount: 1,
+      overriddenFailedCount: 1,
+      overriddenUnattemptedCount: 0,
+    })
+  })
+
+  it('reports teacher overrides before any attempt separately from failed overrides', () => {
+    const withUnattemptedOverride = {
+      ...session,
+      students: { ...session.students, cara: { displayName: 'Cara' } },
+      overrideLog: {
+        cara: {
+          3: { taskId: 3, overriddenAt: 1400, attemptNumber: 0, previousCheckState: 'unattempted' },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: withUnattemptedOverride, lesson })
+    const caraChoice = taskById(studentByLabel(report, 'Student 3').tasks, 3)
+
+    expect(caraChoice).toMatchObject({
+      completed: true,
+      attempts: 0,
+      finalResult: 'overridden_unattempted',
+      timeOnTaskMs: 400,
+      override: { taskId: 3, overriddenAt: 1400, attemptNumber: 0, previousCheckState: 'unattempted' },
+      distinctAttempts: [],
+    })
+    expect(taskById(report.taskSummary, 3)).toMatchObject({
+      completedCount: 2,
+      completionRate: 0.67,
+      overrideCount: 1,
+      overriddenFailedCount: 0,
+      overriddenUnattemptedCount: 1,
+    })
+  })
+
   it('does not include student names or anonymous IDs', () => {
     const report = buildSessionReport({ session, lesson })
     expect(report.students).toEqual([

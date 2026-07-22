@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import DropdownMenu from './DropdownMenu'
 
-export default function OverrideDropdown({ student, onOverrideCheck }) {
+export default function OverrideDropdown({ student, task, onOverrideCheck }) {
   const [showFailModal, setShowFailModal] = useState(false)
   const [failHint, setFailHint] = useState('')
   const hasOverride = !!student.checkOverridePushedAt
 
   function applyOverride(passed, hint) {
-    onOverrideCheck(student.anonymousId, passed, passed ? null : (hint || null))
+    onOverrideCheck(student.anonymousId, passed, passed ? null : (hint || null), task?.id)
     setShowFailModal(false)
     setFailHint('')
   }

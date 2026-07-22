@@ -32,6 +32,13 @@ import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getLessonModule } from '../../modules/registry'
 
+function canRecordAdvanceOverride(task) {
+  if (!task || task.taskType === 'information') return false
+  if (task.taskType === 'quiz' && task.quizType === 'confidence') return false
+  if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null) return false
+  return true
+}
+
 export default function TeacherView({ lessonId }) {
   const navigate = useNavigate()
   const { user, role } = useAuth()
@@ -40,7 +47,7 @@ export default function TeacherView({ lessonId }) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
-    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, dismissHelp,
+    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
@@ -175,6 +182,11 @@ export default function TeacherView({ lessonId }) {
   }, [currentTaskId, previewTaskId])
 
   async function handleTaskChange(taskId) {
+    const leavingTaskId = session?.currentTaskId ?? currentTaskId
+    const leavingTask = flatTasks.find(t => t.id === leavingTaskId)
+    if (session?.state === 'active' && taskId !== leavingTaskId && canRecordAdvanceOverride(leavingTask)) {
+      await recordClassAdvanceOverrides(leavingTaskId)
+    }
     setPreviewTaskId(null)
     setCurrentTaskId(taskId)
     await setTeacherLive(null)
