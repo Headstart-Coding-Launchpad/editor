@@ -1,61 +1,163 @@
-import { findGroupForTask, findTaskById } from '../shared/taskUtils'
+import { findTaskById } from '../shared/taskUtils'
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {
   if (!carryFromId) return false
   const sourceTask = findTaskById(tasks, carryFromId)
   if (!sourceTask || sourceTask.taskType === 'quiz' || sourceTask.taskType === 'information') return false
-  const sourceGroup = findGroupForTask(tasks, carryFromId)
-  const currentGroup = findGroupForTask(tasks, currentTaskId)
-  return sourceGroup?.id === currentGroup?.id
+  return sourceTask.id !== currentTaskId
 }
 
-export function selectPythonTaskCode({ tasks, task, taskId, phase, readSavedCode }) {
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object ?? {}, key)
+}
+
+function buildCarryFallbackRecord({ taskId, field, requestedSourceTaskId, resolvedSourceTaskId, skippedSourceTaskIds }) {
+  if (resolvedSourceTaskId == null || resolvedSourceTaskId === requestedSourceTaskId) return null
+  return {
+    taskId,
+    field,
+    requestedSourceTaskId,
+    resolvedSourceTaskId,
+    skippedSourceTaskIds,
+  }
+}
+
+export function resolveSavedCarrySource({
+  tasks,
+  taskId,
+  carryFromId,
+  carryField,
+  readSavedState,
+  hasSavedState,
+}) {
+  if (!canCarryTaskContent(tasks, carryFromId, taskId)) {
+    return { saved: null, sourceTaskId: null, fallback: null }
+  }
+
+  const skippedSourceTaskIds = []
+  const seen = new Set([taskId])
+  let resolveId = carryFromId
+
+  while (resolveId != null && !seen.has(resolveId)) {
+    seen.add(resolveId)
+    const sourceTask = findTaskById(tasks, resolveId)
+    if (!sourceTask || sourceTask.taskType === 'quiz' || sourceTask.taskType === 'information') break
+
+    const saved = readSavedState(resolveId)
+    if (hasSavedState(saved)) {
+      return {
+        saved,
+        sourceTaskId: resolveId,
+        fallback: buildCarryFallbackRecord({
+          taskId,
+          field: carryField,
+          requestedSourceTaskId: carryFromId,
+          resolvedSourceTaskId: resolveId,
+          skippedSourceTaskIds,
+        }),
+      }
+    }
+
+    skippedSourceTaskIds.push(resolveId)
+    resolveId = sourceTask[carryField] ?? null
+  }
+
+  return { saved: null, sourceTaskId: null, fallback: null }
+}
+
+function notifyCarryFallback(onCarryFallback, fallback) {
+  if (fallback) onCarryFallback?.(fallback)
+}
+
+export function selectPythonTaskCode({ tasks, task, taskId, phase, readSavedCode, onCarryFallback }) {
   if (phase === 'solo') {
     const ownSaved = readSavedCode(taskId)
     if (ownSaved != null) return ownSaved.code ?? ''
   }
 
   let initial = task.starterCode ?? ''
-  if (canCarryTaskContent(tasks, task.carryCodeFrom, taskId)) {
-    const carried = readSavedCode(task.carryCodeFrom)
-    if (carried?.code) initial = carried.code
+  const carried = resolveSavedCarrySource({
+    tasks,
+    taskId,
+    carryFromId: task.carryCodeFrom,
+    carryField: 'carryCodeFrom',
+    readSavedState: readSavedCode,
+    hasSavedState: saved => saved != null && hasOwn(saved, 'code'),
+  })
+  if (carried.saved != null) {
+    initial = carried.saved.code ?? ''
+    notifyCarryFallback(onCarryFallback, carried.fallback)
   }
   return initial
 }
 
-export function selectHtmlTaskFiles({ tasks, task, taskId, phase, readSavedFile }) {
-  return (task.starterFiles ?? []).map(file => {
+export function selectHtmlTaskFiles({ tasks, task, taskId, phase, readSavedFile, onCarryFallback }) {
+  const fileFallbacks = []
+  const files = (task.starterFiles ?? []).map(file => {
     if (phase === 'solo') {
       const ownSaved = readSavedFile(taskId, file.name)
       if (ownSaved != null) return { ...file, content: ownSaved }
     }
 
     let content = file.content
-    if (canCarryTaskContent(tasks, task.carryCodeFrom, taskId)) {
-      const carried = readSavedFile(task.carryCodeFrom, file.name)
-      if (carried != null) content = carried
+    const carried = resolveSavedCarrySource({
+      tasks,
+      taskId,
+      carryFromId: task.carryCodeFrom,
+      carryField: 'carryCodeFrom',
+      readSavedState: sourceTaskId => readSavedFile(sourceTaskId, file.name),
+      hasSavedState: saved => saved != null,
+    })
+    if (carried.saved != null) {
+      content = carried.saved
+      if (carried.fallback) {
+        fileFallbacks.push({ filename: file.name, ...carried.fallback })
+      }
     }
     return { ...file, content }
   })
+
+  if (fileFallbacks.length > 0) {
+    const resolvedSourceIds = [...new Set(fileFallbacks.map(fallback => fallback.resolvedSourceTaskId))]
+    const skippedIds = [...new Set(fileFallbacks.flatMap(fallback => fallback.skippedSourceTaskIds ?? []))]
+    onCarryFallback?.({
+      taskId,
+      field: 'carryCodeFrom',
+      requestedSourceTaskId: task.carryCodeFrom,
+      resolvedSourceTaskId: resolvedSourceIds.length === 1 ? resolvedSourceIds[0] : null,
+      skippedSourceTaskIds: skippedIds,
+      files: fileFallbacks.map(({ filename, requestedSourceTaskId, resolvedSourceTaskId, skippedSourceTaskIds }) => ({
+        filename,
+        requestedSourceTaskId,
+        resolvedSourceTaskId,
+        skippedSourceTaskIds,
+      })),
+    })
+  }
+
+  return files
 }
 
-export function selectScratchInitialProject({ tasks = null, task, taskId, readSavedCode }) {
+export function selectScratchInitialProject({ tasks = null, task, taskId, readSavedCode, onCarryFallback }) {
   const saved = readSavedCode(taskId)
-  let initialProject = saved?.state ?? null
-  if (!initialProject && task?.carryBlocksFrom) {
+  if (saved != null && hasOwn(saved, 'state')) return saved.state ?? null
+
+  let initialProject = null
+  if (!tasks && task?.carryBlocksFrom) {
     const carried = readSavedCode(task.carryBlocksFrom)
-    initialProject = carried?.state ?? null
-    if (!initialProject && tasks) {
-      // No saved work to carry — fall back to the carry source's authored blocks,
-      // following the carry chain (mirrors the filesystem carryFsFrom fallback).
-      let resolveId = task.carryBlocksFrom
-      while (resolveId != null) {
-        const resolveTask = findTaskById(tasks, resolveId)
-        if (!resolveTask) break
-        const blocks = resolveTask.completeBlocks ?? resolveTask.starterBlocks
-        if (blocks) { initialProject = blocks; break }
-        resolveId = resolveTask.carryBlocksFrom ?? null
-      }
+    if (carried != null && hasOwn(carried, 'state')) initialProject = carried.state ?? null
+  } else {
+    const carried = resolveSavedCarrySource({
+      tasks,
+      taskId,
+      carryFromId: task?.carryBlocksFrom,
+      carryField: 'carryBlocksFrom',
+      readSavedState: readSavedCode,
+      hasSavedState: state => state != null && hasOwn(state, 'state'),
+    })
+    if (carried.saved != null) {
+      initialProject = carried.saved.state ?? null
+      notifyCarryFallback(onCarryFallback, carried.fallback)
     }
   }
   if (!initialProject) initialProject = task?.starterBlocks ?? null

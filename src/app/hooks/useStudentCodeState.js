@@ -6,7 +6,7 @@ import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesyste
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
-import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
+import { resolveSavedCarrySource, selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
@@ -43,6 +43,7 @@ export function useStudentCodeState({
   writeStudentFiles,
   writeStudentOutput,
   writeStudentInteraction,
+  recordStudentCarryFallback,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -285,6 +286,13 @@ export function useStudentCodeState({
     // Scratch: saves incrementally via handleScratchChange
   }
 
+  function recordCarryFallback(fallback) {
+    const id = identityRef.current
+    if (!fallback || teacherPresentation || previewMode || phaseRef.current !== 'lesson' || !id?.anonymousId) return
+    if (sessionRef.current?.carryFallbackLog?.[id.anonymousId]?.[fallback.taskId]) return
+    recordStudentCarryFallback?.(id.anonymousId, fallback.taskId, fallback)
+  }
+
   // ─── Task content loading ──────────────────────────────────────────────────
 
   function loadTaskContent(taskId) {
@@ -307,6 +315,7 @@ export function useStudentCodeState({
         taskId,
         phase,
         readSavedCode: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+        onCarryFallback: recordCarryFallback,
       }))
     } else if (lesson.type === 'scratch') {
       setFiles([])
@@ -315,20 +324,17 @@ export function useStudentCodeState({
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = persistence.readSavedFs(activeIdentity.anonymousId, taskId)
-      const savedFromCarry = carryId != null ? persistence.readSavedFs(activeIdentity.anonymousId, carryId) : null
-      let carryFallback = null
-      if (carryId != null) {
-        let resolveId = carryId
-        while (resolveId != null) {
-          const resolveTask = findTaskById(lesson.tasks, resolveId)
-          if (!resolveTask) break
-          const fs = resolveTask.completeFs ?? resolveTask.starterFs
-          if (fs) { carryFallback = fs; break }
-          resolveId = resolveTask.carryFsFrom ?? null
-        }
-      }
+      const carried = resolveSavedCarrySource({
+        tasks: lesson.tasks,
+        taskId,
+        carryFromId: carryId,
+        carryField: 'carryFsFrom',
+        readSavedState: sourceTaskId => persistence.readSavedFs(activeIdentity.anonymousId, sourceTaskId),
+        hasSavedState: fs => fs != null,
+      })
+      if (ownSaved == null) recordCarryFallback(carried.fallback)
       const initialFs = carryId != null
-        ? (ownSaved ?? savedFromCarry ?? carryFallback ?? task.starterFs ?? DEFAULT_FS)
+        ? (ownSaved ?? carried.saved ?? task.starterFs ?? DEFAULT_FS)
         : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
       setFsState(initialFs)
       const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
@@ -337,15 +343,17 @@ export function useStudentCodeState({
     } else if (lesson.type === 'electronics') {
       const carryId = task.carryCircuitFrom ?? null
       const ownSaved = persistence.readSavedCode(activeIdentity.anonymousId, taskId)?.code ?? null
-      const savedFromCarry = carryId != null ? persistence.readSavedCode(activeIdentity.anonymousId, carryId)?.code : null
-      let carryFallback = null
-      if (carryId != null) {
-        const sourceTask = findTaskById(lesson.tasks, carryId)
-        const circuit = sourceTask?.completeCircuit ?? sourceTask?.starterCircuit
-        if (circuit) carryFallback = serializeCircuit(circuit)
-      }
+      const carried = resolveSavedCarrySource({
+        tasks: lesson.tasks,
+        taskId,
+        carryFromId: carryId,
+        carryField: 'carryCircuitFrom',
+        readSavedState: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+        hasSavedState: saved => saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
+      })
+      if (ownSaved == null) recordCarryFallback(carried.fallback)
       const starter = serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT)
-      setCode(carryId != null ? (ownSaved ?? savedFromCarry ?? carryFallback ?? starter) : (ownSaved ?? starter))
+      setCode(carryId != null ? (ownSaved ?? carried.saved?.code ?? starter) : (ownSaved ?? starter))
       setFiles([])
       setActiveFile('')
       resetCheckFeedback()
@@ -356,6 +364,7 @@ export function useStudentCodeState({
         taskId,
         phase,
         readSavedFile: (sourceTaskId, filename) => persistence.readSavedFile(activeIdentity.anonymousId, sourceTaskId, filename),
+        onCarryFallback: recordCarryFallback,
       })
       setFiles(taskFiles)
       setActiveFile(task.entryFile ?? taskFiles[0]?.name ?? '')
@@ -1329,6 +1338,7 @@ export function useStudentCodeState({
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,
+    recordCarryFallback,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,
     resetForTaskChange,

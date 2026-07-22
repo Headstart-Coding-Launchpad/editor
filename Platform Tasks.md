@@ -19,7 +19,7 @@ These decisions are now settled and should not be re-opened during implementatio
 3. Open short-answer tasks with no check complete on submit and report as `not_applicable`.
 4. Advancing the whole class should record an override for every student who has not passed the current task.
 5. Override actor identity does not need to be stored.
-6. Carry-through walks authored carry chains only. If the chain ends with no saved state, fall back to the authored starter content.
+6. Carry-through walks authored carry chains only. If the chain ends with no saved state, fall back to the current task starter content.
 7. `priority` applies to every task type and defaults to `core`.
 8. Task variants are code-task-only for v1.
 9. Student-initiated support reveal should be visible to the teacher as an assisted/reference-opened marker.
@@ -306,6 +306,24 @@ overriddenUnattemptedCount: 1
 ```
 
 ## Phase 3: PA5 Carry-Through
+
+Status: Complete on branch `codex/platform-phase-3-carry-through` on 22 July 2026.
+
+Completed implementation:
+
+- Added a shared authored carry-chain resolver for saved task state.
+- Python, HTML, Scratch, filesystem, and electronics carry-through now walk past skipped immediate carry sources to the first earlier authored source with saved state, including across group boundaries.
+- Saved empty content is treated as real saved state.
+- If the authored chain ends without saved state, the current task starter content is used.
+- Live sessions write `carryFallbackLog/{anonymousId}/{taskId}` when a walk-back lands on an earlier saved source.
+- Reports include per-student `carryFallback` metadata and task summary `carryFallbackCount`/`carryFallbacks`.
+- Runtime docs, RTDB rules, codebase/testing docs, and focused tests were updated.
+
+Verification:
+
+- `npm test -- src/app/__tests__/studentTaskContent.test.js src/app/hooks/__tests__/useSession.test.js src/shared/__tests__/lessonReport.test.js`
+- `npm run docs:check`
+- `npm test`
 
 Goal: Skipped carry source tasks must not cause students to lose their previous saved work.
 

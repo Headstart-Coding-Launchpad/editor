@@ -418,6 +418,32 @@ describe('useSession', () => {
 
   // ─── Remote reset ───────────────────────────────────────────────────────────
 
+  describe('recordStudentCarryFallback', () => {
+    it('writes carry fallback metadata under the student-owned log', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.recordStudentCarryFallback('student-abc', 3, {
+          field: 'carryCodeFrom',
+          requestedSourceTaskId: 2,
+          resolvedSourceTaskId: 1,
+          skippedSourceTaskIds: [2],
+        })
+      })
+
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/carryFallbackLog/student-abc/3' },
+        {
+          taskId: 3,
+          field: 'carryCodeFrom',
+          requestedSourceTaskId: 2,
+          resolvedSourceTaskId: 1,
+          skippedSourceTaskIds: [2],
+          fallbackAt: { '.sv': 'timestamp' },
+        },
+      )
+    })
+  })
+
   describe('pushResetToStudent', () => {
     it('writes remoteResetAction and remoteResetPushedAt to the student node', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

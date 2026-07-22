@@ -325,6 +325,56 @@ describe('buildSessionReport', () => {
     })
   })
 
+  it('includes carry walk-back metadata in student rows and task summaries', () => {
+    const carryLesson = {
+      id: 'carry-demo',
+      title: 'Carry Demo',
+      tasks: [
+        { id: 1, title: 'Build One', check: { type: 'output_contains', value: 'one' } },
+        { id: 2, title: 'Skipped Bridge', carryCodeFrom: 1, check: { type: 'output_contains', value: 'two' } },
+        { id: 3, title: 'Continue', carryCodeFrom: 2, check: { type: 'output_contains', value: 'three' } },
+      ],
+    }
+    const carrySession = {
+      lessonId: 'carry-demo',
+      startedAt: 1000,
+      endedAt: 2000,
+      students: { alice: { displayName: 'Alice' } },
+      carryFallbackLog: {
+        alice: {
+          3: {
+            taskId: 3,
+            field: 'carryCodeFrom',
+            requestedSourceTaskId: 2,
+            resolvedSourceTaskId: 1,
+            skippedSourceTaskIds: [2],
+            fallbackAt: 1500,
+          },
+        },
+      },
+    }
+
+    const report = buildSessionReport({ session: carrySession, lesson: carryLesson })
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 3).carryFallback).toEqual({
+      taskId: 3,
+      field: 'carryCodeFrom',
+      requestedSourceTaskId: 2,
+      resolvedSourceTaskId: 1,
+      skippedSourceTaskIds: [2],
+      fallbackAt: 1500,
+    })
+    expect(taskById(report.taskSummary, 3)).toMatchObject({
+      carryFallbackCount: 1,
+      carryFallbacks: [{
+        field: 'carryCodeFrom',
+        requestedSourceTaskId: 2,
+        resolvedSourceTaskId: 1,
+        skippedSourceTaskIds: [2],
+        count: 1,
+      }],
+    })
+  })
+
   it('does not include student names or anonymous IDs', () => {
     const report = buildSessionReport({ session, lesson })
     expect(report.students).toEqual([

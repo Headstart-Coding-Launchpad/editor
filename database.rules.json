@@ -38,6 +38,16 @@
           }
         },
 
+        // Student-written metadata for authored carry chains that walked past
+        // a skipped immediate source before finding saved work.
+        "carryFallbackLog": {
+          "$anonymousId": {
+            "$taskId": {
+              ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+            }
+          }
+        },
+
         // Teacher/admin-only record of students moved past a reportable task
         // without a real passing attempt. Students never write overrides.
         "overrideLog": {

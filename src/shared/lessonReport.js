@@ -151,6 +151,53 @@ function addOverrideSummaryFields(summary, perStudent) {
   }
 }
 
+function normalizeArray(value) {
+  if (Array.isArray(value)) return value
+  if (value && typeof value === 'object') return Object.values(value)
+  return []
+}
+
+function normalizeCarryFallbackRecord(raw, taskId) {
+  if (!raw) return null
+  return {
+    taskId,
+    field: raw.field ?? null,
+    requestedSourceTaskId: raw.requestedSourceTaskId ?? null,
+    resolvedSourceTaskId: raw.resolvedSourceTaskId ?? null,
+    skippedSourceTaskIds: normalizeArray(raw.skippedSourceTaskIds),
+    fallbackAt: raw.fallbackAt ?? raw.timestamp ?? null,
+    ...(raw.files ? { files: normalizeArray(raw.files) } : {}),
+  }
+}
+
+function summarizeCarryFallbacks(perStudent) {
+  const fallbacks = perStudent.map(task => task.carryFallback).filter(Boolean)
+  const grouped = new Map()
+
+  for (const fallback of fallbacks) {
+    const key = JSON.stringify({
+      field: fallback.field,
+      requestedSourceTaskId: fallback.requestedSourceTaskId,
+      resolvedSourceTaskId: fallback.resolvedSourceTaskId,
+      skippedSourceTaskIds: fallback.skippedSourceTaskIds,
+    })
+    const existing = grouped.get(key) ?? {
+      field: fallback.field,
+      requestedSourceTaskId: fallback.requestedSourceTaskId,
+      resolvedSourceTaskId: fallback.resolvedSourceTaskId,
+      skippedSourceTaskIds: fallback.skippedSourceTaskIds,
+      count: 0,
+    }
+    existing.count += 1
+    grouped.set(key, existing)
+  }
+
+  return {
+    carryFallbackCount: fallbacks.length,
+    carryFallbacks: Array.from(grouped.values()).sort((a, b) => b.count - a.count),
+  }
+}
+
 function getFinalResult(task, entries, override) {
   if (isNotApplicableTask(task)) return entries.length > 0 ? 'not_applicable' : 'not_attempted'
   if (entries.some(entry => entry.passed)) return 'passed'
@@ -255,10 +302,12 @@ export function buildSessionReport({ session, lesson }) {
   const studentsSnapshot = session?.students ?? {}
   const attemptLog = session?.attemptLog ?? {}
   const overrideLog = session?.overrideLog ?? {}
+  const carryFallbackLog = session?.carryFallbackLog ?? {}
   const anonymousIds = Array.from(new Set([
     ...Object.keys(studentsSnapshot),
     ...Object.keys(attemptLog),
     ...Object.keys(overrideLog),
+    ...Object.keys(carryFallbackLog),
   ]))
 
   const taskStartTimes = session?.taskStartTimes ?? {}
@@ -270,6 +319,7 @@ export function buildSessionReport({ session, lesson }) {
       const entries = Object.values(studentAttempts[task.id] ?? {})
         .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
       const override = getStudentTaskOverride(overrideLog, anonymousId, task.id, entries, task)
+      const carryFallback = normalizeCarryFallbackRecord(carryFallbackLog?.[anonymousId]?.[task.id], task.id)
       const attempts = countAttempts(entries)
       const completed = getCompleted(task, entries, override)
 
@@ -293,6 +343,7 @@ export function buildSessionReport({ session, lesson }) {
         finalResult: getFinalResult(task, entries, override),
         timeOnTaskMs,
         ...(override ? { override } : {}),
+        ...(carryFallback ? { carryFallback } : {}),
         distinctAttempts: entries.map(entry => ({
           attemptNumber: entry.attemptNumber,
           passed: entryReportPassed(task, entry),
@@ -354,6 +405,7 @@ export function buildSessionReport({ session, lesson }) {
         overrideCount: 0,
         overriddenFailedCount: 0,
         overriddenUnattemptedCount: 0,
+        ...summarizeCarryFallbacks(perStudent),
       }
     }
 
@@ -369,20 +421,24 @@ export function buildSessionReport({ session, lesson }) {
         overrideCount: 0,
         overriddenFailedCount: 0,
         overriddenUnattemptedCount: 0,
+        ...summarizeCarryFallbacks(perStudent),
       }
     }
 
-    const summary = addOverrideSummaryFields({
-      taskId: task.id,
-      title: task.title ?? `Task ${task.id}`,
-      ...typeFields,
-      totalStudents: perStudent.length,
-      completedCount,
-      completionRate: perStudent.length ? Number((completedCount / perStudent.length).toFixed(2)) : 0,
-      avgAttempts: attemptedStudents.length ? Number((totalAttempts / attemptedStudents.length).toFixed(2)) : 0,
-      avgTimeOnTaskMs,
-      commonFailures,
-    }, perStudent)
+    const summary = {
+      ...addOverrideSummaryFields({
+        taskId: task.id,
+        title: task.title ?? `Task ${task.id}`,
+        ...typeFields,
+        totalStudents: perStudent.length,
+        completedCount,
+        completionRate: perStudent.length ? Number((completedCount / perStudent.length).toFixed(2)) : 0,
+        avgAttempts: attemptedStudents.length ? Number((totalAttempts / attemptedStudents.length).toFixed(2)) : 0,
+        avgTimeOnTaskMs,
+        commonFailures,
+      }, perStudent),
+      ...summarizeCarryFallbacks(perStudent),
+    }
     if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
       summary.blankFailures = summarizeFillBlankFailures(task, perStudent)
     }
