@@ -65,6 +65,7 @@ tasks:
     explainer: |              # required — Markdown shown to students
       Instructions here.
     estimatedMinutes: 5       # optional — teacher countdown
+    priority: core            # optional — core (default) | optional; teacher-facing only
     taskMode: both            # optional — both (default) | live | solo
     # taskType omitted = code task; use information or quiz for non-code tasks
 ```

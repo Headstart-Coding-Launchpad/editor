@@ -188,7 +188,12 @@ export default function TeacherReportModal({ report, onClose }) {
               <tbody>
                 {displayReport.taskSummary.map(task => (
                   <tr key={task.taskId}>
-                    <td style={s.td}>{task.title}</td>
+                    <td style={s.td}>
+                      <div style={s.summaryTaskTitle}>
+                        <span>{task.title}</span>
+                        {task.priority === 'optional' && <span style={s.priorityBadge}>optional</span>}
+                      </div>
+                    </td>
                     <td style={s.td}>{formatSummaryCompletion(task)}</td>
                     <td style={s.td}>{task.avgAttempts ?? '-'}</td>
                     <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
@@ -241,6 +246,18 @@ const s = {
     fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em',
   },
   td: { padding: '8px 10px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' },
+  summaryTaskTitle: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  priorityBadge: {
+    display: 'inline-block',
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    color: '#0369a1',
+    background: '#e0f2fe',
+    border: '1px solid #7dd3fc',
+    borderRadius: 4,
+    padding: '1px 5px',
+    lineHeight: 1.25,
+  },
   muted: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af' },
   studentSection: { border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8, overflow: 'hidden' },
   studentHeader: {

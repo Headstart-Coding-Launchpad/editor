@@ -15,6 +15,23 @@ export function getTotalEstimatedMinutes(tasks) {
   return flattenTasks(tasks).reduce((total, task) => total + (getEstimatedMinutes(task) ?? 0), 0)
 }
 
+export const TASK_PRIORITIES = ['core', 'optional']
+
+export function isValidTaskPriority(priority) {
+  return TASK_PRIORITIES.includes(priority)
+}
+
+export function getTaskPriority(task) {
+  return isValidTaskPriority(task?.priority) ? task.priority : 'core'
+}
+
+export function getTaskPriorityCounts(tasks) {
+  return flattenTasks(tasks).reduce((counts, task) => {
+    counts[getTaskPriority(task)] += 1
+    return counts
+  }, { core: 0, optional: 0 })
+}
+
 export function formatEstimatedMinutes(minutes) {
   if (!minutes) return 'No estimate'
   const hours = Math.floor(minutes / 60)

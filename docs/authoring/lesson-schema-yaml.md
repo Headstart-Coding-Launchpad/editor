@@ -73,6 +73,7 @@ tasks:
     explainer: |               # required — Markdown shown to students
       Instructions here.
     estimatedMinutes: 5        # optional — approximate duration, totalled in the builder
+    priority: core              # optional — core (default) | optional; teacher-facing only
     taskMode: both              # optional — both (default) | live | solo
     # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
     # or `type: draft` on the task; omit entirely for a code task.
@@ -86,6 +87,7 @@ tasks:
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes | string | Markdown shown to students. |
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
+| `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `feedbackChecks` | No | object or array | Supported by Python, HTML, Filesystem, Electronics, and Scratch. Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |

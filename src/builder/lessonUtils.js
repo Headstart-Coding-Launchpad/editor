@@ -1,5 +1,5 @@
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks, normalizeFeedbackChecks } from '../modules/checks'
-import { flattenTasks } from '../shared/taskUtils'
+import { flattenTasks, isValidTaskPriority, TASK_PRIORITIES } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
 import { makeForkLessonId } from '../shared/lessonForks'
 import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
@@ -228,6 +228,9 @@ export function validateLesson(lesson) {
     if (!task.title) errors.push(`Task ${n} is missing a title`)
     if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
       errors.push(`Task ${n} estimated time must be a positive whole number of minutes`)
+    }
+    if (task.priority != null && !isValidTaskPriority(task.priority)) {
+      errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
     }
     if (task.taskType === 'draft') {
       warnings.push(`Task ${n} "${task.title || 'Untitled'}" is a draft — convert it to a real task type before publishing`)
@@ -501,6 +504,7 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
         explainer: task.explainer ?? '',
       }
       if (task.estimatedMinutes != null) exported.estimatedMinutes = task.estimatedMinutes
+      if (task.priority != null) exported.priority = task.priority
       if ((task.informationType ?? 'standard') !== 'standard') exported.informationType = task.informationType
       if (task.leftContent) exported.leftContent = task.leftContent
       if (task.taskMode && task.taskMode !== 'both') exported.taskMode = task.taskMode

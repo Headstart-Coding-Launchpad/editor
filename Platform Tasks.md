@@ -361,6 +361,25 @@ Record report metadata when a fallback walks past the immediate carry source.
 
 ## Phase 4: PA2 Task Priority
 
+Status: Complete on branch `codex/platform-phase-4-task-priority` on 22 July 2026.
+
+Completed implementation:
+
+- Added shared task-priority helpers with omitted priority defaulting to `core`.
+- CLI and Builder validation now accept only `core` and `optional`.
+- YAML conversion round-trips explicit `priority` values and preserves omitted priority fields.
+- Builder task editing can set priority for every task type, and the Builder task list shows the lesson split plus optional-task badges.
+- Teacher live task navigation marks optional tasks; student-facing views remain unchanged.
+- Session report `taskSummary` entries include defaulted `priority`, and the report modal labels optional tasks.
+- Authoring, runtime, codebase-map, and testing docs were updated.
+
+Verification:
+
+- `npm test -- cli/validate.test.js cli/yaml-converter.test.js src/shared/__tests__/taskUtils.test.js src/shared/__tests__/lessonReport.test.js src/builder/__tests__/lessonUtils.test.js src/app/components/__tests__/TeacherReportModal.test.jsx`
+- `npm run docs:check`
+- `npm test`
+- `npm run build`
+
 Goal: Authors can mark tasks as core or optional, and teachers can see that in the room.
 
 ### Scope

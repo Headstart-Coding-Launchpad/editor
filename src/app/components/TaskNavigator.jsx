@@ -1,5 +1,10 @@
 import React, { useState } from 'react'
-import { flattenTasks } from '../../shared/taskUtils'
+import { flattenTasks, getTaskPriority } from '../../shared/taskUtils'
+
+function OptionalBadge({ task }) {
+  if (getTaskPriority(task) !== 'optional') return null
+  return <span style={s.optionalBadge} title="Optional task">optional</span>
+}
 
 export default function TaskNavigator({
   tasks = [],
@@ -96,6 +101,7 @@ export default function TaskNavigator({
                       <span style={s.subtaskDot} />
                       <div style={s.detail}>
                         <span style={s.taskTitle}>{task.title}</span>
+                        <OptionalBadge task={task} />
                         {isCurrent && total > 0 && (
                           <span style={s.stat}>
                             {runCount}/{total} run
@@ -133,6 +139,7 @@ export default function TaskNavigator({
               <span style={s.num}>{item.id}</span>
               <div style={s.detail}>
                 <span style={s.taskTitle}>{item.title}</span>
+                <OptionalBadge task={item} />
                 {isCurrent && total > 0 && (
                   <span style={s.stat}>
                     {runCount}/{total} run
@@ -356,6 +363,19 @@ const s = {
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+  },
+  optionalBadge: {
+    alignSelf: 'flex-start',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    color: '#0369a1',
+    background: '#e0f2fe',
+    border: '1px solid #7dd3fc',
+    borderRadius: 4,
+    padding: '1px 5px',
+    lineHeight: 1.25,
+    whiteSpace: 'nowrap',
   },
   stat: {
     fontFamily: 'var(--font-body)',

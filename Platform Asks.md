@@ -29,12 +29,12 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 | T23 | [Done] Record teacher check overrides in the report        | PA3  | M    | T1          |
 | T5  | Regression-test PA3 against Python Level 1 Lesson 2       | PA3  | S    | T1–T4       |
 | T24 | [Done] Carry code through a skipped task                  | PA5  | M    | —           |
-| T6  | Add `priority` to the task schema and CLI validator       | PA2  | S    | —           |
-| T7  | Round-trip `priority` through the YAML converter          | PA2  | S    | T6          |
-| T8  | Surface `priority` in the Lesson Builder                  | PA2  | M    | T6          |
-| T9  | Surface `priority` in the teacher live view               | PA2  | M    | T6          |
-| T10 | Include `priority` in session reports                     | PA2  | S    | T6, T1      |
-| T11 | Document `priority`                                       | PA2  | S    | T6          |
+| T6  | [Done] Add `priority` to the task schema and CLI validator | PA2  | S    | —           |
+| T7  | [Done] Round-trip `priority` through the YAML converter    | PA2  | S    | T6          |
+| T8  | [Done] Surface `priority` in the Lesson Builder            | PA2  | M    | T6          |
+| T9  | [Done] Surface `priority` in the teacher live view         | PA2  | M    | T6          |
+| T10 | [Done] Include `priority` in session reports               | PA2  | S    | T6, T1      |
+| T11 | [Done] Document `priority`                                 | PA2  | S    | T6          |
 | T12 | Make `copyCode` hideable and revealable                   | PA1a | M    | —           |
 | T13 | Add a student-initiated reveal control                    | PA1a | S    | T12         |
 | T14 | Record reveals in the session report                      | PA1a | S    | T12, T1     |
@@ -233,7 +233,11 @@ Display-only. No behavioural change: the platform shows the priority, the tutor 
 
 **Context.** A tutor triages live with eight children and no signal about which tasks are safe to drop or which later tasks depend on the one they are about to skip. In the Python Level 1 Lesson 2 session, task 24 — a code task between two attempted code tasks — was skipped by the walkthrough. It was a dependency, not a spare.
 
+**Status update, 22 July 2026.** T6-T11 are complete on branch `codex/platform-phase-4-task-priority`. Priority is validated in CLI and Builder flows, round-trips through YAML, is editable and counted in the Builder, is visible to teachers in live task navigation and report summaries, remains hidden from student views, and is documented in the authoring/runtime references.
+
 ## T6 — Add `priority` to the task schema and CLI validator
+
+**Status: Done, 22 July 2026.** Implemented in `cli/validate.mjs` with shared priority helpers from `src/shared/taskUtils.js`; omitted priority remains valid and defaults to `core` for display/reporting.
 
 **Where to look.** `cli/validate.mjs` — *verified*. Task-level validation runs in the `flat.forEach` loop from line 61. `estimatedMinutes` validation at line 66 is the closest existing precedent for an optional scalar task field.
 
@@ -249,6 +253,8 @@ Display-only. No behavioural change: the platform shows the priority, the tutor 
 
 ## T7 — Round-trip `priority` through the YAML converter
 
+**Status: Done, 22 July 2026.** Confirmed by `cli/yaml-converter.test.js`; explicit `core`/`optional` values survive YAML to JSON to YAML, and omitted priority stays omitted.
+
 **Where to look.** `cli/yaml-converter.mjs` — *verified*. `taskToYamlObject` (line 165) spreads the task and then deletes or renames specific fields, so an unknown field likely passes through untouched in both directions.
 
 **Steps.**
@@ -259,6 +265,8 @@ Display-only. No behavioural change: the platform shows the priority, the tutor 
 
 ## T8 — Surface `priority` in the Lesson Builder
 
+**Status: Done, 22 July 2026.** `src/builder/components/TaskEditor.jsx` exposes a per-task priority control for all task types, and `src/builder/components/TaskList.jsx` shows core/optional totals plus optional badges.
+
 **Where to look.** *Unknown path* — Lesson Builder UI in the platform web app.
 
 **Steps.**
@@ -268,6 +276,8 @@ Display-only. No behavioural change: the platform shows the priority, the tutor 
 **Acceptance criteria.** An author can set priority per task and see the split for the whole lesson without counting manually.
 
 ## T9 — Surface `priority` in the teacher live view
+
+**Status: Done, 22 July 2026.** `src/app/components/TaskNavigator.jsx` marks optional tasks in the teacher live task list. Student-facing navigation/components were not changed.
 
 **Where to look.** *Unknown path* — teacher session UI.
 
@@ -283,6 +293,8 @@ Display-only. No behavioural change: the platform shows the priority, the tutor 
 
 ## T10 — Include `priority` in session reports
 
+**Status: Done, 22 July 2026.** `src/shared/lessonReport.js` adds defaulted `priority` to each `taskSummary` entry, and `TeacherReportModal` labels optional tasks in the summary table.
+
 **Why.** So a report can distinguish "the tutor dropped an optional task as designed" from "the tutor dropped a core task and the lesson is overrunning".
 
 **Steps.** Add `priority` to each `taskSummary` entry.
@@ -290,6 +302,8 @@ Display-only. No behavioural change: the platform shows the priority, the tutor 
 **Acceptance criteria.** A skipped task's summary entry shows whether it was core or optional.
 
 ## T11 — Document `priority`
+
+**Status: Done, 22 July 2026.** Added to `docs/authoring/lesson-schema-yaml.md`, `docs/authoring/lesson-schema.md`, `docs/authoring/AUTHORING_GUIDE.md`, and the session-report shape in `docs/agents/runtime-model.md`.
 
 **Where to look.** `platform-docs/lesson-schema-yaml.md` — *verified*. Add to the **Common Task Fields** table (line 83 onwards), which already documents `estimatedMinutes`, `taskMode`, `check` and `feedbackChecks`.
 

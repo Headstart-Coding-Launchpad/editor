@@ -76,6 +76,15 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     onUpdate({ ...task, [field]: value })
   }
 
+  function setPriority(priority) {
+    if (priority === 'core') {
+      const { priority: _priority, ...rest } = task
+      onUpdate(rest)
+      return
+    }
+    set('priority', priority)
+  }
+
   function handleCopyCodeToggle(enabled) {
     if (enabled) {
       onUpdate({ ...task, copyCode: task.copyCode ?? '' })
@@ -305,6 +314,28 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           }}
           placeholder="e.g. 10"
         />
+      </Field>
+
+      <Field label="Priority">
+        <div className="te-priority-grid">
+          {[
+            { value: 'core', label: 'Core', hint: 'Expected lesson path' },
+            { value: 'optional', label: 'Optional', hint: 'Safe to skip' },
+          ].map(option => {
+            const active = (task.priority ?? 'core') === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'}
+                onClick={() => setPriority(option.value)}
+              >
+                <span className="te-info-type-label">{option.label}</span>
+                <span className="te-info-type-hint">{option.hint}</span>
+              </button>
+            )
+          })}
+        </div>
       </Field>
 
       <Field label="Available in">

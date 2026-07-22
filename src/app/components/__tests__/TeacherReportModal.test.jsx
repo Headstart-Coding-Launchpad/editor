@@ -22,7 +22,7 @@ const report = {
   ],
   taskSummary: [
     {
-      taskId: 1, title: 'Task One', totalStudents: 1, completedCount: 1, completionRate: 1,
+      taskId: 1, title: 'Task One', priority: 'optional', totalStudents: 1, completedCount: 1, completionRate: 1,
       avgAttempts: 2, avgTimeOnTaskMs: 90000, commonFailures: [{ suggestion: 'missing hello', count: 1 }],
     },
   ],
@@ -35,6 +35,7 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText('1/1 (100%)')).toBeInTheDocument()
     expect(screen.getByText('missing hello (1)')).toBeInTheDocument()
     expect(screen.getByText('1m 30s')).toBeInTheDocument()
+    expect(screen.getByText('optional')).toBeInTheDocument()
   })
 
   it('renders override counts and per-student override detail', () => {

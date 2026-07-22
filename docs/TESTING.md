@@ -28,7 +28,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 |---|---|
 | `src/modules/checks.js` | `evaluateSingleCheck` (all 37+ check types dispatched via module evaluators), `evaluateCheckResults`, `normalizeChecks`, `checkRequiresRun`, `checkAllowedForSubmit` |
 | `src/shared/checkHelpers.js` | `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeExactOutput`, `countOutputLines`, `parseCheckValue`, `deepEqual` |
-| `src/shared/taskUtils.js` | `flattenTasks`, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, `updateSubtaskTitles` |
+| `src/shared/taskUtils.js` | `flattenTasks`, priority helpers, estimated-duration helpers, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, `updateSubtaskTitles` |
 | `src/shared/codemirror.js` | `getTabSize`, `getLanguageExtension`, `createBaseExtensions` |
 | `src/modules/html/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |
@@ -38,7 +38,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/shared/topicAudit.js` | Topic-link parsing across draft/final/grouped tasks, proposal matching, unused proposals, and stage/publication blocking |
 | `src/shared/lessonService.js` | Firestore lesson fetch/list helpers, including static JSON fallback for unavailable lesson reads |
 | `src/builder/lessonUtils.js` | Lesson validation messages and exported task JSON normalisation |
-| `cli/structured-input.mjs` | JSON/YAML file-extension handling, stdin auto-detection, and lesson YAML shorthand conversion |
+| `cli/structured-input.mjs`, `cli/yaml-converter.mjs` | JSON/YAML file-extension handling, stdin auto-detection, lesson YAML shorthand conversion, and lesson YAML round-trip preservation |
 | `src/app/studentStorage.js` | Exact localStorage key formats plus saved task/file snapshot reads and writes |
 | `src/app/studentTaskContent.js` | Student saved-work and carry-through selection precedence across Python, HTML, Scratch, filesystem, and electronics |
 | `src/app/studentLiveDisplay.js` | Teacher-live viewing eligibility, displayed workspace selection, and live HTML file conversion |

@@ -191,7 +191,7 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 
-Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`.
+Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`.
 
 Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
 
@@ -241,6 +241,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
     {
       "taskId": 1,
       "title": "Task One",
+      "priority": "core | optional",
       "taskType": "code | quiz | draft",
       "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
       "totalStudents": 12,

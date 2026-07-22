@@ -64,6 +64,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes | string | Markdown shown to students. |
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
+| `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
 | `copyCode` | No | string | Python/HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |

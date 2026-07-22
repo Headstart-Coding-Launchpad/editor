@@ -52,6 +52,23 @@ describe('validateLesson', () => {
     expect(result).toEqual({ errors: [], warnings: [] })
   })
 
+  it('validates task priority values', () => {
+    const valid = validateLesson(lesson('python', [
+      { id: 1, title: 'Core by omission', starterCode: 'print("core")' },
+      { id: 2, title: 'Core explicit', priority: 'core', starterCode: 'print("core")' },
+      { id: 3, title: 'Optional', priority: 'optional', starterCode: 'print("optional")' },
+    ]))
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Stretch',
+      priority: 'stretch',
+      starterCode: 'print("stretch")',
+    }]))
+    expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
+  })
+
   it('validates feedback check fields using the same lesson-type rules', () => {
     const fsResult = validateLesson(lesson('filesystem', [{
       id: 1,
@@ -365,6 +382,7 @@ describe('normalizeTasksForExport', () => {
       title: 'Welcome',
       explainer: 'Hello',
       estimatedMinutes: 2,
+      priority: 'optional',
       starterCode: 'ignored',
     }])).toEqual([{
       id: 1,
@@ -373,6 +391,7 @@ describe('normalizeTasksForExport', () => {
       title: 'Welcome',
       explainer: 'Hello',
       estimatedMinutes: 2,
+      priority: 'optional',
     }])
   })
 

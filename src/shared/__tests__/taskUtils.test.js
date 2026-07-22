@@ -3,6 +3,8 @@ import {
   flattenTasks,
   filterTasksByMode,
   getEstimatedMinutes,
+  getTaskPriority,
+  getTaskPriorityCounts,
   getTotalEstimatedMinutes,
   formatEstimatedMinutes,
   findTaskById,
@@ -79,6 +81,25 @@ describe('estimated task duration helpers', () => {
     expect(formatEstimatedMinutes(15)).toBe('15 min')
     expect(formatEstimatedMinutes(60)).toBe('1 hr')
     expect(formatEstimatedMinutes(75)).toBe('1 hr 15 min')
+  })
+})
+
+describe('task priority helpers', () => {
+  it('defaults omitted and invalid priorities to core for display/reporting', () => {
+    expect(getTaskPriority({})).toBe('core')
+    expect(getTaskPriority({ priority: 'optional' })).toBe('optional')
+    expect(getTaskPriority({ priority: 'stretch' })).toBe('core')
+  })
+
+  it('counts core and optional tasks across groups', () => {
+    const optionalGroup = {
+      ...group,
+      subtasks: [{ ...sub1, priority: 'optional' }, sub2],
+    }
+    expect(getTaskPriorityCounts([{ ...task1, priority: 'optional' }, optionalGroup, task2])).toEqual({
+      core: 2,
+      optional: 2,
+    })
   })
 })
 

@@ -62,6 +62,30 @@ describe('CLI lesson validation', () => {
     expect(result.errors).toEqual([])
   })
 
+  it('validates optional task priority values', () => {
+    const valid = validateLessonForMcp({
+      id: 'priority-demo',
+      type: 'python',
+      title: 'Priority demo',
+      description: 'A lesson with priorities',
+      tasks: [
+        { title: 'Core by omission', starterCode: 'print("core")' },
+        { title: 'Core explicit', priority: 'core', starterCode: 'print("core")' },
+        { title: 'Optional', priority: 'optional', starterCode: 'print("optional")' },
+      ],
+    })
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLessonForMcp({
+      id: 'priority-demo',
+      type: 'python',
+      title: 'Priority demo',
+      description: 'A lesson with priorities',
+      tasks: [{ title: 'Stretch', priority: 'stretch', starterCode: 'print("stretch")' }],
+    })
+    expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
+  })
+
   it('validates class fork metadata and deterministic ids', () => {
     const valid = validateLessonForMcp({
       id: 'python-basics-maple',

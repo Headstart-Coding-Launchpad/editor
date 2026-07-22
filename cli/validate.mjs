@@ -1,6 +1,7 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
+import { isValidTaskPriority, TASK_PRIORITIES } from '../src/shared/taskUtils.js'
 
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
@@ -65,6 +66,9 @@ export function validateLessonForMcp(lesson) {
 
     if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
       errors.push(`Task ${n} estimated time must be a positive whole number of minutes`)
+    }
+    if (task.priority != null && !isValidTaskPriority(task.priority)) {
+      errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
     }
 
     if (task.taskType === 'draft') {

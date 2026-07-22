@@ -1,5 +1,5 @@
 import yaml from 'js-yaml'
-import { flattenTasks } from './taskUtils'
+import { flattenTasks, getTaskPriority } from './taskUtils'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -396,6 +396,7 @@ export function buildSessionReport({ session, lesson }) {
       return {
         taskId: task.id,
         title: task.title ?? `Task ${task.id}`,
+        priority: getTaskPriority(task),
         ...typeFields,
         totalStudents: perStudent.length,
         respondedCount: attemptedStudents.length,
@@ -413,6 +414,7 @@ export function buildSessionReport({ session, lesson }) {
       return {
         taskId: task.id,
         title: task.title ?? `Task ${task.id}`,
+        priority: getTaskPriority(task),
         ...typeFields,
         totalStudents: perStudent.length,
         respondedCount: attemptedStudents.length,
@@ -429,6 +431,7 @@ export function buildSessionReport({ session, lesson }) {
       ...addOverrideSummaryFields({
         taskId: task.id,
         title: task.title ?? `Task ${task.id}`,
+        priority: getTaskPriority(task),
         ...typeFields,
         totalStudents: perStudent.length,
         completedCount,

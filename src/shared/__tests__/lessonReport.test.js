@@ -19,6 +19,7 @@ const lesson = {
     {
       id: 4,
       title: 'Fill Blank',
+      priority: 'optional',
       taskType: 'quiz',
       quizType: 'fill_blank',
       mode: 'type',
@@ -149,6 +150,12 @@ describe('buildSessionReport', () => {
     expect(taskById(report.students[0].tasks, 1)).toMatchObject({ taskType: 'code' })
     expect(taskById(report.students[0].tasks, 3)).toMatchObject({ taskType: 'quiz', quizType: 'multiple_choice' })
     expect(taskById(report.taskSummary, 6)).toMatchObject({ taskType: 'quiz', quizType: 'confidence' })
+  })
+
+  it('adds defaulted priority to task summaries', () => {
+    const report = buildSessionReport({ session, lesson })
+    expect(taskById(report.taskSummary, 1)).toMatchObject({ priority: 'core' })
+    expect(taskById(report.taskSummary, 4)).toMatchObject({ priority: 'optional' })
   })
 
   it('computes checked-task completion, attempts, final result, and failures', () => {

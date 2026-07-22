@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { formatEstimatedMinutes, getTotalEstimatedMinutes } from '../../shared/taskUtils'
+import { formatEstimatedMinutes, getTaskPriorityCounts, getTotalEstimatedMinutes } from '../../shared/taskUtils'
 
 function taskIconType(task) {
   if (task.taskType === 'draft') return 'draft'
@@ -74,6 +74,11 @@ function DraftStatusBadge({ decision }) {
   )
 }
 
+function PriorityBadge({ priority }) {
+  if (priority !== 'optional') return null
+  return <span style={s.priorityBadge}>optional</span>
+}
+
 function removeTaskFromTree(items, taskId) {
   let removed = null
   const next = items.map(item => {
@@ -140,6 +145,7 @@ export default function TaskList({
   const [dragState, setDragState] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
   const totalEstimatedMinutes = getTotalEstimatedMinutes(tasks)
+  const priorityCounts = getTaskPriorityCounts(tasks)
 
   function toggleGroup(groupId) {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }))
@@ -255,6 +261,7 @@ export default function TaskList({
         <div style={s.headerTitle}>
           <span style={s.label}>Tasks</span>
           <span style={s.totalTime}>Total: {formatEstimatedMinutes(totalEstimatedMinutes)}</span>
+          <span style={s.totalTime}>{priorityCounts.core} core, {priorityCounts.optional} optional</span>
         </div>
         <div style={s.headerActions}>
           {onRenumber && (
@@ -375,6 +382,7 @@ export default function TaskList({
                           <span style={s.title}>
                             {subtask.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
                           </span>
+                          <PriorityBadge priority={subtask.priority} />
                           {isSubDraft && <DraftStatusBadge decision={subtask.reviewNote?.decision} />}
                           <div style={s.actions} onClick={e => e.stopPropagation()}>
                             <button style={s.iconBtn} onClick={() => moveSubtaskUp(item.id, j, subtasks)} title="Move up" disabled={j === 0}>▲</button>
@@ -429,6 +437,7 @@ export default function TaskList({
               <span style={s.title}>
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
               </span>
+              <PriorityBadge priority={item.priority} />
               {isDraft && <DraftStatusBadge decision={item.reviewNote?.decision} />}
               <div style={s.actions} onClick={e => e.stopPropagation()}>
                 <button style={s.iconBtn} onClick={() => moveUp(i)} title="Move up" disabled={i === 0}>▲</button>
@@ -463,6 +472,18 @@ const s = {
   label: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.04em' },
   headerTitle: { display: 'flex', flexDirection: 'column', gap: 2 },
   totalTime: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.7rem', opacity: 0.84 },
+  priorityBadge: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    color: '#0369a1',
+    background: '#e0f2fe',
+    border: '1px solid #7dd3fc',
+    borderRadius: 4,
+    padding: '1px 5px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
   headerActions: { display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' },
   addBtn: { fontSize: 11, padding: '4px 8px' },
   renumberBtn: {
