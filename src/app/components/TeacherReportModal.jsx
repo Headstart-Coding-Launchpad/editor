@@ -15,13 +15,66 @@ function renderSubmission(submission) {
   try { return JSON.stringify(submission, null, 2) } catch { return String(submission) }
 }
 
+function formatFinalResult(task) {
+  if (task.finalResult === 'not_attempted' || task.finalResult === 'not attempted') return 'Not attempted'
+  if (task.finalResult === 'not_applicable') return task.completed ? 'Answered' : 'No response'
+  if (task.finalResult === 'overridden_failed') return 'Overridden'
+  if (task.finalResult === 'overridden_unattempted') return 'Skipped'
+  return task.completed ? 'Passed' : 'Failed'
+}
+
+function resultBadgeStyle(task) {
+  if (task.finalResult === 'not_applicable') return task.completed ? s.badgeInfo : s.badgeNone
+  if (task.finalResult === 'not_attempted' || task.finalResult === 'not attempted') return s.badgeNone
+  if (task.finalResult === 'overridden_failed' || task.finalResult === 'overridden_unattempted') return s.badgeInfo
+  return task.completed ? s.badgePass : s.badgeFail
+}
+
+function formatAttemptStatus(attempt) {
+  if (attempt.passed == null) return 'Response'
+  return attempt.passed ? 'Passed' : 'Failed'
+}
+
+function attemptBadgeStyle(attempt) {
+  if (attempt.passed == null) return s.badgeInfo
+  return attempt.passed ? s.badgePass : s.badgeFail
+}
+
+function formatSummaryCompletion(task) {
+  if (typeof task.completionRate === 'number') {
+    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)`
+  }
+  if (typeof task.respondedCount === 'number') {
+    return `${task.respondedCount}/${task.totalStudents} responded`
+  }
+  return '-'
+}
+
+function formatSummaryFailures(task) {
+  const parts = []
+  const commonFailures = task.commonFailures ?? []
+  if (commonFailures.length > 0) {
+    parts.push(commonFailures.map(f => `${f.suggestion} (${f.count})`).join('; '))
+  }
+  if (task.blankFailures?.length > 0) {
+    parts.push(`Blank misses: ${task.blankFailures.map(f => `${f.blankId} (${f.count})`).join(', ')}`)
+  }
+  if (task.pairFailures?.length > 0) {
+    parts.push(`Pair misses: ${task.pairFailures.map(f => `${f.pairId} (${f.count})`).join(', ')}`)
+  }
+  if (task.ratingDistribution) {
+    parts.push(`Ratings: ${Object.entries(task.ratingDistribution).map(([rating, count]) => `${rating}:${count}`).join(', ')}`)
+  }
+  return parts.length > 0 ? parts.join('; ') : '-'
+}
+
 function StudentTaskRow({ task }) {
   const [expanded, setExpanded] = useState(false)
   return (
     <div style={s.taskRow}>
       <button style={s.taskRowHeader} onClick={() => setExpanded(v => !v)}>
-        <span style={{ ...s.badge, ...(task.completed ? s.badgePass : task.finalResult === 'failed' ? s.badgeFail : s.badgeNone) }}>
-          {task.finalResult === 'not attempted' ? 'Not attempted' : task.completed ? 'Passed' : 'Failed'}
+        <span style={{ ...s.badge, ...resultBadgeStyle(task) }}>
+          {formatFinalResult(task)}
         </span>
         <span style={s.taskTitle}>{task.title}</span>
         {(task.attempts > 0 || task.timeOnTaskMs != null) && (
@@ -38,8 +91,8 @@ function StudentTaskRow({ task }) {
           {task.distinctAttempts.map((a, i) => (
             <div key={i} style={s.attemptItem}>
               <div style={s.attemptHeader}>
-                <span style={{ ...s.badge, ...(a.passed ? s.badgePass : s.badgeFail) }}>
-                  Attempt {a.attemptNumber}{a.retries > 0 ? ` (retried ${a.retries}×)` : ''}
+                <span style={{ ...s.badge, ...attemptBadgeStyle(a) }}>
+                  {formatAttemptStatus(a)} {a.attemptNumber}{a.retries > 0 ? ` (retried ${a.retries}x)` : ''}
                 </span>
                 {a.suggestion && <span style={s.suggestion}>{a.suggestion}</span>}
               </div>
@@ -124,12 +177,10 @@ export default function TeacherReportModal({ report, onClose }) {
                 {displayReport.taskSummary.map(task => (
                   <tr key={task.taskId}>
                     <td style={s.td}>{task.title}</td>
-                    <td style={s.td}>{task.completedCount}/{task.totalStudents} ({Math.round(task.completionRate * 100)}%)</td>
-                    <td style={s.td}>{task.avgAttempts}</td>
+                    <td style={s.td}>{formatSummaryCompletion(task)}</td>
+                    <td style={s.td}>{task.avgAttempts ?? '-'}</td>
                     <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
-                    <td style={s.td}>
-                      {task.commonFailures.length === 0 ? '—' : task.commonFailures.map(f => `${f.suggestion} (${f.count})`).join('; ')}
-                    </td>
+                    <td style={s.td}>{formatSummaryFailures(task)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -199,6 +250,7 @@ const s = {
   badgePass: { background: '#dcfce7', color: '#15803d' },
   badgeFail: { background: '#fee2e2', color: '#b91c1c' },
   badgeNone: { background: '#f3f4f6', color: '#6b7280' },
+  badgeInfo: { background: '#dbeafe', color: '#1d4ed8' },
   attemptsList: { padding: '4px 4px 8px 20px', display: 'flex', flexDirection: 'column', gap: 8 },
   attemptItem: { display: 'flex', flexDirection: 'column', gap: 4 },
   attemptHeader: { display: 'flex', alignItems: 'center', gap: 8 },

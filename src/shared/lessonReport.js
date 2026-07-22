@@ -3,12 +3,186 @@ import { flattenTasks } from './taskUtils'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
-function isGradedTask(task) {
-  return !!task && task.taskType !== 'information' && task.check != null
-}
-
 function getAnonymousStudentLabel(index) {
   return `Student ${index + 1}`
+}
+
+function isReportableTask(task) {
+  return !!task && task.taskType !== 'information'
+}
+
+function getReportTaskType(task) {
+  if (task?.taskType === 'quiz') return 'quiz'
+  if (task?.taskType === 'draft') return 'draft'
+  return 'code'
+}
+
+function getTypeFields(task) {
+  const fields = { taskType: getReportTaskType(task) }
+  if (task?.taskType === 'quiz') fields.quizType = task.quizType ?? 'multiple_choice'
+  return fields
+}
+
+function isNotApplicableTask(task) {
+  return task?.taskType === 'quiz' && (
+    task.quizType === 'confidence'
+    || (task.quizType === 'short_answer' && task.check == null)
+  )
+}
+
+function parseAnswerState(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value
+  if (typeof value === 'string' && value) {
+    try {
+      const parsed = JSON.parse(value)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
+    } catch {}
+  }
+  return {}
+}
+
+function textMatches(value, expected) {
+  return String(value ?? '').trim().toLowerCase() === String(expected ?? '').trim().toLowerCase()
+}
+
+function normalizeFillBlankSubmission(task, submission) {
+  const state = parseAnswerState(submission)
+  const hasDetailedShape = (task?.blanks ?? []).some(blank => {
+    const entry = state[blank.id]
+    return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
+  })
+  if (hasDetailedShape) return state
+
+  const mode = task?.mode ?? 'drag'
+  const tiles = [
+    ...(task?.blanks ?? []).map(blank => ({ id: blank.id, text: blank.answer })),
+    ...(task?.distractors ?? []).map(distractor => ({ id: distractor.id, text: distractor.text })),
+  ]
+  return Object.fromEntries((task?.blanks ?? []).map(blank => {
+    const rawValue = state[blank.id]
+    const value = mode === 'drag'
+      ? (tiles.find(tile => tile.id === rawValue)?.text ?? rawValue ?? '')
+      : (rawValue ?? '')
+    const expected = blank.answer ?? ''
+    const correct = mode === 'drag'
+      ? String(value ?? '') === String(expected)
+      : textMatches(value, expected)
+    return [blank.id, { value, expected, correct }]
+  }))
+}
+
+function normalizeMatchSubmission(task, submission) {
+  const state = parseAnswerState(submission)
+  const hasDetailedShape = (task?.pairs ?? []).some(pair => {
+    const entry = state[pair.id]
+    return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
+  })
+  if (hasDetailedShape) return state
+
+  return Object.fromEntries((task?.pairs ?? []).map(pair => {
+    const placedId = state[pair.id]
+    const placedPair = (task?.pairs ?? []).find(candidate => candidate.id === placedId)
+    return [pair.id, {
+      prompt: pair.prompt ?? '',
+      value: placedPair?.answer ?? placedId ?? '',
+      expected: pair.answer ?? '',
+      correct: placedId === pair.id,
+    }]
+  }))
+}
+
+function normalizeConfidenceSubmission(submission) {
+  const rating = Number(submission)
+  return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : submission
+}
+
+function normalizeSubmission(task, submission) {
+  if (task?.taskType !== 'quiz') return submission ?? null
+  if (task.quizType === 'fill_blank') return normalizeFillBlankSubmission(task, submission)
+  if (task.quizType === 'match') return normalizeMatchSubmission(task, submission)
+  if (task.quizType === 'confidence') return normalizeConfidenceSubmission(submission)
+  return submission ?? null
+}
+
+function entryReportPassed(task, entry) {
+  if (isNotApplicableTask(task)) return null
+  return !!entry.passed
+}
+
+function getFinalResult(task, entries) {
+  if (entries.length === 0) return 'not_attempted'
+  if (isNotApplicableTask(task)) return 'not_applicable'
+  return entries.some(entry => entry.passed) ? 'passed' : 'failed'
+}
+
+function getCompleted(task, entries) {
+  if (entries.length === 0) return false
+  if (isNotApplicableTask(task)) return true
+  return entries.some(entry => entry.passed)
+}
+
+function countValues(values) {
+  const counts = new Map()
+  for (const value of values) {
+    const key = String(value ?? '')
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([value, count]) => ({ value, count }))
+}
+
+function summarizeFillBlankFailures(task, perStudent) {
+  const failuresByBlank = new Map()
+  for (const t of perStudent) {
+    for (const attempt of t.distinctAttempts) {
+      const submission = normalizeFillBlankSubmission(task, attempt.submission)
+      for (const blank of task.blanks ?? []) {
+        const entry = submission[blank.id]
+        if (!entry || entry.correct) continue
+        const current = failuresByBlank.get(blank.id) ?? { expected: blank.answer ?? '', values: [] }
+        current.values.push(entry.value)
+        failuresByBlank.set(blank.id, current)
+      }
+    }
+  }
+  return Array.from(failuresByBlank.entries())
+    .map(([blankId, info]) => ({
+      blankId,
+      expected: info.expected,
+      count: info.values.length,
+      values: countValues(info.values),
+    }))
+    .sort((a, b) => b.count - a.count)
+}
+
+function summarizeMatchFailures(task, perStudent) {
+  const failuresByPair = new Map()
+  for (const t of perStudent) {
+    for (const attempt of t.distinctAttempts) {
+      const submission = normalizeMatchSubmission(task, attempt.submission)
+      for (const pair of task.pairs ?? []) {
+        const entry = submission[pair.id]
+        if (!entry || entry.correct) continue
+        const current = failuresByPair.get(pair.id) ?? {
+          prompt: pair.prompt ?? '',
+          expected: pair.answer ?? '',
+          values: [],
+        }
+        current.values.push(entry.value)
+        failuresByPair.set(pair.id, current)
+      }
+    }
+  }
+  return Array.from(failuresByPair.entries())
+    .map(([pairId, info]) => ({
+      pairId,
+      prompt: info.prompt,
+      expected: info.expected,
+      count: info.values.length,
+      values: countValues(info.values),
+    }))
+    .sort((a, b) => b.count - a.count)
 }
 
 export function anonymizeSessionReport(report) {
@@ -30,10 +204,10 @@ export function anonymizeSessionReport(report) {
 }
 
 // Combines a (possibly still-live) RTDB session snapshot with the lesson's task
-// list into a plain, serializable report object. Only tasks with a check are
-// included — information tasks have no pass/fail/attempts concept.
+// list into a plain, serializable report object. Information tasks are excluded
+// because they have no student interaction to report.
 export function buildSessionReport({ session, lesson }) {
-  const tasks = flattenTasks(lesson?.tasks ?? []).filter(isGradedTask)
+  const tasks = flattenTasks(lesson?.tasks ?? []).filter(isReportableTask)
   const studentsSnapshot = session?.students ?? {}
   const attemptLog = session?.attemptLog ?? {}
   const anonymousIds = Array.from(new Set([...Object.keys(studentsSnapshot), ...Object.keys(attemptLog)]))
@@ -47,7 +221,7 @@ export function buildSessionReport({ session, lesson }) {
       const entries = Object.values(studentAttempts[task.id] ?? {})
         .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
       const attempts = entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
-      const completed = entries.some(entry => entry.passed)
+      const completed = getCompleted(task, entries)
 
       // Time on task: elapsed time between the task becoming current and either the
       // moment a passing attempt was logged, or (if not yet completed) the latest attempt.
@@ -63,16 +237,17 @@ export function buildSessionReport({ session, lesson }) {
       return {
         taskId: task.id,
         title: task.title ?? `Task ${task.id}`,
+        ...getTypeFields(task),
         completed,
         attempts,
-        finalResult: entries.length === 0 ? 'not attempted' : (completed ? 'passed' : 'failed'),
+        finalResult: getFinalResult(task, entries),
         timeOnTaskMs,
         distinctAttempts: entries.map(entry => ({
           attemptNumber: entry.attemptNumber,
-          passed: !!entry.passed,
+          passed: entryReportPassed(task, entry),
           retries: entry.retries ?? 0,
           suggestion: entry.suggestion || null,
-          submission: entry.submission ?? null,
+          submission: normalizeSubmission(task, entry.submission),
         })),
       }
     })
@@ -85,9 +260,10 @@ export function buildSessionReport({ session, lesson }) {
 
   const taskSummary = tasks.map(task => {
     const perStudent = students.map(s => s.tasks.find(t => t.taskId === task.id)).filter(Boolean)
-    const attemptedStudents = perStudent.filter(t => t.finalResult !== 'not attempted')
+    const attemptedStudents = perStudent.filter(t => t.finalResult !== 'not_attempted')
     const completedCount = perStudent.filter(t => t.completed).length
     const totalAttempts = perStudent.reduce((sum, t) => sum + t.attempts, 0)
+    const typeFields = getTypeFields(task)
 
     const failureCounts = new Map()
     for (const t of perStudent) {
@@ -106,9 +282,43 @@ export function buildSessionReport({ session, lesson }) {
       ? Math.round(timedStudents.reduce((sum, t) => sum + t.timeOnTaskMs, 0) / timedStudents.length)
       : null
 
-    return {
+    if (task.taskType === 'quiz' && task.quizType === 'confidence') {
+      const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+      for (const t of perStudent) {
+        const latest = t.distinctAttempts[t.distinctAttempts.length - 1]
+        const rating = Number(latest?.submission)
+        if (Number.isInteger(rating) && rating >= 1 && rating <= 5) {
+          ratingDistribution[rating] += 1
+        }
+      }
+      return {
+        taskId: task.id,
+        title: task.title ?? `Task ${task.id}`,
+        ...typeFields,
+        totalStudents: perStudent.length,
+        respondedCount: attemptedStudents.length,
+        ratingDistribution,
+        avgTimeOnTaskMs,
+        commonFailures: [],
+      }
+    }
+
+    if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null) {
+      return {
+        taskId: task.id,
+        title: task.title ?? `Task ${task.id}`,
+        ...typeFields,
+        totalStudents: perStudent.length,
+        respondedCount: attemptedStudents.length,
+        avgTimeOnTaskMs,
+        commonFailures: [],
+      }
+    }
+
+    const summary = {
       taskId: task.id,
       title: task.title ?? `Task ${task.id}`,
+      ...typeFields,
       totalStudents: perStudent.length,
       completedCount,
       completionRate: perStudent.length ? Number((completedCount / perStudent.length).toFixed(2)) : 0,
@@ -116,6 +326,13 @@ export function buildSessionReport({ session, lesson }) {
       avgTimeOnTaskMs,
       commonFailures,
     }
+    if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
+      summary.blankFailures = summarizeFillBlankFailures(task, perStudent)
+    }
+    if (task.taskType === 'quiz' && task.quizType === 'match') {
+      summary.pairFailures = summarizeMatchFailures(task, perStudent)
+    }
+    return summary
   })
 
   return {

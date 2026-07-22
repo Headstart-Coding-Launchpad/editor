@@ -147,6 +147,7 @@ Student writes:
 - When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
+- Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
@@ -165,6 +166,8 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
+
+Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns.
 
 Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes the live session's `students`/`attemptLog` data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks (no `check`) are excluded — there is nothing to grade.
 
@@ -189,12 +192,14 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
         {
           "taskId": 1,
           "title": "Task One",
+          "taskType": "code | quiz | draft",
+          "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
           "completed": true,
           "attempts": 3,
-          "finalResult": "passed | failed | not attempted",
+          "finalResult": "passed | failed | not_attempted | not_applicable | overridden_failed | overridden_unattempted",
           "timeOnTaskMs": "number | null",
           "distinctAttempts": [
-            { "attemptNumber": 1, "passed": false, "retries": 1, "suggestion": "string | null", "submission": "string | object | null" }
+            { "attemptNumber": 1, "passed": "boolean | null", "retries": 1, "suggestion": "string | null", "submission": "string | object | number | null" }
           ]
         }
       ]
@@ -204,12 +209,18 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
     {
       "taskId": 1,
       "title": "Task One",
+      "taskType": "code | quiz | draft",
+      "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
       "totalStudents": 12,
       "completedCount": 9,
       "completionRate": 0.75,
       "avgAttempts": 2.3,
       "avgTimeOnTaskMs": "number | null",
-      "commonFailures": [{ "suggestion": "string", "count": 4 }]
+      "commonFailures": [{ "suggestion": "string", "count": 4 }],
+      "respondedCount": "number (confidence/open short-answer summaries)",
+      "ratingDistribution": { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+      "blankFailures": [{ "blankId": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
+      "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }]
     }
   ]
 }

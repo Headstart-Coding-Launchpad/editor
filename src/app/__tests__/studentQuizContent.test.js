@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getQuizSuggestion } from '../studentQuizContent'
+import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 
 const mcTask = {
   quizType: 'multiple_choice',
@@ -80,5 +80,63 @@ describe('getQuizSuggestion', () => {
       const task = { quizType: 'fill_blank', check: { hint: 'fill hint' } }
       expect(getQuizSuggestion(task, [])).toBe('fill hint')
     })
+  })
+})
+
+describe('buildQuizSubmission', () => {
+  it('keeps multiple choice submissions as the selected option id', () => {
+    expect(buildQuizSubmission(mcTask, 'b')).toBe('b')
+  })
+
+  it('records typed fill-blank detail keyed by blank id', () => {
+    const task = {
+      quizType: 'fill_blank',
+      mode: 'type',
+      blanks: [
+        { id: 'name', answer: 'Ada' },
+        { id: 'age', answer: '12' },
+      ],
+    }
+
+    expect(buildQuizSubmission(task, { name: 'ada', age: '13' })).toEqual({
+      name: { value: 'ada', expected: 'Ada', correct: true },
+      age: { value: '13', expected: '12', correct: false },
+    })
+  })
+
+  it('records drag fill-blank tile text instead of tile ids', () => {
+    const task = {
+      quizType: 'fill_blank',
+      mode: 'drag',
+      blanks: [{ id: 'blank-1', answer: 'print' }],
+      distractors: [{ id: 'd1', text: 'input' }],
+    }
+
+    expect(buildQuizSubmission(task, { 'blank-1': 'd1' })).toEqual({
+      'blank-1': { value: 'input', expected: 'print', correct: false },
+    })
+  })
+
+  it('records match detail keyed by pair id', () => {
+    const task = {
+      quizType: 'match',
+      pairs: [
+        { id: 'p1', prompt: 'Shows text', answer: 'print()' },
+        { id: 'p2', prompt: 'Gets input', answer: 'input()' },
+      ],
+    }
+
+    expect(buildQuizSubmission(task, { p1: 'p2', p2: 'p2' })).toEqual({
+      p1: { prompt: 'Shows text', value: 'input()', expected: 'print()', correct: false },
+      p2: { prompt: 'Gets input', value: 'input()', expected: 'input()', correct: true },
+    })
+  })
+
+  it('records confidence as a numeric rating', () => {
+    expect(buildQuizSubmission({ quizType: 'confidence' }, '4')).toBe(4)
+  })
+
+  it('records short answers as text', () => {
+    expect(buildQuizSubmission({ quizType: 'short_answer' }, 'I think print shows text')).toBe('I think print shows text')
   })
 })

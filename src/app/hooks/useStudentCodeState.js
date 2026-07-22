@@ -8,7 +8,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
 import { selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
-import { getQuizSuggestion } from '../studentQuizContent'
+import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
@@ -1304,7 +1304,7 @@ export function useStudentCodeState({
       })
     }
     if (!teacherPresentation && phase === 'lesson') {
-      logAttempt(actor.anonymousId, currentTaskId, { submission: serializedAnswer, passed, suggestion })
+      logAttempt(actor.anonymousId, currentTaskId, { submission: buildQuizSubmission(task, answer), passed, suggestion })
     }
   }
 

@@ -6,8 +6,39 @@ const lesson = {
   id: 'demo-lesson',
   title: 'Demo Lesson',
   tasks: [
-    { id: 1, title: 'Task One', check: { type: 'output_contains', value: 'hello' } },
+    { id: 1, title: 'Code Task', check: { type: 'output_contains', value: 'hello' } },
     { id: 2, title: 'Just Info', taskType: 'information' },
+    {
+      id: 3,
+      title: 'Multiple Choice',
+      taskType: 'quiz',
+      quizType: 'multiple_choice',
+      options: [{ id: 'a', text: 'Yes' }, { id: 'b', text: 'No' }],
+      check: { type: 'answer_equals', value: 'a' },
+    },
+    {
+      id: 4,
+      title: 'Fill Blank',
+      taskType: 'quiz',
+      quizType: 'fill_blank',
+      mode: 'type',
+      blanks: [
+        { id: 'name', answer: 'Ada' },
+        { id: 'language', answer: 'Python' },
+      ],
+    },
+    {
+      id: 5,
+      title: 'Match',
+      taskType: 'quiz',
+      quizType: 'match',
+      pairs: [
+        { id: 'print', prompt: 'Shows text', answer: 'print()' },
+        { id: 'input', prompt: 'Gets text', answer: 'input()' },
+      ],
+    },
+    { id: 6, title: 'Confidence', taskType: 'quiz', quizType: 'confidence' },
+    { id: 7, title: 'Open Answer', taskType: 'quiz', quizType: 'short_answer' },
   ],
 }
 
@@ -15,7 +46,7 @@ const session = {
   lessonId: 'demo-lesson',
   startedAt: 1000,
   endedAt: 2000,
-  taskStartTimes: { 1: 1000 },
+  taskStartTimes: { 1: 1000, 3: 1000, 4: 1000, 5: 1000, 6: 1000, 7: 1000 },
   students: {
     alice: { displayName: 'Alice' },
     bob: { displayName: 'Bob' },
@@ -26,10 +57,71 @@ const session = {
         k1: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 1, loggedAt: 1100 },
         k2: { submission: 'print("hello")', passed: true, suggestion: null, attemptNumber: 2, retries: 0, loggedAt: 1300, passedAt: 1300 },
       },
+      3: {
+        k3: { submission: 'a', passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1150, passedAt: 1150 },
+      },
+      4: {
+        k4: {
+          submission: {
+            name: { value: 'Ada', expected: 'Ada', correct: true },
+            language: { value: 'JavaScript', expected: 'Python', correct: false },
+          },
+          passed: false,
+          suggestion: 'Not quite right',
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1160,
+        },
+        k5: {
+          submission: {
+            name: { value: 'Ada', expected: 'Ada', correct: true },
+            language: { value: 'Python', expected: 'Python', correct: true },
+          },
+          passed: true,
+          suggestion: null,
+          attemptNumber: 2,
+          retries: 0,
+          loggedAt: 1180,
+          passedAt: 1180,
+        },
+      },
+      5: {
+        k6: {
+          submission: {
+            print: { prompt: 'Shows text', value: 'input()', expected: 'print()', correct: false },
+            input: { prompt: 'Gets text', value: 'input()', expected: 'input()', correct: true },
+          },
+          passed: false,
+          suggestion: 'Not quite right',
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1190,
+        },
+      },
+      6: {
+        k7: { submission: 3, passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1210, passedAt: 1210 },
+        k8: { submission: 4, passed: true, suggestion: null, attemptNumber: 2, retries: 0, loggedAt: 1220, passedAt: 1220 },
+      },
+      7: {
+        k9: { submission: 'It prints text.', passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1230, passedAt: 1230 },
+      },
     },
     bob: {
       1: {
-        k3: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 0, loggedAt: 1200 },
+        k10: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 0, loggedAt: 1200 },
+      },
+      4: {
+        k11: {
+          submission: JSON.stringify({ name: 'Ada', language: 'JavaScript' }),
+          passed: false,
+          suggestion: 'Not quite right',
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1260,
+        },
+      },
+      6: {
+        k12: { submission: '5', passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1270, passedAt: 1270 },
       },
     },
   },
@@ -39,79 +131,137 @@ function studentByLabel(report, label) {
   return report.students.find(s => s.studentLabel === label)
 }
 
+function taskById(items, taskId) {
+  return items.find(t => t.taskId === taskId)
+}
+
 describe('buildSessionReport', () => {
-  it('excludes information tasks (no check to grade)', () => {
+  it('excludes information tasks and includes check-less quiz tasks', () => {
     const report = buildSessionReport({ session, lesson })
-    expect(report.taskSummary.map(t => t.taskId)).toEqual([1])
+    expect(report.taskSummary.map(t => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
     for (const student of report.students) {
-      expect(student.tasks.map(t => t.taskId)).toEqual([1])
+      expect(student.tasks.map(t => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
     }
   })
 
-  it('computes per-student completion, attempts, and final result', () => {
+  it('adds explicit taskType and quizType fields', () => {
+    const report = buildSessionReport({ session, lesson })
+    expect(taskById(report.students[0].tasks, 1)).toMatchObject({ taskType: 'code' })
+    expect(taskById(report.students[0].tasks, 3)).toMatchObject({ taskType: 'quiz', quizType: 'multiple_choice' })
+    expect(taskById(report.taskSummary, 6)).toMatchObject({ taskType: 'quiz', quizType: 'confidence' })
+  })
+
+  it('computes checked-task completion, attempts, final result, and failures', () => {
     const report = buildSessionReport({ session, lesson })
     const alice = studentByLabel(report, 'Student 1')
     const bob = studentByLabel(report, 'Student 2')
 
-    expect(alice.tasks[0]).toMatchObject({ completed: true, attempts: 3, finalResult: 'passed' })
-    expect(bob.tasks[0]).toMatchObject({ completed: false, attempts: 1, finalResult: 'failed' })
+    expect(taskById(alice.tasks, 1)).toMatchObject({ completed: true, attempts: 3, finalResult: 'passed' })
+    expect(taskById(bob.tasks, 1)).toMatchObject({ completed: false, attempts: 1, finalResult: 'failed' })
+    expect(taskById(bob.tasks, 3)).toMatchObject({ completed: false, attempts: 0, finalResult: 'not_attempted' })
+    expect(taskById(report.taskSummary, 1).commonFailures).toEqual([{ suggestion: 'missing hello', count: 2 }])
   })
 
   it('preserves distinct attempts with submission and retry counts', () => {
     const report = buildSessionReport({ session, lesson })
-    const alice = studentByLabel(report, 'Student 1')
-    expect(alice.tasks[0].distinctAttempts).toEqual([
+    const aliceCode = taskById(studentByLabel(report, 'Student 1').tasks, 1)
+    expect(aliceCode.distinctAttempts).toEqual([
       { attemptNumber: 1, passed: false, retries: 1, suggestion: 'missing hello', submission: 'print("hi")' },
       { attemptNumber: 2, passed: true, retries: 0, suggestion: null, submission: 'print("hello")' },
     ])
   })
 
-  it('aggregates a task summary across the class', () => {
+  it('records fill-blank submissions and summarizes missed blanks', () => {
     const report = buildSessionReport({ session, lesson })
-    const summary = report.taskSummary[0]
+    const aliceFill = taskById(studentByLabel(report, 'Student 1').tasks, 4)
+    expect(aliceFill.distinctAttempts[0].submission).toEqual({
+      name: { value: 'Ada', expected: 'Ada', correct: true },
+      language: { value: 'JavaScript', expected: 'Python', correct: false },
+    })
+
+    expect(taskById(report.taskSummary, 4).blankFailures).toEqual([
+      {
+        blankId: 'language',
+        expected: 'Python',
+        count: 2,
+        values: [{ value: 'JavaScript', count: 2 }],
+      },
+    ])
+  })
+
+  it('records match submissions and summarizes missed pairs', () => {
+    const report = buildSessionReport({ session, lesson })
+    const aliceMatch = taskById(studentByLabel(report, 'Student 1').tasks, 5)
+    expect(aliceMatch.distinctAttempts[0].submission).toEqual({
+      print: { prompt: 'Shows text', value: 'input()', expected: 'print()', correct: false },
+      input: { prompt: 'Gets text', value: 'input()', expected: 'input()', correct: true },
+    })
+
+    expect(taskById(report.taskSummary, 5).pairFailures).toEqual([
+      {
+        pairId: 'print',
+        prompt: 'Shows text',
+        expected: 'print()',
+        count: 1,
+        values: [{ value: 'input()', count: 1 }],
+      },
+    ])
+  })
+
+  it('reports confidence as not applicable with a rating distribution', () => {
+    const report = buildSessionReport({ session, lesson })
+    const aliceConfidence = taskById(studentByLabel(report, 'Student 1').tasks, 6)
+    expect(aliceConfidence).toMatchObject({ completed: true, finalResult: 'not_applicable' })
+    expect(aliceConfidence.distinctAttempts).toEqual([
+      { attemptNumber: 1, passed: null, retries: 0, suggestion: null, submission: 3 },
+      { attemptNumber: 2, passed: null, retries: 0, suggestion: null, submission: 4 },
+    ])
+    expect(taskById(report.taskSummary, 6)).toMatchObject({
+      totalStudents: 2,
+      respondedCount: 2,
+      ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 1, 5: 1 },
+    })
+  })
+
+  it('reports open short-answer as not applicable once answered', () => {
+    const report = buildSessionReport({ session, lesson })
+    const aliceShort = taskById(studentByLabel(report, 'Student 1').tasks, 7)
+    const bobShort = taskById(studentByLabel(report, 'Student 2').tasks, 7)
+    expect(aliceShort).toMatchObject({ completed: true, finalResult: 'not_applicable' })
+    expect(aliceShort.distinctAttempts[0]).toMatchObject({ passed: null, submission: 'It prints text.' })
+    expect(bobShort).toMatchObject({ completed: false, finalResult: 'not_attempted' })
+    expect(taskById(report.taskSummary, 7)).toMatchObject({ respondedCount: 1, totalStudents: 2 })
+  })
+
+  it('computes task summary across the class for checked tasks', () => {
+    const report = buildSessionReport({ session, lesson })
+    const summary = taskById(report.taskSummary, 1)
     expect(summary.totalStudents).toBe(2)
     expect(summary.completedCount).toBe(1)
     expect(summary.completionRate).toBe(0.5)
     expect(summary.avgAttempts).toBe(2)
-    expect(summary.commonFailures).toEqual([{ suggestion: 'missing hello', count: 2 }])
+    expect(summary.avgTimeOnTaskMs).toBe(250)
   })
 
-  it('computes time on task from taskStartTimes to the passing attempt (or latest attempt if not completed)', () => {
+  it('computes time on task from taskStartTimes to pass or latest attempt', () => {
     const report = buildSessionReport({ session, lesson })
     const alice = studentByLabel(report, 'Student 1')
     const bob = studentByLabel(report, 'Student 2')
-    // Alice's task started at 1000, passed at 1300 -> 300ms on task
-    expect(alice.tasks[0].timeOnTaskMs).toBe(300)
-    // Bob hasn't passed; his latest (only) attempt was logged at 1200 -> 200ms so far
-    expect(bob.tasks[0].timeOnTaskMs).toBe(200)
-  })
-
-  it('averages time on task across students who have a value', () => {
-    const report = buildSessionReport({ session, lesson })
-    expect(report.taskSummary[0].avgTimeOnTaskMs).toBe(250)
+    expect(taskById(alice.tasks, 1).timeOnTaskMs).toBe(300)
+    expect(taskById(bob.tasks, 1).timeOnTaskMs).toBe(200)
   })
 
   it('leaves time on task null when the task never started or no attempt was logged', () => {
     const withoutStart = { ...session, taskStartTimes: {} }
     const report = buildSessionReport({ session: withoutStart, lesson })
-    expect(studentByLabel(report, 'Student 1').tasks[0].timeOnTaskMs).toBeNull()
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).timeOnTaskMs).toBeNull()
 
     const withExtraStudent = {
       ...session,
       students: { ...session.students, cara: { displayName: 'Cara' } },
     }
     const withCara = buildSessionReport({ session: withExtraStudent, lesson })
-    expect(studentByLabel(withCara, 'Student 3').tasks[0].timeOnTaskMs).toBeNull()
-  })
-
-  it('treats a student with no attemptLog entry as not attempted', () => {
-    const withExtraStudent = {
-      ...session,
-      students: { ...session.students, cara: { displayName: 'Cara' } },
-    }
-    const report = buildSessionReport({ session: withExtraStudent, lesson })
-    const cara = studentByLabel(report, 'Student 3')
-    expect(cara.tasks[0]).toMatchObject({ completed: false, attempts: 0, finalResult: 'not attempted' })
+    expect(taskById(studentByLabel(withCara, 'Student 3').tasks, 1).timeOnTaskMs).toBeNull()
   })
 
   it('does not include student names or anonymous IDs', () => {
