@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 
-export default function IframePreview({ src, iframeRef, height = 300, fill = false, leadingActions = null, rightActions = null }) {
+export default function IframePreview({ src, iframeRef, height = 300, fill = false, leadingActions = null, rightActions = null, onConsoleError }) {
   const [tab, setTab] = useState('preview')
   const [logs, setLogs] = useState([])
   const logEndRef = useRef(null)
@@ -23,10 +23,11 @@ export default function IframePreview({ src, iframeRef, height = 300, fill = fal
         level: e.data.level,
         args: e.data.args,
       }])
+      if (e.data.level === 'error') onConsoleError?.(src)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [iframeRef])
+  }, [iframeRef, onConsoleError, src])
 
   const wrapStyle = fill
     ? { ...s.wrap, flex: 1, minHeight: 0, flexShrink: 1 }

@@ -17,6 +17,7 @@ import {
   buildStageOptions,
   getStageRole,
   getRevealableStages,
+  getNextRevealableStage,
 } from '../taskUtils.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -457,6 +458,21 @@ describe('buildStageOptions', () => {
       { stage: task.codeStages[0], index: 0 },
       { stage: task.codeStages[1], index: 1 },
     ])
+  })
+
+  it('selects the next reference stage in authored order', () => {
+    const task = {
+      codeStages: [
+        { label: 'First reference', revealable: true },
+        { label: 'Manual stage' },
+        { label: 'Second reference', revealable: true },
+      ],
+    }
+
+    expect(getNextRevealableStage(task, [])).toEqual({ stage: task.codeStages[0], index: 0 })
+    expect(getNextRevealableStage(task, [0])).toEqual({ stage: task.codeStages[2], index: 2 })
+    expect(getNextRevealableStage(task, [0, 2])).toBeNull()
+    expect(getNextRevealableStage(task, [2])).toBeNull()
   })
 
   it('returns [starter] when task has no stages and no complete', () => {

@@ -1,25 +1,20 @@
 import React from 'react'
 import { createEvent, fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import SupportStagePanel from '../SupportStagePanel'
 
 describe('SupportStagePanel', () => {
-  it('renders a reveal control before showing the stage content', async () => {
-    const user = userEvent.setup()
-    const onReveal = vi.fn()
+  it('does not show its reference content until its parent marks the stage revealed', () => {
     render(
       <SupportStagePanel
         stage={{ label: 'With a name', code: 'name = "Ada"' }}
         lessonType="python"
         revealed={false}
-        onReveal={onReveal}
       />,
     )
 
     expect(screen.queryByText('name = "Ada"')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /show reference/i }))
-    expect(onReveal).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: /show reference/i })).not.toBeInTheDocument()
   })
 
   it('shows revealed code and blocks copy-like browser actions', () => {

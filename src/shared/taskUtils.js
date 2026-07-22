@@ -45,6 +45,15 @@ export function getRevealableStages(task) {
     .filter(({ stage }) => isRevealableStage(stage))
 }
 
+// Returns the revealable stage after the latest stage already shown. This keeps
+// support references progressing in authored stage order, even when
+// non-revealable stages appear between them.
+export function getNextRevealableStage(task, revealedStageIndexes = []) {
+  const revealed = revealedStageIndexes.map(Number).filter(Number.isInteger)
+  const latestRevealedIndex = revealed.length ? Math.max(...revealed) : -1
+  return getRevealableStages(task).find(({ index }) => index > latestRevealedIndex) ?? null
+}
+
 export function getTaskPriorityCounts(tasks) {
   return flattenTasks(tasks).reduce((counts, task) => {
     counts[getTaskPriority(task)] += 1

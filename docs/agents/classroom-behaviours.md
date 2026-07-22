@@ -66,17 +66,17 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - `codeStages[].role` may be `support`, `core`, `extension`, or `solution`; omitted role defaults to `support`.
 - `codeStages[].revealable: true` may be set on any stage role. Python and HTML lessons currently render revealable stages as read-only references.
 - Revealing a stage displays a read-only reference panel and never writes to the student's editor or files.
-- Students can reveal their own Python/HTML revealable stages after a failed attempt. Teachers can reveal a Python/HTML stage reference for one student from `StudentModal`.
+- Students are offered one Python/HTML revealable stage after each failed run or check (including runtime and syntax errors). The offer remains until used or the student succeeds; repeated failures do not skip an unused stage. Only the newest revealed stage is displayed; a passing run/check hides it, and a later failure offers the next stage. Teachers can still reveal a Python/HTML stage reference for one student from `StudentModal`.
 - Reveals write `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source`, `stageLabel`, `attemptNumber`, and `revealedAt`.
 - Teacher student cards mark the current task when a student has opened a reference. Session reports include per-student `supportReveals` and task-level reveal counts.
 
-## Explainer Complete-Code Reveal
+## Complete-Code Reveal
 
-Swaps the task explainer panel's content between the normal explanation and a read-only rendering of the complete solution — distinct from Remote Reset, which replaces the student's actual editor content. Python only.
+Shows a read-only complete solution without changing the student's actual editor. Python only.
 
 - **Live (class-wide)**: `session.explainerShowComplete` (boolean, session root) — toggled by the teacher from a control in `TeacherView.jsx` itself, rendered above `TeacherEditorPanel`/`TeacherCodeTabs` rather than inside that tab strip (`setExplainerShowComplete` in `useSession.js`). Affects every connected live student at once; there is no per-student variant. Resets to `false` on `setTaskId`, `createSession`, and `endSession`.
-- **Solo (self-serve)**: after interim `codeStages` are exhausted and `checkFailCount >= 2`, the student is offered "See complete code?" (`canOfferCompletePreview` in `StudentView.jsx`) before the existing "Load complete code into my editor" offer (`canOfferCompleteSolution`). Clicking preview sets local-only `completePreviewShown` state (`useCheckFeedback.js` / `cs.handlePreviewCompleteCode` in `useStudentCodeState.js`) — it does not touch the editor or mark the task solved. `completePreviewShown` resets on task change, code reset, or a passing check.
-- Both paths feed a single `explainerShowsComplete` boolean into `LessonTaskContent.jsx`, which swaps `ExplainerPanel`'s `title`/`content` to a fenced ` ```python ` block of `task.completeCode` when true.
+- **Solo (self-serve)**: after reference stages are exhausted and `checkFailCount >= 2`, the student is offered "See complete code?" (`canOfferCompletePreview` in `StudentView.jsx`) before the existing "Load complete code into my editor" offer (`canOfferCompleteSolution`). Clicking preview sets local-only `completePreviewShown` state (`useCheckFeedback.js` / `cs.handlePreviewCompleteCode` in `useStudentCodeState.js`) and replaces the current stage reference with a labelled complete reference — it does not touch the editor or mark the task solved. `completePreviewShown` resets on task change, code reset, or a passing check.
+- The live teacher toggle alone feeds `explainerShowsComplete` into `LessonTaskContent.jsx`, which swaps `ExplainerPanel`'s `title`/`content` to a fenced ` ```python ` block of `task.completeCode`.
 - Non-Python lesson types keep the original single-step "Load complete solution" offer (no preview step) since there's no read-only rendering for HTML/Scratch/filesystem solutions yet.
 
 ## Presenter Layout Toggle

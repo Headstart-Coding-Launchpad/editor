@@ -9,7 +9,7 @@ import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import SupportStagePanel from './SupportStagePanel'
-import { getRevealableStages, isRevealableStage } from '../../shared/taskUtils'
+import { getRevealableStages } from '../../shared/taskUtils'
 
 const SIDE_EXPLAINER_TYPES = ['python', 'html', 'scratch', 'electronics']
 
@@ -67,10 +67,13 @@ export default function LessonTaskContent({
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
   const supportsStageReveal = ['python', 'html'].includes(lessonMod?.type ?? lesson.type)
-  const hasFailedAttempt = !!displayCheckAttempted && displayCheckPassed !== true
-  const revealableStages = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && supportsStageReveal
-    ? getRevealableStages(task).filter(({ index }) => hasFailedAttempt || cs.supportStageReveals?.[index])
-    : []
+  const activeSupportStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && supportsStageReveal && cs.activeSupportStageIndex != null
+    ? getRevealableStages(task).find(({ index }) => index === cs.activeSupportStageIndex) ?? null
+    : null
+  const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && lesson.type === 'python' && task?.completeCode
+    ? { label: 'Complete solution', code: task.completeCode }
+    : null
+  const displayedReferenceStage = completeReferenceStage ?? activeSupportStage
 
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
@@ -114,21 +117,21 @@ export default function LessonTaskContent({
     </div>
   ) : null
 
-  const feedbackBanner = !isSandbox && !cs.inPersonalSandbox && (task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted ? (
+  const shouldShowFeedbackBanner = !isSandbox && !cs.inPersonalSandbox && (
+    ((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) || cs.offeredSupportStageIndex != null
+  )
+  const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
-      passed={displayCheckPassed}
+      passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
       failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
-      onShowCodeStage={canOfferNextStage ? () => {
+      onShowCodeStage={cs.offeredSupportStageIndex != null
+        ? cs.handleRevealOfferedSupportStage
+        : canOfferNextStage ? () => {
         const nextStageIndex = cs.offeredStageIndex + 1
-        const nextStage = task?.codeStages?.[nextStageIndex]
-        if (supportsStageReveal && hasFailedAttempt && isRevealableStage(nextStage)) {
-          cs.handleRevealSupportStage(nextStageIndex)
-        } else {
-          cs.handleShowCodeStage(nextStageIndex)
-        }
+        cs.handleShowCodeStage(nextStageIndex)
       } : undefined}
-      stageActionLabel={supportsStageReveal && hasFailedAttempt && isRevealableStage(task?.codeStages?.[cs.offeredStageIndex + 1]) ? 'Show reference' : undefined}
+      stageActionLabel={cs.offeredSupportStageIndex != null ? 'Show reference' : undefined}
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
@@ -142,24 +145,22 @@ export default function LessonTaskContent({
         <ExplainerPanel title="Instructions" content={sandboxExplainer} topicType={lesson.type} disableCopy />
       )}
 
-      {revealableStages.map(({ stage, index }) => {
-        const reveal = cs.supportStageReveals?.[index]
-        const sourceLabel = reveal?.source === 'teacher'
-          ? 'Opened by your teacher'
-          : reveal?.source === 'student'
-          ? 'Opened by you'
-          : ''
+      {displayedReferenceStage && (() => {
+        const reveal = completeReferenceStage ? null : cs.supportStageReveals?.[activeSupportStage.index]
+        const sourceLabel = completeReferenceStage
+          ? 'Complete reference'
+          : reveal?.source === 'teacher'
+            ? 'Opened by your teacher'
+            : 'Shown after a failed attempt'
         return (
           <SupportStagePanel
-            key={`stage-reference-${index}`}
-            stage={stage}
+            stage={completeReferenceStage ?? activeSupportStage.stage}
             lessonType={lesson.type}
-            revealed={!!reveal}
+            revealed
             sourceLabel={sourceLabel}
-            onReveal={() => cs.handleRevealSupportStage(index)}
           />
         )
-      })}
+      })()}
 
       {!isSandbox && isInformationTask ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />

@@ -63,6 +63,7 @@ export default function StudentWorkspace({
               fill
               collapsed={cs.htmlPreviewCollapsed}
               onToggle={() => cs.setHtmlPreviewCollapsed(v => !v)}
+              onConsoleError={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleHtmlRuntimeError}
               animate
             />
           </div>
@@ -87,6 +88,7 @@ export default function StudentWorkspace({
               iframeRef={cs.iframeRef}
               collapsed
               onToggle={() => cs.setHtmlPreviewCollapsed(false)}
+              onConsoleError={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleHtmlRuntimeError}
             />
           )
         }
@@ -124,6 +126,7 @@ export default function StudentWorkspace({
             fill
             collapsed={false}
             onToggle={() => cs.setHtmlPreviewCollapsed(true)}
+            onConsoleError={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleHtmlRuntimeError}
             animate
           />
         }

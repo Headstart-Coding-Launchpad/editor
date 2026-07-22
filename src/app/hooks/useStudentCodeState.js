@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
-import { flattenTasks, findTaskById, isRevealableStage } from '../../shared/taskUtils'
+import { flattenTasks, findTaskById, getNextRevealableStage, getRevealableStages, isRevealableStage } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
@@ -72,6 +72,8 @@ export function useStudentCodeState({
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
   const [localSupportStageReveals, setLocalSupportStageReveals] = useState({})
+  const [supportStageVisibility, setSupportStageVisibility] = useState({})
+  const [supportStageOffers, setSupportStageOffers] = useState({})
 
   const iframeRef              = useRef(null)
   const appendOutputRef        = useRef(null)
@@ -82,6 +84,7 @@ export function useStudentCodeState({
   const runtimeCodeRafIdRef    = useRef(null)
   const pendingRuntimeCodeRef  = useRef(null)
   const idleFeedbackTimerRef   = useRef(null)
+  const htmlSupportAttemptsRef = useRef(new Map())
 
   const IDLE_FEEDBACK_DELAY_MS = 900
 
@@ -158,6 +161,13 @@ export function useStudentCodeState({
     ...(session?.supportRevealLog?.[effectiveIdentity?.anonymousId]?.[currentTaskId] ?? {}),
     ...(localSupportStageReveals[currentTaskId] ?? {}),
   }), [session?.supportRevealLog, effectiveIdentity?.anonymousId, currentTaskId, localSupportStageReveals])
+  const activeSupportStageIndex = useMemo(() => {
+    const visibility = supportStageVisibility[currentTaskId]
+    if (visibility !== undefined) return visibility
+    const revealedIndexes = Object.keys(supportStageReveals).map(Number).filter(Number.isInteger)
+    return revealedIndexes.length ? Math.max(...revealedIndexes) : null
+  }, [currentTaskId, supportStageReveals, supportStageVisibility])
+  const offeredSupportStageIndex = supportStageOffers[currentTaskId] ?? null
 
   const teacherHighlights = useMemo(() => {
     const raw = myStudentData?.teacherHighlights
@@ -822,6 +832,7 @@ export function useStudentCodeState({
           suggestion = evaluation.suggestion
         }
         if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
+        updateSupportStageForAttempt(status !== 'error' && (!task?.check || passed))
       }
 
       if (canPublishTeacherLive()) {
@@ -846,6 +857,8 @@ export function useStudentCodeState({
       task,
       { assets: lesson.assets ?? [], assetsPath: resolveAssetsPath(lesson.assetsPath), storageAssets: htmlIframeStorageAssets }
     )
+    htmlSupportAttemptsRef.current.clear()
+    htmlSupportAttemptsRef.current.set(src, { hasError: false, outcomeApplied: false, passed: false })
     setIframeSrc(src)
     setRunStatus('success')
 
@@ -859,6 +872,13 @@ export function useStudentCodeState({
         passed = evaluation.passed
         suggestion = task?.check ? evaluation.suggestion : ''
         if (task?.check) applyCheckFeedback(passed, suggestion)
+        const supportAttempt = htmlSupportAttemptsRef.current.get(src)
+        const supportPassed = !supportAttempt?.hasError && (!task?.check || passed)
+        if (supportAttempt) {
+          supportAttempt.outcomeApplied = true
+          supportAttempt.passed = supportPassed
+        }
+        updateSupportStageForAttempt(supportPassed)
       } else {
         passed = true
       }
@@ -933,6 +953,7 @@ export function useStudentCodeState({
       setOutput(displayedOutput)
       setRunStatus(finalStatus)
       if (finalStatus !== 'stopped') applyCheckFeedback(allPassed)
+      if (finalStatus !== 'stopped') updateSupportStageForAttempt(allPassed)
 
       if (canPublishTeacherLive()) {
         publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
@@ -948,6 +969,7 @@ export function useStudentCodeState({
     } catch {
       getLessonModule(lesson?.type)?.runtime?.stop()
       setRunStatus('error')
+      updateSupportStageForAttempt(false)
     } finally {
       setRunningTests(false)
     }
@@ -1187,21 +1209,20 @@ export function useStudentCodeState({
     setOfferedStageIndex(stageIndex)
   }
 
-  function handleRevealSupportStage(stageIndex, source = 'student') {
+  function handleRevealSupportStage(stageIndex, source = 'student', attemptNumber = checkFailCount) {
     if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const stage = task?.codeStages?.[stageIndex]
     if (!stage) return
     if (!['python', 'html'].includes(lesson?.type)) return
     if (!isRevealableStage(stage)) return
-    if (source === 'student' && checkFailCount <= 0) return
 
     const record = {
       taskId: currentTaskId,
       stageIndex,
       stageLabel: stage.label || `Stage ${stageIndex + 1}`,
       source,
-      attemptNumber: checkFailCount,
+      attemptNumber,
       revealedAt: Date.now(),
     }
     setLocalSupportStageReveals(prev => ({
@@ -1212,6 +1233,8 @@ export function useStudentCodeState({
       },
     }))
     setOfferedStageIndex(prev => Math.max(prev, stageIndex))
+    setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: stageIndex }))
+    setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: null }))
     if (!teacherPresentation && phase === 'lesson') {
       recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, stageIndex, {
         source,
@@ -1219,6 +1242,51 @@ export function useStudentCodeState({
         attemptNumber: record.attemptNumber,
       })
     }
+  }
+
+  function handleHtmlRuntimeError(src) {
+    const supportAttempt = htmlSupportAttemptsRef.current.get(src)
+    if (!supportAttempt) return
+    supportAttempt.hasError = true
+    if (supportAttempt.outcomeApplied && supportAttempt.passed) {
+      supportAttempt.passed = false
+      updateSupportStageForAttempt(false)
+    }
+  }
+
+  function updateSupportStageForAttempt(passed) {
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    if (!task || teacherPresentation || inPersonalSandboxRef.current || !['lesson', 'solo'].includes(phaseRef.current)) return
+    if (!['python', 'html'].includes(lesson?.type)) return
+
+    if (passed) {
+      setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: null }))
+      setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: null }))
+      return
+    }
+
+    // Keep the existing offer available until the student either uses it or
+    // succeeds. Repeated failures must not skip over an unused reference.
+    if (offeredSupportStageIndex != null) return
+
+    const nextStage = getNextRevealableStage(task, Object.keys(supportStageReveals))
+    if (nextStage) {
+      setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: nextStage.index }))
+      return
+    }
+
+    const latestStage = getRevealableStages(task)
+      .map(({ index }) => index)
+      .filter(index => Object.prototype.hasOwnProperty.call(supportStageReveals, index))
+      .at(-1)
+    if (latestStage != null) {
+      setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: latestStage }))
+    }
+  }
+
+  function handleRevealOfferedSupportStage() {
+    if (offeredSupportStageIndex == null) return
+    handleRevealSupportStage(offeredSupportStageIndex)
   }
 
   function handlePreviewCompleteCode() {
@@ -1282,6 +1350,7 @@ export function useStudentCodeState({
       passed = task?.check ? evaluation.passed : false
       suggestion = task?.check ? evaluation.suggestion : ''
       if (task?.check) applyCheckFeedback(passed, suggestion)
+      updateSupportStageForAttempt(!task?.check || passed)
     } else {
       passed = true
     }
@@ -1362,7 +1431,7 @@ export function useStudentCodeState({
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
     inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
-    offeredStageIndex, completePreviewShown, supportStageReveals,
+    offeredStageIndex, completePreviewShown, supportStageReveals, activeSupportStageIndex, offeredSupportStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     teacherHighlights, dismissHighlight,
@@ -1374,7 +1443,7 @@ export function useStudentCodeState({
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
-    handleInputSubmit, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handlePreviewCompleteCode, handleShowCompleteCode,
+    handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewCompleteCode, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,

@@ -27,9 +27,9 @@ export function getSupportStageText(stage, lessonType) {
   return stageToText(stage, lessonType)
 }
 
-export default function SupportStagePanel({ stage, lessonType, revealed, onReveal, sourceLabel }) {
+export default function SupportStagePanel({ stage, lessonType, revealed, sourceLabel }) {
   const text = stageToText(stage, lessonType)
-  if (!text.trim()) return null
+  if (!revealed || !text.trim()) return null
 
   const title = stage?.label || 'Stage reference'
   const languageLabel = getLanguageLabel(lessonType)
@@ -49,17 +49,10 @@ export default function SupportStagePanel({ stage, lessonType, revealed, onRevea
           <span style={s.title}>{title}</span>
           {revealed && sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
-        {!revealed && onReveal && (
-          <button type="button" className="btn-primary" style={s.revealBtn} onClick={onReveal}>
-            Show Reference
-          </button>
-        )}
       </div>
-      {revealed && (
-        <pre style={s.pre}>
-          <code style={s.code}>{text}</code>
-        </pre>
-      )}
+      <pre style={s.pre}>
+        <code style={s.code}>{text}</code>
+      </pre>
     </section>
   )
 }
@@ -120,11 +113,6 @@ const s = {
     fontSize: '0.75rem',
     color: '#1d4ed8',
     fontWeight: 600,
-  },
-  revealBtn: {
-    fontSize: 12,
-    padding: '6px 10px',
-    flexShrink: 0,
   },
   pre: {
     margin: 0,

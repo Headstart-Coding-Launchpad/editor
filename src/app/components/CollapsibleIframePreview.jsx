@@ -2,7 +2,7 @@ import React from 'react'
 import IframePreview from './IframePreview'
 import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 
-export default function CollapsibleIframePreview({ src, iframeRef, fill = true, collapsed, onToggle, animate = false }) {
+export default function CollapsibleIframePreview({ src, iframeRef, fill = true, collapsed, onToggle, animate = false, onConsoleError }) {
   if (collapsed) {
     return (
       <CollapsedPanelRail
@@ -20,6 +20,7 @@ export default function CollapsibleIframePreview({ src, iframeRef, fill = true, 
       src={src}
       iframeRef={iframeRef}
       fill={fill}
+      onConsoleError={onConsoleError}
       leadingActions={
         <CollapseTabButton
           onClick={onToggle}

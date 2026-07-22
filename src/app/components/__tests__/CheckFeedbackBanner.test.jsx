@@ -158,8 +158,9 @@ describe('CheckFeedbackBanner', () => {
 
     it('shows stage hint prompt text alongside the button', () => {
       const handler = vi.fn()
-      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} />)
+      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} stageActionLabel="Show reference" />)
       expect(screen.getByText(/Want a hint\?/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Show reference/i })).toBeInTheDocument()
     })
   })
 

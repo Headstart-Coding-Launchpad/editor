@@ -69,7 +69,8 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/NameEntry.jsx` | Submit with unique name; duplicate-suffix confirmation step; solo link; waiting-room mode |
 | `src/app/components/ExplainerPanel.jsx` | Collapsible toggle; aria-expanded; non-collapsible mode; content passes to MarkdownRenderer |
 | `src/app/components/CopyCodePanel.jsx` | Renders task `copyCode` only when non-empty; preserves whitespace; blocks copy/selection-adjacent browser actions |
-| `src/app/components/SupportStagePanel.jsx` | Renders revealable code-stage references; hides content until revealed; blocks copy/selection-adjacent browser actions |
+| `src/app/components/SupportStagePanel.jsx` | Renders the current opt-in stage or complete-solution reference; hides content until revealed; blocks copy/selection-adjacent browser actions |
+| `src/app/components/IframePreview.jsx` | Displays iframe console entries and reports runtime errors to the student support-stage flow |
 | `src/app/components/TopBar.jsx` | Solo/Live/Sandbox badge logic; displayName visibility; right slot; desktop mode |
 | `src/app/components/TaskProgressDots.jsx` | Renders past/current/locked dots; click on past dot fires callback; locked dot is not clickable |
 | `src/app/components/CheckFeedbackBanner.jsx` | Renders pass state; renders fail + hint; renders "see complete code" when unlocked |
