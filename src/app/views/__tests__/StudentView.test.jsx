@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../StudentView'
 
@@ -41,7 +42,7 @@ vi.mock('../../../modules/html/iframe', () => ({
 }))
 
 vi.mock('../../components/TopBar', () => ({
-  default: ({ lessonTitle, isSolo }) => <div>{lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}</div>,
+  default: ({ lessonTitle, isSolo, right }) => <div>{lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}{right}</div>,
 }))
 
 vi.mock('../../../modules/python/PythonEditor', () => ({
@@ -177,6 +178,49 @@ describe('StudentView', () => {
     })
     expect(mocks.useSession).toHaveBeenCalledWith(null, { enabled: false })
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+  })
+
+  it('lets solo students move to the next task before passing the current check', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <StudentView
+        lessonId="python-1-1"
+        soloMode
+        lesson={{
+          id: 'python-1-1',
+          title: 'Python 1.1',
+          type: 'python',
+          tasks: [
+            {
+              id: 1,
+              title: 'Checked task',
+              starterCode: 'print("try")',
+              check: { type: 'output', operator: 'contains', value: 'done' },
+            },
+            {
+              id: 2,
+              title: 'Next task',
+              starterCode: 'print("next")',
+            },
+          ],
+        }}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('code')).toHaveValue('print("try")')
+    })
+
+    const nextButton = screen.getByRole('button', { name: 'Next' })
+    expect(nextButton).toBeEnabled()
+    expect(nextButton).not.toHaveClass('btn-next-success')
+
+    await user.click(nextButton)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('code')).toHaveValue('print("next")')
+    })
   })
 
   it('passes predefined Scratch blocks to the student workspace', async () => {

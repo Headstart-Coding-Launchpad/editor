@@ -6,7 +6,7 @@ import { useLessonLoader } from '../hooks/useLessonLoader'
 import { applyLessonOverride } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
-import { flattenTasks, findTaskById, filterTasksByMode } from '../../shared/taskUtils'
+import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -150,14 +150,11 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       return
     }
     if (!identity) return
-    const currentTask = findTaskById(lesson?.tasks, currentTaskId)
     if (phase === 'solo' && !allowUnrestrictedTaskNavigation) {
       const targetIdx = flatTasks.findIndex(t => t.id === taskId)
       const currIdx = flatTasks.findIndex(t => t.id === currentTaskId)
       if (targetIdx > currIdx) {
-        const hasCompletion = !!currentTask?.check || currentTask?.tests?.length > 0
-        const canAdvance = !hasCompletion || currentTask?.taskType === 'information' || cs.checkPassed
-        if (!canAdvance || targetIdx > currIdx + 1) return
+        if (targetIdx > currIdx + 1) return
       }
     }
     cs.saveCurrentWork()
@@ -259,11 +256,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isQuizTask = task?.taskType === 'quiz'
   const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
-  const currentTask = flatTasks.find(t => t.id === currentTaskId)
-  const currentTaskIsAutoEvaluated = currentTask?.taskType === 'quiz' && (currentTask?.quizType === 'match' || currentTask?.quizType === 'fill_blank')
-  const currentTaskHasCompletion = !!currentTask?.check || currentTask?.tests?.length > 0 || currentTaskIsAutoEvaluated
-  const canAdvanceSolo = !currentTaskHasCompletion || currentTask?.taskType === 'information' || cs.checkPassed
-  const canNavigateNextSolo = allowUnrestrictedTaskNavigation || canAdvanceSolo
+  const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
   const hasCompleteSolution = lesson.type === 'python'
     ? !!task?.completeCode
     : lesson.type === 'scratch'
@@ -319,7 +312,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       canSelectTask={id => {
         if (!isSolo) return true
         const idIdx = flatTasks.findIndex(t => t.id === id)
-        return allowUnrestrictedTaskNavigation || idIdx <= currentIndex || (idIdx === currentIndex + 1 && canAdvanceSolo)
+        return allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
       }}
       onDotClick={id => {
         if (isSolo) {
