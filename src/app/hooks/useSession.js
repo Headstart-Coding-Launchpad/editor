@@ -502,6 +502,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
     }
   }
 
+  async function recordStudentCarryFallback(anonymousId, taskId, fallback) {
+    if (!fallback || taskId == null) return
+    if (session?.carryFallbackLog?.[anonymousId]?.[taskId]) return
+    await set(ref(db, `sessions/${lessonId}/carryFallbackLog/${anonymousId}/${taskId}`), {
+      ...fallback,
+      taskId,
+      fallbackAt: serverTimestamp(),
+    })
+  }
+
   async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt } = {}) {
     const updates = {}
     if (windowFocused !== undefined) updates.windowFocused = windowFocused
@@ -568,7 +578,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }

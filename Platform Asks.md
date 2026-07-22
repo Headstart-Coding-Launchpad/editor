@@ -28,7 +28,7 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 | T4  | [Done] Fix `taskSummary` aggregates for no-pass/fail tasks | PA3  | S    | T1, T2      |
 | T23 | [Done] Record teacher check overrides in the report        | PA3  | M    | T1          |
 | T5  | Regression-test PA3 against Python Level 1 Lesson 2       | PA3  | S    | T1–T4       |
-| T24 | Carry code through a skipped task                         | PA5  | M    | —           |
+| T24 | [Done] Carry code through a skipped task                  | PA5  | M    | —           |
 | T6  | Add `priority` to the task schema and CLI validator       | PA2  | S    | —           |
 | T7  | Round-trip `priority` through the YAML converter          | PA2  | S    | T6          |
 | T8  | Surface `priority` in the Lesson Builder                  | PA2  | M    | T6          |
@@ -191,6 +191,10 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 
 ## T24 — Carry code through a skipped task
 
+**Status: Done, 22 July 2026.** Implemented in `src/app/studentTaskContent.js`, `src/app/hooks/useStudentCodeState.js`, `src/modules/scratch/StudentWorkspace.jsx`, `src/app/hooks/useSession.js`, `src/shared/lessonReport.js`, and `database.rules.json`. Carry-through now walks authored carry chains across Python, HTML, Scratch, filesystem, and electronics, including across group boundaries; treats saved empty content as real saved state; falls back to the current task starter when no saved state exists; and records reportable `carryFallbackLog` metadata when a walk-back lands on an earlier saved source.
+
+**Verification:** `npm test -- src/app/__tests__/studentTaskContent.test.js src/app/hooks/__tests__/useSession.test.js src/shared/__tests__/lessonReport.test.js`; `npm run docs:check`; `npm test`.
+
 **Why.** Carry-through points at a single task ID. When a tutor skips that task, no student ever saves anything against it, so the next task that carries from it finds nothing and falls back to `starterCode`. The student loses the work they built up over the preceding tasks, mid-build, with no warning to them or the tutor. This is exactly the situation PA2 describes: in the Python Level 1 Lesson 2 session the walkthrough skipped task 24, a code task sitting between two attempted code tasks. Skipping is normal and necessary triage — it should cost the class time, not their code.
 
 **Where to look.** Carry-through resolution in the student runtime (*unknown path*). The fields, all *verified*:
@@ -217,7 +221,7 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 - Behaviour is identical across all five carry fields.
 - The report shows where a walk-back occurred.
 
-**Decision needed.** What to do when the skipped task has no carry field of its own to walk back through — the chain ends and there is nothing to inherit. Options are falling back to the nearest earlier task of the same type with a save regardless of the authored chain, or falling back to starter as today. The first is more likely right in the room and less predictable to author against.
+**Decision resolved.** If the skipped task has no carry field of its own, the authored chain ends and the runtime falls back to the current task starter. It does not search for the nearest earlier same-type task outside the authored chain.
 
 **Interacts with PA1c.** T16 already asks how a variant interacts with carry-through. Settle T24 first — it is the simpler half of the same question, and a walk-back that lands on a task the student did in variant form needs to carry the variant's code.
 

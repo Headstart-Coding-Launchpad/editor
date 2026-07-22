@@ -21,6 +21,7 @@ export default function StudentWorkspace({
     task,
     taskId: viewingTaskId ?? currentTaskId,
     readSavedCode: cs.readSavedTaskCode,
+    onCarryFallback: cs.recordCarryFallback,
   })
   const { predefinedBlocks, prebuiltStacks } = selectScratchToolboxSnippets({
     task,

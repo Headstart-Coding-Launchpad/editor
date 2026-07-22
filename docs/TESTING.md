@@ -40,7 +40,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/builder/lessonUtils.js` | Lesson validation messages and exported task JSON normalisation |
 | `cli/structured-input.mjs` | JSON/YAML file-extension handling, stdin auto-detection, and lesson YAML shorthand conversion |
 | `src/app/studentStorage.js` | Exact localStorage key formats plus saved task/file snapshot reads and writes |
-| `src/app/studentTaskContent.js` | Student Python/HTML/Scratch saved-work and carry-through selection precedence |
+| `src/app/studentTaskContent.js` | Student saved-work and carry-through selection precedence across Python, HTML, Scratch, filesystem, and electronics |
 | `src/app/studentLiveDisplay.js` | Teacher-live viewing eligibility, displayed workspace selection, and live HTML file conversion |
 | `src/app/teacherLivePayload.js` | Decoded teacher-live payload construction from a student snapshot |
 

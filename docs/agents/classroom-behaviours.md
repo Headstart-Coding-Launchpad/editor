@@ -4,11 +4,13 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 
 ## Code Carry-Through
 
-- Check localStorage for `carryCodeFrom` before loading `starterCode`.
-- HTML lessons carry each file independently by filename.
-- Scratch `carryBlocksFrom` follows the same model.
-- Fallback chain: saved carry, then starter content, then empty editor.
-- Scratch and filesystem additionally fall back to the carry source's authored content (`completeBlocks`/`completeFs` then starter), following the carry chain, when no saved work exists.
+- Check localStorage for the authored carry source before loading starter content.
+- If the immediate carry source has no saved state, walk the authored carry chain to the first earlier source with saved state. If the chain ends without saved state, use the current task starter content.
+- Authored carry references can cross group boundaries; groups do not limit carry resolution.
+- Saved empty content counts as real saved state; do not walk past it.
+- HTML lessons carry each current `starterFiles` file independently by filename. Files not named in the current task remain hidden.
+- Python and HTML use `carryCodeFrom`; Scratch uses `carryBlocksFrom`; filesystem uses `carryFsFrom`; electronics uses `carryCircuitFrom`.
+- Live students write `carryFallbackLog/{anonymousId}/{taskId}` when carry-through walks past the immediate source and finds an earlier saved state. Session reports surface this as per-student `carryFallback` metadata plus task-level `carryFallbackCount`/`carryFallbacks`.
 - Teacher presentation and builder preview persist to an in-memory ephemeral store (`ephemeralStorage` in `studentStorage.js`, routed via `createStudentPersistence`) so carry-through works there without reading or polluting real localStorage. The store is cleared on each presentation/preview mount. All persistence in these modes keys off `effectiveIdentity` (`teacher-presenter` in presentation).
 
 ## Live View: `activeStudentView`
