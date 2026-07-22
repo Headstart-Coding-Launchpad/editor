@@ -33,6 +33,7 @@ const pythonModule = {
 
   makeNewStage: (task, existing) => ({
     label: `Stage ${existing.length + 1}`,
+    role: 'support',
     code: task.starterCode ?? '',
   }),
 

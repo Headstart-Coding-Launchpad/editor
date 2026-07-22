@@ -16,16 +16,18 @@ import {
   parseCircuit,
   pinRef,
 } from './circuit'
-import { CodeWorkspaceTabs } from '../../builder/components/task-editor/TaskEditorFields'
+import { CodeWorkspaceTabs, StageMetadataEditor } from '../../builder/components/task-editor/TaskEditorFields'
 
 export default function BuilderWorkspace({
   task, onUpdate, codeTab, codeStages,
   handleCodeTabChange, handleAddStage, handleRemoveStage,
   resetToStarterBtn,
 }) {
+  const stageMatch = codeTab?.match(/^stage_(\d+)$/)
+  const activeStageIndex = stageMatch ? Number(stageMatch[1]) : null
+  const activeStage = activeStageIndex !== null ? (codeStages?.[activeStageIndex] ?? null) : null
   const activeCircuit = useMemo(() => {
     if (codeTab === 'complete') return parseCircuit(task.completeCircuit, task.starterCircuit ?? DEFAULT_CIRCUIT)
-    const stageMatch = codeTab?.match(/^stage_(\d+)$/)
     if (stageMatch) return parseCircuit(codeStages?.[Number(stageMatch[1])]?.circuit, task.starterCircuit ?? DEFAULT_CIRCUIT)
     return parseCircuit(task.starterCircuit, DEFAULT_CIRCUIT)
   }, [codeTab, codeStages, task.completeCircuit, task.starterCircuit])
@@ -79,6 +81,12 @@ export default function BuilderWorkspace({
       return
     }
     onUpdate({ ...task, starterCircuit: circuit })
+  }
+
+  function replaceStage(idx, nextStage) {
+    const stages = [...(task.codeStages ?? [])]
+    stages[idx] = nextStage
+    onUpdate({ ...task, codeStages: stages })
   }
 
   function updateLegacyMicrocontrollerCode(code) {
@@ -180,6 +188,22 @@ export default function BuilderWorkspace({
         onRemoveStage={handleRemoveStage}
         rightAction={resetToStarterBtn}
       />
+      {activeStage && (
+        <div style={s.stageMetadataBar}>
+          <span style={s.stageLabelText}>Stage label:</span>
+          <input
+            className="te-input"
+            style={s.stageLabelInput}
+            value={activeStage.label ?? ''}
+            onChange={event => replaceStage(activeStageIndex, { ...activeStage, label: event.target.value })}
+            placeholder={`Stage ${activeStageIndex + 1}`}
+          />
+          <StageMetadataEditor
+            stage={activeStage}
+            onChange={nextStage => replaceStage(activeStageIndex, nextStage)}
+          />
+        </div>
+      )}
       <div style={s.workspace}>
         <ElectronicsWorkspace
           circuit={activeCircuit}
@@ -329,4 +353,7 @@ const s = {
   optionBadgeOff: { background: '#f1f5f9', color: '#64748b' },
   smallButton: { padding: '4px 8px', fontSize: 12 },
   microHint: { margin: 0, fontFamily: 'var(--font-body)', fontSize: 13, color: '#475569' },
+  stageMetadataBar: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0, flexWrap: 'wrap' },
+  stageLabelText: { fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 },
+  stageLabelInput: { width: 200, padding: '4px 8px', fontSize: '0.82rem' },
 }

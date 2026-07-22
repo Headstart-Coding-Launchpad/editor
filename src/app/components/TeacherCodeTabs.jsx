@@ -1,4 +1,5 @@
 import React from 'react'
+import { getStageRole, isRevealableStage } from '../../shared/taskUtils'
 
 export default function TeacherCodeTabs({
   activeTab,
@@ -22,18 +23,23 @@ export default function TeacherCodeTabs({
       >
         {starterLabel}
       </button>
-      {stages.map((stage, i) => (
-        <button
-          key={i}
-          type="button"
-          className={`ui-tab${activeTab === `stage_${i}` ? ' is-active' : ''}`}
-          role="tab"
-          aria-selected={activeTab === `stage_${i}`}
-          onClick={() => onStage?.(i)}
-        >
-          {stage.label || `Stage ${i + 1}`}
-        </button>
-      ))}
+      {stages.map((stage, i) => {
+        const role = getStageRole(stage)
+        const rolePrefix = role === 'support' ? '' : `${role}: `
+        const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
+        return (
+          <button
+            key={i}
+            type="button"
+            className={`ui-tab${activeTab === `stage_${i}` ? ' is-active' : ''}`}
+            role="tab"
+            aria-selected={activeTab === `stage_${i}`}
+            onClick={() => onStage?.(i)}
+          >
+            {rolePrefix}{stage.label || `Stage ${i + 1}`}{revealSuffix}
+          </button>
+        )
+      })}
       {onComplete && (
         <button
           type="button"

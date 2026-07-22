@@ -4,7 +4,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
-import { findTaskById, deriveTaskContext, buildStageOptions } from '../../shared/taskUtils'
+import { findTaskById, deriveTaskContext, buildStageOptions, getRevealableStages } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -35,7 +35,7 @@ function getModuleDisplayState(module, raw) {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight }) {
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
@@ -164,6 +164,14 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setStageDeclinedNotice(false)
   }
 
+  function handleRevealSupportStage(stageIndex, stage) {
+    if (!task?.id) return
+    onRevealSupportStage?.(student.anonymousId, task.id, stageIndex, {
+      source: 'teacher',
+      stageLabel: stage?.label || `Stage ${stageIndex + 1}`,
+    })
+  }
+
   function handleCancelStage() {
     onClearTeacherStage?.(student.anonymousId)
     setStageRequestState('idle')
@@ -240,6 +248,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   }, [isLive, student.currentActiveFile, student.currentSelection?.file, student.currentActivity?.file])
 
   const stageOptions = buildStageOptions(task, lesson?.type)
+  const supportsStageReveal = isPython || isHtml
+  const revealableStages = !isInformation && !isQuiz && supportsStageReveal ? getRevealableStages(task) : []
+  const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') handleClose() }
@@ -279,6 +290,11 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 Help Needed — Helped ✓
               </button>
             )}
+            {Object.keys(revealedSupportStages).length > 0 && (
+              <span style={s.supportBadge} title="Student has opened a stage reference">
+                Reference opened
+              </span>
+            )}
             {student.currentTopicId && (() => {
               const topic = topics?.find(t => t.id === student.currentTopicId)
               return (
@@ -307,6 +323,32 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 →
               </button>
             </div>
+
+            {/* Stage reference reveal dropdown */}
+            {onRevealSupportStage && revealableStages.length > 0 && (
+              <DropdownMenu label="Reveal" buttonClassName="btn-ghost">
+                {close => (
+                  <>
+                    {revealableStages.map(({ stage, index }) => {
+                      const alreadyRevealed = !!revealedSupportStages[index]
+                      return (
+                        <button
+                          key={index}
+                          style={sTo.toolBtn}
+                          disabled={alreadyRevealed}
+                          onClick={() => {
+                            close()
+                            handleRevealSupportStage(index, stage)
+                          }}
+                        >
+                          {alreadyRevealed ? 'Opened: ' : 'Reveal: '}{stage.label || `Stage ${index + 1}`}
+                        </button>
+                      )
+                    })}
+                  </>
+                )}
+              </DropdownMenu>
+            )}
 
             {/* Stage dropdown */}
             {onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0 && (
@@ -625,6 +667,17 @@ const s = {
     maxWidth: 160,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+  },
+  supportBadge: {
+    fontSize: '0.72rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    color: '#bfdbfe',
+    whiteSpace: 'nowrap',
+    background: 'rgba(37,99,235,0.24)',
+    border: '1px solid rgba(191,219,254,0.45)',
+    padding: '2px 7px',
+    borderRadius: 999,
   },
   bodyPython: {
     flex: 1,

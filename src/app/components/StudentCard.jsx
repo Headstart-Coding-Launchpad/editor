@@ -66,6 +66,7 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
   const hasCheck = !isConfidence && (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const hasActiveOverride = !!student.checkOverridePushedAt
+  const supportRevealCount = Object.keys(session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}).length
   const checkPassed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
   const checkFailed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === false : (checkAttempted && student.checkPassed !== true))
   const checkCardStyle = checkPassed
@@ -156,6 +157,11 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
           {student.needsHelp && (
             <span style={{ ...s.checkBadge, ...s.checkBadgeHelp }} title="Student has requested help">
               Help
+            </span>
+          )}
+          {supportRevealCount > 0 && (
+            <span style={{ ...s.checkBadge, ...s.checkBadgeSupport }} title="Student has opened support reference">
+              Support {supportRevealCount > 1 ? supportRevealCount : ''}
             </span>
           )}
           {student.currentTopicId && (() => {
@@ -347,6 +353,10 @@ const s = {
   },
   checkBadgeHelp: {
     background: '#f59e0b',
+    color: '#fff',
+  },
+  checkBadgeSupport: {
+    background: '#2563eb',
     color: '#fff',
   },
   checkBadgeTopic: {

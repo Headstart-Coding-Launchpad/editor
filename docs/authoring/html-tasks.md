@@ -10,13 +10,15 @@ Field reference for `html`-type lesson code tasks. For the lesson envelope and c
 |---|:---:|---|---|
 | `starterFiles` | No | file array | Files shown as editor tabs. |
 | `completeFiles` | No | file array | Reference solution files. |
-| `codeStages` | No | stage array | Intermediate stages (`label`, `files`, `entryFile?`). |
+| `codeStages` | No | stage array | Intermediate stages (`label`, `files`, `entryFile?`, optional `role`, optional `revealable`). Revealable stages open read-only without replacing student files. |
 | `entryFile` | No | string | HTML file rendered in the iframe. Defaults to `index.html`. |
 | `completeEntryFile` | No | string | Entry file for `completeFiles`. |
 | `carryCodeFrom` | No | integer or null | Task ID to carry saved files from (matched by filename). |
 | `interactionMode` | No | string | `run` (default) or `submit`. |
 
 **File object:** `{ name: string, type: "html"|"css"|"javascript", content: string }`.
+
+**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Set `revealable: true` on any role when the stage should appear as a read-only reference after a failed attempt instead of replacing the editor.
 
 **Carry-through behaviour:**
 - Files matching by name are carried; new `starterFiles` in the current task use their defined content.

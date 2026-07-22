@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
-import { flattenTasks, findTaskById } from '../../shared/taskUtils'
+import { flattenTasks, findTaskById, isRevealableStage } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
@@ -44,6 +44,7 @@ export function useStudentCodeState({
   writeStudentOutput,
   writeStudentInteraction,
   recordStudentCarryFallback,
+  recordSupportStageReveal,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -70,6 +71,7 @@ export function useStudentCodeState({
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
+  const [localSupportStageReveals, setLocalSupportStageReveals] = useState({})
 
   const iframeRef              = useRef(null)
   const appendOutputRef        = useRef(null)
@@ -152,6 +154,10 @@ export function useStudentCodeState({
   ]
 
   const myStudentData = session?.students?.[identity?.anonymousId]
+  const supportStageReveals = useMemo(() => ({
+    ...(session?.supportRevealLog?.[effectiveIdentity?.anonymousId]?.[currentTaskId] ?? {}),
+    ...(localSupportStageReveals[currentTaskId] ?? {}),
+  }), [session?.supportRevealLog, effectiveIdentity?.anonymousId, currentTaskId, localSupportStageReveals])
 
   const teacherHighlights = useMemo(() => {
     const raw = myStudentData?.teacherHighlights
@@ -1181,6 +1187,40 @@ export function useStudentCodeState({
     setOfferedStageIndex(stageIndex)
   }
 
+  function handleRevealSupportStage(stageIndex, source = 'student') {
+    if (!effectiveIdentity) return
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const stage = task?.codeStages?.[stageIndex]
+    if (!stage) return
+    if (!['python', 'html'].includes(lesson?.type)) return
+    if (!isRevealableStage(stage)) return
+    if (source === 'student' && checkFailCount <= 0) return
+
+    const record = {
+      taskId: currentTaskId,
+      stageIndex,
+      stageLabel: stage.label || `Stage ${stageIndex + 1}`,
+      source,
+      attemptNumber: checkFailCount,
+      revealedAt: Date.now(),
+    }
+    setLocalSupportStageReveals(prev => ({
+      ...prev,
+      [currentTaskId]: {
+        ...(prev[currentTaskId] ?? {}),
+        [stageIndex]: record,
+      },
+    }))
+    setOfferedStageIndex(prev => Math.max(prev, stageIndex))
+    if (!teacherPresentation && phase === 'lesson') {
+      recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, stageIndex, {
+        source,
+        stageLabel: record.stageLabel,
+        attemptNumber: record.attemptNumber,
+      })
+    }
+  }
+
   function handlePreviewCompleteCode() {
     // Non-destructive: reveals the complete solution read-only in the explainer
     // panel without touching the student's own editor or marking the task solved.
@@ -1322,7 +1362,7 @@ export function useStudentCodeState({
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
     inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
-    offeredStageIndex, completePreviewShown,
+    offeredStageIndex, completePreviewShown, supportStageReveals,
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     teacherHighlights, dismissHighlight,
@@ -1334,7 +1374,7 @@ export function useStudentCodeState({
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
-    handleInputSubmit, handleResetCode, handleShowCodeStage, handlePreviewCompleteCode, handleShowCompleteCode,
+    handleInputSubmit, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handlePreviewCompleteCode, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,

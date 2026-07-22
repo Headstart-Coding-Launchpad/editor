@@ -5,7 +5,7 @@ import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { createSpriteFromPreset } from '../../spritePresets'
-import { flattenTasks } from '../../../shared/taskUtils'
+import { flattenTasks, getStageRole, isRevealableStage, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
 
 function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
@@ -20,7 +20,11 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
       >
         {starterLabel}
       </button>
-      {stages.map((stage, i) => (
+      {stages.map((stage, i) => {
+        const role = getStageRole(stage)
+        const rolePrefix = role === 'support' ? '' : `${role}: `
+        const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
+        return (
         <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
           <button
             type="button"
@@ -29,7 +33,7 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
             aria-selected={activeTab === `stage_${i}`}
             onClick={() => onChange(`stage_${i}`)}
           >
-            {stage.label || `Stage ${i + 1}`}
+            {rolePrefix}{stage.label || `Stage ${i + 1}`}{revealSuffix}
           </button>
           {onRemoveStage && (
             <button
@@ -42,7 +46,8 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
             </button>
           )}
         </div>
-      ))}
+        )
+      })}
       {onAddStage && (
         <button
           type="button"
@@ -219,6 +224,54 @@ function Field({ label, hint, children }) {
         {label}{hint && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.82rem', marginLeft: 4 }}>({hint})</span>}
       </span>
       {children}
+    </div>
+  )
+}
+
+const STAGE_ROLE_HINTS = {
+  support: 'Default support step',
+  core: 'Main path stage',
+  extension: 'Stretch direction',
+  solution: 'Solution reference',
+}
+
+function normalizeStageMetadata(updates) {
+  const next = { ...updates }
+  if (next.revealable === false) delete next.revealable
+  return next
+}
+
+function StageMetadataEditor({ stage, onChange, showRevealable = false }) {
+  function update(updates) {
+    onChange(normalizeStageMetadata({ ...(stage ?? {}), ...updates }))
+  }
+
+  return (
+    <div style={stageMetadataStyles.wrap}>
+      <label style={stageMetadataStyles.roleLabel}>
+        <span style={stageMetadataStyles.labelText}>Role</span>
+        <select
+          className="te-select"
+          style={stageMetadataStyles.select}
+          value={getStageRole(stage)}
+          onChange={e => update({ role: e.target.value })}
+          title={STAGE_ROLE_HINTS[getStageRole(stage)]}
+        >
+          {STAGE_ROLES.map(role => (
+            <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+          ))}
+        </select>
+      </label>
+      {showRevealable && (
+        <label className="te-check-toggle" style={stageMetadataStyles.revealToggle}>
+          <input
+            type="checkbox"
+            checked={!!stage?.revealable}
+            onChange={e => update({ revealable: e.target.checked })}
+          />
+          Reveal reference after failed attempt
+        </label>
+      )}
     </div>
   )
 }
@@ -749,4 +802,36 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
   )
 }
 
-export { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThroughPicker }
+const stageMetadataStyles = {
+  wrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    minWidth: 0,
+  },
+  roleLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: '#6b7280',
+  },
+  labelText: {
+    whiteSpace: 'nowrap',
+  },
+  select: {
+    width: 112,
+    padding: '4px 7px',
+    fontSize: '0.8rem',
+  },
+  revealToggle: {
+    fontSize: '0.78rem',
+    color: '#4b5563',
+    whiteSpace: 'nowrap',
+  },
+}
+
+export { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThroughPicker, StageMetadataEditor }

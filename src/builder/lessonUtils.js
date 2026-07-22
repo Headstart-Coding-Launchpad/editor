@@ -1,5 +1,5 @@
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks, normalizeFeedbackChecks } from '../modules/checks'
-import { flattenTasks, isValidTaskPriority, TASK_PRIORITIES } from '../shared/taskUtils'
+import { flattenTasks, isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
 import { makeForkLessonId } from '../shared/lessonForks'
 import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
@@ -9,6 +9,15 @@ import { normalizeSequenceItem } from '../modules/scratch/checks'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
+
+function validateStageMetadata(task, n, errors) {
+  if (!Array.isArray(task.codeStages)) return
+  task.codeStages.forEach((stage, si) => {
+    if (stage?.role != null && !isValidStageRole(stage.role)) {
+      errors.push(`Task ${n} stage ${si + 1} role must be one of: ${STAGE_ROLES.join(', ')}`)
+    }
+  })
+}
 
 function hasCircuitSelectorTarget(selector) {
   return !!(
@@ -231,6 +240,9 @@ export function validateLesson(lesson) {
     }
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
+    }
+    if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.taskType !== 'draft') {
+      validateStageMetadata(task, n, errors)
     }
     if (task.taskType === 'draft') {
       warnings.push(`Task ${n} "${task.title || 'Untitled'}" is a draft — convert it to a real task type before publishing`)

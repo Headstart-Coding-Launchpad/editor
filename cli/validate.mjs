@@ -1,7 +1,7 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
-import { isValidTaskPriority, TASK_PRIORITIES } from '../src/shared/taskUtils.js'
+import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } from '../src/shared/taskUtils.js'
 
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
@@ -20,6 +20,15 @@ function flattenTasks(tasks) {
 function normalizeChecks(check) {
   if (!check) return []
   return Array.isArray(check) ? check : [check]
+}
+
+function validateStageMetadata(task, n, errors) {
+  if (!Array.isArray(task.codeStages)) return
+  task.codeStages.forEach((stage, si) => {
+    if (stage?.role != null && !isValidStageRole(stage.role)) {
+      errors.push(`Task ${n} stage ${si + 1} role must be one of: ${STAGE_ROLES.join(', ')}`)
+    }
+  })
 }
 
 export function validateLessonForMcp(lesson) {
@@ -69,6 +78,9 @@ export function validateLessonForMcp(lesson) {
     }
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
+    }
+    if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.taskType !== 'draft') {
+      validateStageMetadata(task, n, errors)
     }
 
     if (task.taskType === 'draft') {

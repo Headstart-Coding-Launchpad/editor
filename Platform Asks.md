@@ -35,10 +35,10 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 | T9  | [Done] Surface `priority` in the teacher live view         | PA2  | M    | T6          |
 | T10 | [Done] Include `priority` in session reports               | PA2  | S    | T6, T1      |
 | T11 | [Done] Document `priority`                                 | PA2  | S    | T6          |
-| T12 | Make `copyCode` hideable and revealable                   | PA1a | M    | —           |
-| T13 | Add a student-initiated reveal control                    | PA1a | S    | T12         |
-| T14 | Record reveals in the session report                      | PA1a | S    | T12, T1     |
-| T15 | Add `role` to code stages                                 | PA1b | S    | —           |
+| T12 | [Done] Make code stages revealable without replacing code  | PA1a | M    | —           |
+| T13 | [Done] Add a student-initiated reveal control              | PA1a | S    | T12         |
+| T14 | [Done] Record reveals in the session report                | PA1a | S    | T12, T1     |
+| T15 | [Done] Add `role` to code stages                           | PA1b | S    | —           |
 | T16 | Design the task-variant data model                        | PA1c | M    | T15         |
 | T17 | Implement variant runtime behaviour                       | PA1c | L    | T16         |
 | T18 | Record the active variant in session reports              | PA1c | S    | T16, T1     |
@@ -323,7 +323,9 @@ Three separable features. `codeStages` is being asked to do three jobs and is eq
 
 **Keep the existing destructive push.** It is not being removed. Slower students and students with additional needs genuinely need to be placed onto a working baseline. This adds an alternative.
 
-### T12 — Make `copyCode` hideable and revealable
+### T12 — Make code stages revealable without replacing code
+
+**Status: Done, 22 July 2026.** Implemented as revealable code stages rather than extending `copyCode`: Python/HTML `codeStages[]` supports `role` plus `revealable: true` across roles. Revealed stages render in `SupportStagePanel` as read-only references and do not replace editor/workspace state. Existing `copyCode` remains unchanged for tasks where copying code is the goal.
 
 **Where to look.** `copyCode` is documented in `platform-docs/python.md:30` and `platform-docs/html.md:43` as a "read-only panel above the student editor" — *verified*. The student-facing renderer for that panel is the target (*unknown path*).
 
@@ -339,17 +341,21 @@ Three separable features. `codeStages` is being asked to do three jobs and is eq
 - The student's editor content is unchanged before and after the reveal.
 - Existing always-visible `copyCode` behaviour is the default and is unaffected.
 
-**Decision needed.** Whether the revealable content should be `copyCode`, a nominated `codeStage`, or `completeCode` (currently builder-preview only). `copyCode` is the smallest build; a nominated stage is more flexible.
+**Decision resolved.** Revealable content is a nominated `codeStage`; `copyCode` remains the separate copy-code panel.
 
 ### T13 — Add a student-initiated reveal control
+
+**Status: Done, 22 July 2026.** After a failed attempt, students see a `Show Reference` control for revealable Python/HTML code stages. In live mode, self-reveal writes `supportRevealLog` with `source: student`.
 
 **Steps.** Give the student a "show me the target" control so someone who knows they are stuck can ask without waiting to be noticed.
 
 **Acceptance criteria.** A student can reveal the panel themselves, and the reveal is recorded (see T14).
 
-**Decision needed.** Whether a student reveal should carry a visible cost — marking the task as assisted in the teacher view, for example — or be freely available. Not settled.
+**Decision resolved.** Student reveal is available after a failed attempt for authored revealable Python/HTML code stages, and the teacher view marks the student as having opened a reference.
 
 ### T14 — Record reveals in the session report
+
+**Status: Done, 22 July 2026.** `supportRevealLog` records stage index/label, reveal source, attempt number, and timestamp. Session reports include per-student `supportReveals` and task-level reveal counts/source totals.
 
 **Why.** Without this the feature generates no learning and there is no way to identify which tasks are too hard.
 
@@ -360,6 +366,8 @@ Three separable features. `codeStages` is being asked to do three jobs and is eq
 ## PA1b — Give stages a machine-readable role
 
 ### T15 — Add `role` to code stages
+
+**Status: Done, 22 July 2026.** Stage roles are accepted across all code task types, new Builder-created stages explicitly default to `support`, omitted roles still read as `support`, and validation accepts `support | core | extension | solution`. Builder code-stage editors expose role metadata in the stage row, and Builder/Teacher stage labels surface non-support roles and revealable stages.
 
 **Why.** Whether a stage is easier, harder, or a solution reveal currently exists only as English inside `label`. Nothing can act on it.
 

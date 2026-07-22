@@ -25,6 +25,26 @@ export function getTaskPriority(task) {
   return isValidTaskPriority(task?.priority) ? task.priority : 'core'
 }
 
+export const STAGE_ROLES = ['support', 'core', 'extension', 'solution']
+
+export function isValidStageRole(role) {
+  return STAGE_ROLES.includes(role)
+}
+
+export function getStageRole(stage) {
+  return isValidStageRole(stage?.role) ? stage.role : 'support'
+}
+
+export function isRevealableStage(stage) {
+  return !!stage?.revealable
+}
+
+export function getRevealableStages(task) {
+  return (task?.codeStages ?? [])
+    .map((stage, index) => ({ stage, index }))
+    .filter(({ stage }) => isRevealableStage(stage))
+}
+
 export function getTaskPriorityCounts(tasks) {
   return flattenTasks(tasks).reduce((counts, task) => {
     counts[getTaskPriority(task)] += 1
@@ -122,7 +142,10 @@ export function buildStageOptions(task, lessonType) {
 
   const opts = [{ value: 'starter', label: starterLabel }]
   codeStages.forEach((stage, i) => {
-    opts.push({ value: `stage_${i}`, label: stage.label || `Stage ${i + 1}` })
+    const role = getStageRole(stage)
+    const rolePrefix = role === 'support' ? '' : `${role}: `
+    const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
+    opts.push({ value: `stage_${i}`, label: `${rolePrefix}${stage.label || `Stage ${i + 1}`}${revealSuffix}` })
   })
   if (hasComplete) opts.push({ value: 'complete', label: completeLabel })
   return opts

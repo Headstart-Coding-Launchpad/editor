@@ -7,6 +7,7 @@ export default function CheckFeedbackBanner({
   successMessage = 'Correct!',
   suggestion,
   onShowCodeStage,
+  stageActionLabel = 'Move to next stage',
   onPreviewCompleteCode,
   onShowCompleteCode,
   onGoPersonalSandbox,
@@ -34,7 +35,7 @@ export default function CheckFeedbackBanner({
       )}
       {!passed && onShowCodeStage && (
         <button type="button" style={s.actionLink} onClick={onShowCodeStage}>
-          Move to next stage
+          {stageActionLabel}
         </button>
       )}
       {!passed && onPreviewCompleteCode && (

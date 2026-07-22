@@ -29,7 +29,7 @@ sandboxStarter: |        # optional — pre-loaded code shown in the sandbox
       print('Hello Headstart')
     copyCode: |               # optional — read-only panel above the student editor
       print('Hello Headstart')
-    codeStages: []            # optional — intermediate stages (label, code)
+    codeStages: []            # optional — intermediate stages (label, role?, revealable?, code)
     carryCodeFrom: 1          # optional — carry saved code from task ID
     interactionMode: run      # optional — run (default) | submit
     check:

@@ -165,6 +165,7 @@ const electronicsModule = {
 
   makeNewStage: (task, existing) => ({
     label: `Stage ${existing.length + 1}`,
+    role: 'support',
     circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
   }),
 

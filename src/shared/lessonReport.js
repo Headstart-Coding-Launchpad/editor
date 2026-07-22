@@ -198,6 +198,40 @@ function summarizeCarryFallbacks(perStudent) {
   }
 }
 
+function normalizeSupportRevealRecord(raw, taskId, stageIndex) {
+  if (!raw) return null
+  const numericStageIndex = Number(stageIndex)
+  return {
+    taskId,
+    stageIndex: Number.isFinite(numericStageIndex) ? numericStageIndex : raw.stageIndex ?? null,
+    stageLabel: raw.stageLabel ?? null,
+    source: raw.source === 'teacher' ? 'teacher' : 'student',
+    attemptNumber: Number.isFinite(raw.attemptNumber) ? raw.attemptNumber : 0,
+    revealedAt: raw.revealedAt ?? raw.timestamp ?? null,
+  }
+}
+
+function normalizeSupportReveals(raw, taskId) {
+  if (!raw || typeof raw !== 'object') return []
+  return Object.entries(raw)
+    .map(([stageIndex, reveal]) => normalizeSupportRevealRecord(reveal, taskId, stageIndex))
+    .filter(Boolean)
+    .sort((a, b) => (a.stageIndex ?? 0) - (b.stageIndex ?? 0))
+}
+
+function summarizeSupportReveals(perStudent) {
+  const reveals = perStudent.flatMap(task => task.supportReveals ?? [])
+  const sourceCounts = reveals.reduce((counts, reveal) => {
+    counts[reveal.source] = (counts[reveal.source] ?? 0) + 1
+    return counts
+  }, { teacher: 0, student: 0 })
+  return {
+    supportRevealCount: reveals.length,
+    supportRevealStudentCount: perStudent.filter(task => (task.supportReveals ?? []).length > 0).length,
+    supportRevealSources: sourceCounts,
+  }
+}
+
 function getFinalResult(task, entries, override) {
   if (isNotApplicableTask(task)) return entries.length > 0 ? 'not_applicable' : 'not_attempted'
   if (entries.some(entry => entry.passed)) return 'passed'
@@ -303,11 +337,13 @@ export function buildSessionReport({ session, lesson }) {
   const attemptLog = session?.attemptLog ?? {}
   const overrideLog = session?.overrideLog ?? {}
   const carryFallbackLog = session?.carryFallbackLog ?? {}
+  const supportRevealLog = session?.supportRevealLog ?? {}
   const anonymousIds = Array.from(new Set([
     ...Object.keys(studentsSnapshot),
     ...Object.keys(attemptLog),
     ...Object.keys(overrideLog),
     ...Object.keys(carryFallbackLog),
+    ...Object.keys(supportRevealLog),
   ]))
 
   const taskStartTimes = session?.taskStartTimes ?? {}
@@ -320,6 +356,7 @@ export function buildSessionReport({ session, lesson }) {
         .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
       const override = getStudentTaskOverride(overrideLog, anonymousId, task.id, entries, task)
       const carryFallback = normalizeCarryFallbackRecord(carryFallbackLog?.[anonymousId]?.[task.id], task.id)
+      const supportReveals = normalizeSupportReveals(supportRevealLog?.[anonymousId]?.[task.id], task.id)
       const attempts = countAttempts(entries)
       const completed = getCompleted(task, entries, override)
 
@@ -344,6 +381,7 @@ export function buildSessionReport({ session, lesson }) {
         timeOnTaskMs,
         ...(override ? { override } : {}),
         ...(carryFallback ? { carryFallback } : {}),
+        ...(supportReveals.length > 0 ? { supportReveals } : {}),
         distinctAttempts: entries.map(entry => ({
           attemptNumber: entry.attemptNumber,
           passed: entryReportPassed(task, entry),
@@ -407,6 +445,7 @@ export function buildSessionReport({ session, lesson }) {
         overriddenFailedCount: 0,
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
+        ...summarizeSupportReveals(perStudent),
       }
     }
 
@@ -424,6 +463,7 @@ export function buildSessionReport({ session, lesson }) {
         overriddenFailedCount: 0,
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
+        ...summarizeSupportReveals(perStudent),
       }
     }
 
@@ -441,6 +481,7 @@ export function buildSessionReport({ session, lesson }) {
         commonFailures,
       }, perStudent),
       ...summarizeCarryFallbacks(perStudent),
+      ...summarizeSupportReveals(perStudent),
     }
     if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
       summary.blankFailures = summarizeFillBlankFailures(task, perStudent)

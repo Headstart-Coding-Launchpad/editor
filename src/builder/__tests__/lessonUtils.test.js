@@ -69,6 +69,31 @@ describe('validateLesson', () => {
     expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
   })
 
+  it('validates code stage roles and accepts revealable stages across roles', () => {
+    const valid = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Use a variable',
+      starterCode: 'name = ""',
+      codeStages: [
+        { label: 'With name started', revealable: true, code: 'name = "Ada"' },
+        { label: 'Extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
+      ],
+    }]))
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Use a variable',
+      starterCode: 'name = ""',
+      codeStages: [
+        { label: 'Wrong role', role: 'stretch', code: '' },
+      ],
+    }]))
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'Task 1 stage 1 role must be one of: support, core, extension, solution',
+    ]))
+  })
+
   it('validates feedback check fields using the same lesson-type rules', () => {
     const fsResult = validateLesson(lesson('filesystem', [{
       id: 1,

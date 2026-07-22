@@ -127,6 +127,7 @@ describe('module interface contract', () => {
     it('makeNewStage creates a stage with code', () => {
       const result = mod.makeNewStage({ starterCode: 'x = 1' }, [])
       expect(result.label).toContain('1')
+      expect(result.role).toBe('support')
       expect(result.code).toBe('x = 1')
     })
 
@@ -153,6 +154,7 @@ describe('module interface contract', () => {
       const task = { starterFiles: [{ name: 'index.html', content: '' }], entryFile: 'index.html' }
       const result = mod.makeNewStage(task, [])
       expect(result.label).toContain('1')
+      expect(result.role).toBe('support')
       expect(Array.isArray(result.files)).toBe(true)
     })
 
@@ -183,6 +185,7 @@ describe('module interface contract', () => {
 
     it('makeNewStage creates a stage with fs', () => {
       const result = mod.makeNewStage({}, [])
+      expect(result.role).toBe('support')
       expect(result).toHaveProperty('fs')
     })
   })

@@ -48,6 +48,18 @@
           }
         },
 
+        // Student- or teacher-triggered read-only support stage reveals.
+        // These do not modify editor contents and are preserved for reports.
+        "supportRevealLog": {
+          "$anonymousId": {
+            "$taskId": {
+              "$stageIndex": {
+                ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+              }
+            }
+          }
+        },
+
         // Teacher/admin-only record of students moved past a reportable task
         // without a real passing attempt. Students never write overrides.
         "overrideLog": {

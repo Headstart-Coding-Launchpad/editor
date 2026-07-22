@@ -382,6 +382,47 @@ describe('buildSessionReport', () => {
     })
   })
 
+  it('includes support-stage reveal metadata in student rows and task summaries', () => {
+    const withReveals = {
+      ...session,
+      supportRevealLog: {
+        alice: {
+          1: {
+            0: { taskId: 1, stageIndex: 0, stageLabel: 'With name started', source: 'student', attemptNumber: 2, revealedAt: 1250 },
+          },
+        },
+        bob: {
+          1: {
+            0: { taskId: 1, stageIndex: 0, stageLabel: 'With name started', source: 'teacher', attemptNumber: 1, revealedAt: 1260 },
+          },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: withReveals, lesson })
+
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).supportReveals).toEqual([{
+      taskId: 1,
+      stageIndex: 0,
+      stageLabel: 'With name started',
+      source: 'student',
+      attemptNumber: 2,
+      revealedAt: 1250,
+    }])
+    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).supportReveals).toEqual([{
+      taskId: 1,
+      stageIndex: 0,
+      stageLabel: 'With name started',
+      source: 'teacher',
+      attemptNumber: 1,
+      revealedAt: 1260,
+    }])
+    expect(taskById(report.taskSummary, 1)).toMatchObject({
+      supportRevealCount: 2,
+      supportRevealStudentCount: 2,
+      supportRevealSources: { teacher: 1, student: 1 },
+    })
+  })
+
   it('does not include student names or anonymous IDs', () => {
     const report = buildSessionReport({ session, lesson })
     expect(report.students).toEqual([

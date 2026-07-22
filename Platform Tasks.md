@@ -419,6 +419,8 @@ Priority applies to every task type.
 
 ## Phase 5: Stage Role Foundation
 
+**Status: Done, 22 July 2026.** Implemented T15. Stage roles are shared in `src/shared/taskUtils.js`, validated by CLI and Builder validation, edited inside Builder code-stage editors, surfaced in Builder/Teacher stage labels, and documented across code-task authoring references.
+
 Goal: Make stage purpose machine-readable before adding reveal and variant behaviour.
 
 ### Scope
@@ -441,19 +443,21 @@ No runtime behaviour changes in this phase except validation and display labels 
 
 Existing destructive stage push remains available.
 
-## Phase 6: Revealable Support Stages
+## Phase 6: Revealable Code Stages
+
+**Status: Done, 22 July 2026.** Python and HTML `codeStages[]` entries can be marked `revealable: true` across any stage role; students and teachers can open them as read-only references without changing editor content. Reveals are logged in `supportRevealLog`, marked in the teacher student grid/modal, and included in session reports with source and attempt number. Destructive stage push remains a separate teacher action.
 
 Goal: Let a student see help that moves them forward without replacing their editor content.
 
 ### Scope
 
-Replace the small `copyCode`-only approach with support-stage reveal.
+Keep `copyCode` for copy-code tasks and add reveal behaviour to nominated code stages.
 
 ### Behaviour
 
-- Authors can mark a support stage as revealable.
-- Teacher can reveal a support stage for one student.
-- Student can reveal it themselves.
+- Authors can mark any Python/HTML code stage role as revealable.
+- Teacher can reveal a stage reference for one student.
+- Student can reveal it themselves after a failed attempt.
 - Revealing does not change editor contents.
 - Teacher view marks the student as assisted/reference-opened.
 - Reports record reveal source and attempt number.
@@ -462,7 +466,7 @@ Replace the small `copyCode`-only approach with support-stage reveal.
 
 - No automatic reveal after N attempts.
 - Do not remove destructive stage push.
-- Do not turn support reveal into complete solution reveal by default.
+- Do not turn stage reveal into complete solution reveal by default.
 
 ## Phase 7: Code-Task Variants
 
@@ -523,7 +527,7 @@ Goal: Keep authoring references accurate while implementation proceeds.
 3. Carry-through walk-back.
 4. Task priority.
 5. Stage roles.
-6. Revealable support stages.
+6. Revealable code stages.
 7. Code-task variants.
 8. Docs-only cleanup if any small reference defects remain.
 

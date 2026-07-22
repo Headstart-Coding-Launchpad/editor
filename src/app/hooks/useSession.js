@@ -79,6 +79,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       explainerShowComplete: false,
       taskStartTimes:        {},
       students:              {},
+      supportRevealLog:      null,
     })
   }
 
@@ -112,6 +113,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       explainerShowComplete: false,
       students:              null,
       overrideLog:           null,
+      supportRevealLog:      null,
     })
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
@@ -512,6 +514,21 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  async function recordSupportStageReveal(anonymousId, taskId, stageIndex, { source = 'student', stageLabel = '', attemptNumber = null } = {}) {
+    if (!anonymousId || taskId == null || stageIndex == null) return
+    if (session?.supportRevealLog?.[anonymousId]?.[taskId]?.[stageIndex]) return
+    const entries = getAttemptEntries(session, anonymousId, taskId)
+    const countedAttempts = countAttemptRuns(entries)
+    await set(ref(db, `sessions/${lessonId}/supportRevealLog/${anonymousId}/${taskId}/${stageIndex}`), {
+      taskId,
+      stageIndex,
+      stageLabel: stageLabel || null,
+      source: source === 'teacher' ? 'teacher' : 'student',
+      attemptNumber: attemptNumber ?? countedAttempts,
+      revealedAt: serverTimestamp(),
+    })
+  }
+
   async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt } = {}) {
     const updates = {}
     if (windowFocused !== undefined) updates.windowFocused = windowFocused
@@ -578,7 +595,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }

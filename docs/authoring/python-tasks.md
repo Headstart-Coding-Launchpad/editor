@@ -10,7 +10,7 @@ Field reference for `python`-type lesson code tasks. For the lesson envelope and
 |---|:---:|---|---|
 | `starterCode` | No | string | Code loaded when no carry-through exists. |
 | `completeCode` | No | string | Reference solution (builder preview/copy). |
-| `codeStages` | No | stage array | Intermediate stages (`label`, `code`). Teacher can send any stage to students. |
+| `codeStages` | No | stage array | Intermediate stages (`label`, `code`, optional `role`, optional `revealable`). Teacher can send any stage to students; revealable stages can be opened read-only without replacing student code. |
 | `carryCodeFrom` | No | integer or null | Task ID to carry saved code from. |
 | `interactionMode` | No | string | `run` (default) or `submit`. |
 | `tests` | No | test array | Automated test cases. See **Task Tests** below. |
@@ -19,6 +19,8 @@ Field reference for `python`-type lesson code tasks. For the lesson envelope and
 - `run` or omitted: Run executes Python; checks run against output/code/status.
 - `submit`: Submit checks code text only; use `type: code` checks.
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
+
+**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Set `revealable: true` on any role when the stage should appear as a read-only reference after a failed attempt instead of replacing the editor.
 
 ---
 

@@ -46,6 +46,7 @@ const htmlModule = {
 
   makeNewStage: (task, existing) => ({
     label: `Stage ${existing.length + 1}`,
+    role: 'support',
     files: (task.starterFiles ?? []).map(f => ({ ...f })),
     entryFile: task.entryFile ?? 'index.html',
   }),

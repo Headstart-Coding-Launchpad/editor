@@ -51,7 +51,7 @@ export default function TeacherView({ lessonId }) {
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
-    pushTeacherHighlight, removeTeacherHighlight,
+    pushTeacherHighlight, removeTeacherHighlight, recordSupportStageReveal,
   } = useSession(lessonId)
 
   const [baseLesson, setBaseLesson]     = useState(null)
@@ -536,6 +536,7 @@ export default function TeacherView({ lessonId }) {
             onClearTeacherStage={clearTeacherStage}
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
+            onRevealSupportStage={recordSupportStageReveal}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}

@@ -86,6 +86,41 @@ describe('CLI lesson validation', () => {
     expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
   })
 
+  it('validates code stage roles and accepts revealable stages across roles', () => {
+    const valid = validateLessonForMcp({
+      id: 'stage-role-demo',
+      type: 'python',
+      title: 'Stage roles',
+      description: 'A lesson with revealable stages',
+      tasks: [{
+        title: 'Use a variable',
+        starterCode: 'name = ""',
+        codeStages: [
+          { label: 'With name started', revealable: true, code: 'name = "Ada"' },
+          { label: 'Extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
+        ],
+      }],
+    })
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLessonForMcp({
+      id: 'stage-role-demo',
+      type: 'python',
+      title: 'Stage roles',
+      description: 'A lesson with bad stages',
+      tasks: [{
+        title: 'Use a variable',
+        starterCode: 'name = ""',
+        codeStages: [
+          { label: 'Wrong role', role: 'stretch', code: '' },
+        ],
+      }],
+    })
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'Task 1 stage 1 role must be one of: support, core, extension, solution',
+    ]))
+  })
+
   it('validates class fork metadata and deterministic ids', () => {
     const valid = validateLessonForMcp({
       id: 'python-basics-maple',

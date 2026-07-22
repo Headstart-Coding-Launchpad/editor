@@ -47,7 +47,7 @@ sandboxBackdrops: []               # optional — backdrop array for sandbox
     starterBlocks: null       # optional — Blockly workspace state, keyed by sprite ID for multi-sprite
     completeBlocks: null      # optional — reference solution
     prebuiltStacks: []        # optional — drag-in block stacks shown in the toolbox
-    codeStages: []            # optional — intermediate stages (label, blocks, prebuiltStacks)
+    codeStages: []            # optional — intermediate stages (label, role?, revealable?, blocks, prebuiltStacks)
     carryBlocksFrom: null     # optional — carry saved blocks from task ID
     check:
       type: sprite_property
@@ -61,6 +61,8 @@ sandboxBackdrops: []               # optional — backdrop array for sandbox
 ---
 
 ## Sprite Object
+
+**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. `revealable: true` may be stored on any role, but runtime read-only reveal is currently implemented for Python/HTML stages only.
 
 ```yaml
 sprites:

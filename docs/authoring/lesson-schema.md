@@ -88,6 +88,8 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
+Code task `codeStages` share two optional metadata fields across Python, HTML, Scratch, Filesystem, and Electronics: `role` (`support`, `core`, `extension`, `solution`; omitted defaults to `support`) and `revealable` (`true` on any role). Python and HTML revealable stages are shown as read-only references after a failed attempt and do not replace student work; other code task types preserve the metadata for now.
+
 `draft` tasks are planning placeholders — they block publishing (in the builder and via `lessons publish-yaml`) but can be saved via `lessons upsert`.
 
 ---

@@ -15,6 +15,8 @@ import {
   updateSubtaskTitles,
   deriveTaskContext,
   buildStageOptions,
+  getStageRole,
+  getRevealableStages,
 } from '../taskUtils.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -443,6 +445,20 @@ describe('deriveTaskContext', () => {
 // ─── buildStageOptions ────────────────────────────────────────────────────────
 
 describe('buildStageOptions', () => {
+  it('defaults omitted stage roles to support and finds revealable stages across roles', () => {
+    const task = {
+      codeStages: [
+        { label: 'Help', revealable: true },
+        { label: 'Extension', role: 'extension', revealable: true },
+      ],
+    }
+    expect(getStageRole(task.codeStages[0])).toBe('support')
+    expect(getRevealableStages(task)).toEqual([
+      { stage: task.codeStages[0], index: 0 },
+      { stage: task.codeStages[1], index: 1 },
+    ])
+  })
+
   it('returns [starter] when task has no stages and no complete', () => {
     const opts = buildStageOptions({ codeStages: [] }, 'python')
     expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
@@ -482,6 +498,13 @@ describe('buildStageOptions', () => {
     const opts = buildStageOptions(task, 'python')
     expect(opts[1]).toEqual({ value: 'stage_0', label: 'My Stage' })
     expect(opts[2]).toEqual({ value: 'stage_1', label: 'Stage 2' })
+  })
+
+  it('marks non-support and revealable stages in teacher-facing labels', () => {
+    const task = { codeStages: [{ label: 'Nudge', revealable: true }, { label: 'Harder', role: 'extension', revealable: true }] }
+    const opts = buildStageOptions(task, 'python')
+    expect(opts[1]).toEqual({ value: 'stage_0', label: 'Nudge (revealable)' })
+    expect(opts[2]).toEqual({ value: 'stage_1', label: 'extension: Harder (revealable)' })
   })
 
   it('falls back to "Stage N" when stage has no label', () => {

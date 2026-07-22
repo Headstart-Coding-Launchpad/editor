@@ -50,6 +50,7 @@ const filesystemModule = {
 
   makeNewStage: (task, existing) => ({
     label: `Stage ${existing.length + 1}`,
+    role: 'support',
     fs: task.starterFs ? { ...task.starterFs } : DEFAULT_FS,
   }),
 

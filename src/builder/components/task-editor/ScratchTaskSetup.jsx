@@ -3,7 +3,7 @@ import ScratchWorkspace from '../../../modules/scratch/ScratchWorkspace'
 import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
-import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager } from './TaskEditorFields'
+import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager, StageMetadataEditor } from './TaskEditorFields'
 import { ScratchToolboxPicker, VariableManager, PrebuiltStacksEditor } from '../../../modules/scratch/scratchEditors'
 
 export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, setCheckResult }) {
@@ -31,6 +31,12 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   function updateStage(idx, updates) {
     const existing = task.codeStages ?? []
     const updated = existing.map((s, i) => i === idx ? { ...s, ...updates } : s)
+    onUpdate({ ...task, codeStages: updated })
+  }
+
+  function replaceStage(idx, nextStage) {
+    const existing = task.codeStages ?? []
+    const updated = existing.map((s, i) => i === idx ? nextStage : s)
     onUpdate({ ...task, codeStages: updated })
   }
 
@@ -109,7 +115,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     const srcBlocks = existing.length > 0
       ? cloneBlocks(existing[existing.length - 1].blocks)
       : cloneBlocks(modalStarterBlocksRef.current ?? task.starterBlocks)
-    const newStage = { label: `Stage ${existing.length + 1}`, blocks: srcBlocks }
+    const newStage = { label: `Stage ${existing.length + 1}`, role: 'support', blocks: srcBlocks }
     const updated = [...existing, newStage]
     onUpdate({ ...task, codeStages: updated })
     setScratchModalTab(`stage_${updated.length - 1}`)
@@ -390,6 +396,10 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           value={stage.label ?? ''}
                           onChange={e => updateStage(stageIdx, { label: e.target.value })}
                           placeholder={`Stage ${stageIdx + 1}`}
+                        />
+                        <StageMetadataEditor
+                          stage={stage}
+                          onChange={nextStage => replaceStage(stageIdx, nextStage)}
                         />
                         <button
                           type="button"

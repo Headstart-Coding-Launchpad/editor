@@ -1,5 +1,5 @@
 import { CodeEditor } from '../../../shared/CodeEditor'
-import { CodeWorkspaceTabs } from './TaskEditorFields'
+import { CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
 import TaskCheckResults from './TaskCheckResults'
 import TaskRunControls from './TaskRunControls'
 import TaskTestResults from './TaskTestResults'
@@ -29,6 +29,12 @@ export default function PythonTaskWorkspace({
     onUpdate({ ...task, codeStages: updated })
   }
 
+  function replaceStage(idx, nextStage) {
+    const existing = task.codeStages ?? []
+    const updated = existing.map((s, i) => i === idx ? nextStage : s)
+    onUpdate({ ...task, codeStages: updated })
+  }
+
   return (
     <>
       <div className="te-code-workspace-stack">
@@ -41,7 +47,7 @@ export default function PythonTaskWorkspace({
           rightAction={resetToStarterBtn}
         />
         {isStageTab && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
             <input
               className="te-input"
@@ -49,6 +55,11 @@ export default function PythonTaskWorkspace({
               value={activeStage?.label ?? ''}
               onChange={e => updateStage(activeStageIndex, { label: e.target.value })}
               placeholder={`Stage ${activeStageIndex + 1}`}
+            />
+            <StageMetadataEditor
+              stage={activeStage}
+              showRevealable
+              onChange={nextStage => replaceStage(activeStageIndex, nextStage)}
             />
           </div>
         )}

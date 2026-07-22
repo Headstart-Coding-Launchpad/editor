@@ -396,6 +396,42 @@ describe('useSession', () => {
     })
   })
 
+  describe('recordSupportStageReveal', () => {
+    it('writes a support-stage reveal record with source and attempt count', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: { 'student-abc': { checkPassed: false } },
+        attemptLog: {
+          'student-abc': {
+            1: {
+              k1: { attemptNumber: 1, retries: 1, passed: false },
+            },
+          },
+        },
+      })
+
+      await act(async () => {
+        await result.current.recordSupportStageReveal('student-abc', 1, 0, {
+          source: 'teacher',
+          stageLabel: 'With name started',
+        })
+      })
+
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/supportRevealLog/student-abc/1/0' },
+        {
+          taskId: 1,
+          stageIndex: 0,
+          stageLabel: 'With name started',
+          source: 'teacher',
+          attemptNumber: 2,
+          revealedAt: { '.sv': 'timestamp' },
+        },
+      )
+    })
+  })
+
   describe('writeStudentCode', () => {
     it('writes code to the student currentCode path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

@@ -30,12 +30,14 @@ tasks: []
 |---|:---:|---|
 | `starterCircuit` | Yes | Circuit object loaded when the task starts. |
 | `completeCircuit` | No | Completed board shown by teacher tools and solo help. |
-| `codeStages` | No | Array of hints/stages; each stage can contain `{ label, circuit }`. |
+| `codeStages` | No | Array of hints/stages; each stage can contain `{ label, circuit, role?, revealable? }`. Stage role metadata is available for teacher labelling; read-only reveal UI is currently implemented for Python/HTML stages only. |
 | `availableComponents` | No | Array of component types students can add from the palette. Omitted = all components, including `battery`. New starter boards begin empty, so add a battery to the starter circuit or keep it available in the palette when students need one. |
 | `carryCircuitFrom` | No | Task ID to carry a previous saved board into this task. |
 | `microcontroller` | No | Legacy compatibility for older drafts. New lessons should add a `microcontroller` component; the MicroPython tab appears automatically when one is present. |
 
 Circuit objects contain `board`, `components`, `wires`, and `controls`. Component IDs are internal save-file references for wires and controls. Checks should usually target parts by type and optional label, so students can solve the circuit flexibly.
+
+**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. `revealable: true` may be stored on any role, but runtime read-only reveal is currently implemented for Python/HTML stages only.
 
 The default board is `18 x 30`. The builder can switch between compact `14 x 20`, standard `18 x 30`, and large `22 x 36` boards by updating `board.rows` and `board.cols`.
 

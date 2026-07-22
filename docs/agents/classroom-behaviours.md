@@ -61,6 +61,15 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
   - Scratch uses `.blocks`.
   - Filesystem uses `.fs`.
 
+## Code Stage Reveal
+
+- `codeStages[].role` may be `support`, `core`, `extension`, or `solution`; omitted role defaults to `support`.
+- `codeStages[].revealable: true` may be set on any stage role. Python and HTML lessons currently render revealable stages as read-only references.
+- Revealing a stage displays a read-only reference panel and never writes to the student's editor or files.
+- Students can reveal their own Python/HTML revealable stages after a failed attempt. Teachers can reveal a Python/HTML stage reference for one student from `StudentModal`.
+- Reveals write `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source`, `stageLabel`, `attemptNumber`, and `revealedAt`.
+- Teacher student cards mark the current task when a student has opened a reference. Session reports include per-student `supportReveals` and task-level reveal counts.
+
 ## Explainer Complete-Code Reveal
 
 Swaps the task explainer panel's content between the normal explanation and a read-only rendering of the complete solution — distinct from Remote Reset, which replaces the student's actual editor content. Python only.
