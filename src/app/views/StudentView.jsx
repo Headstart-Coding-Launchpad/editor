@@ -19,6 +19,8 @@ import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
+import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
+import { getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
 
 export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
@@ -100,6 +102,36 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   }, [viewingTaskId, currentTaskId])
 
   const isMobile = useIsMobile()
+  const currentPythonTask = useMemo(() => {
+    if (lesson?.type !== 'python') return null
+    const task = flattenTasks(lesson.tasks).find(item => item.id === currentTaskId)
+    return isPythonCodeTask(task) ? task : null
+  }, [lesson, currentTaskId])
+  const savedPythonTasks = useMemo(() => getSavedPythonTasks({
+    lesson,
+    anonymousId: teacherPresentation ? null : identity?.anonymousId,
+  }), [lesson, identity?.anonymousId, teacherPresentation, cs.code])
+
+  function downloadTasks(tasks, filename) {
+    if (tasks.length === 0) return
+    downloadLaunchpadCodeFile(createLaunchpadCodeFile(tasks), filename)
+  }
+
+  function handleDownloadCurrentCode() {
+    if (!currentPythonTask) return
+    cs.saveCurrentWork()
+    downloadTasks([{ id: currentPythonTask.id, title: currentPythonTask.title, code: cs.code }], currentPythonTask.title)
+  }
+
+  function handleDownloadAllCode() {
+    cs.saveCurrentWork()
+    const latestTasks = getSavedPythonTasks({ lesson, anonymousId: identity?.anonymousId })
+    downloadTasks(latestTasks, `${lesson?.title || 'my'}-python-code`)
+  }
+
+  function handleDownloadLessonSandboxCode() {
+    downloadTasks([{ id: 'sandbox', title: 'Python sandbox', code: cs.code }], 'python-sandbox')
+  }
 
   // ─── Cross-hook coordination ───────────────────────────────────────────────
 
@@ -204,7 +236,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   }
 
   if (phase === 'ended') {
-    return <SessionEndedScreen onContinueSolo={() => setPhase('solo')} />
+    return (
+      <SessionEndedScreen
+        savedCodeTaskCount={savedPythonTasks.length}
+        onDownloadAllCode={handleDownloadAllCode}
+        onContinueSolo={() => setPhase('solo')}
+      />
+    )
   }
 
   // ─── Lesson / sandbox / solo render ───────────────────────────────────────
@@ -375,9 +413,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       </div>
     </div>
   ) : (
-    !isSandbox && (
+    isSandbox && lesson.type === 'python' ? (
+      <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadLessonSandboxCode}>
+        Download sandbox code
+      </button>
+    ) : !isSandbox && (
       <div style={s.topBarTaskControls}>
         {taskProgressControl}
+        {!isForcedTeacherLive && currentPythonTask && (
+          <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadCurrentCode}>
+            Download code
+          </button>
+        )}
         {isSolo && (
           <SoloNav
             flatTasks={flatTasks}
@@ -620,6 +667,10 @@ const s = {
     gap: 12,
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
+  },
+  downloadCodeBtn: {
+    fontSize: 13,
+    padding: '5px 10px',
   },
   pauseOverlay: {
     position: 'fixed',

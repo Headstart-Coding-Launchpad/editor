@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { createLaunchpadCodeFile, parseLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 
 export default function LandingPage() {
   const [searchParams] = useSearchParams()
@@ -7,12 +8,34 @@ export default function LandingPage() {
   const isTeacher = searchParams.get('teacher') === 'true'
 
   const [lessonCode, setLessonCode] = useState('')
+  const [openCodeError, setOpenCodeError] = useState('')
+  const [sandboxPickerOpen, setSandboxPickerOpen] = useState(false)
+  const fileInputRef = useRef(null)
 
   function handleGo(e) {
     e.preventDefault()
     const id = lessonCode.trim()
     if (!id) return
     navigate(`/lesson/${id}${isTeacher ? '?teacher=true' : ''}`)
+  }
+
+  async function handleOpenCode(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const codeFile = parseLaunchpadCodeFile(await file.text())
+      navigate('/code', { state: { codeFile } })
+    } catch (error) {
+      setOpenCodeError(error.message)
+    }
+  }
+
+  function handleOpenSandbox() {
+    const codeFile = createLaunchpadCodeFile([
+      { id: 'sandbox', title: 'My Python sandbox', code: '' },
+    ])
+    navigate('/code', { state: { codeFile } })
   }
 
   return (
@@ -47,9 +70,43 @@ export default function LandingPage() {
             </button>
           </div>
         </form>
-
+        {!isTeacher && (
+          <div style={s.openCode}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".launchpad,application/json"
+              onChange={handleOpenCode}
+              style={s.fileInput}
+              aria-label="Choose a LaunchPad code file"
+            />
+            <button className="btn-ghost-outline" type="button" onClick={() => fileInputRef.current?.click()}>
+              Open saved code
+            </button>
+            <p style={s.openCodeText}>Open a LaunchPad file to continue your Python code.</p>
+            <button className="btn-ghost-outline" type="button" onClick={() => setSandboxPickerOpen(true)}>
+              Open sandbox
+            </button>
+            <p style={s.openCodeText}>Start a fresh coding space and choose its type.</p>
+            {openCodeError && <p style={s.error} role="alert">{openCodeError}</p>}
+          </div>
+        )}
 
       </div>
+      {sandboxPickerOpen && (
+        <div style={s.dialogBackdrop} role="dialog" aria-modal="true" aria-labelledby="sandbox-picker-title">
+          <div style={s.dialog}>
+            <h2 id="sandbox-picker-title" style={s.dialogTitle}>Choose a sandbox</h2>
+            <p style={s.dialogText}>Pick the type of code you want to work on.</p>
+            <button className="btn-primary" type="button" onClick={handleOpenSandbox}>
+              Python
+            </button>
+            <button className="btn-ghost-outline" type="button" onClick={() => setSandboxPickerOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -121,5 +178,49 @@ const s = {
     padding: '9px 22px',
     fontSize: '0.95rem',
   },
-
+  openCode: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+    borderTop: '1px solid var(--ui-border)',
+  },
+  fileInput: { display: 'none' },
+  openCodeText: {
+    margin: 0,
+    textAlign: 'center',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    color: '#6b7280',
+  },
+  error: {
+    margin: 0,
+    textAlign: 'center',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    color: '#991b1b',
+  },
+  dialogBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 1200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    background: 'rgba(0,0,0,0.5)',
+  },
+  dialog: {
+    width: 'min(360px, 100%)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 24,
+    borderRadius: 'var(--ui-radius)',
+    background: 'var(--ui-surface)',
+    boxShadow: 'var(--ui-shadow)',
+  },
+  dialogTitle: { margin: 0, color: 'var(--colour-primary)', fontFamily: 'var(--font-title)', fontSize: '1.2rem' },
+  dialogText: { margin: 0, color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
 }

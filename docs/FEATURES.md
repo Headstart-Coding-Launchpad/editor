@@ -128,6 +128,13 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Execution pauses; an inline input field appears in the output panel
 - Multiple sequential input calls handled in sequence
 
+### Python Code Backups
+- Python work remains automatically saved only in the current browser/device while a learner works anonymously
+- Download the current Python task at any time as a `.launchpad` file
+- At the end of a live session, learners who edited Python tasks are reminded to download all of their saved code tasks in one `.launchpad` file
+- Download current Python code from personal or teacher-managed lesson sandboxes
+- Open a `.launchpad` file or choose a sandbox type from the landing page (Python currently); both use the same focused Python editor with Run and Download controls
+
 ---
 
 ## Lesson Builder Features

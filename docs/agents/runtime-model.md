@@ -364,6 +364,12 @@ Do not deviate from these key formats.
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` for personal sandbox HTML per-file |
 | `headstart_builder_current` | Full lesson JSON object |
 
+## LaunchPad Code Files
+
+Anonymous learner backups are browser downloads, not Firebase records. Python exports use the versioned `.launchpad` JSON format with `format: "headstart-launchpad-code"`, `version: 1`, `language: "python"`, and one or more `{ id, title, code }` tasks. A one-task download and an all-saved-tasks download intentionally use the same extension and schema.
+
+The landing page validates a selected `.launchpad` file and passes it to `/code`, which provides a focused Python editor/runner. Imports never write to Firebase and do not alter lesson-task localStorage keys. The session-end prompt is a warning about browser/device storage, not a claim that localStorage has a timed expiry.
+
 ## URL Structure
 
 | URL | Behaviour |
@@ -376,6 +382,7 @@ Do not deviate from these key formats.
 | `/lesson/:lessonId?live=true` | Live student mode |
 | `/lesson/:lessonId?teacher=true` | Teacher view; redirects unauthenticated users to login |
 | `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation view; auth required |
+| `/code` | Imported `.launchpad` Python code workspace |
 | `/builder` | Lesson builder |
 
 No room IDs. There is one session per lesson.

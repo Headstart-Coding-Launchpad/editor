@@ -11,7 +11,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `src/main.jsx` | App DOM entry — renders App into #root |
-| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/admin`, `/builder`, and fallback to LandingPage |
+| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/code`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
 | `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
 | `src/builder/spritePresets.js` | Pure reusable Scratch sprite preset validation and unique lesson-sprite creation helpers |
@@ -48,7 +48,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `LandingPage.jsx` | Entry screen: student types lesson ID to navigate to `/lesson/:lessonId` |
+| `LandingPage.jsx` | Entry screen: student enters a lesson ID or opens a downloaded `.launchpad` Python code file |
+| `CodeFileWorkspace.jsx` | Lightweight standalone Python editor/runner for one or many imported `.launchpad` code tasks |
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
 | `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView |
 | `StudentView.jsx` | Main student experience: all phases (loading → waiting → name-entry → lesson/sandbox/solo → ended) |
@@ -64,6 +65,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers |
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers |
 | `studentQuizContent.js` | Pure quiz suggestion helpers: maps wrong answers to option/task/check hint feedback |
+| `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
 | `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
 
@@ -368,6 +370,7 @@ Each `index.js` exports a default object with:
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
+| `launchpadCodeFile.js` | Versioned `.launchpad` Python code-file creation, validation, parsing, naming, and browser download helpers |
 
 ### Markdown Helpers (`src/shared/markdown/`)
 

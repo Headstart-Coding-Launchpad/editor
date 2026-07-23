@@ -12,10 +12,12 @@ This page captures the design intent behind the classroom runtime. Use the deepe
 flowchart TD
   App["src/App.jsx"] --> Login["/login"]
   App --> Lesson["/lesson/:lessonId"]
+  App --> Code["/code"]
   App --> Admin["/admin"]
   App --> Builder["/builder"]
   Lesson --> Student["StudentView"]
   Lesson --> Teacher["TeacherView when teacher query/auth allows"]
+  Code --> CodeWorkspace["CodeFileWorkspace"]
   Admin --> Protected["ProtectedRoute admin"]
   Builder --> BuilderApp["Builder route"]
 ```
@@ -52,6 +54,9 @@ flowchart TD
   Run["Run or Submit"] --> Results["Output/check result"]
   Results --> RTDB
   Sandbox["Personal sandbox"] --> SandboxKeys["Separate sandbox persistence keys"]
+  Local --> Export["Download current or all saved Python tasks (.launchpad)"]
+  Export --> Import["Landing page: Open saved code"]
+  Import --> CodeWorkspace["Focused Python editor/runner"]
 ```
 
 The important invariant is that normal student code is local-first. Firebase streaming is reserved for teacher live-view moments and explicit run/check events.

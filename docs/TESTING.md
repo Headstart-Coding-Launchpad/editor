@@ -34,6 +34,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |
 | `src/shared/storageAssets.js` | Firebase Storage folder inventory merged with optional schema metadata |
 | `src/shared/workspaceData.js` | Scratch state parsing/cloning and decoded HTML file conversion |
+| `src/shared/launchpadCodeFile.js` | `.launchpad` Python code-file creation, parsing, schema validation, and filename generation |
 | `src/shared/topicLibrary.js` | Topic normalization/search, wiki-link expansion and builder link suggestion detection |
 | `src/shared/topicAudit.js` | Topic-link parsing across draft/final/grouped tasks, proposal matching, unused proposals, and stage/publication blocking |
 | `src/shared/lessonService.js` | Firestore lesson fetch/list helpers, including static JSON fallback for unavailable lesson reads |
@@ -42,6 +43,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/studentStorage.js` | Exact localStorage key formats plus saved task/file snapshot reads and writes |
 | `src/app/studentTaskContent.js` | Student saved-work and carry-through selection precedence across Python, HTML, Scratch, filesystem, and electronics |
 | `src/app/studentLiveDisplay.js` | Teacher-live viewing eligibility, displayed workspace selection, and live HTML file conversion |
+| `src/app/studentCodeExports.js` | Browser-saved Python task selection for individual/all-code backups |
 | `src/app/teacherLivePayload.js` | Decoded teacher-live payload construction from a student snapshot |
 
 **Placement:** `src/modules/__tests__/checks.test.js`, `src/shared/__tests__/taskUtils.test.js`, etc.
@@ -63,6 +65,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/hooks/useSession.js` | Firebase methods mocked — test that correct Firebase calls are made for each teacher/student action |
 | `src/shared/fileKeys.js` | `encodeFileKey`/`decodeFileKey` helpers for Realtime Database-safe file keys |
 | `src/app/views/LandingPage.jsx` | Renders; navigates to `/lesson/:id` on submit |
+| `src/app/views/CodeFileWorkspace.jsx` | Opens a validated `.launchpad` task list, switches tasks, runs code through the shared Python runtime, and warns learners to download edits |
 | `src/app/components/WaitingRoom.jsx` | Title and description rendering; animated dot progression |
 | `src/app/components/JoinChoiceScreen.jsx` | Session-state message variants; Wait/Solo callbacks |
 | `src/app/components/JoinSessionPrompt.jsx` | Title rendering; Join/Decline callbacks |
@@ -76,6 +79,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/CheckFeedbackBanner.jsx` | Renders pass state; renders fail + hint; renders "see complete code" when unlocked |
 | `src/app/components/QuizTask.jsx` | Multiple-choice renders all options; selecting an answer fires callback; match/fill-blank drag interactions |
 | `src/app/components/InformationTask.jsx` | Information/introduction content and duration rendering |
+| `src/app/components/SessionEndedScreen.jsx` | Session-end browser-storage warning and all-code backup action |
 | `src/app/components/LiveActivityToast.jsx` | Activity notification rendering and expiry behaviour |
 | `src/app/components/TeacherTimers.jsx` | Elapsed/countdown rendering and expired task state |
 | `src/app/components/TeacherSessionControls.jsx` | Navigation, share-link callbacks, and state-specific teacher session actions |
