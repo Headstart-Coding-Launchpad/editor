@@ -230,6 +230,12 @@ describe('evaluateSingleCheck — code_contains', () => {
     const check = { type: 'code_contains', value: 'for' }
     expect(evaluateSingleCheck(check, '', { code: 'x = 1' })).toBe(false)
   })
+
+  it('matches an unquoted text fragment inside a string literal', () => {
+    const check = { type: 'code_contains', value: 'is a great colour!' }
+    const code = 'print(favourite_colour, "is a great colour!")'
+    expect(evaluateSingleCheck(check, '', { code })).toBe(true)
+  })
 })
 
 // ─── code_does_not_contain ───────────────────────────────────────────────────
@@ -243,6 +249,12 @@ describe('evaluateSingleCheck — code_does_not_contain', () => {
   it('returns false when code contains the value', () => {
     const check = { type: 'code_does_not_contain', value: 'print("hi")' }
     expect(evaluateSingleCheck(check, '', { code: 'print( "hi" )' })).toBe(false)
+  })
+
+  it('returns false when an unquoted text fragment appears inside a string literal', () => {
+    const check = { type: 'code_does_not_contain', value: 'is a great colour!' }
+    const code = 'print(favourite_colour, "is a great colour!")'
+    expect(evaluateSingleCheck(check, '', { code })).toBe(false)
   })
 })
 

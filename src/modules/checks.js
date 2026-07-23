@@ -9,6 +9,7 @@ import {
   normalizeExactOutput,
   normalizeCode,
   countOutputLines,
+  parseMultipleContainOptions,
   matchesContainValue,
   matchesRegex,
   compareValues,
@@ -274,8 +275,8 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'code') {
-    if (check.operator === 'contains') return matchesContainValue(context.code ?? '', check.value, normalizeCode)
-    if (check.operator === 'not_contains') return !wildcardContains(normalizeCode(context.code ?? ''), normalizeCode(check.value))
+    if (check.operator === 'contains') return codeContains(context.code ?? '', check.value)
+    if (check.operator === 'not_contains') return !codeContains(context.code ?? '', check.value)
     if (check.operator === 'equals') return wildcardEquals(normalizeCode(context.code ?? ''), normalizeCode(check.value))
     if (check.operator === 'not_equals') return !wildcardEquals(normalizeCode(context.code ?? ''), normalizeCode(check.value))
     if (check.operator === 'matches_regex') return matchesRegex(normalizeCode(context.code ?? '', true), check.value, check.flags)
@@ -283,6 +284,25 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   return false
+}
+
+// Source-text fragments entered without quotes should still match text inside a
+// quoted string. `normalizeCode` deliberately preserves whitespace inside
+// strings, so use a whitespace-free fallback only for unquoted fragments.
+function codeContains(code, value) {
+  const options = parseMultipleContainOptions(value)
+  if (options) return options.some(option => codeContainsFragment(code, option))
+  return codeContainsFragment(code, value)
+}
+
+function codeContainsFragment(code, value) {
+  if (wildcardContains(normalizeCode(code), normalizeCode(value))) return true
+  if (/["'`]/.test(String(value ?? ''))) return false
+  return wildcardContains(stripAllCodeWhitespace(code), stripAllCodeWhitespace(value))
+}
+
+function stripAllCodeWhitespace(value) {
+  return String(value ?? '').replace(/\s/g, '').toLowerCase()
 }
 
 export function evaluateCheck(check, output, context = {}) {
