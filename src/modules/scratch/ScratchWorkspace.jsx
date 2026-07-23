@@ -165,6 +165,39 @@ function drawSpriteShape(ctx, s, type, emoji) {
   ctx.restore()
 }
 
+export function wrapScratchBubbleText(ctx, message, maxWidth) {
+  const lines = []
+  let line = ''
+
+  for (const word of String(message).split(/\s+/).filter(Boolean)) {
+    const candidate = line ? `${line} ${word}` : word
+    if (line && ctx.measureText(candidate).width > maxWidth) {
+      lines.push(line)
+      line = word
+    } else {
+      line = candidate
+    }
+  }
+  if (line) lines.push(line)
+
+  // A long unbroken value (for example a URL) still needs to stay inside the bubble.
+  return lines.flatMap(currentLine => {
+    if (ctx.measureText(currentLine).width <= maxWidth) return currentLine
+    const characters = []
+    let segment = ''
+    for (const character of currentLine) {
+      if (segment && ctx.measureText(segment + character).width > maxWidth) {
+        characters.push(segment)
+        segment = character
+      } else {
+        segment += character
+      }
+    }
+    if (segment) characters.push(segment)
+    return characters
+  })
+}
+
 function drawBubble(ctx, s) {
   if (!s.bubble) return
   const cx = toCanvasX(s.x)
@@ -172,8 +205,12 @@ function drawBubble(ctx, s) {
   const r  = Math.max(4, (s.size / 100) * 24)
   const fontSize = Math.max(11, r * 0.6)
   ctx.font = `${fontSize}px Quicksand, sans-serif`
-  const bw = Math.min(ctx.measureText(s.bubble).width + 20, 200)
-  const bh = Math.max(fontSize + 16, 30)
+  const maxTextWidth = 180
+  const lines = wrapScratchBubbleText(ctx, s.bubble, maxTextWidth)
+  if (!lines.length) return
+  const lineHeight = Math.ceil(fontSize * 1.25)
+  const bw = Math.min(Math.max(...lines.map(line => ctx.measureText(line).width)) + 20, maxTextWidth + 20)
+  const bh = Math.max(lines.length * lineHeight + 16, 30)
   const bx = Math.min(STAGE_W - bw - 4, cx + r + 6)
   const by = Math.max(4, cy - bh - r - 6)
   const isThink = s.bubbleType === 'think'
@@ -199,7 +236,9 @@ function drawBubble(ctx, s) {
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke()
   }
   ctx.fillStyle = '#222'; ctx.font = `${fontSize}px Quicksand, sans-serif`
-  ctx.fillText(s.bubble, bx + 10, by + bh / 2 + fontSize * 0.35)
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+  const textY = by + 8 + fontSize
+  lines.forEach((line, index) => ctx.fillText(line, bx + 10, textY + index * lineHeight))
 }
 
 function drawSpriteImage(ctx, s, img) {
