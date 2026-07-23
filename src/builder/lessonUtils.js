@@ -53,6 +53,22 @@ function validateFeedbackBasics(task, n, errors, warnings) {
   if (feedbackChecks.some(check => (check.mode ?? 'blocking') === 'blocking' && !String(check.hint ?? '').trim())) {
     warnings.push(`Task ${n} has a blocking feedback check with no hint`)
   }
+  feedbackChecks.forEach((check, index) => {
+    if (check.priority != null && (!Number.isInteger(Number(check.priority)) || Number(check.priority) <= 0)) {
+      errors.push(`Task ${n} feedback check ${index + 1} priority must be a positive whole number`)
+    }
+    if (check.stageOffer == null) return
+    const stageIndex = Number(check.stageOffer.stageIndex)
+    if (!Number.isInteger(stageIndex) || stageIndex < 0 || stageIndex >= (task.codeStages?.length ?? 0)) {
+      errors.push(`Task ${n} feedback check ${index + 1} references a code stage that does not exist`)
+    }
+    if (!['preview', 'replace'].includes(check.stageOffer.action)) {
+      errors.push(`Task ${n} feedback check ${index + 1} stage offer action must be preview or replace`)
+    }
+    if (check.stageOffer.afterMatches != null && (!Number.isInteger(Number(check.stageOffer.afterMatches)) || Number(check.stageOffer.afterMatches) <= 0)) {
+      errors.push(`Task ${n} feedback check ${index + 1} stage offer threshold must be a positive whole number`)
+    }
+  })
   return feedbackChecks
 }
 

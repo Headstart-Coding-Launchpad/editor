@@ -306,13 +306,36 @@ export function evaluateFeedbackCheckResults(taskOrChecks, output, context = {},
   }))
 }
 
+// Feedback checks may overlap. Pick one deterministic, author-controlled match
+// for the student-facing hint and optional stage offer. Older lessons without a
+// priority retain their existing array order.
+export function getHighestPriorityFeedbackMatch(results = []) {
+  const safeResults = Array.isArray(results) ? results : []
+  return safeResults.reduce((best, result, index) => {
+    if (!result?.passed) return best
+    const priority = Number.isInteger(Number(result.priority)) && Number(result.priority) > 0
+      ? Number(result.priority)
+      : index + 1
+    if (!best || priority < best.priority) return { result, priority, index }
+    return best
+  }, null)?.result ?? null
+}
+
+export function getStageOfferMatchThreshold(stageOffer) {
+  const threshold = Number(stageOffer?.afterMatches)
+  return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
+}
+
 export function buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context = {}) {
-  const blockingMatch = feedbackResults.find(result => result.passed && (result.mode ?? 'blocking') === 'blocking')
-  const matchedFeedbackHint = feedbackResults.find(result => result.passed && String(result.hint ?? '').trim())
+  const blockingMatch = getHighestPriorityFeedbackMatch(feedbackResults.filter(result => (result.mode ?? 'blocking') === 'blocking'))
+  const matchedFeedback = getHighestPriorityFeedbackMatch(feedbackResults)
+  const matchedFeedbackHint = matchedFeedback && String(matchedFeedback.hint ?? '').trim()
+    ? matchedFeedback
+    : feedbackResults.find(result => result.passed && String(result.hint ?? '').trim())
   const nudgeMatch = feedbackResults.find(result => result.passed && result.mode === 'nudge' && String(result.hint ?? '').trim())
   const passed = completionPassed && !blockingMatch
   const suggestion = blockingMatch
-    ? (String(blockingMatch.hint ?? '').trim() || 'Not quite.')
+    ? (String(matchedFeedback?.hint ?? blockingMatch.hint ?? '').trim() || 'Not quite.')
     : completionPassed
       ? (nudgeMatch ? String(nudgeMatch.hint).trim() : '')
       : (matchedFeedbackHint ? String(matchedFeedbackHint.hint).trim() : getFirstFailedCheckHint(task?.check, output, context))
@@ -321,6 +344,8 @@ export function buildCheckFeedbackResult(task, completionPassed, feedbackResults
     passed,
     completionPassed,
     feedbackResults,
+    matchedFeedback,
+    stageOffer: matchedFeedback?.stageOffer ?? null,
     blockingFeedback: blockingMatch ?? null,
     nudgeFeedback: nudgeMatch ?? null,
     suggestion,

@@ -73,7 +73,14 @@ export default function LessonTaskContent({
   const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && lesson.type === 'python' && task?.completeCode
     ? { label: 'Complete solution', code: task.completeCode }
     : null
-  const displayedReferenceStage = completeReferenceStage ?? activeSupportStage
+  const targetedReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.targetedPreviewStageIndex != null
+    ? task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null
+    : null
+  const displayedReferenceStage = completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage
+  const targetedOfferStage = cs.targetedStageOffer ? task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null : null
+  const genericNextStage = !targetedOfferStage && cs.offeredSupportStageIndex == null && canOfferNextStage
+    ? task?.codeStages?.[cs.offeredStageIndex + 1] ?? null
+    : null
 
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
@@ -117,7 +124,7 @@ export default function LessonTaskContent({
     </div>
   ) : null
 
-  const shouldShowFeedbackBanner = !isSandbox && !cs.inPersonalSandbox && (
+  const shouldShowFeedbackBanner = !cs.stagePromptAccepted && !isSandbox && !cs.inPersonalSandbox && (
     ((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) || cs.offeredSupportStageIndex != null
   )
   const feedbackBanner = shouldShowFeedbackBanner ? (
@@ -125,13 +132,23 @@ export default function LessonTaskContent({
       passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
       failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
-      onShowCodeStage={cs.offeredSupportStageIndex != null
+      onShowCodeStage={targetedOfferStage
+        ? (cs.targetedStageOffer.action === 'replace' ? cs.handleAcceptTargetedStage : cs.handlePreviewTargetedStage)
+        : cs.offeredSupportStageIndex != null
         ? cs.handleRevealOfferedSupportStage
         : canOfferNextStage ? () => {
         const nextStageIndex = cs.offeredStageIndex + 1
-        cs.handleShowCodeStage(nextStageIndex)
+        cs.handleAcceptGenericNextStage(nextStageIndex)
       } : undefined}
-      stageActionLabel={cs.offeredSupportStageIndex != null ? 'Show reference' : undefined}
+      stageActionLabel={targetedOfferStage
+        ? (cs.targetedStageOffer.action === 'replace' ? `Try ${targetedOfferStage.label || 'guided stage'}` : `Show ${targetedOfferStage.label || 'reference'}`)
+        : cs.offeredSupportStageIndex != null ? 'Show reference'
+        : genericNextStage ? `Use ${genericNextStage.label || 'next stage'}` : undefined}
+      stageActionConfirm={targetedOfferStage?.action === 'replace'
+        ? `This will replace your current work with “${targetedOfferStage.label || 'this stage'}”. Continue?`
+        : genericNextStage
+          ? `This will replace your current work with “${genericNextStage.label || 'the next stage'}”. Continue?`
+        : undefined}
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
@@ -146,17 +163,19 @@ export default function LessonTaskContent({
       )}
 
       {displayedReferenceStage && (() => {
-        const reveal = completeReferenceStage ? null : cs.supportStageReveals?.[activeSupportStage.index]
+        const reveal = completeReferenceStage || targetedReferenceStage ? null : cs.supportStageReveals?.[activeSupportStage?.index]
         const sourceLabel = completeReferenceStage
           ? 'Complete reference'
+          : targetedReferenceStage
+            ? 'Shown for your feedback'
           : reveal?.source === 'teacher'
             ? 'Opened by your teacher'
             : 'Shown after a failed attempt'
         return (
           <SupportStagePanel
-            stage={completeReferenceStage ?? activeSupportStage.stage}
+            stage={completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage.stage}
             lessonType={lesson.type}
-            revealed
+            revealed={completeReferenceStage || targetedReferenceStage ? true : revealed}
             sourceLabel={sourceLabel}
           />
         )

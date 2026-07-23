@@ -267,7 +267,71 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
   )
 }
 
-function CheckListEditor({ checks, onChange, interactionMode = 'run', allowVariableChecks = false, allowDomChecks = false, lessonType = null, output = '', code = '', feedbackEditor = false }) {
+export function FeedbackStageOfferControls({ check, stages = [], onChange }) {
+  const selectedStageIndex = check.stageOffer?.stageIndex
+  const hasStage = Number.isInteger(Number(selectedStageIndex)) && stages[Number(selectedStageIndex)]
+
+  return (
+    <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600 }}>
+        Priority
+        <input
+          className="te-input"
+          style={{ width: 62, padding: '4px 6px', fontSize: '0.82rem' }}
+          type="number"
+          min="1"
+          value={check.priority ?? ''}
+          onChange={e => onChange({ ...check, priority: e.target.value === '' ? undefined : Number(e.target.value) })}
+          title="Lower numbers are shown first when more than one feedback check matches"
+        />
+      </label>
+      <select
+        className="te-select"
+        value={hasStage ? String(selectedStageIndex) : ''}
+        onChange={e => {
+          if (e.target.value === '') {
+            const { stageOffer: _stageOffer, ...next } = check
+            onChange(next)
+            return
+          }
+          onChange({ ...check, stageOffer: { stageIndex: Number(e.target.value), action: check.stageOffer?.action ?? 'preview', afterMatches: check.stageOffer?.afterMatches ?? 2 } })
+        }}
+        title="Offer a stage when this feedback check matches"
+      >
+        <option value="">No linked stage</option>
+        {stages.map((stage, index) => <option key={index} value={index}>{stage.label || `Stage ${index + 1}`}</option>)}
+      </select>
+      {hasStage && (
+        <>
+          <select
+            className="te-select"
+            value={check.stageOffer?.action ?? 'preview'}
+            onChange={e => onChange({ ...check, stageOffer: { ...check.stageOffer, action: e.target.value } })}
+            title="How students can use the linked stage"
+          >
+            <option value="preview">Show read-only reference</option>
+            <option value="replace">Offer code replacement</option>
+          </select>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600 }}>
+            Offer after
+            <input
+              className="te-input"
+              style={{ width: 52, padding: '4px 6px', fontSize: '0.82rem' }}
+              type="number"
+              min="1"
+              value={check.stageOffer?.afterMatches ?? 2}
+              onChange={e => onChange({ ...check, stageOffer: { ...check.stageOffer, afterMatches: e.target.value === '' ? undefined : Number(e.target.value) } })}
+              title="Number of times this feedback check must match before offering the stage"
+            />
+            matches
+          </label>
+        </>
+      )}
+    </div>
+  )
+}
+
+function CheckListEditor({ checks, onChange, interactionMode = 'run', allowVariableChecks = false, allowDomChecks = false, lessonType = null, output = '', code = '', feedbackEditor = false, stages = [] }) {
   const submitMode = interactionMode === 'submit'
 
   function updateCheck(index, updated) {
@@ -278,7 +342,7 @@ function CheckListEditor({ checks, onChange, interactionMode = 'run', allowVaria
   }
   function addCheck() {
     const check = checkFromSubjectOp(submitMode ? 'code' : 'output', 'contains')
-    onChange([...checks, feedbackEditor ? { ...check, mode: 'blocking', show: 'after_attempt' } : check])
+    onChange([...checks, feedbackEditor ? { ...check, mode: 'blocking', show: 'after_attempt', priority: checks.length + 1 } : check])
   }
 
   function handleSubjectChange(index, newSubject) {
@@ -371,6 +435,11 @@ function CheckListEditor({ checks, onChange, interactionMode = 'run', allowVaria
                     <option value="after_attempt">After run or submit</option>
                     <option value="on_idle">On idle</option>
                   </select>
+                  <FeedbackStageOfferControls
+                    check={check}
+                    stages={stages}
+                    onChange={updated => updateCheck(index, updated)}
+                  />
                 </div>
               )}
               <div style={{ gridColumn: '1 / -1' }}>

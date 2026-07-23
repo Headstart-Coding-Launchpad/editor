@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
+import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, getStageOfferMatchThreshold, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
 import { flattenTasks, findTaskById, getNextRevealableStage, getRevealableStages, isRevealableStage } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
@@ -74,6 +74,9 @@ export function useStudentCodeState({
   const [localSupportStageReveals, setLocalSupportStageReveals] = useState({})
   const [supportStageVisibility, setSupportStageVisibility] = useState({})
   const [supportStageOffers, setSupportStageOffers] = useState({})
+  const [targetedStageOffer, setTargetedStageOffer] = useState(null)
+  const [targetedPreviewStageIndex, setTargetedPreviewStageIndex] = useState(null)
+  const targetedStageOfferMatchCountsRef = useRef({})
 
   const iframeRef              = useRef(null)
   const appendOutputRef        = useRef(null)
@@ -188,6 +191,7 @@ export function useStudentCodeState({
     testResults, setTestResults, checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
     completePreviewShown, setCompletePreviewShown,
+    stagePromptAccepted, markStagePromptAccepted,
     resetRunFeedback, resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
@@ -241,6 +245,7 @@ export function useStudentCodeState({
       const matchedIdleFeedback = evaluation.feedbackResults.find(result => result.passed)
       if (matchedIdleFeedback && !isAlreadySolved()) {
         applyCheckFeedback(evaluation.passed, evaluation.suggestion)
+        updateTargetedStageOffer(task, evaluation, evaluation.passed)
       }
     }, IDLE_FEEDBACK_DELAY_MS)
   }
@@ -392,11 +397,54 @@ export function useStudentCodeState({
     setOutput('')
     setRunStatus(null)
     resetCheckFeedback()
+    setTargetedStageOffer(null)
+    setTargetedPreviewStageIndex(null)
+    targetedStageOfferMatchCountsRef.current = {}
     setSelectedAnswer('')
     setIframeSrc(null)
     // Clear any pushed scratch state (reset/stage/solution/teacher edit) so it
     // can't overwrite the next task's initial blocks after the workspace remounts.
     setScratchExternalState(null)
+  }
+
+  function updateTargetedStageOffer(task, evaluation, passed) {
+    if (passed || !evaluation?.stageOffer) {
+      setTargetedStageOffer(null)
+      if (passed) {
+        setTargetedPreviewStageIndex(null)
+        targetedStageOfferMatchCountsRef.current = {}
+      }
+      return
+    }
+    const stageIndex = Number(evaluation.stageOffer.stageIndex)
+    if (!Number.isInteger(stageIndex) || !task?.codeStages?.[stageIndex]) {
+      setTargetedStageOffer(null)
+      return
+    }
+    // Do not interrupt a reference already on screen. A repeat of the same
+    // targeted reference is the one exception: next time, offer its code as a
+    // recovery copy rather than merely showing it again.
+    if (targetedPreviewStageIndex != null) {
+      if (targetedPreviewStageIndex !== stageIndex) {
+        setTargetedStageOffer(null)
+        return
+      }
+      setTargetedStageOffer({ ...evaluation.stageOffer, stageIndex, action: 'replace' })
+      return
+    }
+    if (activeSupportStageIndex != null) {
+      setTargetedStageOffer(null)
+      return
+    }
+    const feedbackIndex = evaluation.feedbackResults?.indexOf(evaluation.matchedFeedback) ?? -1
+    const matchKey = `${currentTaskId}:${feedbackIndex}`
+    const matchCount = (targetedStageOfferMatchCountsRef.current[matchKey] ?? 0) + 1
+    targetedStageOfferMatchCountsRef.current[matchKey] = matchCount
+    if (matchCount < getStageOfferMatchThreshold(evaluation.stageOffer)) {
+      setTargetedStageOffer(null)
+      return
+    }
+    setTargetedStageOffer({ ...evaluation.stageOffer, stageIndex })
   }
 
   function exitPersonalSandbox() {
@@ -826,10 +874,17 @@ export function useStudentCodeState({
       let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext).passed)
       let suggestion = ''
       if (!alreadySolved) {
-        const evaluation = (!hasTests && status !== 'error' && task?.check) ? evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext) : null
+        // Feedback checks can diagnose code even when Python could not run (for
+        // example, `print(hello)` raises NameError). Keep completion failed on a
+        // runtime error, but still evaluate the feedback checks and their stage
+        // offers against the submitted code/output.
+        const evaluation = (!hasTests && task?.check) ? evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext, {
+          completionPassed: status !== 'error' && evaluateCheck(task.check, outputBuffer.raw, checkContext),
+        }) : null
         if (evaluation) {
           passed = evaluation.passed
           suggestion = evaluation.suggestion
+          updateTargetedStageOffer(task, evaluation, passed)
         }
         if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
         updateSupportStageForAttempt(status !== 'error' && (!task?.check || passed))
@@ -871,6 +926,7 @@ export function useStudentCodeState({
         const evaluation = evaluateCheckWithFeedback(task, text, { code: codeStr, iframeDoc })
         passed = evaluation.passed
         suggestion = task?.check ? evaluation.suggestion : ''
+        updateTargetedStageOffer(task, evaluation, passed)
         if (task?.check) applyCheckFeedback(passed, suggestion)
         const supportAttempt = htmlSupportAttemptsRef.current.get(src)
         const supportPassed = !supportAttempt?.hasError && (!task?.check || passed)
@@ -1092,7 +1148,10 @@ export function useStudentCodeState({
     const evaluatedPassed = evaluation.passed
     const passed = alreadySolved ? true : evaluatedPassed
     const suggestion = passed ? '' : evaluation.suggestion
-    if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) applyCheckFeedback(evaluatedPassed, suggestion)
+    if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) {
+      applyCheckFeedback(evaluatedPassed, suggestion)
+      updateTargetedStageOffer(task, evaluation, evaluatedPassed)
+    }
     if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
@@ -1235,6 +1294,7 @@ export function useStudentCodeState({
     setOfferedStageIndex(prev => Math.max(prev, stageIndex))
     setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: stageIndex }))
     setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: null }))
+    markStagePromptAccepted()
     if (!teacherPresentation && phase === 'lesson') {
       recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, stageIndex, {
         source,
@@ -1287,6 +1347,26 @@ export function useStudentCodeState({
   function handleRevealOfferedSupportStage() {
     if (offeredSupportStageIndex == null) return
     handleRevealSupportStage(offeredSupportStageIndex)
+  }
+
+  function handlePreviewTargetedStage() {
+    if (targetedStageOffer?.action !== 'preview') return
+    setTargetedPreviewStageIndex(targetedStageOffer.stageIndex)
+    setTargetedStageOffer(null)
+    markStagePromptAccepted()
+  }
+
+  function handleAcceptTargetedStage() {
+    if (targetedStageOffer?.action !== 'replace') return
+    const { stageIndex } = targetedStageOffer
+    setTargetedStageOffer(null)
+    markStagePromptAccepted()
+    handleShowCodeStage(stageIndex)
+  }
+
+  function handleAcceptGenericNextStage(stageIndex) {
+    markStagePromptAccepted()
+    handleShowCodeStage(stageIndex)
   }
 
   function handlePreviewCompleteCode() {
@@ -1349,7 +1429,10 @@ export function useStudentCodeState({
       const evaluation = evaluateCheckWithFeedback(task, '', { code: codeForCheck }, { completionPassed })
       passed = task?.check ? evaluation.passed : false
       suggestion = task?.check ? evaluation.suggestion : ''
-      if (task?.check) applyCheckFeedback(passed, suggestion)
+      if (task?.check) {
+        applyCheckFeedback(passed, suggestion)
+        updateTargetedStageOffer(task, evaluation, passed)
+      }
       updateSupportStageForAttempt(!task?.check || passed)
     } else {
       passed = true
@@ -1430,8 +1513,8 @@ export function useStudentCodeState({
     // State
     code, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
-    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount,
-    offeredStageIndex, completePreviewShown, supportStageReveals, activeSupportStageIndex, offeredSupportStageIndex,
+    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount, stagePromptAccepted,
+    offeredStageIndex, completePreviewShown, supportStageReveals, activeSupportStageIndex, offeredSupportStageIndex, targetedStageOffer, targetedPreviewStageIndex,
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     teacherHighlights, dismissHighlight,
@@ -1443,7 +1526,7 @@ export function useStudentCodeState({
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
-    handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewCompleteCode, handleShowCompleteCode,
+    handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewTargetedStage, handleAcceptTargetedStage, handleAcceptGenericNextStage, handlePreviewCompleteCode, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
     // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,

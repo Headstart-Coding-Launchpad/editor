@@ -8,6 +8,7 @@ export default function CheckFeedbackBanner({
   suggestion,
   onShowCodeStage,
   stageActionLabel = 'Move to next stage',
+  stageActionConfirm,
   onPreviewCompleteCode,
   onShowCompleteCode,
   onGoPersonalSandbox,
@@ -34,7 +35,9 @@ export default function CheckFeedbackBanner({
         <span style={s.completePrompt}>Want a hint?</span>
       )}
       {!passed && onShowCodeStage && (
-        <button type="button" style={s.actionLink} onClick={onShowCodeStage}>
+        <button type="button" style={s.actionLink} onClick={() => {
+          if (!stageActionConfirm || window.confirm(stageActionConfirm)) onShowCodeStage()
+        }}>
           {stageActionLabel}
         </button>
       )}

@@ -188,7 +188,7 @@ export default function HtmlTaskWorkspace({
                       />
                     }
                   />
-                  <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
+                  <TaskCheckResults task={task} lessonType="html" checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
                 </div>
               ) : (
                 <div className="te-html-editor-with-rail">
@@ -229,7 +229,7 @@ export default function HtmlTaskWorkspace({
       </div>
 
       <div style={task.interactionMode === 'submit' ? { marginTop: 8 } : { display: 'none' }}>
-        <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
+        <TaskCheckResults task={task} lessonType="html" checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
       </div>
 
       {((lesson.assetsPath && lesson.assets?.length > 0) || allStorageAssets.length > 0) && (

@@ -69,7 +69,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
 | `copyCode` | No | string | Python/HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
-| `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
+| `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
 | `reviewNote` | No | object | Builder review metadata: `{ decision, suggestedChange, extraNote }`. Not used by the student view. |
 | `_checkTested` | No | boolean | Builder-only validation flag set when an author has run/tested the completion checks in the builder. It is not read by the student experience. |
@@ -89,6 +89,27 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
 Code task `codeStages` share two optional metadata fields across Python, HTML, Scratch, Filesystem, and Electronics: `role` (`support`, `core`, `extension`, `solution`; omitted defaults to `support`) and `revealable` (`true` on any role). Python and HTML revealable stages are shown as read-only references after a failed attempt and do not replace student work; other code task types preserve the metadata for now.
+
+### Targeted feedback-stage offers
+
+Link a feedback check to a current code stage when that check identifies a specific misconception. `stageIndex` is zero-based and refers to the task's existing `codeStages` order. The matching feedback check with the lowest `priority` is the only one surfaced for that attempt; checks without a priority keep their array order for compatibility. `afterMatches` is the number of matching attempts before the offer appears and defaults to `2`.
+
+```yaml
+feedbackChecks:
+  - type: code
+    operator: not_contains
+    value: "for "
+    hint: "Use a loop to repeat the greeting."
+    priority: 1
+    stageOffer:
+      stageIndex: 0
+      action: preview # preview | replace
+      afterMatches: 2
+```
+
+`preview` opens the named stage read-only from the feedback banner and keeps the student's work. `replace` offers the named stage from the same banner, but the student must confirm before their work is replaced. A later matching attempt offers the stage again if the student previously declined or did not use it. Removing a stage in the builder removes links to it and keeps later stage links aligned.
+
+When a feedback check matches in the Builder, its result area includes a **Student feedback preview**. Use it to exercise the same preview or replacement prompt a learner will receive; replacement previews never alter the lesson's authoring code.
 
 `draft` tasks are planning placeholders — they block publishing (in the builder and via `lessons publish-yaml`) but can be saved via `lessons upsert`.
 

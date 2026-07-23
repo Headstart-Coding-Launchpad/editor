@@ -1,6 +1,6 @@
 import { CodeEditor } from '../../../shared/CodeEditor'
 import { CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
-import TaskCheckResults from './TaskCheckResults'
+import TaskCheckResults, { TargetedStageOfferPreview } from './TaskCheckResults'
 import TaskRunControls from './TaskRunControls'
 import TaskTestResults from './TaskTestResults'
 
@@ -90,7 +90,7 @@ export default function PythonTaskWorkspace({
               </span>
             )}
           </div>
-          <TaskCheckResults checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
+          <TaskCheckResults task={task} lessonType="python" checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
         </>
       ) : (
         <>
@@ -118,6 +118,7 @@ export default function PythonTaskWorkspace({
             incorrectCheckResults={incorrectCheckResults}
             testResults={testResults}
           />
+          <TargetedStageOfferPreview task={task} lessonType="python" incorrectCheckResults={incorrectCheckResults} />
         </>
       )}
     </>

@@ -162,6 +162,19 @@ describe('CheckFeedbackBanner', () => {
       expect(screen.getByText(/Want a hint\?/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Show reference/i })).toBeInTheDocument()
     })
+
+    it('asks for confirmation before a replacement-stage action', async () => {
+      const user = userEvent.setup()
+      const handler = vi.fn()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} stageActionLabel="Try guided restart" stageActionConfirm="Replace your work?" />)
+
+      await user.click(screen.getByRole('button', { name: /Try guided restart/i }))
+
+      expect(confirm).toHaveBeenCalledWith('Replace your work?')
+      expect(handler).not.toHaveBeenCalled()
+      confirm.mockRestore()
+    })
   })
 
   describe('suggestion edge cases', () => {

@@ -138,6 +138,7 @@ export default function TaskOptionsSection({
                   allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
                   lessonType={lesson.type}
                   feedbackEditor
+                  stages={task.codeStages ?? []}
                   output={output}
                   code={lessonMod?.supportsTests
                     ? activePythonCode
