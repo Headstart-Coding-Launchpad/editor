@@ -206,6 +206,11 @@ How to write a Scratch toolbox XML string: XML structure, all categories with th
 
 **Load when:** writing a Scratch task `toolbox` field by hand, or troubleshooting a missing block in the student palette.
 
+### [authoring/scratch-markdown-blocks.md](authoring/scratch-markdown-blocks.md)
+Complete author-facing Scratch block rendering reference: every supported block, its opcode, the exact Markdown text that renders it, shapes, aliases, input notation, and C-block nesting syntax.
+
+**Load when:** writing a Scratch block in an `explainer`, `description`, or `syntax` field, or checking how a block should render in authored Markdown.
+
 ### [authoring/markdown-renderer.md](authoring/markdown-renderer.md)
 Supported Markdown features in the shared renderer: callout syntax, fenced code blocks, topic wiki-links (`[[id]]`), Scratch block pills, tables, and inline Markdown vs full Markdown contexts.
 

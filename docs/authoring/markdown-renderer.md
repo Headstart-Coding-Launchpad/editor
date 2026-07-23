@@ -74,6 +74,8 @@ for i in range(5):
 
 ## Scratch Blocks (fenced)
 
+For the complete canonical list of block text, including every accepted shape and alias, see [Scratch Markdown Block Reference](scratch-markdown-blocks.md).
+
 The `scratch` fenced block renders each non-empty line as a coloured Scratch block. Indent with two spaces per level to place blocks inside C-block mouths. Use `else` for the second mouth of an if/else block, and `end` to close the current mouth without rendering an extra block.
 
 ````

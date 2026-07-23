@@ -1,5 +1,7 @@
 # Scratch Lesson Authoring
 
+For the exact Markdown text that renders each supported Scratch block, see [Scratch Markdown Block Reference](scratch-markdown-blocks.md). Use [Scratch Toolbox XML](scratch-toolbox-xml.md) for raw toolbox configuration.
+
 Everything needed to author a Scratch lesson — task fields, sprite/backdrop/variable objects, prebuilt stacks, block opcodes, check types, and explainer conventions. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
 
 ---
