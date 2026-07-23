@@ -446,6 +446,35 @@ describe('LessonPanel', () => {
     )
   })
 
+  it('collapses class forks beneath their stock lesson until expanded', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        PYTHON_LESSON,
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-maple',
+          title: 'Intro to Python - Maple',
+          fork: { sourceLessonId: 'py-intro', classId: 'maple', className: 'Maple' },
+        },
+      ],
+      classes: [{ id: 'maple', name: 'Maple', archived: false }],
+    })
+
+    await openFirstLevel(user)
+
+    const forkToggle = screen.getByRole('button', { name: '1 class fork' })
+    expect(forkToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: /Intro to Python - Maple/i })).not.toBeInTheDocument()
+
+    await user.click(forkToggle)
+
+    expect(forkToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /Intro to Python - Maple/i })).toBeInTheDocument()
+    expect(screen.getByText('Maple')).toBeInTheDocument()
+  })
+
   it('blocks uploaded lessons that fail builder validation', async () => {
     const user = userEvent.setup()
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})

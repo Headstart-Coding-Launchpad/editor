@@ -685,12 +685,22 @@ function LevelLessonGroup({
   forkingId,
 }) {
   const [openLessonIds, setOpenLessonIds] = useState(() => new Set())
+  const [openForkFamilyIds, setOpenForkFamilyIds] = useState(() => new Set())
 
   function handleToggleLesson(lessonId) {
     setOpenLessonIds(prev => {
       const next = new Set(prev)
       if (next.has(lessonId)) next.delete(lessonId)
       else next.add(lessonId)
+      return next
+    })
+  }
+
+  function handleToggleForkFamily(familyId) {
+    setOpenForkFamilyIds(prev => {
+      const next = new Set(prev)
+      if (next.has(familyId)) next.delete(familyId)
+      else next.add(familyId)
       return next
     })
   }
@@ -735,15 +745,13 @@ function LevelLessonGroup({
               <tbody>
                 {makeLessonFamilyGroups(bucket.lessons).map(family => (
                   <React.Fragment key={family.id}>
-                    {family.items.length > 1 && (
-                      <tr>
-                        <td colSpan={4} style={s.familyRow}>
-                          <span style={s.familyTitle}>{family.title}</span>
-                          <span style={s.familyMeta}>{family.items.length - 1} class {family.items.length === 2 ? 'fork' : 'forks'}</span>
-                        </td>
-                      </tr>
-                    )}
-                    {family.items.map(lesson => {
+                    {family.items.map((lesson, index) => {
+                      const isFork = isLessonFork(lesson)
+                      const hasStockLesson = !isLessonFork(family.items[0])
+                      const forkCount = hasStockLesson ? family.items.length - 1 : 0
+                      const forksOpen = openForkFamilyIds.has(family.id)
+                      if (isFork && hasStockLesson && !forksOpen) return null
+
                       const stageKey = lesson.stage ?? 'published'
                       const lessonReports = reports.filter(report => report.lessonId === lesson.id)
                       const lessonFeedback = feedback.filter(item => item.lessonId === lesson.id)
@@ -752,18 +760,32 @@ function LevelLessonGroup({
                         <React.Fragment key={lesson.id}>
                           <tr>
                             <td style={s.td}>
-                              <button
-                                type="button"
-                                style={{ ...s.lessonToggle, ...(isLessonFork(lesson) ? s.forkLessonToggle : {}) }}
-                                onClick={() => handleToggleLesson(lesson.id)}
-                                aria-expanded={lessonOpen}
-                              >
-                                <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
-                                <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
-                                {isLessonFork(lesson) && (
-                                  <span style={s.classPill}>{getForkClassLabel(lesson, classes)}</span>
+                              <div style={s.lessonTitleCell}>
+                                <button
+                                  type="button"
+                                  style={{ ...s.lessonToggle, ...(isFork ? s.forkLessonToggle : {}) }}
+                                  onClick={() => handleToggleLesson(lesson.id)}
+                                  aria-expanded={lessonOpen}
+                                >
+                                  <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
+                                  <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
+                                  {isFork && (
+                                    <span style={s.classPill}>{getForkClassLabel(lesson, classes)}</span>
+                                  )}
+                                </button>
+                                {!isFork && forkCount > 0 && index === 0 && (
+                                  <button
+                                    type="button"
+                                    style={s.forkFamilyToggle}
+                                    onClick={() => handleToggleForkFamily(family.id)}
+                                    aria-expanded={forksOpen}
+                                    aria-label={`${forkCount} class ${forkCount === 1 ? 'fork' : 'forks'}`}
+                                  >
+                                    {forkCount} class {forkCount === 1 ? 'fork' : 'forks'}
+                                    <span aria-hidden="true">{forksOpen ? '-' : '+'}</span>
+                                  </button>
                                 )}
-                              </button>
+                              </div>
                             </td>
                             <td style={s.td}>
                               <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
@@ -1410,14 +1432,13 @@ const s = {
   stageBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, color: '#fff', letterSpacing: '0.02em' },
   actions:    { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
   actionBtn:  { padding: '4px 7px', fontSize: '0.76rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 },
+  lessonTitleCell: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
   lessonToggle: { width: '100%', border: 'none', background: 'transparent', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 8, textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', fontSize: '0.9rem' },
   forkLessonToggle: { paddingLeft: 18 },
   lessonToggleIcon: { width: 18, height: 18, borderRadius: 999, border: '1px solid #e5e7eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1, flexShrink: 0, background: '#fff' },
   lessonToggleTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  forkFamilyToggle: { border: 'none', background: 'transparent', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5, color: '#6b7280', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.76rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 },
   classPill: { border: '1px solid #bfdbfe', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8', fontSize: '0.68rem', fontWeight: 700, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0 },
-  familyRow: { padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontFamily: 'var(--font-body)' },
-  familyTitle: { fontWeight: 800, color: '#374151', marginRight: 8 },
-  familyMeta: { color: '#6b7280', fontSize: '0.76rem', fontWeight: 700 },
   lessonDetailCell: { padding: '0 12px 10px 38px', background: '#fbfbfd', borderBottom: '1px solid #eef0f4' },
   lessonAdminPanel: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 },
   lessonAdminActions: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
