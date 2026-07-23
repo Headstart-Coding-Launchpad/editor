@@ -1023,8 +1023,17 @@ function appendStacksToXmlToolbox(toolbox, stacks) {
     const category = Array.from(doc.querySelectorAll('category')).find(cat =>
       Array.from(cat.querySelectorAll('block')).some(b => b.getAttribute('type') === stack.type)
     )
-    if (!category) continue
-    category.appendChild(xmlBlockFromSerialized(doc, stack))
+    if (category) {
+      category.appendChild(xmlBlockFromSerialized(doc, stack))
+      continue
+    }
+
+    // A minimal XML toolbox may put blocks directly under <xml>. Keep those
+    // toolboxes usable too: append a compatible prebuilt stack at the root.
+    const hasRootBlock = Array.from(doc.documentElement?.children ?? []).some(child =>
+      child.tagName?.toLowerCase() === 'block' && child.getAttribute('type') === stack.type
+    )
+    if (hasRootBlock) doc.documentElement.appendChild(xmlBlockFromSerialized(doc, stack))
   }
 
   return new XMLSerializer().serializeToString(doc)
@@ -1079,7 +1088,14 @@ function flattenXmlToolbox(toolbox, options = {}) {
   const root = doc.createElement('xml')
   doc.appendChild(root)
   const categories = Array.from(source.documentElement?.children ?? []).filter(el => el.tagName.toLowerCase() === 'category')
-  if (!categories.length) return toolbox
+  if (!categories.length) {
+    for (const child of Array.from(source.documentElement?.children ?? [])) {
+      const imported = doc.importNode(child, true)
+      if (imported.tagName?.toLowerCase() === 'block') addXmlInputDefaults(doc, imported, options)
+      root.appendChild(imported)
+    }
+    return new XMLSerializer().serializeToString(root)
+  }
   for (const category of categories) {
     const label = doc.createElement('label')
     label.setAttribute('text', category.getAttribute('name') ?? '')

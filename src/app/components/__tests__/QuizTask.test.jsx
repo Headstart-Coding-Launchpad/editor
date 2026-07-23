@@ -24,6 +24,16 @@ const MULTILINE_MULTIPLE_CHOICE_TASK = {
   ],
 }
 
+const SCRATCH_STACK_MULTIPLE_CHOICE_TASK = {
+  title: 'Pick the stack',
+  taskType: 'quiz',
+  quizType: 'multiple_choice',
+  options: [
+    { id: 'a', text: '```scratch\nsay [Hello!] for (2) seconds\nsay [Goodbye!] for (2) seconds\n```' },
+    { id: 'b', text: '`scratch:say [Hello!] for (2) seconds`' },
+  ],
+}
+
 const IMAGE_QUESTION_TASK = {
   ...MULTIPLE_CHOICE_TASK,
   title: 'Image question',
@@ -134,6 +144,25 @@ describe('QuizTask multiple choice', () => {
 
     expect(codeElements.map(code => code.textContent)).toEqual(expect.arrayContaining(['sunny\nall week', 'sunny\n all week']))
     expect(codeElements.map(code => code.style.whiteSpace)).toEqual(expect.arrayContaining(['pre-wrap']))
+  })
+
+  it('renders fenced Scratch stacks as block content inside an answer option', () => {
+    const { container } = render(<QuizTask task={SCRATCH_STACK_MULTIPLE_CHOICE_TASK} />)
+
+    expect(container.querySelector('[data-scratch-stack="true"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-stack="true"] [data-scratch-opcode="looks_sayforsecs"]')).toBeInTheDocument()
+  })
+
+  it('supports keyboard selection for answer options', async () => {
+    const user = userEvent.setup()
+    const onSelectAnswer = vi.fn()
+    render(<QuizTask task={MULTIPLE_CHOICE_TASK} onSelectAnswer={onSelectAnswer} />)
+
+    const loops = screen.getByRole('radio', { name: /loops/i })
+    loops.focus()
+    await user.keyboard('{Enter}')
+
+    expect(onSelectAnswer).toHaveBeenCalledWith('b')
   })
 })
 

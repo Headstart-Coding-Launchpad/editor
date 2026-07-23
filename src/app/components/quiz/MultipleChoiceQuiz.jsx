@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { InlineMarkdown } from '../../../shared/markdown'
+import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
 import { baseStyles as s, normalizeQuizAnswerText, OPTION_COLOURS, QuestionPanel } from './quizUtils'
 
@@ -33,13 +33,18 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
           const border = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : colour.border
           const textColour = isCorrect || isWrong || active ? '#fff' : colour.text
           const optionText = normalizeQuizAnswerText(option.text)
+          const usesBlockMarkdown = hasFencedCodeBlock(optionText)
+          const chooseOption = () => {
+            if (!locked) onSelectAnswer?.(option.id)
+          }
 
           return (
-            <button
+            <div
               key={option.id}
-              type="button"
               role="radio"
               aria-checked={active}
+              aria-disabled={locked || undefined}
+              tabIndex={locked ? -1 : 0}
               style={{
                 ...s.option,
                 background: bg,
@@ -47,18 +52,27 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
                 color: textColour,
                 ...((active || isCorrect || isWrong) ? s.optionActive : {}),
               }}
-              onClick={() => onSelectAnswer?.(option.id)}
-              disabled={locked}
+              onClick={chooseOption}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  chooseOption()
+                }
+              }}
             >
               <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
                 {option.id}
               </span>
-              <span style={s.optionText}>
-                <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
-                  <InlineMarkdown content={optionText} />
-                </span>
-              </span>
-            </button>
+              <div style={s.optionText}>
+                {usesBlockMarkdown
+                  ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
+                  : (
+                    <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                      <InlineMarkdown content={optionText} />
+                    </span>
+                  )}
+              </div>
+            </div>
           )
         })}
       </div>
@@ -79,6 +93,10 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
       )}
     </div>
   )
+}
+
+function hasFencedCodeBlock(content) {
+  return /(^|\n)```/.test(content)
 }
 
 function getMultipleChoiceSuggestion(task, selectedAnswer) {

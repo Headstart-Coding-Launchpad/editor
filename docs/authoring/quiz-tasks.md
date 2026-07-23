@@ -37,7 +37,7 @@ Without the `answer:` shorthand:
 |---|:---:|---|
 | `options` | Yes | At least two options. `id` is usually `a`, `b`, `c` etc. |
 | `options[].id` | Yes | Stable identifier matched by the check. |
-| `options[].text` | Yes | Shown to students. Markdown supported. |
+| `options[].text` | Yes | Shown to students. Markdown supported, including fenced code and Scratch stacks. |
 | `options[].feedback` | No | Shown when this wrong option is selected. Markdown supported. |
 | `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}` |
 

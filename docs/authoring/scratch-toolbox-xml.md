@@ -33,6 +33,7 @@ Rules:
 - The root element must be `<xml>`.
 - Each `<category>` groups related blocks under a labelled section.
 - Each `<block type="..."/>` adds one block to its category.
+- A minimal toolbox may put blocks directly under `<xml>`; the platform supplies their editable default inputs and can append compatible prebuilt stacks.
 - Categories with no `<block>` children are automatically hidden.
 - Block order inside a category is fixed by the platform; ordering in the XML is ignored.
 

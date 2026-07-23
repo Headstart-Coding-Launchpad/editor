@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runWorkspace, addPrebuiltStacksToToolbox, addPredefinedBlocksToToolbox, createScratchBlockStack, DEFAULT_TOOLBOX, createRunSignal } from '../scratch'
+import { runWorkspace, addPrebuiltStacksToToolbox, addPredefinedBlocksToToolbox, buildAlwaysOpenToolbox, createScratchBlockStack, DEFAULT_TOOLBOX, createRunSignal } from '../scratch'
 
 // Tests for scratch.js interpreter helpers — pure logic only.
 // Blockly workspace internals (inject, serialization, rendering) are not tested here.
@@ -220,6 +220,17 @@ describe('addPrebuiltStacksToToolbox', () => {
     expect(added.querySelector('value[name="STEPS"] > shadow > field[name="NUM"]')?.textContent).toBe('25')
   })
 
+  it('appends stacks to a root-level XML toolbox', () => {
+    const xml = '<xml><block type="motion_movesteps"/></xml>'
+    const result = addPrebuiltStacksToToolbox(xml, [connectedStack])
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const blocks = Array.from(doc.documentElement.children).filter(block => block.tagName.toLowerCase() === 'block')
+
+    expect(blocks).toHaveLength(2)
+    expect(blocks.at(-1)?.getAttribute('type')).toBe('motion_movesteps')
+    expect(blocks.at(-1)?.querySelector('next > block')?.getAttribute('type')).toBe('looks_say')
+  })
+
   it('converts legacy predefined blocks through the stack path', () => {
     const predefined = [{ id: 'pb1', type: 'motion_movesteps', inputs: { STEPS: 50 } }]
     const result = addPrebuiltStacksToToolbox(DEFAULT_TOOLBOX, [], predefined)
@@ -228,6 +239,16 @@ describe('addPrebuiltStacksToToolbox', () => {
 
     expect(added.type).toBe('motion_movesteps')
     expect(added.inputs.STEPS.shadow.fields.NUM).toBe('50')
+  })
+})
+
+describe('buildAlwaysOpenToolbox', () => {
+  it('adds editable shadow inputs to root-level XML blocks', () => {
+    const result = buildAlwaysOpenToolbox('<xml><block type="looks_sayforsecs"/></xml>')
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+
+    expect(doc.querySelector('block[type="looks_sayforsecs"] value[name="MESSAGE"] shadow[type="text"] field[name="TEXT"]')?.textContent).toBe('Hello!')
+    expect(doc.querySelector('block[type="looks_sayforsecs"] value[name="SECS"] shadow[type="math_number"] field[name="NUM"]')?.textContent).toBe('2')
   })
 })
 
