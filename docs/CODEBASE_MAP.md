@@ -228,13 +228,13 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
 | `DraftTaskEditor.jsx` | Lightweight task editor for draft-stage lessons (`taskType: 'draft'`): kind/title/notes fields only, no code workspace |
 | `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
-| `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor` |
+| `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, and feedback priority/stage-offer controls |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
-| `TaskCheckResults.jsx` | Pass/fail check result banner shown after running or testing checks in the builder |
+| `TaskCheckResults.jsx` | Pass/fail check result banner plus a non-mutating student-feedback preview for linked stage offers |
 | `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
 | `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
-| `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), incorrect checks, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
+| `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), feedback checks with targeted stage offers, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
 | `PythonTaskWorkspace.jsx` | Python code editor + run controls panel for the builder (starter/complete/stage tabs) |
 | `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
 | `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |

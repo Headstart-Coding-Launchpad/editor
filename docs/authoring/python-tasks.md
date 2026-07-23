@@ -10,7 +10,7 @@ Field reference for `python`-type lesson code tasks. For the lesson envelope and
 |---|:---:|---|---|
 | `starterCode` | No | string | Code loaded when no carry-through exists. |
 | `completeCode` | No | string | Reference solution (builder preview/copy). |
-| `codeStages` | No | stage array | Intermediate stages (`label`, `code`, optional `role`, optional `revealable`). Teacher can send any stage to students; revealable stages can be opened read-only without replacing student code. |
+| `codeStages` | No | stage array | Intermediate stages (`label`, `code`, optional `role`, optional `revealable`). Teacher can send any stage to students; revealable stages can be opened read-only without replacing student code. A feedback check may target a stage by zero-based index for a preview/recovery offer. |
 | `carryCodeFrom` | No | integer or null | Task ID to carry saved code from. |
 | `interactionMode` | No | string | `run` (default) or `submit`. |
 | `tests` | No | test array | Automated test cases. See **Task Tests** below. |

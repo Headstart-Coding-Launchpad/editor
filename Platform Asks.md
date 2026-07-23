@@ -333,7 +333,7 @@ Three separable features. `codeStages` is being asked to do three jobs and is eq
 1. Add a way for `copyCode` — or a nominated code stage — to be **hidden by default and revealed on demand**, rather than always visible.
 2. Revealing must **not touch the student's editor**. Their own code stays exactly as they left it, and they fix it themselves.
 3. Add a teacher-side control to trigger the reveal for one student.
-4. **No attempt-count automation.** Automatic reveal after N failures was considered and rejected: it undercuts the Independent pillar's "find solutions via trial and error", and the teacher already sees failure counts. Do not build a threshold.
+4. **No generic attempt-count automation.** A generic reveal after N failures was considered and rejected: it undercuts the Independent pillar's "find solutions via trial and error", and the teacher already sees failure counts. A later, separate targeted-feedback recovery route is permitted because it is authored against a diagnosed misconception, keeps its first response non-destructive, and requires an explicit stage offer configuration.
 
 **Acceptance criteria.**
 - An author can mark a task's `copyCode` as initially hidden.
@@ -342,6 +342,14 @@ Three separable features. `codeStages` is being asked to do three jobs and is eq
 - Existing always-visible `copyCode` behaviour is the default and is unaffected.
 
 **Decision resolved.** Revealable content is a nominated `codeStage`; `copyCode` remains the separate copy-code panel.
+
+### T20 — Target feedback checks to a recovery stage
+
+**Status: Done, 23 July 2026.** A feedback check can now nominate an existing stage with `stageOffer: { stageIndex, action, afterMatches? }`. Authors set the feedback priority; the highest-priority matching check is the only one surfaced. The offer defaults to two matching attempts, starts with a read-only preview, and a repeat of that same diagnosed problem offers a confirmed copy of the stage into the student's work. The Builder renders the same student-feedback preview for authors to test.
+
+**Why.** A generic stage after a failure can be irrelevant. The check that recognises the misconception is the right place to choose the hint and recovery code.
+
+**Decision resolved.** This augments the current Starter/stage/Complete model; it does not yet replace those fields with a unified variant data model.
 
 ### T13 — Add a student-initiated reveal control
 
@@ -530,7 +538,7 @@ Consistent with existing types: shuffled on render, immediate per-item feedback 
 
 Recorded so these read as decisions rather than oversights.
 
-**Attempt-aware feedback checks.** `feedbackChecks` supports `show: after_attempt` and `show: on_idle` but has no attempt-*number* condition, so escalating hints ("on the third failure, say more") are not expressible — every hint is one fixed message. This is a real constraint and it shaped T12, which is why the reveal is human-triggered rather than escalating. Not currently requested.
+**General attempt-aware feedback checks.** Targeted stage offers now support `afterMatches` for a single linked recovery stage. Broader escalation (different hint copy or multiple different interventions at successive attempt counts) is still not modelled and remains unrequested.
 
 **Adaptive routing.** Automatically skipping students past tasks based on earlier performance. Rejected on pedagogical grounds — the specific case examined was skipping Copy the Code for confident students, and hand-typing was judged to be thinking time rather than transcription. No routing feature is wanted.
 
@@ -608,8 +616,9 @@ taskSummary:
 
 Documented `codeStages` behaviour:
 - The teacher can send any stage to a student, which **replaces the content of the student's editor**.
-- In solo mode the platform auto-advances through stages in order to the final complete-code stage, then check-gates on the task's `check`.
-- Stage labels are teacher-facing only.
+- In solo mode the existing generic fallback can advance through stages in order to the final complete-code stage, then check-gates on the task's `check`.
+- A feedback check may instead target a named stage after a configured number of matching attempts; it previews first and can subsequently offer a confirmed replacement.
+- Stage labels are shown to students when a stage is offered or previewed.
 
 **The check lives on the task, not the stage.** A task has one `check`; a stage carries only a label and code. There is no way to author a stage graded against a different standard, so a harder stage would either be failed by the core check or force that check to be loosened until it no longer tests the core task properly.
 
