@@ -133,6 +133,19 @@ describe('useCheckFeedback', () => {
     })
   })
 
+  describe('stagePromptAccepted', () => {
+    it('hides feedback until the next evaluated attempt', () => {
+      const { result } = renderHook(() => useCheckFeedback())
+      expect(result.current.stagePromptAccepted).toBe(false)
+
+      act(() => { result.current.markStagePromptAccepted() })
+      expect(result.current.stagePromptAccepted).toBe(true)
+
+      act(() => { result.current.applyCheckFeedback(false, 'Try again') })
+      expect(result.current.stagePromptAccepted).toBe(false)
+    })
+  })
+
   describe('checkPassedRef', () => {
     it('mirrors checkPassed synchronously', () => {
       const { result } = renderHook(() => useCheckFeedback())

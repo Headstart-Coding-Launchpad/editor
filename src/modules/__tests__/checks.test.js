@@ -12,6 +12,8 @@ import {
   filterChecksForInteraction,
   getFirstFailedCheckHint,
   getIncorrectCheckHint,
+  getHighestPriorityFeedbackMatch,
+  getStageOfferMatchThreshold,
   substituteTestInputs,
   resolveTestCheck,
   FEEDBACK_TIMING,
@@ -532,6 +534,50 @@ describe('getIncorrectCheckHint', () => {
 })
 
 describe('evaluateCheckWithFeedback', () => {
+  it('uses the highest-priority matching feedback check for a linked stage offer', () => {
+    const task = {
+      check: { type: 'output_contains', value: 'done' },
+      feedbackChecks: [
+        { type: 'output_contains', value: 'wrong', hint: 'Generic hint', priority: 3, stageOffer: { stageIndex: 0, action: 'preview' } },
+        { type: 'output_contains', value: 'wrong', hint: 'Targeted hint', priority: 1, stageOffer: { stageIndex: 1, action: 'replace' } },
+      ],
+    }
+
+    const result = evaluateCheckWithFeedback(task, 'wrong')
+
+    expect(result.suggestion).toBe('Targeted hint')
+    expect(result.stageOffer).toEqual({ stageIndex: 1, action: 'replace' })
+  })
+
+  it('keeps completion failed while returning targeted feedback for a runtime error', () => {
+    const result = evaluateCheckWithFeedback({
+      check: { type: 'output_contains', value: 'hello' },
+      feedbackChecks: [{
+        type: 'code', operator: 'contains', value: 'print(hello)', hint: 'Put hello in quotes.',
+        stageOffer: { stageIndex: 0, action: 'preview' },
+      }],
+    }, 'NameError: hello', { code: 'print(hello)', status: 'error' }, { completionPassed: false })
+
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('Put hello in quotes.')
+    expect(result.stageOffer).toEqual({ stageIndex: 0, action: 'preview' })
+  })
+
+  it('preserves feedback-check array order when priorities are absent', () => {
+    const first = { passed: true, hint: 'First' }
+    const second = { passed: true, hint: 'Second', priority: 2 }
+    expect(getHighestPriorityFeedbackMatch([first, second])).toBe(first)
+  })
+
+  it('returns null when feedback results have not been evaluated yet', () => {
+    expect(getHighestPriorityFeedbackMatch(null)).toBeNull()
+  })
+
+  it('defaults linked stage offers to two matching feedback checks', () => {
+    expect(getStageOfferMatchThreshold()).toBe(2)
+    expect(getStageOfferMatchThreshold({ afterMatches: 3 })).toBe(3)
+    expect(getStageOfferMatchThreshold({ afterMatches: 0 })).toBe(2)
+  })
   it('fails when completion passes but blocking feedback matches', () => {
     const task = {
       check: { type: 'output', operator: 'contains', value: 'hello' },

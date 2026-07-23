@@ -134,7 +134,25 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   function handleRemoveStage(idx) {
     const existing = task.codeStages ?? []
     const updated = existing.filter((_, i) => i !== idx)
-    onUpdate({ ...task, codeStages: updated.length > 0 ? updated : undefined })
+    const feedbackChecks = task.feedbackChecks ?? task.incorrectChecks
+    const updateFeedbackCheck = check => {
+      const stageIndex = check?.stageOffer?.stageIndex
+      if (!Number.isInteger(stageIndex)) return check
+      if (stageIndex === idx) {
+        const { stageOffer: _stageOffer, ...next } = check
+        return next
+      }
+      return stageIndex > idx ? { ...check, stageOffer: { ...check.stageOffer, stageIndex: stageIndex - 1 } } : check
+    }
+    const nextFeedbackChecks = Array.isArray(feedbackChecks)
+      ? feedbackChecks.map(updateFeedbackCheck)
+      : feedbackChecks ? updateFeedbackCheck(feedbackChecks) : feedbackChecks
+    onUpdate({
+      ...task,
+      codeStages: updated.length > 0 ? updated : undefined,
+      ...(task.feedbackChecks != null ? { feedbackChecks: nextFeedbackChecks } : {}),
+      ...(task.incorrectChecks != null ? { incorrectChecks: nextFeedbackChecks } : {}),
+    })
     setCodeTab('starter')
   }
 

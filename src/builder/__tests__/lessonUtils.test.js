@@ -123,6 +123,26 @@ describe('validateLesson', () => {
     expect(htmlResult.errors).toContain('Task 1 has an element feedback check but no CSS selector')
   })
 
+  it('validates feedback priorities and linked stage offers', () => {
+    const result = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Feedback target',
+      starterCode: 'print("hi")',
+      check: { type: 'output_contains', value: 'hi' },
+      codeStages: [{ label: 'Guided', code: 'print("hi")' }],
+      feedbackChecks: [
+        { type: 'code', operator: 'contains', value: 'bad', priority: 0, stageOffer: { stageIndex: 3, action: 'load', afterMatches: 0 } },
+      ],
+    }]))
+
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'Task 1 feedback check 1 priority must be a positive whole number',
+      'Task 1 feedback check 1 references a code stage that does not exist',
+      'Task 1 feedback check 1 stage offer action must be preview or replace',
+      'Task 1 feedback check 1 stage offer threshold must be a positive whole number',
+    ]))
+  })
+
   it('warns for blocking feedback checks without hints and requires a completion check', () => {
     const result = validateLesson(lesson('python', [{
       id: 1,

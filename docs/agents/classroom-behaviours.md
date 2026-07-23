@@ -69,6 +69,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Students are offered one Python/HTML revealable stage after each failed run or check (including runtime and syntax errors). The offer remains until used or the student succeeds; repeated failures do not skip an unused stage. Only the newest revealed stage is displayed; a passing run/check hides it, and a later failure offers the next stage. Teachers can still reveal a Python/HTML stage reference for one student from `StudentModal`.
 - Reveals write `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source`, `stageLabel`, `attemptNumber`, and `revealedAt`.
 - Teacher student cards mark the current task when a student has opened a reference. Session reports include per-student `supportReveals` and task-level reveal counts.
+- A feedback check may instead target a particular current stage with `stageOffer: { stageIndex, action, afterMatches? }`. The lowest positive `priority` among matching feedback checks wins. `afterMatches` defaults to `2`. Accepting a stage action hides the feedback banner until the next evaluated attempt. `preview` is read-only; if the same targeted check matches again while its reference remains open, the next offer is to copy that stage into the student's work. `replace` always asks the student to confirm before overwriting their work. A different stage is not suggested while a reference is already open; targeted feedback also works for Python runtime errors when a code feedback check identifies the mistake.
 
 ## Complete-Code Reveal
 

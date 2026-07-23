@@ -9,6 +9,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
   const [testResults, setTestResults]         = useState(null)
   const [offeredStageIndex, setOfferedStageIndex] = useState(-1)
   const [completePreviewShown, setCompletePreviewShown] = useState(false)
+  const [stagePromptAccepted, setStagePromptAccepted] = useState(false)
 
   const checkPassedRef    = useRef(false)
   checkPassedRef.current  = checkPassed
@@ -23,6 +24,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setCheckSuggestion('')
     setRepeatedSuggestionCount(0)
     setTestResults(null)
+    setStagePromptAccepted(false)
   }
 
   function resetCheckFeedback() {
@@ -31,6 +33,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setCheckFailCount(0)
     setOfferedStageIndex(-1)
     setCompletePreviewShown(false)
+    setStagePromptAccepted(false)
   }
 
   function applyCheckFeedback(passed, suggestion = '') {
@@ -38,6 +41,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setCheckPassed(passed)
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)
+    setStagePromptAccepted(false)
     setCheckFailCount(prev => passed ? 0 : prev + 1)
     if (passed) setOfferedStageIndex(-1)
     if (passed) setCompletePreviewShown(false)
@@ -46,6 +50,10 @@ export function useCheckFeedback({ myStudentData } = {}) {
       return checkSuggestionRef.current === nextSuggestion ? prev + 1 : 1
     })
     return nextSuggestion
+  }
+
+  function markStagePromptAccepted() {
+    setStagePromptAccepted(true)
   }
 
   // React to teacher overriding this student's check result
@@ -67,6 +75,7 @@ export function useCheckFeedback({ myStudentData } = {}) {
     checkPassedRef,
     offeredStageIndex, setOfferedStageIndex,
     completePreviewShown, setCompletePreviewShown,
+    stagePromptAccepted, markStagePromptAccepted,
     resetRunFeedback,
     resetCheckFeedback,
     applyCheckFeedback,
