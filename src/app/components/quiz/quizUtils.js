@@ -9,6 +9,13 @@ export function normalizeQuizAnswerText(value) {
   return String(value ?? '').replace(/\\r\\n|\\n|\\r/g, '\n')
 }
 
+export function fitScratchQuizScale({ preferredScale, availableWidth, availableHeight, contentWidth, contentHeight, minimumScale = 0.6 }) {
+  const limits = [preferredScale]
+  if (availableWidth > 0 && contentWidth > 0) limits.push(Math.max(0, (availableWidth - 8) / contentWidth))
+  if (availableHeight > 0 && contentHeight > 0) limits.push(Math.max(0, (availableHeight - 32) / contentHeight))
+  return Math.max(minimumScale, Math.min(...limits))
+}
+
 export const CONFIDENCE_COLOURS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
 
 export const OPTION_COLOURS = [
@@ -220,6 +227,19 @@ export const baseStyles = {
     lineHeight: 1.35,
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
+  },
+  scratchOptionText: {
+    flex: '1 1 0',
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  scratchOptionScale: {
+    display: 'inline-block',
+    transformOrigin: 'center',
+    width: 'max-content',
   },
   markdownOnDark: {
     '--colour-text': '#ffffff',

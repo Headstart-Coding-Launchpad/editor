@@ -1,25 +1,26 @@
 import React from 'react'
 import { findScratchBlock, scratchBlockBadgeIcon, scratchBlockTextWithoutIcon } from '../scratchBlockCatalog'
 
-const BODY_H = 34
-const HAT_H = 38
-const INLINE_H = 24
+const BODY_H = 38
+const HAT_H = 42
+const INLINE_H = 36
 const CONNECTOR_H = 7
+const CONTENT_TOP_INSET = 4
 const NOTCH_X = 17
 const NOTCH_W = 30
 const MOUTH_X = 15
 const MOUTH_PAD_TOP = 2
 const MOUTH_PAD_BOTTOM = 0
-const MOUTH_MIN_H = 30
-const ELSE_H = 29
+const MOUTH_MIN_H = 34
+const ELSE_H = 33
 const FOOTER_H = 13
 const C_MIN_W = 185
 const ROOT_GAP = 9
 const C_CHILD_X = 14
 const OPERATOR_COLOR = '#59C059'
 const TEXT_SHADOW_OPERATORS = new Set(['operator_equals', 'operator_join', 'operator_contains'])
-const ICON_BADGE_SIZE = 30
-const INLINE_ICON_BADGE_SIZE = 22
+const ICON_BADGE_SIZE = 24
+const INLINE_ICON_BADGE_SIZE = 20
 
 function darkenColor(hex) {
   const num = parseInt(hex.replace('#', ''), 16)
@@ -55,7 +56,10 @@ function scratchFont(size = '13px') {
 }
 
 function estimateTextWidth(text, size = 13) {
-  return String(text ?? '').length * size * 0.58
+  // Quicksand's rounded, bold glyphs are wider than a simple monospace-style
+  // estimate. Leave a small safety margin so SVG block bodies never end before
+  // their HTML text and input overlays.
+  return String(text ?? '').length * size * 0.64
 }
 
 function findBalanced(text, start, open, close) {
@@ -149,15 +153,57 @@ function contentPaddingFor(shape, info) {
   return 18
 }
 
+function contentTopFor(shape) {
+  return shape === 'stack' || shape === 'hat' || shape === 'cap' || shape === 'c'
+    ? CONTENT_TOP_INSET
+    : 0
+}
+
+function minimumBlockWidth(shape, info, inline) {
+  if (shape === 'boolean') return booleanMinWidth(info, inline)
+  if (shape === 'hat') return inline ? 68 : 88
+  if (shape === 'reporter') return inline ? 48 : 60
+  return inline ? 48 : 60
+}
+
+function useMeasuredBlockWidth(rowRef, fallbackWidth, minimumWidth, horizontalPadding, dependencies) {
+  const [width, setWidth] = React.useState(fallbackWidth)
+
+  React.useLayoutEffect(() => {
+    let active = true
+    const measure = () => {
+      // offsetWidth is an untransformed layout measurement. Quiz answers apply a
+      // visual scale to their Scratch content; getBoundingClientRect() would
+      // include that scale here and cause the SVG width to grow a second time.
+      const rowWidth = rowRef.current?.offsetWidth ?? 0
+      if (!rowWidth || !active) return
+      const nextWidth = Math.max(minimumWidth, Math.ceil(rowWidth + horizontalPadding * 2))
+      setWidth(current => current === nextWidth ? current : nextWidth)
+    }
+
+    measure()
+    const fontsReady = typeof document !== 'undefined' ? document.fonts?.ready : null
+    fontsReady?.then(measure).catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, dependencies)
+
+  return width
+}
+
 function measureInlineBlock(text, info) {
   text = scratchBlockTextWithoutIcon(text, info)
   const shape = info.shape ?? 'stack'
-  const h = INLINE_H
-  const textWidth = iconBadgeMeasure(info, true) + measurePartsWidth(text, 11, 1, info)
-  if (shape === 'reporter') return { width: Math.max(48, textWidth + 26), height: h + 1 }
-  if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, true), textWidth + booleanExtraWidth(info)), height: h + 8 }
-  if (shape === 'hat') return { width: Math.max(68, textWidth + 24), height: h + 4 }
-  return { width: Math.max(44, textWidth + 24), height: h }
+  const bodyH = shape === 'hat' ? INLINE_H + 3 : INLINE_H
+  const bottomTab = shape === 'stack' || shape === 'hat'
+  const textWidth = iconBadgeMeasure(info, true) + measurePartsWidth(text, 12, 1, info)
+  if (shape === 'reporter') return { width: Math.max(48, textWidth + 26), height: bodyH + 1, bodyH: bodyH + 1, bottomTab: false }
+  if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, true), textWidth + booleanExtraWidth(info)), height: bodyH + 8, bodyH: bodyH + 8, bottomTab: false }
+  if (shape === 'hat') return { width: Math.max(68, textWidth + 28), height: bodyH + CONNECTOR_H, bodyH, bottomTab: true }
+  if (shape === 'cap') return { width: Math.max(48, textWidth + 28), height: bodyH, bodyH, bottomTab: false }
+  return { width: Math.max(48, textWidth + 28), height: bodyH + CONNECTOR_H, bodyH, bottomTab }
 }
 
 function measureSimpleBlock(text, info, inline = false) {
@@ -167,8 +213,8 @@ function measureSimpleBlock(text, info, inline = false) {
   const bodyH = shape === 'hat' ? HAT_H : BODY_H
   const bottomTab = shape === 'stack' || shape === 'hat'
   const textWidth = iconBadgeMeasure(info, false) + measurePartsWidth(text, 13, 0, info)
-  if (shape === 'reporter') return { width: Math.max(60, textWidth + 30), height: 31, bodyH: 31, bottomTab: false }
-  if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, false), textWidth + booleanExtraWidth(info)), height: 34, bodyH: 34, bottomTab: false }
+  if (shape === 'reporter') return { width: Math.max(60, textWidth + 30), height: 33, bodyH: 33, bottomTab: false }
+  if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, false), textWidth + booleanExtraWidth(info)), height: 36, bodyH: 36, bottomTab: false }
   if (shape === 'cap') return { width: Math.max(60, textWidth + 30), height: BODY_H, bodyH: BODY_H, bottomTab: false }
   if (shape === 'hat') return { width: Math.max(88, textWidth + 32), height: bodyH + CONNECTOR_H, bodyH, bottomTab: true }
   return { width: Math.max(60, textWidth + 30), height: bodyH + CONNECTOR_H, bodyH, bottomTab: true }
@@ -177,18 +223,18 @@ function measureSimpleBlock(text, info, inline = false) {
 function measurePartsWidth(text, size, depth, hostInfo) {
   return blockTextParts(text, depth, hostInfo).reduce((width, part) => {
     if (part.type === 'text') return width + estimateTextWidth(part.text, size)
-    return width + measureSlot(part.content, part.kind, part.depth, hostInfo).width
+    return width + measureSlot(part.content, part.kind, part.depth, hostInfo, size).width
   }, 0)
 }
 
-function measureSlot(content, kind, depth, hostInfo) {
+function measureSlot(content, kind, depth, hostInfo, fontSize = 13) {
   const trimmed = content.trim()
   const nested = depth < 4 ? findScratchBlock(trimmed) : null
   if (nested && (nested.shape === 'reporter' || nested.shape === 'boolean')) {
     return measureInlineBlock(trimmed, nested)
   }
   const label = trimmed || (kind === 'condition' ? ' ' : '')
-  const baseWidth = estimateTextWidth(label, 12)
+  const baseWidth = estimateTextWidth(label, fontSize)
   if (kind === 'dropdown') return { width: Math.max(38, baseWidth + 29), height: 21 }
   if (kind === 'condition') return { width: Math.max(66, baseWidth + 38), height: 24 }
   if (kind === 'value' && hostInfo?.category === 'Operators') {
@@ -612,15 +658,24 @@ function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride
   const displayText = scratchBlockTextWithoutIcon(text, info)
   const size = measureSimpleBlock(displayText, { ...info, shape }, inline)
   const bodyH = size.bodyH ?? size.height
-  const contentTop = 0
+  const contentTop = contentTopFor(shape)
   const contentHeight = Math.max(0, bodyH - contentTop)
+  const contentPadding = contentPaddingFor(shape, info)
+  const contentRowRef = React.useRef(null)
+  const width = useMeasuredBlockWidth(
+    contentRowRef,
+    size.width,
+    minimumBlockWidth(shape, info, inline),
+    contentPadding,
+    [displayText, info.opcode, inline, shape, size.width, contentPadding],
+  )
 
   return (
     <span
       style={{
         position: 'relative',
         display: 'inline-block',
-        width: size.width,
+        width,
         height: size.height,
         verticalAlign: 'middle',
         cursor: 'default',
@@ -630,12 +685,13 @@ function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride
       }}
       data-scratch-opcode={info.opcode}
       data-scratch-shape={shape}
+      data-scratch-content-top={contentTop}
       data-scratch-unknown={info.opcode === 'unknown' ? 'true' : undefined}
     >
       <ShapeSvg
         shape={shape}
         color={info.color}
-        width={size.width}
+        width={width}
         bodyH={bodyH}
         height={size.height}
         bottomTab={Boolean(size.bottomTab)}
@@ -649,13 +705,21 @@ function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride
           display: 'flex',
           alignItems: 'center',
           gap: 0,
-          padding: `0 ${contentPaddingFor(shape, info)}px`,
+          lineHeight: 1,
+          padding: `0 ${contentPadding}px`,
           whiteSpace: 'nowrap',
           boxSizing: 'border-box',
         }}
+        data-scratch-block-content="true"
       >
-        <ScratchIconBadge icon={scratchBlockBadgeIcon(info)} inline={inline} />
-        {renderBlockText(displayText, depth, info)}
+        <span
+          ref={contentRowRef}
+          style={{ display: 'inline-flex', alignItems: 'center', width: 'max-content', lineHeight: 1 }}
+          data-scratch-block-row="true"
+        >
+          <ScratchIconBadge icon={scratchBlockBadgeIcon(info)} inline={inline} />
+          {renderBlockText(displayText, depth, info)}
+        </span>
       </span>
     </span>
   )
@@ -680,6 +744,7 @@ function ScratchCBlock({ node }) {
   const displayText = scratchBlockTextWithoutIcon(node.text, node.info)
   const elseY = BODY_H + size.mouthH
   const secondMouthY = elseY + ELSE_H
+  const headerContentTop = contentTopFor('c')
 
   return (
     <div
@@ -742,11 +807,12 @@ function ScratchCBlock({ node }) {
           position: 'absolute',
           zIndex: 1,
           left: 13,
-          top: 0,
-          height: BODY_H,
+          top: headerContentTop,
+          height: BODY_H - headerContentTop,
           display: 'flex',
           alignItems: 'center',
           gap: 0,
+          lineHeight: 1,
           whiteSpace: 'nowrap',
         }}
       >
@@ -888,7 +954,7 @@ export function ScratchBlocks({ code }) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
-        margin: '10px 0',
+        margin: '6px 0',
       }}
       data-scratch-stack="true"
     >

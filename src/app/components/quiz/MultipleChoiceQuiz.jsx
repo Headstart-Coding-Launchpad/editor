@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
-import { baseStyles as s, normalizeQuizAnswerText, OPTION_COLOURS, QuestionPanel } from './quizUtils'
+import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_COLOURS, QuestionPanel } from './quizUtils'
 
 export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
   const options = task?.options ?? []
@@ -34,6 +34,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
           const textColour = isCorrect || isWrong || active ? '#fff' : colour.text
           const optionText = normalizeQuizAnswerText(option.text)
           const usesBlockMarkdown = hasFencedCodeBlock(optionText)
+          const usesScratchMarkdown = isScratchMarkdown(optionText)
           const chooseOption = () => {
             if (!locked) onSelectAnswer?.(option.id)
           }
@@ -63,8 +64,20 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
               <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
                 {option.id}
               </span>
-              <div style={s.optionText}>
-                {usesBlockMarkdown
+              <div style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}>
+                {usesScratchMarkdown
+                  ? (
+                    <ScratchQuizOptionContent kind={usesBlockMarkdown ? 'stack' : 'inline'}>
+                      {usesBlockMarkdown
+                        ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
+                        : (
+                          <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                            <InlineMarkdown content={optionText} />
+                          </span>
+                        )}
+                    </ScratchQuizOptionContent>
+                  )
+                  : usesBlockMarkdown
                   ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
                   : (
                     <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
@@ -97,6 +110,67 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
 
 function hasFencedCodeBlock(content) {
   return /(^|\n)```/.test(content)
+}
+
+function isScratchMarkdown(content) {
+  return /`scratch:|```scratch\b/i.test(content)
+}
+
+function ScratchQuizOptionContent({ kind, children }) {
+  const preferredScale = 1.5
+  const frameRef = React.useRef(null)
+  const contentRef = React.useRef(null)
+  const scaleRef = React.useRef(preferredScale)
+  const [scale, setScale] = React.useState(preferredScale)
+  scaleRef.current = scale
+
+  React.useLayoutEffect(() => {
+    const measure = () => {
+      const frame = frameRef.current
+      const content = contentRef.current
+      if (!frame || !content) return
+
+      const rect = content.getBoundingClientRect()
+      const currentScale = scaleRef.current || 1
+      const contentWidth = rect.width / currentScale
+      const contentHeight = rect.height / currentScale
+      const nextScale = fitScratchQuizScale({
+        preferredScale,
+        availableWidth: frame.clientWidth,
+        availableHeight: frame.parentElement?.parentElement?.clientHeight ?? 0,
+        contentWidth,
+        contentHeight,
+      })
+      setScale(current => Math.abs(current - nextScale) < 0.01 ? current : nextScale)
+    }
+
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(measure)
+    if (frameRef.current) observer.observe(frameRef.current)
+    if (contentRef.current) observer.observe(contentRef.current)
+    if (frameRef.current?.parentElement) observer.observe(frameRef.current.parentElement)
+    return () => observer.disconnect()
+  }, [preferredScale])
+
+  return (
+    <div ref={frameRef} style={s.scratchOptionText}>
+      <div
+        ref={contentRef}
+        style={{
+          ...s.scratchOptionScale,
+          // Inline Scratch uses an em-based font while fenced blocks use 13px.
+          // Normalise the quiz wrapper so both forms share the same base size
+          // before the responsive scale is applied.
+          ...(kind === 'inline' ? { fontSize: `${13 / 0.82}px` } : {}),
+          transform: `scale(${scale})`,
+        }}
+        data-scratch-quiz-scale={kind}
+      >
+        {children}
+      </div>
+    </div>
+  )
 }
 
 function getMultipleChoiceSuggestion(task, selectedAnswer) {

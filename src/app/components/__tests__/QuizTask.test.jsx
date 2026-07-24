@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
+import { fitScratchQuizScale } from '../quiz/quizUtils'
 
 const MULTIPLE_CHOICE_TASK = {
   title: 'Pick one',
@@ -151,6 +152,33 @@ describe('QuizTask multiple choice', () => {
 
     expect(container.querySelector('[data-scratch-stack="true"]')).toBeInTheDocument()
     expect(container.querySelector('[data-scratch-stack="true"] [data-scratch-opcode="looks_sayforsecs"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-quiz-scale="stack"]')).toHaveStyle({ transform: 'scale(1.5)' })
+  })
+
+  it('enlarges inline Scratch answer blocks without changing ordinary options', () => {
+    const task = {
+      ...MULTIPLE_CHOICE_TASK,
+      options: [
+        { id: 'a', text: '`scratch:say [Hello!] for (2) seconds`' },
+        { id: 'b', text: 'Two seconds' },
+      ],
+    }
+    const { container } = render(<QuizTask task={task} />)
+
+    expect(container.querySelector('[data-scratch-quiz-scale="inline"]')).toHaveStyle({
+      transform: 'scale(1.5)',
+      fontSize: `${13 / 0.82}px`,
+    })
+  })
+
+  it('reduces the Scratch quiz scale to fit narrower answer cards', () => {
+    expect(fitScratchQuizScale({
+      preferredScale: 1.5,
+      availableWidth: 300,
+      availableHeight: 200,
+      contentWidth: 400,
+      contentHeight: 100,
+    })).toBeCloseTo(0.73, 2)
   })
 
   it('supports keyboard selection for answer options', async () => {

@@ -203,6 +203,47 @@ describe('MarkdownRenderer', () => {
     expect(container.querySelector('[data-scratch-opcode="sensing_distanceto"][data-scratch-shape="reporter"]')).toBeInTheDocument()
   })
 
+  it('reserves the notch and bottom connector for inline Scratch stack blocks', () => {
+    const { container } = render(<MarkdownRenderer content={'Use `scratch:say [Hello!] for (2) seconds` here.'} />)
+    const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"][data-scratch-shape="stack"]')
+    const content = block.querySelector('[data-scratch-block-content="true"]')
+    const icon = block.querySelector('[data-scratch-icon-badge="true"]')
+
+    expect(block.dataset.scratchContentTop).toBe('4')
+    expect(Number.parseFloat(block.style.height)).toBe(43)
+    expect(block.querySelector('svg')).toHaveAttribute('height', '43')
+    expect(content.style.inset).toBe('4px 0 auto 0')
+    expect(content.style.height).toBe('32px')
+    expect(icon.style.width).toBe('20px')
+  })
+
+  it('gives long inline Scratch blocks enough width for their fields and labels', () => {
+    const { container } = render(<MarkdownRenderer content={'`scratch:think [Hello!] for (2) seconds`'} />)
+    const block = container.querySelector('[data-scratch-opcode="looks_thinkforsecs"]')
+
+    expect(Number.parseFloat(block.style.width)).toBeGreaterThanOrEqual(300)
+  })
+
+  it('uses the browser-measured Scratch content row once it is available', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get() {
+        if (this.dataset?.scratchBlockRow === 'true') return 247
+        return descriptor?.get?.call(this) ?? 0
+      },
+    })
+
+    try {
+      const { container } = render(<MarkdownRenderer content={'`scratch:say [Hello!] for (2) seconds`'} />)
+      const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"]')
+
+      expect(Number.parseFloat(block.style.width)).toBe(273)
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', descriptor)
+    }
+  })
+
   it('treats variable names in set blocks as dropdown fields, not guessed reporter blocks', () => {
     const { container } = render(<MarkdownRenderer content={'```scratch\nset [score] to (0)\n```'} />)
     expect(container.querySelector('[data-scratch-opcode="data_setvariableto"]')).toBeInTheDocument()
@@ -231,7 +272,7 @@ describe('MarkdownRenderer', () => {
     const valueSlots = operator.querySelectorAll('[data-scratch-slot="value"]')
 
     expect(Number.parseFloat(operator.style.width)).toBeGreaterThanOrEqual(150)
-    expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(190)
+    expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(195)
     expect(valueSlots).toHaveLength(2)
     expect(valueSlots[0]).toHaveAttribute('data-scratch-slot-shadow', 'text')
     expect(Number.parseFloat(valueSlots[0].querySelector('[data-scratch-slot-field="true"]').style.minWidth)).toBeGreaterThanOrEqual(18)
@@ -251,7 +292,7 @@ describe('MarkdownRenderer', () => {
     const mouthStack = repeat.querySelector('[data-scratch-mouth-stack="children"]')
     const cSvg = Array.from(repeat.children).find(child => child.tagName.toLowerCase() === 'svg')
 
-    expect(Number.parseFloat(repeat.style.height)).toBeLessThanOrEqual(131)
+    expect(Number.parseFloat(repeat.style.height)).toBeLessThanOrEqual(143)
     expect(Number.parseFloat(mouthStack.style.left)).toBe(14)
     expect(Array.from(cSvg.querySelectorAll('[data-scratch-c-path]')).map(path => path.dataset.scratchCPath)).toEqual([
       'shadow',
