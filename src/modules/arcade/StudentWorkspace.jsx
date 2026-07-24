@@ -37,6 +37,10 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
     stop()
     cs.handleResetCode()
   }
+  function handleDesignChange(nextDesign) {
+    stop()
+    cs.handleArcadeDesignChange(nextDesign)
+  }
   function insertCode(snippet) { handleCodeChange(`${code.trimEnd()}${code.trim() ? '\n' : ''}${snippet}\n`) }
 
   useEffect(() => {
@@ -74,8 +78,8 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
       <AssetBrowser assetsPath={lesson?.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} assets={lesson?.assets ?? []} storageAssets={[...storageAssets, ...typeStorageAssets]} style={{ borderRadius: 0 }} />
     </details>}
     </>}
-    {!readOnly && activeWorkspaceTab === 'sprites' && canDrawSprites && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'sprites' }} design={cs.arcadeDesign} onChange={cs.handleArcadeDesignChange} availableAssets={standardAssets} onInsertCode={insertCode} title="Your sprites" /></div>}
-    {!readOnly && activeWorkspaceTab === 'tilemaps' && canDrawMaps && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'tilemaps' }} design={cs.arcadeDesign} onChange={cs.handleArcadeDesignChange} availableAssets={standardAssets} onInsertCode={insertCode} title="Your tilemaps" /></div>}
+    {!readOnly && activeWorkspaceTab === 'sprites' && canDrawSprites && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'sprites' }} design={cs.arcadeDesign} onChange={handleDesignChange} availableAssets={standardAssets} title="Your sprites" /></div>}
+    {!readOnly && activeWorkspaceTab === 'tilemaps' && canDrawMaps && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'tilemaps' }} design={cs.arcadeDesign} onChange={handleDesignChange} availableAssets={standardAssets} title="Your tilemaps" /></div>}
   </div>
   const preview = <div style={s.preview}>
     <ArcadePreview code={runCode} assets={assets} tilemaps={generatedTilemaps} runId={runId} running={running} />

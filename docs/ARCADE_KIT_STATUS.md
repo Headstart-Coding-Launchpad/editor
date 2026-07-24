@@ -19,7 +19,7 @@ Students import a small classroom API and write update() / draw() functions:
         player.x += keys.horizontal * 2
 
     def draw():
-        game.clear("navy")
+        game.clear("dark_blue")
         player.draw()
 
     game.run()
@@ -48,7 +48,8 @@ installed or used outside Headstart unchanged.
 - game.run() is converted internally to an async animation loop; students do
   not write async or await.
 - game.clear(colour), game.rect(...), game.text(...), and
-  game.size(width, height) draw to a pixelated canvas. game.delta, game.time,
+  game.size(width, height) draw to a pixelated canvas. A shared 16-colour
+  palette is used by sprite artwork and these drawing methods. game.delta, game.time,
   game.frame, game.shake(...), camera following, and controllable music/sound
   effects are available for game feel and scrolling worlds.
 - Sprite(image, x, y, width, height, frames, frame) supports horizontal sprite
@@ -58,8 +59,10 @@ installed or used outside Headstart unchanged.
   keys.vertical, and keys.pressed("…") are available.
 - pointer (also available as mouse) supplies logical-canvas position, held,
   just-pressed, and just-released state for both mouse and touch input.
-- TileMap supplies character-grid drawing, solid-tile lookup, and movement
-  collision. The camera applies to all world drawing.
+- TileMap supplies character-grid drawing, solid-tile lookup, runtime tile
+  replacement with `set_tile(column, row, tile)`, and movement collision. The
+  moving sprite receives `last_tile_collisions` with the tiles it hit. The
+  camera applies to all world drawing.
 - game.sound(name) asks the browser to play a named audio asset. Browser
   autoplay policies can still require the student to click the canvas first.
 - A game starts only when the student chooses **Run game**. Editing or resetting
@@ -89,8 +92,10 @@ installed or used outside Headstart unchanged.
 - Image assets are preloaded before game code begins, so sprites do not appear
   part-way through a new game's first frame.
 
-- Builder authors can create compact pixel sprites (including equal-duration
-  animation frames) and tilemaps per Starter, Stage, or Complete code state.
+- Builder authors can create compact 8 by 8 or 16 by 16 pixel sprites
+  (including copied equal-duration animation frames) and tilemaps per Starter,
+  Stage, or Complete code state. Tile images can be replaced, tiles removed,
+  and maps resized from the visual editor.
   Generated images are portable data URLs and appear alongside uploaded assets.
 - Arcade tasks can expose sprites, tilemaps, both, or neither to students.
   Students edit private copies that persist with their code; the active
@@ -121,7 +126,7 @@ installed or used outside Headstart unchanged.
   early examples is illustrative only; authors must upload that asset or use
   their own name.
 - **No authored canvas configuration panel.** Authors use game.size(...) in
-  code; the Builder has no width/height, palette, frame-rate, or scaling fields.
+  code; the Builder has no width/height, frame-rate, or scaling fields.
 - The focused Arcade authoring guide documents the supported API, but the
   cross-cutting lesson schema remains shared with Python code tasks.
 

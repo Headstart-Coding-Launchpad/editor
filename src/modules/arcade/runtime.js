@@ -1,3 +1,5 @@
+import { ARCADE_PALETTE } from './design'
+
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
 function safeJson(value) {
@@ -20,6 +22,9 @@ export function buildArcadeIframeSrc({ code = '', assets = [], tilemaps = [], wi
 const source = ${safeJson(code)};
 const assets = ${safeJson(assetMap)};
 const tilemaps = ${safeJson(tilemapData)};
+const palette = ${safeJson(ARCADE_PALETTE)};
+const paletteByName = Object.fromEntries(palette.map(({ name, hex }) => [name, hex]));
+const paletteValues = new Set(palette.map(({ hex }) => hex));
 const canvas = document.getElementById('game');
 const context = canvas.getContext('2d');
 const BACKING_SCALE = 4;
@@ -96,6 +101,10 @@ function image(name) {
   return images.get(name);
 }
 function keyDown(name) { return keys.has(name); }
+function arcadeColour(value, fallback) {
+  const colour = String(value ?? '').trim().toLowerCase();
+  return paletteByName[colour] || (paletteValues.has(colour) ? colour : fallback);
+}
 function normaliseKey(event) {
   const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down', ' ':'space', Spacebar:'space' };
   return map[event.key] || event.key.toLowerCase();
@@ -145,9 +154,9 @@ function beginFrame() {
 function worldX(x) { return Number(x) - cameraX + shakeX; }
 function worldY(y) { return Number(y) - cameraY + shakeY; }
 
-globalThis.hsArcadeClear = color => { context.fillStyle = String(color); context.fillRect(0, 0, logicalWidth, logicalHeight); };
-globalThis.hsArcadeRect = (x, y, width, height, color) => { context.fillStyle = String(color); context.fillRect(worldX(x), worldY(y), Number(width), Number(height)); };
-globalThis.hsArcadeText = (text, x, y, color, size) => { context.fillStyle = String(color); context.font = Number(size || 8) + 'px monospace'; context.textBaseline = 'top'; context.fillText(String(text), worldX(x), worldY(y)); };
+globalThis.hsArcadeClear = color => { context.fillStyle = arcadeColour(color, paletteByName.black); context.fillRect(0, 0, logicalWidth, logicalHeight); };
+globalThis.hsArcadeRect = (x, y, width, height, color) => { context.fillStyle = arcadeColour(color, paletteByName.white); context.fillRect(worldX(x), worldY(y), Number(width), Number(height)); };
+globalThis.hsArcadeText = (text, x, y, color, size) => { context.fillStyle = arcadeColour(color, paletteByName.white); context.font = Number(size || 8) + 'px monospace'; context.textBaseline = 'top'; context.fillText(String(text), worldX(x), worldY(y)); };
 globalThis.hsArcadeSprite = (name, x, y, width, height, frame = 0, frames = 1) => {
   const img = image(String(name));
   if (!img?.complete || !img.naturalWidth) return;
@@ -225,6 +234,7 @@ class Sprite:
         self.width, self.height = width or 16, height or 16
         self.frames, self.frame = max(1, int(frames)), int(frame)
         self.vx, self.vy = 0, 0
+        self.last_tile_collisions = []
         self._animation_time = 0
     def draw(self):
         js.hsArcadeSprite(self.image, self.x, self.y, self.width, self.height, self.frame, self.frames)
@@ -239,6 +249,7 @@ class Sprite:
             self.vy = min(self.vy, float(terminal_velocity))
     def move_with_tiles(self, tile_map):
         hit_x, hit_y = tile_map.move(self, self.vx * game.delta, self.vy * game.delta)
+        self.last_tile_collisions = [dict(hit) for hit in tile_map._last_move_collisions]
         if hit_x: self.vx = 0
         if hit_y: self.vy = 0
         return hit_x, hit_y
@@ -273,11 +284,20 @@ class TileMap:
         solid = '#' if solid is None else solid
         self.solid = (set(solid) if isinstance(solid, str) else set(solid)) | set(property_solid)
         self.objects = [dict(item) for item in (objects or [])]
+        self._last_move_collisions = []
         self.width = max((len(row) for row in self.rows), default=0) * self.tile_size
         self.height = len(self.rows) * self.tile_size
     def tile_at(self, column, row):
         if row < 0 or row >= len(self.rows) or column < 0 or column >= len(self.rows[row]): return None
         return self.rows[row][column]
+    def set_tile(self, column, row, tile):
+        column, row = int(column), int(row)
+        tile = str(tile)
+        if len(tile) != 1: raise ValueError('tile must be one character')
+        if row < 0 or row >= len(self.rows) or column < 0 or column >= len(self.rows[row]): return False
+        current = self.rows[row]
+        self.rows[row] = current[:column] + tile + current[column + 1:]
+        return True
     def is_solid(self, column, row):
         return self.tile_at(column, row) in self.solid
     def tile_properties(self, column, row):
@@ -294,11 +314,18 @@ class TileMap:
                 if image:
                     js.hsArcadeSprite(str(image), column * self.tile_size, row_number * self.tile_size, self.tile_size, self.tile_size, 0, 1)
     def collides(self, sprite):
+        return bool(self._solid_tile_hits(sprite))
+    def _solid_tile_hits(self, sprite):
         left = int(sprite.x // self.tile_size)
         right = int((sprite.x + sprite.width - 0.000001) // self.tile_size)
         top = int(sprite.y // self.tile_size)
         bottom = int((sprite.y + sprite.height - 0.000001) // self.tile_size)
-        return any(self.is_solid(column, row) for row in range(top, bottom + 1) for column in range(left, right + 1))
+        return [
+            {'column': column, 'row': row, 'tile': self.tile_at(column, row), 'properties': self.tile_properties(column, row)}
+            for row in range(top, bottom + 1)
+            for column in range(left, right + 1)
+            if self.is_solid(column, row)
+        ]
     def on_ground(self, sprite):
         sprite.y += 1
         grounded = self.collides(sprite)
@@ -306,17 +333,29 @@ class TileMap:
         return grounded
     def move(self, sprite, dx, dy):
         hit_x = hit_y = False
+        self._last_move_collisions = []
+        recorded = set()
+        def record(hits, axis):
+            for hit in hits:
+                key = (axis, hit['column'], hit['row'])
+                if key not in recorded:
+                    recorded.add(key)
+                    self._last_move_collisions.append({**hit, 'axis': axis})
         steps = max(1, int(max(abs(dx), abs(dy)) // self.tile_size) + 1)
         for _ in range(steps):
             step_x, step_y = dx / steps, dy / steps
             sprite.x += step_x
-            if self.collides(sprite):
+            x_hits = self._solid_tile_hits(sprite)
+            if x_hits:
                 sprite.x -= step_x
                 hit_x = True
+                record(x_hits, 'x')
             sprite.y += step_y
-            if self.collides(sprite):
+            y_hits = self._solid_tile_hits(sprite)
+            if y_hits:
                 sprite.y -= step_y
                 hit_y = True
+                record(y_hits, 'y')
         return hit_x, hit_y
 
 class _Camera:
@@ -336,7 +375,7 @@ class _Game:
     def size(self, width, height):
         self.width, self.height = int(width), int(height)
         js.hsArcadeResize(self.width, self.height)
-    def clear(self, color='#020617'): js.hsArcadeClear(color)
+    def clear(self, color='black'): js.hsArcadeClear(color)
     def rect(self, x, y, width, height, color='white'): js.hsArcadeRect(x, y, width, height, color)
     def text(self, text, x, y, color='white', size=8): js.hsArcadeText(text, x, y, color, size)
     @property

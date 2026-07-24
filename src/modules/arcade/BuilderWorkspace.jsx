@@ -32,8 +32,10 @@ export default function BuilderWorkspace({ task, lesson, onUpdate, codeTab, code
     else if (stageIndex != null) updateStage({ code })
     else onUpdate({ ...task, starterCode: code })
   }
-  function updateDesign(design) { onUpdate(updateDesignForCodeTab(task, codeTab, design)) }
-  function insertCode(snippet) { change(`${activePythonCode.trimEnd()}${activePythonCode.trim() ? '\n' : ''}${snippet}\n`) }
+  function updateDesign(design) {
+    setPreviewRunning(false)
+    onUpdate(updateDesignForCodeTab(task, codeTab, design))
+  }
   const externalAssets = previewAssets.filter(asset => !asset.generated)
   return <div style={s.wrap}>
     <div className="te-code-workspace-stack" style={{ minHeight: 300 }}>
@@ -44,7 +46,7 @@ export default function BuilderWorkspace({ task, lesson, onUpdate, codeTab, code
     <div style={s.preview}><div style={s.previewHeader}><strong>Game preview</strong><button className={previewRunning ? 'btn-danger' : 'btn-primary'} style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { if (previewRunning) setPreviewRunning(false); else { setPreviewCode(activePythonCode); setPreviewRunning(true); setRunId(id => id + 1) } }}>{previewRunning ? 'Stop' : 'Run game'}</button></div><ArcadePreview code={previewCode} assets={previewAssets} tilemaps={previewTilemaps} runId={runId} running={previewRunning} /></div>
     <div style={s.design}>
       <label style={s.toolsLabel}>Student design tools <select value={task.arcadeTools ?? 'none'} onChange={event => onUpdate({ ...task, arcadeTools: event.target.value })}><option value="none">None</option><option value="sprites">Sprites only</option><option value="tilemaps">Tilemaps only</option><option value="both">Sprites and tilemaps</option></select></label>
-      <ArcadeDesignStudio task={null} design={designForCodeTab(task, codeTab)} onChange={updateDesign} availableAssets={externalAssets} onInsertCode={insertCode} layout="builder" />
+      <ArcadeDesignStudio task={null} design={designForCodeTab(task, codeTab)} onChange={updateDesign} availableAssets={externalAssets} layout="builder" />
     </div>
   </div>
 }

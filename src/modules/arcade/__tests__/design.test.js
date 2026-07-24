@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createArcadeDesign, createArcadeMap, createArcadeSprite, designForCodeTab, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet, updateDesignForCodeTab, updateMapCell } from '../design.js'
+import { ARCADE_COLOURS, ARCADE_PALETTE, createArcadeDesign, createArcadeMap, createArcadeSprite, designForCodeTab, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet, normaliseArcadeColour, resizeArcadeMap, resizeArcadeSprite, updateDesignForCodeTab, updateMapCell } from '../design.js'
 
 describe('Arcade design model', () => {
   it('normalises pixel sprites and generates a portable image asset', () => {
@@ -34,5 +34,28 @@ describe('Arcade design model', () => {
     const map = createArcadeMap()
     expect(map.rows).toHaveLength(12)
     expect(map.rows[0]).toHaveLength(16)
+  })
+
+  it('uses a fixed 16-colour palette and drops colours outside it', () => {
+    expect(ARCADE_PALETTE).toHaveLength(16)
+    expect(normaliseArcadeColour('red')).toBe(ARCADE_COLOURS.red)
+    expect(normaliseArcadeColour('#ff004d')).toBe(ARCADE_COLOURS.red)
+    expect(normaliseArcadeColour('#123456')).toBeNull()
+  })
+
+  it('resizes sprites and maps while preserving the top-left content', () => {
+    const sprite = createArcadeSprite([], { width: 2, height: 2 })
+    sprite.frames[0] = ['red', 'blue', 'green', 'yellow']
+    const enlargedSprite = resizeArcadeSprite(sprite, 4, 4)
+    expect(enlargedSprite.width).toBe(4)
+    expect(enlargedSprite.frames[0][0]).toBe(ARCADE_COLOURS.red)
+    expect(enlargedSprite.frames[0][1]).toBe(ARCADE_COLOURS.blue)
+    expect(enlargedSprite.frames[0][4]).toBe(ARCADE_COLOURS.green)
+    expect(enlargedSprite.frames[0][15]).toBeNull()
+
+    const map = createArcadeMap([], { columns: 2, rows: ['AB', 'CD'] })
+    const enlargedMap = resizeArcadeMap(map, 3, 3)
+    expect(enlargedMap.rows).toEqual(['AB.', 'CD.', '...'])
+    expect(resizeArcadeMap(enlargedMap, 1, 1).rows).toEqual(['A'])
   })
 })

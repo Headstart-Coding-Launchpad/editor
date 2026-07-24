@@ -3,6 +3,29 @@ const DEFAULT_HEIGHT = 8
 const EMPTY_PIXEL = null
 const TILE_SYMBOLS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!$%&*+=?@'
 
+// A deliberately small shared palette keeps the pixel editor and the runtime
+// drawing API visually consistent. Names are part of the learner-facing API.
+export const ARCADE_PALETTE = Object.freeze([
+  { name: 'black', hex: '#000000' },
+  { name: 'dark_blue', hex: '#1d2b53' },
+  { name: 'dark_purple', hex: '#7e2553' },
+  { name: 'dark_green', hex: '#008751' },
+  { name: 'brown', hex: '#ab5236' },
+  { name: 'dark_gray', hex: '#5f574f' },
+  { name: 'light_gray', hex: '#c2c3c7' },
+  { name: 'white', hex: '#fff1e8' },
+  { name: 'red', hex: '#ff004d' },
+  { name: 'orange', hex: '#ffa300' },
+  { name: 'yellow', hex: '#ffec27' },
+  { name: 'green', hex: '#00e436' },
+  { name: 'blue', hex: '#29adff' },
+  { name: 'lavender', hex: '#83769c' },
+  { name: 'pink', hex: '#ff77a8' },
+  { name: 'peach', hex: '#ffccaa' },
+])
+
+export const ARCADE_COLOURS = Object.freeze(Object.fromEntries(ARCADE_PALETTE.map(({ name, hex }) => [name, hex])))
+
 function copy(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value))
 }
@@ -29,7 +52,30 @@ export function tilemapFileName(map) {
 
 export function createPixelFrame(width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, pixels = null) {
   const size = clampSize(width, DEFAULT_WIDTH) * clampSize(height, DEFAULT_HEIGHT)
-  return Array.from({ length: size }, (_, index) => typeof pixels?.[index] === 'string' ? pixels[index] : EMPTY_PIXEL)
+  return Array.from({ length: size }, (_, index) => normaliseArcadeColour(pixels?.[index]))
+}
+
+export function normaliseArcadeColour(value) {
+  if (typeof value !== 'string') return EMPTY_PIXEL
+  const colour = value.trim().toLowerCase()
+  if (ARCADE_COLOURS[colour]) return ARCADE_COLOURS[colour]
+  if (ARCADE_PALETTE.some(item => item.hex === colour)) return colour
+  return EMPTY_PIXEL
+}
+
+export function resizeArcadeSprite(sprite, width, height) {
+  const nextWidth = clampSize(width, DEFAULT_WIDTH)
+  const nextHeight = clampSize(height, DEFAULT_HEIGHT)
+  const source = createArcadeDesign({ sprites: [sprite] }).sprites[0]
+  if (source.width === nextWidth && source.height === nextHeight) return source
+  const frames = source.frames.map(frame => createPixelFrame(nextWidth, nextHeight,
+    Array.from({ length: nextWidth * nextHeight }, (_, index) => {
+      const column = index % nextWidth
+      const row = Math.floor(index / nextWidth)
+      return column < source.width && row < source.height ? frame[row * source.width + column] : null
+    }),
+  ))
+  return { ...source, width: nextWidth, height: nextHeight, frames }
 }
 
 export function createArcadeSprite(existing = [], overrides = {}) {
@@ -62,6 +108,18 @@ export function createArcadeMap(existing = [], overrides = {}) {
     rows: Array.from({ length: rowCount }, (_, row) => String(sourceRows?.[row] ?? '.').padEnd(columns, '.').slice(0, columns)),
     tiles: copy(overrides.tiles ?? {}),
     objects: copy(overrides.objects ?? []),
+  }
+}
+
+export function resizeArcadeMap(map, columns, rowCount) {
+  const source = createArcadeMap([], map)
+  const nextColumns = clampSize(String(columns ?? '').trim() === '' ? source.columns : columns, source.columns)
+  const nextRowCount = clampSize(String(rowCount ?? '').trim() === '' ? source.rows.length : rowCount, source.rows.length)
+  if (source.columns === nextColumns && source.rows.length === nextRowCount) return source
+  return {
+    ...source,
+    columns: nextColumns,
+    rows: Array.from({ length: nextRowCount }, (_, row) => String(source.rows[row] ?? '.').padEnd(nextColumns, '.').slice(0, nextColumns)),
   }
 }
 

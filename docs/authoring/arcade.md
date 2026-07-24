@@ -32,14 +32,15 @@ state. Their edits save alongside their local Arcade code; watched students
 share a throttled snapshot for teacher inspection, but do not change the
 published lesson or another learner's project.
 
-Sprites use an 8 by 8 pixel grid and optional equal-length animation frames.
-The editor makes a generated, named asset such as `player.png` (the `.png`
-suffix is added automatically); it is listed
-alongside normal lesson assets and can be inserted as
-`Sprite("player.png", frames=4)`. Tilemaps can paint those assets, set `solid`
-and arbitrary properties, and add object spawns. Each map is available as a
-named `.tilemap` design asset; **Insert Python** adds a compact
-`TileMap("world.tilemap")` declaration without overwriting other source code.
+Sprites can be 8 by 8 or 16 by 16 pixels and have optional equal-length
+animation frames (use **Copy** to duplicate a frame). The editor makes a
+generated, named asset such as `player.png` (the `.png` suffix is added
+automatically); use that name in code, for example
+`Sprite("player.png", frames=4)`. Tilemaps can paint those assets, replace a
+tile's image, remove tiles, set `solid` and arbitrary properties, add object
+spawns, and resize the map while retaining its top-left area. Each map is
+available as a named `.tilemap` design asset; reference it with
+`TileMap("world.tilemap")`.
 
 ```yaml
 id: move-a-sprite
@@ -57,7 +58,7 @@ tasks:
           player.x += keys.horizontal * 2
 
       def draw():
-          game.clear("navy")
+          game.clear("dark_blue")
           player.draw()
 
       game.run()
@@ -78,9 +79,9 @@ from headstart_arcade import game, Sprite, keys
 |---|---|
 | `game.run()` | Starts the animation loop. Calls `setup()` once when present, then calls `update()` and `draw()` every frame. Place this at the end of the source file. |
 | `game.size(width, height)` | Sets the logical pixel dimensions of the game canvas. The displayed canvas scales responsively while preserving that ratio; Arcade Kit renders through a higher-resolution backing canvas, so existing logical coordinates remain stable when enlarged and sprites retain crisp pixel edges. |
-| `game.clear(colour='#020617')` | Fills the entire canvas with a CSS colour. |
-| `game.rect(x, y, width, height, colour='white')` | Draws a filled rectangle. |
-| `game.text(text, x, y, colour='white', size=8)` | Draws text using a pixel-style monospace font. |
+| `game.clear(colour='black')` | Fills the entire canvas with a palette colour. |
+| `game.rect(x, y, width, height, colour='white')` | Draws a filled rectangle using a palette colour. |
+| `game.text(text, x, y, colour='white', size=8)` | Draws text using a pixel-style monospace font and a palette colour. |
 | `game.sound(name, volume=1)` | Plays a named OGG or WAV sound effect. Some browsers require a click in the game before sound can play. |
 | `game.music(name, volume=0.5)` | Starts (or resumes) a looping music track. Starting a different track replaces the current one. |
 | `game.stop_music()` | Stops the current music track. |
@@ -103,8 +104,17 @@ def update():
     pass
 
 def draw():
-    game.clear("navy")
+    game.clear("dark_blue")
 ```
+
+### Palette
+
+Sprites and `game.clear`, `game.rect`, and `game.text` share one 16-colour
+palette. Use one of these names (or its matching hex value):
+
+`black`, `dark_blue`, `dark_purple`, `dark_green`, `brown`, `dark_gray`,
+`light_gray`, `white`, `red`, `orange`, `yellow`, `green`, `blue`,
+`lavender`, `pink`, `peach`.
 
 ### `Sprite`
 
@@ -120,7 +130,8 @@ def draw():
 | `sprite.animate(start=0, end=None, fps=8)` | Advances the current frame through the supplied range. Call it from `update()`. |
 | `sprite.vx`, `sprite.vy` / `sprite.move()` | Velocity in logical pixels per second and a helper that applies it using `game.delta`. |
 | `sprite.apply_gravity(amount=800, terminal_velocity=None)` | Adds downward velocity using `game.delta`; optionally limits the falling speed. |
-| `sprite.move_with_tiles(world)` | Moves using `vx`/`vy`, resolves against a `TileMap`, and sets a blocked velocity to zero. |
+| `sprite.move_with_tiles(world)` | Moves using `vx`/`vy`, resolves against a `TileMap`, sets a blocked velocity to zero, and refreshes `last_tile_collisions`. |
+| `sprite.last_tile_collisions` | A list of the solid tiles blocked by the most recent `move_with_tiles()` call. Each item has `column`, `row`, `tile`, `axis` (`"x"` or `"y"`), and authored `properties`. |
 
 For a sprite sheet with four equal-width animation frames:
 
@@ -188,7 +199,7 @@ def update():
     world.move(player, keys.horizontal * 80 * game.delta, keys.vertical * 80 * game.delta)
 
 def draw():
-    game.clear("navy")
+    game.clear("dark_blue")
     world.draw({"#": "wall.png"})
     player.draw()
 ```
@@ -215,13 +226,31 @@ def draw():
 | `world.move(sprite, dx, dy)` | Moves and resolves against solid tiles; returns `(hit_x, hit_y)`. |
 | `world.on_ground(sprite)` | Reports whether a solid tile is immediately below a sprite. |
 | `world.tile_at(column, row)` / `world.is_solid(column, row)` | Reads a map character or whether a tile is solid. |
+| `world.set_tile(column, row, tile)` | Replaces one map character while the game is running. `tile` must be one character; returns `True` when the location exists, otherwise `False`. Use `'.'` to clear a tile. |
 | `world.tile_properties(column, row)` | Returns a copy of the authored properties for that tile. |
 | `world.tile_property(column, row, name, default=None)` | Reads one authored property, such as `"hazard"` or `"damage"`. |
 | `world.objects` / `world.find_objects(type)` | Reads authored object spawns or returns matching objects by their `type`. |
 
+For example, a collected block can be cleared immediately:
+
+```python
+if player.touches(block):
+    world.set_tile(block_column, block_row, ".")
+```
+
 For a basic platformer, call `player.apply_gravity()` and
 `player.move_with_tiles(world)` from `update()`. Use `world.on_ground(player)`
 before giving the player an upward `vy` for a jump.
+
+To respond to an authored tile property after a collision:
+
+```python
+player.move_with_tiles(world)
+
+for hit in player.last_tile_collisions:
+    if hit["properties"].get("damage"):
+        player_health -= hit["properties"]["damage"]
+```
 
 ### Camera
 
