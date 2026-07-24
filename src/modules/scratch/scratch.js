@@ -16,8 +16,10 @@ let _currentBackdrops = []
 let _currentCostumes = []
 let _currentVariables = []
 
-const BLOCKLY_ICON_BADGE_SIZE = 48
-const BLOCKLY_ICON_BADGE_RADIUS = 23
+// The field height sets the Blockly row height. Leave a little vertical space
+// around the badge so it does not crowd the block's puzzle-piece connections.
+const BLOCKLY_ICON_BADGE_SIZE = 56
+const BLOCKLY_ICON_BADGE_RADIUS = 22
 
 export function setSpriteContext(sprites) {
   _currentSprites = sprites ?? []

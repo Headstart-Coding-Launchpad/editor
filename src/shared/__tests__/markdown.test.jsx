@@ -377,7 +377,7 @@ describe('Scratch markdown block catalog', () => {
 
       expect(config?.args0 ?? []).toHaveLength(maxPlaceholder)
       if (SCRATCH_BLOCK_BY_OPCODE[opcode]?.icon) {
-        expect(config.args0[0]).toMatchObject({ type: 'field_image', width: 48, height: 48 })
+        expect(config.args0[0]).toMatchObject({ type: 'field_image', width: 56, height: 56 })
         expect(config.message0).toMatch(/^%1 /)
       }
     }
