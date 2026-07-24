@@ -128,7 +128,7 @@ export default function TeacherView({ lessonId }) {
       setFiles([])
       setScratchState(null)
     } else
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'arcade') {
       setCode(task.starterCode ?? '')
     } else if (lesson.type === 'scratch') {
       setScratchState(task.starterBlocks ?? null)
@@ -157,7 +157,7 @@ export default function TeacherView({ lessonId }) {
     const draft = sandboxDraftRef.current
     const sessionHasCode = session?.state === 'sandbox' && session.sandboxCode != null
 
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
       setCode(draft.code ?? (sessionHasCode ? session.sandboxCode : null) ?? configured)
     } else if (lesson.type === 'scratch') {
       setScratchState(draft.scratchState ?? (sessionHasCode ? parseScratchState(session.sandboxCode) : null) ?? configured)
@@ -214,7 +214,7 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleGoLiveSandbox() {
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
       sandboxDraftRef.current.code = code
       await enterSandbox({ code })
     } else if (lesson.type === 'scratch') {
@@ -231,7 +231,7 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handlePushSandbox() {
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
       sandboxDraftRef.current.code = code
       await pushSandboxCode(code)
     } else if (lesson.type === 'scratch') {
@@ -251,7 +251,7 @@ export default function TeacherView({ lessonId }) {
     const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
     const configured = mod.getSandboxState(lesson, task)
 
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
       sandboxDraftRef.current.code = configured
       setCode(configured)
       if (isSandbox) await pushSandboxCode(configured)
@@ -273,7 +273,7 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleDeactivateSandbox() {
-    if (lesson.type === 'python' || lesson.type === 'electronics') sandboxDraftRef.current.code = code
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') sandboxDraftRef.current.code = code
     else if (lesson.type === 'scratch') sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
     else if (lesson.type === 'filesystem') sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
     else sandboxDraftRef.current.files = cloneFiles(files)
@@ -372,14 +372,14 @@ export default function TeacherView({ lessonId }) {
     await sendToTopic(studentId, topicId)
   }
 
-  const liveState = lesson?.type === 'python' ? code
+  const liveState = lesson?.type === 'python' || lesson?.type === 'arcade' ? code
     : lesson?.type === 'scratch' ? scratchState
     : lesson?.type === 'filesystem' ? fsState
     : lesson?.type === 'electronics' ? code
     : { files, entryFile: task?.entryFile ?? 'index.html' }
 
   const onChange = !isInSandbox ? undefined
-    : lesson?.type === 'python'
+    : lesson?.type === 'python' || lesson?.type === 'arcade'
       ? value => { setCode(value); sandboxDraftRef.current.code = value }
     : lesson?.type === 'scratch'
       ? state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }

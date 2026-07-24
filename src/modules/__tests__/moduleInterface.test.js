@@ -171,6 +171,13 @@ describe('module interface contract', () => {
       expect(result.starterCode).toContain('\n')
       expect(result.starterCode).toContain('game.run()')
     })
+
+    it('uses source code rather than a non-string live state in the teacher editor', () => {
+      const task = { starterCode: 'game.run()' }
+
+      expect(mod.getDisplayState(task, null, 'student game code', 'starter')).toBe('student game code')
+      expect(mod.getDisplayState(task, null, { files: [] }, 'starter')).toBe('game.run()')
+    })
   })
 
   describe('scratch-specific', () => {

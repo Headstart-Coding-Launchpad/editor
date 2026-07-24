@@ -7,7 +7,7 @@ import { scrollLayoutStyles } from '../sharedStyles'
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 export default {
   type: 'arcade', StudentWorkspace, BuilderWorkspace, CheckEditor, TeacherLiveView,
-  getDisplayState: (task, stage, liveState, tab) => tab === 'complete' ? (task?.completeCode ?? '') : tab?.startsWith('stage_') ? (stage?.code ?? '') : liveState,
+  getDisplayState: (task, stage, liveState, tab) => tab === 'complete' ? (task?.completeCode ?? '') : tab?.startsWith('stage_') ? (stage?.code ?? '') : typeof liveState === 'string' ? liveState : (task?.starterCode ?? ''),
   getLayoutStyles: () => ({ taskContentStyle, editorAreaStyle }),
   makeCodeTaskFields: task => ({ starterCode: task.starterCode ?? 'from headstart_arcade import game, Sprite, keys\n\n# Write update() and draw(), then call game.run().\n\ngame.run()\n', carryCodeFrom: task.carryCodeFrom ?? null }),
   makeNewStage: (task, existing) => ({ label: `Stage ${existing.length + 1}`, role: 'support', code: task.starterCode ?? '' }),
