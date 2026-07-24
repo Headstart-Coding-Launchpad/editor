@@ -407,11 +407,19 @@ module.game, module.keys, module.pointer, module.mouse = game, keys, pointer, po
 module.Sprite, module.TileMap = Sprite, TileMap
 sys.modules['headstart_arcade'] = module
 
+def _sync_game_scope():
+    """Make top-level game values available to callbacks that use global."""
+    caller = inspect.currentframe().f_back
+    if caller:
+        caller.f_globals.update(caller.f_locals)
+
 class _RunCall(ast.NodeTransformer):
     def visit_Expr(self, node):
         self.generic_visit(node)
         if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == 'run':
             node.value = ast.Await(value=node.value)
+            sync_scope = ast.Expr(value=ast.Call(func=ast.Name(id='_sync_game_scope', ctx=ast.Load()), args=[], keywords=[]))
+            return [ast.copy_location(sync_scope, node), node]
         return node
 
 tree = ast.parse(_hs_source, filename='<game>')
@@ -421,7 +429,7 @@ runner_body = tree.body or [ast.Pass(lineno=1, col_offset=0)]
 runner = ast.AsyncFunctionDef(name='__hs_game__', args=ast.arguments(posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), body=runner_body, decorator_list=[], returns=None, lineno=1, col_offset=0)
 mod = ast.Module(body=[runner], type_ignores=[])
 ast.fix_missing_locations(mod)
-scope = {'__name__': '__main__'}
+scope = {'__name__': '__main__', '_sync_game_scope': _sync_game_scope}
 exec(compile(mod, '<game>', 'exec'), scope)
 game._namespace = scope
 await scope['__hs_game__']()
