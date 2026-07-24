@@ -582,7 +582,7 @@ export default function ElectronicsWorkspace({
             {PALETTE.filter(([type]) => paletteTypes.includes(type)).map(([type, label]) => (
               <button key={type} type="button" disabled={readOnly} draggable={!readOnly} title={COMPONENT_DESCRIPTIONS[type] ?? label} style={s.paletteBtn} onClick={() => addComponent(type)} onDragStart={event => handlePaletteDragStart(event, type)}>
                 <span style={s.paletteIcon}><PaletteGlyph type={type} /></span>
-                <span>{label}</span>
+                <span style={s.paletteLabel}>{label}</span>
               </button>
             ))}
             <label style={s.wireColorField}>
@@ -1680,10 +1680,11 @@ const s = {
   tabs: { display: 'flex', alignItems: 'center' },
   actions: { marginLeft: 'auto', display: 'flex', gap: 8, paddingRight: 8 },
   actionBtn: { fontSize: 13, padding: '7px 12px' },
-  workspace: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '132px minmax(0, 1fr) 230px', overflow: 'hidden' },
-  palette: { padding: 10, borderRight: '1px solid #e5e7eb', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' },
-  paletteBtn: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 7, padding: '8px 9px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 650 },
-  paletteIcon: { width: 30, height: 26, borderRadius: 5, background: '#e0f2fe', color: '#0369a1', display: 'grid', placeItems: 'center', fontSize: 11 },
+  workspace: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '216px minmax(0, 1fr) 230px', overflow: 'hidden' },
+  palette: { minWidth: 0, padding: 10, borderRight: '1px solid #e5e7eb', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, overflowX: 'hidden', overflowY: 'auto' },
+  paletteBtn: { minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 7, padding: '8px 9px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 650 },
+  paletteIcon: { flexShrink: 0, width: 30, height: 26, borderRadius: 5, background: '#e0f2fe', color: '#0369a1', display: 'grid', placeItems: 'center', fontSize: 11 },
+  paletteLabel: { minWidth: 0, whiteSpace: 'nowrap' },
   wireColorField: { display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #e5e7eb', paddingTop: 8, marginTop: 2, fontFamily: 'var(--font-body)' },
   wireColorLabel: { fontSize: 12, fontWeight: 700, color: '#475569' },
   wireColorSelect: { width: '100%', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 12, padding: '6px 7px' },
