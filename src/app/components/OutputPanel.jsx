@@ -7,6 +7,7 @@ const CODE_FONT_STYLE = {
 }
 
 export default function OutputPanel({
+  title = 'Output',
   output = '',
   runStatus = null,
   inputPrompt = null,
@@ -14,6 +15,8 @@ export default function OutputPanel({
   checkPassed = false,
   hasCheck = false,
   running = false,
+  openOnRun = true,
+  openOnOutput = false,
   fill = false,
   collapsible = true,
   defaultCollapsed = true,
@@ -27,14 +30,22 @@ export default function OutputPanel({
   const preRef = useRef(null)
   const inputRef = useRef(null)
   const prevRunningRef = useRef(running)
+  const prevOutputRef = useRef(output)
   const contentCollapsed = collapsible && isCollapsed
 
   useEffect(() => {
-    if (running && !prevRunningRef.current) {
+    if (openOnRun && running && !prevRunningRef.current) {
       setIsCollapsed(false)
     }
     prevRunningRef.current = running
-  }, [running])
+  }, [running, openOnRun])
+
+  useEffect(() => {
+    if (openOnOutput && output && output !== prevOutputRef.current) {
+      setIsCollapsed(false)
+    }
+    prevOutputRef.current = output
+  }, [output, openOnOutput])
 
   useEffect(() => {
     if (!output) {
@@ -116,7 +127,7 @@ export default function OutputPanel({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
           {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
-          <span style={s.headerLabel}>Output</span>
+          <span style={s.headerLabel}>{title}</span>
           {collapsible && (
             <span style={s.toggleIcon}>
               {isCollapsed ? 'Show' : 'Hide'}

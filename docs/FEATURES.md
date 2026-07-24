@@ -9,6 +9,7 @@ What the platform can do. For how to configure these features see **docs/authori
 | Type | What students do |
 |---|---|
 | Python | Write and run Python code; output shown in a console panel |
+| Arcade Kit | Build a small pixel-style Python game with a sandboxed canvas, keyboard input, named/uploaded or pixel-editor assets, tilemaps, and Run/Stop controls |
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
 | Scratch | Drag-and-drop block programming with a live stage canvas |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |

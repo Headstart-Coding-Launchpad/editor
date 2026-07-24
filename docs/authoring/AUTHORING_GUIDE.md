@@ -4,6 +4,7 @@ YAML-first reference for writing HSC lessons and topics. Use the CLI to convert 
 
 **Per-type authoring (task fields, checks, examples):**
 - Python: `docs/authoring/python.md`
+- Arcade Kit: `docs/authoring/arcade.md`
 - HTML: `docs/authoring/html.md`
 - Scratch: `docs/authoring/scratch.md`
 - Filesystem: `docs/authoring/filesystem.md`

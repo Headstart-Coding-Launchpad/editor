@@ -122,6 +122,7 @@ export default function StudentWorkspaceBody({
     return (
       <ModuleTeacherLiveView
         task={task} lesson={lesson}
+        student={student}
         displayState={moduleDisplayState} liveState={moduleDisplayState}
         readOnly onChange={undefined} onActivity={undefined}
         isInSandbox={false} activeStage={null}

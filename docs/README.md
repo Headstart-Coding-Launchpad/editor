@@ -18,6 +18,11 @@ Feature reference for the whole platform — lesson types, task types, quiz vari
 
 **Load when:** you need to understand product capabilities before making a change, or when checking whether a feature already exists.
 
+### [ARCADE_KIT_STATUS.md](ARCADE_KIT_STATUS.md)
+Current implementation record for the experimental Arcade Kit lesson type: supported API, asset model, integration details, test status, known limitations, and the recommended next milestones.
+
+**Load when:** evaluating Arcade Kit for a lesson, implementing Arcade Kit behavior, or deciding what needs to be completed before production use.
+
 ### [UI_STYLE_GUIDE.md](UI_STYLE_GUIDE.md)
 Style guide for app UI elements: theme tokens, typography, buttons, forms, tabs, panels, modals, status feedback, accessibility, reusable primitives, and recommendations for keeping classroom, builder, and admin UI consistent.
 
@@ -160,6 +165,11 @@ Completion and feedback checks are documented inside each lesson-type authoring 
 Python lesson authoring reference: task fields, checks, tests, examples, carry-through, and runtime behavior.
 
 **Load when:** authoring or editing a Python lesson.
+
+### [authoring/arcade.md](authoring/arcade.md)
+Arcade Kit authoring reference: the single-file task model, asset names, runtime behaviour, and the available `headstart_arcade` API.
+
+**Load when:** authoring or editing an Arcade Kit lesson.
 
 ### [authoring/quiz-tasks.md](authoring/quiz-tasks.md)
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.

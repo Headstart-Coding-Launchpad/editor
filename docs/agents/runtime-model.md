@@ -104,6 +104,7 @@ Do not deviate from this shape.
           "joinedAt": 1234567890,
           "online": true,
           "currentCode": "string",
+          "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
           "currentFiles": { "index__dot__html": "..." },
           "currentOutput": "string",
           "currentAnswer": "b",
@@ -169,7 +170,7 @@ Teacher writes:
 
 Teacher per-student actions:
 
-- Remote reset writes `remoteResetAction` and `remoteResetPushedAt`.
+- Remote reset writes `remoteResetAction` and `remoteResetPushedAt`. For Arcade tasks, the student resets both code and the matching Starter/Stage/Complete visual design.
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; a manual pass also writes `overrideLog/{anonymousId}/{taskId}` when the student has no real passing attempt. The per-student visible override fields are cleared by `setTaskId`; `overrideLog` is not, so the end-of-session report can read it.
 - Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
@@ -183,6 +184,7 @@ Student writes:
 - On run: own `currentCode` / `currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`.
 - On a graded check result (lesson phase only, not sandbox): own `attemptLog/{taskId}/{pushId}` via `logAttempt` — deduplicated client-side, so an unchanged resubmission only bumps `retries` on the existing entry rather than pushing a new one, and no further entries are written once a task has passed. The moment an attempt (new or retried-in-place) first becomes `passed`, `passedAt` is stamped alongside it — this is the timestamp `buildSessionReport` uses (together with `taskStartTimes`) to compute time-on-task. `attemptLog` is a sibling of `students`, not nested inside it, so it is untouched by `setTaskId`'s per-task field wipe and is still present in the teacher's in-memory `session` snapshot at the moment `endSession()` runs — that snapshot is what `buildSessionReport` (`src/shared/lessonReport.js`) reads to build the Firestore report described under "Session Reports" below.
 - When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
+- When watched, Arcade design changes are saved locally immediately and publish a throttled `currentArcadeDesign` snapshot. Pixel/map edits never stream unless that student is `activeStudentView`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.

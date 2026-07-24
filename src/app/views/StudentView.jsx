@@ -30,7 +30,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
     acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
     removeTeacherHighlight,
@@ -84,7 +84,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     lessonId, lesson, currentTaskId, viewingTaskId, phase,
     effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput,
     writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,
@@ -295,7 +295,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
-  const hasCompleteSolution = lesson.type === 'python'
+  const hasCompleteSolution = lesson.type === 'python' || lesson.type === 'arcade'
     ? !!task?.completeCode
     : lesson.type === 'scratch'
     ? !!task?.completeBlocks
@@ -324,7 +324,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const explainerShowsComplete = lesson.type === 'python' && !!task?.completeCode && (
     !isSolo && !teacherPresentation && !!session?.explainerShowComplete
   )
-  const hasPersonalSandbox = lesson.type === 'python'
+  const hasPersonalSandbox = lesson.type === 'python' || lesson.type === 'arcade'
     ? true
     : lesson.type === 'html'
     ? !!(lesson.sandboxStarterFiles?.length > 0)
@@ -340,7 +340,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const canTeacherEditType = lesson?.type === 'python' || lesson?.type === 'scratch' || lesson?.type === 'electronics'
+  const canTeacherEditType = lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'scratch' || lesson?.type === 'electronics'
   const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType && (phase === 'lesson' || phase === 'solo')
   const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt

@@ -11,7 +11,7 @@ import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControl
 import SupportStagePanel from './SupportStagePanel'
 import { getRevealableStages } from '../../shared/taskUtils'
 
-const SIDE_EXPLAINER_TYPES = ['python', 'html', 'scratch', 'electronics']
+const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
 
 export default function LessonTaskContent({
   lesson,

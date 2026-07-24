@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { getLessonModule } from '../registry.js'
 import { buildMicroPythonProgram } from '../electronics/index.js'
 
-const LESSON_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
+const LESSON_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics']
 
 describe('module interface contract', () => {
   for (const type of LESSON_TYPES) {
@@ -160,6 +160,16 @@ describe('module interface contract', () => {
 
     it('includes html in explainerInlineCodeLanguages', () => {
       expect(mod.explainerInlineCodeLanguages).toContain('html')
+    })
+  })
+
+  describe('arcade-specific', () => {
+    const mod = getLessonModule('arcade')
+    it('creates a readable single-file game starter', () => {
+      const result = mod.makeCodeTaskFields({})
+      expect(result.starterCode).toContain('from headstart_arcade import game, Sprite, keys')
+      expect(result.starterCode).toContain('\n')
+      expect(result.starterCode).toContain('game.run()')
     })
   })
 

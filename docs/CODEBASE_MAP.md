@@ -296,6 +296,15 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs, board sizing, and available component controls |
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |
 | `electronics/CheckEditor.jsx` | Electronics check list editor for `circuit_*` completion and feedback checks |
+| `arcade/index.js` | Arcade Kit module definition: single-file Python pixel-game task schema and classroom capabilities |
+| `arcade/StudentWorkspace.jsx` | Student Arcade Kit workspace: Python editor, sandboxed game canvas, lesson/type/local asset browser, and Run/Stop controls |
+| `arcade/BuilderWorkspace.jsx` | Builder Arcade Kit code-stage editor and on-demand game preview |
+| `arcade/ArcadePreview.jsx` | Isolated iframe host for rendering and restarting an Arcade Kit game safely |
+| `arcade/design.js` | Portable pixel-sprite and tilemap model, stage selection, generated image data URLs, and Python tilemap snippet creation |
+| `arcade/ArcadeDesignStudio.jsx` | Shared Builder/student sprite editor, tilemap painter, per-tile-property editor, object-spawn list, and generated-asset list |
+| `arcade/runtime.js` | Builds the sandboxed Pyodide game document and exposes `headstart_arcade` (`game`, `Sprite`, `TileMap`, `keys`, `pointer`/`mouse`) to student code |
+| `arcade/CheckEditor.jsx` | Arcade Kit code-check editor wrapper |
+| `arcade/TeacherLiveView.jsx` | Teacher Arcade source view with read-only inspection of a watched student's art and map snapshot |
 
 ### Module interface
 

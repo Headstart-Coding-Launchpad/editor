@@ -26,7 +26,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
     storageAssets: lessonStorageAssets,
     refresh: refreshLessonStorageAssets,
   } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
-  const { typeStorageAssets } = useTypeAssets(lesson.type === 'html' ? 'html' : null)
+  const { typeStorageAssets } = useTypeAssets(['html', 'arcade'].includes(lesson.type) ? lesson.type : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
   const [levels, setLevels] = useState([])
@@ -197,7 +197,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
           />
         )}
 
-        {lesson.type === 'html' && typeStorageAssets.length > 0 && (
+        {['html', 'arcade'].includes(lesson.type) && typeStorageAssets.length > 0 && (
           <SharedAssetsSelector
             typeStorageAssets={typeStorageAssets}
             sharedAssetNames={lesson.sharedAssetNames ?? null}
@@ -231,6 +231,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
 
 function getLessonTypeLabel(type) {
   if (type === 'python') return 'Python'
+  if (type === 'arcade') return 'Arcade Kit'
   if (type === 'scratch') return 'Scratch'
   if (type === 'filesystem') return 'Files & Folders'
   if (type === 'electronics') return 'Electronics'

@@ -3,6 +3,7 @@ import htmlModule from './html/index.js'
 import scratchModule from './scratch/index.js'
 import filesystemModule from './filesystem/index.js'
 import electronicsModule from './electronics/index.js'
+import arcadeModule from './arcade/index.js'
 
 const MODULES = {
   python: pythonModule,
@@ -10,15 +11,17 @@ const MODULES = {
   scratch: scratchModule,
   filesystem: filesystemModule,
   electronics: electronicsModule,
+  arcade: arcadeModule,
 }
 
-const MODULE_ORDER = ['python', 'scratch', 'html', 'filesystem', 'electronics']
+const MODULE_ORDER = ['python', 'arcade', 'scratch', 'html', 'filesystem', 'electronics']
 const MODULE_LABELS = {
   python: 'Python',
   scratch: 'Scratch',
   html: 'HTML',
   filesystem: 'Filesystem',
   electronics: 'Electronics',
+  arcade: 'Arcade Kit',
 }
 
 export function getLessonModules() {

@@ -199,6 +199,10 @@ function LessonTypeChooser({ onChoose, onUpload }) {
               <span style={s.choiceName}>Python</span>
               <span style={s.choiceDescription}>Single-file Python tasks with output checks and Pyodide execution.</span>
             </button>
+            <button style={s.choiceButton} onClick={() => onChoose('arcade', selectedStage)}>
+              <span style={s.choiceName}>Arcade Kit</span>
+              <span style={s.choiceDescription}>Single-file Python pixel games with a browser canvas, keyboard controls, and assets.</span>
+            </button>
             <button style={s.choiceButton} onClick={() => onChoose('html', selectedStage)}>
               <span style={s.choiceName}>Web</span>
               <span style={s.choiceDescription}>HTML, CSS, and JavaScript tasks with files, assets, and iframe preview.</span>

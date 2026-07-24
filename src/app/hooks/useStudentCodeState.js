@@ -16,6 +16,7 @@ import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { getLessonModule } from '../../modules/registry'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
+import { cloneArcadeDesign, designForCodeTab } from '../../modules/arcade/design'
 
 /**
  * Owns all student editor/code workspace state: code, files, output, checks, personal sandbox,
@@ -40,6 +41,7 @@ export function useStudentCodeState({
   logAttempt,
   writeStudentAnswer,
   writeStudentCode,
+  writeStudentArcadeDesign,
   writeStudentFiles,
   writeStudentOutput,
   writeStudentInteraction,
@@ -54,6 +56,7 @@ export function useStudentCodeState({
   removeTeacherHighlight,
 }) {
   const [code, setCode]                   = useState('')
+  const [arcadeDesign, setArcadeDesign]   = useState(null)
   const [files, setFiles]                 = useState([])
   const [activeFile, setActiveFile]       = useState('')
   const [output, setOutput]               = useState('')
@@ -102,6 +105,9 @@ export function useStudentCodeState({
   phaseRef.current           = phase
   const codeRef              = useRef(code)
   codeRef.current            = code
+  const arcadeDesignRef      = useRef(arcadeDesign)
+  arcadeDesignRef.current    = arcadeDesign
+  const arcadeDesignWriteTimerRef = useRef(null)
   const filesRef             = useRef(files)
   filesRef.current           = files
   const outputRef            = useRef(output)
@@ -257,6 +263,10 @@ export function useStudentCodeState({
     }
   }, [lesson?.type, currentTaskId])
 
+  useEffect(() => () => {
+    if (arcadeDesignWriteTimerRef.current !== null) clearTimeout(arcadeDesignWriteTimerRef.current)
+  }, [])
+
   // Presentation/preview persist to an in-memory store (see createStudentPersistence);
   // start each such session clean so stale state from a previous preview can't leak in.
   useEffect(() => {
@@ -282,6 +292,13 @@ export function useStudentCodeState({
         output: outputRef.current,
         runStatus: runStatusRef.current,
       })
+    } else if (currentLesson.type === 'arcade') {
+      persistence.savePythonCode(id.anonymousId, taskId, {
+        code: codeRef.current,
+        output: outputRef.current,
+        runStatus: runStatusRef.current,
+        arcadeDesign: arcadeDesignRef.current,
+      })
     } else if (currentLesson.type === 'html') {
       persistence.saveHtmlFiles(id.anonymousId, taskId, filesRef.current)
     } else if (currentLesson.type === 'filesystem') {
@@ -297,6 +314,8 @@ export function useStudentCodeState({
     if (!id || teacherPresentation || !lessonRef.current) return
     if (lessonRef.current.type === 'python') {
       savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current })
+    } else if (lessonRef.current.type === 'arcade') {
+      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current, arcadeDesign: arcadeDesignRef.current })
     } else if (lessonRef.current.type === 'html') {
       filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content))
     } else if (lessonRef.current.type === 'filesystem') {
@@ -338,6 +357,17 @@ export function useStudentCodeState({
         readSavedCode: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
         onCarryFallback: recordCarryFallback,
       }))
+    } else if (lesson.type === 'arcade') {
+      const saved = persistence.readSavedCode(activeIdentity.anonymousId, taskId)
+      setCode(selectPythonTaskCode({
+        tasks: lesson.tasks,
+        task,
+        taskId,
+        phase,
+        readSavedCode: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+        onCarryFallback: recordCarryFallback,
+      }))
+      setArcadeDesign(saved?.arcadeDesign ? cloneArcadeDesign(saved.arcadeDesign) : designForCodeTab(task, 'starter'))
     } else if (lesson.type === 'scratch') {
       setFiles([])
       setActiveFile('')
@@ -550,7 +580,7 @@ export function useStudentCodeState({
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
 
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
       writeStudentCode(identity.anonymousId, code)
       writeStudentOutput(identity.anonymousId, output)
     } else if (lesson.type === 'html') {
@@ -570,7 +600,7 @@ export function useStudentCodeState({
 
   // React to sandbox code pushes (Python)
   useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'python' || !session?.sandboxCode) return
+    if (phase !== 'sandbox' || !['python', 'arcade'].includes(lesson?.type) || !session?.sandboxCode) return
     setCode(session.sandboxCode)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, session?.sandboxCodePushedAt])
@@ -625,7 +655,7 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task || !action) return
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'arcade') {
       let target
       if (action === 'starter') target = task.starterCode ?? ''
       else if (action === 'complete') target = task.completeCode ?? ''
@@ -635,6 +665,12 @@ export function useStudentCodeState({
         target = stage?.code ?? task.starterCode ?? ''
       }
       setCode(target)
+      if (lesson.type === 'arcade') {
+        const resetDesign = designForCodeTab(task, action)
+        setArcadeDesign(resetDesign)
+        persistence.savePythonCode(effectiveIdentity?.anonymousId, currentTaskId, { code: target, output: '', runStatus: null, arcadeDesign: resetDesign })
+        if (identity?.anonymousId && sessionRef.current?.activeStudentView === identity.anonymousId) writeStudentArcadeDesign?.(identity.anonymousId, resetDesign)
+      }
       setOutput('')
       setRunStatus(null)
       resetCheckFeedback()
@@ -708,7 +744,7 @@ export function useStudentCodeState({
     if (!myStudentData?.teacherEditAppliedAt) return
     const newCode = myStudentData?.teacherEditApplyCode
     if (newCode === undefined) return
-    if (lesson?.type === 'python' || lesson?.type === 'electronics') {
+    if (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics') {
       setCode(newCode ?? '')
       setOutput('')
       setRunStatus(null)
@@ -732,7 +768,7 @@ export function useStudentCodeState({
   function handleEnterPersonalSandbox() {
     if (!identity || teacherPresentation || !lesson) return
     const id = identity.anonymousId
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'arcade') {
       const saved = loadPersonalSandboxCode(lessonId, id)
       setCode(saved?.code ?? lesson.sandboxStarter ?? '')
     } else if (lesson.type === 'html') {
@@ -1036,18 +1072,34 @@ export function useStudentCodeState({
   function handleCodeChange(newCode) {
     setCode(newCode)
     if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
-    if (effectiveIdentity && (lesson?.type === 'python' || lesson?.type === 'electronics')) {
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode, output, runStatus })
+    if (effectiveIdentity && (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')) {
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode, output, runStatus, ...(lesson?.type === 'arcade' ? { arcadeDesign: arcadeDesignRef.current } : {}) })
     }
     if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, newCode)
     }
-    if (lesson?.type === 'python' || lesson?.type === 'electronics') {
+    if (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics') {
       scheduleIdleFeedback(() => (
         lessonRef.current?.type === 'electronics'
           ? { code: newCode, circuit: newCode }
           : { code: newCode, status: runStatusRef.current }
       ))
+    }
+  }
+
+  function handleArcadeDesignChange(nextDesign) {
+    const next = cloneArcadeDesign(nextDesign)
+    setArcadeDesign(next)
+    if (effectiveIdentity && lesson?.type === 'arcade') {
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: codeRef.current, output: outputRef.current, runStatus: runStatusRef.current, arcadeDesign: next })
+    }
+    if (canPublishTeacherLive()) publishTeacherLive({ arcadeDesign: next })
+    if (!teacherPresentation && identity && session?.activeStudentView === identity.anonymousId) {
+      if (arcadeDesignWriteTimerRef.current !== null) clearTimeout(arcadeDesignWriteTimerRef.current)
+      arcadeDesignWriteTimerRef.current = setTimeout(() => {
+        writeStudentArcadeDesign?.(identity.anonymousId, next)
+        arcadeDesignWriteTimerRef.current = null
+      }, 600)
     }
   }
 
@@ -1183,8 +1235,9 @@ export function useStudentCodeState({
   function handleResetCode() {
     if (inPersonalSandboxRef.current) {
       if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.')) return
-      if (lesson.type === 'python') {
+      if (lesson.type === 'python' || lesson.type === 'arcade') {
         setCode(lesson.sandboxStarter ?? '')
+        if (lesson.type === 'arcade') setArcadeDesign(null)
         setOutput('')
         setRunStatus(null)
       } else if (lesson.type === 'html') {
@@ -1206,8 +1259,9 @@ export function useStudentCodeState({
     }
     if (!window.confirm('Reset your code to the starter code? Your current work will be lost.')) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'arcade') {
       setCode(task?.starterCode ?? '')
+      if (lesson.type === 'arcade') handleArcadeDesignChange(designForCodeTab(task, 'starter'))
       if (canPublishTeacherLive()) publishTeacherLive({ code: task?.starterCode ?? '', output: '', runStatus: null, checkPassed: false, checkAttempted: false })
       setOutput('')
       setRunStatus(null)
@@ -1238,12 +1292,13 @@ export function useStudentCodeState({
     const stage = task.codeStages?.[stageIndex]
     if (!stage) return
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'arcade') {
       const stageCode = stage.code ?? ''
       setCode(stageCode)
+      if (lesson.type === 'arcade') setArcadeDesign(designForCodeTab(task, `stage_${stageIndex}`))
       setOutput('')
       setRunStatus(null)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: stageCode, output: '', runStatus: null })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: stageCode, output: '', runStatus: null, ...(lesson.type === 'arcade' ? { arcadeDesign: designForCodeTab(task, `stage_${stageIndex}`) } : {}) })
     } else if (lesson.type === 'html') {
       const stageFiles = (stage.files ?? []).map(f => ({ ...f }))
       setFiles(stageFiles)
@@ -1380,7 +1435,7 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
 
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'arcade') {
       const completeCode = task.completeCode ?? ''
       setCode(completeCode)
       setOutput('')
@@ -1511,7 +1566,7 @@ export function useStudentCodeState({
 
   return {
     // State
-    code, files, activeFile, output, runStatus, running, runningTests, testResults,
+    code, arcadeDesign, files, activeFile, output, runStatus, running, runningTests, testResults,
     pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
     inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount, stagePromptAccepted,
     offeredStageIndex, completePreviewShown, supportStageReveals, activeSupportStageIndex, offeredSupportStageIndex, targetedStageOffer, targetedPreviewStageIndex,
@@ -1522,7 +1577,7 @@ export function useStudentCodeState({
     iframeRef,
     // Event handlers
     handleRun, handleStop, handleRunTests, handleSubmit, handleQuizSelect,
-    handleCodeChange, handleFileChange, handleFileTabChange,
+    handleCodeChange, handleArcadeDesignChange, handleFileChange, handleFileTabChange,
     handleEditorSelection, handleEditorActivity,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,

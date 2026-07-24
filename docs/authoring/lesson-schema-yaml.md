@@ -6,6 +6,7 @@ This file does not cover code task fields or quiz task fields:
 
 - **Quiz fields:** `docs/authoring/quiz-tasks.md`
 - **Python code task fields:** `docs/authoring/python-tasks.md`
+- **Arcade Kit code task fields and API:** `docs/authoring/arcade.md`
 - **HTML code task fields:** `docs/authoring/html-tasks.md`
 - **Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`
 - **Electronics code task fields:** `docs/authoring/electronics.md`
@@ -45,7 +46,7 @@ tasks: []                     # required — ordered task list (see below)
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `python`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `type` | Yes | string | `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |

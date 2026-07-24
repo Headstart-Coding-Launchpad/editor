@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import OutputPanel from '../OutputPanel'
@@ -34,5 +34,15 @@ describe('OutputPanel input prompt focus', () => {
     await user.click(screen.getByText('Output'))
 
     expect(screen.getByPlaceholderText('Type your input and press Enter')).toHaveFocus()
+  })
+
+  it('can stay closed while running and only open when output arrives', async () => {
+    const { rerender } = render(<OutputPanel title="Console" running={false} openOnRun={false} openOnOutput />)
+
+    rerender(<OutputPanel title="Console" running openOnRun={false} openOnOutput />)
+    expect(screen.getByText('Show')).toBeInTheDocument()
+
+    rerender(<OutputPanel title="Console" running openOnRun={false} openOnOutput output="Hello from the game\n" />)
+    await waitFor(() => expect(screen.getByText('Hide')).toBeInTheDocument())
   })
 })

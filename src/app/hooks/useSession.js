@@ -133,6 +133,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/lastRunStatus`]         = null
       updates[`students/${anonymousId}/currentOutput`]         = ''
       updates[`students/${anonymousId}/currentCode`]           = ''
+      updates[`students/${anonymousId}/currentArcadeDesign`]   = null
       updates[`students/${anonymousId}/currentFiles`]          = null
       updates[`students/${anonymousId}/currentAnswer`]         = null
       updates[`students/${anonymousId}/currentSelection`]      = null
@@ -418,6 +419,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       displayName,
       joinedAt:      Date.now(),
       currentCode:   '',
+      currentArcadeDesign: null,
       currentOutput: '',
       currentAnswer: null,
       lastRunStatus: null,
@@ -484,6 +486,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentCode(anonymousId, code) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentCode`), code)
+  }
+
+  async function writeStudentArcadeDesign(anonymousId, design) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentArcadeDesign`), design ?? null)
   }
 
   async function writeStudentFiles(anonymousId, files) {
@@ -595,7 +601,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }

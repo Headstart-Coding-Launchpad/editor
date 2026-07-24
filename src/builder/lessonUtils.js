@@ -209,7 +209,7 @@ export function copyScratchSpriteStateToStarters(sprites, spriteStates) {
 }
 
 export function copyStarterToComplete(task, lessonType) {
-  if (lessonType === 'python') {
+  if (lessonType === 'python' || lessonType === 'arcade') {
     return { completeCode: task.starterCode ?? '' }
   }
   if (lessonType === 'html') {
@@ -363,7 +363,7 @@ export function validateLesson(lesson) {
       ? true
       : task.taskType === 'quiz'
         ? quizHasStarter(task)
-        : type === 'python'
+        : type === 'python' || type === 'arcade'
           ? !!task.starterCode
           : type === 'scratch'
             ? !!task.starterBlocks
@@ -376,7 +376,7 @@ export function validateLesson(lesson) {
 
     if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check) {
       const allChecks = normalizeChecks(task.check)
-      if (type === 'python' && task.completeCode != null) {
+      if ((type === 'python' || type === 'arcade') && task.completeCode != null) {
         const staticChecks = allChecks.filter(c => checkAllowedForSubmit(c))
         const dynamicChecks = allChecks.filter(c => checkRequiresRun(c))
         if (staticChecks.length > 0 && staticChecks.some(c => !evaluateSingleCheck(c, '', { code: task.completeCode }))) {

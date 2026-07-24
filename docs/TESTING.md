@@ -85,6 +85,8 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/TeacherSessionControls.jsx` | Navigation, share-link callbacks, and state-specific teacher session actions |
 | `src/app/components/EditLessonModal.jsx` | Role-based footer actions (teacher: session-only; admin: session-only + permanent), save validation gate, active-task delete confirmation; builder's `TaskList`/`TaskEditor`/`GroupEditor` are stubbed at the module boundary |
 | `src/modules/filesystem/FilesystemTask.jsx` | Folder navigation, image preview rendering, and browse interaction callbacks |
+| `src/modules/arcade/ArcadePreview.jsx` | Does not create a game iframe until Run is chosen; console remains available for runtime output and errors |
+| `src/modules/arcade/design.js` | Normalises portable pixel/map data, produces generated image assets, and emits tilemap Python with properties and object spawns |
 | `src/shared/markdown.jsx` | `MarkdownRenderer` renders headings, tables, code fences, callouts and topic-library interaction; `InlineMarkdown` renders inline-only |
 | `src/builder/components/ExplainerEditor.jsx` | Markdown topic picker and recognised-term link prompt |
 | `src/builder/App.jsx` | Shows restore prompt when localStorage has saved lesson; auto-saves on lesson change; `beforeunload` fires when dirty |

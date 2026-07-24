@@ -1,6 +1,6 @@
 # Lesson JSON Schema
 
-Full JSON field reference for cross-cutting fields. For YAML authoring see `docs/authoring/AUTHORING_GUIDE.md` or the basic-field reference at `docs/authoring/lesson-schema-yaml.md`. For type-specific code task fields, checks, and minimal examples see `docs/authoring/{python,html,scratch,filesystem}.md`.
+Full JSON field reference for cross-cutting fields. For YAML authoring see `docs/authoring/AUTHORING_GUIDE.md` or the basic-field reference at `docs/authoring/lesson-schema-yaml.md`. For type-specific code task fields, checks, and minimal examples see the relevant `docs/authoring/<type>.md` guide.
 
 **Quiz sub-types:** `docs/authoring/quiz-tasks.md`
 
@@ -13,7 +13,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `python`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `type` | Yes | string | `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. New lessons should link a reusable level with `levelId`/`levelRef`; legacy scalar values are migrated automatically when published through the app or CLI. |
@@ -21,7 +21,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. `scopeType` is `type`, `module`, `course`, or `collection`. |
 | `stage` | No | string | Lesson lifecycle stage: `ideas`, `details`, `review`, `approved`, `published`. Defaults to `published` if absent. Controls which draft-task fields are unlocked in the builder. |
 | `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
-| `sandboxStarter` | No | string | Python/Scratch sandbox starter code or state. |
+| `sandboxStarter` | No | string | Python, Arcade Kit, or Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
 | `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. |
 | `sandboxSprites` | No | sprite array | Scratch sandbox sprites. |
@@ -67,7 +67,9 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
-| `copyCode` | No | string | Python/HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
+| `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
+| `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
+| `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
@@ -81,6 +83,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | Lesson type | Code task | Information | Quiz | Draft |
 |---|---|---|---|---|
 | `python` | Python editor + output | Supported | Supported | Supported |
+| `arcade` | Python game editor + canvas | Supported | Supported | Supported |
 | `html` | Multi-file editor + iframe | Supported | Supported | Supported |
 | `scratch` | Scratch blocks + stage | Supported | Supported | Supported |
 | `filesystem` | Virtual file manager | Supported | Supported | Supported |
@@ -88,7 +91,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
-Code task `codeStages` share two optional metadata fields across Python, HTML, Scratch, Filesystem, and Electronics: `role` (`support`, `core`, `extension`, `solution`; omitted defaults to `support`) and `revealable` (`true` on any role). Python and HTML revealable stages are shown as read-only references after a failed attempt and do not replace student work; other code task types preserve the metadata for now.
+Code task `codeStages` share two optional metadata fields across Python, Arcade Kit, HTML, Scratch, Filesystem, and Electronics: `role` (`support`, `core`, `extension`, `solution`; omitted defaults to `support`) and `revealable` (`true` on any role). Python and HTML revealable stages are shown as read-only references after a failed attempt and do not replace student work; other code task types preserve the metadata for now.
 
 ### Targeted feedback-stage offers
 

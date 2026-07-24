@@ -4,6 +4,7 @@ import { getLessonModule, getLessonModules, getStudentWorkspace, getBuilderWorks
 describe('getLessonModule', () => {
   it('returns a module for each known lesson type', () => {
     expect(getLessonModule('python')).not.toBeNull()
+    expect(getLessonModule('arcade')).not.toBeNull()
     expect(getLessonModule('html')).not.toBeNull()
     expect(getLessonModule('scratch')).not.toBeNull()
     expect(getLessonModule('filesystem')).not.toBeNull()
@@ -18,6 +19,7 @@ describe('getLessonModule', () => {
 
   it('returns the correct type string on each module', () => {
     expect(getLessonModule('python').type).toBe('python')
+    expect(getLessonModule('arcade').type).toBe('arcade')
     expect(getLessonModule('html').type).toBe('html')
     expect(getLessonModule('scratch').type).toBe('scratch')
     expect(getLessonModule('filesystem').type).toBe('filesystem')
@@ -27,6 +29,7 @@ describe('getLessonModule', () => {
   it('exposes ordered module labels for admin and authoring UI', () => {
     expect(getLessonModules().map(module => [module.type, module.label])).toEqual([
       ['python', 'Python'],
+      ['arcade', 'Arcade Kit'],
       ['scratch', 'Scratch'],
       ['html', 'HTML'],
       ['filesystem', 'Filesystem'],
