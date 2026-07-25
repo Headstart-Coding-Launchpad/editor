@@ -22,7 +22,7 @@ node cli/cli.mjs lessons publish-yaml lesson.yaml          # one step: convert, 
 # or step by step:
 node cli/cli.mjs lessons yaml-to-json lesson.yaml          # validate + preview JSON
 node cli/cli.mjs lessons yaml-to-json lesson.yaml --output lesson.json
-node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JSON; saves draft tasks
+node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JSON
 
 # verify code checks against named student-code examples (JSON or YAML cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml --cases check-cases.yaml
@@ -242,16 +242,15 @@ Groups cannot be nested. Group IDs are auto-generated.
 | `id` omitted | Auto-assigned sequential integers (1, 2, 3 …) |
 | `type: information` on a task | `taskType: "information"` |
 | `type: quiz` on a task | `taskType: "quiz"` |
-| `type: draft` on a task | `taskType: "draft"` |
 | `group: "Title"` + `tasks:` | Group object with auto-generated ID |
 | `checks:` (plural array) | `check:` (the JSON field name) |
 | `answer: a` on a multiple_choice quiz | `check: { type: "answer_equals", value: "a" }` |
 
 ---
 
-## Draft Tasks and Lesson Stage
+## Legacy Draft Records
 
-The builder supports an authoring pipeline with `stage` on the lesson envelope and `type: draft` tasks.
+Older lesson files may contain `stage` and `type: draft` data. The application ignores these legacy fields; do not add them to new lessons.
 
 Draft tasks serve two distinct levels of specification:
 
@@ -260,17 +259,11 @@ Draft tasks serve two distinct levels of specification:
 
 Do not convert detailed drafts into executable information, quiz, or code tasks during the Details stage. That conversion is a separate implementation step after review and approval.
 
-### Lesson stages
+### Removed workflow
 
-`ideas → details → review → approved → published`
+The Ideas, Details, Review, Approved, and Published workflow is no longer available in the builder or CLI.
 
-Set via the Stage selector in Lesson Details (builder) or the CLI:
-
-```bash
-node cli/cli.mjs lessons set-stage python-for-loops review
-```
-
-### Draft tasks in YAML
+### Legacy draft YAML
 
 At the Ideas stage, every draft task uses these Tier 1 fields:
 
@@ -328,7 +321,7 @@ tasks:
     hintsAndSupport: "Remind students that range(5) gives 0, 1, 2, 3, 4."
 ```
 
-`type: draft` tasks produce a validation **warning** (not an error) — `lessons upsert` saves them, `lessons publish-yaml` blocks them.
+Legacy `type: draft` tasks are silently ignored by the application. Convert them to a supported task type before relying on their content.
 
 At Details, complete the Tier 2 fields rather than replacing the draft task:
 
@@ -342,7 +335,7 @@ At Details, complete the Tier 2 fields rather than replacing the draft task:
 
 Real task fields are written only during the later implementation handoff.
 
-### Topic planning and stage validation
+### Topic planning
 
 Use task-level `topicLinks` as plain IDs from the Ideas stage onward. If an ID does not exist in the current Firestore Topic Library, describe it once at lesson level:
 
@@ -356,7 +349,7 @@ topicProposals:
 
 Use `status: deferred` when the missing topic is intentionally postponed. Do not put task usage in proposals; the builder derives that from every task's `topicLinks` and embedded `[[topic-id]]`, `[[topic-id|label]]`, or `#topic/topic-id` links.
 
-Missing topics warn during Ideas and Details. Moving to Review requires a matching proposed/deferred entry. Approval keeps missing topics visible. Publishing is blocked until every referenced topic exists in Firestore. Unused proposals warn but do not block.
+Saving is blocked until every referenced topic exists in Firestore. Unused proposals warn but do not block.
 
 ```bash
 node cli/cli.mjs lessons topics python-loops-draft
@@ -364,19 +357,6 @@ node cli/cli.mjs lessons topics python-loops-draft --format yaml
 ```
 
 At Details, embed topic links in the student-facing prose where they should appear to learners. Recreation, from-memory, and independent tasks should normally include a learner-facing topic link in the prompt or hint; `topicLinks` metadata alone does not provide learner support.
-
-### Review notes via CLI
-
-```bash
-# View all tasks with review notes (output includes taskId values to use with --task)
-node cli/cli.mjs lessons review python-loops-draft
-
-# Set a review note using the task's id field shown in the list output
-node cli/cli.mjs lessons review python-loops-draft --task 2 --decision rejected --note "Needs a second example"
-node cli/cli.mjs lessons review python-loops-draft --task 2 --decision accepted
-```
-
----
 
 ## Topic Library (YAML)
 

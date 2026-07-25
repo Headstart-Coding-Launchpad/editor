@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
-import { formatEstimatedMinutes, getTaskPriorityCounts, getTotalEstimatedMinutes } from '../../shared/taskUtils'
+import { flattenTasks, formatEstimatedMinutes, getTaskPriorityCounts, getTotalEstimatedMinutes, isLegacyDraftTask } from '../../shared/taskUtils'
 
 function taskIconType(task) {
-  if (task.taskType === 'draft') return 'draft'
   if (task.taskType === 'information') return 'information'
   if (task.taskType === 'quiz') return 'quiz'
   if (task.toolbox || task.starterBlocks || task.completeBlocks) return 'scratch'
@@ -11,12 +10,6 @@ function taskIconType(task) {
 
 function TaskFormatIcon({ type }) {
   const common = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }
-  if (type === 'draft') return (
-    <svg {...common}>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-    </svg>
-  )
   if (type === 'scratch') return (
     <svg {...common}>
       <rect x="2" y="2" width="9" height="9" rx="1.5" />
@@ -44,33 +37,6 @@ function TaskFormatIcon({ type }) {
       <polyline points="16 18 22 12 16 6" />
       <polyline points="8 6 2 12 8 18" />
     </svg>
-  )
-}
-
-const DRAFT_STATUS = {
-  accepted: { label: 'ACCEPTED', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
-  rejected: { label: 'REJECTED', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5' },
-  pending:  { label: 'DRAFT',    color: '#9ca3af', bg: '#f3f4f6', border: '#e5e7eb' },
-}
-
-function DraftStatusBadge({ decision }) {
-  const cfg = DRAFT_STATUS[decision] ?? DRAFT_STATUS.pending
-  return (
-    <span style={{
-      fontFamily: 'var(--font-body)',
-      fontSize: '0.62rem',
-      fontWeight: 700,
-      letterSpacing: '0.05em',
-      color: cfg.color,
-      background: cfg.bg,
-      border: `1px solid ${cfg.border}`,
-      borderRadius: 4,
-      padding: '1px 5px',
-      flexShrink: 0,
-      whiteSpace: 'nowrap',
-    }}>
-      {cfg.label}
-    </span>
   )
 }
 
@@ -127,7 +93,6 @@ export default function TaskList({
   onSelect,
   onSelectGroup,
   onAdd,
-  onAddDraft,
   onAddGroup,
   onAddSubtask,
   onDuplicate,
@@ -285,21 +250,11 @@ export default function TaskList({
           >
             + Group
           </button>
-          {onAddDraft && (
-            <button
-              type="button"
-              style={s.addDraftBtn}
-              onClick={onAddDraft}
-              title="Add a draft placeholder task"
-            >
-              + Draft
-            </button>
-          )}
         </div>
       </div>
 
       <div style={s.list}>
-        {tasks.length === 0 && (
+        {flattenTasks(tasks).length === 0 && (
           <p style={s.empty}>No tasks yet. Click "+ Task" to create one.</p>
         )}
 
@@ -308,6 +263,7 @@ export default function TaskList({
             const expanded = expandedGroups[item.id] !== false
             const isGroupSelected = selectedGroupId === item.id
             const subtasks = item.subtasks ?? []
+            if (subtasks.every(isLegacyDraftTask)) return null
 
             return (
               <div key={item.id}>
@@ -357,15 +313,14 @@ export default function TaskList({
                     onDrop={e => handleDrop(e, { groupId: item.id, index: subtasks.length })}
                   >
                     {subtasks.map((subtask, j) => {
+                      if (isLegacyDraftTask(subtask)) return null
                       const isActive = subtask.id === selectedTaskId
-                      const isSubDraft = subtask.taskType === 'draft'
                       return (
                         <div
                           key={subtask.id}
                           style={{
                             ...s.subtaskItem,
-                            ...(isSubDraft ? s.subtaskItemDraft : {}),
-                            ...(isActive ? (isSubDraft ? s.subtaskItemDraftActive : s.subtaskItemActive) : {}),
+                            ...(isActive ? s.subtaskItemActive : {}),
                             ...(dropStyle({ groupId: item.id, index: j }) ?? {}),
                           }}
                           draggable
@@ -375,15 +330,14 @@ export default function TaskList({
                           onDrop={e => { e.stopPropagation(); handleDrop(e, { groupId: item.id, index: j }) }}
                           onClick={() => onSelect(subtask.id)}
                         >
-                          <span style={isSubDraft ? s.subtaskNumDraft : s.subtaskNum}>{taskGlobalNums[subtask.id]}</span>
-                          <span style={{ ...s.taskTypeIcon, ...(isSubDraft ? s.taskTypeIconDraft : {}) }} title={`${taskIconType(subtask)} task`}>
+                          <span style={s.subtaskNum}>{taskGlobalNums[subtask.id]}</span>
+                          <span style={s.taskTypeIcon} title={`${taskIconType(subtask)} task`}>
                             <TaskFormatIcon type={taskIconType(subtask)} />
                           </span>
                           <span style={s.title}>
                             {subtask.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
                           </span>
                           <PriorityBadge priority={subtask.priority} />
-                          {isSubDraft && <DraftStatusBadge decision={subtask.reviewNote?.decision} />}
                           <div style={s.actions} onClick={e => e.stopPropagation()}>
                             <button style={s.iconBtn} onClick={() => moveSubtaskUp(item.id, j, subtasks)} title="Move up" disabled={j === 0}>▲</button>
                             <button style={s.iconBtn} onClick={() => moveSubtaskDown(item.id, j, subtasks)} title="Move down" disabled={j === subtasks.length - 1}>▼</button>
@@ -412,15 +366,14 @@ export default function TaskList({
           }
 
           // Standalone task
+          if (isLegacyDraftTask(item)) return null
           const isActive = item.id === selectedTaskId
-          const isDraft = item.taskType === 'draft'
           return (
             <div
               key={item.id}
               style={{
                 ...s.item,
-                ...(isDraft ? s.itemDraft : {}),
-                ...(isActive ? (isDraft ? s.itemDraftActive : s.itemActive) : {}),
+                ...(isActive ? s.itemActive : {}),
                 ...(dropStyle({ groupId: null, index: i }) ?? {}),
               }}
               draggable
@@ -430,15 +383,14 @@ export default function TaskList({
               onDrop={e => handleDrop(e, { groupId: null, index: i })}
               onClick={() => onSelect(item.id)}
             >
-              <span style={isDraft ? s.numDraft : s.num}>{taskGlobalNums[item.id]}</span>
-              <span style={{ ...s.taskTypeIcon, ...(isDraft ? s.taskTypeIconDraft : {}) }} title={`${taskIconType(item)} task`}>
+              <span style={s.num}>{taskGlobalNums[item.id]}</span>
+              <span style={s.taskTypeIcon} title={`${taskIconType(item)} task`}>
                 <TaskFormatIcon type={taskIconType(item)} />
               </span>
               <span style={s.title}>
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
               </span>
               <PriorityBadge priority={item.priority} />
-              {isDraft && <DraftStatusBadge decision={item.reviewNote?.decision} />}
               <div style={s.actions} onClick={e => e.stopPropagation()}>
                 <button style={s.iconBtn} onClick={() => moveUp(i)} title="Move up" disabled={i === 0}>▲</button>
                 <button style={s.iconBtn} onClick={() => moveDown(i)} title="Move down" disabled={i === tasks.length - 1}>▼</button>
@@ -503,17 +455,6 @@ const s = {
     background: 'rgba(255,255,255,0.15)',
     border: '1px solid rgba(255,255,255,0.4)',
     color: '#fff',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-  },
-  addDraftBtn: {
-    fontSize: 11,
-    padding: '4px 8px',
-    background: 'rgba(255,255,255,0.1)',
-    border: '1px solid rgba(255,255,255,0.3)',
-    color: 'rgba(255,255,255,0.75)',
     borderRadius: 6,
     cursor: 'pointer',
     fontFamily: 'var(--font-body)',
@@ -592,34 +533,6 @@ const s = {
     color: '#6b7280',
     opacity: 0.7,
   },
-  itemDraft: {
-    background: '#fafafa',
-    borderLeft: '3px solid #d1d5db',
-    opacity: 0.85,
-  },
-  itemDraftActive: {
-    background: '#f1f5f9',
-    borderLeftColor: '#6b7280',
-    opacity: 1,
-  },
-  numDraft: {
-    width: 20,
-    height: 20,
-    background: '#9ca3af',
-    color: '#fff',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.72rem',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-  taskTypeIconDraft: {
-    color: '#9ca3af',
-    background: '#f3f4f6',
-  },
   // Group styles
   groupHeader: {
     display: 'flex',
@@ -695,35 +608,11 @@ const s = {
     background: '#f0eafa',
     borderLeftColor: 'var(--colour-primary)',
   },
-  subtaskItemDraft: {
-    background: '#fafafa',
-    borderLeft: '2px solid #d1d5db',
-    opacity: 0.85,
-  },
-  subtaskItemDraftActive: {
-    background: '#f1f5f9',
-    borderLeftColor: '#6b7280',
-    opacity: 1,
-  },
   subtaskNum: {
     width: 18,
     height: 18,
     background: '#c4b5fd',
     color: '#4e1aa3',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.65rem',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-  subtaskNumDraft: {
-    width: 18,
-    height: 18,
-    background: '#9ca3af',
-    color: '#fff',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',

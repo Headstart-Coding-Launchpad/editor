@@ -137,22 +137,14 @@ export function auditLessonTopics(lesson, topics = []) {
   }
 }
 
-export function validateTopicStage(lesson, topics, nextStage = lesson?.stage ?? 'ideas') {
+export function validateLessonTopics(lesson, topics) {
   const audit = auditLessonTopics(lesson, topics)
   const errors = validateTopicProposals(lesson?.topicProposals)
   const warnings = []
   const missingIds = audit.missing.map(item => item.id)
 
-  if (nextStage === 'review') {
-    const unresolved = audit.missing.filter(item => {
-      const status = normalizeId(item.proposal?.status)
-      return !item.proposal || !['proposed', 'deferred'].includes(status)
-    })
-    if (unresolved.length > 0) {
-      errors.push(`Missing topics need a proposal or deferred status before Review: ${unresolved.map(item => item.id).join(', ')}`)
-    }
-  } else if (nextStage === 'published' && missingIds.length > 0) {
-    errors.push(`Cannot publish while Topic Library entries are missing: ${missingIds.join(', ')}`)
+  if (missingIds.length > 0) {
+    errors.push(`Cannot save a lesson while Topic Library entries are missing: ${missingIds.join(', ')}`)
   }
 
   if (missingIds.length > 0) {

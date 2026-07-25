@@ -14,11 +14,11 @@ describe('structured CLI input', () => {
     })
   })
 
-  it('converts lesson YAML shorthands for upsert', () => {
+  it('silently retains legacy draft YAML during conversion', () => {
     const lesson = parseLessonJsonOrYaml('lesson.yaml', `
 id: lesson-1
 type: python
-title: Draft lesson
+title: Legacy lesson
 tasks:
   - type: draft
     title: Plan the introduction

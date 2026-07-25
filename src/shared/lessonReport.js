@@ -13,7 +13,6 @@ function isReportableTask(task) {
 
 function getReportTaskType(task) {
   if (task?.taskType === 'quiz') return 'quiz'
-  if (task?.taskType === 'draft') return 'draft'
   return 'code'
 }
 

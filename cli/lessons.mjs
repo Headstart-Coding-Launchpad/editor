@@ -1,7 +1,7 @@
 import { db } from './firebase.mjs'
 import { validateLessonForMcp } from './validate.mjs'
 import { parseYamlLesson } from './yaml-converter.mjs'
-import { auditLessonTopics, validateTopicStage } from '../src/shared/topicAudit.js'
+import { auditLessonTopics, validateLessonTopics } from '../src/shared/topicAudit.js'
 import { buildLessonFork, makeForkLessonId } from '../src/shared/lessonForks.js'
 import { LEVEL_COLLECTION, migrateLessonLevel } from '../src/shared/lessonLevels.js'
 import { getClass } from './classes.mjs'
@@ -116,7 +116,7 @@ async function publishLesson(lesson) {
   )
   const { valid, errors, warnings } = validateLessonForMcp(lessonToPublish)
   if (!valid) return { success: false, valid, errors, warnings }
-  const topicValidation = validateTopicStage(lessonToPublish, await fetchTopicLibrary(), lessonToPublish.stage ?? 'published')
+  const topicValidation = validateLessonTopics(lessonToPublish, await fetchTopicLibrary())
   if (!topicValidation.valid) {
     return {
       success: false,
@@ -305,75 +305,18 @@ export async function getLessonLineage(id) {
   }
 }
 
-const VALID_STAGES = ['ideas', 'details', 'review', 'approved', 'published']
-
-export async function setLessonStage(id, stage) {
-  if (!VALID_STAGES.includes(stage)) {
-    throw new Error(`Invalid stage '${stage}'. Must be one of: ${VALID_STAGES.join(', ')}`)
-  }
-  const snap = await db.collection('lessons').doc(id).get()
-  if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  const lesson = { id: snap.id, ...snap.data() }
-  const previous = lesson.stage ?? 'published'
-  const topicValidation = validateTopicStage(lesson, await fetchTopicLibrary(), stage)
-  if (!topicValidation.valid) throw new Error(topicValidation.errors.join('; '))
-  await db.collection('lessons').doc(id).update({ stage })
-  return {
-    success: true,
-    id,
-    previousStage: previous,
-    stage,
-    warnings: topicValidation.warnings,
-    topicAudit: topicValidation.audit,
-  }
-}
-
 export async function getLessonTopicAudit(id) {
   const lesson = await getLesson(id)
   const audit = auditLessonTopics(lesson, await fetchTopicLibrary())
   return {
     lessonId: id,
     lessonTitle: lesson.title ?? '',
-    stage: lesson.stage ?? 'published',
     references: audit.references,
     existing: audit.existing,
     missing: audit.missing,
     proposals: lesson.topicProposals ?? [],
     unusedProposals: audit.unusedProposals,
   }
-}
-
-export async function getLessonReviewNotes(id) {
-  const snap = await db.collection('lessons').doc(id).get()
-  if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  const tasks = snap.data().tasks ?? []
-  const flat = flattenTasks(tasks)
-  return flat
-    .filter(t => t.reviewNote)
-    .map(t => ({
-      taskId: t.id,
-      title: t.title ?? '',
-      taskType: t.taskType ?? null,
-      reviewNote: t.reviewNote,
-    }))
-}
-
-export async function setTaskReviewNote(lessonId, taskId, reviewNote) {
-  const snap = await db.collection('lessons').doc(lessonId).get()
-  if (!snap.exists) throw new Error(`Lesson '${lessonId}' not found`)
-  const lesson = { id: snap.id, ...snap.data() }
-  const flat = flattenTasks(lesson.tasks ?? [])
-  const target = flat.find(t => String(t.id) === String(taskId))
-  if (!target) throw new Error(`Task '${taskId}' not found in lesson '${lessonId}'`)
-  const updated = { ...target, reviewNote: { ...(target.reviewNote ?? {}), ...reviewNote } }
-  const updatedTasks = replaceTaskAtFlatIndex(
-    lesson.tasks,
-    flat.findIndex(t => String(t.id) === String(taskId)) + 1,
-    updated,
-  )
-  if (!updatedTasks) throw new Error(`Could not locate task '${taskId}'`)
-  await db.collection('lessons').doc(lessonId).set({ ...lesson, tasks: updatedTasks })
-  return { success: true, lessonId, taskId, reviewNote: updated.reviewNote }
 }
 
 export function yamlToLesson(yamlText) {

@@ -4,7 +4,7 @@ Full JSON field reference for cross-cutting fields. For YAML authoring see `docs
 
 **Quiz sub-types:** `docs/authoring/quiz-tasks.md`
 
-Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson, including lessons that still contain draft tasks.
+Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson.
 
 ---
 
@@ -19,7 +19,6 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. New lessons should link a reusable level with `levelId`/`levelRef`; legacy scalar values are migrated automatically when published through the app or CLI. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. `scopeType` is `type`, `module`, `course`, or `collection`. |
-| `stage` | No | string | Lesson lifecycle stage: `ideas`, `details`, `review`, `approved`, `published`. Defaults to `published` if absent. Controls which draft-task fields are unlocked in the builder. |
 | `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
 | `sandboxStarter` | No | string | Python, Arcade Kit, or Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
@@ -66,28 +65,27 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
-| `taskType` | No | string | Omit for code tasks. `information`, `quiz`, or `draft` for non-code task types. |
+| `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types. |
 | `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
-| `reviewNote` | No | object | Builder review metadata: `{ decision, suggestedChange, extraNote }`. Not used by the student view. |
 | `_checkTested` | No | boolean | Builder-only validation flag set when an author has run/tested the completion checks in the builder. It is not read by the student experience. |
 
 ---
 
 ## Task Format Matrix
 
-| Lesson type | Code task | Information | Quiz | Draft |
+| Lesson type | Code task | Information | Quiz |
 |---|---|---|---|---|
-| `python` | Python editor + output | Supported | Supported | Supported |
-| `arcade` | Python game editor + canvas | Supported | Supported | Supported |
-| `html` | Multi-file editor + iframe | Supported | Supported | Supported |
-| `scratch` | Scratch blocks + stage | Supported | Supported | Supported |
-| `filesystem` | Virtual file manager | Supported | Supported | Supported |
-| `electronics` | Editable breadboard | Supported | Supported | Supported |
+| `python` | Python editor + output | Supported | Supported |
+| `arcade` | Python game editor + canvas | Supported | Supported |
+| `html` | Multi-file editor + iframe | Supported | Supported |
+| `scratch` | Scratch blocks + stage | Supported | Supported |
+| `filesystem` | Virtual file manager | Supported | Supported |
+| `electronics` | Editable breadboard | Supported | Supported |
 
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
@@ -118,11 +116,11 @@ When a feedback check matches in the Builder, its result area includes a **Stude
 
 ---
 
-## Draft Task Fields
+## Legacy Draft Records
 
-Draft tasks (`taskType: "draft"`) are two-tiered: Tier 1 fields are always required, and Tier 2 fields are unlocked when the lesson `stage` is `details` or later.
+Older lesson data may include `taskType: "draft"` records. They are retained for compatibility but ignored by the application; do not use them in new lessons.
 
-Tasks remain `taskType: "draft"` throughout Ideas, Details, and Review. Details-stage drafts are complete implementation specifications, not executable lesson tasks. Conversion to information, quiz, code, or other real task types happens only in the separate implementation handoff after the detailed draft has been reviewed and approved.
+Convert legacy records to an information, quiz, or code task before relying on their content.
 
 ### Tier 1 — Ideas stage
 
@@ -156,32 +154,11 @@ At Details:
 
 ---
 
-## Review Note Object
+## Legacy Review Metadata
 
-Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `[[topic-id|Custom label]]`, and `#topic/topic-id` links throughout draft and final task content, including nested hints and grouped tasks.
+Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `[[topic-id|Custom label]]`, and `#topic/topic-id` links throughout task content, including nested hints and grouped tasks.
 
-Stage rules:
-
-- Ideas → Details: missing Topic Library entries warn.
-- Details → Review: every missing ID needs a matching `topicProposals` item with `status: proposed` or `status: deferred`.
-- Review → Approved: missing entries remain visible but do not block approval.
-- Approved → Published: every referenced ID must exist in Firestore; unused proposals only warn.
-
-Any task can carry a `reviewNote` for in-builder collaboration:
-
-```json
-{
-  "reviewNote": {
-    "decision": "pending",
-    "suggestedChange": "Split this into two tasks.",
-    "extraNote": "See also task 5."
-  }
-}
-```
-
-`decision` values: `pending` (grey), `accepted` (green), `rejected` (red). Stored on the lesson JSON; not rendered in the student view.
-
----
+Legacy `stage` and `reviewNote` fields are ignored. Topic references must exist in the Topic Library before saving.
 
 ## Information Task Fields
 

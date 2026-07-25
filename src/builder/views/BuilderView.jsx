@@ -18,7 +18,7 @@ import { encodeLessonBlocksForFirestore } from '../../shared/lessonBlocksCodec'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 import { useTopicLibrary } from '../../shared/topicLibrary'
-import { collectLessonTopicReferences, validateTopicStage } from '../../shared/topicAudit'
+import { collectLessonTopicReferences, validateLessonTopics } from '../../shared/topicAudit'
 
 export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSaved }) {
   const [previewing, setPreviewing] = useState(false)
@@ -39,7 +39,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     selectGroup,
     handleLessonUpdate,
     handleAddTask,
-    handleAddDraftTask,
     handleAddGroup,
     handleAddSubtask,
     handleDuplicate,
@@ -55,27 +54,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     lessonForEditor,
     selectedTaskGroup,
   } = useBuilderState({ lesson, onUpdate, defaultSprites })
-
-  function handleSetStage(newStage) {
-    if (newStage === (lesson.stage ?? 'published')) return
-    if (hasTopicReferences && topicsLoading) {
-      alert('Please wait for the current Topic Library check to finish before changing stage.')
-      return
-    }
-    if (hasTopicReferences && topicsError) {
-      alert('Could not check the Topic Library, so the lesson stage was not changed: ' + topicsError.message)
-      return
-    }
-    const topicValidation = validateTopicStage(lesson, hasTopicReferences ? allTopics : [], newStage)
-    if (!topicValidation.valid) {
-      alert(topicValidation.errors.join('\n'))
-      return
-    }
-    if (topicValidation.warnings.length > 0 && !confirm(
-      topicValidation.warnings.join('\n') + `\n\nMove the lesson to ${newStage}?`
-    )) return
-    handleLessonUpdate(prev => ({ ...prev, stage: newStage }))
-  }
 
   useEffect(() => {
     if (!selectedTaskId || !lesson?.id) { setTaskFeedback([]); return }
@@ -111,20 +89,18 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
 
   async function handleSave() {
     if (!lesson.id) { alert('Cannot save — lesson ID is required.'); return }
-    if ((lesson.stage ?? 'published') === 'published') {
-      if (hasTopicReferences && topicsLoading) {
-        alert('Please wait for the current Topic Library check to finish before publishing.')
-        return
-      }
-      if (hasTopicReferences && topicsError) {
-        alert('Could not verify Topic Library entries, so the published lesson was not saved: ' + topicsError.message)
-        return
-      }
-      const topicValidation = validateTopicStage(lesson, hasTopicReferences ? allTopics : [], 'published')
-      if (!topicValidation.valid) {
-        alert(topicValidation.errors.join('\n'))
-        return
-      }
+    if (hasTopicReferences && topicsLoading) {
+      alert('Please wait for the current Topic Library check to finish before saving.')
+      return
+    }
+    if (hasTopicReferences && topicsError) {
+      alert('Could not verify Topic Library entries, so the lesson was not saved: ' + topicsError.message)
+      return
+    }
+    const topicValidation = validateLessonTopics(lesson, hasTopicReferences ? allTopics : [])
+    if (hasTopicReferences && !topicValidation.valid) {
+      alert(topicValidation.errors.join('\n'))
+      return
     }
     setSaveStatus('saving')
     try {
@@ -186,8 +162,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         errors={errors}
         saveStatus={saveStatus}
         hasNoTasks={lesson.tasks.length === 0}
-        stage={lesson.stage}
-        onSetStage={handleSetStage}
         onNew={onNew}
         onUpload={handleUpload}
         onPreview={() => setPreviewing(true)}
@@ -204,7 +178,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
               lesson={lesson}
               onUpdate={onUpdate}
               onCollapse={() => setMetaOpen(false)}
-              onSetStage={handleSetStage}
               topicState={{ topics: allTopics, loading: topicsLoading, error: topicsError }}
             />
           ) : (
@@ -224,7 +197,6 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             onSelect={selectTask}
             onSelectGroup={selectGroup}
             onAdd={handleAddTask}
-            onAddDraft={lesson.stage !== 'approved' && lesson.stage !== 'published' ? handleAddDraftTask : undefined}
             onAddGroup={handleAddGroup}
             onAddSubtask={handleAddSubtask}
             onDuplicate={handleDuplicate}
@@ -264,17 +236,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                   }))
                 }}
               />
-              <TaskFeedbackPanel
-                key={selectedTask.id + '-fb'}
-                task={selectedTask}
-                feedback={taskFeedback}
-                onUpdateTask={updated => {
-                  handleLessonUpdate(prev => ({
-                    ...prev,
-                    tasks: applyTaskUpdate(prev.tasks, selectedTaskGroup, selectedTask, updated),
-                  }))
-                }}
-              />
+              <TaskFeedbackPanel feedback={taskFeedback} />
             </>
           ) : (
             <div style={s.empty}>

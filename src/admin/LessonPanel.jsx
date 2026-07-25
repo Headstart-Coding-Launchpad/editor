@@ -37,16 +37,6 @@ const LESSON_MODULES = getLessonModules()
 const TYPE_ORDER = LESSON_MODULES.map(module => module.type)
 const TYPE_LABELS = Object.fromEntries(LESSON_MODULES.map(module => [module.type, module.label]))
 
-const STAGE_LABELS = { ideas: 'Ideas', details: 'Details', review: 'Review', approved: 'Approved', published: 'Published' }
-const STAGE_COLORS = { ideas: '#6b7280', details: '#2563eb', review: '#d97706', approved: '#16a34a', published: '#7c3aed' }
-const STAGE_FILTER_OPTIONS = [
-  { value: null, label: 'All' },
-  { value: 'ideas', label: 'Ideas' },
-  { value: 'details', label: 'Details' },
-  { value: 'review', label: 'Review' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'published', label: 'Published' },
-]
 const UNASSIGNED_LEVEL_ID = '__unassigned__'
 const COMMON_LEVEL_EMOJIS = ['⭐', '🌱', '🚀', '💡', '🎯', '🧩', '🏆', '📚', '🛠️', '⚡', '🎨', '🔬']
 const LEGACY_ICON_LABELS = { star: '⭐' }
@@ -216,7 +206,6 @@ export default function LessonPanel({ view = 'lessons' }) {
   const [deletedIds, setDeletedIds] = useState(new Set())
   const [selectedReport, setSelectedReport] = useState(null)
   const [activeType, setActiveType] = useState(null)
-  const [stageFilter, setStageFilter] = useState(null)
   const [openLevelIds, setOpenLevelIds] = useState(() => new Set())
   const copyTimerRef = useRef(null)
   const migratedRef = useRef(new Set())
@@ -417,11 +406,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   const displayType = activeType ?? firstPopulatedGroup?.type ?? groups[0]?.type ?? null
   const activeGroup = groups.find(g => g.type === displayType)
   const showActiveGroup = activeGroup && (visibleLessons.length > 0 || activeType)
-  const filteredLessons = useMemo(() => {
-    const base = activeGroup?.lessons ?? []
-    if (!stageFilter) return base
-    return base.filter(l => (l.stage ?? 'published') === stageFilter)
-  }, [activeGroup, stageFilter])
+  const filteredLessons = activeGroup?.lessons ?? []
   const levelBuckets = useMemo(
     () => makeLevelBuckets(filteredLessons, levels, displayType),
     [filteredLessons, levels, displayType],
@@ -495,27 +480,6 @@ export default function LessonPanel({ view = 'lessons' }) {
             >
               {TYPE_LABELS[type] ?? type}
               <span style={s.tabCount}>{groupLessons.length}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {showActiveGroup && (
-        <div style={s.stageFilterRow}>
-          {STAGE_FILTER_OPTIONS.map(opt => (
-            <button
-              key={String(opt.value)}
-              style={{
-                ...s.stageFilterBtn,
-                ...(stageFilter === opt.value ? {
-                  background: opt.value ? STAGE_COLORS[opt.value] : 'var(--colour-primary)',
-                  color: '#fff',
-                  borderColor: opt.value ? STAGE_COLORS[opt.value] : 'var(--colour-primary)',
-                } : {}),
-              }}
-              onClick={() => setStageFilter(opt.value)}
-            >
-              {opt.label}
             </button>
           ))}
         </div>
@@ -730,14 +694,13 @@ function LevelLessonGroup({
           ) : (
             <table style={s.table}>
               <colgroup>
-                <col style={{ width: '38%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '22%' }} />
-                <col style={{ width: '28%' }} />
+                <col style={{ width: '45%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '30%' }} />
               </colgroup>
               <thead>
                 <tr>
-                  {['Title', 'Stage', 'ID', 'Actions'].map(h => (
+                  {['Title', 'ID', 'Actions'].map(h => (
                     <th key={h} style={s.th}>{h}</th>
                   ))}
                 </tr>
@@ -752,7 +715,6 @@ function LevelLessonGroup({
                       const forksOpen = openForkFamilyIds.has(family.id)
                       if (isFork && hasStockLesson && !forksOpen) return null
 
-                      const stageKey = lesson.stage ?? 'published'
                       const lessonReports = reports.filter(report => report.lessonId === lesson.id)
                       const lessonFeedback = feedback.filter(item => item.lessonId === lesson.id)
                       const lessonOpen = openLessonIds.has(lesson.id)
@@ -786,11 +748,6 @@ function LevelLessonGroup({
                                   </button>
                                 )}
                               </div>
-                            </td>
-                            <td style={s.td}>
-                              <span style={{ ...s.stageBadge, background: STAGE_COLORS[stageKey] ?? '#6b7280' }}>
-                                {STAGE_LABELS[stageKey] ?? stageKey}
-                              </span>
                             </td>
                             <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
                             <td style={{ ...s.td, whiteSpace: 'nowrap' }}>

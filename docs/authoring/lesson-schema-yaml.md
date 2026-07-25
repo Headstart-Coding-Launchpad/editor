@@ -1,6 +1,6 @@
 # Lesson YAML Schema
 
-Basic reference for the shape of a lesson YAML file: the lesson envelope, fields common to every task, and the non-code task types (information, group, draft). For the underlying JSON shape every YAML file converts to, see `docs/authoring/lesson-schema.md`.
+Basic reference for the shape of a lesson YAML file: the lesson envelope, fields common to every task, and the non-code task types (information and group). For the underlying JSON shape every YAML file converts to, see `docs/authoring/lesson-schema.md`.
 
 This file does not cover code task fields or quiz task fields:
 
@@ -14,7 +14,7 @@ This file does not cover code task fields or quiz task fields:
 - **Check types:** use the lesson-type docs above (`python.md`, `html.md`, `scratch.md`, `filesystem.md`, `electronics.md`, or `quiz-tasks.md`).
 - **Full authoring walkthrough and CLI workflow:** `docs/authoring/AUTHORING_GUIDE.md`
 
-Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lessons publish-yaml <file>` to validate and publish a YAML lesson, or `node cli/cli.mjs lessons upsert <file>` to save one that still contains draft tasks.
+Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lessons publish-yaml <file>` to validate and publish a YAML lesson, or `node cli/cli.mjs lessons upsert <file>` to save one.
 
 ---
 
@@ -31,7 +31,6 @@ levelRef:                    # optional reusable level reference
   id: python-level-1
   scopeType: type            # type | module | course | collection
   scopeId: python
-stage: published              # optional — ideas | details | review | approved | published (default)
 assetsPath: scratch-assets    # optional — base URL path for asset resolution
 assets:                       # optional — files shown in the AssetBrowser
   - sprites/rocket.png
@@ -52,7 +51,6 @@ tasks: []                     # required — ordered task list (see below)
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. |
-| `stage` | No | string | Lesson lifecycle stage. Controls which draft-task fields are unlocked in the builder. See `docs/authoring/AUTHORING_GUIDE.md` for the full stage pipeline. |
 | `topicProposals` | No | array | Missing Topic Library entries proposed by the lesson. See `docs/authoring/AUTHORING_GUIDE.md`. |
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
@@ -76,8 +74,8 @@ tasks:
     estimatedMinutes: 5        # optional — approximate duration, totalled in the builder
     priority: core              # optional — core (default) | optional; teacher-facing only
     taskMode: both              # optional — both (default) | live | solo
-    # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
-    # or `type: draft` on the task; omit entirely for a code task.
+    # taskType is not set directly in YAML — use `type: information` or `type: quiz`;
+    # omit it entirely for a code task.
     check: {}                   # optional — completion check, see the lesson-type docs
     feedbackChecks: []          # optional — nudges or blocking wrong-pattern checks
 ```
@@ -105,7 +103,6 @@ A task is a code task by default. Set `type:` on the task to switch to a differe
 | _(omitted)_ | Code task — Python, HTML, Scratch, or Filesystem depending on the lesson `type` | See the per-type files linked above |
 | `information` | Explainer-only slide | See below |
 | `quiz` | Knowledge check | `docs/authoring/quiz-tasks.md` |
-| `draft` | Planning placeholder — blocks publishing, allowed with `lessons upsert` | `docs/authoring/AUTHORING_GUIDE.md` |
 | _(n/a — use `group:` instead)_ | Task group | See below |
 
 ---
@@ -145,29 +142,6 @@ tasks:
 ```
 
 Groups cannot be nested. Group IDs are auto-generated (e.g. `g-1234567890`). `carryCodeFrom` / `carryBlocksFrom` references from within a subtask use the subtask's own integer `id`.
-
----
-
-## Review Notes
-
-Any task can carry a `reviewNote` for in-builder collaboration. Not rendered in the student view.
-
-```yaml
-  - title: Print numbers
-    explainer: Print the numbers 0 to 4.
-    reviewNote:
-      decision: pending          # pending (grey) | accepted (green) | rejected (red)
-      suggestedChange: Split this into two tasks.
-      extraNote: See also task 5.
-```
-
----
-
-## Draft Tasks
-
-`type: draft` tasks are planning placeholders tied to the lesson `stage`. They are two-tiered (Tier 1 at `ideas`, Tier 2 unlocked at `details` and later) and remain `type: draft` until a separate implementation step converts them to a real task type.
-
-Full field reference, allowed `kind` values, and a worked example: `docs/authoring/AUTHORING_GUIDE.md` (**Draft Tasks and Lesson Stage**).
 
 ---
 

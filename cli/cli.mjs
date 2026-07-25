@@ -18,7 +18,7 @@ import {
   parseTopicJsonOrYaml,
   parseTopicLibraryJsonOrYaml,
 } from './structured-input.mjs'
-import { validateTopicStage } from '../src/shared/topicAudit.js'
+import { validateLessonTopics } from '../src/shared/topicAudit.js'
 
 const MIME_MAP = {
   '.png': 'image/png',
@@ -127,18 +127,14 @@ async function preflightYamlLesson(file) {
 
   const { listTopics } = await loadTopics()
   const topics = await listTopics()
-  const topicValidation = validateTopicStage(
-    lesson,
-    topics,
-    lesson.stage ?? 'published',
-  )
+  const topicValidation = validateLessonTopics(lesson, topics)
   const linkedTopicIds = topicValidation.audit.references.map(reference => reference.id)
   const missingTopicIds = topicValidation.audit.missing.map(reference => reference.id)
   add(
     topicValidation.valid,
-    'topic stage requirements pass',
+    'topic requirements pass',
     missingTopicIds.length
-      ? `${missingTopicIds.join(', ')} (${topicValidation.errors.join('; ') || 'warning only at this stage'})`
+      ? `${missingTopicIds.join(', ')} (${topicValidation.errors.join('; ')})`
       : `${linkedTopicIds.length} link id(s)`,
   )
 
@@ -340,12 +336,6 @@ await yargs(hideBin(process.argv))
         print({ success: false, ...validation })
         process.exit(1)
       }
-      const draftTasks = (lesson.tasks ?? []).flatMap(t => t.type === 'group' ? (t.subtasks ?? []) : [t]).filter(t => t.taskType === 'draft')
-      if (draftTasks.length > 0) {
-        print({ success: false, errors: [`${draftTasks.length} draft task(s) must be converted or removed before publishing: ${draftTasks.map(t => t.title || `task ${t.id}`).join(', ')}`], warnings: validation.warnings })
-        process.exit(1)
-      }
-
       let outputPath = null
       if (json || writeJson) {
         outputPath = resolve(json ?? inferJsonPath(file, lesson.id))
@@ -364,39 +354,12 @@ await yargs(hideBin(process.argv))
       if (!result.success) process.exit(1)
     }))
 
-    .command('set-stage <id> <stage>', 'Set the stage of a lesson (ideas|details|review|approved|published)', {}, cmd(async ({ id, stage }) => {
-      const { setLessonStage } = await loadLessons()
-      const result = await setLessonStage(id, stage)
-      print(result)
-    }))
-
     .command('topics <id>', 'Audit lesson topic references against the Firestore Topic Library', {}, cmd(async ({ id }) => {
       const { getLessonTopicAudit } = await loadLessons()
       print(await getLessonTopicAudit(id))
     }))
 
-    .command('review <id>', 'Show all tasks with their review notes', {
-      task: { type: 'number', describe: 'Task ID to update review note on' },
-      decision: { type: 'string', choices: ['pending', 'accepted', 'rejected'], describe: 'Set decision on a specific task' },
-      note: { type: 'string', describe: 'Set suggestedChange on a specific task' },
-      extra: { type: 'string', describe: 'Set extraNote on a specific task' },
-    }, cmd(async ({ id, task: taskId, decision, note, extra }) => {
-      const { getLessonReviewNotes, setTaskReviewNote } = await loadLessons()
-      if (taskId != null) {
-        const reviewNote = {}
-        if (decision != null) reviewNote.decision = decision
-        if (note != null) reviewNote.suggestedChange = note
-        if (extra != null) reviewNote.extraNote = extra
-        if (Object.keys(reviewNote).length === 0) {
-          throw new Error('Provide at least one of --decision, --note, or --extra to update a task review note')
-        }
-        print(await setTaskReviewNote(id, taskId, reviewNote))
-      } else {
-        print(await getLessonReviewNotes(id))
-      }
-    }))
-
-    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | set-stage | topics | review')
+    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics')
     .help()
   )
 

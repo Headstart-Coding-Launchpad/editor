@@ -17,7 +17,3 @@ An interactive question with no code editor. Students pick an answer, drag tiles
 ## Group
 
 A small, ordered bundle of tasks nested inside one entry — a way of keeping a handful of closely related tasks together as a single step in the lesson.
-
-## Draft Task
-
-A placeholder used only while a lesson is still being planned or reviewed. It always gets replaced with one of the real task types above before the lesson is published.

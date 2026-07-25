@@ -1,7 +1,31 @@
-// Returns a flat array of all tasks, expanding groups to their subtasks.
-export function flattenTasks(tasks) {
+export function isLegacyDraftTask(task) {
+  return task?.taskType === 'draft'
+}
+
+// Returns the task tree without legacy draft placeholders. These records are
+// retained in stored lessons for backwards compatibility, but are not part of
+// the active lesson flow.
+export function filterLegacyDraftTasks(tasks) {
   if (!tasks) return []
-  return tasks.flatMap(item =>
+  const hasLegacyDrafts = tasks.some(item =>
+    item.type === 'group'
+      ? (item.subtasks ?? []).some(isLegacyDraftTask)
+      : isLegacyDraftTask(item)
+  )
+  if (!hasLegacyDrafts) return tasks
+
+  return tasks.flatMap(item => {
+    if (item.type === 'group') {
+      const subtasks = (item.subtasks ?? []).filter(task => !isLegacyDraftTask(task))
+      return subtasks.length > 0 ? [{ ...item, subtasks }] : []
+    }
+    return isLegacyDraftTask(item) ? [] : [item]
+  })
+}
+
+// Returns a flat array of active tasks, expanding groups to their subtasks.
+export function flattenTasks(tasks) {
+  return filterLegacyDraftTasks(tasks).flatMap(item =>
     item.type === 'group' ? (item.subtasks ?? []) : [item]
   )
 }
@@ -86,8 +110,7 @@ export function findGroupForTask(tasks, taskId) {
 // Returns display items for the progress indicator.
 // Each item is { type, id, title, taskIds }.
 export function getProgressItems(tasks) {
-  if (!tasks) return []
-  return tasks.map(item =>
+  return filterLegacyDraftTasks(tasks).map(item =>
     item.type === 'group'
       ? { type: 'group', id: item.id, title: item.title, taskIds: (item.subtasks ?? []).map(t => t.id) }
       : { type: 'task', id: item.id, title: item.title, taskIds: [item.id] }
@@ -164,10 +187,11 @@ export function buildStageOptions(task, lessonType) {
 // mode: 'live' | 'solo' | null (null = no filtering, return all)
 // A task is included when taskMode is absent, 'both', or matches the current mode.
 export function filterTasksByMode(tasks, mode) {
-  if (!tasks || !mode) return tasks ?? []
+  const activeTasks = filterLegacyDraftTasks(tasks)
+  if (!mode) return activeTasks
   const allowed = t => !t.taskMode || t.taskMode === 'both' || t.taskMode === mode
   const result = []
-  for (const item of tasks) {
+  for (const item of activeTasks) {
     if (item.type === 'group') {
       const subtasks = (item.subtasks ?? []).filter(allowed)
       if (subtasks.length > 0) result.push({ ...item, subtasks })

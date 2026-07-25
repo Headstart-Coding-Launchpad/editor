@@ -152,7 +152,7 @@ Complete JSON field reference for lessons — every field on the lesson object, 
 **Load when:** you need the exact field name or shape for a lesson JSON property, or when validating a generated lesson against the schema.
 
 ### [authoring/lesson-schema-yaml.md](authoring/lesson-schema-yaml.md)
-Basic YAML reference for the lesson envelope, common task fields, information tasks, task groups, review notes, and draft tasks — the non-code, non-quiz parts of a lesson file. Points to `quiz-tasks.md` and the per-type code task files for the rest.
+Basic YAML reference for the lesson envelope, common task fields, information tasks, and task groups — the non-code, non-quiz parts of a lesson file. Points to `quiz-tasks.md` and the per-type code task files for the rest.
 
 **Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
 

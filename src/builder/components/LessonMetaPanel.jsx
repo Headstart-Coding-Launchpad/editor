@@ -15,11 +15,7 @@ import SharedAssetsSelector from './lesson-meta/SharedAssetsSelector'
 import StorageAssetUploader from './lesson-meta/StorageAssetUploader'
 import { s } from './lesson-meta/styles'
 
-const STAGE_LABELS = { ideas: 'Ideas', details: 'Details', review: 'Review', approved: 'Approved', published: 'Published' }
-const STAGE_COLORS = { ideas: '#6b7280', details: '#2563eb', review: '#d97706', approved: '#16a34a', published: '#7c3aed' }
-const STAGE_ORDER = ['ideas', 'details', 'review', 'approved', 'published']
-
-export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetStage, topicState }) {
+export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicState }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const {
@@ -148,30 +144,6 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, onSetSta
             onChange={e => set('description', e.target.value)}
             placeholder="Short summary shown on entry screen."
           />
-        </Field>
-
-        <Field label="Stage">
-          <div style={s.stageGrid}>
-            {STAGE_ORDER.map(value => {
-              const active = (lesson.stage ?? 'published') === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  style={{
-                    ...s.stageBtn,
-                    background: active ? STAGE_COLORS[value] : '#f9fafb',
-                    color: active ? '#fff' : '#4b5563',
-                    borderColor: active ? STAGE_COLORS[value] : '#d1d5db',
-                    fontWeight: active ? 700 : 500,
-                  }}
-                  onClick={() => onSetStage?.(value)}
-                >
-                  {STAGE_LABELS[value]}
-                </button>
-              )
-            })}
-          </div>
         </Field>
 
         <LessonTopicSummary

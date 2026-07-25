@@ -1,88 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
-const DECISION_OPTIONS = [
-  { value: 'pending', label: 'Pending', color: '#6b7280', bg: '#f9fafb' },
-  { value: 'accepted', label: 'Accepted', color: '#16a34a', bg: '#f0fdf4' },
-  { value: 'rejected', label: 'Rejected', color: '#ef4444', bg: '#fef2f2' },
-]
-
-export default function TaskFeedbackPanel({ task, onUpdateTask, feedback = [] }) {
-  const reviewNote = task?.reviewNote ?? {}
-  const [decision, setDecision] = useState(reviewNote.decision ?? 'pending')
-  const [suggestedChange, setSuggestedChange] = useState(reviewNote.suggestedChange ?? '')
-  const [extraNote, setExtraNote] = useState(reviewNote.extraNote ?? '')
+export default function TaskFeedbackPanel({ feedback = [] }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
-
-  useEffect(() => {
-    const rn = task?.reviewNote ?? {}
-    setDecision(rn.decision ?? 'pending')
-    setSuggestedChange(rn.suggestedChange ?? '')
-    setExtraNote(rn.extraNote ?? '')
-  }, [task?.id])
-
-  function handleSave() {
-    onUpdateTask?.({ ...task, reviewNote: { decision, suggestedChange, extraNote } })
-  }
-
-  const reviewNoteDirty =
-    decision !== (reviewNote.decision ?? 'pending') ||
-    suggestedChange !== (reviewNote.suggestedChange ?? '') ||
-    extraNote !== (reviewNote.extraNote ?? '')
-
-  if (!task && feedback.length === 0) return null
+  if (feedback.length === 0) return null
 
   return (
     <section style={s.section}>
-      {task && (
-        <div style={{ ...s.reviewBlock, ...(feedback.length > 0 ? { borderBottom: '1px solid #e5e7eb' } : {}) }}>
-          <div style={s.reviewHeader}>
-            <span style={s.reviewTitle}>Review note</span>
-            {reviewNoteDirty && (
-              <button type="button" style={s.saveBtn} onClick={handleSave}>
-                Save
-              </button>
-            )}
-          </div>
-
-          <div style={s.decisionRow}>
-            {DECISION_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                style={{
-                  ...s.decisionBtn,
-                  background: decision === opt.value ? opt.bg : '#f9fafb',
-                  color: decision === opt.value ? opt.color : '#9ca3af',
-                  borderColor: decision === opt.value ? opt.color : '#e5e7eb',
-                  fontWeight: decision === opt.value ? 700 : 400,
-                }}
-                onClick={() => setDecision(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            style={{ ...s.textarea, marginTop: 8 }}
-            rows={2}
-            value={suggestedChange}
-            onChange={e => setSuggestedChange(e.target.value)}
-            placeholder="Suggested change (optional)"
-          />
-
-          <textarea
-            style={{ ...s.textarea, marginTop: 6 }}
-            rows={2}
-            value={extraNote}
-            onChange={e => setExtraNote(e.target.value)}
-            placeholder="Extra note (optional)"
-          />
-        </div>
-      )}
-
-      {feedback.length > 0 && (
-        <>
+      <>
           <button
             type="button"
             style={s.feedbackHeader}
@@ -105,8 +29,7 @@ export default function TaskFeedbackPanel({ task, onUpdateTask, feedback = [] })
               ))}
             </div>
           )}
-        </>
-      )}
+      </>
     </section>
   )
 }
@@ -121,60 +44,6 @@ const s = {
     marginLeft: 'auto',
     marginRight: 'auto',
     width: '100%',
-  },
-  reviewBlock: {
-    padding: '12px 14px',
-    background: '#fff',
-  },
-  reviewHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  reviewTitle: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.82rem',
-    color: '#374151',
-  },
-  saveBtn: {
-    padding: '3px 10px',
-    background: 'var(--colour-primary)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 5,
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-  },
-  decisionRow: {
-    display: 'flex',
-    gap: 6,
-  },
-  decisionBtn: {
-    flex: 1,
-    padding: '5px 8px',
-    border: '1px solid',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.78rem',
-    transition: 'all 0.1s',
-  },
-  textarea: {
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '6px 8px',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.83rem',
-    border: '1px solid #e5e7eb',
-    borderRadius: 6,
-    resize: 'vertical',
-    color: '#374151',
-    outline: 'none',
-    lineHeight: 1.5,
   },
   feedbackHeader: {
     display: 'flex',

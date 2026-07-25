@@ -78,7 +78,8 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   }
 
   function nextId() {
-    return flattenTasks(lesson.tasks).reduce((m, t) => Math.max(m, t.id), 0) + 1
+    const allTasks = (lesson.tasks ?? []).flatMap(item => item.type === 'group' ? (item.subtasks ?? []) : [item])
+    return allTasks.reduce((m, t) => Math.max(m, t.id), 0) + 1
   }
 
   function topLevelInsertPosition() {
@@ -112,18 +113,6 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
     const newTask = { id: newId, title: '', explainer: '', ...defaultTypeFields(prevTask) }
-    handleLessonUpdate(prev => {
-      const next = [...prev.tasks]
-      next.splice(index, 0, newTask)
-      return { ...prev, tasks: next }
-    })
-    selectTask(newId)
-  }
-
-  function handleAddDraftTask() {
-    const { index } = topLevelInsertPosition()
-    const newId = nextId()
-    const newTask = { id: newId, title: '', taskType: 'draft', kind: 'code task', purpose: '' }
     handleLessonUpdate(prev => {
       const next = [...prev.tasks]
       next.splice(index, 0, newTask)
@@ -267,7 +256,6 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     selectGroup,
     handleLessonUpdate,
     handleAddTask,
-    handleAddDraftTask,
     handleAddGroup,
     handleAddSubtask,
     handleDuplicate,

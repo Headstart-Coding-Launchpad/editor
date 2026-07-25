@@ -71,6 +71,8 @@ export function validateLessonForMcp(lesson) {
   flat.forEach((task, i) => {
     const n = i + 1
 
+    if (task.taskType === 'draft') return
+
     if (!task.title) errors.push(`Task ${n} is missing a title`)
 
     if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
@@ -79,14 +81,10 @@ export function validateLessonForMcp(lesson) {
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
     }
-    if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.taskType !== 'draft') {
+    if (task.taskType !== 'information' && task.taskType !== 'quiz') {
       validateStageMetadata(task, n, errors)
     }
 
-    if (task.taskType === 'draft') {
-      warnings.push(`Task ${n} "${task.title || 'Untitled'}" is a draft — convert it to a real task type before publishing`)
-      return
-    }
 
     if (task.taskType === 'information' && task.informationType !== 'introduction' && !task.explainer?.trim()) {
       errors.push(`Task ${n} is an information task but has no explainer`)

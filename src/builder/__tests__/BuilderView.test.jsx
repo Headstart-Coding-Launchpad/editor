@@ -42,7 +42,6 @@ vi.mock('../hooks/useBuilderState', () => ({
     selectGroup: vi.fn(),
     handleLessonUpdate: vi.fn(),
     handleAddTask: vi.fn(),
-    handleAddDraftTask: vi.fn(),
     handleAddGroup: vi.fn(),
     handleAddSubtask: vi.fn(),
     handleDuplicate: vi.fn(),
@@ -51,7 +50,7 @@ vi.mock('../hooks/useBuilderState', () => ({
     handleReorder: vi.fn(),
     handleReorderSubtask: vi.fn(),
     errors: ['Lesson title is required'],
-    warnings: ['Task 1 is a draft'],
+    warnings: [],
     selectedTask: null,
     selectedGroup: null,
     lessonForEditor: lesson,
@@ -79,10 +78,10 @@ describe('BuilderView Firestore save', () => {
     vi.restoreAllMocks()
   })
 
-  it('saves lessons with validation errors and warnings without prompting or leaving the builder', async () => {
+  it('silently retains legacy draft records when saving a lesson', async () => {
     const lesson = {
       id: 'incomplete-lesson',
-      title: '',
+      title: 'Legacy lesson',
       type: 'python',
       tasks: [{ id: 'draft-1', taskType: 'draft', title: '' }],
     }
@@ -105,7 +104,7 @@ describe('BuilderView Firestore save', () => {
       mocks.lessonDoc,
       expect.objectContaining({
         id: 'incomplete-lesson',
-        title: '',
+        title: 'Legacy lesson',
         tasks: [expect.objectContaining({ taskType: 'draft' })],
       })
     )
