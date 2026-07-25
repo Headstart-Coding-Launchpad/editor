@@ -145,4 +145,25 @@ describe('CLI lesson validation', () => {
       'fork.taskLinks must be an array when provided',
     ]))
   })
+
+  it('accepts incomplete real tasks while draft is enabled, but applies full validation after it is cleared', () => {
+    const draft = {
+      id: 'draft-python', type: 'python', title: 'Draft Python', description: 'In progress', draft: true,
+      tasks: [{ id: 7, title: 'Variables', taskType: 'information', intent: 'Explain variables and ask learners to make one.' }],
+    }
+    expect(validateLessonForMcp(draft)).toMatchObject({ valid: true, errors: [] })
+    expect(validateLessonForMcp({ ...draft, draft: false }).errors).toContain('Task 1 is an information task but has no explainer')
+  })
+
+  it('rejects malformed draft task structures while retaining code-task representation', () => {
+    const result = validateLessonForMcp({
+      id: 'bad-draft', type: 'python', title: 'Bad draft', description: 'In progress', draft: true,
+      tasks: [{ id: 1, title: 'Broken', intent: 'Brief', taskType: 'draft', options: {} }],
+    })
+    expect(result.valid).toBe(false)
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'Task 1 taskType must be information or quiz when provided',
+      'Task 1 options must be an array of objects when provided',
+    ]))
+  })
 })

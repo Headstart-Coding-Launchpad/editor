@@ -15,10 +15,14 @@ const blankLesson = type => ({
   type,
   title: '',
   description: '',
+  draft: false,
+  version: 0,
   tasks: [],
   ...(type === 'filesystem' ? { sandboxStarterFs: { '/': { type: 'dir' } } } : {}),
   ...(type === 'electronics' ? { sandboxStarterCircuit: cloneCircuit(DEFAULT_CIRCUIT) } : {}),
 })
+
+const normalizeLoadedLesson = lesson => ({ ...lesson, draft: lesson.draft === true, version: lesson.version ?? 0 })
 
 export default function BuilderApp() {
   const [searchParams] = useSearchParams()
@@ -35,7 +39,7 @@ export default function BuilderApp() {
       getDoc(doc(firestore, 'lessons', loadId))
         .then(snap => {
           if (snap.exists()) {
-            setLesson(decodeLessonBlocksFromFirestore(snap.data()))
+            setLesson(normalizeLoadedLesson(decodeLessonBlocksFromFirestore(snap.data())))
           } else {
             alert(`Lesson "${loadId}" not found in Firestore.`)
           }
@@ -91,7 +95,7 @@ export default function BuilderApp() {
               Do you want to restore it?
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn-primary" onClick={() => { setLesson(saved); setDirty(true); setRestorePrompt(false); setReady(true) }}>
+              <button className="btn-primary" onClick={() => { setLesson(normalizeLoadedLesson(saved)); setDirty(true); setRestorePrompt(false); setReady(true) }}>
                 Restore
               </button>
               <button
@@ -163,7 +167,7 @@ function LessonTypeChooser({ onChoose, onUpload }) {
         try {
           const parsed = JSON.parse(ev.target.result)
           if (!parsed.id || !parsed.tasks || !parsed.type) throw new Error('Unrecognised format')
-          onUpload(parsed)
+          onUpload(normalizeLoadedLesson(parsed))
         } catch (err) {
           alert('Could not load file: ' + err.message)
         }
@@ -247,7 +251,7 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
     try {
       const snap = await getDoc(doc(firestore, 'lessons', lessonId))
       if (!snap.exists()) { alert('Lesson not found.'); return }
-      onLoad(decodeLessonBlocksFromFirestore(snap.data()))
+      onLoad(normalizeLoadedLesson(decodeLessonBlocksFromFirestore(snap.data())))
     } catch (err) {
       alert('Could not load lesson: ' + err.message)
     } finally {

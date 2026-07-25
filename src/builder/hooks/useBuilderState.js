@@ -112,7 +112,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   function handleAddTask() {
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
-    const newTask = { id: newId, title: '', explainer: '', ...defaultTypeFields(prevTask) }
+    const newTask = { id: newId, title: '', intent: '', explainer: '', ...defaultTypeFields(prevTask) }
     handleLessonUpdate(prev => {
       const next = [...prev.tasks]
       next.splice(index, 0, newTask)
@@ -125,7 +125,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
     const groupId = `g-${Date.now()}`
-    const firstSubtask = { id: newId, title: 'New Group - 1', explainer: '', ...defaultTypeFields(prevTask) }
+    const firstSubtask = { id: newId, title: 'New Group - 1', intent: '', explainer: '', ...defaultTypeFields(prevTask) }
     const newGroup = { id: groupId, type: 'group', title: 'New Group', subtasks: [firstSubtask] }
     handleLessonUpdate(prev => {
       const next = [...prev.tasks]
@@ -148,6 +148,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const newSubtask = {
       id: newId,
       title: `${group.title} - ${subtasks.length + 1}`,
+      intent: '',
       explainer: '',
       ...defaultTypeFields(prevSubtask),
     }

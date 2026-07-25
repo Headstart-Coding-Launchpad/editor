@@ -113,6 +113,14 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           />
         </Field>
 
+        <Field label="Draft workflow" hint="Draft lessons may have incomplete real tasks and cannot be published until this is cleared.">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontWeight: 600, color: lesson.draft ? '#92400e' : 'var(--colour-text)' }}>
+            <input type="checkbox" checked={lesson.draft === true} onChange={e => set('draft', e.target.checked)} />
+            Draft {lesson.draft ? '— incomplete authoring allowed' : '— ready for full validation'}
+          </label>
+          <span style={s.summaryText}>Current version: {lesson.version ?? 0}</span>
+        </Field>
+
         {lesson.fork?.sourceLessonId && (
           <Field label="Class fork">
             <div style={s.summaryText}>

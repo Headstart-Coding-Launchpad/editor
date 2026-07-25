@@ -139,6 +139,9 @@ function makeGroupId(rawItem, lessonId, groupIdCounts) {
 function convertTask(raw, id, lessonType) {
   const { type, checks, answer, group: _g, tasks: _t, ...rest } = raw
   const task = { id, ...rest }
+  for (const field of ['intentLastChangedAt', 'taskLastChangedAt']) {
+    if (task[field] instanceof Date) task[field] = task[field].toISOString()
+  }
 
   if (type === 'information') {
     task.taskType = 'information'

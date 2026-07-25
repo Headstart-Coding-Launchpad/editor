@@ -10,7 +10,7 @@ YAML-first reference for writing HSC lessons and topics. Use the CLI to convert 
 - Filesystem: `docs/authoring/filesystem.md`
 - Electronics: `docs/authoring/electronics.md`
 
-**Other references:** `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/markdown-renderer.md`
+**Other references:** `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/lesson-assets-cli.md` · `docs/authoring/markdown-renderer.md`
 
 ---
 
@@ -53,6 +53,8 @@ id: python-for-loops         # required — lowercase slug, used in URLs
 type: python                 # required — python | html | scratch | filesystem | electronics
 title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
+draft: false                 # optional; true enables incomplete real tasks while authoring
+version: 3                   # LaunchPad-managed save version; do not set it in source YAML
 level: 1                     # optional — difficulty badge in the TopBar
 
 # Assets
@@ -78,12 +80,14 @@ These apply to every task type.
 ```yaml
 tasks:
   - id: 1                    # optional — auto-assigned if omitted
-    title: Task title         # required
-    explainer: |              # required — Markdown shown to students
+    title: Task title         # required (also in Draft)
+    explainer: |              # required in a final lesson — Markdown shown to students
       Instructions here.
     estimatedMinutes: 5       # optional — teacher countdown
     priority: core            # optional — core (default) | optional; teacher-facing only
     taskMode: both            # optional — both (default) | live | solo
+    intent: |                 # authoring-only Markdown; never shown to students
+      Describe the complete authoring brief for this task.
     # taskType omitted = code task; use information or quiz for non-code tasks
 ```
 
@@ -248,96 +252,43 @@ Groups cannot be nested. Group IDs are auto-generated.
 
 ---
 
-## Legacy Draft Records
+## Draft lessons
 
-Older lesson files may contain `stage` and `type: draft` data. The application ignores these legacy fields; do not add them to new lessons.
+`draft` is a lesson-level boolean for CLI-first authoring. Draft tasks are always real tasks: omit task `type` for a code task, use `type: information` for information, or `type: quiz` for quizzes. There are no task-level draft records.
 
-Draft tasks serve two distinct levels of specification:
-
-- At `ideas`, they are provisional structural plans using Tier 1 fields.
-- At `details`, they remain `type: draft` but become complete execution-level specifications using Tier 2 fields.
-
-Do not convert detailed drafts into executable information, quiz, or code tasks during the Details stage. That conversion is a separate implementation step after review and approval.
-
-### Removed workflow
-
-The Ideas, Details, Review, Approved, and Published workflow is no longer available in the builder or CLI.
-
-### Legacy draft YAML
-
-At the Ideas stage, every draft task uses these Tier 1 fields:
-
-- `title`: working name for the learning moment
-- `kind`: one of the exact values below — this field is an enum, not free text
-- `purpose`: why the task exists
-- `expectedOutcome`: what the learner will achieve or produce
-- `knownPitfalls`: likely mistakes or misconceptions
-- `topicLinks`: likely Topic Library IDs used by this task; record these during Ideas
-
-Allowed `kind` values:
-
-| Value | Use for |
-|---|---|
-| `information slide` | Teaching or explanatory content |
-| `code task` | Runnable, editable, debugging, prediction, or build activities using code |
-| `quiz` | Any knowledge-check format, including prediction and debugging questions |
-| `confidence check` | Low-pressure learner readiness ratings |
-| `project step` | One stage of a larger build |
-| `group heading` | A planned navigation or section marker |
-| `recap` | Opening or final recap moments |
-| `extension` | Optional stretch work |
-
-Use `purpose` to describe the specific variation, such as a prediction quiz or code-edit task. Do not invent a more specific `kind` value.
-
-Add `knownPitfalls` to every learner activity where a realistic mistake or misconception can be anticipated, especially code tasks, quizzes, confidence checks, project steps, and extensions. It may be omitted from structural tasks such as introductions, objectives, group headings, and simple recap slides when there is no meaningful pitfall.
+Every Draft task needs a `title`, its normal real task type, and a non-empty Markdown `intent`. `intent` is author-only: LaunchPad stores it but never renders it to students. Draft permits omitted learner-facing and task-specific fields so the task can be completed in Builder; it still rejects malformed field shapes and invalid type values.
 
 ```yaml
 id: python-loops-draft
 type: python
 title: Python Loops (Draft)
-stage: ideas
+description: A lesson in progress.
+draft: true
 tasks:
-  - type: draft
-    title: Introduce for loops
-    kind: information slide
-    purpose: Set context before the first code task.
-    expectedOutcome: Students can describe what a for loop repeats.
-    knownPitfalls: Students may assume a loop always runs forever.
-    topicLinks:
-      - for-loop
-      - range-function
-
-  - type: draft
-    title: Write a basic for loop
-    kind: code task
-    purpose: Students write their first loop.
-    expectedOutcome: Students produce five lines of numbered output.
-    knownPitfalls: Students may forget the colon or indentation.
-    # Tier 2 fields (unlocked at 'details' stage and later).
-    # The task remains type: draft:
-    studentFacingContent: |
-      Use `range()` to print the numbers 0–4.
-    checksAndSuccessSignals: "output_line_count: 5"
-    hintsAndSupport: "Remind students that range(5) gives 0, 1, 2, 3, 4."
+  - title: First counted loop
+    intent: |
+      Teach `range()` and have learners print the numbers 0–4.
 ```
 
-Legacy `type: draft` tasks are silently ignored by the application. Convert them to a supported task type before relying on their content.
+`lessons validate` validates Draft structure. `lessons upsert` creates or replaces Draft lessons, and `lessons get <id> --format yaml` retrieves the current authoritative YAML. Builder permits incomplete tasks while `draft: true`, preserves recognised task fields, task IDs, task order, and intent when it saves, and runs full final validation when Draft is cleared. It refuses to clear Draft if final validation fails. `publish-yaml` refuses lessons that remain drafts.
 
-At Details, complete the Tier 2 fields rather than replacing the draft task:
+Do not use lesson stages, `taskType: draft` or `type: draft`, intended-type fields, or review-note metadata.
 
-- `studentFacingContent`: final learner-facing copy
-- `studentAction`: exact learner action where applicable
-- `starterState`: exact starter code/files/blocks/carry state
-- `expectedOutcome`: final output, answer, structure, or artefact
-- `checksAndSuccessSignals`: proposed checks with exact types and values
-- `hintsAndSupport`: hints, feedback, incorrect checks, and code stages
-- `yamlHandoffNotes`: intended real task type and all implementation configuration
+### Draft, final, and metadata command behaviour
 
-Real task fields are written only during the later implementation handoff.
+| Command | Draft lesson (`draft: true`) | Final lesson (`draft: false` or omitted) |
+|---|---|---|
+| `lessons validate <file>` | Validates the lesson envelope, real task types, titles, non-empty intents, and field shapes. | Runs all ordinary lesson validation requirements. |
+| `lessons upsert <file>` | Creates or replaces a validated Draft lesson. | Creates or replaces a fully validated lesson. |
+| `lessons preflight <file>` | Validates Draft structure and checks Topic Library references against LaunchPad. | Validates the lesson and checks Topic Library references against LaunchPad. |
+| `lessons publish-yaml <file>` | Refuses to publish. Clear Draft first. | Validates, checks Topic Library references, and publishes. |
+| `lessons get <id> --format yaml` | Returns the current authoritative Draft YAML. | Returns the current authoritative final YAML. |
+
+`version`, `intentLastChangedAt`, and `taskLastChangedAt` are LaunchPad-managed. Callers must not set them. The CLI and Builder use last-writer-wins writes: the latest accepted save replaces the previous lesson state. A material save increments `version`; a no-op save leaves `version` and all timestamps unchanged. `intentLastChangedAt` changes only when `intent` changes, while `taskLastChangedAt` changes only when learner-facing task content or configuration changes.
 
 ### Topic planning
 
-Use task-level `topicLinks` as plain IDs from the Ideas stage onward. If an ID does not exist in the current Firestore Topic Library, describe it once at lesson level:
+Use task-level `topicLinks` as plain IDs while authoring. If an ID does not exist in the current Firestore Topic Library, describe it once at lesson level:
 
 ```yaml
 topicProposals:
@@ -356,7 +307,7 @@ node cli/cli.mjs lessons topics python-loops-draft
 node cli/cli.mjs lessons topics python-loops-draft --format yaml
 ```
 
-At Details, embed topic links in the student-facing prose where they should appear to learners. Recreation, from-memory, and independent tasks should normally include a learner-facing topic link in the prompt or hint; `topicLinks` metadata alone does not provide learner support.
+When preparing the final lesson, embed topic links in the student-facing prose where they should appear to learners. Recreation, from-memory, and independent tasks should normally include a learner-facing topic link in the prompt or hint; `topicLinks` metadata alone does not provide learner support.
 
 ## Topic Library (YAML)
 

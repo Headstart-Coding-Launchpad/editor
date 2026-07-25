@@ -200,6 +200,24 @@ describe('validateLesson', () => {
   })
 })
 
+describe('draft lesson metadata', () => {
+  it('allows incomplete real tasks in drafts and preserves task ids and intent during export', () => {
+    const draft = lesson('python', [{ id: 31, title: 'Plan a loop', intent: 'Explain loops in **Markdown**.' }])
+    draft.draft = true
+    expect(validateLesson(draft).errors).toEqual([])
+
+    const exported = normalizeTasksForExport(draft.tasks, { preserveIds: true })
+    expect(exported).toMatchObject([{ id: 31, intent: 'Explain loops in **Markdown**.' }])
+  })
+
+  it('requires normal task fields when draft is cleared', () => {
+    const draft = lesson('python', [{ id: 31, title: 'Read', taskType: 'information', intent: 'Brief' }])
+    draft.draft = true
+    expect(validateLesson(draft).errors).toEqual([])
+    expect(validateLesson({ ...draft, draft: false }).errors).toContain('Task 1 is an information task but has no explainer')
+  })
+})
+
 describe('complete solution validation', () => {
   function pythonTask(overrides) {
     return { id: 1, title: 'Task', starterCode: 'print("hi")', _checkTested: true, ...overrides }

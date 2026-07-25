@@ -342,8 +342,8 @@ await yargs(hideBin(process.argv))
         await writeText(outputPath, JSON.stringify(lesson, null, 2))
       }
 
-      const { upsertLesson } = await loadLessons()
-      const result = await upsertLesson(lesson)
+      const { publishYamlLesson } = await loadLessons()
+      const result = await publishYamlLesson(yamlText, includeLesson)
       if (includeLesson && result.success) result.lesson = lesson
       if (outputPath) result.outputPath = printRelativePath(outputPath)
       print(result, {

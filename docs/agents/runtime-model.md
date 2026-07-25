@@ -236,7 +236,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
         {
           "taskId": 1,
           "title": "Task One",
-          "taskType": "code | quiz | draft",
+          "taskType": "code | quiz",
           "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
           "completed": true,
           "attempts": 3,
@@ -263,7 +263,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "taskId": 1,
       "title": "Task One",
       "priority": "core | optional",
-      "taskType": "code | quiz | draft",
+      "taskType": "code | quiz",
       "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
       "totalStudents": 12,
       "completedCount": 9,
@@ -351,7 +351,7 @@ Class forks keep lineage on the lesson document:
 }
 ```
 
-Creating a fork again overwrites the fork lesson document, resets the title from the source lesson and class name, sets `stage` to `published`, rebuilds exact 1:1 task lineage, and clears the fork lesson's `sessionReports` and `feedback` subcollections. It does not copy stock lesson reports, feedback, or live session data.
+Creating a fork again overwrites the fork lesson document, resets the title from the source lesson and class name, rebuilds exact 1:1 task lineage, and clears the fork lesson's `sessionReports` and `feedback` subcollections. It does not copy stock lesson reports, feedback, or live session data.
 
 ## localStorage Keys
 

@@ -6,17 +6,17 @@ export function isLegacyDraftTask(task) {
 // retained in stored lessons for backwards compatibility, but are not part of
 // the active lesson flow.
 export function filterLegacyDraftTasks(tasks) {
-  if (!tasks) return []
+  if (!Array.isArray(tasks)) return []
   const hasLegacyDrafts = tasks.some(item =>
-    item.type === 'group'
-      ? (item.subtasks ?? []).some(isLegacyDraftTask)
+    item?.type === 'group'
+      ? (Array.isArray(item.subtasks) ? item.subtasks : []).some(isLegacyDraftTask)
       : isLegacyDraftTask(item)
   )
   if (!hasLegacyDrafts) return tasks
 
   return tasks.flatMap(item => {
-    if (item.type === 'group') {
-      const subtasks = (item.subtasks ?? []).filter(task => !isLegacyDraftTask(task))
+    if (item?.type === 'group') {
+      const subtasks = (Array.isArray(item.subtasks) ? item.subtasks : []).filter(task => !isLegacyDraftTask(task))
       return subtasks.length > 0 ? [{ ...item, subtasks }] : []
     }
     return isLegacyDraftTask(item) ? [] : [item]
@@ -26,7 +26,7 @@ export function filterLegacyDraftTasks(tasks) {
 // Returns a flat array of active tasks, expanding groups to their subtasks.
 export function flattenTasks(tasks) {
   return filterLegacyDraftTasks(tasks).flatMap(item =>
-    item.type === 'group' ? (item.subtasks ?? []) : [item]
+    item?.type === 'group' ? (Array.isArray(item.subtasks) ? item.subtasks : []) : [item]
   )
 }
 

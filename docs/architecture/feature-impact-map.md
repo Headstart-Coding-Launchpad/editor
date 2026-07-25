@@ -79,7 +79,7 @@ Usually changes with:
 - `docs/authoring/lesson-schema-yaml.md`
 - `docs/authoring/AUTHORING_GUIDE.md`
 - relevant `docs/authoring/*.md`
-- `docs/authoring/skills/*.md`
+- relevant `.claude/skills/` workflow
 - `docs/FEATURES.md`
 - builder and CLI validation tests
 
@@ -169,7 +169,7 @@ Usually changes with:
 - `cli/levels.mjs`
 - `cli/feedback.mjs`
 - `docs/agents/project-rules.md`
-- `docs/authoring/skills/*.md`
+- relevant `.claude/skills/` workflow
 - `docs/FEATURES.md`
 - admin component tests
 
@@ -181,7 +181,7 @@ Usually changes with:
 
 - `cli/`
 - `docs/agents/project-rules.md`
-- `docs/authoring/skills/*.md`
+- relevant `.claude/skills/` workflow
 - `docs/authoring/AUTHORING_GUIDE.md`
 - `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`
 - `docs/CODEBASE_MAP.md`
@@ -203,7 +203,7 @@ Usually changes with:
 - `cli/assets.mjs`
 - `storage.rules`
 - `docs/authoring/AUTHORING_GUIDE.md`
-- `docs/authoring/skills/hsc-assets.md`
+- `docs/authoring/lesson-assets-cli.md`
 - `docs/FEATURES.md`
 
 ## Auth, Roles, And Accounts
@@ -233,7 +233,7 @@ Usually changes with:
 - `src/admin/LessonPanel.jsx`
 - `src/admin/FeedbackPanel.jsx`
 - `cli/feedback.mjs`
-- `docs/authoring/skills/hsc-feedback.md`
+- `docs/agents/project-rules.md`
 - `docs/FEATURES.md`
 - report and feedback tests
 

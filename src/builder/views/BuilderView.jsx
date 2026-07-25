@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'
 import LessonMetaPanel from '../components/LessonMetaPanel'
 import TaskList from '../components/TaskList'
 import TaskEditor from '../components/TaskEditor'
@@ -14,7 +14,8 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildPrintHtml } from '../printLesson'
 import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
-import { encodeLessonBlocksForFirestore } from '../../shared/lessonBlocksCodec'
+import { decodeLessonBlocksFromFirestore, encodeLessonBlocksForFirestore } from '../../shared/lessonBlocksCodec'
+import { applyLessonAuditMetadata } from '../../shared/lessonAudit'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 import { useTopicLibrary } from '../../shared/topicLibrary'
@@ -76,7 +77,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       const ok = confirm('Warnings:\n\n' + warnings.join('\n') + '\n\nDownload anyway?')
       if (!ok) return
     }
-    const exported = { ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }
+    const exported = { ...lesson, tasks: normalizeTasksForExport(lesson.tasks, { preserveIds: true }) }
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
@@ -89,6 +90,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
 
   async function handleSave() {
     if (!lesson.id) { alert('Cannot save — lesson ID is required.'); return }
+    if (errors.length) {
+      alert('Cannot save: please fix these errors.\n\n' + errors.join('\n'))
+      return
+    }
     if (hasTopicReferences && topicsLoading) {
       alert('Please wait for the current Topic Library check to finish before saving.')
       return
@@ -104,8 +109,13 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     }
     setSaveStatus('saving')
     try {
-      const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks) }))
-      await setDoc(doc(firestore, 'lessons', lesson.id), encodeLessonBlocksForFirestore(exported))
+      const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks, { preserveIds: true }) }))
+      const lessonRef = doc(firestore, 'lessons', lesson.id)
+      const existingSnap = await getDoc(lessonRef)
+      const existing = existingSnap.exists() ? decodeLessonBlocksFromFirestore(existingSnap.data()) : null
+      const audited = applyLessonAuditMetadata(existing, exported)
+      if (audited.material) await setDoc(lessonRef, encodeLessonBlocksForFirestore(audited.lesson))
+      if (audited.material) onUpdate(audited.lesson)
       setSaveStatus('done')
       onMarkSaved()
     } catch (err) {
@@ -170,6 +180,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         onSave={handleSave}
         onBack={() => navigate('/admin')}
       />
+
+      {lesson.draft === true && (
+        <div style={s.draftBanner}>DRAFT LESSON — incomplete tasks are allowed. Clear Draft only after full validation passes.</div>
+      )}
 
       <div style={{ ...s.body, gridTemplateColumns: metaOpen ? '320px 280px minmax(0, 1fr)' : '40px 280px minmax(0, 1fr)' }}>
         <aside style={metaOpen ? s.metaPane : s.metaPaneCollapsed}>
@@ -250,6 +264,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
 }
 
 const s = {
+  draftBanner: {
+    padding: '7px 14px', background: '#fffbeb', borderBottom: '1px solid #fde68a', color: '#92400e',
+    fontFamily: 'var(--font-body)', fontSize: '0.84rem', fontWeight: 700, letterSpacing: '.02em',
+  },
   page: { display: 'flex', flexDirection: 'column', height: '100%' },
   body: {
     flex: 1,

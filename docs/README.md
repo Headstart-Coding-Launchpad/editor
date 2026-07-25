@@ -4,8 +4,6 @@ What every file in this directory covers and when to reach for it. Use this to f
 
 **Update rule:** When a doc file is added, removed, renamed, or substantially changes scope, update this index in the same PR.
 
----
-
 ## Root docs (`docs/`)
 
 ### [CODEBASE_MAP.md](CODEBASE_MAP.md)
@@ -137,7 +135,7 @@ The main YAML-first lesson authoring guide: how to structure a lesson YAML file,
 **Load when:** writing a new lesson or making structural edits to an existing one.
 
 ### [authoring/task-types.md](authoring/task-types.md)
-Very high-level, non-technical overview of the kinds of tasks a lesson can contain (code, information, quiz, group, draft) — no field names or YAML.
+Very high-level, non-technical overview of the kinds of tasks a lesson can contain (code, information, quiz, group) — no field names or YAML.
 
 **Load when:** you just need a plain-language explanation of what a task type is, e.g. explaining lesson structure to a non-technical author.
 
@@ -152,9 +150,14 @@ Complete JSON field reference for lessons — every field on the lesson object, 
 **Load when:** you need the exact field name or shape for a lesson JSON property, or when validating a generated lesson against the schema.
 
 ### [authoring/lesson-schema-yaml.md](authoring/lesson-schema-yaml.md)
-Basic YAML reference for the lesson envelope, common task fields, information tasks, and task groups — the non-code, non-quiz parts of a lesson file. Points to `quiz-tasks.md` and the per-type code task files for the rest.
+Canonical YAML contract for the lesson envelope, Draft workflow, managed version/timestamps, common task fields, information tasks, and task groups. Points to `quiz-tasks.md` and the per-type code task files for the rest.
 
 **Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
+
+### [authoring/lesson-assets-cli.md](authoring/lesson-assets-cli.md)
+Durable CLI contract for listing, uploading, and deleting lesson files in Firebase Storage, including metadata and Markdown URLs.
+
+**Load when:** adding, replacing, listing, or removing a lesson asset.
 
 ### Per-type code task and check references
 Completion and feedback checks are documented inside each lesson-type authoring doc so authors can work from one self-contained page per lesson type.
@@ -230,27 +233,3 @@ Supported Markdown features in the shared renderer: callout syntax, fenced code 
 Schema reference for the topic library: Firestore structure, all field definitions, YAML authoring format, and how topics are linked from Markdown via `[[wiki-links]]`.
 
 **Load when:** writing or editing topics, or when working on anything that reads from `topicLibrary` in Firestore.
-
----
-
-## CLI playbooks (`docs/authoring/skills/`)
-
-Step-by-step agent playbooks for CLI-driven workflows. Each can also be installed as a Claude Code slash command (`cp docs/authoring/skills/hsc-*.md .claude/commands/`). See [authoring/skills/README.md](authoring/skills/README.md) for setup.
-
-### [authoring/skills/hsc-list.md](authoring/skills/hsc-list.md)
-Print a summary of all published lessons and topics — IDs, titles, types, and levels. A quick orientation command before authoring or editing.
-
-### [authoring/skills/hsc-author.md](authoring/skills/hsc-author.md)
-End-to-end workflow for authoring a brand-new lesson: gather requirements, write YAML, validate, publish to Firestore, and confirm.
-
-### [authoring/skills/hsc-edit.md](authoring/skills/hsc-edit.md)
-Workflow for editing an existing published lesson — either a targeted single-task edit or a full lesson rewrite. Covers fetching the current state, making changes, and re-publishing.
-
-### [authoring/skills/hsc-topics.md](authoring/skills/hsc-topics.md)
-CRUD operations on the topic library: list, fetch, create or update, and delete. Includes field rules and duplicate-checking guidance.
-
-### [authoring/skills/hsc-assets.md](authoring/skills/hsc-assets.md)
-Upload, list, and delete lesson asset files in Firebase Storage. Covers MIME type detection, storage filename overrides, and how assets are referenced in lesson content.
-
-### [authoring/skills/hsc-feedback.md](authoring/skills/hsc-feedback.md)
-Read, create, delete, and bulk-clear feedback items in both the lesson feedback subcollection and the platform feedback collection. Full field reference, filter options, and example commands.

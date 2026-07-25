@@ -69,6 +69,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
     ? (activeStage?.entryFile ?? task.entryFile ?? 'index.html')
     : (task.entryFile ?? 'index.html')
   const explainerInlineCodeLanguages = lessonMod?.explainerInlineCodeLanguages ?? []
+  const incompleteDraftWorkspace = lesson.draft === true && !isQuiz && !isInformation && (
+    (lesson.type === 'html' && !Array.isArray(task.starterFiles))
+    || (lesson.type === 'filesystem' && !task.starterFs)
+    || (lesson.type === 'electronics' && !task.starterCircuit)
+  )
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -261,7 +266,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
   return (
     <div className="te-wrap">
       {parentGroup ? (
-        <Field label="Task title">
+      <Field label="Task title">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input
               className="te-input"
@@ -299,6 +304,21 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           placeholder="e.g. 10"
         />
       </Field>
+
+      <Field label="Authoring intent (Markdown)" hint="Visible to authors only; students never see this field.">
+        <ExplainerEditor
+          title={task.title || 'Task intent'} value={task.intent ?? ''} onChange={value => set('intent', value)}
+          lessonType={lesson.type} inlineCodeLanguages={explainerInlineCodeLanguages}
+          assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={allStorageAssets}
+        />
+      </Field>
+
+      {(task.intentLastChangedAt || task.taskLastChangedAt) && (
+        <div style={s.auditMeta}>
+          {task.intentLastChangedAt && <span>Intent updated: {String(task.intentLastChangedAt)}</span>}
+          {task.taskLastChangedAt && <span>Task content updated: {String(task.taskLastChangedAt)}</span>}
+        </div>
+      )}
 
       <Field label="Priority">
         <div className="te-priority-grid">
@@ -482,6 +502,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
             })()}
           </TaskPreviewPanel>
         </>
+      ) : incompleteDraftWorkspace ? (
+        <div style={s.incompleteDraft}>
+          This draft task has no {lesson.type === 'html' ? 'starter files' : lesson.type === 'filesystem' ? 'starter filesystem' : 'starter breadboard'} yet.
+          Choose the Code format above to initialise the standard editor fields, then continue editing the task.
+        </div>
       ) : lessonMod?.BuilderWorkspace ? (
         <lessonMod.BuilderWorkspace
           task={task} lesson={lesson} onUpdate={onUpdate}
@@ -510,6 +535,14 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
 }
 
 const s = {
+  auditMeta: {
+    display: 'flex', flexDirection: 'column', gap: 3, padding: '8px 10px', borderRadius: 6,
+    background: '#f8fafc', border: '1px solid #e2e8f0', fontFamily: 'var(--font-body)', fontSize: '0.76rem', color: '#64748b',
+  },
+  incompleteDraft: {
+    padding: '12px 14px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a',
+    fontFamily: 'var(--font-body)', fontSize: '0.88rem', color: '#92400e', lineHeight: 1.5,
+  },
   copyCodeEditor: {
     display: 'flex',
     flexDirection: 'column',

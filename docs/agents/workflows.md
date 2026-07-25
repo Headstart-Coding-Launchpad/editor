@@ -121,7 +121,7 @@ After significant changes, update relevant docs:
 - `docs/FEATURES.md` when user-facing features change.
 - `docs/TESTING.md` when test strategy or coverage thresholds change.
 - `docs/agents/project-rules.md` when CLI commands or auth setup changes.
-- `docs/authoring/skills/*.md` when authoring or editing workflows change.
+- `.claude/skills/` when content-authoring workflows change.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
 
 **All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.

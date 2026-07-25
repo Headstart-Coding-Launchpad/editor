@@ -5,6 +5,7 @@ import { auditLessonTopics, validateLessonTopics } from '../src/shared/topicAudi
 import { buildLessonFork, makeForkLessonId } from '../src/shared/lessonForks.js'
 import { LEVEL_COLLECTION, migrateLessonLevel } from '../src/shared/lessonLevels.js'
 import { getClass } from './classes.mjs'
+import { applyLessonAuditMetadata } from '../src/shared/lessonAudit.js'
 
 export { validateLessonForMcp as validateLesson }
 
@@ -103,7 +104,7 @@ async function fetchTopicLibrary() {
   return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 }
 
-async function publishLesson(lesson) {
+async function publishLesson(lesson, { allowDraft = true } = {}) {
   const migrated = migrateLessonLevel(lesson)
   const existingSnap = migrated.lesson.id
     ? await db.collection('lessons').doc(migrated.lesson.id).get()
@@ -116,7 +117,12 @@ async function publishLesson(lesson) {
   )
   const { valid, errors, warnings } = validateLessonForMcp(lessonToPublish)
   if (!valid) return { success: false, valid, errors, warnings }
-  const topicValidation = validateLessonTopics(lessonToPublish, await fetchTopicLibrary())
+  if (!allowDraft && lessonToPublish.draft === true) {
+    return { success: false, valid: false, errors: ['Draft lessons cannot be published. Clear draft only after full validation passes.'], warnings }
+  }
+  const topicValidation = lessonToPublish.draft === true
+    ? { valid: true, errors: [], warnings: [] }
+    : validateLessonTopics(lessonToPublish, await fetchTopicLibrary())
   if (!topicValidation.valid) {
     return {
       success: false,
@@ -129,7 +135,8 @@ async function publishLesson(lesson) {
   if (migrated.level) {
     await db.collection(LEVEL_COLLECTION).doc(migrated.level.id).set(migrated.level, { merge: true })
   }
-  await db.collection('lessons').doc(lessonToPublish.id).set(lessonToPublish)
+  const audited = applyLessonAuditMetadata(existingLesson, lessonToPublish)
+  if (audited.material) await db.collection('lessons').doc(lessonToPublish.id).set(audited.lesson)
   const snap = await db.collection('lessons').doc(lessonToPublish.id).get()
   const published = snap.exists ? summarize(snap.id, snap.data()) : null
   return {
@@ -137,6 +144,8 @@ async function publishLesson(lesson) {
     valid,
     id: lessonToPublish.id,
     warnings: [...warnings, ...topicValidation.warnings],
+    version: audited.lesson.version ?? 0,
+    noOp: !audited.material,
     level: migrated.level ?? null,
     published,
   }
@@ -168,6 +177,8 @@ export async function listLessons() {
         id: doc.id,
         title: d.title ?? '',
         type: d.type ?? '',
+        draft: d.draft === true,
+        version: d.version ?? 0,
         level: d.level ?? null,
         levelId: d.levelId ?? null,
         fork: d.fork ? {
@@ -184,7 +195,8 @@ export async function listLessons() {
 export async function getLesson(id) {
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  return { id: snap.id, ...snap.data() }
+  const data = snap.data()
+  return { id: snap.id, ...data, draft: data.draft === true, version: data.version ?? 0 }
 }
 
 export async function getLessonSkeleton(id) {
@@ -195,6 +207,8 @@ export async function getLessonSkeleton(id) {
   return {
     id: snap.id,
     ...meta,
+    draft: data.draft === true,
+    version: data.version ?? 0,
     taskCount: flattenTasks(tasks ?? []).length,
     tasks: buildSkeletonTaskList(tasks ?? []),
   }
@@ -223,8 +237,9 @@ export async function upsertTask(lessonId, taskIndex, task) {
   const updatedLesson = { ...lesson, tasks: updatedTasks }
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
-  await db.collection('lessons').doc(lessonId).set(updatedLesson)
-  return { success: true, lessonId, taskIndex, warnings }
+  const audited = applyLessonAuditMetadata(lesson, updatedLesson)
+  if (audited.material) await db.collection('lessons').doc(lessonId).set(audited.lesson)
+  return { success: true, lessonId, taskIndex, warnings, version: audited.lesson.version ?? 0, noOp: !audited.material }
 }
 
 export async function appendTask(lessonId, task, groupTitle) {
@@ -235,8 +250,9 @@ export async function appendTask(lessonId, task, groupTitle) {
   const updatedLesson = { ...lesson, tasks: updatedTasks }
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
-  await db.collection('lessons').doc(lessonId).set(updatedLesson)
-  return { success: true, lessonId, taskIndex: flattenTasks(updatedTasks).length, warnings }
+  const audited = applyLessonAuditMetadata(lesson, updatedLesson)
+  if (audited.material) await db.collection('lessons').doc(lessonId).set(audited.lesson)
+  return { success: true, lessonId, taskIndex: flattenTasks(updatedTasks).length, warnings, version: audited.lesson.version ?? 0, noOp: !audited.material }
 }
 
 export async function upsertLesson(lesson) {
@@ -257,7 +273,7 @@ export async function forkLesson(sourceLessonId, classId, { publish = true, incl
   if (!publish) {
     return { success: true, published: false, id: fork.id, sourceLessonId, classId: cls.id, lesson: fork }
   }
-  const result = await publishLesson(fork)
+  const result = await publishLesson(fork, { allowDraft: false })
   if (!result.success) return result
   const cleared = await clearLessonRunData(fork.id)
   return {
@@ -327,7 +343,7 @@ export function yamlToLesson(yamlText) {
 
 export async function publishYamlLesson(yamlText, includeLesson = false) {
   const lesson = parseYamlLesson(yamlText)
-  const result = await publishLesson(lesson)
+  const result = await publishLesson(lesson, { allowDraft: false })
   if (includeLesson && result.success) result.lesson = lesson
   return result
 }

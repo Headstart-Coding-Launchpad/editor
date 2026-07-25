@@ -78,7 +78,7 @@ describe('BuilderView Firestore save', () => {
     vi.restoreAllMocks()
   })
 
-  it('silently retains legacy draft records when saving a lesson', async () => {
+  it('refuses legacy draft records instead of silently saving them', async () => {
     const lesson = {
       id: 'incomplete-lesson',
       title: 'Legacy lesson',
@@ -99,18 +99,10 @@ describe('BuilderView Firestore save', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(mocks.setDoc).toHaveBeenCalledOnce())
-    expect(mocks.setDoc).toHaveBeenCalledWith(
-      mocks.lessonDoc,
-      expect.objectContaining({
-        id: 'incomplete-lesson',
-        title: 'Legacy lesson',
-        tasks: [expect.objectContaining({ taskType: 'draft' })],
-      })
-    )
-    expect(window.alert).not.toHaveBeenCalled()
+    expect(mocks.setDoc).not.toHaveBeenCalled()
+    expect(window.alert).toHaveBeenCalledOnce()
     expect(window.confirm).not.toHaveBeenCalled()
-    expect(onMarkSaved).toHaveBeenCalledOnce()
+    expect(onMarkSaved).not.toHaveBeenCalled()
     expect(mocks.navigate).not.toHaveBeenCalled()
   })
 })

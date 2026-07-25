@@ -2,6 +2,7 @@ import { validateTopicProposals } from '../src/shared/topicAudit.js'
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
 import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } from '../src/shared/taskUtils.js'
+import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 
 const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
 
@@ -9,7 +10,7 @@ function flattenTasks(tasks) {
   const result = []
   for (const item of tasks) {
     if (item.type === 'group') {
-      for (const sub of item.subtasks ?? []) result.push(sub)
+      for (const sub of (Array.isArray(item.subtasks) ? item.subtasks : [])) result.push(sub)
     } else {
       result.push(item)
     }
@@ -56,6 +57,7 @@ export function validateLessonForMcp(lesson) {
     errors.push('tasks is required and must be an array')
     return { valid: false, errors, warnings }
   }
+  validateDraftLessonStructure(lesson, errors)
   if (tasks.length === 0) errors.push('tasks must contain at least one task or group')
 
   tasks.forEach((item, i) => {
@@ -71,7 +73,7 @@ export function validateLessonForMcp(lesson) {
   flat.forEach((task, i) => {
     const n = i + 1
 
-    if (task.taskType === 'draft') return
+    if (!task || typeof task !== 'object' || Array.isArray(task)) return
 
     if (!task.title) errors.push(`Task ${n} is missing a title`)
 
@@ -81,6 +83,9 @@ export function validateLessonForMcp(lesson) {
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
     }
+    // Drafts deliberately allow missing task-specific authoring fields, but
+    // still pass the schema/type checks above so Builder can load them safely.
+    if (lesson.draft === true) return
     if (task.taskType !== 'information' && task.taskType !== 'quiz') {
       validateStageMetadata(task, n, errors)
     }

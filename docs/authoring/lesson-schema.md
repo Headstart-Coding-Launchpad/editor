@@ -112,53 +112,13 @@ feedbackChecks:
 
 When a feedback check matches in the Builder, its result area includes a **Student feedback preview**. Use it to exercise the same preview or replacement prompt a learner will receive; replacement previews never alter the lesson's authoring code.
 
-`draft` tasks are planning placeholders — they block publishing (in the builder and via `lessons publish-yaml`) but can be saved via `lessons upsert`.
+## Draft lessons
 
----
+Draft is a lesson-level `draft: true` mode, not a task type. Draft tasks remain normal information, quiz, code, or group tasks. Every Draft task needs a title and non-empty author-only Markdown `intent`; Draft allows incomplete learner-facing and task-specific fields but still validates task shapes and type values. Final lessons restore all ordinary validation requirements.
 
-## Legacy Draft Records
+`intent` remains stored after Draft is cleared and is never shown to learners. Do not use lesson stages, `taskType: draft`, intended-type fields, or review-note metadata. The canonical YAML contract and command behaviour are in `docs/authoring/lesson-schema-yaml.md`.
 
-Older lesson data may include `taskType: "draft"` records. They are retained for compatibility but ignored by the application; do not use them in new lessons.
-
-Convert legacy records to an information, quiz, or code task before relying on their content.
-
-### Tier 1 — Ideas stage
-
-| Field | Notes |
-|---|---|
-| `title` | Short name for the task |
-| `kind` | Intended task type: `information slide`, `code task`, `quiz`, `confidence check`, `project step`, `group heading`, `recap`, or `extension` |
-| `purpose` | Why this moment exists in the lesson |
-| `expectedOutcome` | What the learner produces or achieves (also appears in Tier 2 with richer context) |
-| `topicLinks` | Optional array of plain Topic Library IDs, e.g. `["for-loop", "range-function"]`. Available at every stage. |
-| `knownPitfalls` | Optional — common mistakes or misconceptions to watch for |
-
-### Tier 2 — Details stage and later
-
-| Field | Notes |
-|---|---|
-| `studentFacingContent` | Complete draft of explainer text, quiz question, task prompt, or slide copy (Markdown) |
-| `studentAction` | What the learner does; omit for quizzes and information slides |
-| `starterState` | Starter code, files, blocks, or carry-through notes |
-| `expectedOutcome` | Output, correct answers, page state, or completed work |
-| `checksAndSuccessSignals` | Check type and value, e.g. `output_contains: "X"` or `manual review` |
-| `hintsAndSupport` | Hint text, quiz feedback, code stages, or key misconception note |
-| `yamlHandoffNotes` | Task type, mode, grouping, carry-through, assets — anything the builder needs when converting to a real task |
-
-At Details:
-
-- Keep the Tier 1 `kind`, `purpose`, `knownPitfalls`, and `topicLinks`.
-- Fill every relevant Tier 2 field with final, implementation-ready detail.
-- Put exact quiz options and feedback, proposed checks and incorrect checks, code stages, and task configuration into the appropriate Tier 2 text fields.
-- Record the intended executable task type in `yamlHandoffNotes`; do not change `taskType` from `"draft"`.
-
----
-
-## Legacy Review Metadata
-
-Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `[[topic-id|Custom label]]`, and `#topic/topic-id` links throughout task content, including nested hints and grouped tasks.
-
-Legacy `stage` and `reviewNote` fields are ignored. Topic references must exist in the Topic Library before saving.
+Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `[[topic-id|Custom label]]`, and `#topic/topic-id` links throughout task content, including nested hints and grouped tasks. Final lessons must reference entries in the Topic Library before saving.
 
 ## Information Task Fields
 

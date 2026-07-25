@@ -6,6 +6,7 @@ import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modul
 import { normalizeFsCheck } from '../modules/filesystem/checks'
 import { normalizeHtmlCheck } from '../modules/html/checks'
 import { normalizeSequenceItem } from '../modules/scratch/checks'
+import { validateDraftLessonStructure } from '../shared/draftLesson'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
@@ -184,7 +185,7 @@ function describeTaskForWarning(task, index) {
 function warnDuplicateTaskIds(flat, warnings) {
   const firstById = new Map()
   flat.forEach((task, index) => {
-    if (task.id == null || task.id === '') return
+    if (!task || typeof task !== 'object' || Array.isArray(task) || task.id == null || task.id === '') return
     const key = String(task.id)
     const first = firstById.get(key)
     if (first) {
@@ -235,9 +236,10 @@ export function validateLesson(lesson) {
   if (!title) errors.push('Lesson title is required')
   if (lesson.fork != null) validateLessonFork(lesson, errors)
   if (!tasks || tasks.length === 0) errors.push('Lesson must have at least one task')
+  validateDraftLessonStructure(lesson, errors)
 
   tasks.forEach((item, i) => {
-    if (item.type === 'group') {
+    if (item?.type === 'group') {
       if (!item.title) errors.push(`Group ${i + 1} is missing a title`)
       if (!item.subtasks || item.subtasks.length === 0) {
         errors.push(`Group "${item.title || (i + 1)}" has no subtasks — add at least one subtask`)
@@ -249,6 +251,9 @@ export function validateLesson(lesson) {
   warnDuplicateTaskIds(flat, warnings)
   flat.forEach((task, i) => {
     const n = i + 1
+    if (!task || typeof task !== 'object' || Array.isArray(task)) return
+    // In draft mode only the shared structural/type checks are required.
+    if (lesson.draft === true) return
     const feedbackChecks = validateFeedbackBasics(task, n, errors, warnings)
     if (!task.title) errors.push(`Task ${n} is missing a title`)
     if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
@@ -257,7 +262,6 @@ export function validateLesson(lesson) {
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
     }
-    if (task.taskType === 'draft') return
     if (task.taskType !== 'information' && task.taskType !== 'quiz') {
       validateStageMetadata(task, n, errors)
     }
@@ -533,6 +537,10 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
       if ((task.informationType ?? 'standard') !== 'standard') exported.informationType = task.informationType
       if (task.leftContent) exported.leftContent = task.leftContent
       if (task.taskMode && task.taskMode !== 'both') exported.taskMode = task.taskMode
+      // Authoring metadata is intentionally retained for all task formats.
+      if (task.intent != null) exported.intent = task.intent
+      if (task.intentLastChangedAt != null) exported.intentLastChangedAt = task.intentLastChangedAt
+      if (task.taskLastChangedAt != null) exported.taskLastChangedAt = task.taskLastChangedAt
       return exported
     }
 

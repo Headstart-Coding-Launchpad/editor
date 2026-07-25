@@ -1,6 +1,6 @@
 # Lesson YAML Schema
 
-Basic reference for the shape of a lesson YAML file: the lesson envelope, fields common to every task, and the non-code task types (information and group). For the underlying JSON shape every YAML file converts to, see `docs/authoring/lesson-schema.md`.
+Canonical YAML contract for the shape of a lesson file: the lesson envelope, Draft workflow and metadata, fields common to every task, and the non-code task types (information and group). For the underlying JSON shape every YAML file converts to, see `docs/authoring/lesson-schema.md`.
 
 This file does not cover code task fields or quiz task fields:
 
@@ -24,6 +24,8 @@ Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lesso
 id: python-for-loops         # required — lowercase slug, used in URLs
 type: python                 # required — python | html | scratch | filesystem | electronics
 title: Python For Loops      # required
+draft: false                 # optional; true permits incomplete real tasks during authoring
+version: 3                   # current successful-save version (managed by CLI/Builder)
 description: Practise loops. # required — shown on the entry screen
 level: Level 1               # optional legacy display fallback; prefer levelId/levelRef
 levelId: python-level-1      # optional reusable level id from lessonLevels/
@@ -48,6 +50,8 @@ tasks: []                     # required — ordered task list (see below)
 | `type` | Yes | string | `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
+| `draft` | No | boolean | Enables incomplete real tasks for authoring. Final publishing refuses `true`. |
+| `version` | No | positive integer | Current save version, managed by LaunchPad; callers must not set it. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. |
@@ -74,6 +78,8 @@ tasks:
     estimatedMinutes: 5        # optional — approximate duration, totalled in the builder
     priority: core              # optional — core (default) | optional; teacher-facing only
     taskMode: both              # optional — both (default) | live | solo
+    intent: |                    # required, non-empty Markdown in Draft; author-only
+      Describe the learning goal and intended task.
     # taskType is not set directly in YAML — use `type: information` or `type: quiz`;
     # omit it entirely for a code task.
     check: {}                   # optional — completion check, see the lesson-type docs
@@ -84,13 +90,36 @@ tasks:
 |---|:---:|---|---|
 | `id` | No | integer | Auto-assigned sequential integer if omitted. |
 | `title` | Yes | string | Short task title. |
-| `explainer` | Yes | string | Markdown shown to students. |
+| `explainer` | Yes in final mode | string | Markdown shown to students. Draft permits it to be omitted. |
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
+| `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
+| `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
+| `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `feedbackChecks` | No | object or array | Supported by Python, HTML, Filesystem, Electronics, and Scratch. Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. |
+
+---
+
+## Draft workflow and managed metadata
+
+`draft` is a lesson-level boolean. It is the only Draft marker: a Draft task remains a normal code, information, quiz, or group task. In YAML, omit task `type` for a code task; use `type: information` or `type: quiz` for those task types. Do not use lesson stages, `taskType: draft` / `type: draft`, intended-type fields, or review-note metadata.
+
+When `draft: true`, every task must have a title, its normal real task type, and a non-empty Markdown `intent`. Draft deliberately permits omitted learner-facing and task-specific fields, but it still rejects malformed field shapes and invalid task/type values. When Draft is false or omitted, all ordinary validation rules apply again. `intent` remains stored after Draft is cleared and is never rendered to students.
+
+Builder preserves task IDs, task order, `intent`, and recognised task fields when it saves. It permits incomplete tasks only while Draft is true. Clearing Draft runs full final validation and is refused if that validation fails.
+
+`version`, `intentLastChangedAt`, and `taskLastChangedAt` are managed by LaunchPad; callers must not set them. CLI and Builder saves are last-writer-wins. A material save increments `version`; a no-op leaves `version` and timestamps unchanged. `intentLastChangedAt` changes only when the author-only `intent` changes. `taskLastChangedAt` changes only when learner-facing task content or configuration changes.
+
+| Command | Draft lesson (`draft: true`) | Final lesson (`draft: false` or omitted) |
+|---|---|---|
+| `lessons validate <file>` | Validates Draft structure, including title, intent, real task type, valid types, and field shapes. | Runs all ordinary validation requirements. |
+| `lessons upsert <file>` | Creates or replaces the Draft lesson after Draft validation. | Creates or replaces the final lesson after full validation. |
+| `lessons preflight <file>` | Validates Draft structure and checks Topic Library references. | Validates and checks Topic Library references. |
+| `lessons publish-yaml <file>` | Refuses while Draft remains true. | Validates, checks references, and publishes. |
+| `lessons get <id> --format yaml` | Retrieves the current authoritative Draft YAML. | Retrieves the current authoritative final YAML. |
 
 ---
 
@@ -147,7 +176,7 @@ Groups cannot be nested. Group IDs are auto-generated (e.g. `g-1234567890`). `ca
 
 ## Validation Rules
 
-Two separate validators exist and they do not enforce the same rules. `cli lessons validate|upsert|publish-yaml` runs `cli/validate.mjs`; the Lesson Builder runs a stricter, browser-only validator. A lesson can pass CLI validation and still trip builder-only rules — publish through the builder at least once, or check by hand, if you need those covered.
+Two separate validators exist and they do not enforce the same rules. `cli lessons validate|upsert|publish-yaml` runs `cli/validate.mjs`; the Lesson Builder runs its browser-side final validation when Draft is cleared or a final lesson is saved. A lesson can pass CLI validation and still trip builder-only rules.
 
 See `docs/authoring/lesson-schema.md` (**Validation Rules**) for the full list of rules enforced by each validator.
 

@@ -221,7 +221,7 @@ The builder's **Task Feedback Panel** shows submitted lesson and task feedback f
 
 ### CLI management
 
-The CLI can list, create, delete, and bulk-clear feedback items in both collections. See `docs/authoring/skills/hsc-feedback.md` for full command reference.
+The CLI can list, create, delete, and bulk-clear feedback items in both collections. Run `node cli/cli.mjs feedback --help` for the command reference.
 
 ---
 
