@@ -428,9 +428,10 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | File | Role |
 |---|---|
 | `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
-| `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
+| `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight/check-case testing plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency) |
+| `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization |
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |

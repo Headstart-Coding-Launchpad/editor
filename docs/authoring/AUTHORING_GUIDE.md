@@ -24,8 +24,24 @@ node cli/cli.mjs lessons yaml-to-json lesson.yaml          # validate + preview 
 node cli/cli.mjs lessons yaml-to-json lesson.yaml --output lesson.json
 node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JSON; saves draft tasks
 
+# verify code checks against named student-code examples (JSON or YAML cases file):
+node cli/cli.mjs lessons test-checks lesson.yaml --cases check-cases.yaml
+
 # fetch an existing lesson as YAML:
 node cli/cli.mjs lessons get python-for-loops --format yaml
+```
+
+`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. For example, `check-cases.yaml` can be:
+
+```yaml
+tasks:
+  - id: 4
+    cases:
+      - name: alternate variable name
+        code: |
+          for number in range(3):
+            print("Hello world")
+        completion: pass
 ```
 
 ---

@@ -180,6 +180,7 @@ const loadClasses = () => import('./classes.mjs')
 // validate and yaml-to-json don't touch Firebase, so import directly.
 const loadValidate = () => import('./validate.mjs')
 const loadYaml = () => import('./yaml-converter.mjs')
+const loadCheckTests = () => import('./check-tests.mjs')
 
 await yargs(hideBin(process.argv))
   .scriptName('hsc')
@@ -222,6 +223,17 @@ await yargs(hideBin(process.argv))
       const result = validateLessonForMcp(parseLessonJsonOrYaml(file, await readText(file)))
       print(result)
       if (!result.valid) process.exit(1)
+    }))
+
+    .command('test-checks <lessonPath>', 'Test source-code check cases from a JSON or YAML file', {
+      cases: { type: 'string', demandOption: true, describe: 'JSON or YAML file containing named task cases' },
+    }, cmd(async ({ lessonPath, cases }) => {
+      const { testLessonChecks } = await loadCheckTests()
+      const lesson = parseLessonJsonOrYaml(lessonPath, await readText(lessonPath))
+      const casesFile = parseJsonOrYaml(cases, await readText(cases))
+      const result = testLessonChecks(lesson, casesFile)
+      print(result)
+      if (!result.success) process.exit(1)
     }))
 
     .command('upsert [file]', 'Create or update a lesson from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {

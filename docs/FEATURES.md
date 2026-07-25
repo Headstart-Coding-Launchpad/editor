@@ -229,6 +229,7 @@ The CLI can list, create, delete, and bulk-clear feedback items in both collecti
 
 - Manage live lessons, reusable levels, classes, tasks, topics, assets, and feedback through `node cli/cli.mjs`
 - Convert lesson and topic-library YAML to JSON for validation and publishing
+- Test a lesson's source-code completion and feedback checks against named JSON/YAML student-code cases
 - Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
 - Read, create, delete, and bulk-clear platform and per-lesson feedback from Firestore via the CLI
 - Create/list/delete reusable lesson levels with `node cli/cli.mjs levels`
