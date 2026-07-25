@@ -172,6 +172,20 @@ tasks:
 
 Groups cannot be nested. Group IDs are auto-generated (e.g. `g-1234567890`). `carryCodeFrom` / `carryBlocksFrom` references from within a subtask use the subtask's own integer `id`.
 
+### Subtask titles
+
+Set `_customTitle: true` on every subtask inside a group that has its own `title`. Without it a grouped subtask does not keep the authored name.
+
+```yaml
+tasks:
+  - group: Loop Basics
+    tasks:
+      - _customTitle: true       # required for the title below to stick
+        title: Counted loops
+```
+
+It is only needed on grouped subtasks. Top-level tasks keep their `title` without it.
+
 ---
 
 ## Validation Rules

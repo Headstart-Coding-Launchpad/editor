@@ -120,6 +120,142 @@ prebuiltStacks:
     stack: {}                 # required — Blockly toolbox-compatible block JSON
 ```
 
+## Populated Block-State JSON
+
+Scratch uses two related JSON shapes. Use the toolbox-stack shape for
+`prebuiltStacks[].stack`; use the workspace-state shape for `starterBlocks`,
+`completeBlocks`, and `codeStages[].blocks`.
+
+- A **toolbox stack** is one root block. Do not wrap it in `blocks.blocks` and
+  do not include workspace-only `id`, `x`, or `y` values.
+- A **workspace state** is keyed by `sprites[].id`. Each sprite value is a
+  Blockly workspace snapshot with its top-level blocks at `blocks.blocks`.
+  Use the optional `x` and `y` values to place a top-level block in the
+  workspace. `id` values emitted by Blockly may be omitted; Blockly assigns
+  them when it loads the state.
+- A text or number value belongs in an input shadow's `fields` object, not in
+  the parent block's `fields` object. Text uses `text` / `TEXT`; numbers use
+  `math_number` / `NUM`.
+- Join two stack blocks with `next: { block: ... }`. For a nested value or
+  statement input, use `inputs.INPUT_NAME.block` instead.
+
+### A filled toolbox stack
+
+This creates a drag-in **say “Hello!” for 2 seconds** block. It is a valid
+value for one entry in `prebuiltStacks`; the stable `id` may be any unique
+string.
+
+```json
+{
+  "id": "say-hello-for-two-seconds",
+  "label": "Say Hello",
+  "stack": {
+    "type": "looks_sayforsecs",
+    "inputs": {
+      "MESSAGE": {
+        "shadow": {
+          "type": "text",
+          "fields": { "TEXT": "Hello!" }
+        }
+      },
+      "SECS": {
+        "shadow": {
+          "type": "math_number",
+          "fields": { "NUM": "2" }
+        }
+      }
+    }
+  }
+}
+```
+
+### A pre-placed starter block
+
+This places that block at `(24, 24)` in the workspace for the sprite whose ID
+is `sprite1`. The key must match `sprites[].id`, not the sprite's display
+name. In a multi-sprite task, add another sibling key such as `sprite2` for
+that sprite's workspace. When stage code is enabled, the Stage workspace uses
+the key `__stage__`.
+
+```json
+{
+  "sprite1": {
+    "blocks": {
+      "blocks": [
+        {
+          "type": "looks_sayforsecs",
+          "x": 24,
+          "y": 24,
+          "inputs": {
+            "MESSAGE": {
+              "shadow": {
+                "type": "text",
+                "fields": { "TEXT": "Welcome!" }
+              }
+            },
+            "SECS": {
+              "shadow": {
+                "type": "math_number",
+                "fields": { "NUM": "2" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Use that same object as `starterBlocks`, `completeBlocks`, or a stage's
+`blocks` value. For example, this support stage supplies a connected
+green-flag-and-say stack for `sprite1`; a `solution` stage uses the identical
+shape and differs only in `role`.
+
+```json
+{
+  "label": "Run a greeting",
+  "role": "support",
+  "blocks": {
+    "sprite1": {
+      "blocks": {
+        "blocks": [
+          {
+            "type": "event_whenflagclicked",
+            "x": 24,
+            "y": 24,
+            "next": {
+              "block": {
+                "type": "looks_sayforsecs",
+                "inputs": {
+                  "MESSAGE": {
+                    "shadow": {
+                      "type": "text",
+                      "fields": { "TEXT": "Hello!" }
+                    }
+                  },
+                  "SECS": {
+                    "shadow": {
+                      "type": "math_number",
+                      "fields": { "NUM": "2" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+The Scratch builder can also generate these values: edit the starter or stage
+workspace (or a prebuilt stack), then save the lesson. The examples above are
+the serialization shape used by that loader and serializer, so hand-authored
+values can be mixed with builder-authored ones.
+
 ---
 
 ## Public Sprite Presets
