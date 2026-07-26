@@ -13,7 +13,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `type` | Yes | string | `composed` for new lessons; legacy lessons may use `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. New lessons should link a reusable level with `levelId`/`levelRef`; legacy scalar values are migrated automatically when published through the app or CLI. |
@@ -66,6 +66,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types. |
+| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |

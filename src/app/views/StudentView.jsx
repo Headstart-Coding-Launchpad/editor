@@ -21,6 +21,7 @@ import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import { getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 
 export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
@@ -77,11 +78,15 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     onTaskReset,
     createIdentity, updateTimestamp, joinSession, registerJoining, unregisterJoining,
   })
+  const activeLesson = useMemo(
+    () => getEffectiveLessonForTask(lesson, currentTaskId),
+    [lesson, currentTaskId],
+  )
 
   // ─── Code / editor state ───────────────────────────────────────────────────
 
   const cs = useStudentCodeState({
-    lessonId, lesson, currentTaskId, viewingTaskId, phase,
+    lessonId, lesson: activeLesson, currentTaskId, viewingTaskId, phase,
     effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
     writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput,
@@ -103,10 +108,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
 
   const isMobile = useIsMobile()
   const currentPythonTask = useMemo(() => {
-    if (lesson?.type !== 'python') return null
+    if (activeLesson?.type !== 'python') return null
     const task = flattenTasks(lesson.tasks).find(item => item.id === currentTaskId)
     return isPythonCodeTask(task) ? task : null
-  }, [lesson, currentTaskId])
+  }, [lesson, activeLesson?.type, currentTaskId])
   const savedPythonTasks = useMemo(() => getSavedPythonTasks({
     lesson,
     anonymousId: teacherPresentation ? null : identity?.anonymousId,
@@ -285,7 +290,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     editorActivity: cs.editorActivity,
   })
   const task = flatTasks.find(t => t.id === displayedTaskId)
-  const displayFs = isForcedTeacherLive && lesson.type === 'filesystem'
+  const displayedLesson = getEffectiveLessonForTask(lesson, displayedTaskId)
+  const displayFs = isForcedTeacherLive && displayedLesson.type === 'filesystem'
     ? (() => { try { return JSON.parse(session?.teacherLive?.code ?? '') } catch { return cs.fsState } })()
     : cs.fsState
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
@@ -295,18 +301,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
-  const hasCompleteSolution = lesson.type === 'python' || lesson.type === 'arcade'
+  const hasCompleteSolution = displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
     ? !!task?.completeCode
-    : lesson.type === 'scratch'
+    : displayedLesson.type === 'scratch'
     ? !!task?.completeBlocks
-    : lesson.type === 'filesystem'
+    : displayedLesson.type === 'filesystem'
     ? !!task?.completeFs
-    : lesson.type === 'electronics'
+    : displayedLesson.type === 'electronics'
     ? !!task?.completeCircuit
     : (task?.completeFiles?.length > 0)
   const taskCodeStages = task?.codeStages ?? []
   const revealableStages = getRevealableStages(task)
-  const hasProgressiveReferences = ['python', 'html'].includes(lesson.type) && revealableStages.length > 0
+  const hasProgressiveReferences = ['python', 'html'].includes(displayedLesson.type) && revealableStages.length > 0
   const nextStageIndex = cs.offeredStageIndex + 1
   const canOfferNextStage = isSolo && !hasProgressiveReferences && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
   const revealedSupportStageIndexes = Object.keys(cs.supportStageReveals ?? {}).map(Number)
@@ -317,30 +323,30 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   // Python previews the complete solution read-only in the reference area before offering
   // to load it into the editor. Other lesson types have no such preview yet, so they
   // keep the original single-step "load complete solution" offer.
-  const canOfferCompletePreview = lesson.type === 'python' && stagesExhausted && !cs.completePreviewShown
-  const canOfferCompleteSolution = lesson.type === 'python' ? (stagesExhausted && cs.completePreviewShown) : stagesExhausted
+  const canOfferCompletePreview = displayedLesson.type === 'python' && stagesExhausted && !cs.completePreviewShown
+  const canOfferCompleteSolution = displayedLesson.type === 'python' ? (stagesExhausted && cs.completePreviewShown) : stagesExhausted
   // The class-wide teacher toggle swaps the task explainer panel to show the
   // complete solution. Student self-serve previews render in the reference area.
-  const explainerShowsComplete = lesson.type === 'python' && !!task?.completeCode && (
+  const explainerShowsComplete = displayedLesson.type === 'python' && !!task?.completeCode && (
     !isSolo && !teacherPresentation && !!session?.explainerShowComplete
   )
-  const hasPersonalSandbox = lesson.type === 'python' || lesson.type === 'arcade'
+  const hasPersonalSandbox = activeLesson.type === 'python' || activeLesson.type === 'arcade'
     ? true
-    : lesson.type === 'html'
-    ? !!(lesson.sandboxStarterFiles?.length > 0)
-    : lesson.type === 'scratch'
-    ? !!(lesson.sandboxStarter != null)
-    : lesson.type === 'filesystem'
-    ? !!(lesson.sandboxStarterFs != null)
-    : lesson.type === 'electronics'
-    ? !!(lesson.sandboxStarterCircuit != null)
+    : activeLesson.type === 'html'
+    ? !!(activeLesson.sandboxStarterFiles?.length > 0)
+    : activeLesson.type === 'scratch'
+    ? !!(activeLesson.sandboxStarter != null)
+    : activeLesson.type === 'filesystem'
+    ? !!(activeLesson.sandboxStarterFs != null)
+    : activeLesson.type === 'electronics'
+    ? !!(activeLesson.sandboxStarterCircuit != null)
     : false
   const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && !isQuizTask && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const canTeacherEditType = lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'scratch' || lesson?.type === 'electronics'
+  const canTeacherEditType = activeLesson?.type === 'python' || activeLesson?.type === 'arcade' || activeLesson?.type === 'scratch' || activeLesson?.type === 'electronics'
   const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType && (phase === 'lesson' || phase === 'solo')
   const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
@@ -413,7 +419,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       </div>
     </div>
   ) : (
-    isSandbox && lesson.type === 'python' ? (
+    isSandbox && activeLesson.type === 'python' ? (
       <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadLessonSandboxCode}>
         Download sandbox code
       </button>
@@ -476,7 +482,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
               <span style={s.consentTitle}>Your teacher wants to help</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>{lesson?.type === 'scratch' ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.' : lesson?.type === 'electronics' ? 'Your teacher would like to edit your breadboard to help you. You will see their changes live.' : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}</p>
+              <p style={s.consentText}>{activeLesson?.type === 'scratch' ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.' : activeLesson?.type === 'electronics' ? 'Your teacher would like to edit your breadboard to help you. You will see their changes live.' : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}</p>
             </div>
             <div style={s.consentFooter}>
               <button
@@ -568,7 +574,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       />
       <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...s.body, overflow: 'hidden' } : s.body}>
         <LessonTaskContent
-          lesson={lesson}
+          lesson={displayedLesson}
           task={task}
           cs={cs}
           lessonId={lessonId}

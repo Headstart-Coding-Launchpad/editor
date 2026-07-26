@@ -31,11 +31,8 @@ export default function LandingPage() {
     }
   }
 
-  function handleOpenSandbox() {
-    const codeFile = createLaunchpadCodeFile([
-      { id: 'sandbox', title: 'My Python sandbox', code: '' },
-    ])
-    navigate('/code', { state: { codeFile } })
+  function handleOpenSandbox(type) {
+    navigate(`/playground/${type}`)
   }
 
   return (
@@ -98,8 +95,14 @@ export default function LandingPage() {
           <div style={s.dialog}>
             <h2 id="sandbox-picker-title" style={s.dialogTitle}>Choose a sandbox</h2>
             <p style={s.dialogText}>Pick the type of code you want to work on.</p>
-            <button className="btn-primary" type="button" onClick={handleOpenSandbox}>
+            <button className="btn-primary" type="button" onClick={() => handleOpenSandbox('python')}>
               Python
+            </button>
+            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenSandbox('arcade')}>
+              Arcade Kit
+            </button>
+            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenSandbox('electronics')}>
+              Electronics
             </button>
             <button className="btn-ghost-outline" type="button" onClick={() => setSandboxPickerOpen(false)}>
               Cancel

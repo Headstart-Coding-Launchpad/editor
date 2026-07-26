@@ -1,5 +1,6 @@
 import { findTaskById } from '../shared/taskUtils'
 import { decodeFileKey } from '../shared/fileKeys'
+import { getTaskModuleType } from '../shared/composedLesson'
 
 export function buildStudentLivePayload({ student, lesson, taskId, entryFileTaskId }) {
   const task = findTaskById(lesson?.tasks, entryFileTaskId)
@@ -12,7 +13,7 @@ export function buildStudentLivePayload({ student, lesson, taskId, entryFileTask
     sourceStudentId: student.anonymousId,
     sourceStudentName: student.displayName,
     taskId,
-    lessonType: lesson?.type,
+    lessonType: getTaskModuleType(lesson, taskId) ?? lesson?.type,
     code: student.currentCode ?? '',
     files,
     activeFile: task?.entryFile ?? Object.keys(files)[0] ?? '',

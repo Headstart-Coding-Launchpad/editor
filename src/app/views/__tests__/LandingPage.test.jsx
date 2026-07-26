@@ -40,7 +40,7 @@ describe('LandingPage', () => {
     expect(screen.getByRole('button', { name: /Go/i })).toBeInTheDocument()
   })
 
-  it('chooses Python before opening a blank sandbox in the standalone code workspace', async () => {
+  it('opens the Python playground from the sandbox chooser', async () => {
     const user = userEvent.setup()
     render(<LandingPage />)
 
@@ -48,14 +48,7 @@ describe('LandingPage', () => {
     expect(screen.getByRole('dialog', { name: /Choose a sandbox/i })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Python' }))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/code', expect.objectContaining({
-      state: expect.objectContaining({
-        codeFile: expect.objectContaining({
-          language: 'python',
-          tasks: [{ id: 'sandbox', title: 'My Python sandbox', code: '' }],
-        }),
-      }),
-    }))
+    expect(mockNavigate).toHaveBeenCalledWith('/playground/python')
   })
 
   it('navigates to the lesson route when a lesson ID is entered and the form is submitted', async () => {

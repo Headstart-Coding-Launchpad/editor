@@ -14,11 +14,12 @@ import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
 import { getLessonModule } from '../../modules/registry'
+import { LESSON_MODULE_TYPES } from '../../shared/composedLesson'
 
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
 
-export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
+export default function TaskEditor({ task, lesson, onUpdate, parentGroup, composedLesson = null }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
   const [codeTab, setCodeTab] = useState('starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
@@ -86,6 +87,20 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
       return
     }
     set('priority', priority)
+  }
+
+  function handleModuleChange(moduleType) {
+    if (moduleType === task.moduleType) return
+    const next = { ...task, moduleType: moduleType || undefined }
+    for (const field of [
+      'starterCode', 'completeCode', 'starterFiles', 'completeFiles', 'entryFile', 'completeEntryFile',
+      'starterBlocks', 'completeBlocks', 'toolbox', 'sprites', 'backdrops', 'variables',
+      'starterFs', 'completeFs', 'startsInDir', 'starterCircuit', 'completeCircuit', 'microcontroller',
+      'arcadeDesign', 'completeArcadeDesign', 'arcadeTools', 'codeStages',
+      'carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom',
+      'check', 'feedbackChecks', 'incorrectChecks', '_checkTested', 'copyCode',
+    ]) delete next[field]
+    onUpdate(next)
   }
 
   function handleCopyCodeToggle(enabled) {
@@ -377,6 +392,30 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup }) {
           })}
         </div>
       </Field>
+
+      {!isInformation && !isQuiz && composedLesson?.type === 'composed' && (
+        <Field label="Code task module" hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings.">
+          <div className="te-info-type-grid">
+            {LESSON_MODULE_TYPES.map(moduleType => {
+              const active = task.moduleType === moduleType
+              const icon = {
+                python: '🐍', arcade: '🕹️', html: '🌐', scratch: '🧩', filesystem: '🗂️', electronics: '⚡',
+              }[moduleType]
+              return (
+                <button
+                  key={moduleType}
+                  type="button"
+                  className={active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'}
+                  onClick={() => handleModuleChange(moduleType)}
+                >
+                  <span className="te-info-type-label">{icon} {moduleType === 'arcade' ? 'Arcade Kit' : moduleType[0].toUpperCase() + moduleType.slice(1)}</span>
+                  <span className="te-info-type-hint">{moduleType === 'filesystem' ? 'File manager' : 'Workspace'}</span>
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+      )}
 
       {isInformation && (
         <Field label="Information type">

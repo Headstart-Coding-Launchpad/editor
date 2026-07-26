@@ -92,7 +92,7 @@ function makeLevelBuckets(lessons, levels, activeType) {
   }
 
   for (const level of levels) {
-    if (level.scopeType !== 'type' || level.scopeId !== activeType) continue
+    if (activeType != null && (level.scopeType !== 'type' || level.scopeId !== activeType)) continue
     if (!lessonBuckets.has(level.id)) {
       lessonBuckets.set(level.id, {
         id: level.id,
@@ -406,10 +406,10 @@ export default function LessonPanel({ view = 'lessons' }) {
   const displayType = activeType ?? firstPopulatedGroup?.type ?? groups[0]?.type ?? null
   const activeGroup = groups.find(g => g.type === displayType)
   const showActiveGroup = activeGroup && (visibleLessons.length > 0 || activeType)
-  const filteredLessons = activeGroup?.lessons ?? []
+  const filteredLessons = visibleLessons
   const levelBuckets = useMemo(
-    () => makeLevelBuckets(filteredLessons, levels, displayType),
-    [filteredLessons, levels, displayType],
+    () => makeLevelBuckets(filteredLessons, levels, null),
+    [filteredLessons, levels],
   )
 
   function handleToggleLevel(levelId) {
@@ -426,9 +426,9 @@ export default function LessonPanel({ view = 'lessons' }) {
       <LevelManager
         levels={levels}
         lessons={visibleLessons}
-        activeType={displayType}
-        onTypeChange={setActiveType}
-        groups={groups}
+        activeType={null}
+        onTypeChange={() => {}}
+        groups={[]}
         loading={levelsLoading}
       />
     )
@@ -470,7 +470,7 @@ export default function LessonPanel({ view = 'lessons' }) {
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
       )}
 
-      {groups.length > 0 && (
+      {false && groups.length > 0 && (
         <div className="ui-tabs">
           {groups.map(({ type, lessons: groupLessons }) => (
             <button
@@ -485,13 +485,11 @@ export default function LessonPanel({ view = 'lessons' }) {
         </div>
       )}
 
-      {showActiveGroup && (
-        <div key={activeGroup.type} style={s.group}>
+      {visibleLessons.length > 0 && (
+        <div key="all-lessons" style={s.group}>
           {filteredLessons.length === 0 ? (
             <div style={s.emptyTableState}>
-              {activeGroup.lessons.length === 0
-                ? 'No lessons found for this lesson type.'
-                : 'No lessons match the selected stage filter.'}
+              No lessons match the selected stage filter.
             </div>
           ) : (
             <div style={s.levelAccordion}>
@@ -819,17 +817,17 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
   async function handleSubmit(e) {
     e.preventDefault()
     setSaveState(null)
-    const scopeId = activeType || 'python'
+    const scopeId = 'lessons'
     const existingLevel = editingLevelId ? levels.find(level => level.id === editingLevelId) : null
     try {
       const level = normalizeLevelRecord({
         ...(existingLevel ?? {}),
         ...form,
-        scopeType: 'type',
-        scopeId: existingLevel?.scopeId ?? scopeId,
+        scopeType: 'collection',
+        scopeId,
         id: editingLevelId ?? makeLevelId(form.title, scopeId),
         order: form.order === ''
-          ? existingLevel?.order ?? levels.filter(item => item.scopeType === 'type' && item.scopeId === scopeId).length + 1
+          ? existingLevel?.order ?? levels.filter(item => item.scopeType === 'collection' && item.scopeId === scopeId).length + 1
           : Number(form.order),
       })
       await setDoc(doc(firestore, LEVEL_COLLECTION, level.id), level, { merge: true })
@@ -892,41 +890,24 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
     }
   }
 
-  const activeLessons = useMemo(
-    () => lessons.filter(lesson => (lesson.type || 'unknown') === activeType),
-    [lessons, activeType],
-  )
+  const activeLessons = lessons
   const activeBuckets = useMemo(
-    () => makeLevelBuckets(activeLessons, levels, activeType),
-    [activeLessons, levels, activeType],
+    () => makeLevelBuckets(activeLessons, levels, null),
+    [activeLessons, levels],
   )
-  const typeOptions = groups?.length ? groups : TYPE_ORDER.map(type => ({ type, lessons: [] }))
 
   return (
     <section style={s.section}>
       <div style={s.titleRow}>
         <div>
           <h2 style={s.title}>Levels</h2>
-          <p style={s.subtitle}>Levels group lessons inside each lesson type. Lower order numbers appear first.</p>
+          <p style={s.subtitle}>Levels group lessons across the library. Lower order numbers appear first.</p>
         </div>
         <span style={s.levelManagerMeta}>{loading ? 'Loading...' : `${levels.length} total`}</span>
       </div>
 
       <div style={s.levelManager}>
         <div style={s.levelManagerBody}>
-          <div className="ui-tabs" style={s.levelTypeTabs}>
-            {typeOptions.map(({ type, lessons: groupLessons }) => (
-              <button
-                key={type}
-                className={`ui-tab${activeType === type ? ' is-active' : ''}`}
-                onClick={() => onTypeChange(type)}
-                type="button"
-              >
-                {TYPE_LABELS[type] ?? type}
-                <span style={s.tabCount}>{groupLessons.length}</span>
-              </button>
-            ))}
-          </div>
 
           <form style={s.levelForm} onSubmit={handleSubmit}>
             <label style={s.levelField}>
@@ -1034,7 +1015,7 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
           </form>
 
           {activeBuckets.length === 0 ? (
-            <p style={s.muted}>Create a level for {TYPE_LABELS[activeType] ?? activeType}, then assign lessons to it in the Builder lesson details.</p>
+            <p style={s.muted}>Create a library level, then assign lessons to it in the Builder lesson details.</p>
           ) : (
             <div style={s.levelPreviewList}>
               {activeBuckets.map(bucket => (

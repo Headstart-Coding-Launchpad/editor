@@ -3,8 +3,9 @@ import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '..
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
 import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } from '../src/shared/taskUtils.js'
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
+import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../src/shared/composedLesson.js'
 
-const VALID_TYPES = ['python', 'html', 'scratch', 'filesystem', 'electronics']
+const VALID_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics', 'composed']
 
 function flattenTasks(tasks) {
   const result = []
@@ -58,6 +59,7 @@ export function validateLessonForMcp(lesson) {
     return { valid: false, errors, warnings }
   }
   validateDraftLessonStructure(lesson, errors)
+  errors.push(...validateComposedStructure(lesson))
   if (tasks.length === 0) errors.push('tasks must contain at least one task or group')
 
   tasks.forEach((item, i) => {
@@ -74,6 +76,13 @@ export function validateLessonForMcp(lesson) {
     const n = i + 1
 
     if (!task || typeof task !== 'object' || Array.isArray(task)) return
+    const taskType = getTaskModuleType(lesson, task) ?? type
+    const allowedCarrySources = getModuleCarrySourceIds(lesson, task)
+    for (const field of ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']) {
+      if (task[field] != null && allowedCarrySources && !allowedCarrySources.includes(task[field])) {
+        errors.push(`Task ${n} ${field} must reference an earlier task in the same lesson module`)
+      }
+    }
 
     if (!task.title) errors.push(`Task ${n} is missing a title`)
 
@@ -113,7 +122,7 @@ export function validateLessonForMcp(lesson) {
           errors.push(`Task ${n} is a short-answer quiz with a check enabled but no check value`)
         }
       }
-    } else if (task.taskType !== 'information' && type === 'html') {
+    } else if (task.taskType !== 'information' && taskType === 'html') {
       if (!task.starterFiles || task.starterFiles.length === 0) errors.push(`Task ${n} has no files`)
       else {
         const names = task.starterFiles.map(f => f.name)
@@ -122,7 +131,7 @@ export function validateLessonForMcp(lesson) {
           errors.push(`Task ${n} has no HTML file to use as entry point`)
         }
       }
-    } else if (task.taskType !== 'information' && type === 'filesystem') {
+    } else if (task.taskType !== 'information' && taskType === 'filesystem') {
       if (task.codeStages?.length > 0) {
         task.codeStages.forEach((stage, si) => {
           if (!stage.label?.trim()) errors.push(`Task ${n} stage ${si + 1} is missing a label`)
@@ -141,7 +150,7 @@ export function validateLessonForMcp(lesson) {
           errors.push(`Task ${n} has a file-in-dir check but no parent folder`)
         }
       }
-    } else if (task.taskType !== 'information' && task.taskType !== 'quiz' && type === 'scratch') {
+    } else if (task.taskType !== 'information' && task.taskType !== 'quiz' && taskType === 'scratch') {
       if (task.check?.type === 'sprite_property') {
         if (!task.check.property) errors.push(`Task ${n} sprite check is missing a property`)
         if (!task.check.operator) errors.push(`Task ${n} sprite check is missing an operator`)
@@ -153,19 +162,19 @@ export function validateLessonForMcp(lesson) {
     }
 
     if (!task.taskType) {
-      const hasStarter = type === 'python' ? !!task.starterCode
-        : type === 'scratch' ? !!task.starterBlocks
-        : type === 'filesystem' ? !!task.starterFs
-        : type === 'electronics' ? !!task.starterCircuit
+      const hasStarter = taskType === 'python' || taskType === 'arcade' ? !!task.starterCode
+        : taskType === 'scratch' ? !!task.starterBlocks
+        : taskType === 'filesystem' ? !!task.starterFs
+        : taskType === 'electronics' ? !!task.starterCircuit
         : task.starterFiles?.some(f => f.content?.trim())
-      if (!hasStarter && type !== 'filesystem' && type !== 'electronics') {
+      if (!hasStarter && taskType !== 'filesystem' && taskType !== 'electronics') {
         warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
       }
     }
 
     if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check) {
       const allChecks = normalizeChecks(task.check)
-      if (type === 'python' && task.completeCode != null) {
+      if ((taskType === 'python' || taskType === 'arcade') && task.completeCode != null) {
         const staticChecks = allChecks.filter(c => checkAllowedForSubmit(c))
         const dynamicChecks = allChecks.filter(c => checkRequiresRun(c))
         if (staticChecks.length > 0 && staticChecks.some(c => !evaluateSingleCheck(c, '', { code: task.completeCode }))) {
@@ -175,7 +184,7 @@ export function validateLessonForMcp(lesson) {
           warnings.push(`Task ${n} has output checks — open the Complete tab and run to verify the complete solution`)
         }
       }
-      if (type === 'html' && task.completeFiles?.length > 0) {
+      if (taskType === 'html' && task.completeFiles?.length > 0) {
         const staticChecks = allChecks.filter(c => checkAllowedForSubmit(c))
         const dynamicChecks = allChecks.filter(c => checkRequiresRun(c))
         if (staticChecks.length > 0) {
@@ -188,7 +197,7 @@ export function validateLessonForMcp(lesson) {
           warnings.push(`Task ${n} has element/output checks — open the Complete tab and run to verify the complete solution`)
         }
       }
-      if (type === 'filesystem' && task.completeFs && typeof task.completeFs === 'object') {
+      if (taskType === 'filesystem' && task.completeFs && typeof task.completeFs === 'object') {
         const fsChecks = allChecks.filter(c => c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened')
         if (fsChecks.length > 0 && fsChecks.some(c => !evaluateSingleCheck(c, '', { fs: task.completeFs }))) {
           warnings.push(`Task ${n} complete filesystem does not satisfy a check — review the complete filesystem`)

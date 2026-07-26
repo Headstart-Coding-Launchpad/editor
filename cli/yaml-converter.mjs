@@ -45,6 +45,9 @@ export function lessonToYamlObject(lesson) {
       return {
         group: item.title,
         groupId: item.id,
+        ...(item.moduleId ? { moduleId: item.moduleId } : {}),
+        ...(item.moduleType ? { moduleType: item.moduleType } : {}),
+        ...(item.sandbox ? { sandbox: item.sandbox } : {}),
         tasks: (item.subtasks ?? []).map(taskToYamlObject),
       }
     }),
@@ -107,6 +110,9 @@ function convertTaskList(rawTasks, lessonType, lessonId) {
         id: groupId,
         type: 'group',
         title: rawItem.group,
+        ...(rawItem.moduleId ? { moduleId: rawItem.moduleId } : {}),
+        ...(rawItem.moduleType ? { moduleType: rawItem.moduleType } : {}),
+        ...(rawItem.sandbox ? { sandbox: rawItem.sandbox } : {}),
         subtasks,
       })
     } else {

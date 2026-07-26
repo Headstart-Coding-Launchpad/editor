@@ -4,6 +4,8 @@ import { renumberTasks, validateLesson } from '../lessonUtils'
 import { HTML_ONLY } from '../components/FileManager'
 import { createSpriteFromPreset } from '../spritePresets'
 import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
+import { DEFAULT_FS } from '../../modules/filesystem/filesystem'
+import { getEffectiveLessonForTask, isComposedLesson } from '../../shared/composedLesson'
 
 export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   const [selectedTaskId, setSelectedTaskId] = useState(() => {
@@ -35,14 +37,14 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     setSelectedTaskId(null)
   }
 
-  function defaultTypeFields(prevTask = null) {
-    if (lesson.type === 'python') {
+  function defaultTypeFields(prevTask = null, moduleType = lesson.type) {
+    if (moduleType === 'python' || moduleType === 'arcade') {
       return {
         starterCode: prevTask ? (prevTask.completeCode ?? prevTask.starterCode ?? '') : '',
         carryCodeFrom: prevTask?.id ?? null,
       }
     }
-    if (lesson.type === 'scratch') {
+    if (moduleType === 'scratch') {
       if (prevTask) {
         return {
           toolbox: '',
@@ -61,11 +63,17 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
         ...(sprites ? { sprites } : {}),
       }
     }
-    if (lesson.type === 'electronics') {
+    if (moduleType === 'electronics') {
       return {
         starterCircuit: prevTask ? cloneCircuit(prevTask.completeCircuit ?? prevTask.starterCircuit ?? DEFAULT_CIRCUIT) : cloneCircuit(DEFAULT_CIRCUIT),
         carryCircuitFrom: prevTask?.id ?? null,
         microcontroller: prevTask?.microcontroller ? { ...prevTask.microcontroller } : { enabled: false, boardType: null, starterCode: '' },
+      }
+    }
+    if (moduleType === 'filesystem') {
+      return {
+        starterFs: prevTask?.completeFs ?? prevTask?.starterFs ?? DEFAULT_FS,
+        carryFsFrom: prevTask?.id ?? null,
       }
     }
     return {
@@ -110,6 +118,18 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   }
 
   function handleAddTask() {
+    if (isComposedLesson(lesson)) {
+      const newId = nextId()
+      const newTask = {
+        id: newId,
+        title: 'New code task',
+        intent: '',
+        explainer: '',
+      }
+      handleLessonUpdate(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }))
+      selectTask(newId)
+      return
+    }
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
     const newTask = { id: newId, title: '', intent: '', explainer: '', ...defaultTypeFields(prevTask) }
@@ -125,7 +145,13 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
     const groupId = `g-${Date.now()}`
-    const firstSubtask = { id: newId, title: 'New Group - 1', intent: '', explainer: '', ...defaultTypeFields(prevTask) }
+    const firstSubtask = {
+      id: newId,
+      title: 'New Group - 1',
+      intent: '',
+      explainer: '',
+      ...(isComposedLesson(lesson) ? {} : defaultTypeFields(null)),
+    }
     const newGroup = { id: groupId, type: 'group', title: 'New Group', subtasks: [firstSubtask] }
     handleLessonUpdate(prev => {
       const next = [...prev.tasks]
@@ -150,7 +176,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       title: `${group.title} - ${subtasks.length + 1}`,
       intent: '',
       explainer: '',
-      ...defaultTypeFields(prevSubtask),
+      ...(isComposedLesson(lesson) ? {} : defaultTypeFields(prevSubtask, group.moduleType ?? lesson.type)),
     }
     handleLessonUpdate(prev => ({
       ...prev,
@@ -245,7 +271,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   const selectedGroup = selectedGroupId != null
     ? lesson.tasks.find(t => t.type === 'group' && t.id === selectedGroupId)
     : null
-  const lessonForEditor = selectedTask ? { ...lesson, tasks: flatTasks } : lesson
+  const lessonForEditor = selectedTask ? { ...getEffectiveLessonForTask(lesson, selectedTask), tasks: flatTasks } : lesson
   const selectedTaskGroup = selectedTask
     ? (lesson.tasks.find(t => t.type === 'group' && (t.subtasks ?? []).some(s => s.id === selectedTask.id)) ?? null)
     : null

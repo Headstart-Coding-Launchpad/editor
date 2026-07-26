@@ -4,11 +4,14 @@ export const DEFAULT_LEVEL_COLOUR = '#7c3aed'
 export const DEFAULT_LEVEL_ICON = '⭐'
 
 export function getLessonLevelScope(lesson = {}) {
-  const scopeType = lesson.courseId ? 'course'
+  const scopeType = lesson.type === 'composed' ? 'collection'
+    : lesson.courseId ? 'course'
     : lesson.module ? 'module'
       : lesson.collectionId ? 'collection'
         : 'type'
-  const scopeId = lesson.courseId ?? lesson.module ?? lesson.collectionId ?? lesson.type ?? 'general'
+  const scopeId = lesson.type === 'composed'
+    ? (lesson.collectionId ?? 'lessons')
+    : lesson.courseId ?? lesson.module ?? lesson.collectionId ?? lesson.type ?? 'general'
   return { scopeType, scopeId: String(scopeId || 'general') }
 }
 

@@ -6,6 +6,8 @@ What the platform can do. For how to configure these features see **docs/authori
 
 ## Lesson Types
 
+New lessons are composed lessons: each code task selects one of the workspace types below, and the active workspace set is derived from the tasks used. Existing single-type lessons remain supported.
+
 | Type | What students do |
 |---|---|
 | Python | Write and run Python code; output shown in a console panel |
@@ -141,10 +143,10 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Lesson Builder Features
 
 ### Lesson Configuration
-- ID, lesson type, title, description, stage, and a reusable referenced level
+- ID, title, description, stage, a reusable referenced level, and ordered tasks with per-task workspace selection (new lessons)
 - Forked lessons show their stock lesson and class lineage in Lesson Details
 - Asset list for the in-lesson asset browser
-- Sandbox starter: code, HTML files, Scratch state, toolbox, sprites, and backdrops
+- Independent sandbox state per workspace type used in the lesson
 
 ### Task Management
 - All task types: code (all lesson types), information, and quiz (all variants)

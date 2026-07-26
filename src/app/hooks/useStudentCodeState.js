@@ -201,7 +201,8 @@ export function useStudentCodeState({
     resetRunFeedback, resetCheckFeedback, applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
-  const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef })
+  const sandboxModuleId = lesson?.lessonModule?.id ?? null
+  const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef, sandboxModuleId })
 
   const { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
     teacherPresentation,
@@ -311,17 +312,18 @@ export function useStudentCodeState({
 
   function savePersonalSandboxSnapshot() {
     const id = identityRef.current
-    if (!id || teacherPresentation || !lessonRef.current) return
-    if (lessonRef.current.type === 'python') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current })
-    } else if (lessonRef.current.type === 'arcade') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current, arcadeDesign: arcadeDesignRef.current })
-    } else if (lessonRef.current.type === 'html') {
-      filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content))
-    } else if (lessonRef.current.type === 'filesystem') {
-      savePersonalSandboxFs(lessonId, id.anonymousId, fsStateRef.current)
-    } else if (lessonRef.current.type === 'electronics') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current })
+    const currentLesson = lessonRef.current
+    if (!id || teacherPresentation || !currentLesson) return
+    if (currentLesson.type === 'python') {
+      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current }, currentLesson.lessonModule?.id ?? null)
+    } else if (currentLesson.type === 'arcade') {
+      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current, arcadeDesign: arcadeDesignRef.current }, currentLesson.lessonModule?.id ?? null)
+    } else if (currentLesson.type === 'html') {
+      filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content, currentLesson.lessonModule?.id ?? null))
+    } else if (currentLesson.type === 'filesystem') {
+      savePersonalSandboxFs(lessonId, id.anonymousId, fsStateRef.current, currentLesson.lessonModule?.id ?? null)
+    } else if (currentLesson.type === 'electronics') {
+      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current }, currentLesson.lessonModule?.id ?? null)
     }
     // Scratch: saves incrementally via handleScratchChange
   }
@@ -769,22 +771,22 @@ export function useStudentCodeState({
     if (!identity || teacherPresentation || !lesson) return
     const id = identity.anonymousId
     if (lesson.type === 'python' || lesson.type === 'arcade') {
-      const saved = loadPersonalSandboxCode(lessonId, id)
+      const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? lesson.sandboxStarter ?? '')
     } else if (lesson.type === 'html') {
       const starterFiles = lesson.sandboxStarterFiles ?? []
       const sandboxFiles = starterFiles.map(f => {
-        const savedContent = loadPersonalSandboxFile(lessonId, f.name, id)
+        const savedContent = loadPersonalSandboxFile(lessonId, f.name, id, sandboxModuleId)
         return { ...f, content: savedContent ?? f.content }
       })
       const withContent = sandboxFiles.length > 0 ? sandboxFiles : starterFiles.map(f => ({ ...f }))
       setFiles(withContent)
       setActiveFile(withContent[0]?.name ?? '')
     } else if (lesson.type === 'filesystem') {
-      const savedFs = loadPersonalSandboxFs(lessonId, id)
+      const savedFs = loadPersonalSandboxFs(lessonId, id, sandboxModuleId)
       setFsState(savedFs ?? lesson.sandboxStarterFs ?? DEFAULT_FS)
     } else if (lesson.type === 'electronics') {
-      const saved = loadPersonalSandboxCode(lessonId, id)
+      const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
     }
     setOutput('')

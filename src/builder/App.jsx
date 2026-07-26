@@ -10,16 +10,14 @@ import { DEFAULT_CIRCUIT, cloneCircuit } from '../modules/electronics/circuit'
 
 export const LS_KEY = 'headstart_builder_current'
 
-const blankLesson = type => ({
+const blankLesson = () => ({
   id: '',
-  type,
+  type: 'composed',
   title: '',
   description: '',
   draft: false,
   version: 0,
   tasks: [],
-  ...(type === 'filesystem' ? { sandboxStarterFs: { '/': { type: 'dir' } } } : {}),
-  ...(type === 'electronics' ? { sandboxStarterCircuit: cloneCircuit(DEFAULT_CIRCUIT) } : {}),
 })
 
 const normalizeLoadedLesson = lesson => ({ ...lesson, draft: lesson.draft === true, version: lesson.version ?? 0 })
@@ -123,8 +121,8 @@ export default function BuilderApp() {
   if (!lesson) {
     return (
       <LessonTypeChooser
-        onChoose={type => {
-          setLesson(blankLesson(type))
+        onChoose={() => {
+          setLesson(blankLesson())
           setDirty(false)
         }}
         onUpload={uploaded => {
@@ -185,10 +183,16 @@ function LessonTypeChooser({ onChoose, onUpload }) {
         </div>
         <div style={s.cardBody}>
           <div>
-            <h1 style={s.choiceTitle}>Choose a lesson type</h1>
-            <p style={s.choiceText}>This sets the editor, runner, and starter-code format for the lesson.</p>
+            <h1 style={s.choiceTitle}>Create a lesson</h1>
+            <p style={s.choiceText}>Add the coding environments you need as lesson modules, in any order.</p>
           </div>
           <div style={s.choiceGrid}>
+            <button style={s.choiceButton} onClick={onChoose}>
+              <span style={s.choiceName}>Create composed lesson</span>
+              <span style={s.choiceDescription}>Start with an empty lesson, then add Python, Scratch, Arcade Kit, HTML, Filesystem, or Electronics modules.</span>
+            </button>
+          </div>
+          {false && <div style={s.choiceGrid}>
             <button style={s.choiceButton} onClick={() => onChoose('python')}>
               <span style={s.choiceName}>Python</span>
               <span style={s.choiceDescription}>Single-file Python tasks with output checks and Pyodide execution.</span>
@@ -213,7 +217,7 @@ function LessonTypeChooser({ onChoose, onUpload }) {
               <span style={s.choiceName}>Electronics</span>
               <span style={s.choiceDescription}>Editable breadboard tasks with LEDs, motors, switches, pots, and future MicroPython support.</span>
             </button>
-          </div>
+          </div>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
               Upload existing JSON

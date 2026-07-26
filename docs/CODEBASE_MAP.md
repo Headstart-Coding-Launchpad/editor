@@ -11,9 +11,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `src/main.jsx` | App DOM entry — renders App into #root |
-| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/code`, `/admin`, `/builder`, and fallback to LandingPage |
+| `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/code`, `/playground/:type`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
-| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, lesson type chooser, restore/save dialogs |
+| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, composed-lesson creation, restore/save dialogs |
 | `src/builder/spritePresets.js` | Pure reusable Scratch sprite preset validation and unique lesson-sprite creation helpers |
 
 ---
@@ -48,8 +48,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `LandingPage.jsx` | Entry screen: student enters a lesson ID or opens a downloaded `.launchpad` Python code file |
+| `LandingPage.jsx` | Entry screen: student enters a lesson ID, opens `.launchpad` code, or chooses a standalone playground |
 | `CodeFileWorkspace.jsx` | Lightweight standalone Python editor/runner for one or many imported `.launchpad` code tasks |
+| `PlaygroundView.jsx` | Local-only Python, Arcade Kit, and Electronics playground route built from the existing student workspaces |
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
 | `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView |
 | `StudentView.jsx` | Main student experience: all phases (loading → waiting → name-entry → lesson/sandbox/solo → ended) |
@@ -374,6 +375,7 @@ Each `index.js` exports a default object with:
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting |
+| `composedLesson.js` | Pure composed-lesson module resolution, structural validation, sandbox adaptation, and scoped carry-source helpers |
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |

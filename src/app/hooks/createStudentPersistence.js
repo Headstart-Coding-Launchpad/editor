@@ -16,13 +16,22 @@ import {
  * Personal sandbox saves are skipped entirely in those modes (sandbox reads
  * elsewhere go straight to localStorage, so writing ephemerally would desync).
  */
-export function createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef }) {
+export function createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef, sandboxModuleId = null }) {
+  const saveSandboxCode = (actorId, data) => sandboxModuleId
+    ? savePersonalSandboxCode(lessonId, actorId, data, sandboxModuleId)
+    : savePersonalSandboxCode(lessonId, actorId, data)
+  const saveSandboxFile = (filename, actorId, content) => sandboxModuleId
+    ? savePersonalSandboxFile(lessonId, filename, actorId, content, sandboxModuleId)
+    : savePersonalSandboxFile(lessonId, filename, actorId, content)
+  const saveSandboxFs = (actorId, fs) => sandboxModuleId
+    ? savePersonalSandboxFs(lessonId, actorId, fs, sandboxModuleId)
+    : savePersonalSandboxFs(lessonId, actorId, fs)
   const ephemeral = teacherPresentation || previewMode
 
   function savePythonCode(actorId, taskId, data) {
     if (inPersonalSandboxRef.current) {
       if (ephemeral) return
-      savePersonalSandboxCode(lessonId, actorId, { code: data.code })
+      saveSandboxCode(actorId, { code: data.code })
     } else if (ephemeral) {
       ephemeralStorage.saveCode(lessonId, taskId, actorId, data)
     } else {
@@ -33,7 +42,7 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
   function saveHtmlFile(actorId, taskId, filename, content) {
     if (inPersonalSandboxRef.current) {
       if (ephemeral) return
-      savePersonalSandboxFile(lessonId, filename, actorId, content)
+      saveSandboxFile(filename, actorId, content)
     } else if (ephemeral) {
       ephemeralStorage.saveFile(lessonId, taskId, filename, actorId, content)
     } else {
@@ -48,7 +57,7 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
   function saveScratch(actorId, taskId, workspaceStates) {
     if (inPersonalSandboxRef.current) {
       if (ephemeral) return
-      savePersonalSandboxCode(lessonId, actorId, { state: workspaceStates })
+      saveSandboxCode(actorId, { state: workspaceStates })
     } else if (ephemeral) {
       ephemeralStorage.saveCode(lessonId, taskId, actorId, { state: workspaceStates })
     } else {
@@ -59,7 +68,7 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
   function saveFs(actorId, taskId, newFs) {
     if (inPersonalSandboxRef.current) {
       if (ephemeral) return
-      savePersonalSandboxFs(lessonId, actorId, newFs)
+      saveSandboxFs(actorId, newFs)
     } else if (ephemeral) {
       ephemeralStorage.saveFsState(lessonId, taskId, actorId, newFs)
     } else {

@@ -22,7 +22,7 @@ Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lesso
 
 ```yaml
 id: python-for-loops         # required — lowercase slug, used in URLs
-type: python                 # required — python | html | scratch | filesystem | electronics
+type: composed               # required for new lessons; legacy types still load
 title: Python For Loops      # required
 draft: false                 # optional; true permits incomplete real tasks during authoring
 version: 3                   # current successful-save version (managed by CLI/Builder)
@@ -47,7 +47,7 @@ tasks: []                     # required — ordered task list (see below)
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `type` | Yes | string | `composed` for new lessons. Legacy `python`, `arcade`, `html`, `scratch`, `filesystem`, and `electronics` lessons remain supported. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `draft` | No | boolean | Enables incomplete real tasks for authoring. Final publishing refuses `true`. |
@@ -82,6 +82,7 @@ tasks:
       Describe the learning goal and intended task.
     # taskType is not set directly in YAML — use `type: information` or `type: quiz`;
     # omit it entirely for a code task.
+    moduleType: python          # required for a code task in a composed lesson
     check: {}                   # optional — completion check, see the lesson-type docs
     feedbackChecks: []          # optional — nudges or blocking wrong-pattern checks
 ```

@@ -7,6 +7,7 @@ import LoadingScreen from './app/components/LoadingScreen'
 const LessonRoute = lazy(() => import('./app/views/LessonRoute'))
 const LandingPage = lazy(() => import('./app/views/LandingPage'))
 const CodeFileWorkspace = lazy(() => import('./app/views/CodeFileWorkspace'))
+const PlaygroundView = lazy(() => import('./app/views/PlaygroundView'))
 const LoginPage = lazy(() => import('./app/views/LoginPage'))
 const AdminPortal = lazy(() => import('./admin/AdminPortal'))
 const BuilderApp = lazy(() => import('./builder/App'))
@@ -29,6 +30,7 @@ export default function App() {
             />
             <Route path="/lesson/:lessonId" element={<LessonRoute />} />
             <Route path="/code" element={<CodeFileWorkspace />} />
+            <Route path="/playground/:type" element={<PlaygroundView />} />
             <Route
               path="/admin/:tab?/:subtab?"
               element={

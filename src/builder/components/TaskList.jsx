@@ -101,6 +101,7 @@ export default function TaskList({
   onReorder,
   onReorderSubtask,
   onRenumber,
+  isComposed = false,
 }) {
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const map = {}
@@ -239,7 +240,7 @@ export default function TaskList({
               1..N
             </button>
           )}
-          <button className="btn-primary" style={s.addBtn} onClick={onAdd} title="Add standalone task">
+          <button className="btn-primary" style={s.addBtn} onClick={onAdd} title={isComposed ? 'Add a code task and choose its workspace' : 'Add standalone task'}>
             + Task
           </button>
           <button

@@ -28,10 +28,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const [taskFeedback, setTaskFeedback] = useState([])
   const { role } = useAuth()
   const navigate = useNavigate()
-  const { allTopics, loading: topicsLoading, error: topicsError } = useTopicLibrary(lesson.type)
+  const { allTopics, loading: topicsLoading, error: topicsError } = useTopicLibrary(lesson.type === 'composed' ? null : lesson.type)
   const hasTopicReferences = collectLessonTopicReferences(lesson).length > 0
 
-  const { defaultSprites } = useTypeAssets(lesson.type === 'scratch' ? 'scratch' : null)
+  const { defaultSprites } = useTypeAssets(['scratch', 'composed'].includes(lesson.type) ? 'scratch' : null)
 
   const {
     selectedTaskId,
@@ -219,6 +219,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             onReorder={handleReorder}
             onReorderSubtask={handleReorderSubtask}
             onRenumber={handleRenumberTasks}
+            isComposed={lesson.type === 'composed'}
           />
           <ValidationPanel key={selectedTaskId ?? 'none'} errors={errors} warnings={warnings} />
         </aside>
@@ -242,6 +243,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                 key={selectedTask.id}
                 task={selectedTask}
                 lesson={lessonForEditor}
+                composedLesson={lesson.type === 'composed' ? lesson : null}
                 parentGroup={selectedTaskGroup}
                 onUpdate={updated => {
                   handleLessonUpdate(prev => ({

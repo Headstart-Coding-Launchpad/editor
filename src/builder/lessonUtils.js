@@ -7,6 +7,7 @@ import { normalizeFsCheck } from '../modules/filesystem/checks'
 import { normalizeHtmlCheck } from '../modules/html/checks'
 import { normalizeSequenceItem } from '../modules/scratch/checks'
 import { validateDraftLessonStructure } from '../shared/draftLesson'
+import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../shared/composedLesson'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
@@ -237,6 +238,7 @@ export function validateLesson(lesson) {
   if (lesson.fork != null) validateLessonFork(lesson, errors)
   if (!tasks || tasks.length === 0) errors.push('Lesson must have at least one task')
   validateDraftLessonStructure(lesson, errors)
+  errors.push(...validateComposedStructure(lesson))
 
   tasks.forEach((item, i) => {
     if (item?.type === 'group') {
@@ -252,6 +254,7 @@ export function validateLesson(lesson) {
   flat.forEach((task, i) => {
     const n = i + 1
     if (!task || typeof task !== 'object' || Array.isArray(task)) return
+    const type = getTaskModuleType(lesson, task) ?? lesson.type
     // In draft mode only the shared structural/type checks are required.
     if (lesson.draft === true) return
     const feedbackChecks = validateFeedbackBasics(task, n, errors, warnings)
@@ -358,6 +361,10 @@ export function validateLesson(lesson) {
       : type === 'scratch' ? task.carryBlocksFrom : task.carryCodeFrom
     if (carryFrom != null && !flat.some(candidate => candidate.id === carryFrom)) {
       errors.push(`Task ${n} references task ${carryFrom} for carry-through but that task does not exist`)
+    }
+    const allowedCarrySourceIds = getModuleCarrySourceIds(lesson, task)
+    if (carryFrom != null && allowedCarrySourceIds != null && !allowedCarrySourceIds.includes(carryFrom)) {
+      errors.push(`Task ${n} may only carry work from an earlier task in the same lesson module`)
     }
 
     const hasStarter = task.taskType === 'information'
@@ -574,6 +581,14 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
   }
 
   return tasks.map(item => item.type === 'group'
-    ? { id: item.id, type: 'group', title: item.title, subtasks: (item.subtasks ?? []).map(normalizeTask) }
+    ? {
+        id: item.id,
+        type: 'group',
+        title: item.title,
+        ...(item.moduleId ? { moduleId: item.moduleId } : {}),
+        ...(item.moduleType ? { moduleType: item.moduleType } : {}),
+        ...(item.sandbox ? { sandbox: item.sandbox } : {}),
+        subtasks: (item.subtasks ?? []).map(normalizeTask),
+      }
     : normalizeTask(item))
 }

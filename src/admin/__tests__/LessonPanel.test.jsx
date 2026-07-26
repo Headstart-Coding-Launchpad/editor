@@ -126,25 +126,19 @@ describe('LessonPanel', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders lessons grouped by type with correct group headings', () => {
+  it('renders lessons in one library without module-type tabs', () => {
     render(<LessonPanel />)
     fireAll({ lessons: [PYTHON_LESSON, HTML_LESSON, SCRATCH_LESSON, ELECTRONICS_LESSON] })
 
-    expect(screen.getByText('Python')).toBeInTheDocument()
-    expect(screen.getByText('HTML')).toBeInTheDocument()
-    expect(screen.getByText('Scratch')).toBeInTheDocument()
-    expect(screen.getByText('Electronics')).toBeInTheDocument()
+    expect(screen.getByText('Lessons')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Python/i })).not.toBeInTheDocument()
   })
 
-  it('renders registered module headings even when that type has no lessons', async () => {
-    const user = userEvent.setup()
+  it('does not expose empty module-type filters', () => {
     render(<LessonPanel />)
     fireAll({ lessons: [PYTHON_LESSON, HTML_LESSON] })
 
-    await user.click(screen.getByRole('button', { name: /Electronics/i }))
-
-    expect(screen.getByText('Electronics')).toBeInTheDocument()
-    expect(screen.getByText('No lessons found for this lesson type.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Electronics/i })).not.toBeInTheDocument()
   })
 
   it('renders the lesson title for each lesson', async () => {
@@ -154,8 +148,6 @@ describe('LessonPanel', () => {
 
     await openFirstLevel(user)
     expect(screen.getByText('Intro to Python')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /HTML/i }))
-    await openFirstLevel(user)
     expect(screen.getByText('HTML Basics')).toBeInTheDocument()
   })
 
@@ -287,11 +279,11 @@ describe('LessonPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Create Level' }))
 
     expect(setDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ __collection: 'lessonLevels', __id: 'python-beginner' }),
+      expect.objectContaining({ __collection: 'lessonLevels', __id: 'lessons-beginner' }),
       expect.objectContaining({
         title: 'Beginner',
-        scopeType: 'type',
-        scopeId: 'python',
+        scopeType: 'collection',
+        scopeId: 'lessons',
         icon: '🚀',
         color: '#16a34a',
       }),
@@ -313,8 +305,8 @@ describe('LessonPanel', () => {
         id: 'python-beginner',
         title: 'Beginner',
         description: 'First steps',
-        scopeType: 'type',
-        scopeId: 'python',
+        scopeType: 'collection',
+        scopeId: 'lessons',
         order: 1,
         color: '#16a34a',
         icon: '⭐',
@@ -334,8 +326,8 @@ describe('LessonPanel', () => {
       expect.objectContaining({
         id: 'python-beginner',
         title: 'Foundations',
-        scopeType: 'type',
-        scopeId: 'python',
+        scopeType: 'collection',
+        scopeId: 'lessons',
         order: 2,
         color: '#2563eb',
       }),
@@ -346,7 +338,7 @@ describe('LessonPanel', () => {
       {
         level: 'Foundations',
         levelId: 'python-beginner',
-        levelRef: { id: 'python-beginner', scopeType: 'type', scopeId: 'python' },
+        levelRef: { id: 'python-beginner', scopeType: 'collection', scopeId: 'lessons' },
       },
     )
   })

@@ -16,6 +16,11 @@ Feature reference for the whole platform — lesson types, task types, quiz vari
 
 **Load when:** you need to understand product capabilities before making a change, or when checking whether a feature already exists.
 
+### [MODULE_FEATURE_MATRIX.md](MODULE_FEATURE_MATRIX.md)
+At-a-glance capability matrix for every lesson module, including landing-page playgrounds, lesson sandboxes, teacher/student collaboration, code stages, checks, and carry-through.
+
+**Load when:** you need to compare module capabilities or check whether a classroom feature is available for a particular lesson type.
+
 ### [ARCADE_KIT_STATUS.md](ARCADE_KIT_STATUS.md)
 Current implementation record for the experimental Arcade Kit lesson type: supported API, asset model, integration details, test status, known limitations, and the recommended next milestones.
 
@@ -51,6 +56,11 @@ Change-type map for finding adjacent code, docs, and tests that usually move tog
 Design intent and contract for `src/modules/<type>/` lesson modules, including student, builder, teacher-live, persistence, check editor, runtime, sandbox, and carry-through responsibilities.
 
 **Load when:** adding or changing a lesson type, changing the module interface, or touching registry-driven classroom/builder behavior.
+
+### [architecture/composed-lessons-spec.md](architecture/composed-lessons-spec.md)
+Proposed technical specification for backward-compatible multi-workspace composed lessons, lesson-module-scoped carry-through and sandboxes, plus local-only Python, Arcade Kit, and Electronics playgrounds.
+
+**Load when:** implementing or reviewing composed lessons, module-aware task routing, scoped sandbox persistence, or the first standalone playgrounds.
 
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
