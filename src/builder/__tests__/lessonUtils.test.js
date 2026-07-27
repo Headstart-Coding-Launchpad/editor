@@ -201,6 +201,13 @@ describe('validateLesson', () => {
 })
 
 describe('draft lesson metadata', () => {
+  it('allows version 0 for a newly created lesson', () => {
+    const newLesson = lesson('python', [{ id: 1, title: 'Task', starterCode: 'print("hi")' }])
+    newLesson.version = 0
+
+    expect(validateLesson(newLesson).errors).toEqual([])
+  })
+
   it('allows incomplete real tasks in drafts and preserves task ids and intent during export', () => {
     const draft = lesson('python', [{ id: 31, title: 'Plan a loop', intent: 'Explain loops in **Markdown**.' }])
     draft.draft = true

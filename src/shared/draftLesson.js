@@ -40,7 +40,7 @@ function validateTaskShape(task, label, draft, errors) {
 /** Basic schema checks that must hold even for incomplete draft lessons. */
 export function validateDraftLessonStructure(lesson, errors) {
   if (lesson.draft != null && typeof lesson.draft !== 'boolean') errors.push('draft must be a boolean when provided')
-  if (lesson.version != null && (!Number.isInteger(lesson.version) || lesson.version < 1)) errors.push('version must be a positive integer when provided')
+  if (lesson.version != null && (!Number.isInteger(lesson.version) || lesson.version < 0)) errors.push('version must be a non-negative integer when provided')
   if (!Array.isArray(lesson.tasks)) return
   lesson.tasks.forEach((item, index) => {
     const label = `Task ${index + 1}`
