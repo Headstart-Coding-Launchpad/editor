@@ -9,7 +9,7 @@ import ArcadePreview from './ArcadePreview'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
 import { allowsArcadeTool, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet } from './design'
 
-export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, teacherLiveCode, teacherLiveArcadeDesign }) {
+export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, teacherLiveCode, teacherLiveArcadeDesign, teacherLiveWorkspace }) {
   const [runId, setRunId] = useState(0)
   const [runCode, setRunCode] = useState('')
   const [running, setRunning] = useState(false)
@@ -19,6 +19,7 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const code = isForcedTeacherLive ? displayCode : isTeacherEditing ? (teacherLiveCode ?? '') : cs.code
   const design = isTeacherEditing ? (teacherLiveArcadeDesign ?? cs.arcadeDesign) : cs.arcadeDesign
+  const workspaceTab = isTeacherEditing ? (teacherLiveWorkspace ?? 'code') : activeWorkspaceTab
   const previousCodeRef = useRef(code)
   const staticAssets = useMemo(() => (lesson?.assets ?? []).map(name => ({ name, url: resolveAssetFileUrl(resolveAssetsPath(lesson.assetsPath ?? ''), name) })), [lesson])
   const generatedAssets = useMemo(() => generatedArcadeAssets(design), [design])
@@ -61,7 +62,7 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
       {canDrawSprites && <button type="button" role="tab" aria-selected={activeWorkspaceTab === 'sprites'} onClick={() => setActiveWorkspaceTab('sprites')} style={{ ...s.workspaceTab, ...(activeWorkspaceTab === 'sprites' ? s.workspaceTabActive : {}) }}>Sprites</button>}
       {canDrawMaps && <button type="button" role="tab" aria-selected={activeWorkspaceTab === 'tilemaps'} onClick={() => setActiveWorkspaceTab('tilemaps')} style={{ ...s.workspaceTab, ...(activeWorkspaceTab === 'tilemaps' ? s.workspaceTabActive : {}) }}>Tilemaps</button>}
     </div>}
-    {activeWorkspaceTab === 'code' && <>
+    {workspaceTab === 'code' && <>
     {!readOnly && <div style={s.toolbar}>
       <strong>game.py</strong>
       <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b' }}>Click the game to use the arrow keys.</span>
@@ -79,8 +80,8 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
       <AssetBrowser assetsPath={lesson?.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} assets={lesson?.assets ?? []} storageAssets={[...storageAssets, ...typeStorageAssets]} style={{ borderRadius: 0 }} />
     </details>}
     </>}
-    {activeWorkspaceTab === 'sprites' && canDrawSprites && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'sprites' }} design={design} readOnly={readOnly} onChange={readOnly ? undefined : handleDesignChange} availableAssets={standardAssets} title="Your sprites" /></div>}
-    {activeWorkspaceTab === 'tilemaps' && canDrawMaps && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'tilemaps' }} design={design} readOnly={readOnly} onChange={readOnly ? undefined : handleDesignChange} availableAssets={standardAssets} title="Your tilemaps" /></div>}
+    {workspaceTab === 'sprites' && canDrawSprites && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'sprites' }} design={design} readOnly={readOnly} onChange={readOnly ? undefined : handleDesignChange} availableAssets={standardAssets} title="Your sprites" /></div>}
+    {workspaceTab === 'tilemaps' && canDrawMaps && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'tilemaps' }} design={design} readOnly={readOnly} onChange={readOnly ? undefined : handleDesignChange} availableAssets={standardAssets} title="Your tilemaps" /></div>}
   </div>
   const preview = <div style={s.preview}>
     <ArcadePreview code={runCode} assets={assets} tilemaps={generatedTilemaps} runId={runId} running={running} />

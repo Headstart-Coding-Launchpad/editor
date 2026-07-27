@@ -7,6 +7,13 @@ function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
 }
 
+function encodeWorkspaceFiles(files) {
+  const fileMap = Array.isArray(files)
+    ? Object.fromEntries(files.map(file => [file.name, file.content]))
+    : files
+  return encodeFileKeys(fileMap ?? {})
+}
+
 function getAttemptEntries(session, anonymousId, taskId) {
   return Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})
     .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
@@ -152,6 +159,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherEditAcceptedAt`]  = null
       updates[`students/${anonymousId}/teacherLiveCode`]        = null
       updates[`students/${anonymousId}/teacherLiveFiles`]       = null
+      updates[`students/${anonymousId}/teacherLiveActiveFile`]  = null
+      updates[`students/${anonymousId}/teacherLiveWorkspace`]   = null
       updates[`students/${anonymousId}/teacherLiveArcadeDesign`] = null
       updates[`students/${anonymousId}/teacherEditApplyCode`]   = null
       updates[`students/${anonymousId}/teacherEditApplyFiles`]  = null
@@ -340,6 +349,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
       teacherLiveFiles:       null,
+      teacherLiveActiveFile:  null,
+      teacherLiveWorkspace:   null,
       teacherLiveArcadeDesign: null,
       teacherEditApplyCode:   null,
       teacherEditApplyFiles:  null,
@@ -352,7 +363,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const payload = typeof edit === 'string' ? { code: edit } : (edit ?? {})
     const updates = {}
     if ('code' in payload) updates.teacherLiveCode = payload.code ?? null
-    if ('files' in payload) updates.teacherLiveFiles = payload.files ? encodeFileKeys(payload.files) : null
+    if ('files' in payload) updates.teacherLiveFiles = payload.files ? encodeWorkspaceFiles(payload.files) : null
+    if ('activeFile' in payload) updates.teacherLiveActiveFile = payload.activeFile ?? null
+    if ('workspace' in payload) updates.teacherLiveWorkspace = payload.workspace ?? null
     if ('arcadeDesign' in payload) updates.teacherLiveArcadeDesign = payload.arcadeDesign ?? null
     if (Object.keys(updates).length > 0) {
       await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
@@ -366,13 +379,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
       teacherLiveFiles:       null,
+      teacherLiveActiveFile:  null,
+      teacherLiveWorkspace:   null,
       teacherLiveArcadeDesign: null,
       teacherEditApplyCode:   payload.code ?? null,
-      teacherEditApplyFiles:  payload.files ? encodeFileKeys(payload.files) : null,
+      teacherEditApplyFiles:  payload.files ? encodeWorkspaceFiles(payload.files) : null,
       teacherEditApplyArcadeDesign: payload.arcadeDesign ?? null,
       teacherEditAppliedAt:   Date.now(),
       currentCode:            payload.code ?? null,
-      currentFiles:           payload.files ? encodeFileKeys(payload.files) : null,
+      currentFiles:           payload.files ? encodeWorkspaceFiles(payload.files) : null,
       currentArcadeDesign:    payload.arcadeDesign ?? null,
     })
   }
@@ -383,6 +398,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
       teacherLiveFiles:       null,
+      teacherLiveActiveFile:  null,
+      teacherLiveWorkspace:   null,
       teacherLiveArcadeDesign: null,
     })
   }

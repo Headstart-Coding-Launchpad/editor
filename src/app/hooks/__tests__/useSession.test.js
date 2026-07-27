@@ -139,6 +139,47 @@ describe('useSession', () => {
     })
   })
 
+  describe('teacher live editing', () => {
+    it('encodes HTML file arrays by filename before sending a live edit', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherLiveCode('student-abc', {
+          activeFile: 'app.js',
+          workspace: 'tilemaps',
+          files: [
+            { name: 'index.html', content: '<h1>Hello</h1>' },
+            { name: 'app.js', content: 'console.log("hello")' },
+          ],
+        })
+      })
+
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { teacherLiveFiles: {
+          'index__dot__html': '<h1>Hello</h1>',
+          'app__dot__js': 'console.log("hello")',
+        }, teacherLiveActiveFile: 'app.js', teacherLiveWorkspace: 'tilemaps' },
+      )
+    })
+
+    it('commits HTML file arrays as encoded student files', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.commitTeacherEdit('student-abc', {
+          files: [{ name: 'index.html', content: '<p>Updated</p>' }],
+        })
+      })
+
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        expect.objectContaining({
+          teacherEditApplyFiles: { 'index__dot__html': '<p>Updated</p>' },
+          currentFiles: { 'index__dot__html': '<p>Updated</p>' },
+        }),
+      )
+    })
+  })
+
   describe('setExplainerShowComplete', () => {
     it('writes explainerShowComplete: true via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

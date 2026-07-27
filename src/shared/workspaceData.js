@@ -26,8 +26,16 @@ export function getFileType(name, fallback = 'text') {
 
 export function decodeSessionFiles(sessionFiles, decodeKey, fallback = 'text') {
   if (!sessionFiles) return []
-  return Object.entries(sessionFiles).map(([key, content]) => {
-    const name = decodeKey(key)
-    return { name, content, type: getFileType(name, fallback) }
+  return Object.entries(sessionFiles).map(([key, value]) => {
+    // Older teacher-edit sessions briefly stored whole file objects under numeric
+    // keys. Keep those sessions readable while ensuring editor content is text.
+    const legacyFile = value && typeof value === 'object' && typeof value.name === 'string'
+      ? value
+      : null
+    const name = legacyFile?.name ?? decodeKey(key)
+    const content = typeof (legacyFile?.content ?? value) === 'string'
+      ? (legacyFile?.content ?? value)
+      : String(legacyFile?.content ?? value ?? '')
+    return { name, content, type: legacyFile?.type ?? getFileType(name, fallback) }
   })
 }

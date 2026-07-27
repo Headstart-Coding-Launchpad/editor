@@ -5,7 +5,7 @@ import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 export default function StudentWorkspace({
   task, cs, isViewingPrev, isForcedTeacherLive,
   displayCode, displayOutput, displayRunStatus, displayCheckPassed,
-  isTeacherEditing, teacherLiveCode,
+  isTeacherEditing, teacherLiveCode, teacherLiveWorkspace,
 }) {
   const raw = isForcedTeacherLive ? displayCode : isTeacherEditing ? teacherLiveCode : cs.code
   const circuit = useMemo(() => parseCircuit(raw, task?.starterCircuit ?? DEFAULT_CIRCUIT), [raw, task?.starterCircuit])
@@ -40,6 +40,7 @@ export default function StudentWorkspace({
       runStatus={isForcedTeacherLive ? displayRunStatus : cs.runStatus}
       running={cs.running}
       checkPassed={isForcedTeacherLive ? displayCheckPassed : cs.checkPassed}
+      activeTab={isTeacherEditing ? teacherLiveWorkspace : undefined}
       title="Electronics"
     />
   )

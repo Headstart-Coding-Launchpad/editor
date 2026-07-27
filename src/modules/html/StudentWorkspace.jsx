@@ -12,7 +12,7 @@ export default function StudentWorkspace({
   lesson, task, cs, isSandbox,
   isViewingPrev, isForcedTeacherLive, isMobile,
   displayFiles, displayActiveFile, displayRunStatus, displaySelection,
-  isTeacherEditing, teacherLiveFiles = [],
+  isTeacherEditing, teacherLiveFiles = [], teacherLiveActiveFile,
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
   const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
@@ -25,7 +25,9 @@ export default function StudentWorkspace({
     ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
   const files = isTeacherEditing ? teacherLiveFiles : displayFiles
-  const activeFile = isTeacherEditing ? (teacherLiveFiles[0]?.name ?? displayActiveFile) : displayActiveFile
+  const activeFile = isTeacherEditing
+    ? (teacherLiveActiveFile ?? teacherLiveFiles[0]?.name ?? displayActiveFile)
+    : displayActiveFile
   const previewSrc = isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()

@@ -354,6 +354,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
   const teacherLiveFiles = decodeSessionFiles(myStudentTeacherEdit?.teacherLiveFiles, decodeFileKey, 'html')
+  const teacherLiveActiveFile = myStudentTeacherEdit?.teacherLiveActiveFile ?? null
+  const teacherLiveWorkspace = myStudentTeacherEdit?.teacherLiveWorkspace ?? null
   const teacherLiveArcadeDesign = myStudentTeacherEdit?.teacherLiveArcadeDesign ?? null
 
   const taskProgressControl = !isSandbox ? (
@@ -609,6 +611,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
           teacherLiveFiles={teacherLiveFiles}
+          teacherLiveActiveFile={teacherLiveActiveFile}
+          teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           canOfferNextStage={canOfferNextStage}
           canOfferCompletePreview={canOfferCompletePreview}

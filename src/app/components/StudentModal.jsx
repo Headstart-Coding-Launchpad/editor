@@ -54,6 +54,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const [teacherCode, setTeacherCode] = useState('')
   const [teacherFiles, setTeacherFiles] = useState([])
   const [teacherArcadeDesign, setTeacherArcadeDesign] = useState(null)
+  const [teacherWorkspace, setTeacherWorkspace] = useState('code')
   const [teacherScratchState, setTeacherScratchState] = useState(null)
   const [declinedNotice, setDeclinedNotice] = useState(false)
   const pushDebounceRef = useRef(null)
@@ -71,16 +72,19 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
         setTeacherCode(initialCode)
         setTeacherFiles(files)
         setTeacherArcadeDesign(student.currentArcadeDesign ?? null)
+        setTeacherWorkspace(isElectronics ? 'breadboard' : 'code')
         if (isScratch) {
           setTeacherScratchState(parseScratchState(initialCode))
         }
         setTeacherEditState('editing')
         setDeclinedNotice(false)
         onPushTeacherLiveCode?.(student.anonymousId, isHtml
-          ? { files }
+          ? { files, activeFile: files[0]?.name ?? null }
           : isArcade
-            ? { code: initialCode, arcadeDesign: student.currentArcadeDesign ?? null }
-            : { code: initialCode })
+            ? { code: initialCode, arcadeDesign: student.currentArcadeDesign ?? null, workspace: 'code' }
+            : isElectronics
+              ? { code: initialCode, workspace: 'breadboard' }
+              : { code: initialCode })
       } else if (!student.teacherEditRequestedAt) {
         setTeacherEditState('idle')
         setDeclinedNotice(true)
@@ -117,6 +121,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setTeacherCode('')
     setTeacherFiles([])
     setTeacherArcadeDesign(null)
+    setTeacherWorkspace('code')
     setTeacherScratchState(null)
     setDeclinedNotice(false)
     setStageRequestState('idle')
@@ -153,6 +158,15 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     }, 120)
   }
 
+  function handleTeacherHtmlTabChange(activeFile) {
+    onPushTeacherLiveCode?.(student.anonymousId, { activeFile })
+  }
+
+  function handleTeacherWorkspaceChange(workspace) {
+    setTeacherWorkspace(workspace)
+    onPushTeacherLiveCode?.(student.anonymousId, { workspace })
+  }
+
   function handleTeacherArcadeDesignChange(nextDesign) {
     setTeacherArcadeDesign(nextDesign)
     clearTimeout(pushDebounceRef.current)
@@ -183,6 +197,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     }
     setTeacherEditState('idle')
     setTeacherCode('')
+    setTeacherWorkspace('code')
   }
 
   function handleCancelEdit() {
@@ -192,6 +207,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setTeacherCode('')
     setTeacherFiles([])
     setTeacherArcadeDesign(null)
+    setTeacherWorkspace('code')
     setTeacherScratchState(null)
   }
 
@@ -527,6 +543,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               displayState={{ files: teacherFiles }}
               readOnly={false}
               onChange={handleTeacherFileChange}
+              onTabChange={handleTeacherHtmlTabChange}
             />
           ) : teacherEditState === 'editing' && isArcade ? (
             <ArcadeTeacherLiveView
@@ -534,9 +551,11 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               student={student}
               displayState={teacherCode}
               design={teacherArcadeDesign}
+              activeWorkspace={teacherWorkspace}
               readOnly={false}
               onChange={handleTeacherCodeChange}
               onDesignChange={handleTeacherArcadeDesignChange}
+              onWorkspaceChange={handleTeacherWorkspaceChange}
             />
           ) : teacherEditState === 'editing' && isElectronics ? (
             <ElectronicsTeacherLiveView
@@ -544,6 +563,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               displayState={teacherCode}
               readOnly={false}
               onChange={handleTeacherCodeChange}
+              onTabChange={handleTeacherWorkspaceChange}
             />
           ) : teacherEditState === 'editing' ? (
             <div style={s.editorWrap}>

@@ -33,4 +33,13 @@ describe('HTML file helpers', () => {
     ])
     expect(getFileType('script.js')).toBe('javascript')
   })
+
+  it('recovers legacy file-object entries as editable text files', () => {
+    const decodeKey = key => key.replace('__dot__', '.')
+    expect(decodeSessionFiles({
+      0: { name: 'index.html', content: '<h1>Recovered</h1>', type: 'html' },
+    }, decodeKey, 'html')).toEqual([
+      { name: 'index.html', content: '<h1>Recovered</h1>', type: 'html' },
+    ])
+  })
 })

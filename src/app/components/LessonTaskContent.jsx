@@ -45,6 +45,8 @@ export default function LessonTaskContent({
   isTeacherEditing,
   teacherLiveCode,
   teacherLiveFiles,
+  teacherLiveActiveFile,
+  teacherLiveWorkspace,
   teacherLiveArcadeDesign,
   canOfferNextStage,
   canOfferCompletePreview,
@@ -223,6 +225,8 @@ export default function LessonTaskContent({
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
           teacherLiveFiles={teacherLiveFiles}
+          teacherLiveActiveFile={teacherLiveActiveFile}
+          teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
         />
       ) : (

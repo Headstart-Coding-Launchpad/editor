@@ -65,6 +65,8 @@ export default function ElectronicsWorkspace({
   title = 'Breadboard',
   availableComponents = null,
   setupMode = false,
+  activeTab,
+  onTabChange,
 }) {
   const boardRef = useRef(null)
   const boardWrapRef = useRef(null)
@@ -76,6 +78,7 @@ export default function ElectronicsWorkspace({
   const [isPanning, setIsPanning] = useState(false)
   const [wireColor, setWireColor] = useState('auto')
   const [outputCollapsed, setOutputCollapsed] = useState(!showCodeTab)
+  const selectedTab = activeTab ?? tab
   const selected = circuit.components.find(c => c.id === selectedId) ?? null
   const selectedWire = circuit.wires.find(wire => wire.id === selectedWireId) ?? null
   const selectedWireState = selectedWire ? getWireState(circuit, selectedWire) : null
@@ -101,6 +104,11 @@ export default function ElectronicsWorkspace({
   }), [circuit])
   const hasShort = useMemo(() => circuitHasShort(circuit), [circuit])
   const circuitMetrics = useMemo(() => getCircuitMetrics(circuit), [circuit])
+
+  function selectTab(nextTab) {
+    if (activeTab == null) setTab(nextTab)
+    onTabChange?.(nextTab)
+  }
 
   useEffect(() => {
     if (stats.buzzersOn === 0 || typeof window === 'undefined') return undefined
@@ -543,8 +551,8 @@ export default function ElectronicsWorkspace({
       <div style={s.header} className="ui-tabs ui-tabs--editor">
         <span style={s.title}>{title}</span>
         <div style={s.tabs}>
-          <button className={tab === 'breadboard' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => setTab('breadboard')}>Breadboard</button>
-          {hasCodeTab && <button className={tab === 'code' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => setTab('code')}>MicroPython</button>}
+          <button className={selectedTab === 'breadboard' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('breadboard')}>Breadboard</button>
+          {hasCodeTab && <button className={selectedTab === 'code' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('code')}>MicroPython</button>}
         </div>
         <div style={s.actions}>
           {setupMode && activeMicrocontroller && (
@@ -566,7 +574,7 @@ export default function ElectronicsWorkspace({
           {onReset && <button className="btn-ghost-outline" style={s.actionBtn} onClick={onReset}>Reset</button>}
         </div>
       </div>
-      {tab === 'code' && hasCodeTab ? (
+      {selectedTab === 'code' && hasCodeTab ? (
         <div style={s.codePane}>
           <PythonEditor
             code={microPythonCode ?? DEFAULT_MICROPYTHON_CODE}

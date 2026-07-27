@@ -4,7 +4,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 
-export default function HtmlTeacherLiveView({ lesson, displayState, readOnly, onChange, onActivity }) {
+export default function HtmlTeacherLiveView({ lesson, displayState, readOnly, onChange, onTabChange, onActivity }) {
   const files = displayState?.files ?? []
   const fileNamesKey = files.map(f => f.name).join('\0')
 
@@ -31,7 +31,10 @@ export default function HtmlTeacherLiveView({ lesson, displayState, readOnly, on
     <HtmlEditor
       files={files}
       activeFile={activeFile}
-      onTabChange={setActiveFile}
+      onTabChange={filename => {
+        setActiveFile(filename)
+        onTabChange?.(filename)
+      }}
       onFileChange={onChange}
       onActivity={onActivity}
       readOnly={readOnly}
