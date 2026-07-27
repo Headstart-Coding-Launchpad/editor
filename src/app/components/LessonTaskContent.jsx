@@ -175,7 +175,7 @@ export default function LessonTaskContent({
           <SupportStagePanel
             stage={completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage.stage}
             lessonType={lesson.type}
-            revealed={completeReferenceStage || targetedReferenceStage ? true : revealed}
+            revealed={completeReferenceStage || targetedReferenceStage ? true : !!reveal}
             sourceLabel={sourceLabel}
           />
         )
