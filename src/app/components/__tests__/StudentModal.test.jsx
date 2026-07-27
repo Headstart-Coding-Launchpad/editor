@@ -107,6 +107,21 @@ describe('StudentModal', () => {
     vi.restoreAllMocks()
   })
 
+  it.each([
+    ['HTML', { type: 'html', tasks: [{ id: 1, title: 'HTML task', starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hello</p>' }] }] }],
+    ['ArcadeKit', { type: 'arcade', tasks: [{ id: 1, title: 'Arcade task', starterCode: 'game.run()' }] }],
+    ['Electronics', { type: 'electronics', tasks: [{ id: 1, title: 'Circuit task' }] }],
+  ])('offers teacher live editing for %s workspaces', async (_name, lesson) => {
+    const user = userEvent.setup()
+    const onRequestTeacherEdit = vi.fn()
+    render(<StudentModal {...mkProps({ lesson, onRequestTeacherEdit })} />)
+
+    await user.click(screen.getByRole('button', { name: /^More/ }))
+    await user.click(screen.getByRole('button', { name: /Edit Code/i }))
+
+    expect(onRequestTeacherEdit).toHaveBeenCalledWith('student-1')
+  })
+
   it('renders the student display name', () => {
     render(<StudentModal {...mkProps()} />)
     expect(screen.getByText('Jamie')).toBeInTheDocument()

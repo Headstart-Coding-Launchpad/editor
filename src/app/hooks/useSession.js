@@ -151,7 +151,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherEditRequestedAt`]  = null
       updates[`students/${anonymousId}/teacherEditAcceptedAt`]  = null
       updates[`students/${anonymousId}/teacherLiveCode`]        = null
+      updates[`students/${anonymousId}/teacherLiveFiles`]       = null
+      updates[`students/${anonymousId}/teacherLiveArcadeDesign`] = null
       updates[`students/${anonymousId}/teacherEditApplyCode`]   = null
+      updates[`students/${anonymousId}/teacherEditApplyFiles`]  = null
+      updates[`students/${anonymousId}/teacherEditApplyArcadeDesign`] = null
       updates[`students/${anonymousId}/teacherEditAppliedAt`]   = null
       updates[`students/${anonymousId}/teacherStageRequestedAt`]  = null
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
@@ -335,23 +339,41 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherEditRequestedAt: Date.now(),
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
+      teacherLiveFiles:       null,
+      teacherLiveArcadeDesign: null,
       teacherEditApplyCode:   null,
+      teacherEditApplyFiles:  null,
+      teacherEditApplyArcadeDesign: null,
       teacherEditAppliedAt:   null,
     })
   }
 
-  async function pushTeacherLiveCode(anonymousId, code) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveCode`), code)
+  async function pushTeacherLiveCode(anonymousId, edit) {
+    const payload = typeof edit === 'string' ? { code: edit } : (edit ?? {})
+    const updates = {}
+    if ('code' in payload) updates.teacherLiveCode = payload.code ?? null
+    if ('files' in payload) updates.teacherLiveFiles = payload.files ? encodeFileKeys(payload.files) : null
+    if ('arcadeDesign' in payload) updates.teacherLiveArcadeDesign = payload.arcadeDesign ?? null
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
+    }
   }
 
-  async function commitTeacherEdit(anonymousId, code) {
+  async function commitTeacherEdit(anonymousId, edit) {
+    const payload = typeof edit === 'string' ? { code: edit } : (edit ?? {})
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       teacherEditRequestedAt: null,
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
-      teacherEditApplyCode:   code,
+      teacherLiveFiles:       null,
+      teacherLiveArcadeDesign: null,
+      teacherEditApplyCode:   payload.code ?? null,
+      teacherEditApplyFiles:  payload.files ? encodeFileKeys(payload.files) : null,
+      teacherEditApplyArcadeDesign: payload.arcadeDesign ?? null,
       teacherEditAppliedAt:   Date.now(),
-      currentCode:            code,
+      currentCode:            payload.code ?? null,
+      currentFiles:           payload.files ? encodeFileKeys(payload.files) : null,
+      currentArcadeDesign:    payload.arcadeDesign ?? null,
     })
   }
 
@@ -360,6 +382,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherEditRequestedAt: null,
       teacherEditAcceptedAt:  null,
       teacherLiveCode:        null,
+      teacherLiveFiles:       null,
+      teacherLiveArcadeDesign: null,
     })
   }
 

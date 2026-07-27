@@ -22,6 +22,8 @@ import SoloNav from '../components/SoloNav'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import { getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { decodeFileKey } from '../../shared/fileKeys'
+import { decodeSessionFiles } from '../../shared/workspaceData'
 
 export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
@@ -346,11 +348,13 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const canTeacherEditType = activeLesson?.type === 'python' || activeLesson?.type === 'arcade' || activeLesson?.type === 'scratch' || activeLesson?.type === 'electronics'
+  const canTeacherEditType = activeLesson?.type === 'python' || activeLesson?.type === 'html' || activeLesson?.type === 'arcade' || activeLesson?.type === 'scratch' || activeLesson?.type === 'electronics'
   const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType && (phase === 'lesson' || phase === 'solo')
   const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType
   const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
+  const teacherLiveFiles = decodeSessionFiles(myStudentTeacherEdit?.teacherLiveFiles, decodeFileKey, 'html')
+  const teacherLiveArcadeDesign = myStudentTeacherEdit?.teacherLiveArcadeDesign ?? null
 
   const taskProgressControl = !isSandbox ? (
     <TaskProgressDots
@@ -604,6 +608,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displayFs={displayFs}
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
+          teacherLiveFiles={teacherLiveFiles}
+          teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           canOfferNextStage={canOfferNextStage}
           canOfferCompletePreview={canOfferCompletePreview}
           canOfferCompleteSolution={canOfferCompleteSolution}

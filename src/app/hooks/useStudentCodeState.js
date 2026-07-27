@@ -7,7 +7,7 @@ import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/cir
 import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
 import { resolveSavedCarrySource, selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
-import { parseScratchState } from '../../shared/workspaceData'
+import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
 import { createStudentPersistence } from './createStudentPersistence'
@@ -741,20 +741,38 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
-  // Apply teacher-committed code when teacher finishes a live edit
+  // Apply teacher-committed work when teacher finishes a live edit.
   useEffect(() => {
     if (!myStudentData?.teacherEditAppliedAt) return
     const newCode = myStudentData?.teacherEditApplyCode
-    if (newCode === undefined) return
-    if (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics') {
-      setCode(newCode ?? '')
+    const newFiles = myStudentData?.teacherEditApplyFiles
+    const newArcadeDesign = myStudentData?.teacherEditApplyArcadeDesign
+    if (lesson?.type === 'html' && newFiles) {
+      const nextFiles = decodeSessionFiles(newFiles, decodeFileKey, 'html')
+      setFiles(nextFiles)
+      setActiveFile(current => nextFiles.some(file => file.name === current) ? current : (nextFiles[0]?.name ?? ''))
       setOutput('')
       setRunStatus(null)
       resetCheckFeedback()
       if (effectiveIdentity?.anonymousId) {
-        persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode ?? '', output: '', runStatus: null })
+        persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, nextFiles)
       }
-    } else if (lesson?.type === 'scratch') {
+    } else if (newCode !== undefined && (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')) {
+      setCode(newCode ?? '')
+      setOutput('')
+      setRunStatus(null)
+      resetCheckFeedback()
+      const nextDesign = lesson?.type === 'arcade'
+        ? (newArcadeDesign ? cloneArcadeDesign(newArcadeDesign) : arcadeDesignRef.current)
+        : null
+      if (lesson?.type === 'arcade') setArcadeDesign(nextDesign)
+      if (effectiveIdentity?.anonymousId) {
+        persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+          code: newCode ?? '', output: '', runStatus: null,
+          ...(lesson?.type === 'arcade' ? { arcadeDesign: nextDesign } : {}),
+        })
+      }
+    } else if (newCode !== undefined && lesson?.type === 'scratch') {
       const newState = parseScratchState(newCode)
       setScratchExternalState(newState)
       resetCheckFeedback()

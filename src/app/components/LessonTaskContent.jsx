@@ -44,6 +44,8 @@ export default function LessonTaskContent({
   displayFs,
   isTeacherEditing,
   teacherLiveCode,
+  teacherLiveFiles,
+  teacherLiveArcadeDesign,
   canOfferNextStage,
   canOfferCompletePreview,
   canOfferCompleteSolution,
@@ -220,6 +222,8 @@ export default function LessonTaskContent({
           displayFs={displayFs}
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
+          teacherLiveFiles={teacherLiveFiles}
+          teacherLiveArcadeDesign={teacherLiveArcadeDesign}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>

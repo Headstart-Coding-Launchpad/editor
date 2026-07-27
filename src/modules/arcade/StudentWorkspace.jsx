@@ -9,7 +9,7 @@ import ArcadePreview from './ArcadePreview'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
 import { allowsArcadeTool, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet } from './design'
 
-export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, teacherLiveCode }) {
+export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, teacherLiveCode, teacherLiveArcadeDesign }) {
   const [runId, setRunId] = useState(0)
   const [runCode, setRunCode] = useState('')
   const [running, setRunning] = useState(false)
@@ -18,10 +18,11 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
   const { typeStorageAssets } = useTypeAssets('arcade')
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const code = isForcedTeacherLive ? displayCode : isTeacherEditing ? (teacherLiveCode ?? '') : cs.code
+  const design = isTeacherEditing ? (teacherLiveArcadeDesign ?? cs.arcadeDesign) : cs.arcadeDesign
   const previousCodeRef = useRef(code)
   const staticAssets = useMemo(() => (lesson?.assets ?? []).map(name => ({ name, url: resolveAssetFileUrl(resolveAssetsPath(lesson.assetsPath ?? ''), name) })), [lesson])
-  const generatedAssets = useMemo(() => generatedArcadeAssets(cs.arcadeDesign), [cs.arcadeDesign])
-  const generatedTilemaps = useMemo(() => generatedArcadeTilemaps(cs.arcadeDesign), [cs.arcadeDesign])
+  const generatedAssets = useMemo(() => generatedArcadeAssets(design), [design])
+  const generatedTilemaps = useMemo(() => generatedArcadeTilemaps(design), [design])
   const assets = useMemo(() => [...staticAssets, ...storageAssets, ...typeStorageAssets, ...generatedAssets], [staticAssets, storageAssets, typeStorageAssets, generatedAssets])
   const canDrawSprites = allowsArcadeTool(task, 'sprites')
   const canDrawMaps = allowsArcadeTool(task, 'tilemaps')
@@ -78,8 +79,8 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
       <AssetBrowser assetsPath={lesson?.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} assets={lesson?.assets ?? []} storageAssets={[...storageAssets, ...typeStorageAssets]} style={{ borderRadius: 0 }} />
     </details>}
     </>}
-    {!readOnly && activeWorkspaceTab === 'sprites' && canDrawSprites && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'sprites' }} design={cs.arcadeDesign} onChange={handleDesignChange} availableAssets={standardAssets} title="Your sprites" /></div>}
-    {!readOnly && activeWorkspaceTab === 'tilemaps' && canDrawMaps && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'tilemaps' }} design={cs.arcadeDesign} onChange={handleDesignChange} availableAssets={standardAssets} title="Your tilemaps" /></div>}
+    {activeWorkspaceTab === 'sprites' && canDrawSprites && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'sprites' }} design={design} readOnly={readOnly} onChange={readOnly ? undefined : handleDesignChange} availableAssets={standardAssets} title="Your sprites" /></div>}
+    {activeWorkspaceTab === 'tilemaps' && canDrawMaps && <div style={s.designer}><ArcadeDesignStudio task={{ ...task, arcadeTools: 'tilemaps' }} design={design} readOnly={readOnly} onChange={readOnly ? undefined : handleDesignChange} availableAssets={standardAssets} title="Your tilemaps" /></div>}
   </div>
   const preview = <div style={s.preview}>
     <ArcadePreview code={runCode} assets={assets} tilemaps={generatedTilemaps} runId={runId} running={running} />

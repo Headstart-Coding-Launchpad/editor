@@ -7,6 +7,9 @@ import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceDat
 import { findTaskById, deriveTaskContext, buildStageOptions, getRevealableStages } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
+import HtmlTeacherLiveView from '../../modules/html/TeacherLiveView.jsx'
+import ArcadeTeacherLiveView from '../../modules/arcade/TeacherLiveView.jsx'
+import ElectronicsTeacherLiveView from '../../modules/electronics/TeacherLiveView.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getLessonModule } from '../../modules/registry'
@@ -49,6 +52,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   // Teacher live-edit state machine
   const [teacherEditState, setTeacherEditState] = useState('idle') // 'idle' | 'requesting' | 'editing'
   const [teacherCode, setTeacherCode] = useState('')
+  const [teacherFiles, setTeacherFiles] = useState([])
+  const [teacherArcadeDesign, setTeacherArcadeDesign] = useState(null)
   const [teacherScratchState, setTeacherScratchState] = useState(null)
   const [declinedNotice, setDeclinedNotice] = useState(false)
   const pushDebounceRef = useRef(null)
@@ -64,12 +69,18 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
       if (student.teacherEditAcceptedAt) {
         const initialCode = student.currentCode ?? ''
         setTeacherCode(initialCode)
+        setTeacherFiles(files)
+        setTeacherArcadeDesign(student.currentArcadeDesign ?? null)
         if (isScratch) {
           setTeacherScratchState(parseScratchState(initialCode))
         }
         setTeacherEditState('editing')
         setDeclinedNotice(false)
-        onPushTeacherLiveCode?.(student.anonymousId, initialCode)
+        onPushTeacherLiveCode?.(student.anonymousId, isHtml
+          ? { files }
+          : isArcade
+            ? { code: initialCode, arcadeDesign: student.currentArcadeDesign ?? null }
+            : { code: initialCode })
       } else if (!student.teacherEditRequestedAt) {
         setTeacherEditState('idle')
         setDeclinedNotice(true)
@@ -104,6 +115,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   useEffect(() => {
     setTeacherEditState('idle')
     setTeacherCode('')
+    setTeacherFiles([])
+    setTeacherArcadeDesign(null)
     setTeacherScratchState(null)
     setDeclinedNotice(false)
     setStageRequestState('idle')
@@ -119,7 +132,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setTeacherCode(newCode)
     clearTimeout(pushDebounceRef.current)
     pushDebounceRef.current = setTimeout(() => {
-      onPushTeacherLiveCode?.(student.anonymousId, newCode)
+      onPushTeacherLiveCode?.(student.anonymousId, { code: newCode })
     }, 120)
   }
 
@@ -127,7 +140,24 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setTeacherScratchState(workspaceStates)
     clearTimeout(pushDebounceRef.current)
     pushDebounceRef.current = setTimeout(() => {
-      onPushTeacherLiveCode?.(student.anonymousId, JSON.stringify(workspaceStates))
+      onPushTeacherLiveCode?.(student.anonymousId, { code: JSON.stringify(workspaceStates) })
+    }, 300)
+  }
+
+  function handleTeacherFileChange(filename, content) {
+    const nextFiles = teacherFiles.map(file => file.name === filename ? { ...file, content } : file)
+    setTeacherFiles(nextFiles)
+    clearTimeout(pushDebounceRef.current)
+    pushDebounceRef.current = setTimeout(() => {
+      onPushTeacherLiveCode?.(student.anonymousId, { files: nextFiles })
+    }, 120)
+  }
+
+  function handleTeacherArcadeDesignChange(nextDesign) {
+    setTeacherArcadeDesign(nextDesign)
+    clearTimeout(pushDebounceRef.current)
+    pushDebounceRef.current = setTimeout(() => {
+      onPushTeacherLiveCode?.(student.anonymousId, { arcadeDesign: nextDesign })
     }, 300)
   }
 
@@ -140,10 +170,16 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   function handleCommitEdit() {
     clearTimeout(pushDebounceRef.current)
     if (isScratch) {
-      onCommitTeacherEdit?.(student.anonymousId, JSON.stringify(teacherScratchState))
+      onCommitTeacherEdit?.(student.anonymousId, { code: JSON.stringify(teacherScratchState) })
       setTeacherScratchState(null)
+    } else if (isHtml) {
+      onCommitTeacherEdit?.(student.anonymousId, { files: teacherFiles })
+      setTeacherFiles([])
+    } else if (isArcade) {
+      onCommitTeacherEdit?.(student.anonymousId, { code: teacherCode, arcadeDesign: teacherArcadeDesign })
+      setTeacherArcadeDesign(null)
     } else {
-      onCommitTeacherEdit?.(student.anonymousId, teacherCode)
+      onCommitTeacherEdit?.(student.anonymousId, { code: teacherCode })
     }
     setTeacherEditState('idle')
     setTeacherCode('')
@@ -154,6 +190,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     onCancelTeacherEdit?.(student.anonymousId)
     setTeacherEditState('idle')
     setTeacherCode('')
+    setTeacherFiles([])
+    setTeacherArcadeDesign(null)
     setTeacherScratchState(null)
   }
 
@@ -213,6 +251,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
+  const isArcade = lesson?.type === 'arcade'
+  const isElectronics = lesson?.type === 'electronics'
+  const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
   const lessonModule = getLessonModule(lesson?.type)
   const ModuleTeacherLiveView = !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
@@ -375,7 +416,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
 
             {/* Active edit states (shown outside More dropdown while in progress) */}
-            {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && teacherEditState === 'editing' && (
+            {onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz && teacherEditState === 'editing' && (
               <>
                 <button
                   className="btn-primary"
@@ -393,7 +434,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 </button>
               </>
             )}
-            {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && teacherEditState === 'requesting' && (
+            {onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz && teacherEditState === 'requesting' && (
               <>
                 <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
                 <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 10px' }} onClick={handleCancelEdit}>
@@ -403,13 +444,13 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             )}
 
             {/* Declined notice */}
-            {onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz && declinedNotice && (
+            {onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz && declinedNotice && (
               <span style={sEd.declinedNotice}>Student declined</span>
             )}
 
             {/* More dropdown: topic, message, edit code — grouped when idle */}
             {teacherEditState === 'idle' && (() => {
-              const hasEdit = !!(onRequestTeacherEdit && (isPython || isScratch) && !isInformation && !isQuiz)
+              const hasEdit = !!(onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz)
               const hasTopic = !!(onSendToTopic && topics?.length > 0)
               const hasMessage = !!onSendMessage
               if (!hasEdit && !hasTopic && !hasMessage) return null
@@ -479,6 +520,30 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
               initialState={parseScratchState(student.currentCode)}
               onStateChange={handleScratchStateChange}
+            />
+          ) : teacherEditState === 'editing' && isHtml ? (
+            <HtmlTeacherLiveView
+              lesson={lesson}
+              displayState={{ files: teacherFiles }}
+              readOnly={false}
+              onChange={handleTeacherFileChange}
+            />
+          ) : teacherEditState === 'editing' && isArcade ? (
+            <ArcadeTeacherLiveView
+              task={task}
+              student={student}
+              displayState={teacherCode}
+              design={teacherArcadeDesign}
+              readOnly={false}
+              onChange={handleTeacherCodeChange}
+              onDesignChange={handleTeacherArcadeDesignChange}
+            />
+          ) : teacherEditState === 'editing' && isElectronics ? (
+            <ElectronicsTeacherLiveView
+              task={task}
+              displayState={teacherCode}
+              readOnly={false}
+              onChange={handleTeacherCodeChange}
             />
           ) : teacherEditState === 'editing' ? (
             <div style={s.editorWrap}>

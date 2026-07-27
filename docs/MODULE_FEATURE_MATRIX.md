@@ -6,10 +6,10 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 
 | Module | Student experience | Landing-page playground | Lesson sandbox | View student work live | Directly edit one student's current work | Teacher-editable shared sandbox | Code stages | Student self-serve stage reference | Automatic completion checks | Carry work to a later task |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Python | Code editor, Run/Stop, console output | Yes | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes |
+| Python | Code editor, Run/Stop, console output | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Arcade Kit | Python game editor, pixel-game canvas, Run/Stop | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
 | HTML/CSS/JS | Multi-file editor and sandboxed webpage preview | No | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes |
-| Scratch | Block editor, sprites, and stage canvas | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
+| Scratch | Block editor, sprites, and stage canvas | No | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes |
 | Filesystem | Virtual file-manager workspace | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
 | Electronics | Breadboard, wiring, components, and optional MicroPython | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
 
@@ -22,7 +22,7 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 | Landing-page playground | A standalone, local-only workspace opened from the landing page. The currently available playgrounds are Python, Arcade Kit, and Electronics. |
 | Lesson sandbox | A separate freeform workspace inside a lesson. Students can enter a personal sandbox; teachers can also switch a live class to sandbox mode. It is separate from the task workspace and task checks. |
 | View student work live | A teacher can open a student's workspace from the student grid and inspect their current state. Python and HTML additionally support teacher code highlights with an optional note. |
-| Directly edit one student's current work | Not available for any module. Student work is presented to the teacher as read-only. Instead, a teacher can request that a student load a starter/stage/complete state, remotely reset them, send a message or code highlight, or work in the shared sandbox. |
+| Directly edit one student's current work | Python and Scratch support a consent-based teacher edit: the teacher requests access, the student accepts, and the teacher can live-edit then commit that student's code or blocks. Other module views are read-only; teachers can still request a starter/stage/complete state, remotely reset a student, send a message or code highlight, or work in the shared sandbox. |
 | Teacher-editable shared sandbox | In teacher-forced sandbox mode, the teacher can edit module state and push it to the whole class. This edits shared sandbox content, not an individual student's task work. |
 | Code stages | Authors can define starter, support-stage, and complete states. Teachers can inspect stages and send an authored stage to the class. The state format is module-specific: code, files, blocks, filesystem, or circuit. |
 | Student self-serve stage reference | After unsuccessful work, Python and HTML can offer an authored revealable stage as a read-only reference. For other modules, stages remain author/teacher tools rather than an automatic student reference panel. |

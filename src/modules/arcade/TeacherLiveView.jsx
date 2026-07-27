@@ -2,11 +2,11 @@ import PythonEditor from '../python/PythonEditor'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
 import { designForCodeTab } from './design'
 
-export default function TeacherLiveView({ task, student, displayState, readOnly, onChange, onActivity }) {
-  const design = student?.currentArcadeDesign ?? designForCodeTab(task, 'starter')
+export default function TeacherLiveView({ task, student, displayState, design: designProp, readOnly, onChange, onDesignChange, onActivity }) {
+  const design = designProp ?? student?.currentArcadeDesign ?? designForCodeTab(task, 'starter')
   return <div style={s.wrap}>
     <div style={s.editor}><PythonEditor code={displayState ?? ''} readOnly={readOnly} onChange={onChange} onActivity={onActivity} pyodideStatus="ready" /></div>
-    <details style={s.design} open><summary>Student game art &amp; map</summary><ArcadeDesignStudio task={null} design={design} readOnly title="Current student design" layout="builder" /></details>
+    <details style={s.design} open><summary>Student game art &amp; map</summary><ArcadeDesignStudio task={task} design={design} readOnly={readOnly} onChange={onDesignChange} title="Current student design" layout="builder" /></details>
   </div>
 }
 

@@ -12,6 +12,7 @@ export default function StudentWorkspace({
   lesson, task, cs, isSandbox,
   isViewingPrev, isForcedTeacherLive, isMobile,
   displayFiles, displayActiveFile, displayRunStatus, displaySelection,
+  isTeacherEditing, teacherLiveFiles = [],
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
   const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
@@ -23,6 +24,10 @@ export default function StudentWorkspace({
     ...lessonStorageAssets.filter(a => a.showInEditor),
     ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
+  const files = isTeacherEditing ? teacherLiveFiles : displayFiles
+  const activeFile = isTeacherEditing ? (teacherLiveFiles[0]?.name ?? displayActiveFile) : displayActiveFile
+  const previewSrc = isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc
+  const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
   if (isMobile) {
@@ -30,7 +35,7 @@ export default function StudentWorkspace({
       <div style={s.htmlMobile}>
         <div style={s.htmlLeft}>
           {showCopyCode && <CopyCodePanel code={task.copyCode} language="html" />}
-          {!isViewingPrev && !isForcedTeacherLive && (
+          {!readOnly && (
             <StudentEditorHeader
               task={task}
               running={cs.running}
@@ -40,16 +45,16 @@ export default function StudentWorkspace({
             />
           )}
           <HtmlEditor
-            files={displayFiles}
-            activeFile={displayActiveFile}
-            onTabChange={isForcedTeacherLive ? undefined : cs.handleFileTabChange}
-            onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFileChange}
-            onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
-            onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
-            remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
-            teacherHighlights={isViewingPrev || isForcedTeacherLive ? [] : cs.teacherHighlights}
-            onHighlightDismiss={isViewingPrev || isForcedTeacherLive ? undefined : cs.dismissHighlight}
-            readOnly={isViewingPrev || isForcedTeacherLive}
+            files={files}
+            activeFile={activeFile}
+            onTabChange={readOnly ? undefined : cs.handleFileTabChange}
+            onFileChange={readOnly ? undefined : cs.handleFileChange}
+            onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
+            onActivity={readOnly ? undefined : cs.handleEditorActivity}
+            remoteSelection={isForcedTeacherLive && displaySelection?.file === activeFile ? displaySelection : null}
+            teacherHighlights={readOnly ? [] : cs.teacherHighlights}
+            onHighlightDismiss={readOnly ? undefined : cs.dismissHighlight}
+            readOnly={readOnly}
             assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
             assets={lesson.assets}
             storageAssets={htmlStorageAssets}
@@ -58,12 +63,12 @@ export default function StudentWorkspace({
         {task?.interactionMode !== 'submit' && (
           <div style={s.htmlMobilePreview}>
             <CollapsibleIframePreview
-              src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+              src={previewSrc}
               iframeRef={cs.iframeRef}
               fill
               collapsed={cs.htmlPreviewCollapsed}
               onToggle={() => cs.setHtmlPreviewCollapsed(v => !v)}
-              onConsoleError={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleHtmlRuntimeError}
+              onConsoleError={readOnly ? undefined : cs.handleHtmlRuntimeError}
               animate
             />
           </div>
@@ -95,7 +100,7 @@ export default function StudentWorkspace({
         left={
           <div style={s.htmlLeft}>
             {showCopyCode && <CopyCodePanel code={task.copyCode} language="html" />}
-            {!isViewingPrev && !isForcedTeacherLive && (
+            {!readOnly && (
               <StudentEditorHeader
                 task={task}
                 running={cs.running}
@@ -105,14 +110,14 @@ export default function StudentWorkspace({
               />
             )}
             <HtmlEditor
-              files={displayFiles}
-              activeFile={displayActiveFile}
-              onTabChange={isForcedTeacherLive ? undefined : cs.handleFileTabChange}
-              onFileChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFileChange}
-              onSelectionChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorSelection}
-              onActivity={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleEditorActivity}
-              remoteSelection={isForcedTeacherLive && displaySelection?.file === displayActiveFile ? displaySelection : null}
-              readOnly={isViewingPrev || isForcedTeacherLive}
+              files={files}
+              activeFile={activeFile}
+              onTabChange={readOnly ? undefined : cs.handleFileTabChange}
+              onFileChange={readOnly ? undefined : cs.handleFileChange}
+              onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
+              onActivity={readOnly ? undefined : cs.handleEditorActivity}
+              remoteSelection={isForcedTeacherLive && displaySelection?.file === activeFile ? displaySelection : null}
+              readOnly={readOnly}
               assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
               assets={lesson.assets}
               storageAssets={htmlStorageAssets}
@@ -121,12 +126,12 @@ export default function StudentWorkspace({
         }
         right={
           <CollapsibleIframePreview
-            src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+            src={previewSrc}
             iframeRef={cs.iframeRef}
             fill
             collapsed={false}
             onToggle={() => cs.setHtmlPreviewCollapsed(true)}
-            onConsoleError={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleHtmlRuntimeError}
+            onConsoleError={readOnly ? undefined : cs.handleHtmlRuntimeError}
             animate
           />
         }
