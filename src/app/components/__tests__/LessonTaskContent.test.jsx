@@ -20,7 +20,7 @@ describe('LessonTaskContent', () => {
         task={{
           id: 1,
           title: 'Say hello',
-          codeStages: [{ label: 'Greeting', code: 'print("Hello")', revealable: true }],
+          codeStages: [{ label: 'Greeting', code: 'print("Hello")' }],
         }}
         cs={{
           inPersonalSandbox: false,

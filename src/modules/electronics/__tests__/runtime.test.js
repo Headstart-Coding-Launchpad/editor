@@ -18,6 +18,7 @@ describe('electronics MicroPython runtime', () => {
 
   it('installs MicroPython shim helpers in Python globals', () => {
     expect(buildMicroPythonProgram('pass')).toContain('globals())')
+    expect(buildMicroPythonProgram('pass')).toContain('LCD1602')
   })
 
   it('streams private GPIO writes back to the circuit while keeping sentinels out of output', async () => {
@@ -88,5 +89,34 @@ describe('electronics MicroPython runtime', () => {
 
     expect(gpio.GP0).toBe(0)
     expect(gpio.GP14).toBeUndefined()
+  })
+
+  it('applies LCD API events only to a powered display wired to its I²C pins', async () => {
+    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP0', 'GP1'] }
+    const lcd = makeComponent('lcd1602', 1, { row: 2, col: 9 })
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [microcontroller, lcd],
+      wires: [
+        { id: 'power', from: 'microcontroller1.3V3', to: 'lcd16021.VCC' },
+        { id: 'ground', from: 'microcontroller1.GND', to: 'lcd16021.GND' },
+        { id: 'sda', from: 'microcontroller1.GP0', to: 'lcd16021.SDA' },
+        { id: 'scl', from: 'microcontroller1.GP1', to: 'lcd16021.SCL' },
+      ],
+    }
+    const onCodeUpdate = vi.fn()
+    const onOutput = vi.fn()
+
+    runPython.mockImplementation(async (_program, callbacks) => {
+      callbacks.onOutput('[lcd {"sda":"GP0","scl":"GP1","action":"init"}]\n', 'stdout')
+      callbacks.onOutput('[lcd {"sda":"GP0","scl":"GP1","action":"print","text":"Hello"}]\n', 'stdout')
+      return { status: 'success' }
+    })
+
+    const result = await electronicsModule.runtime.run(circuit, {}, { onCodeUpdate, onOutput, getRuntimeCode: () => JSON.stringify(circuit) })
+
+    expect(onOutput).not.toHaveBeenCalled()
+    expect(parseCircuit(result.updatedCode).controls.lcd16021.lines[0]).toBe('Hello           ')
+    expect(onCodeUpdate).toHaveBeenCalledTimes(2)
   })
 })

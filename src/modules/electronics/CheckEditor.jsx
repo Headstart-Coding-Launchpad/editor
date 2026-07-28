@@ -85,6 +85,7 @@ const PIN_OPTIONS = {
   push_button: ['a', 'b'],
   slide_switch: ['a', 'b'],
   potentiometer: ['left', 'wiper', 'right'],
+  lcd1602: ['VCC', 'GND', 'SDA', 'SCL'],
   terminal: ['pin'],
 }
 

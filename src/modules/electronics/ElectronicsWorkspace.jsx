@@ -36,6 +36,8 @@ const GRID_Y = 24
 const BOARD_PAD = 24
 const PART_W = 112
 const PART_H = 70
+const LCD_PART_W = 196
+const LCD_PART_H = 118
 const PIN_SNAP_RADIUS = 34
 const WIRE_CLEARANCE = 18
 const WIRE_OBSTACLE_PAD = 8
@@ -93,8 +95,12 @@ export default function ElectronicsWorkspace({
   const boardCols = Number(circuit.board?.cols ?? 20)
   const boardGridWidth = BOARD_PAD * 2 + (boardCols - 1) * GRID_X
   const boardGridHeight = BOARD_PAD * 2 + (boardRows - 1) * GRID_Y
-  const boardWidth = boardGridWidth + PART_W + 24
-  const boardHeight = boardGridHeight + PART_H + 24
+  const largestPart = circuit.components.reduce((largest, component) => {
+    const size = componentDimensions(component)
+    return { width: Math.max(largest.width, size.width), height: Math.max(largest.height, size.height) }
+  }, { width: PART_W, height: PART_H })
+  const boardWidth = boardGridWidth + largestPart.width + 24
+  const boardHeight = boardGridHeight + largestPart.height + 24
   const stats = useMemo(() => ({
     ledsOn: circuit.components.filter(c => c.type === 'led' && getComponentState(circuit, c.id).on).length,
     rgbLedsOn: circuit.components.filter(c => c.type === 'rgb_led' && getComponentState(circuit, c.id).on).length,
@@ -154,14 +160,15 @@ export default function ElectronicsWorkspace({
   }
 
   function clampComponentPosition(position, component) {
+    const { width, height } = componentDimensions(component)
     const anchor = componentAnchorOffset(component)
     const offsets = (component.pins?.length ? component.pins : ['a']).map((pin, index) => pinOffset(component, pin, index))
     const lastHoleX = BOARD_PAD + (boardCols - 1) * GRID_X
     const lastHoleY = BOARD_PAD + (boardRows - 1) * GRID_Y
     let minCol = Math.ceil((anchor.x - BOARD_PAD) / GRID_X) + 1
-    let maxCol = Math.floor((boardGridWidth - PART_W + anchor.x - BOARD_PAD) / GRID_X) + 1
+    let maxCol = Math.floor((boardGridWidth - width + anchor.x - BOARD_PAD) / GRID_X) + 1
     let minRow = Math.ceil((anchor.y - BOARD_PAD) / GRID_Y) + 1
-    let maxRow = Math.floor((boardGridHeight - PART_H + anchor.y - BOARD_PAD) / GRID_Y) + 1
+    let maxRow = Math.floor((boardGridHeight - height + anchor.y - BOARD_PAD) / GRID_Y) + 1
 
     offsets.forEach(offset => {
       minCol = Math.max(minCol, Math.ceil((anchor.x - offset.x) / GRID_X) + 1)
@@ -529,7 +536,7 @@ export default function ElectronicsWorkspace({
     return {
       id: component.id,
       type: component.type,
-      ...rotatedComponentRect(point, component.rotation),
+      ...rotatedComponentRect(point, component),
     }
   })
   const wireRoutes = []
@@ -691,9 +698,10 @@ export default function ElectronicsWorkspace({
                     tabIndex={0}
                     style={{
                       ...s.component,
+                      ...componentDimensions(component),
                       left: point.x,
                       top: point.y,
-                      borderColor: selectedId === component.id ? '#7c3aed' : state.on || state.switched || state.conducting ? '#16a34a' : '#94a3b8',
+                      borderColor: selectedId === component.id ? '#7c3aed' : state.on || state.powered || state.switched || state.conducting ? '#16a34a' : '#94a3b8',
                       zIndex: selectedId === component.id ? 5 : 4,
                       cursor: readOnly || isLockedForUser ? 'default' : drag?.type === 'component' && drag.id === component.id ? 'grabbing' : 'grab',
                     }}
@@ -1351,8 +1359,14 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
+function componentDimensions(component) {
+  return component?.type === 'lcd1602'
+    ? { width: LCD_PART_W, height: LCD_PART_H }
+    : { width: PART_W, height: PART_H }
+}
+
 function pinOffset(component, pin, pinIndex) {
-  return rotateOffset(basePinOffset(component, pin, pinIndex), component.rotation)
+  return rotateOffset(basePinOffset(component, pin, pinIndex), component.rotation, component)
 }
 
 function componentAnchorOffset(component) {
@@ -1381,6 +1395,11 @@ function basePinOffset(component, pin, pinIndex) {
     const xs = [28, PART_W / 2, PART_W - 28]
     return { x: xs[pinIndex] ?? PART_W / 2, y: PART_H - 4 }
   }
+  if (component.type === 'lcd1602') {
+    const { width, height } = componentDimensions(component)
+    const xs = [Math.round(width * 0.14), Math.round(width * 0.39), Math.round(width * 0.61), Math.round(width * 0.86)]
+    return { x: xs[pinIndex] ?? width / 2, y: height - 6 }
+  }
   if (component.type === 'rgb_led') {
     const xs = [14, 42, 70, 98]
     return { x: xs[pinIndex] ?? PART_W / 2, y: PART_H - 4 }
@@ -1401,31 +1420,33 @@ function normalizeRotation(rotation = 0) {
   return ((Math.round(numeric / 90) * 90) % 360 + 360) % 360
 }
 
-function rotatedComponentRect(point, rotation = 0) {
-  const normalized = normalizeRotation(rotation)
+function rotatedComponentRect(point, component) {
+  const { width, height } = componentDimensions(component)
+  const normalized = normalizeRotation(component.rotation)
   if (normalized === 90 || normalized === 270) {
-    const centerX = point.x + PART_W / 2
-    const centerY = point.y + PART_H / 2
+    const centerX = point.x + width / 2
+    const centerY = point.y + height / 2
     return {
-      left: centerX - PART_H / 2,
-      top: centerY - PART_W / 2,
-      right: centerX + PART_H / 2,
-      bottom: centerY + PART_W / 2,
+      left: centerX - height / 2,
+      top: centerY - width / 2,
+      right: centerX + height / 2,
+      bottom: centerY + width / 2,
     }
   }
   return {
     left: point.x,
     top: point.y,
-    right: point.x + PART_W,
-    bottom: point.y + PART_H,
+    right: point.x + width,
+    bottom: point.y + height,
   }
 }
 
-function rotateOffset(offset, rotation = 0) {
+function rotateOffset(offset, rotation = 0, component = null) {
+  const { width, height } = componentDimensions(component)
   const normalized = normalizeRotation(rotation)
   if (normalized === 0) return offset
-  const centerX = PART_W / 2
-  const centerY = PART_H / 2
+  const centerX = width / 2
+  const centerY = height / 2
   const x = offset.x - centerX
   const y = offset.y - centerY
   if (normalized === 90) return { x: centerX - y, y: centerY + x }
@@ -1439,7 +1460,7 @@ function pinHandleStyle(pin) {
   if (pin === 'positive' || pin === 'anode' || pin === 'red' || normalizedPin === '3v3' || normalizedPin === 'vcc') return { background: '#ef4444', borderColor: '#fecaca' }
   if (pin === 'green') return { background: '#16a34a', borderColor: '#bbf7d0' }
   if (pin === 'negative' || pin === 'cathode' || pin === 'emitter' || normalizedPin === 'gnd') return { background: '#111827', borderColor: '#94a3b8' }
-  if (pin === 'blue' || pin === 'signal' || pin === 'base' || normalizedPin.startsWith('gp')) return { background: '#2563eb', borderColor: '#bfdbfe' }
+  if (pin === 'blue' || pin === 'signal' || pin === 'base' || normalizedPin === 'sda' || normalizedPin === 'scl' || normalizedPin.startsWith('gp')) return { background: '#2563eb', borderColor: '#bfdbfe' }
   return { background: '#f59e0b', borderColor: '#fde68a' }
 }
 
@@ -1467,6 +1488,7 @@ function ComponentStateSummary({ component, state }) {
   if (component.type === 'battery') rows.push(['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.totalCurrentMa)])
   if (component.type === 'resistor') rows.push(['Value', formatResistance(state.resistanceOhms)], ['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.currentMa)])
   if (component.type === 'led') rows.push(['Brightness', `${state.brightness ?? 0}%`], ['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.currentMa)])
+  if (component.type === 'lcd1602') rows.push(['Power', state.powered ? 'on' : 'off'], ['Backlight', state.backlight ? 'on' : 'off'], ['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.currentMa)])
   if (component.type === 'rgb_led') rows.push(['Channels', state.channels?.join(', ') || 'off'], ['Brightness', `${state.brightness ?? 0}%`], ['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.currentMa)])
   if (component.type === 'motor') rows.push(['Speed', `${state.speed ?? 0}%`], ['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.currentMa)])
   if (component.type === 'servo_motor') rows.push(['Angle', `${state.angle ?? 90} deg`], ['Voltage', formatVoltage(state.voltage)], ['Current', formatCurrent(state.currentMa)])
@@ -1502,6 +1524,7 @@ function PaletteGlyph({ type }) {
       {type === 'servo_motor' && <><rect x="6" y="8" width="18" height="10" rx="3" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" /><path d="M16 8V3M16 3l7 4" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" /></>}
       {type === 'buzzer' && <><path d="M7 15h5l6 5V4l-6 5H7z" fill="#a78bfa" /><path d="M22 8c3 2 3 6 0 8" fill="none" stroke="#6d28d9" strokeWidth="2" /></>}
       {type === 'rgb_led' && <><circle cx="16" cy="10" r="7" fill="#f8fafc" stroke="#475569" strokeWidth="2" /><circle cx="12" cy="10" r="2.5" fill="#ef4444" /><circle cx="16" cy="10" r="2.5" fill="#16a34a" /><circle cx="20" cy="10" r="2.5" fill="#2563eb" /><path d="M9 19h14" stroke="#334155" strokeWidth="2" /></>}
+      {type === 'lcd1602' && <><rect x="3" y="4" width="26" height="17" rx="2" fill="#2563eb" stroke="#1e3a8a" strokeWidth="2" /><rect x="6" y="7" width="20" height="8" rx="1" fill="#d9f99d" /><path d="M8 18v4M14 18v4M20 18v4M26 18v4" stroke="#334155" strokeWidth="1.5" /></>}
       {type === 'microcontroller' && <><rect x="6" y="4" width="20" height="16" rx="3" fill="#e0f2fe" stroke="#0369a1" strokeWidth="2" /><path d="M10 8h12M10 12h12M10 16h12" stroke="#0369a1" strokeWidth="1.5" /><path d="M3 7h5M3 17h5M24 7h5M24 17h5" stroke="#334155" strokeWidth="2" strokeLinecap="round" /></>}
       {type === 'transistor' && <><circle cx="16" cy="12" r="9" fill="#e0f2fe" stroke="#0369a1" strokeWidth="2" /><path d="M7 12h8M16 4v16M16 16l7 5" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" /></>}
       {type === 'diode' && <><path d="M3 12h8M21 12h8" stroke="#334155" strokeWidth="2" /><path d="M11 6l10 6-10 6z" fill="#fbbf24" stroke="#92400e" strokeWidth="2" /><path d="M22 6v12" stroke="#92400e" strokeWidth="2" /></>}
@@ -1549,6 +1572,20 @@ function ComponentBody({ component, state, controls, readOnly, rotation = 0, onC
           <circle cx="56" cy="28" r="4" fill="#16a34a" opacity={state.channels?.includes('green') ? 1 : 0.25} />
           <circle cx="64" cy="28" r="4" fill="#2563eb" opacity={state.channels?.includes('blue') ? 1 : 0.25} />
           <text x="56" y="47" textAnchor="middle" fontSize="10" fontWeight="700" fill="#334155">RGB</text>
+        </>
+      )}
+      {component.type === 'lcd1602' && (
+        <>
+          <path d="M16 62v-9M44 62v-9M68 62v-9M96 62v-9" stroke="#475569" strokeWidth="4" strokeLinecap="round" />
+          <rect x="8" y="8" width="96" height="48" rx="6" fill="#2563eb" stroke="#1e3a8a" strokeWidth="3" />
+          <rect x="16" y="16" width="80" height="26" rx="2" fill={state.powered && state.backlight ? '#d9f99d' : '#334155'} stroke="#0f172a" strokeWidth="2" />
+          {state.powered && state.backlight && (
+            <>
+              <text x="20" y="27" fontFamily="monospace" fontSize="8" fill="#1a2e05">{state.lines?.[0] ?? ''}</text>
+              <text x="20" y="36" fontFamily="monospace" fontSize="8" fill="#1a2e05">{state.lines?.[1] ?? ''}</text>
+            </>
+          )}
+          <text x="56" y="52" textAnchor="middle" fontSize="7" fontWeight="700" fill="#dbeafe">I²C 16×2</text>
         </>
       )}
       {component.type === 'microcontroller' && (

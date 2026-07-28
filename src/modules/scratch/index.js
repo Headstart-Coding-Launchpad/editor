@@ -62,7 +62,7 @@ const scratchModule = {
       label: 'Starter', role: 'starter', blocks: task.starterBlocks ?? null,
       predefinedBlocks: task.predefinedBlocks ?? null, prebuiltStacks: task.prebuiltStacks ?? null,
     }
-    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', revealable: true, markdown: '' },
+    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', markdown: '' },
 
   initCompleteTab: null,
   initStageTab: null,

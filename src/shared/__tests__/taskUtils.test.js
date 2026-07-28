@@ -446,11 +446,12 @@ describe('deriveTaskContext', () => {
 // ─── buildStageOptions ────────────────────────────────────────────────────────
 
 describe('buildStageOptions', () => {
-  it('defaults omitted stage roles to support and finds revealable stages across roles', () => {
+  it('defaults omitted stage roles to support and offers every Support stage without a flag', () => {
     const task = {
       codeStages: [
-        { label: 'Help', revealable: true },
-        { label: 'Extension', role: 'extension', revealable: true },
+        { label: 'Help' },
+        { label: 'Extension', role: 'extension' },
+        { label: 'Starting point', role: 'starter' },
       ],
     }
     expect(getStageRole(task.codeStages[0])).toBe('support')
@@ -460,12 +461,12 @@ describe('buildStageOptions', () => {
     ])
   })
 
-  it('selects the next reference stage in authored order', () => {
+  it('selects the next Support reference in authored order', () => {
     const task = {
       codeStages: [
-        { label: 'First reference', revealable: true },
-        { label: 'Manual stage' },
-        { label: 'Second reference', revealable: true },
+        { label: 'First reference', role: 'support' },
+        { label: 'Alternative starter', role: 'starter' },
+        { label: 'Second reference', role: 'support' },
       ],
     }
 
@@ -484,7 +485,7 @@ describe('buildStageOptions', () => {
     const task = {
       codeStages: [
         { label: 'Gentle start', role: 'starter', code: 'name = ""' },
-        { label: 'Loop hint', role: 'support', revealable: true, code: 'for name in names:' },
+        { label: 'Loop hint', role: 'support', code: 'for name in names:' },
         { label: 'Solution', role: 'complete', code: 'print("done")' },
         { label: 'More structure', role: 'starter', code: 'name = "Ada"' },
       ],
@@ -532,11 +533,11 @@ describe('buildStageOptions', () => {
     expect(opts[2]).toEqual({ value: 'stage_1', label: 'Stage 2' })
   })
 
-  it('marks non-support and revealable stages in teacher-facing labels', () => {
-    const task = { codeStages: [{ label: 'Nudge', revealable: true }, { label: 'Harder', role: 'extension', revealable: true }] }
+  it('labels legacy Support aliases without a revealability suffix', () => {
+    const task = { codeStages: [{ label: 'Nudge' }, { label: 'Harder', role: 'extension' }] }
     const opts = buildStageOptions(task, 'python')
-    expect(opts[1]).toEqual({ value: 'stage_0', label: 'Nudge (revealable)' })
-    expect(opts[2]).toEqual({ value: 'stage_1', label: 'extension: Harder (revealable)' })
+    expect(opts[1]).toEqual({ value: 'stage_0', label: 'Nudge' })
+    expect(opts[2]).toEqual({ value: 'stage_1', label: 'extension: Harder' })
   })
 
   it('falls back to "Stage N" when stage has no label', () => {

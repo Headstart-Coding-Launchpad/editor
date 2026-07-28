@@ -57,7 +57,7 @@ const htmlModule = {
     role: existing.length === 0 ? 'starter' : 'support',
     ...(existing.length === 0
       ? { files: (task.starterFiles ?? []).map(f => ({ ...f })), entryFile: task.entryFile ?? 'index.html' }
-      : { revealable: true, code: '' }),
+      : { code: '' }),
   }),
 
   initCompleteTab: (task, { onUpdate, selectedFile, setSelectedCompleteFile }) => {

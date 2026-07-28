@@ -119,7 +119,6 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     const newStage = {
       label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
       role: 'support',
-      revealable: true,
       markdown: '',
     }
     const updated = [...existing, newStage]

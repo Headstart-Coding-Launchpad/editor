@@ -202,7 +202,7 @@ A Scratch lesson module uses the existing Blockly workspace, sprites, backdrops,
 - Scratch tasks retain `starterBlocks`, sprites, backdrops, variables, toolbox, complete state, and Scratch checks.
 - `carryBlocksFrom` retains its existing project-copy behaviour: blocks plus sprites, backdrops, and variables. It is restricted to earlier tasks in the same Scratch lesson module.
 - Its lesson-module sandbox uses `sandbox.starterBlocks` and optional sprite, backdrop, and toolbox configuration; it is isolated from every other Scratch lesson module.
-- Scratch stage metadata remains preserved. Its current support-stage presentation limits remain unchanged; composed lessons do not make Scratch stages automatically revealable.
+- Scratch stage metadata remains preserved. Its current support-stage presentation limits remain unchanged; composed lessons do not add a student self-serve reference panel for Scratch stages.
 - Scratch does not share block state with Python, Arcade Kit, Electronics, HTML, or another Scratch lesson module.
 
 ### 7.3 Standalone playground scope

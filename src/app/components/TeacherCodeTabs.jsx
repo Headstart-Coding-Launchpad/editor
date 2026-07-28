@@ -1,5 +1,5 @@
 import React from 'react'
-import { getStageRole, isRevealableStage } from '../../shared/taskUtils'
+import { getStageRole } from '../../shared/taskUtils'
 
 export default function TeacherCodeTabs({
   activeTab,
@@ -27,7 +27,6 @@ export default function TeacherCodeTabs({
       {stages.map((stage, i) => {
         const role = getStageRole(stage)
         const rolePrefix = unifiedStages ? `${role}: ` : (role === 'support' ? '' : `${role}: `)
-        const revealSuffix = !unifiedStages && isRevealableStage(stage) ? ' (revealable)' : ''
         return (
           <button
             key={i}
@@ -37,7 +36,7 @@ export default function TeacherCodeTabs({
             aria-selected={activeTab === `stage_${i}`}
             onClick={() => onStage?.(i)}
           >
-            {rolePrefix}{stage.label || `Stage ${i + 1}`}{revealSuffix}
+            {rolePrefix}{stage.label || `Stage ${i + 1}`}
           </button>
         )
       })}

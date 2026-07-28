@@ -69,10 +69,7 @@ export function getStageRole(stage) {
 }
 
 export function isRevealableStage(stage) {
-  // Unified Support stages are written with `revealable: true`. Keeping the
-  // flag explicit preserves older lessons whose ordinary stages were not
-  // intended to be offered as references.
-  return getStageRole(stage) === 'support' && stage?.revealable === true
+  return getStageRole(stage) === 'support'
 }
 
 export function getRevealableStages(task) {
@@ -99,9 +96,8 @@ export function getCompleteStage(task) {
   return getStagesByRole(task, 'complete')[0] ?? null
 }
 
-// Returns the revealable stage after the latest stage already shown. This keeps
-// support references progressing in authored stage order, even when
-// non-revealable stages appear between them.
+// Returns the next Support stage after the latest stage already shown. This
+// keeps support references progressing in authored stage order.
 export function getNextRevealableStage(task, revealedStageIndexes = []) {
   const revealed = revealedStageIndexes.map(Number).filter(Number.isInteger)
   const latestRevealedIndex = revealed.length ? Math.max(...revealed) : -1
@@ -221,8 +217,7 @@ export function buildStageOptions(task, lessonType) {
     const role = getStageRole(stage)
     const displayRole = ['core', 'extension'].includes(stage?.role) ? stage.role : role
     const rolePrefix = displayRole === 'support' ? '' : `${displayRole}: `
-    const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
-    opts.push({ value: `stage_${i}`, label: `${rolePrefix}${stage.label || `Stage ${i + 1}`}${revealSuffix}` })
+    opts.push({ value: `stage_${i}`, label: `${rolePrefix}${stage.label || `Stage ${i + 1}`}` })
   })
   if (hasComplete) opts.push({ value: 'complete', label: completeLabel })
   return opts

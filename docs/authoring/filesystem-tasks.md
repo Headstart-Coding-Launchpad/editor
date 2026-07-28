@@ -26,11 +26,11 @@ A flat path map. Directories end with `/`; files do not. Root `/` always exists.
 |---|:---:|---|
 | `starterFs` | No | Initial filesystem when no carry-through exists. Defaults to `{ "/": { type: "dir" } }`. |
 | `completeFs` | No | Reference solution shown in "See complete". |
-| `codeStages` | No | Array of `{ label, fs, role?, revealable? }` snapshots. Stage role metadata is available for teacher labelling; read-only reveal UI is currently implemented for Python/HTML stages only. |
+| `codeStages` | No | Array of `{ label, fs, role? }` snapshots. Stage role metadata is available for teacher labelling; read-only reveal UI is currently implemented for Python/HTML stages only. |
 | `carryFsFrom` | No | Task ID to carry the saved filesystem from. |
 | `startsInDir` | No | Directory path the explorer opens in. Defaults to `/`. Must end with `/`. |
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. `revealable: true` may be stored on any role, but runtime read-only reveal is currently implemented for Python/HTML stages only.
+**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Support stages are offerable references where the lesson type provides a read-only reveal UI; that UI is currently implemented for Python/HTML stages only.
 
 ---
 

@@ -10,7 +10,7 @@ Field reference for `python` module code tasks in a `composed` lesson. Set `modu
 |---|:---:|---|---|
 | `starterCode` | No | string | Code loaded when no carry-through exists. |
 | `completeCode` | No | string | Reference solution (builder preview/copy). |
-| `codeStages` | No | stage array | Intermediate stages (`label`, `code`, optional `role`, optional `revealable`). Teacher can send any stage to students; revealable stages can be opened read-only without replacing student code. A feedback check may target a stage by zero-based index for a preview/recovery offer. |
+| `codeStages` | No | stage array | Intermediate stages (`label`, `code`, optional `role`). Teachers can send any stage to students; Support stages open read-only without replacing student code. A feedback check may target a stage by zero-based index for a preview/recovery offer. |
 | `carryCodeFrom` | No | integer or null | Task ID to carry saved code from. |
 | `interactionMode` | No | string | `run` (default) or `submit`. |
 | `tests` | No | test array | Automated test cases. See **Task Tests** below. |
@@ -20,7 +20,7 @@ Field reference for `python` module code tasks in a `composed` lesson. Set `modu
 - `submit`: Submit checks code text only; use `type: code` checks.
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
 
-**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Support stages need `revealable: true` to be offerable as read-only references; a Complete stage is revealable without that flag. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Every Support stage is an offerable read-only reference. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 ---
 

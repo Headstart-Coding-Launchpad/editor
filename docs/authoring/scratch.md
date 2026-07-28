@@ -55,7 +55,7 @@ modules:
     starterBlocks: null       # optional — Blockly workspace state, keyed by sprite ID for multi-sprite
     completeBlocks: null      # optional — reference solution
     prebuiltStacks: []        # optional — drag-in block stacks shown in the toolbox
-    codeStages: []            # optional — intermediate stages (label, role?, revealable?, blocks, prebuiltStacks)
+    codeStages: []            # optional — intermediate stages (label, role?, blocks, prebuiltStacks)
     carryBlocksFrom: null     # optional — carry saved blocks from task ID
     check:
       type: sprite_property
@@ -70,7 +70,7 @@ modules:
 
 ## Sprite Object
 
-**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Support stages need `revealable: true` to be offerable as read-only references; they use `markdown` and render fenced or inline Scratch blocks. A Complete stage is revealable without that flag and can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference; it uses `markdown` and renders fenced or inline Scratch blocks. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 ```yaml
 sprites:

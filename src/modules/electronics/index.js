@@ -2,14 +2,14 @@ import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import TeacherLiveView from './TeacherLiveView.jsx'
-import { DEFAULT_AVAILABLE_COMPONENTS, DEFAULT_CIRCUIT, applyMicrocontrollerGpioValues, cloneCircuit, evaluateElectronicsCheck, getMicrocontrollerCode, getMicrocontrollerInputValues, parseCircuit, serializeCircuit } from './circuit'
+import { DEFAULT_AVAILABLE_COMPONENTS, DEFAULT_CIRCUIT, applyI2cLcdEvent, applyMicrocontrollerGpioValues, cloneCircuit, evaluateElectronicsCheck, getMicrocontrollerCode, getMicrocontrollerInputValues, parseCircuit, serializeCircuit } from './circuit'
 import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from '../python/pyodide'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 
 const MICROPYTHON_SHIM = [
-  'import sys, types, time as _py_time',
+  'import sys, types, time as _py_time, json',
   'try:',
   '    import js',
   'except Exception:',
@@ -77,6 +77,35 @@ const MICROPYTHON_SHIM = [
   'machine.Pin = _Pin',
   'sys.modules["machine"] = machine',
   '',
+  'def _lcd_pin_name(pin):',
+  '    return str(getattr(pin, "name", pin))',
+  '',
+  'def _lcd_emit(sda, scl, action, **payload):',
+  '    message = {"sda": _lcd_pin_name(sda), "scl": _lcd_pin_name(scl), "action": action, **payload}',
+  '    print(f"[lcd {json.dumps(message, separators=(\',\', \':\'))}]")',
+  '',
+  'class _LCD1602:',
+  '    def __init__(self, sda, scl, address=0x27):',
+  '        self.sda = sda',
+  '        self.scl = scl',
+  '        self.address = address',
+  '    def init(self):',
+  '        _lcd_emit(self.sda, self.scl, "init")',
+  '    def clear(self):',
+  '        _lcd_emit(self.sda, self.scl, "clear")',
+  '    def backlight(self):',
+  '        _lcd_emit(self.sda, self.scl, "backlight", value=True)',
+  '    def noBacklight(self):',
+  '        _lcd_emit(self.sda, self.scl, "backlight", value=False)',
+  '    def setCursor(self, col, row):',
+  '        _lcd_emit(self.sda, self.scl, "cursor", col=int(col), row=int(row))',
+  '    def print(self, value):',
+  '        _lcd_emit(self.sda, self.scl, "print", text=str(value))',
+  '',
+  'lcd1602 = types.ModuleType("lcd1602")',
+  'lcd1602.LCD1602 = _LCD1602',
+  'sys.modules["lcd1602"] = lcd1602',
+  '',
   'async def _sleep(seconds):',
   '    seconds = max(0, float(seconds))',
   '    if js is not None:',
@@ -110,6 +139,7 @@ export function buildMicroPythonProgram(code) {
 
 const PIN_OUTPUT_RE = /\[pin\s+([^\]]+)\]\s+([01])/g
 const PIN_OUTPUT_LINE_RE = /^\[pin\s+[^\]]+\]\s+[01]\s*(?:\r?\n)?/gm
+const LCD_OUTPUT_LINE_RE = /^\[lcd\s+(.+)\]\s*(?:\r?\n)?/gm
 const PIN_MODE_OUT = 1
 
 function collectPinWrites(text, pinValues) {
@@ -125,6 +155,24 @@ function collectPinWrites(text, pinValues) {
 
 function stripPinWriteLines(text) {
   return String(text ?? '').replace(PIN_OUTPUT_LINE_RE, '')
+}
+
+function applyLcdOutput(circuit, text) {
+  let nextCircuit = circuit
+  let changed = false
+  String(text ?? '').replace(LCD_OUTPUT_LINE_RE, (_line, payload) => {
+    try {
+      const updatedCircuit = applyI2cLcdEvent(nextCircuit, JSON.parse(payload))
+      if (serializeCircuit(updatedCircuit) !== serializeCircuit(nextCircuit)) changed = true
+      nextCircuit = updatedCircuit
+    } catch {}
+    return ''
+  })
+  return { circuit: nextCircuit, changed }
+}
+
+function stripLcdOutputLines(text) {
+  return String(text ?? '').replace(LCD_OUTPUT_LINE_RE, '')
 }
 
 function clearMicrocontrollerGpioValues(circuitLike) {
@@ -170,7 +218,7 @@ const electronicsModule = {
 
   makeNewStage: (task, existing) => existing.length === 0
     ? { label: 'Starter', role: 'starter', circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
-    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', revealable: true, code: '' },
+    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', code: '' },
 
   initCompleteTab: (task, { onUpdate }) => {
     if (!task.completeCircuit) onUpdate({ ...task, completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) })
@@ -210,13 +258,23 @@ const electronicsModule = {
     run: (circuitLike, _task, callbacks) => {
       const circuit = parseCircuit(circuitLike, DEFAULT_CIRCUIT)
       const pinValues = {}
+      let latestCircuit = circuit
+      let lastRuntimeCode = callbacks?.getRuntimeCode?.()
       const currentCircuit = () => {
         const latest = callbacks?.getRuntimeCode?.()
-        return parseCircuit(typeof latest === 'string' ? latest : circuit, DEFAULT_CIRCUIT)
+        if (typeof latest === 'string' && latest !== lastRuntimeCode) {
+          latestCircuit = parseCircuit(latest, DEFAULT_CIRCUIT)
+          lastRuntimeCode = latest
+        }
+        return latestCircuit
       }
       const currentCircuitWithOutputs = () => applyMicrocontrollerGpioValues(clearMicrocontrollerGpioValues(currentCircuit()), pinValues)
+      const publishCircuit = nextCircuit => {
+        latestCircuit = nextCircuit
+        callbacks?.onCodeUpdate?.(serializeCircuit(nextCircuit))
+      }
       const publishGpioValues = () => {
-        callbacks?.onCodeUpdate?.(serializeCircuit(currentCircuitWithOutputs()))
+        publishCircuit(currentCircuitWithOutputs())
       }
       return runPython(buildMicroPythonProgram(getMicrocontrollerCode(circuit)), {
         ...callbacks,
@@ -244,7 +302,9 @@ const electronicsModule = {
           if (collectPinWrites(text, pinValues)) {
             publishGpioValues()
           }
-          const visibleText = stripPinWriteLines(text)
+          const lcdUpdate = applyLcdOutput(currentCircuitWithOutputs(), text)
+          if (lcdUpdate.changed) publishCircuit(lcdUpdate.circuit)
+          const visibleText = stripLcdOutputLines(stripPinWriteLines(text))
           if (visibleText) callbacks?.onOutput?.(visibleText, kind)
         },
       }).then(result => ({

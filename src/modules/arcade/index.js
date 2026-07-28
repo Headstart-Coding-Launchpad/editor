@@ -20,7 +20,7 @@ export default {
   },
   makeNewStage: (task, existing) => existing.length === 0
     ? { label: 'Starter', role: 'starter', code: task.starterCode ?? '', arcadeDesign: cloneArcadeDesign(task.arcadeDesign) }
-    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', revealable: true, code: '' },
+    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', code: '' },
   initCompleteTab: (task, { onUpdate }) => { if (task.completeCode == null) onUpdate({ ...task, completeCode: task.starterCode ?? '' }) }, initStageTab: null,
   defaultCheck: () => [{ type: 'code_contains', value: '' }],
   carryThroughField: 'carryCodeFrom', carryThroughLabel: 'Carry code from task', getCarryThroughUpdates: source => ({ starterCode: source.completeCode ?? source.starterCode ?? '' }), getNewStarterUpdates: () => ({ starterCode: '' }),

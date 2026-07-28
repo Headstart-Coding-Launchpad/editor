@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOARD_SIZE_OPTIONS, COMPONENT_DESCRIPTIONS, COMPONENT_GROUPS, COMPONENT_LABELS, COMPONENT_TYPES, DEFAULT_CIRCUIT, DEFAULT_MICROPYTHON_CODE, MICROCONTROLLER_DEFAULT_PINS, applyMicrocontrollerGpioValues, arePinsConnected, circuitHasShort, evaluateElectronicsCheck, getCircuitMetrics, getComponentResistanceOhms, getComponentState, getMicrocontrollerCode, getMicrocontrollerGpioValues, getMicrocontrollerInputValues, getWireColorForPins, getWireCurrentDirection, getWireState, makeComponent, makeNextGpioPinName, normalizeAvailableComponents, normalizeGpioPinName, normalizeMicrocontrollerPins, parseCircuit, pinRef } from '../circuit'
+import { BOARD_SIZE_OPTIONS, COMPONENT_DESCRIPTIONS, COMPONENT_GROUPS, COMPONENT_LABELS, COMPONENT_TYPES, DEFAULT_CIRCUIT, DEFAULT_MICROPYTHON_CODE, MICROCONTROLLER_DEFAULT_PINS, applyI2cLcdEvent, applyMicrocontrollerGpioValues, arePinsConnected, circuitHasShort, evaluateElectronicsCheck, getCircuitMetrics, getComponentResistanceOhms, getComponentState, getI2cLcdTargets, getMicrocontrollerCode, getMicrocontrollerGpioValues, getMicrocontrollerInputValues, getWireColorForPins, getWireCurrentDirection, getWireState, makeComponent, makeNextGpioPinName, normalizeAvailableComponents, normalizeGpioPinName, normalizeMicrocontrollerPins, parseCircuit, pinRef } from '../circuit'
 
 const BATTERY = makeComponent('battery', 1, { row: 1, col: 1 })
 
@@ -400,6 +400,31 @@ describe('electronics circuit helpers', () => {
     expect(getCircuitMetrics(circuit)).toMatchObject({ supplyVoltage: 3.3, hasPowerSource: true })
     expect(getComponentState(circuit, 'led1')).toMatchObject({ on: true, voltage: 3.3, currentMa: 10 })
     expect(getComponentState(circuit, 'microcontroller1').totalCurrentMa).toBe(10)
+  })
+
+  it('models a wired I²C LCD and applies its text commands to its two display rows', () => {
+    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP0', 'GP1'] }
+    const lcd = makeComponent('lcd1602', 1, { row: 2, col: 9 })
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [microcontroller, lcd],
+      wires: [
+        { id: 'power', from: 'microcontroller1.3V3', to: 'lcd16021.VCC' },
+        { id: 'ground', from: 'microcontroller1.GND', to: 'lcd16021.GND' },
+        { id: 'sda', from: 'microcontroller1.GP0', to: 'lcd16021.SDA' },
+        { id: 'scl', from: 'microcontroller1.GP1', to: 'lcd16021.SCL' },
+      ],
+    }
+
+    expect(getComponentState(circuit, 'lcd16021')).toMatchObject({ powered: true, backlight: true })
+    expect(getI2cLcdTargets(circuit, 'GP0', 'GP1')).toHaveLength(1)
+
+    const initialized = applyI2cLcdEvent(circuit, { sda: 'GP0', scl: 'GP1', action: 'init' })
+    const firstRow = applyI2cLcdEvent(initialized, { sda: 'GP0', scl: 'GP1', action: 'print', text: 'Hello' })
+    const secondRow = applyI2cLcdEvent(firstRow, { sda: 'GP0', scl: 'GP1', action: 'cursor', col: 0, row: 1 })
+    const displayed = applyI2cLcdEvent(secondRow, { sda: 'GP0', scl: 'GP1', action: 'print', text: 'World' })
+
+    expect(getComponentState(displayed, 'lcd16021').lines).toEqual(['Hello           ', 'World           '])
   })
 
   it('uses MicroPython GPIO output values to drive breadboard components', () => {

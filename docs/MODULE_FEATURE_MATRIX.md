@@ -25,7 +25,7 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 | Directly edit one student's current work | Python and Scratch support a consent-based teacher edit: the teacher requests access, the student accepts, and the teacher can live-edit then commit that student's code or blocks. Other module views are read-only; teachers can still request a starter/stage/complete state, remotely reset a student, send a message or code highlight, or work in the shared sandbox. |
 | Teacher-editable shared sandbox | In teacher-forced sandbox mode, the teacher can edit module state and push it to the whole class. This edits shared sandbox content, not an individual student's task work. |
 | Code stages | Authors can define starter, support-stage, and complete states. Teachers can inspect stages and send an authored stage to the class. The state format is module-specific: code, files, blocks, filesystem, or circuit. |
-| Student self-serve stage reference | After unsuccessful work, Python and HTML can offer an authored revealable stage as a read-only reference. For other modules, stages remain author/teacher tools rather than an automatic student reference panel. |
+| Student self-serve stage reference | After unsuccessful work, Python and HTML can offer an authored Support stage as a read-only reference. For other modules, stages remain author/teacher tools rather than an automatic student reference panel. |
 | Automatic completion checks | Each module supplies its own check editor and evaluator: Python/code checks, HTML element checks, Scratch block/state checks, filesystem checks, circuit checks, or Arcade code checks. |
 | Carry work to a later task | A later task can use a previous task's completed state as its starter: source code for Python/Arcade, files for HTML, blocks for Scratch, filesystem state for Filesystem, and circuit state for Electronics. |
 
@@ -33,7 +33,7 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 
 | Module | Notable capabilities |
 |---|---|
-| Python | Runs Python through Pyodide; supports `input()`, output, tests, variable checks, downloadable `.launchpad` code files, revealable reference stages, and complete-code reference/solution flows. |
+| Python | Runs Python through Pyodide; supports `input()`, output, tests, variable checks, downloadable `.launchpad` code files, Support reference stages, and complete-code reference/solution flows. |
 | Arcade Kit | Runs a Python pixel game in an isolated canvas; includes sprite, tilemap, tile-property, and object-spawn editing alongside source code. |
 | HTML/CSS/JS | Supports multiple files and a Blob-backed, sandboxed iframe preview; completion checks can inspect page elements. |
 | Scratch | Supports multi-sprite Blockly workspaces, costumes/backdrops, custom toolbox choices, and an in-browser Scratch-style runtime. |

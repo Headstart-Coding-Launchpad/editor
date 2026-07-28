@@ -75,10 +75,10 @@ describe('validateLesson', () => {
       title: 'Use a variable',
       starterCode: 'name = ""',
       codeStages: [
-        { label: 'With name started', revealable: true, code: 'name = "Ada"' },
+        { label: 'With name started', code: 'name = "Ada"' },
         { label: 'Starter', role: 'starter', code: 'name = "Ada"' },
         { label: 'Solution', role: 'complete', code: 'print(name)' },
-        { label: 'Legacy extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
+        { label: 'Legacy extension', role: 'extension', code: 'first = "Ada"' },
       ],
     }]))
     expect(valid.errors).toEqual([])

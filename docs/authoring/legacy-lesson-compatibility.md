@@ -23,7 +23,7 @@ The compatibility layer preserves existing single-type lesson documents, task ID
 |---|---|---|
 | Python/Arcade `starterCode` and `completeCode` | `codeStages` with `starter`, `support`, and `complete` roles. | Student, teacher-live, reset, carry-through, preview, print, and sandbox paths still use the old fields when an equivalent stage is absent. Python and HTML's newer authoring UI does not create or edit these fields. |
 | HTML `starterFiles`, `completeFiles`, `entryFile`, and `completeEntryFile` | Role-based file stages. | The file sets and entry files still initialise, reset, carry, preview, print, and render legacy HTML tasks. |
-| Stage role `core` or `extension` | `support` | Both values resolve as support stages. They are revealable only when their existing `revealable: true` flag is set. |
+| Stage role `core` or `extension` | `support` | Both values resolve as offerable Support stages. |
 | Stage role `solution` | `complete` | The stage remains a complete/solution stage. |
 | Legacy stage ordering without feedback priorities | `feedbackChecks[].priority` selects the lowest matching value. | When priority is absent, matching feedback keeps its existing array order. |
 

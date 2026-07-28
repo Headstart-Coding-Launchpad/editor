@@ -10,7 +10,7 @@ Field reference for `html` module code tasks in a `composed` lesson. Set `module
 |---|:---:|---|---|
 | `starterFiles` | No | file array | Files shown as editor tabs. |
 | `completeFiles` | No | file array | Reference solution files. |
-| `codeStages` | No | stage array | Intermediate stages (`label`, `files`, `entryFile?`, optional `role`, optional `revealable`). Revealable stages open read-only without replacing student files. |
+| `codeStages` | No | stage array | Intermediate stages (`label`, `files`, `entryFile?`, optional `role`). Support stages open read-only without replacing student files. |
 | `entryFile` | No | string | HTML file rendered in the iframe. Defaults to `index.html`. |
 | `completeEntryFile` | No | string | Entry file for `completeFiles`. |
 | `carryCodeFrom` | No | integer or null | Task ID to carry saved files from (matched by filename). |
@@ -18,7 +18,7 @@ Field reference for `html` module code tasks in a `composed` lesson. Set `module
 
 **File object:** `{ name: string, type: "html"|"css"|"javascript", content: string }`.
 
-**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Support stages need `revealable: true` to be offerable as read-only references; a Complete stage is revealable without that flag. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Every Support stage is an offerable read-only reference. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 **Carry-through behaviour:**
 - Files matching by name are carried; new `starterFiles` in the current task use their defined content.

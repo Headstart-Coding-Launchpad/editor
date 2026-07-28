@@ -35,7 +35,7 @@ modules:
       print('Hello Headstart')
     copyCode: |               # optional — read-only panel above the student editor
       print('Hello Headstart')
-    codeStages: []            # optional — intermediate stages (label, role?, revealable?, code)
+    codeStages: []            # optional — intermediate stages (label, role?, code)
     carryCodeFrom: 1          # optional — carry saved code from task ID
     interactionMode: run      # optional — run (default) | submit
     check:

@@ -48,7 +48,7 @@ modules:
           <!DOCTYPE html><html><body><h1>Hello</h1></body></html>
     copyCode: |               # optional — read-only panel above the student editor
       <h1>Hello</h1>
-    codeStages: []            # optional — intermediate stages (label, role?, revealable?, files, entryFile?)
+    codeStages: []            # optional — intermediate stages (label, role?, files, entryFile?)
     carryCodeFrom: 1          # optional — carry files from task ID (matched by filename)
     interactionMode: run      # optional — run (default) | submit
     check:

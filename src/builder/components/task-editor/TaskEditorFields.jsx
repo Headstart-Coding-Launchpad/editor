@@ -5,7 +5,7 @@ import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { createSpriteFromPreset } from '../../spritePresets'
-import { flattenTasks, getStageRole, isRevealableStage, STAGE_ROLES } from '../../../shared/taskUtils'
+import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
 import { getModuleCarrySourceIds } from '../../../shared/composedLesson'
 
@@ -26,7 +26,6 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
       {stages.map((stage, i) => {
         const role = getStageRole(stage)
         const rolePrefix = unifiedStages ? `${role}: ` : (role === 'support' ? '' : `${role}: `)
-        const revealSuffix = !unifiedStages && isRevealableStage(stage) ? ' (revealable)' : ''
         return (
         <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
           <button
@@ -36,7 +35,7 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
             aria-selected={activeTab === `stage_${i}`}
             onClick={() => onChange(`stage_${i}`)}
           >
-            {rolePrefix}{stage.label || `Stage ${i + 1}`}{revealSuffix}
+            {rolePrefix}{stage.label || `Stage ${i + 1}`}
           </button>
           {onRemoveStage && (
             <button
@@ -242,20 +241,12 @@ const STAGE_ROLE_HINTS = {
   complete: 'The read-only solution, which students can choose to apply',
 }
 
-function normalizeStageMetadata(updates) {
-  const next = { ...updates }
-  if (next.revealable === false) delete next.revealable
-  return next
-}
-
 function StageMetadataEditor({ stage, onChange }) {
   function update(updates) {
-    const nextRole = updates.role ?? getStageRole(stage)
-    onChange(normalizeStageMetadata({
+    onChange({
       ...(stage ?? {}),
       ...updates,
-      ...(nextRole === 'support' ? { revealable: true } : { revealable: false }),
-    }))
+    })
   }
 
   return (

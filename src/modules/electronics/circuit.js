@@ -19,6 +19,7 @@ export const COMPONENT_TYPES = [
   'servo_motor',
   'buzzer',
   'rgb_led',
+  'lcd1602',
   'microcontroller',
   'transistor',
   'diode',
@@ -37,6 +38,7 @@ export const COMPONENT_LABELS = {
   servo_motor: 'Servo',
   buzzer: 'Buzzer',
   rgb_led: 'RGB LED',
+  lcd1602: '16×2 LCD (I²C)',
   microcontroller: 'Micro Controller',
   transistor: 'Transistor',
   diode: 'Diode',
@@ -47,7 +49,7 @@ export const COMPONENT_LABELS = {
 export const COMPONENT_GROUPS = [
   { id: 'power', label: 'Power', types: ['battery', 'terminal'] },
   { id: 'basics', label: 'Basics', types: ['resistor', 'led', 'push_button', 'slide_switch', 'potentiometer'] },
-  { id: 'outputs', label: 'Outputs', types: ['motor', 'servo_motor', 'buzzer', 'rgb_led'] },
+  { id: 'outputs', label: 'Outputs', types: ['motor', 'servo_motor', 'buzzer', 'rgb_led', 'lcd1602'] },
   { id: 'control', label: 'Control', types: ['microcontroller', 'transistor', 'diode', 'sensor'] },
 ]
 
@@ -58,6 +60,7 @@ export const COMPONENT_DESCRIPTIONS = {
   sensor: 'Sensors act as the "eyes and ears" of your circuit, measuring physical things in the real world (like light, temperature, or distance) and turning them into data your code can read.',
   servo_motor: 'A servo is a smart motor that you can program to rotate to a precise angle (like exactly 90 degrees) and hold its position, making it perfect for robotic arms or steering.',
   rgb_led: 'An RGB LED combines red, green, and blue lights into a single bulb, allowing your code to mix them together to create almost any color imaginable.',
+  lcd1602: 'A 16 by 2 character display. Connect VCC and GND for power, then wire SDA and SCL to two Micro Controller GPIO pins for I²C text output.',
 }
 
 export const DEFAULT_AVAILABLE_COMPONENTS = [...COMPONENT_TYPES]
@@ -93,6 +96,7 @@ const LOAD_RESISTANCE_OHMS = {
   motor: 120,
   servo_motor: 180,
   buzzer: 220,
+  lcd1602: 1000,
   diode: 60,
   sensor: 1000,
 }
@@ -304,6 +308,94 @@ export function getMicrocontrollerInputValues(circuit, componentLike = null) {
   }))
 }
 
+export function hasCircuitPath(circuitLike, fromRef, toRef) {
+  if (!fromRef || !toRef) return false
+  const graph = buildGraph(parseCircuit(circuitLike), 'signal')
+  const queue = [fromRef]
+  const visited = new Set()
+  while (queue.length) {
+    const current = queue.shift()
+    if (current === toRef) return true
+    if (!current || visited.has(current)) continue
+    visited.add(current)
+    graph.get(current)?.forEach(next => queue.push(next))
+  }
+  return false
+}
+
+export function getI2cLcdTargets(circuitLike, sdaPin, sclPin) {
+  const circuit = parseCircuit(circuitLike)
+  const microcontroller = getMicrocontrollerComponent(circuit)
+  if (!microcontroller) return []
+  const sdaRef = pinRef(microcontroller.id, normalizeGpioPinName(sdaPin))
+  const sclRef = pinRef(microcontroller.id, normalizeGpioPinName(sclPin))
+  return circuit.components.filter(component => (
+    component.type === 'lcd1602' &&
+    getComponentState(circuit, component.id).powered &&
+    hasCircuitPath(circuit, sdaRef, pinRef(component.id, 'SDA')) &&
+    hasCircuitPath(circuit, sclRef, pinRef(component.id, 'SCL'))
+  ))
+}
+
+function lcdControlState(control = {}) {
+  return {
+    lines: [0, 1].map(row => String(control.lines?.[row] ?? '').slice(0, 16).padEnd(16, ' ')),
+    cursor: {
+      col: Math.max(0, Math.min(15, Number(control.cursor?.col ?? 0) || 0)),
+      row: Math.max(0, Math.min(1, Number(control.cursor?.row ?? 0) || 0)),
+    },
+    backlight: control.backlight !== false,
+  }
+}
+
+function writeLcdText(state, text) {
+  const lines = [...state.lines]
+  let { col, row } = state.cursor
+  for (const character of String(text ?? '')) {
+    if (character === '\n') {
+      col = 0
+      row += 1
+      continue
+    }
+    if (row > 1) continue
+    lines[row] = `${lines[row].slice(0, col)}${character}${lines[row].slice(col + 1)}`
+    col += 1
+    if (col >= 16) {
+      col = 0
+      row += 1
+    }
+  }
+  return { ...state, lines, cursor: { col: Math.min(15, col), row: Math.min(1, row) } }
+}
+
+export function applyI2cLcdEvent(circuitLike, event = {}) {
+  const circuit = cloneCircuit(parseCircuit(circuitLike))
+  const targets = getI2cLcdTargets(circuit, event.sda, event.scl)
+  targets.forEach(component => {
+    let state = lcdControlState(circuit.controls?.[component.id])
+    if (event.action === 'init' || event.action === 'clear') {
+      state = { ...state, lines: [' '.repeat(16), ' '.repeat(16)], cursor: { col: 0, row: 0 } }
+    } else if (event.action === 'cursor') {
+      state = {
+        ...state,
+        cursor: {
+          col: Math.max(0, Math.min(15, Number(event.col) || 0)),
+          row: Math.max(0, Math.min(1, Number(event.row) || 0)),
+        },
+      }
+    } else if (event.action === 'print') {
+      state = writeLcdText(state, event.text)
+    } else if (event.action === 'backlight') {
+      state = { ...state, backlight: event.value !== false }
+    }
+    circuit.controls = {
+      ...(circuit.controls ?? {}),
+      [component.id]: { ...(circuit.controls?.[component.id] ?? {}), ...state },
+    }
+  })
+  return circuit
+}
+
 export function normalizeAvailableComponents(value) {
   if (!Array.isArray(value)) return [...DEFAULT_AVAILABLE_COMPONENTS]
   const seen = new Set()
@@ -461,6 +553,7 @@ function defaultPinFor(component, role = 'positive') {
   if (component.type === 'led' || component.type === 'diode') return role === 'negative' ? 'cathode' : 'anode'
   if (component.type === 'rgb_led') return role === 'negative' ? 'cathode' : 'red'
   if (component.type === 'motor' || component.type === 'servo_motor' || component.type === 'buzzer' || component.type === 'sensor') return role === 'negative' ? 'negative' : 'positive'
+  if (component.type === 'lcd1602') return role === 'negative' ? 'GND' : 'VCC'
   if (component.type === 'potentiometer') return role === 'negative' ? 'right' : 'left'
   if (component.type === 'transistor') return role === 'negative' ? 'emitter' : 'collector'
   if (component.type === 'terminal') return 'pin'
@@ -726,6 +819,8 @@ function buildResistiveEdges(circuit) {
       RGB_LED_PINS.forEach(pin => addResistiveEdge(edges, component, pin, 'cathode', LOAD_RESISTANCE_OHMS.rgb_led))
     } else if (component.type === 'motor' || component.type === 'servo_motor' || component.type === 'buzzer' || component.type === 'sensor') {
       addResistiveEdge(edges, component, 'positive', 'negative', LOAD_RESISTANCE_OHMS[component.type])
+    } else if (component.type === 'lcd1602') {
+      addResistiveEdge(edges, component, 'VCC', 'GND', LOAD_RESISTANCE_OHMS.lcd1602)
     } else if (component.type === 'diode') {
       addResistiveEdge(edges, component, 'anode', 'cathode', LOAD_RESISTANCE_OHMS.diode)
     }
@@ -1044,6 +1139,26 @@ export function getComponentState(circuit, componentId) {
     const active = powered && !circuitHasShort(normalized) && outputLevel.level > 0.03
     return { on: active, powered, hasReturn, channels, color: mixRgbChannels(channels), brightness: Math.round(outputLevel.level * 100), ...outputLevel }
   }
+  if (component.type === 'lcd1602') {
+    const hasPositive = refHasSourceRole(pinRef(component.id, 'VCC'), 'positive')
+    const hasReturn = refHasSourceRole(pinRef(component.id, 'GND'), 'negative')
+    const measuredOutput = electricalOutputFor(analysis, component, 'VCC', 'GND')
+    const powered = (hasPositive && hasReturn) || measuredOutput.currentMa > 0.01
+    const controlLines = Array.isArray(control.lines) ? control.lines : []
+    const lines = [0, 1].map(row => String(controlLines[row] ?? '').slice(0, 16).padEnd(16, ' '))
+    return {
+      powered: powered && !circuitHasShort(normalized),
+      hasPositive,
+      hasReturn,
+      backlight: control.backlight !== false,
+      lines,
+      cursor: {
+        col: Math.max(0, Math.min(15, Number(control.cursor?.col ?? 0) || 0)),
+        row: Math.max(0, Math.min(1, Number(control.cursor?.row ?? 0) || 0)),
+      },
+      ...measuredOutput,
+    }
+  }
   const positivePin = component.type === 'led' || component.type === 'diode' ? 'anode' : 'positive'
   const negativePin = component.type === 'led' || component.type === 'diode' ? 'cathode' : 'negative'
   const hasPositive = refHasSourceRole(pinRef(component.id, positivePin), 'positive')
@@ -1140,6 +1255,7 @@ export function makeComponent(type, index, position = { row: 2, col: 2 }) {
     resistor: ['a', 'b'],
     led: ['anode', 'cathode'],
     rgb_led: ['red', 'green', 'blue', 'cathode'],
+    lcd1602: ['VCC', 'GND', 'SDA', 'SCL'],
     push_button: ['a', 'b'],
     slide_switch: ['a', 'b'],
     potentiometer: ['left', 'wiper', 'right'],
@@ -1169,9 +1285,11 @@ export function makeComponent(type, index, position = { row: 2, col: 2 }) {
             ? { kind: 'light', value: 50 }
             : type === 'servo_motor'
               ? { angle: 90 }
-              : type === 'microcontroller'
-                ? { boardType: 'MicroPython', code: DEFAULT_MICROPYTHON_CODE }
-                : type === 'battery'
+          : type === 'microcontroller'
+            ? { boardType: 'MicroPython', code: DEFAULT_MICROPYTHON_CODE }
+            : type === 'lcd1602'
+              ? { address: '0x27' }
+            : type === 'battery'
                   ? { voltage: 5 }
                   : {},
   }

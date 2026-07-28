@@ -195,7 +195,7 @@ Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-
 **Load when:** authoring or editing a quiz task.
 
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
-Python code task field reference: `starterCode`, `completeCode`, stage roles/revealable `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
+Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 
 **Load when:** authoring or editing a Python code task, especially one with `tests`.
 
@@ -205,7 +205,7 @@ HTML module code-task authoring reference: task fields, file model, element chec
 **Load when:** authoring or editing an HTML module code task.
 
 ### [authoring/html-tasks.md](authoring/html-tasks.md)
-HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, stage roles/revealable `codeStages`, and carry-through-by-filename behaviour. Includes a minimal full-lesson example.
+HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, role-based `codeStages`, and carry-through-by-filename behaviour. Includes a minimal full-lesson example.
 
 **Load when:** authoring or editing an HTML code task.
 
@@ -215,12 +215,12 @@ Filesystem module code-task authoring reference: task fields, flat path-map stat
 **Load when:** authoring or editing a Filesystem module code task.
 
 ### [authoring/filesystem-tasks.md](authoring/filesystem-tasks.md)
-Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, stage roles/revealable `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
+Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, role-based `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
 
 **Load when:** authoring or editing a filesystem code task.
 
 ### [authoring/electronics.md](authoring/electronics.md)
-Electronics module code-task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, stage roles/revealable `codeStages`, `carryCircuitFrom`, checks, and MicroPython code tab fields.
+Electronics module code-task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, role-based `codeStages`, `carryCircuitFrom`, checks, and MicroPython code tab fields.
 
 **Load when:** authoring or editing an electronics breadboard task.
 

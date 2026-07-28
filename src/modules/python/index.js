@@ -35,7 +35,6 @@ const pythonModule = {
   makeNewStage: (task, existing) => ({
     label: existing.length === 0 ? 'Starter' : `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
     role: existing.length === 0 ? 'starter' : 'support',
-    revealable: existing.length > 0,
     code: existing.length === 0 ? (task.starterCode ?? '') : '',
   }),
 
