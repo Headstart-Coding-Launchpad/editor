@@ -56,24 +56,26 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Actions are `starter`, `complete`, or `stage_N`.
 - Student detects timestamp changes and applies reset silently.
 - `stage_N` resolves against `task.codeStages[N]`:
-  - Python uses `.code`.
+  - Python and Arcade Kit use `.code`; Arcade Kit also restores `.arcadeDesign`.
   - HTML uses `.files` and `.entryFile`.
-  - Scratch uses `.blocks`.
+  - Scratch uses `.blocks`, `.predefinedBlocks`, and `.prebuiltStacks`.
+  - Electronics uses `.circuit`.
   - Filesystem uses `.fs`.
 
 ## Code Stage Reveal
 
-- `codeStages[].role` may be `support`, `core`, `extension`, or `solution`; omitted role defaults to `support`.
-- `codeStages[].revealable: true` may be set on any stage role. Python and HTML lessons currently render revealable stages as read-only references.
+- Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `starter`, `support`, and `complete` roles. Multiple Starter stages are permitted; the first is the default and teachers can apply another Starter to an individual or the class. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
+- Support stages are read-only references and must set `revealable: true`. Arcade Kit and Electronics show code only; Scratch support content is Markdown rendered with the Scratch-block renderer. They never replace the student's editor.
 - Revealing a stage displays a read-only reference panel and never writes to the student's editor or files.
-- Students are offered one Python/HTML revealable stage after each failed run or check (including runtime and syntax errors). The offer remains until used or the student succeeds; repeated failures do not skip an unused stage. Only the newest revealed stage is displayed; a passing run/check hides it, and a later failure offers the next stage. Teachers can still reveal a Python/HTML stage reference for one student from `StudentModal`.
+- Students are offered one revealable stage after each failed run or check (including runtime and syntax errors). The offer remains until used or the student succeeds; repeated failures do not skip an unused stage. Only the newest revealed stage is displayed; a passing run/check hides it, and a later failure offers the next stage. Teachers can also reveal a stage reference for one student from `StudentModal`.
 - Reveals write `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source`, `stageLabel`, `attemptNumber`, and `revealedAt`.
 - Teacher student cards mark the current task when a student has opened a reference. Session reports include per-student `supportReveals` and task-level reveal counts.
 - A feedback check may instead target a particular current stage with `stageOffer: { stageIndex, action, afterMatches? }`. The lowest positive `priority` among matching feedback checks wins. `afterMatches` defaults to `2`. Accepting a stage action hides the feedback banner until the next evaluated attempt. `preview` is read-only; if the same targeted check matches again while its reference remains open, the next offer is to copy that stage into the student's work. `replace` always asks the student to confirm before overwriting their work. A different stage is not suggested while a reference is already open; targeted feedback also works for Python runtime errors when a code feedback check identifies the mistake.
+- In the unified Python/HTML stage system, feedback checks may target Support stages only and always open a read-only hint; replacement is reserved for an already-previewed Complete stage.
 
 ## Complete-Code Reveal
 
-Shows a read-only complete solution without changing the student's actual editor. Python only.
+Shows a read-only complete solution in the same reference panel as Support, without changing the student's actual editor. Python and HTML support this unified flow.
 
 - **Live (class-wide)**: `session.explainerShowComplete` (boolean, session root) — toggled by the teacher from a control in `TeacherView.jsx` itself, rendered above `TeacherEditorPanel`/`TeacherCodeTabs` rather than inside that tab strip (`setExplainerShowComplete` in `useSession.js`). Affects every connected live student at once; there is no per-student variant. Resets to `false` on `setTaskId`, `createSession`, and `endSession`.
 - **Solo (self-serve)**: after reference stages are exhausted and `checkFailCount >= 2`, the student is offered "See complete code?" (`canOfferCompletePreview` in `StudentView.jsx`) before the existing "Load complete code into my editor" offer (`canOfferCompleteSolution`). Clicking preview sets local-only `completePreviewShown` state (`useCheckFeedback.js` / `cs.handlePreviewCompleteCode` in `useStudentCodeState.js`) and replaces the current stage reference with a labelled complete reference — it does not touch the editor or mark the task solved. `completePreviewShown` resets on task change, code reset, or a passing check.

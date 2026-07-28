@@ -1,6 +1,6 @@
 # HTML Code Task Fields
 
-Field reference for `html`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For HTML check types see `docs/authoring/html.md`.
+Field reference for `html` module code tasks in a `composed` lesson. Set `moduleType: html` on each such task; use `moduleId` when it belongs to a named HTML workspace. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For HTML check types see `docs/authoring/html.md`.
 
 ---
 
@@ -18,7 +18,7 @@ Field reference for `html`-type lesson code tasks. For the lesson envelope and c
 
 **File object:** `{ name: string, type: "html"|"css"|"javascript", content: string }`.
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Set `revealable: true` on any role when the stage should appear as a read-only reference after a failed attempt instead of replacing the editor.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Support stages need `revealable: true` to be offerable as read-only references; a Complete stage is revealable without that flag. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 **Carry-through behaviour:**
 - Files matching by name are carried; new `starterFiles` in the current task use their defined content.
@@ -30,11 +30,12 @@ Field reference for `html`-type lesson code tasks. For the lesson envelope and c
 
 ```yaml
 id: html-minimal
-type: html
+type: composed
 title: HTML Minimal
 description: A short HTML lesson.
 tasks:
   - id: 1
+    moduleType: html
     title: Heading
     explainer: Add a heading.
     entryFile: index.html

@@ -1,4 +1,4 @@
-import { findTaskById, flattenTasks } from './taskUtils'
+import { findTaskById, flattenTasks } from './taskUtils.js'
 
 export const LESSON_MODULE_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics']
 
@@ -6,18 +6,28 @@ export function isComposedLesson(lesson) {
   return lesson?.type === 'composed'
 }
 
+function isCodeTask(task) {
+  return task?.taskType !== 'information' && task?.taskType !== 'quiz'
+}
+
 export function getLessonModules(lesson) {
   if (!isComposedLesson(lesson)) return []
-  const types = new Set()
-  for (const task of flattenTasks(lesson?.tasks ?? [])) {
-    if (task?.moduleType && LESSON_MODULE_TYPES.includes(task.moduleType)) types.add(task.moduleType)
-  }
-  // Read previously drafted module records so they remain usable, but new lessons
-  // derive this list entirely from code tasks.
+  const modules = new Map()
+
+  // Preserve authored module instances. Older composed drafts use this shape
+  // with task.moduleId, and two instances may legitimately share a type.
   for (const module of lesson?.modules ?? []) {
-    if (module?.type && LESSON_MODULE_TYPES.includes(module.type)) types.add(module.type)
+    if (!module?.id || !LESSON_MODULE_TYPES.includes(module.type)) continue
+    modules.set(module.id, { ...module, title: module.title ?? module.id })
   }
-  return [...types].map(type => ({ id: type, type, title: type }))
+
+  for (const task of flattenTasks(lesson?.tasks ?? [])) {
+    const type = getTaskModuleType(lesson, task)
+    if (!type || !isCodeTask(task)) continue
+    const id = task.moduleId ?? type
+    if (!modules.has(id)) modules.set(id, { id, type, title: id })
+  }
+  return [...modules.values()]
 }
 
 export function getTaskModuleType(lesson, taskOrId) {
@@ -30,20 +40,29 @@ export function getTaskModuleType(lesson, taskOrId) {
   return legacyModule?.type ?? null
 }
 
+export function getTaskModuleId(lesson, taskOrId) {
+  if (!isComposedLesson(lesson)) return lesson?.type ?? null
+  const task = typeof taskOrId === 'object' ? taskOrId : findTaskById(lesson?.tasks, taskOrId)
+  if (!task || !isCodeTask(task)) return null
+  return task.moduleId ?? getTaskModuleType(lesson, task)
+}
+
 export function findLessonModuleForTask(lesson, taskOrId) {
-  const type = getTaskModuleType(lesson, taskOrId)
-  return type ? { id: type, type, title: type } : null
+  const moduleId = getTaskModuleId(lesson, taskOrId)
+  if (!moduleId) return null
+  return getLessonModules(lesson).find(module => module.id === moduleId) ?? null
 }
 
 export function getTaskContext(lesson, taskOrId) {
   const task = typeof taskOrId === 'object' ? taskOrId : findTaskById(lesson?.tasks, taskOrId)
-  const moduleType = getTaskModuleType(lesson, task)
-  return { task: task ?? null, lessonModule: moduleType ? { id: moduleType, type: moduleType, title: moduleType } : null, moduleType }
+  const lessonModule = findLessonModuleForTask(lesson, task)
+  const moduleType = lessonModule?.type ?? getTaskModuleType(lesson, task)
+  return { task: task ?? null, lessonModule, moduleType }
 }
 
-function firstCodeTask(lesson, moduleType) {
+function firstCodeTask(lesson, moduleId) {
   return flattenTasks(lesson?.tasks ?? []).find(task =>
-    getTaskModuleType(lesson, task) === moduleType && task.taskType !== 'information' && task.taskType !== 'quiz',
+    getTaskModuleId(lesson, task) === moduleId && isCodeTask(task),
   ) ?? null
 }
 
@@ -59,30 +78,37 @@ function sandboxFields(moduleType, fallbackTask) {
   return {}
 }
 
-export function getEffectiveLessonForModule(lesson, moduleType) {
+export function getEffectiveLessonForModule(lesson, moduleId) {
   if (!isComposedLesson(lesson)) return lesson
-  if (!LESSON_MODULE_TYPES.includes(moduleType)) return lesson
-  const lessonModule = { id: moduleType, type: moduleType, title: moduleType }
+  const lessonModule = getLessonModules(lesson).find(module => module.id === moduleId) ?? null
+  if (!lessonModule || !LESSON_MODULE_TYPES.includes(lessonModule.type)) return lesson
+  const moduleSandbox = lessonModule.sandbox && typeof lessonModule.sandbox === 'object'
+    ? lessonModule.sandbox
+    : {}
   return {
     ...lesson,
-    type: moduleType,
+    type: lessonModule.type,
     composedLesson: lesson,
     lessonModule,
-    ...sandboxFields(moduleType, firstCodeTask(lesson, moduleType)),
+    ...sandboxFields(lessonModule.type, firstCodeTask(lesson, lessonModule.id)),
+    ...moduleSandbox,
   }
 }
 
 export function getEffectiveLessonForTask(lesson, taskOrId) {
   if (!isComposedLesson(lesson)) return lesson
-  return getEffectiveLessonForModule(lesson, getTaskModuleType(lesson, taskOrId))
+  return getEffectiveLessonForModule(lesson, getTaskModuleId(lesson, taskOrId))
 }
 
 export function getModuleCarrySourceIds(lesson, taskOrId) {
-  const { task, moduleType } = getTaskContext(lesson, taskOrId)
+  const { task, lessonModule } = getTaskContext(lesson, taskOrId)
   if (!task || !isComposedLesson(lesson)) return null
-  if (!moduleType) return []
-  return flattenTasks(lesson.tasks ?? [])
-    .filter(candidate => getTaskModuleType(lesson, candidate) === moduleType && candidate.id < task.id && candidate.taskType !== 'information' && candidate.taskType !== 'quiz')
+  if (!lessonModule) return []
+  const tasks = flattenTasks(lesson.tasks ?? [])
+  const taskIndex = tasks.findIndex(candidate => candidate.id === task.id)
+  if (taskIndex < 0) return []
+  return tasks.slice(0, taskIndex)
+    .filter(candidate => getTaskModuleId(lesson, candidate) === lessonModule.id && isCodeTask(candidate))
     .map(candidate => candidate.id)
 }
 
@@ -91,8 +117,13 @@ export function validateComposedStructure(lesson) {
   const errors = []
   for (const task of flattenTasks(lesson.tasks ?? [])) {
     if (task?.taskType === 'information' || task?.taskType === 'quiz') continue
-    if (!task?.moduleType) errors.push(`Code task "${task?.title || task?.id || 'untitled'}" must select a workspace module`)
-    else if (!LESSON_MODULE_TYPES.includes(task.moduleType)) errors.push(`Code task "${task?.title || task.id}" has an unknown workspace module`)
+    const type = getTaskModuleType(lesson, task)
+    if (!type) errors.push(`Code task "${task?.title || task?.id || 'untitled'}" must select a workspace module`)
+    else if (!LESSON_MODULE_TYPES.includes(type)) errors.push(`Code task "${task?.title || task.id}" has an unknown workspace module`)
+    const module = task?.moduleId ? getLessonModules(lesson).find(candidate => candidate.id === task.moduleId) : null
+    if (module && task?.moduleType && module.type !== task.moduleType) {
+      errors.push(`Code task "${task?.title || task.id}" has a module ID and module type that do not match`)
+    }
   }
   return errors
 }

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(),
   useIdentity: vi.fn(),
   scratchWorkspace: vi.fn(),
+  buildIframeSrc: vi.fn(() => 'blob:preview'),
 }))
 
 vi.mock('../../../shared/useIsMobile', () => ({
@@ -37,7 +38,7 @@ vi.mock('../../../modules/python/pyodide', () => ({
 }))
 
 vi.mock('../../../modules/html/iframe', () => ({
-  buildIframeSrc: vi.fn(() => 'blob:preview'),
+  buildIframeSrc: (...args) => mocks.buildIframeSrc(...args),
   waitForIframeText: vi.fn(() => Promise.resolve('')),
 }))
 
@@ -54,7 +55,11 @@ vi.mock('../../components/OutputPanel', () => ({
 }))
 
 vi.mock('../../components/TaskProgressDots', () => ({
-  default: () => <div>Progress</div>,
+  default: ({ tasks, onDotClick }) => (
+    <div>
+      {tasks.map(task => <button key={task.id} type="button" onClick={() => onDotClick(task.id)}>{task.title}</button>)}
+    </div>
+  ),
 }))
 
 vi.mock('../../components/ExplainerPanel', () => ({
@@ -82,7 +87,7 @@ vi.mock('../../components/InformationTask', () => ({
 }))
 
 vi.mock('../../../modules/html/HtmlEditor', () => ({
-  default: () => <div>HTML editor</div>,
+  default: ({ files = [] }) => <output data-testid="html-files">{files.map(file => file.content).join('\n')}</output>,
 }))
 
 vi.mock('../../components/CollapsibleIframePreview', () => ({
@@ -124,6 +129,7 @@ vi.mock('../../components/StudentEditorHeader', () => ({
 describe('StudentView', () => {
   beforeEach(() => {
     mocks.scratchWorkspace.mockClear()
+    mocks.buildIframeSrc.mockClear()
     mocks.fetchLessonById.mockResolvedValue({
       id: 'python-1-1',
       title: 'Python 1.1',
@@ -268,5 +274,75 @@ describe('StudentView', () => {
     expect(latestProps.predefinedBlocks).toEqual(predefinedBlocks)
     expect(latestProps.prebuiltStacks).toEqual(prebuiltStacks)
     expect(latestProps.respectStudentEditable).toBe(true)
+  })
+
+  it('shows the saved workspace when viewing a previous task in another composed module', async () => {
+    const user = userEvent.setup()
+    mocks.useSession.mockReturnValue({
+      session: {
+        lessonId: 'composed-1',
+        state: 'active',
+        createdAt: 456,
+        currentTaskId: 2,
+        students: {},
+      },
+      loading: false,
+      registerPresence: vi.fn(), joinSession: vi.fn(),
+      writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
+      writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(),
+      setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+    })
+    localStorage.setItem('headstart_composed-1_1_index.html_student-1', JSON.stringify({ content: '<h1>Saved HTML</h1>' }))
+
+    render(
+      <StudentView
+        lessonId="composed-1"
+        lesson={{
+          id: 'composed-1', title: 'Composed', type: 'composed',
+          tasks: [
+            { id: 1, title: 'HTML task', moduleType: 'html', starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter HTML</h1>' }] },
+            { id: 2, title: 'Python task', moduleType: 'python', starterCode: 'print("current")' },
+          ],
+        }}
+      />
+    )
+
+    await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("current")'))
+    await user.click(screen.getByRole('button', { name: 'HTML task' }))
+
+    await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Saved HTML</h1>'))
+  })
+
+  it('builds the HTML preview when teacher live switches composed modules', async () => {
+    mocks.useSession.mockReturnValue({
+      session: {
+        lessonId: 'composed-live', state: 'active', createdAt: 456, currentTaskId: 1, students: {},
+        teacherLive: {
+          active: true, source: 'teacher', taskId: 2, updatedAt: 789,
+          files: { 'index.html': '<h1>Teacher live</h1>' }, activeFile: 'index.html',
+        },
+      },
+      loading: false,
+      registerPresence: vi.fn(), joinSession: vi.fn(),
+      writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
+      writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(),
+      setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+    })
+
+    render(
+      <StudentView
+        lessonId="composed-live"
+        lesson={{
+          id: 'composed-live', title: 'Composed live', type: 'composed',
+          tasks: [
+            { id: 1, title: 'Python task', moduleType: 'python', starterCode: 'print("current")' },
+            { id: 2, title: 'HTML task', moduleType: 'html', starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter</h1>' }] },
+          ],
+        }}
+      />
+    )
+
+    await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Teacher live</h1>'))
+    expect(mocks.buildIframeSrc).toHaveBeenCalled()
   })
 })

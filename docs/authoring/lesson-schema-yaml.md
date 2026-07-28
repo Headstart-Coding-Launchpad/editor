@@ -10,7 +10,7 @@ This file does not cover code task fields or quiz task fields:
 - **HTML code task fields:** `docs/authoring/html-tasks.md`
 - **Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`
 - **Electronics code task fields:** `docs/authoring/electronics.md`
-- **Scratch code task fields:** `docs/authoring/scratch-reference.md`
+- **Scratch code task fields:** `docs/authoring/scratch.md` (use `scratch-markdown-blocks.md` for block text and `scratch-toolbox-xml.md` for toolbox XML)
 - **Check types:** use the lesson-type docs above (`python.md`, `html.md`, `scratch.md`, `filesystem.md`, `electronics.md`, or `quiz-tasks.md`).
 - **Full authoring walkthrough and CLI workflow:** `docs/authoring/AUTHORING_GUIDE.md`
 
@@ -41,6 +41,9 @@ storageAssets:                 # optional — metadata for Firebase Storage file
     url: https://firebasestorage.googleapis.com/...
     showInEditor: true        # optional — show in web editor asset panel
 
+# Optional named workspace instances. See “Composed modules” below.
+modules: []
+
 tasks: []                     # required — ordered task list (see below)
 ```
 
@@ -59,9 +62,10 @@ tasks: []                     # required — ordered task list (see below)
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
 | `storageAssets` | No | array | Optional metadata for files stored at `lessons/{lessonId}/assets/`; the Storage folder is the asset inventory. |
+| `modules` | No | array | Named workspace instances for a composed lesson. Use when tasks need a shared named workspace, especially when two instances use the same `moduleType`. See **Composed modules**. |
 | `tasks` | Yes | array | Ordered task list. May contain group objects. |
 
-Sandbox-mode envelope fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, `sandboxStarterCircuit`) are type-specific — see `docs/authoring/AUTHORING_GUIDE.md`.
+In a new composed lesson, put sandbox configuration on the relevant `modules[].sandbox`; it is isolated per named workspace. The legacy lesson-envelope sandbox fields remain supported for legacy single-type lessons.
 
 ---
 
@@ -82,7 +86,8 @@ tasks:
       Describe the learning goal and intended task.
     # taskType is not set directly in YAML — use `type: information` or `type: quiz`;
     # omit it entirely for a code task.
-    moduleType: python          # required for a code task in a composed lesson
+    moduleType: python          # required for every code task in a new composed lesson
+    moduleId: python-practice   # optional — named workspace instance from `modules`
     check: {}                   # optional — completion check, see the lesson-type docs
     feedbackChecks: []          # optional — nudges or blocking wrong-pattern checks
 ```
@@ -95,12 +100,62 @@ tasks:
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
+| `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
 | `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
 | `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
 | `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |
 | `feedbackChecks` | No | object or array | Supported by Python, HTML, Filesystem, Electronics, and Scratch. Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. |
+
+---
+
+## Composed modules
+
+`composed` is the standard envelope for new lessons. Each code task selects its workspace with `moduleType`; information and quiz tasks remain lesson-wide and need neither module field.
+
+For a lesson with one workspace of each type, `moduleType` is enough: LaunchPad derives one module instance for that type. Add `modules` and `moduleId` when you need named workspace instances — for example, two independent Python workspaces in one lesson. Every named module has an `id`, a workspace `type`, an optional display `title`, and an optional isolated `sandbox` configuration.
+
+```yaml
+type: composed
+modules:
+  - id: model-python
+    type: python
+    title: Model in Python
+    sandbox:
+      sandboxStarter: "print('Try a model here')"
+  - id: challenge-python
+    type: python
+    title: Independent Python challenge
+    sandbox:
+      sandboxStarter: "print('This sandbox is separate')"
+  - id: web-showcase
+    type: html
+    title: Web showcase
+    sandbox:
+      sandboxStarterFiles:
+        - name: index.html
+          type: html
+          content: "<!doctype html><title>Sandbox</title>"
+tasks:
+  - title: Write the model
+    moduleType: python
+    moduleId: model-python
+    starterCode: "print('Model')"
+  - title: Build independently
+    moduleType: python
+    moduleId: challenge-python
+    starterCode: "print('Challenge')"
+  - title: Add a web heading
+    moduleType: html
+    moduleId: web-showcase
+    starterFiles: []
+```
+
+Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter` for Python and Arcade Kit; `sandboxStarterFiles` for HTML; `sandboxStarter`, `sandboxToolbox`, `sandboxSprites`, and `sandboxBackdrops` for Scratch; `sandboxStarterFs` for Filesystem; and `sandboxStarterCircuit` for Electronics. If a named module has no authored `sandbox`, its sandbox starts from that module's first code task. A task's `moduleType` and its named module's `type` must agree.
+
+Carry-through stays inside the same named module: use the existing type-specific carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, or `carryCircuitFrom`) and select an earlier task in that module only.
 
 ---
 
@@ -130,7 +185,7 @@ A task is a code task by default. Set `type:` on the task to switch to a differe
 
 | YAML `type:` on a task | Resulting task | Field reference |
 |---|---|---|
-| _(omitted)_ | Code task — Python, HTML, Scratch, or Filesystem depending on the lesson `type` | See the per-type files linked above |
+| _(omitted)_ | Code task — its `moduleType` selects Python, Arcade Kit, HTML, Scratch, Filesystem, or Electronics | See the matching module code-task guide linked above |
 | `information` | Explainer-only slide | See below |
 | `quiz` | Knowledge check | `docs/authoring/quiz-tasks.md` |
 | _(n/a — use `group:` instead)_ | Task group | See below |
@@ -199,11 +254,11 @@ See `docs/authoring/lesson-schema.md` (**Validation Rules**) for the full list o
 
 ## Minimal Examples
 
-A minimal full-lesson YAML example for each lesson type lives alongside its field reference:
+A minimal composed-lesson YAML example for each workspace module lives alongside its field reference:
 
 - **Python:** `docs/authoring/python-tasks.md`
 - **HTML:** `docs/authoring/html-tasks.md`
-- **Scratch:** `docs/authoring/scratch-reference.md`
+- **Scratch:** `docs/authoring/scratch.md`
 - **Filesystem:** `docs/authoring/filesystem-tasks.md`
 - **Electronics:** `docs/authoring/electronics.md`
 

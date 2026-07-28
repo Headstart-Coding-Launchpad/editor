@@ -164,6 +164,11 @@ Canonical YAML contract for the lesson envelope, Draft workflow, managed version
 
 **Load when:** you need a quick, focused reference for the basic shape of a lesson YAML file without wading through code task or quiz task detail.
 
+### [authoring/legacy-lesson-compatibility.md](authoring/legacy-lesson-compatibility.md)
+Inventory of legacy lesson-envelope fields, task content, checks, workspace state, and migrations that the platform still reads.
+
+**Load when:** maintaining, debugging, or migrating an older lesson format; do not use it to author new lessons.
+
 ### [authoring/lesson-assets-cli.md](authoring/lesson-assets-cli.md)
 Durable CLI contract for listing, uploading, and deleting lesson files in Firebase Storage, including metadata and Markdown URLs.
 
@@ -175,14 +180,14 @@ Completion and feedback checks are documented inside each lesson-type authoring 
 **Load when:** adding or editing checks on any task type.
 
 ### [authoring/python.md](authoring/python.md)
-Python lesson authoring reference: task fields, checks, tests, examples, carry-through, and runtime behavior.
+Python module code-task authoring reference: task fields, checks, tests, examples, carry-through, and runtime behavior.
 
-**Load when:** authoring or editing a Python lesson.
+**Load when:** authoring or editing a Python module code task.
 
 ### [authoring/arcade.md](authoring/arcade.md)
-Arcade Kit authoring reference: the single-file task model, asset names, runtime behaviour, and the available `headstart_arcade` API.
+Arcade Kit module code-task authoring reference: the single-file task model, asset names, runtime behaviour, and the available `headstart_arcade` API.
 
-**Load when:** authoring or editing an Arcade Kit lesson.
+**Load when:** authoring or editing an Arcade Kit module code task.
 
 ### [authoring/quiz-tasks.md](authoring/quiz-tasks.md)
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
@@ -195,9 +200,9 @@ Python code task field reference: `starterCode`, `completeCode`, stage roles/rev
 **Load when:** authoring or editing a Python code task, especially one with `tests`.
 
 ### [authoring/html.md](authoring/html.md)
-HTML lesson authoring reference: task fields, file model, element checks, assets, examples, and preview behavior.
+HTML module code-task authoring reference: task fields, file model, element checks, assets, examples, and preview behavior.
 
-**Load when:** authoring or editing an HTML lesson.
+**Load when:** authoring or editing an HTML module code task.
 
 ### [authoring/html-tasks.md](authoring/html-tasks.md)
 HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, stage roles/revealable `codeStages`, and carry-through-by-filename behaviour. Includes a minimal full-lesson example.
@@ -205,9 +210,9 @@ HTML code task field reference: `starterFiles`, `completeFiles`, `entryFile`, st
 **Load when:** authoring or editing an HTML code task.
 
 ### [authoring/filesystem.md](authoring/filesystem.md)
-Filesystem lesson authoring reference: task fields, flat path-map state, filesystem checks, examples, and explorer behavior.
+Filesystem module code-task authoring reference: task fields, flat path-map state, filesystem checks, examples, and explorer behavior.
 
-**Load when:** authoring or editing a filesystem lesson.
+**Load when:** authoring or editing a Filesystem module code task.
 
 ### [authoring/filesystem-tasks.md](authoring/filesystem-tasks.md)
 Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, stage roles/revealable `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
@@ -215,12 +220,12 @@ Filesystem code task field reference: the flat path-map state model, `starterFs`
 **Load when:** authoring or editing a filesystem code task.
 
 ### [authoring/electronics.md](authoring/electronics.md)
-Electronics code task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, stage roles/revealable `codeStages`, `carryCircuitFrom`, checks, and MicroPython code tab fields.
+Electronics module code-task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, stage roles/revealable `codeStages`, `carryCircuitFrom`, checks, and MicroPython code tab fields.
 
 **Load when:** authoring or editing an electronics breadboard task.
 
 ### [authoring/scratch.md](authoring/scratch.md)
-Scratch-specific task fields, sprite and backdrop objects, block opcodes accepted by the interpreter, toolbox configuration, and Scratch check field names.
+Scratch module code-task fields, sprite and backdrop objects, block opcodes accepted by the interpreter, toolbox configuration, and Scratch check field names.
 
 **Load when:** authoring or editing a Scratch lesson, or working on Scratch-related checks.
 

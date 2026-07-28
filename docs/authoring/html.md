@@ -1,22 +1,26 @@
-# HTML Lesson Authoring
+# HTML Module Code-Task Authoring
 
-Everything needed to author an HTML lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
+Everything needed to author HTML code tasks in a composed lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
 
 ---
 
-## Lesson Envelope (HTML-specific)
+## Composed Lesson and HTML Module
 
 ```yaml
 id: html-heading
-type: html
+type: composed
 title: HTML Headings
 description: Add headings with HTML tags.
 level: 1
-sandboxStarterFiles:         # optional — pre-loaded files shown in the sandbox
-  - name: index.html
+modules:
+  - id: html-practice
     type: html
-    content: |
-      <!DOCTYPE html><html><body></body></html>
+    sandbox:
+      sandboxStarterFiles:   # optional — pre-loaded files in this module's sandbox
+        - name: index.html
+          type: html
+          content: |
+            <!DOCTYPE html><html><body></body></html>
 ```
 
 ---
@@ -25,6 +29,8 @@ sandboxStarterFiles:         # optional — pre-loaded files shown in the sandbo
 
 ```yaml
   - title: Add a heading
+    moduleType: html
+    moduleId: html-practice  # optional — omit when one HTML workspace is enough
     explainer: Add an `<h1>` tag.
     entryFile: index.html     # optional — defaults to index.html
     starterFiles:

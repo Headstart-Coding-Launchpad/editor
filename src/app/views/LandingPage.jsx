@@ -9,7 +9,7 @@ export default function LandingPage() {
 
   const [lessonCode, setLessonCode] = useState('')
   const [openCodeError, setOpenCodeError] = useState('')
-  const [sandboxPickerOpen, setSandboxPickerOpen] = useState(false)
+  const [playgroundPickerOpen, setPlaygroundPickerOpen] = useState(false)
   const fileInputRef = useRef(null)
 
   function handleGo(e) {
@@ -31,7 +31,7 @@ export default function LandingPage() {
     }
   }
 
-  function handleOpenSandbox(type) {
+  function handleOpenPlayground(type) {
     navigate(`/playground/${type}`)
   }
 
@@ -81,8 +81,8 @@ export default function LandingPage() {
               Open saved code
             </button>
             <p style={s.openCodeText}>Open a LaunchPad file to continue your Python code.</p>
-            <button className="btn-ghost-outline" type="button" onClick={() => setSandboxPickerOpen(true)}>
-              Open sandbox
+            <button className="btn-ghost-outline" type="button" onClick={() => setPlaygroundPickerOpen(true)}>
+              Open playgrounds
             </button>
             <p style={s.openCodeText}>Start a fresh coding space and choose its type.</p>
             {openCodeError && <p style={s.error} role="alert">{openCodeError}</p>}
@@ -90,21 +90,21 @@ export default function LandingPage() {
         )}
 
       </div>
-      {sandboxPickerOpen && (
-        <div style={s.dialogBackdrop} role="dialog" aria-modal="true" aria-labelledby="sandbox-picker-title">
+      {playgroundPickerOpen && (
+        <div style={s.dialogBackdrop} role="dialog" aria-modal="true" aria-labelledby="playground-picker-title">
           <div style={s.dialog}>
-            <h2 id="sandbox-picker-title" style={s.dialogTitle}>Choose a sandbox</h2>
+            <h2 id="playground-picker-title" style={s.dialogTitle}>Choose a playground</h2>
             <p style={s.dialogText}>Pick the type of code you want to work on.</p>
-            <button className="btn-primary" type="button" onClick={() => handleOpenSandbox('python')}>
+            <button className="btn-primary" type="button" onClick={() => handleOpenPlayground('python')}>
               Python
             </button>
-            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenSandbox('arcade')}>
+            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenPlayground('arcade')}>
               Arcade Kit
             </button>
-            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenSandbox('electronics')}>
+            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenPlayground('electronics')}>
               Electronics
             </button>
-            <button className="btn-ghost-outline" type="button" onClick={() => setSandboxPickerOpen(false)}>
+            <button className="btn-ghost-outline" type="button" onClick={() => setPlaygroundPickerOpen(false)}>
               Cancel
             </button>
           </div>

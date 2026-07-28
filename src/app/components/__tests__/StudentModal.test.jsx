@@ -111,6 +111,7 @@ describe('StudentModal', () => {
     ['HTML', { type: 'html', tasks: [{ id: 1, title: 'HTML task', starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hello</p>' }] }] }],
     ['ArcadeKit', { type: 'arcade', tasks: [{ id: 1, title: 'Arcade task', starterCode: 'game.run()' }] }],
     ['Electronics', { type: 'electronics', tasks: [{ id: 1, title: 'Circuit task' }] }],
+    ['a composed ArcadeKit task', { type: 'composed', tasks: [{ id: 1, moduleType: 'arcade', title: 'Arcade task', starterCode: 'game.run()' }] }],
   ])('offers teacher live editing for %s workspaces', async (_name, lesson) => {
     const user = userEvent.setup()
     const onRequestTeacherEdit = vi.fn()

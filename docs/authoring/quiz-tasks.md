@@ -195,7 +195,7 @@ No `check`, `options`, `pairs`, `blanks`, or `text` fields.
 
 ## Quiz Check Types
 
-These check types apply to quiz tasks regardless of which lesson type contains them.
+These check types apply to quiz tasks regardless of which composed-lesson workspace module appears elsewhere in the lesson.
 
 | Type | Fields | Notes |
 |---|---|---|

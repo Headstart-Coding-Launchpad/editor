@@ -13,15 +13,10 @@ export default function PythonTaskWorkspace({
   handleRun, handleStop, handleRunTests, handleTestChecks, handleInputSubmit,
   resetToStarterBtn,
 }) {
-  const isCompleteTab = codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
   const isStageTab = activeStageIndex !== null
   const activeStage = isStageTab ? (codeStages[activeStageIndex] ?? null) : null
-
-  function set(field, value) {
-    onUpdate({ ...task, [field]: value })
-  }
 
   function updateStage(idx, updates) {
     const existing = task.codeStages ?? []
@@ -45,6 +40,7 @@ export default function PythonTaskWorkspace({
           onAddStage={handleAddStage}
           onRemoveStage={handleRemoveStage}
           rightAction={resetToStarterBtn}
+          unifiedStages
         />
         {isStageTab && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0, flexWrap: 'wrap' }}>
@@ -58,19 +54,22 @@ export default function PythonTaskWorkspace({
             />
             <StageMetadataEditor
               stage={activeStage}
-              showRevealable
               onChange={nextStage => replaceStage(activeStageIndex, nextStage)}
             />
           </div>
         )}
-        <div className="te-python-editor">
-          <CodeEditor
-            value={activePythonCode}
-            language="python"
-            onChange={v => isCompleteTab ? set('completeCode', v) : isStageTab ? updateStage(activeStageIndex, { code: v }) : set('starterCode', v)}
-            style={{ borderRadius: '0 0 8px 8px' }}
-          />
-        </div>
+        {isStageTab ? (
+          <div className="te-python-editor">
+            <CodeEditor
+              value={activePythonCode}
+              language="python"
+              onChange={v => updateStage(activeStageIndex, { code: v })}
+              style={{ borderRadius: '0 0 8px 8px' }}
+            />
+          </div>
+        ) : (
+          <div className="te-no-file">Add a Starter stage to begin authoring this task. Legacy starter and complete code remains available to existing lessons but is no longer edited here.</div>
+        )}
       </div>
 
       {task.interactionMode === 'submit' ? (
@@ -94,7 +93,7 @@ export default function PythonTaskWorkspace({
         </>
       ) : (
         <>
-          {isCompleteTab && task.check && (
+          {false && task.check && (
             <div style={{ padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.8rem', color: '#1d4ed8', fontFamily: 'var(--font-body)', margin: '4px 0' }}>
               Complete tab active — run to verify this solution passes all checks.
             </div>

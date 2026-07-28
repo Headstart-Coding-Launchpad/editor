@@ -49,24 +49,54 @@ export function getTaskPriority(task) {
   return isValidTaskPriority(task?.priority) ? task.priority : 'core'
 }
 
-export const STAGE_ROLES = ['support', 'core', 'extension', 'solution']
+// Code stages now have one purpose each. `core`, `extension`, and `solution`
+// remain understood so existing lessons keep loading, but the builder only
+// creates the three roles below.
+export const STAGE_ROLES = ['starter', 'support', 'complete']
+const LEGACY_STAGE_ROLE_ALIASES = {
+  core: 'support',
+  extension: 'support',
+  solution: 'complete',
+}
 
 export function isValidStageRole(role) {
-  return STAGE_ROLES.includes(role)
+  return STAGE_ROLES.includes(role) || Object.prototype.hasOwnProperty.call(LEGACY_STAGE_ROLE_ALIASES, role)
 }
 
 export function getStageRole(stage) {
+  if (LEGACY_STAGE_ROLE_ALIASES[stage?.role]) return LEGACY_STAGE_ROLE_ALIASES[stage.role]
   return isValidStageRole(stage?.role) ? stage.role : 'support'
 }
 
 export function isRevealableStage(stage) {
-  return !!stage?.revealable
+  // Unified Support stages are written with `revealable: true`. Keeping the
+  // flag explicit preserves older lessons whose ordinary stages were not
+  // intended to be offered as references.
+  return getStageRole(stage) === 'support' && stage?.revealable === true
 }
 
 export function getRevealableStages(task) {
   return (task?.codeStages ?? [])
     .map((stage, index) => ({ stage, index }))
     .filter(({ stage }) => isRevealableStage(stage))
+}
+
+export function getStagesByRole(task, role) {
+  return (task?.codeStages ?? [])
+    .map((stage, index) => ({ stage, index }))
+    .filter(({ stage }) => getStageRole(stage) === role)
+}
+
+export function getStarterStages(task) {
+  return getStagesByRole(task, 'starter')
+}
+
+export function getStarterStage(task) {
+  return getStarterStages(task)[0] ?? null
+}
+
+export function getCompleteStage(task) {
+  return getStagesByRole(task, 'complete')[0] ?? null
 }
 
 // Returns the revealable stage after the latest stage already shown. This keeps
@@ -157,6 +187,20 @@ const STAGE_OPTION_METADATA = {
 // Build the ordered list of remote-reset stage options for a task.
 // lessonType: lesson module type, e.g. 'python' | 'html' | 'scratch' | 'filesystem' | 'electronics'
 export function buildStageOptions(task, lessonType) {
+  // Python and HTML use the unified stage selector. Only Starter stages can
+  // replace student work; Support and Complete are revealed read-only.
+  const isUnified = (task?.codeStages ?? []).some(stage => ['starter', 'complete'].includes(stage?.role))
+  if (['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonType) && task?.taskType !== 'quiz' && isUnified) {
+    const starters = getStarterStages(task)
+    const starterOptions = starters.length > 0
+      ? starters.map(({ stage, index }) => ({ value: `stage_${index}`, label: stage.label || `Starter ${index + 1}` }))
+      : [{ value: 'starter', label: 'Starter' }]
+    const complete = getCompleteStage(task)
+    return complete
+      ? [...starterOptions, { value: `stage_${complete.index}`, label: `Complete: ${complete.stage.label || 'Solution'}` }]
+      : starterOptions
+  }
+
   const metadata = STAGE_OPTION_METADATA[lessonType]
   const isQuiz       = task?.taskType === 'quiz'
 
@@ -175,7 +219,8 @@ export function buildStageOptions(task, lessonType) {
   const opts = [{ value: 'starter', label: starterLabel }]
   codeStages.forEach((stage, i) => {
     const role = getStageRole(stage)
-    const rolePrefix = role === 'support' ? '' : `${role}: `
+    const displayRole = ['core', 'extension'].includes(stage?.role) ? stage.role : role
+    const rolePrefix = displayRole === 'support' ? '' : `${displayRole}: `
     const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
     opts.push({ value: `stage_${i}`, label: `${rolePrefix}${stage.label || `Stage ${i + 1}`}${revealSuffix}` })
   })

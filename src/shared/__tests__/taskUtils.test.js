@@ -480,6 +480,22 @@ describe('buildStageOptions', () => {
     expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
   })
 
+  it('only offers Starter stages for unified Python and HTML lessons', () => {
+    const task = {
+      codeStages: [
+        { label: 'Gentle start', role: 'starter', code: 'name = ""' },
+        { label: 'Loop hint', role: 'support', revealable: true, code: 'for name in names:' },
+        { label: 'Solution', role: 'complete', code: 'print("done")' },
+        { label: 'More structure', role: 'starter', code: 'name = "Ada"' },
+      ],
+    }
+    expect(buildStageOptions(task, 'python')).toEqual([
+      { value: 'stage_0', label: 'Gentle start' },
+      { value: 'stage_3', label: 'More structure' },
+      { value: 'stage_2', label: 'Complete: Solution' },
+    ])
+  })
+
   it('uses local stage metadata labels for scratch lessons', () => {
     const opts = buildStageOptions({ completeBlocks: 'x' }, 'scratch')
     expect(opts[0].label).toBe('Starter')

@@ -7,18 +7,35 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { resolveAssetsPath, resolveAssetFileUrl } from '../../shared/assetPaths'
 import ArcadePreview from './ArcadePreview'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
-import { allowsArcadeTool, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet } from './design'
+import { allowsArcadeTool, cloneArcadeDesign, designForCodeTab, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet } from './design'
+import { selectPythonTaskCode } from '../../app/studentTaskContent'
 
-export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, teacherLiveCode, teacherLiveArcadeDesign, teacherLiveWorkspace }) {
+export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, viewingTaskId, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, displayArcadeDesign, teacherLiveCode, teacherLiveArcadeDesign, teacherLiveWorkspace }) {
   const [runId, setRunId] = useState(0)
   const [runCode, setRunCode] = useState('')
   const [running, setRunning] = useState(false)
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('code')
-  const { storageAssets } = useLessonStorageAssets(lessonId, lesson?.storageAssets ?? [])
+  const { storageAssets } = useLessonStorageAssets(lesson?.isPlayground ? null : lessonId, lesson?.storageAssets ?? [])
   const { typeStorageAssets } = useTypeAssets('arcade')
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
-  const code = isForcedTeacherLive ? displayCode : isTeacherEditing ? (teacherLiveCode ?? '') : cs.code
-  const design = isTeacherEditing ? (teacherLiveArcadeDesign ?? cs.arcadeDesign) : cs.arcadeDesign
+  const viewedWork = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
+  const viewedCode = isViewingPrev
+    ? (viewedWork?.code ?? selectPythonTaskCode({
+      tasks: lesson.tasks,
+      task,
+      taskId: viewingTaskId,
+      phase: 'solo',
+      readSavedCode: cs.readSavedTaskCode,
+    }))
+    : null
+  const code = isForcedTeacherLive ? displayCode : isTeacherEditing ? (teacherLiveCode ?? '') : isViewingPrev ? viewedCode : cs.code
+  const design = isForcedTeacherLive
+    ? (displayArcadeDesign ?? designForCodeTab(task, 'starter'))
+    : isTeacherEditing
+    ? (teacherLiveArcadeDesign ?? cs.arcadeDesign)
+    : isViewingPrev
+      ? (viewedWork?.arcadeDesign ? cloneArcadeDesign(viewedWork.arcadeDesign) : designForCodeTab(task, 'starter'))
+      : cs.arcadeDesign
   const workspaceTab = isTeacherEditing ? (teacherLiveWorkspace ?? 'code') : activeWorkspaceTab
   const previousCodeRef = useRef(code)
   const staticAssets = useMemo(() => (lesson?.assets ?? []).map(name => ({ name, url: resolveAssetFileUrl(resolveAssetsPath(lesson.assetsPath ?? ''), name) })), [lesson])

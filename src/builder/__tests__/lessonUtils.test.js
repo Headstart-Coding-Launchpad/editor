@@ -69,14 +69,16 @@ describe('validateLesson', () => {
     expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
   })
 
-  it('validates code stage roles and accepts revealable stages across roles', () => {
+  it('validates unified code stage roles while accepting legacy stage roles', () => {
     const valid = validateLesson(lesson('python', [{
       id: 1,
       title: 'Use a variable',
       starterCode: 'name = ""',
       codeStages: [
         { label: 'With name started', revealable: true, code: 'name = "Ada"' },
-        { label: 'Extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
+        { label: 'Starter', role: 'starter', code: 'name = "Ada"' },
+        { label: 'Solution', role: 'complete', code: 'print(name)' },
+        { label: 'Legacy extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
       ],
     }]))
     expect(valid.errors).toEqual([])
@@ -90,7 +92,7 @@ describe('validateLesson', () => {
       ],
     }]))
     expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 stage 1 role must be one of: support, core, extension, solution',
+      'Task 1 stage 1 role must be one of: starter, support, complete',
     ]))
   })
 

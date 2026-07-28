@@ -126,8 +126,8 @@ describe('module interface contract', () => {
 
     it('makeNewStage creates a stage with code', () => {
       const result = mod.makeNewStage({ starterCode: 'x = 1' }, [])
-      expect(result.label).toContain('1')
-      expect(result.role).toBe('support')
+      expect(result.label).toBe('Starter')
+      expect(result.role).toBe('starter')
       expect(result.code).toBe('x = 1')
     })
 
@@ -153,8 +153,8 @@ describe('module interface contract', () => {
     it('makeNewStage creates a stage with files', () => {
       const task = { starterFiles: [{ name: 'index.html', content: '' }], entryFile: 'index.html' }
       const result = mod.makeNewStage(task, [])
-      expect(result.label).toContain('1')
-      expect(result.role).toBe('support')
+      expect(result.label).toBe('Starter')
+      expect(result.role).toBe('starter')
       expect(Array.isArray(result.files)).toBe(true)
     })
 
@@ -188,8 +188,8 @@ describe('module interface contract', () => {
       expect(result).toHaveProperty('starterBlocks')
     })
 
-    it('makeNewStage is null (stages managed by ScratchTaskSetup)', () => {
-      expect(mod.makeNewStage).toBeNull()
+    it('makeNewStage creates a starter block stage', () => {
+      expect(mod.makeNewStage({}, [])).toMatchObject({ label: 'Starter', role: 'starter' })
     })
   })
 

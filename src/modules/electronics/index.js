@@ -161,13 +161,16 @@ const electronicsModule = {
     availableComponents: task.availableComponents ?? [...DEFAULT_AVAILABLE_COMPONENTS],
     carryCircuitFrom: task.carryCircuitFrom ?? null,
     microcontroller: task.microcontroller ?? { enabled: false, boardType: null, starterCode: '' },
+    codeStages: task.codeStages ?? [{
+      label: 'Starter',
+      role: 'starter',
+      circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
+    }],
   }),
 
-  makeNewStage: (task, existing) => ({
-    label: `Stage ${existing.length + 1}`,
-    role: 'support',
-    circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-  }),
+  makeNewStage: (task, existing) => existing.length === 0
+    ? { label: 'Starter', role: 'starter', circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
+    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', revealable: true, code: '' },
 
   initCompleteTab: (task, { onUpdate }) => {
     if (!task.completeCircuit) onUpdate({ ...task, completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) })

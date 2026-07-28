@@ -4,7 +4,7 @@ A plain-language summary of the kinds of tasks a lesson can be built from. No fi
 
 ## Code Task
 
-Students write or arrange code (or blocks) and run it. An automatic check tells them whether they got it right. Every lesson type — Python, HTML/CSS/JS, Scratch, Filesystem — has its own flavour of code task, but they all work the same way from the student's side: try it, run it, get feedback.
+Students write or arrange code (or blocks) and run it. An automatic check tells them whether they got it right. In a composed lesson, each code task selects a workspace module — Python, Arcade Kit, HTML/CSS/JS, Scratch, Filesystem, or Electronics — but they all work the same way from the student's side: try it, run it, get feedback.
 
 ## Information Task
 

@@ -7,23 +7,26 @@ import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { createSpriteFromPreset } from '../../spritePresets'
 import { flattenTasks, getStageRole, isRevealableStage, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
+import { getModuleCarrySourceIds } from '../../../shared/composedLesson'
 
-function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null }) {
+function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null, unifiedStages = false }) {
   return (
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Code workspace">
-      <button
-        type="button"
-        className="ui-tab"
-        role="tab"
-        aria-selected={activeTab === 'starter'}
-        onClick={() => onChange('starter')}
-      >
-        {starterLabel}
-      </button>
+      {!unifiedStages && (
+        <button
+          type="button"
+          className="ui-tab"
+          role="tab"
+          aria-selected={activeTab === 'starter'}
+          onClick={() => onChange('starter')}
+        >
+          {starterLabel}
+        </button>
+      )}
       {stages.map((stage, i) => {
         const role = getStageRole(stage)
-        const rolePrefix = role === 'support' ? '' : `${role}: `
-        const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
+        const rolePrefix = unifiedStages ? `${role}: ` : (role === 'support' ? '' : `${role}: `)
+        const revealSuffix = !unifiedStages && isRevealableStage(stage) ? ' (revealable)' : ''
         return (
         <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
           <button
@@ -58,15 +61,17 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
           + Stage
         </button>
       )}
-      <button
-        type="button"
-        className="ui-tab"
-        role="tab"
-        aria-selected={activeTab === 'complete'}
-        onClick={() => onChange('complete')}
-      >
-        {testLabel}
-      </button>
+      {!unifiedStages && (
+        <button
+          type="button"
+          className="ui-tab"
+          role="tab"
+          aria-selected={activeTab === 'complete'}
+          onClick={() => onChange('complete')}
+        >
+          {testLabel}
+        </button>
+      )}
       {rightAction && <div className="te-workspace-tab-actions">{rightAction}</div>}
     </div>
   )
@@ -91,9 +96,12 @@ function Modal({ title, children, onClose }) {
 function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   const resolvedLessonMod = lessonMod ?? getLessonModule(lesson.type)
   const flatTasks = flattenTasks(lesson.tasks)
-  const taskIndex = flatTasks.findIndex(t => t.id === task.id)
-  const prevTask = taskIndex > 0 ? flatTasks[taskIndex - 1] : null
-  const otherTasks = flatTasks.filter(t => t.id !== task.id)
+  const allowedCarrySourceIds = getModuleCarrySourceIds(lesson, task)
+  const eligibleTasks = allowedCarrySourceIds == null
+    ? flatTasks.filter(t => t.id !== task.id)
+    : flatTasks.filter(t => allowedCarrySourceIds.includes(t.id))
+  const prevTask = eligibleTasks.at(-1) ?? null
+  const otherTasks = eligibleTasks
 
   const carryField = resolvedLessonMod?.carryThroughField ?? 'carryCodeFrom'
   const carryFrom = task[carryField]
@@ -229,10 +237,9 @@ function Field({ label, hint, children }) {
 }
 
 const STAGE_ROLE_HINTS = {
-  support: 'Default support step',
-  core: 'Main path stage',
-  extension: 'Stretch direction',
-  solution: 'Solution reference',
+  starter: 'A teacher-selectable starting point',
+  support: 'A read-only code hint revealed after a failed attempt',
+  complete: 'The read-only solution, which students can choose to apply',
 }
 
 function normalizeStageMetadata(updates) {
@@ -241,9 +248,14 @@ function normalizeStageMetadata(updates) {
   return next
 }
 
-function StageMetadataEditor({ stage, onChange, showRevealable = false }) {
+function StageMetadataEditor({ stage, onChange }) {
   function update(updates) {
-    onChange(normalizeStageMetadata({ ...(stage ?? {}), ...updates }))
+    const nextRole = updates.role ?? getStageRole(stage)
+    onChange(normalizeStageMetadata({
+      ...(stage ?? {}),
+      ...updates,
+      ...(nextRole === 'support' ? { revealable: true } : { revealable: false }),
+    }))
   }
 
   return (
@@ -262,16 +274,6 @@ function StageMetadataEditor({ stage, onChange, showRevealable = false }) {
           ))}
         </select>
       </label>
-      {showRevealable && (
-        <label className="te-check-toggle" style={stageMetadataStyles.revealToggle}>
-          <input
-            type="checkbox"
-            checked={!!stage?.revealable}
-            onChange={e => update({ revealable: e.target.checked })}
-          />
-          Reveal reference after failed attempt
-        </label>
-      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { flattenTasks } from '../../shared/taskUtils'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 
 /**
  * Owns the teacher-live broadcast helpers and the two related effects:
@@ -17,6 +18,7 @@ export function useTeacherLivePublish({
   lessonRef,
   currentTaskIdRef,
   codeRef,
+  arcadeDesignRef,
   filesRef,
   activeFileRef,
   outputRef,
@@ -72,6 +74,7 @@ export function useTeacherLivePublish({
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
       code: isFilesystem ? JSON.stringify(fsStateRef.current) : codeRef.current,
+      arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
       files: filesMap,
       activeFile: activeFileRef.current,
       output: outputRef.current,
@@ -92,18 +95,23 @@ export function useTeacherLivePublish({
 
   // Rebuild the teacher-live preview src when the teacher's live state updates
   useEffect(() => {
-    const mod = lesson ? getLessonModule(lesson.type) : null
+    // In a composed lesson the viewer can be on a different workspace from the
+    // broadcast task. Resolve the preview module from the live task itself,
+    // rather than from the viewer's current editor state.
+    const sourceLesson = lesson?.composedLesson ?? lesson
+    const liveLesson = getEffectiveLessonForTask(sourceLesson, session?.teacherLive?.taskId)
+    const mod = liveLesson ? getLessonModule(liveLesson.type) : null
     if (teacherPresentation || !mod?.runtime?.buildPreviewSrc || !session?.teacherLive?.active || !session.teacherLive.files) {
       setTeacherLiveIframeSrc(null)
       return
     }
     const liveFiles = toTeacherLiveFiles(session.teacherLive.files)
-    const liveTask = flattenTasks(lesson.tasks).find(t => t.id === session.teacherLive.taskId)
+    const liveTask = flattenTasks(sourceLesson?.tasks ?? []).find(t => t.id === session.teacherLive.taskId)
     setHtmlPreviewCollapsed(false)
     setTeacherLiveIframeSrc(mod.runtime.buildPreviewSrc(
       { files: liveFiles, entryFile: liveTask?.entryFile ?? 'index.html' },
       liveTask,
-      { assets: lesson.assets ?? [], assetsPath: resolveAssetsPath(lesson.assetsPath), storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []) }
+      { assets: liveLesson?.assets ?? [], assetsPath: resolveAssetsPath(liveLesson?.assetsPath), storageAssets: iframeStorageAssets ?? (liveLesson?.storageAssets ?? []) }
     ))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt, JSON.stringify(iframeStorageAssets ?? [])])

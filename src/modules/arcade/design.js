@@ -129,9 +129,8 @@ export function createArcadeDesign(value = null) {
     version: 1,
     sprites: (raw.sprites ?? []).map(sprite => {
       const sourceFrames = Array.isArray(sprite.frames) && sprite.frames.length ? sprite.frames : [null]
-      const isBlankLegacyGrid = sprite.width === 16 && sprite.height === 16 && sourceFrames.every(frame => !frame?.some(Boolean))
-      const width = isBlankLegacyGrid ? DEFAULT_WIDTH : clampSize(sprite.width, DEFAULT_WIDTH)
-      const height = isBlankLegacyGrid ? DEFAULT_HEIGHT : clampSize(sprite.height, DEFAULT_HEIGHT)
+      const width = clampSize(sprite.width, DEFAULT_WIDTH)
+      const height = clampSize(sprite.height, DEFAULT_HEIGHT)
       const frames = sourceFrames
       return {
         id: sprite.id ?? `sprite-${Math.random().toString(36).slice(2, 8)}`,
@@ -153,7 +152,8 @@ export function designForCodeTab(task, codeTab = 'starter') {
   if (codeTab === 'complete') return cloneArcadeDesign(task?.completeArcadeDesign)
   const stageMatch = String(codeTab).match(/^stage_(\d+)$/)
   if (stageMatch) return cloneArcadeDesign(task?.codeStages?.[Number(stageMatch[1])]?.arcadeDesign)
-  return cloneArcadeDesign(task?.arcadeDesign)
+  const starterStage = task?.codeStages?.find(stage => stage?.role === 'starter')
+  return cloneArcadeDesign(starterStage?.arcadeDesign ?? task?.arcadeDesign)
 }
 
 export function updateDesignForCodeTab(task, codeTab = 'starter', design) {

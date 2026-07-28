@@ -4,7 +4,7 @@ import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
-import { flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
+import { flattenTasks, filterTasksByMode, getStarterStage } from '../../shared/taskUtils'
 import { applyLessonOverride, publishLessonTasks, saveSessionReport } from '../../shared/lessonService'
 import { buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
@@ -27,7 +27,7 @@ import TeacherEditorPanel from './teacher/TeacherEditorPanel'
 import { DEFAULT_FS } from '../../modules/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
 import { cloneFiles, cloneScratchState, decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
-import { getEffectiveLessonForModule, getEffectiveLessonForTask, getLessonModules, isComposedLesson } from '../../shared/composedLesson'
+import { getEffectiveLessonForModule, getEffectiveLessonForTask, getLessonModules, getTaskModuleId, isComposedLesson } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
@@ -61,7 +61,7 @@ export default function TeacherView({ lessonId }) {
     [baseLesson, session?.lessonOverrideTasks]
   )
   const [lessonLoading, setLessonLoading] = useState(true)
-  const { topics } = useTopicLibrary(lesson?.type, !!lesson)
+  const { topics } = useTopicLibrary(isComposedLesson(lesson) ? null : lesson?.type, !!lesson)
   const [lessonError, setLessonError]     = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
@@ -131,7 +131,7 @@ export default function TeacherView({ lessonId }) {
       setFiles([])
       setScratchState(null)
     } else if (taskLesson.type === 'python' || taskLesson.type === 'arcade') {
-      setCode(task.starterCode ?? '')
+      setCode(getStarterStage(task)?.stage?.code ?? task.starterCode ?? '')
     } else if (taskLesson.type === 'scratch') {
       setScratchState(task.starterBlocks ?? null)
     } else if (taskLesson.type === 'filesystem') {
@@ -139,7 +139,7 @@ export default function TeacherView({ lessonId }) {
     } else if (taskLesson.type === 'electronics') {
       setCode(serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT))
     } else {
-      setFiles(task.starterFiles ?? [])
+      setFiles(getStarterStage(task)?.stage?.files ?? task.starterFiles ?? [])
     }
   }
 
@@ -154,7 +154,7 @@ export default function TeacherView({ lessonId }) {
   // Also used when entering sandbox — see applySandboxStarterState() below.
   function applySandboxStarterState(moduleId = sandboxModuleId) {
     const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
-    const resolvedModuleId = moduleId ?? task?.moduleType ?? getLessonModules(lesson)[0]?.id ?? null
+    const resolvedModuleId = moduleId ?? getTaskModuleId(lesson, task) ?? getLessonModules(lesson)[0]?.id ?? null
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, resolvedModuleId) ?? lesson
     const mod = getLessonModule(activeSandboxLesson.type)
     const configured = mod.getSandboxState(activeSandboxLesson, task)
@@ -209,7 +209,7 @@ export default function TeacherView({ lessonId }) {
   function handleEnterSandbox() {
     setPreviewTaskId(null)
     const currentTask = flattenTasks(lesson?.tasks ?? []).find(task => task.id === currentTaskId)
-    const initialModuleId = isComposedLesson(lesson) ? (currentTask?.moduleType ?? getLessonModules(lesson)[0]?.id ?? null) : null
+    const initialModuleId = isComposedLesson(lesson) ? (getTaskModuleId(lesson, currentTask) ?? getLessonModules(lesson)[0]?.id ?? null) : null
     setSandboxModuleId(initialModuleId)
     applySandboxStarterState(initialModuleId)
     setSandboxStaging(true)
@@ -223,7 +223,7 @@ export default function TeacherView({ lessonId }) {
   async function handleGoLiveSandbox() {
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
     const sandboxTask = isComposedLesson(lesson)
-      ? flattenTasks(lesson?.tasks ?? []).find(task => task.moduleType === sandboxModuleId && task.taskType !== 'information' && task.taskType !== 'quiz')
+      ? flattenTasks(lesson?.tasks ?? []).find(task => getTaskModuleId(lesson, task) === sandboxModuleId && task.taskType !== 'information' && task.taskType !== 'quiz')
       : null
     if (sandboxTask && sandboxTask.id !== currentTaskId) {
       setCurrentTaskId(sandboxTask.id)
@@ -365,7 +365,7 @@ export default function TeacherView({ lessonId }) {
   const task = flatTasks.find(t => t.id === displayTaskId)
   const displayedLesson = getEffectiveLessonForTask(lesson, displayTaskId)
   const lessonModules = getLessonModules(lesson)
-  const activeSandboxModuleId = sandboxModuleId ?? task?.moduleType ?? lessonModules[0]?.id ?? null
+  const activeSandboxModuleId = sandboxModuleId ?? getTaskModuleId(lesson, task) ?? lessonModules[0]?.id ?? null
   const sandboxLesson = getEffectiveLessonForModule(lesson, activeSandboxModuleId)
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
   const currentTask = flatTasks.find(t => t.id === (session?.currentTaskId ?? currentTaskId))
@@ -472,7 +472,7 @@ export default function TeacherView({ lessonId }) {
             <ExplainerPanel title={task.title} content={task.explainer} topicType={displayedLesson.type} />
           )}
 
-          {displayedLesson.type === 'python' && !!task?.completeCode && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
+          {false && displayedLesson.type === 'python' && !!task?.completeCode && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
             <div style={sc.explainerToggleRow}>
               <button
                 type="button"

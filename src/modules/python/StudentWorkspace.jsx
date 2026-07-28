@@ -4,7 +4,6 @@ import OutputPanel from '../../app/components/OutputPanel'
 import SplitPane from '../../shared/SplitPane'
 import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import { loadSavedCode } from '../../app/studentStorage'
 
 export default function StudentWorkspace({
   task, cs, lessonId, identityId, viewingTaskId, isSandbox,
@@ -14,7 +13,7 @@ export default function StudentWorkspace({
   isTeacherEditing, teacherLiveCode,
 }) {
   const [outputCollapsed, setOutputCollapsed] = useState(() => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev)
-  const savedCode = isViewingPrev ? loadSavedCode(lessonId, viewingTaskId, identityId) : null
+  const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const code = isForcedTeacherLive
     ? displayCode

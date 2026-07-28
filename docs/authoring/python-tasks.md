@@ -1,6 +1,6 @@
 # Python Code Task Fields
 
-Field reference for `python`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For Python check types see `docs/authoring/python.md`.
+Field reference for `python` module code tasks in a `composed` lesson. Set `moduleType: python` on each such task; use `moduleId` when it belongs to a named Python workspace. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For Python check types see `docs/authoring/python.md`.
 
 ---
 
@@ -20,7 +20,7 @@ Field reference for `python`-type lesson code tasks. For the lesson envelope and
 - `submit`: Submit checks code text only; use `type: code` checks.
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Set `revealable: true` on any role when the stage should appear as a read-only reference after a failed attempt instead of replacing the editor.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Support stages need `revealable: true` to be offerable as read-only references; a Complete stage is revealable without that flag. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 ---
 
@@ -60,11 +60,12 @@ Excess `input()` calls beyond the test's entries receive an empty string.
 
 ```yaml
 id: python-minimal
-type: python
+type: composed
 title: Python Minimal
 description: A short Python lesson.
 tasks:
   - id: 1
+    moduleType: python
     title: Hello
     explainer: Print `Hello`.
     starterCode: ""

@@ -28,8 +28,10 @@ const htmlModule = {
       entryFile: task?.completeEntryFile ?? task?.entryFile ?? 'index.html',
     }
     if (tab?.startsWith('stage_')) return {
-      files: stage?.files ?? [],
-      entryFile: stage?.entryFile ?? task?.entryFile ?? 'index.html',
+      files: stage?.code != null
+        ? [{ name: 'support-snippet.html', type: 'html', content: stage.code }]
+        : (stage?.files ?? []),
+      entryFile: stage?.code != null ? 'support-snippet.html' : (stage?.entryFile ?? task?.entryFile ?? 'index.html'),
     }
     return liveState
   },
@@ -42,13 +44,20 @@ const htmlModule = {
     starterFiles: task.starterFiles?.length ? task.starterFiles : [DEFAULT_HTML_FILE],
     entryFile: task.entryFile ?? 'index.html',
     carryCodeFrom: task.carryCodeFrom ?? null,
+    codeStages: task.codeStages ?? [{
+      label: 'Starter',
+      role: 'starter',
+      files: task.starterFiles?.length ? task.starterFiles : [DEFAULT_HTML_FILE],
+      entryFile: task.entryFile ?? 'index.html',
+    }],
   }),
 
   makeNewStage: (task, existing) => ({
-    label: `Stage ${existing.length + 1}`,
-    role: 'support',
-    files: (task.starterFiles ?? []).map(f => ({ ...f })),
-    entryFile: task.entryFile ?? 'index.html',
+    label: existing.length === 0 ? 'Starter' : `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
+    role: existing.length === 0 ? 'starter' : 'support',
+    ...(existing.length === 0
+      ? { files: (task.starterFiles ?? []).map(f => ({ ...f })), entryFile: task.entryFile ?? 'index.html' }
+      : { revealable: true, code: '' }),
   }),
 
   initCompleteTab: (task, { onUpdate, selectedFile, setSelectedCompleteFile }) => {

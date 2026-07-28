@@ -1,4 +1,4 @@
-import { findTaskById } from '../shared/taskUtils'
+import { findTaskById, getStarterStage } from '../shared/taskUtils'
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {
   if (!carryFromId) return false
@@ -75,7 +75,7 @@ export function selectPythonTaskCode({ tasks, task, taskId, phase, readSavedCode
     if (ownSaved != null) return ownSaved.code ?? ''
   }
 
-  let initial = task.starterCode ?? ''
+  let initial = getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
   const carried = resolveSavedCarrySource({
     tasks,
     taskId,
@@ -93,7 +93,8 @@ export function selectPythonTaskCode({ tasks, task, taskId, phase, readSavedCode
 
 export function selectHtmlTaskFiles({ tasks, task, taskId, phase, readSavedFile, onCarryFallback }) {
   const fileFallbacks = []
-  const files = (task.starterFiles ?? []).map(file => {
+  const starterFiles = getStarterStage(task)?.stage?.files ?? task.starterFiles ?? []
+  const files = starterFiles.map(file => {
     if (phase === 'solo') {
       const ownSaved = readSavedFile(taskId, file.name)
       if (ownSaved != null) return { ...file, content: ownSaved }
@@ -160,13 +161,15 @@ export function selectScratchInitialProject({ tasks = null, task, taskId, readSa
       notifyCarryFallback(onCarryFallback, carried.fallback)
     }
   }
-  if (!initialProject) initialProject = task?.starterBlocks ?? null
+  if (!initialProject) initialProject = getStarterStage(task)?.stage?.blocks ?? task?.starterBlocks ?? null
   return initialProject
 }
 
 export function selectScratchToolboxSnippets({ task, activeStageIndex = null, disabled = false }) {
   if (disabled || !task) return { predefinedBlocks: null, prebuiltStacks: null }
-  const activeStage = activeStageIndex != null ? task.codeStages?.[activeStageIndex] : null
+  const activeStage = activeStageIndex != null
+    ? task.codeStages?.[activeStageIndex]
+    : getStarterStage(task)?.stage
   const predefinedBlocks = [
     ...(task.predefinedBlocks ?? []),
     ...(activeStage?.predefinedBlocks ?? []),

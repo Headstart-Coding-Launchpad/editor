@@ -2,7 +2,7 @@
 
 YAML-first reference for writing HSC lessons and topics. Use the CLI to convert YAML and publish to Firestore.
 
-**Per-type authoring (task fields, checks, examples):**
+**Workspace module code-task authoring (task fields, checks, examples):**
 - Python: `docs/authoring/python.md`
 - Arcade Kit: `docs/authoring/arcade.md`
 - HTML: `docs/authoring/html.md`
@@ -50,7 +50,7 @@ tasks:
 
 ```yaml
 id: python-for-loops         # required — lowercase slug, used in URLs
-type: python                 # required — python | html | scratch | filesystem | electronics
+type: composed               # required for every new lesson
 title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
 draft: false                 # optional; true enables incomplete real tasks while authoring
@@ -66,10 +66,12 @@ storageAssets:               # optional — Firebase Storage files
     url: https://firebasestorage.googleapis.com/...
     showInEditor: true       # optional — show in web editor asset panel
 
+modules: []                  # optional named workspace instances; see lesson-schema-yaml.md
+
 tasks: []                    # required — ordered task list (see below)
 ```
 
-Sandbox-mode fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, `sandboxStarterCircuit`) are type-specific — see each per-type doc.
+Each code task in a composed lesson needs `moduleType`: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. Add `modules` plus task `moduleId` when a lesson needs named or repeated workspace instances. Put module-specific sandbox configuration in `modules[].sandbox`; see `lesson-schema-yaml.md` for the full model.
 
 ---
 
@@ -89,6 +91,7 @@ tasks:
     intent: |                 # authoring-only Markdown; never shown to students
       Describe the complete authoring brief for this task.
     # taskType omitted = code task; use information or quiz for non-code tasks
+    moduleType: python        # required on every code task in a new composed lesson
 ```
 
 ---
@@ -260,12 +263,13 @@ Every Draft task needs a `title`, its normal real task type, and a non-empty Mar
 
 ```yaml
 id: python-loops-draft
-type: python
+type: composed
 title: Python Loops (Draft)
 description: A lesson in progress.
 draft: true
 tasks:
   - title: First counted loop
+    moduleType: python
     intent: |
       Teach `range()` and have learners print the numbers 0–4.
 ```
@@ -348,13 +352,22 @@ For full topic field reference see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
 
 ---
 
-## Full YAML Example (Python)
+## Full YAML Example (Composed)
 
 ```yaml
 id: python-for-loops
-type: python
-title: Python For Loops
-description: Practise loops in Python.
+type: composed
+title: Loops in Python and Arcade Kit
+description: Practise loops in two programming environments.
+modules:
+  - id: python-practice
+    type: python
+    title: Python practice
+    sandbox:
+      sandboxStarter: "print('Try a Python loop here')"
+  - id: arcade-practice
+    type: arcade
+    title: Arcade Kit practice
 tasks:
   - type: information
     title: Read first
@@ -378,6 +391,8 @@ tasks:
     answer: a
 
   - title: Print numbers
+    moduleType: python
+    moduleId: python-practice
     explainer: Print the numbers 0 to 4.
     starterCode: |
       for i in range(5):
@@ -392,10 +407,15 @@ tasks:
 
   - group: Challenge
     tasks:
-      - title: Sum a range
-        explainer: Add up all numbers from 0 to 9 and print the total.
+      - title: Animate with a loop
+        moduleType: arcade
+        moduleId: arcade-practice
+        explainer: Use a loop to update an Arcade Kit game.
+        starterCode: |
+          from headstart_arcade import game
+          game.run()
         check:
-          type: output
+          type: code
           operator: contains
-          value: "45"
+          value: game.run
 ```

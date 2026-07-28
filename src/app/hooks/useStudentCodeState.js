@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, getStageOfferMatchThreshold, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
-import { flattenTasks, findTaskById, getNextRevealableStage, getRevealableStages, isRevealableStage } from '../../shared/taskUtils'
+import { flattenTasks, findTaskById, getCompleteStage, getNextRevealableStage, getRevealableStages, getStageRole, getStarterStage, isRevealableStage } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
@@ -154,8 +154,13 @@ export function useStudentCodeState({
 
   // ─── Sub-hooks ────────────────────────────────────────────────────────────
 
-  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets(lesson?.type === 'html' ? 'html' : null)
-  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson?.id ?? lessonId, lesson?.storageAssets ?? [])
+  // Keep HTML assets available for a teacher-live HTML task even when this
+  // student is currently editing a different module in a composed lesson.
+  const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
+  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(
+    lesson?.isPlayground ? null : (lesson?.id ?? lessonId),
+    lesson?.storageAssets ?? [],
+  )
   const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
   const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
     ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
@@ -207,7 +212,7 @@ export function useStudentCodeState({
   const { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
     teacherPresentation,
     identityRef, sessionRef, lessonRef, currentTaskIdRef,
-    codeRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
+    codeRef, arcadeDesignRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
     editorSelectionRef, editorActivityRef,
     lesson, session, identity, currentTaskId,
     code, files, activeFile, output, runStatus,
@@ -405,7 +410,7 @@ export function useStudentCodeState({
         hasSavedState: saved => saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
       })
       if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const starter = serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT)
+      const starter = serializeCircuit(getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
       setCode(carryId != null ? (ownSaved ?? carried.saved?.code ?? starter) : (ownSaved ?? starter))
       setFiles([])
       setActiveFile('')
@@ -657,14 +662,23 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task || !action) return
 
+    const revealMatch = action.match(/^reveal_stage_(\d+)$/)
+    if (revealMatch) {
+      const stageIndex = parseInt(revealMatch[1], 10)
+      const stage = task.codeStages?.[stageIndex]
+      if (getStageRole(stage) === 'support') handleRevealSupportStage(stageIndex, 'teacher')
+      else if (getStageRole(stage) === 'complete') setCompletePreviewShown(true)
+      return
+    }
+
     if (lesson.type === 'python' || lesson.type === 'arcade') {
       let target
-      if (action === 'starter') target = task.starterCode ?? ''
+      if (action === 'starter') target = getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
       else if (action === 'complete') target = task.completeCode ?? ''
       else {
         const stageMatch = action.match(/^stage_(\d+)$/)
         const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        target = stage?.code ?? task.starterCode ?? ''
+        target = stage?.code ?? getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
       }
       setCode(target)
       if (lesson.type === 'arcade') {
@@ -679,16 +693,18 @@ export function useStudentCodeState({
     } else if (lesson.type === 'html') {
       let targetFiles, targetEntry
       if (action === 'starter') {
-        targetFiles = task.starterFiles ?? []
-        targetEntry = task.entryFile
+        const starter = getStarterStage(task)?.stage
+        targetFiles = starter?.files ?? task.starterFiles ?? []
+        targetEntry = starter?.entryFile ?? task.entryFile
       } else if (action === 'complete') {
         targetFiles = task.completeFiles ?? []
         targetEntry = task.completeEntryFile ?? task.entryFile
       } else {
         const stageMatch = action.match(/^stage_(\d+)$/)
         const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetFiles = stage?.files ?? task.starterFiles ?? []
-        targetEntry = stage?.entryFile ?? task.entryFile
+        const starter = getStarterStage(task)?.stage
+        targetFiles = stage?.files ?? starter?.files ?? task.starterFiles ?? []
+        targetEntry = stage?.entryFile ?? starter?.entryFile ?? task.entryFile
       }
       setFiles(targetFiles.map(f => ({ ...f })))
       setActiveFile(targetEntry ?? targetFiles[0]?.name ?? '')
@@ -697,7 +713,7 @@ export function useStudentCodeState({
       resetCheckFeedback()
     } else if (lesson.type === 'scratch') {
       let targetBlocks
-      if (action === 'starter') targetBlocks = task.starterBlocks ?? null
+      if (action === 'starter') targetBlocks = getStarterStage(task)?.stage?.blocks ?? task.starterBlocks ?? null
       else if (action === 'complete') {
         targetBlocks = task.completeBlocks ?? null
         setScratchActiveStageIndex(null)
@@ -729,7 +745,7 @@ export function useStudentCodeState({
       if (action === 'complete') {
         targetCircuit = task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
       } else if (action === 'starter') {
-        targetCircuit = task.starterCircuit ?? DEFAULT_CIRCUIT
+        targetCircuit = getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
       } else {
         const stageMatch = action.match(/^stage_(\d+)$/)
         const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
@@ -791,6 +807,9 @@ export function useStudentCodeState({
     if (lesson.type === 'python' || lesson.type === 'arcade') {
       const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? lesson.sandboxStarter ?? '')
+      if (lesson.type === 'arcade') {
+        setArcadeDesign(saved?.arcadeDesign ? cloneArcadeDesign(saved.arcadeDesign) : null)
+      }
     } else if (lesson.type === 'html') {
       const starterFiles = lesson.sandboxStarterFiles ?? []
       const sandboxFiles = starterFiles.map(f => {
@@ -1280,14 +1299,14 @@ export function useStudentCodeState({
     if (!window.confirm('Reset your code to the starter code? Your current work will be lost.')) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (lesson.type === 'python' || lesson.type === 'arcade') {
-      setCode(task?.starterCode ?? '')
+      setCode(getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '')
       if (lesson.type === 'arcade') handleArcadeDesignChange(designForCodeTab(task, 'starter'))
-      if (canPublishTeacherLive()) publishTeacherLive({ code: task?.starterCode ?? '', output: '', runStatus: null, checkPassed: false, checkAttempted: false })
+      if (canPublishTeacherLive()) publishTeacherLive({ code: getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '', output: '', runStatus: null, checkPassed: false, checkAttempted: false })
       setOutput('')
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'html') {
-      const taskFiles = (task?.starterFiles ?? []).map(f => ({ ...f }))
+      const taskFiles = (getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []).map(f => ({ ...f }))
       setFiles(taskFiles)
       if (canPublishTeacherLive()) publishTeacherLive({ files: Object.fromEntries(taskFiles.map(f => [f.name, f.content])), output: '', runStatus: null, checkPassed: false, checkAttempted: false })
       setActiveFile(task?.entryFile ?? taskFiles[0]?.name ?? '')
@@ -1298,7 +1317,7 @@ export function useStudentCodeState({
       setScratchExternalState(task?.starterBlocks ?? null)
       setScratchActiveStageIndex(null)
     } else if (lesson.type === 'electronics') {
-      const starter = serializeCircuit(task?.starterCircuit ?? DEFAULT_CIRCUIT)
+      const starter = serializeCircuit(getStarterStage(task)?.stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
       setCode(starter)
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: starter })
       resetCheckFeedback()
@@ -1348,7 +1367,7 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const stage = task?.codeStages?.[stageIndex]
     if (!stage) return
-    if (!['python', 'html'].includes(lesson?.type)) return
+      if (!['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lesson?.type)) return
     if (!isRevealableStage(stage)) return
 
     const record = {
@@ -1432,16 +1451,15 @@ export function useStudentCodeState({
   }
 
   function handleAcceptTargetedStage() {
-    if (targetedStageOffer?.action !== 'replace') return
+    if (!targetedStageOffer) return
     const { stageIndex } = targetedStageOffer
     setTargetedStageOffer(null)
     markStagePromptAccepted()
-    handleShowCodeStage(stageIndex)
+    setTargetedPreviewStageIndex(stageIndex)
   }
 
   function handleAcceptGenericNextStage(stageIndex) {
-    markStagePromptAccepted()
-    handleShowCodeStage(stageIndex)
+    handleRevealSupportStage(stageIndex)
   }
 
   function handlePreviewCompleteCode() {
@@ -1456,16 +1474,17 @@ export function useStudentCodeState({
     if (!task) return
 
     if (lesson.type === 'python' || lesson.type === 'arcade') {
-      const completeCode = task.completeCode ?? ''
+      const completeCode = getCompleteStage(task)?.stage?.code ?? task.completeCode ?? ''
       setCode(completeCode)
       setOutput('')
       setRunStatus(null)
       applyCheckFeedback(true)
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: completeCode, output: '', runStatus: null })
     } else if (lesson.type === 'html') {
-      const completeFiles = (task.completeFiles ?? []).map(f => ({ ...f }))
+      const completeStage = getCompleteStage(task)?.stage
+      const completeFiles = (completeStage?.files ?? task.completeFiles ?? []).map(f => ({ ...f }))
       setFiles(completeFiles)
-      setActiveFile(task.completeEntryFile ?? task.entryFile ?? completeFiles[0]?.name ?? '')
+      setActiveFile(completeStage?.entryFile ?? task.completeEntryFile ?? task.entryFile ?? completeFiles[0]?.name ?? '')
       setIframeSrc(null)
       setRunStatus(null)
       applyCheckFeedback(true)
@@ -1603,8 +1622,10 @@ export function useStudentCodeState({
     handleFsChange, handleFsInteraction,
     handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewTargetedStage, handleAcceptTargetedStage, handleAcceptGenericNextStage, handlePreviewCompleteCode, handleShowCompleteCode,
     handleEnterPersonalSandbox, handleLeavePersonalSandbox,
-    // Mode-aware task-save reader (localStorage normally, in-memory in presentation/preview)
+    // Mode-aware task-save readers (localStorage normally, in-memory in presentation/preview)
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,
+    readSavedTaskFile: (taskId, filename) => effectiveIdentity ? persistence.readSavedFile(effectiveIdentity.anonymousId, taskId, filename) : null,
+    readSavedTaskFs: taskId => effectiveIdentity ? persistence.readSavedFs(effectiveIdentity.anonymousId, taskId) : null,
     recordCarryFallback,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,

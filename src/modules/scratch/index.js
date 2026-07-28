@@ -48,9 +48,21 @@ const scratchModule = {
     toolbox: task.toolbox ?? '',
     starterBlocks: task.starterBlocks ?? null,
     carryBlocksFrom: task.carryBlocksFrom ?? null,
+    codeStages: task.codeStages ?? [{
+      label: 'Starter',
+      role: 'starter',
+      blocks: task.starterBlocks ?? null,
+      predefinedBlocks: task.predefinedBlocks ?? null,
+      prebuiltStacks: task.prebuiltStacks ?? null,
+    }],
   }),
 
-  makeNewStage: null,
+  makeNewStage: (task, existing) => existing.length === 0
+    ? {
+      label: 'Starter', role: 'starter', blocks: task.starterBlocks ?? null,
+      predefinedBlocks: task.predefinedBlocks ?? null, prebuiltStacks: task.prebuiltStacks ?? null,
+    }
+    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', revealable: true, markdown: '' },
 
   initCompleteTab: null,
   initStageTab: null,

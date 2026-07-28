@@ -4,7 +4,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
-import { findTaskById, deriveTaskContext, buildStageOptions, getRevealableStages } from '../../shared/taskUtils'
+import { findTaskById, deriveTaskContext, buildStageOptions, getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import HtmlTeacherLiveView from '../../modules/html/TeacherLiveView.jsx'
@@ -13,6 +13,7 @@ import ElectronicsTeacherLiveView from '../../modules/electronics/TeacherLiveVie
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getLessonModule } from '../../modules/registry'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import DropdownMenu from './student-modal/DropdownMenu'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
@@ -266,11 +267,12 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, task, session)
-  const isArcade = lesson?.type === 'arcade'
-  const isElectronics = lesson?.type === 'electronics'
+  const taskLesson = getEffectiveLessonForTask(lesson, task)
+  const { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(taskLesson, task, session)
+  const isArcade = taskLesson?.type === 'arcade'
+  const isElectronics = taskLesson?.type === 'electronics'
   const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
-  const lessonModule = getLessonModule(lesson?.type)
+  const lessonModule = getLessonModule(taskLesson?.type)
   const ModuleTeacherLiveView = !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
   const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
@@ -304,9 +306,10 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setActiveFile(liveFile)
   }, [isLive, student.currentActiveFile, student.currentSelection?.file, student.currentActivity?.file])
 
-  const stageOptions = buildStageOptions(task, lesson?.type)
-  const supportsStageReveal = isPython || isHtml
+  const stageOptions = buildStageOptions(task, taskLesson?.type)
+  const supportsStageReveal = isPython || isHtml || taskLesson?.type === 'arcade' || taskLesson?.type === 'electronics' || taskLesson?.type === 'scratch'
   const revealableStages = !isInformation && !isQuiz && supportsStageReveal ? getRevealableStages(task) : []
+  const completeStage = !isInformation && !isQuiz && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
 
   useEffect(() => {
@@ -402,6 +405,17 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                         </button>
                       )
                     })}
+                    {completeStage && (
+                      <button
+                        style={sTo.toolBtn}
+                        onClick={() => {
+                          close()
+                          onRemoteReset?.(student.anonymousId, `reveal_stage_${completeStage.index}`)
+                        }}
+                      >
+                        Reveal solution: {completeStage.stage.label || 'Complete'}
+                      </button>
+                    )}
                   </>
                 )}
               </DropdownMenu>
@@ -539,7 +553,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             />
           ) : teacherEditState === 'editing' && isHtml ? (
             <HtmlTeacherLiveView
-              lesson={lesson}
+              lesson={taskLesson}
               displayState={{ files: teacherFiles }}
               readOnly={false}
               onChange={handleTeacherFileChange}
@@ -577,7 +591,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             </div>
           ) : (
             <StudentWorkspaceBody
-              lesson={lesson}
+              lesson={taskLesson}
               task={task}
               student={student}
               session={session}

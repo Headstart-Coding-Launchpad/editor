@@ -17,6 +17,8 @@ import {
   pinRef,
 } from './circuit'
 import { CodeWorkspaceTabs, StageMetadataEditor } from '../../builder/components/task-editor/TaskEditorFields'
+import { CodeEditor } from '../../shared/CodeEditor'
+import { getStageRole } from '../../shared/taskUtils'
 
 export default function BuilderWorkspace({
   task, onUpdate, codeTab, codeStages,
@@ -26,6 +28,7 @@ export default function BuilderWorkspace({
   const stageMatch = codeTab?.match(/^stage_(\d+)$/)
   const activeStageIndex = stageMatch ? Number(stageMatch[1]) : null
   const activeStage = activeStageIndex !== null ? (codeStages?.[activeStageIndex] ?? null) : null
+  const isSupportStage = activeStage != null && getStageRole(activeStage) === 'support'
   const activeCircuit = useMemo(() => {
     if (codeTab === 'complete') return parseCircuit(task.completeCircuit, task.starterCircuit ?? DEFAULT_CIRCUIT)
     if (stageMatch) return parseCircuit(codeStages?.[Number(stageMatch[1])]?.circuit, task.starterCircuit ?? DEFAULT_CIRCUIT)
@@ -91,6 +94,10 @@ export default function BuilderWorkspace({
 
   function updateLegacyMicrocontrollerCode(code) {
     onUpdate({ ...task, microcontroller: { ...(task.microcontroller ?? {}), enabled: true, starterCode: code } })
+  }
+
+  function updateSupportCode(code) {
+    if (activeStageIndex != null) replaceStage(activeStageIndex, { ...activeStage, code })
   }
 
   function updateBoardSize(sizeId) {
@@ -187,6 +194,7 @@ export default function BuilderWorkspace({
         onAddStage={handleAddStage}
         onRemoveStage={handleRemoveStage}
         rightAction={resetToStarterBtn}
+        unifiedStages
       />
       {activeStage && (
         <div style={s.stageMetadataBar}>
@@ -204,6 +212,14 @@ export default function BuilderWorkspace({
           />
         </div>
       )}
+      {isSupportStage ? (
+        <CodeEditor
+          value={activeStage.code ?? ''}
+          language="python"
+          onChange={updateSupportCode}
+          style={{ minHeight: 360, borderRadius: '0 0 8px 8px' }}
+        />
+      ) : <>
       <div style={s.workspace}>
         <ElectronicsWorkspace
           circuit={activeCircuit}
@@ -313,6 +329,7 @@ export default function BuilderWorkspace({
         </div>
       </div>
       <p style={s.microHint}>Add a Micro Controller component to enable the MicroPython tab. Select the component to edit its GPIO pins.</p>
+      </>}
     </div>
   )
 }

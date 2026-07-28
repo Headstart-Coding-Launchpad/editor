@@ -1,19 +1,23 @@
-# Python Lesson Authoring
+# Python Module Code-Task Authoring
 
-Everything needed to author a Python lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
+Everything needed to author Python code tasks in a composed lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
 
 ---
 
-## Lesson Envelope (Python-specific)
+## Composed Lesson and Python Module
 
 ```yaml
 id: python-for-loops
-type: python
+type: composed
 title: Python For Loops
 description: Practise loops in Python.
 level: 1
-sandboxStarter: |        # optional — pre-loaded code shown in the sandbox
-  # Try anything here!
+modules:
+  - id: python-practice
+    type: python
+    sandbox:
+      sandboxStarter: |    # optional — pre-loaded code shown in this module's sandbox
+        # Try anything here!
 ```
 
 ---
@@ -22,6 +26,8 @@ sandboxStarter: |        # optional — pre-loaded code shown in the sandbox
 
 ```yaml
   - title: Print a message
+    moduleType: python
+    moduleId: python-practice # optional — omit when one Python workspace is enough
     explainer: Use `print()` to show text.
     starterCode: |            # optional — loaded when no carry-through exists
       print('Hello')

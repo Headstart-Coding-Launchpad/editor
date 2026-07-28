@@ -20,6 +20,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. `scopeType` is `type`, `module`, `course`, or `collection`. |
 | `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
+| `modules` | No | `{id, type, title?, sandbox?}[]` | Named workspace instances for a composed lesson. Use `moduleId` on code tasks to select one. |
 | `sandboxStarter` | No | string | Python, Arcade Kit, or Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
 | `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. |
@@ -67,6 +68,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types. |
 | `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `moduleId` | No | string | ID of a named entry in the lesson `modules` array. It distinguishes separate instances of the same workspace type. |
 | `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
@@ -77,9 +79,21 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 
 ---
 
+### Composed module instances
+
+New lessons use `type: "composed"`. Every code task then supplies `moduleType`; information and quiz tasks are lesson-wide. When no `modules` array is authored, LaunchPad derives one module instance per `moduleType`.
+
+Use `modules` with task `moduleId` when a lesson needs named or repeated workspace instances. A module object is `{ id, type, title?, sandbox? }`, where `type` is one of `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. The module's optional `sandbox` object uses the ordinary type-specific sandbox fields: `sandboxStarter` (Python/Arcade), `sandboxStarterFiles` (HTML), `sandboxStarter`/`sandboxToolbox`/`sandboxSprites`/`sandboxBackdrops` (Scratch), `sandboxStarterFs` (Filesystem), or `sandboxStarterCircuit` (Electronics). Each sandbox is isolated from the others. Without an authored module sandbox, the first code task in that module supplies the starting sandbox state.
+
+When both `moduleId` and `moduleType` are supplied, they must identify the same workspace type. Carry-through can only reference earlier code tasks in the same named module, including when two modules share a type.
+
+Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`.
+
+---
+
 ## Task Format Matrix
 
-| Lesson type | Code task | Information | Quiz |
+| Workspace module type | Code task | Information | Quiz |
 |---|---|---|---|---|
 | `python` | Python editor + output | Supported | Supported |
 | `arcade` | Python game editor + canvas | Supported | Supported |
@@ -88,13 +102,15 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `filesystem` | Virtual file manager | Supported | Supported |
 | `electronics` | Editable breadboard | Supported | Supported |
 
+In a composed lesson, every code task chooses one row with `moduleType`; `moduleId` optionally selects a named instance of that row's workspace.
+
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
-Code task `codeStages` share two optional metadata fields across Python, Arcade Kit, HTML, Scratch, Filesystem, and Electronics: `role` (`support`, `core`, `extension`, `solution`; omitted defaults to `support`) and `revealable` (`true` on any role). Python and HTML revealable stages are shown as read-only references after a failed attempt and do not replace student work; other code task types preserve the metadata for now.
+Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `role: starter | support | complete`. The first Starter is the default; teachers may apply any Starter to a class or individual learner. Arcade Kit Starter stages carry `code` plus `arcadeDesign` (sprites and tilemaps); Electronics Starter stages carry `circuit`; Scratch Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Support stages are read-only references with `revealable: true`: Arcade Kit and Electronics currently show code only, while Scratch uses `markdown` and renders fenced or inline Scratch blocks. A Support stage needs `revealable: true` to be offerable; a Complete stage is revealable without that flag. Complete stages are revealed read-only before the student or teacher explicitly takes them over, using the same preview-then-replace flow as Support stages. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
 
 ### Targeted feedback-stage offers
 
-Link a feedback check to a current code stage when that check identifies a specific misconception. `stageIndex` is zero-based and refers to the task's existing `codeStages` order. The matching feedback check with the lowest `priority` is the only one surfaced for that attempt; checks without a priority keep their array order for compatibility. `afterMatches` is the number of matching attempts before the offer appears and defaults to `2`.
+Link a feedback check to a current code stage when that check identifies a specific misconception. `stageIndex` is zero-based and refers to the task's existing `codeStages` order; it can target a `role: complete` stage for a guided solution reveal as well as a Support stage. The matching feedback check with the lowest `priority` is the only one surfaced for that attempt; checks without a priority keep their array order for compatibility. `afterMatches` is the number of matching attempts before the offer appears and defaults to `2`.
 
 ```yaml
 feedbackChecks:

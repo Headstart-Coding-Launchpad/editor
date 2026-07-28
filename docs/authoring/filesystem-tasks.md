@@ -1,6 +1,6 @@
 # Filesystem Code Task Fields
 
-Field reference for `filesystem`-type lesson code tasks. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For Filesystem check types see `docs/authoring/filesystem.md`.
+Field reference for `filesystem` module code tasks in a `composed` lesson. Set `moduleType: filesystem` on each such task; use `moduleId` when it belongs to a named Filesystem workspace. For the lesson envelope and common task fields see `docs/authoring/lesson-schema.md`. For Filesystem check types see `docs/authoring/filesystem.md`.
 
 The `filesystem` type presents a virtual Windows Explorer-style file manager. Checks evaluate automatically — there is no Run button.
 
@@ -38,11 +38,12 @@ A flat path map. Directories end with `/`; files do not. Root `/` always exists.
 
 ```yaml
 id: filesystem-minimal
-type: filesystem
+type: composed
 title: Filesystem Minimal
 description: Organise your files.
 tasks:
   - id: 1
+    moduleType: filesystem
     title: Create a Documents folder
     explainer: Create a folder called **Documents** in the root folder.
     starterFs:

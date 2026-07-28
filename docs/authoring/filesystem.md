@@ -1,20 +1,24 @@
-# Filesystem Lesson Authoring
+# Filesystem Module Code-Task Authoring
 
-Everything needed to author a Filesystem lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
+Everything needed to author Filesystem code tasks in a composed lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
 
 ---
 
-## Lesson Envelope (Filesystem-specific)
+## Composed Lesson and Filesystem Module
 
 ```yaml
 id: file-organiser
-type: filesystem
+type: composed
 title: File Organiser
 description: Practise organising files and folders.
 level: 1
-sandboxStarterFs:            # optional — initial filesystem for sandbox
-  "/":
-    type: dir
+modules:
+  - id: filesystem-practice
+    type: filesystem
+    sandbox:
+      sandboxStarterFs:      # optional — initial filesystem for this module's sandbox
+        "/":
+          type: dir
 ```
 
 ---
@@ -23,6 +27,8 @@ sandboxStarterFs:            # optional — initial filesystem for sandbox
 
 ```yaml
   - title: Create a folder
+    moduleType: filesystem
+    moduleId: filesystem-practice # optional — omit when one Filesystem workspace is enough
     explainer: Create a folder called **Documents**.
     starterFs:                # optional — initial filesystem state
       "/":

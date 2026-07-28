@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import ExplainerEditor from '../ExplainerEditor'
 import ScratchWorkspace from '../../../modules/scratch/ScratchWorkspace'
 import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
@@ -70,6 +71,9 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     modalStageSpriteStatesRef.current = {}
     setModalStarterBlocks(blocks)
     setTestScratchBlocks(cloneBlocks(blocks))
+    // Project configuration is task-wide; stage tabs are for their own blocks
+    // and starter-only toolbox stacks. Open here so those shared controls are
+    // never hidden behind the first code-stage tab.
     setScratchModalTab('starter')
     setStarterBlocksOpen(true)
     setCheckResult(null)
@@ -112,10 +116,12 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
 
   function handleAddScratchStage() {
     const existing = task.codeStages ?? []
-    const srcBlocks = existing.length > 0
-      ? cloneBlocks(existing[existing.length - 1].blocks)
-      : cloneBlocks(modalStarterBlocksRef.current ?? task.starterBlocks)
-    const newStage = { label: `Stage ${existing.length + 1}`, role: 'support', blocks: srcBlocks }
+    const newStage = {
+      label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
+      role: 'support',
+      revealable: true,
+      markdown: '',
+    }
     const updated = [...existing, newStage]
     onUpdate({ ...task, codeStages: updated })
     setScratchModalTab(`stage_${updated.length - 1}`)
@@ -179,7 +185,13 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                 stages={codeStages}
                 onAddStage={handleAddScratchStage}
                 onRemoveStage={handleRemoveScratchStage}
+                unifiedStages
               />
+              {scratchModalTab !== 'starter' && (
+                <button type="button" className="btn-ghost te-secondary-btn" onClick={() => setScratchModalTab('starter')}>
+                  Project setup
+                </button>
+              )}
               {scratchModalTab === 'complete' && checkResult !== null && (
                 <span className={checkResult === 'pass' ? 'te-scratch-check-pass' : 'te-scratch-check-fail'}>
                   {checkResult === 'pass' ? 'Check passes' : 'Check not passing'}
@@ -378,6 +390,35 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   const stageIdx = parseInt(stageMatch[1], 10)
                   const stage = codeStages[stageIdx]
                   if (!stage) return null
+                  if (stage.role === 'support') {
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0, flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
+                          <input
+                            className="te-input"
+                            style={{ width: 200, padding: '4px 8px', fontSize: '0.82rem' }}
+                            value={stage.label ?? ''}
+                            onChange={e => updateStage(stageIdx, { label: e.target.value })}
+                            placeholder={`Support ${stageIdx + 1}`}
+                          />
+                          <StageMetadataEditor stage={stage} onChange={nextStage => replaceStage(stageIdx, nextStage)} />
+                        </div>
+                        <div style={{ padding: 12, overflow: 'auto' }}>
+                          <ExplainerEditor
+                            title={stage.label || 'Scratch reference'}
+                            value={stage.markdown ?? ''}
+                            onChange={markdown => updateStage(stageIdx, { markdown })}
+                            lessonType="scratch"
+                            inlineCodeLanguages={['scratch']}
+                            assets={lesson.assets ?? []}
+                            assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                            storageAssets={lesson.storageAssets ?? []}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
                   const stagePredefined = [
                     ...(task.predefinedBlocks ?? []),
                     ...(stage.predefinedBlocks ?? []),

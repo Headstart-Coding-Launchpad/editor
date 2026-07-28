@@ -8,6 +8,7 @@ import { CollapseTabButton } from '../../../app/components/CollapsiblePanelContr
 import FileManager from '../FileManager'
 import { Field, CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
 import TaskCheckResults from './TaskCheckResults'
+import { getStageRole } from '../../../shared/taskUtils'
 
 export default function HtmlTaskWorkspace({
   task, lesson, onUpdate,
@@ -18,11 +19,14 @@ export default function HtmlTaskWorkspace({
   handleCodeTabChange, handleAddStage, handleRemoveStage,
   handleRun, handleTestChecks, resetToStarterBtn,
 }) {
-  const isCompleteTab = codeTab === 'complete'
+  // Python and HTML authoring use unified stages. Legacy fields are still read
+  // by the student runtime, but are deliberately not editable from this UI.
+  const isCompleteTab = false
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
   const isStageTab = activeStageIndex !== null
   const activeStage = isStageTab ? (codeStages[activeStageIndex] ?? null) : null
+  const isSupportStage = isStageTab && getStageRole(activeStage) === 'support'
   const activeFiles = isCompleteTab
     ? (task.completeFiles ?? [])
     : isStageTab
@@ -71,6 +75,7 @@ export default function HtmlTaskWorkspace({
           stages={codeStages}
           onAddStage={handleAddStage}
           onRemoveStage={handleRemoveStage}
+          unifiedStages
           rightAction={
             <>
               {resetToStarterBtn}
@@ -98,18 +103,27 @@ export default function HtmlTaskWorkspace({
             />
             <StageMetadataEditor
               stage={activeStage}
-              showRevealable
               onChange={nextStage => replaceStage(activeStageIndex, nextStage)}
             />
           </div>
         )}
 
-        {isCompleteTab && task.check && (
+        {false && task.check && (
           <div style={{ padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 0, fontSize: '0.8rem', color: '#1d4ed8', fontFamily: 'var(--font-body)' }}>
             Complete tab active — click Run to verify this solution passes all checks.
           </div>
         )}
         <div className="te-html-split">
+          {isSupportStage ? (
+            <CodeEditor
+              value={activeStage?.code ?? ''}
+              language="html"
+              onChange={code => updateStage(activeStageIndex, { code })}
+              style={{ width: '100%', minWidth: 0, flex: '1 1 auto', borderRadius: '0 0 8px 8px' }}
+            />
+          ) : !isStageTab ? (
+            <div className="te-no-file">Add a Starter stage to begin authoring this task. Legacy starter and complete files remain available to existing lessons but are no longer edited here.</div>
+          ) : (
           <SplitPane
             defaultSplit={34}
             style={{ flex: 1, minHeight: 0 }}
@@ -225,6 +239,7 @@ export default function HtmlTaskWorkspace({
               )
             }
           />
+          )}
         </div>
       </div>
 

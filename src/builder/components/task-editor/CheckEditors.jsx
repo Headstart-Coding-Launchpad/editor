@@ -1,6 +1,7 @@
 import React from 'react'
 import { MarkdownFieldEditor } from '../ExplainerEditor'
 import { Field } from './TaskEditorFields'
+import { getStageRole } from '../../../shared/taskUtils'
 import {
   formatCheckFailure,
   formatCheckFailureDetail,
@@ -269,7 +270,10 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
 
 export function FeedbackStageOfferControls({ check, stages = [], onChange }) {
   const selectedStageIndex = check.stageOffer?.stageIndex
-  const hasStage = Number.isInteger(Number(selectedStageIndex)) && stages[Number(selectedStageIndex)]
+  const supportStages = stages
+    .map((stage, index) => ({ stage, index }))
+    .filter(({ stage }) => getStageRole(stage) === 'support')
+  const hasStage = Number.isInteger(Number(selectedStageIndex)) && supportStages.some(({ index }) => index === Number(selectedStageIndex))
 
   return (
     <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -294,24 +298,16 @@ export function FeedbackStageOfferControls({ check, stages = [], onChange }) {
             onChange(next)
             return
           }
-          onChange({ ...check, stageOffer: { stageIndex: Number(e.target.value), action: check.stageOffer?.action ?? 'preview', afterMatches: check.stageOffer?.afterMatches ?? 2 } })
+          onChange({ ...check, stageOffer: { stageIndex: Number(e.target.value), action: 'preview', afterMatches: check.stageOffer?.afterMatches ?? 2 } })
         }}
         title="Offer a stage when this feedback check matches"
       >
         <option value="">No linked stage</option>
-        {stages.map((stage, index) => <option key={index} value={index}>{stage.label || `Stage ${index + 1}`}</option>)}
+        {supportStages.map(({ stage, index }) => <option key={index} value={index}>{stage.label || `Support ${index + 1}`}</option>)}
       </select>
       {hasStage && (
         <>
-          <select
-            className="te-select"
-            value={check.stageOffer?.action ?? 'preview'}
-            onChange={e => onChange({ ...check, stageOffer: { ...check.stageOffer, action: e.target.value } })}
-            title="How students can use the linked stage"
-          >
-            <option value="preview">Show read-only reference</option>
-            <option value="replace">Offer code replacement</option>
-          </select>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280' }}>Shows a read-only hint.</span>
           <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600 }}>
             Offer after
             <input

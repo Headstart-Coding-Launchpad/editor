@@ -1,26 +1,30 @@
-# Electronics Lessons
+# Electronics Module Code-Task Authoring
 
-Electronics lessons use an editable breadboard workspace. Students drag parts from the palette onto the board, drag placed components to reposition them, and drag from one visible pin to another to create wires. Components render as circuit parts: buttons can be pressed, switches can be toggled, powered motors spin, powered buzzers sound, and energized wires show animated current. Wires can be selected and deleted, and selected components can be removed with the Delete key or inspector button.
+Electronics code tasks use an editable breadboard workspace. Students drag parts from the palette onto the board, drag placed components to reposition them, and drag from one visible pin to another to create wires. Components render as circuit parts: buttons can be pressed, switches can be toggled, powered motors spin, powered buzzers sound, and energized wires show animated current. Wires can be selected and deleted, and selected components can be removed with the Delete key or inspector button.
 
-## Lesson Envelope
+## Composed Lesson and Electronics Module
 
 ```yaml
 id: electronics-led-switch
-type: electronics
+type: composed
 title: LED Switch Circuit
 description: Build a simple switched LED circuit.
-sandboxStarterCircuit:
-  version: 1
-  board: { type: half-breadboard, rows: 18, cols: 30 }
-  components:
-    - id: battery1
-      type: battery
-      label: Battery
-      position: { row: 1, col: 1 }
-      pins: [positive, negative]
-      props: { voltage: 5 }
-  wires: []
-  controls: {}
+modules:
+  - id: electronics-practice
+    type: electronics
+    sandbox:
+      sandboxStarterCircuit:
+        version: 1
+        board: { type: half-breadboard, rows: 18, cols: 30 }
+        components:
+          - id: battery1
+            type: battery
+            label: Battery
+            position: { row: 1, col: 1 }
+            pins: [positive, negative]
+            props: { voltage: 5 }
+        wires: []
+        controls: {}
 tasks: []
 ```
 
@@ -30,14 +34,14 @@ tasks: []
 |---|:---:|---|
 | `starterCircuit` | Yes | Circuit object loaded when the task starts. |
 | `completeCircuit` | No | Completed board shown by teacher tools and solo help. |
-| `codeStages` | No | Array of hints/stages; each stage can contain `{ label, circuit, role?, revealable? }`. Stage role metadata is available for teacher labelling; read-only reveal UI is currently implemented for Python/HTML stages only. |
+| `codeStages` | No | Array of hints/stages; each stage can contain `{ label, circuit, role?, revealable? }`. See **Stage object** for role and reveal behaviour. |
 | `availableComponents` | No | Array of component types students can add from the palette. Omitted = all components, including `battery`. New starter boards begin empty, so add a battery to the starter circuit or keep it available in the palette when students need one. |
 | `carryCircuitFrom` | No | Task ID to carry a previous saved board into this task. |
 | `microcontroller` | No | Legacy compatibility for older drafts. New lessons should add a `microcontroller` component; the MicroPython tab appears automatically when one is present. |
 
 Circuit objects contain `board`, `components`, `wires`, and `controls`. Component IDs are internal save-file references for wires and controls. Checks should usually target parts by type and optional label, so students can solve the circuit flexibly.
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. `revealable: true` may be stored on any role, but runtime read-only reveal is currently implemented for Python/HTML stages only.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `circuit`. Support stages need `revealable: true` to be offerable as read-only references; they currently show code only. A Complete stage is revealable without that flag and can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 The default board is `18 x 30`. The builder can switch between compact `14 x 20`, standard `18 x 30`, and large `22 x 36` boards by updating `board.rows` and `board.cols`.
 
@@ -124,11 +128,13 @@ to: { type: led, pin: anode }
 
 ```yaml
 id: electronics-led-switch
-type: electronics
+type: composed
 title: LED Switch Circuit
 description: Wire an LED through a switch.
 tasks:
   - title: Build the LED path
+    moduleType: electronics
+    moduleId: electronics-practice
     explainer: Connect the LED so it can be powered by the battery.
     availableComponents: [battery, led, resistor, slide_switch, terminal]
     starterCircuit:

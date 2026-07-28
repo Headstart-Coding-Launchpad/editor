@@ -1,4 +1,5 @@
 import React from 'react'
+import { MarkdownRenderer } from '../../shared/markdown'
 
 function getLanguageLabel(language) {
   if (language === 'python') return 'Python'
@@ -12,14 +13,16 @@ function getLanguageLabel(language) {
 function stageToText(stage, lessonType) {
   if (!stage) return ''
   if (lessonType === 'python') return stage.code ?? ''
+  if (lessonType === 'arcade') return stage.code ?? ''
   if (lessonType === 'html') {
+    if (stage.code != null) return stage.code
     return (stage.files ?? [])
       .map(file => `/* ${file.name} */\n${file.content ?? ''}`)
       .join('\n\n')
   }
   if (lessonType === 'filesystem') return JSON.stringify(stage.fs ?? {}, null, 2)
-  if (lessonType === 'scratch') return JSON.stringify(stage.blocks ?? {}, null, 2)
-  if (lessonType === 'electronics') return JSON.stringify(stage.circuit ?? {}, null, 2)
+  if (lessonType === 'scratch') return stage.markdown ?? ''
+  if (lessonType === 'electronics') return stage.code ?? ''
   return ''
 }
 
@@ -50,9 +53,13 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
           {revealed && sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
       </div>
-      <pre style={s.pre}>
-        <code style={s.code}>{text}</code>
-      </pre>
+      {lessonType === 'scratch' ? (
+        <div style={s.markdown}><MarkdownRenderer content={text} topicType="scratch" disableCopy /></div>
+      ) : (
+        <pre style={s.pre}>
+          <code style={s.code}>{text}</code>
+        </pre>
+      )}
     </section>
   )
 }
@@ -129,4 +136,5 @@ const s = {
     fontVariantLigatures: 'none',
     fontFeatureSettings: '"liga" 0, "calt" 0',
   },
+  markdown: { overflow: 'auto', padding: '10px 12px', background: '#f8fafc' },
 }

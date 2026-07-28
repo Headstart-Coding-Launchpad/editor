@@ -1,4 +1,4 @@
-# Scratch Lesson Authoring
+# Scratch Module Code-Task Authoring
 
 For the exact Markdown text that renders each supported Scratch block, see [Scratch Markdown Block Reference](scratch-markdown-blocks.md). Use [Scratch Toolbox XML](scratch-toolbox-xml.md) for raw toolbox configuration.
 
@@ -6,18 +6,22 @@ Everything needed to author a Scratch lesson — task fields, sprite/backdrop/va
 
 ---
 
-## Lesson Envelope (Scratch-specific)
+## Composed Lesson and Scratch Module
 
 ```yaml
 id: scratch-motion
-type: scratch
+type: composed
 title: Moving Sprites
 description: Move sprites around the stage.
 level: 1
-sandboxStarter: null         # optional — Blockly workspace state for sandbox
-sandboxToolbox: "<xml>...</xml>"   # optional — Scratch XML toolbox for sandbox
-sandboxSprites: []                 # optional — sprite array for sandbox
-sandboxBackdrops: []               # optional — backdrop array for sandbox
+modules:
+  - id: scratch-practice
+    type: scratch
+    sandbox:
+      sandboxStarter: null         # optional — Blockly workspace state for this sandbox
+      sandboxToolbox: "<xml>...</xml>"   # optional — Scratch XML toolbox
+      sandboxSprites: []                 # optional — sprite array
+      sandboxBackdrops: []               # optional — backdrop array
 ```
 
 ---
@@ -26,6 +30,8 @@ sandboxBackdrops: []               # optional — backdrop array for sandbox
 
 ```yaml
   - title: Move the sprite
+    moduleType: scratch
+    moduleId: scratch-practice # optional — omit when one Scratch workspace is enough
     explainer: Make the sprite move to the right.
     toolbox: "<xml>...</xml>" # optional — restricts available blocks; empty/omitted = full toolbox
     sprites:                  # optional — defaults to one cat sprite
@@ -64,7 +70,7 @@ sandboxBackdrops: []               # optional — backdrop array for sandbox
 
 ## Sprite Object
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. `revealable: true` may be stored on any role, but runtime read-only reveal is currently implemented for Python/HTML stages only.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Support stages need `revealable: true` to be offerable as read-only references; they use `markdown` and render fenced or inline Scratch blocks. A Complete stage is revealable without that flag and can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 ```yaml
 sprites:

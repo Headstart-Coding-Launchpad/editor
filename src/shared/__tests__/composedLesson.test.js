@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEffectiveLessonForTask, getModuleCarrySourceIds, getTaskContext, validateComposedStructure } from '../composedLesson'
+import { getEffectiveLessonForTask, getLessonModules, getModuleCarrySourceIds, getTaskContext, validateComposedStructure } from '../composedLesson'
 
 const lesson = {
   type: 'composed',
@@ -27,6 +27,39 @@ describe('composed lesson helpers', () => {
   it('limits carry sources to earlier tasks in the same lesson module', () => {
     expect(getModuleCarrySourceIds(lesson, 3)).toEqual([2])
     expect(getModuleCarrySourceIds(lesson, 4)).toEqual([])
+  })
+
+  it('uses task order rather than task IDs for carry-through eligibility', () => {
+    const reordered = {
+      type: 'composed',
+      tasks: [
+        { id: 20, moduleType: 'python', title: 'First' },
+        { id: 5, moduleType: 'python', title: 'Second' },
+      ],
+    }
+
+    expect(getModuleCarrySourceIds(reordered, 5)).toEqual([20])
+    expect(getModuleCarrySourceIds(reordered, 20)).toEqual([])
+  })
+
+  it('keeps repeated workspace instances isolated by their module IDs', () => {
+    const repeatedHtml = {
+      type: 'composed',
+      modules: [
+        { id: 'html-intro', type: 'html', title: 'First site' },
+        { id: 'html-finale', type: 'html', title: 'Second site' },
+      ],
+      tasks: [
+        { id: 1, moduleId: 'html-intro', title: 'Intro page', starterFiles: [{ name: 'index.html', content: '<h1>One</h1>' }] },
+        { id: 2, moduleId: 'html-finale', title: 'Final page', starterFiles: [{ name: 'index.html', content: '<h1>Two</h1>' }] },
+      ],
+    }
+
+    expect(getLessonModules(repeatedHtml).map(module => module.id)).toEqual(['html-intro', 'html-finale'])
+    expect(getTaskContext(repeatedHtml, 2).lessonModule).toMatchObject({ id: 'html-finale', type: 'html' })
+    expect(getEffectiveLessonForTask(repeatedHtml, 2).sandboxStarterFiles[0].content).toContain('Two')
+    expect(getModuleCarrySourceIds(repeatedHtml, 2)).toEqual([])
+    expect(validateComposedStructure(repeatedHtml)).toEqual([])
   })
 
   it('rejects code tasks with no selected lesson module', () => {

@@ -11,10 +11,11 @@ export default function TeacherCodeTabs({
   hasStudents,
   starterLabel = 'Starter code',
   completeLabel = 'Complete code',
+  unifiedStages = false,
 }) {
   return (
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Teacher code workspace">
-      <button
+      {!unifiedStages && <button
         type="button"
         className={`ui-tab${activeTab === 'starter' ? ' is-active' : ''}`}
         role="tab"
@@ -22,11 +23,11 @@ export default function TeacherCodeTabs({
         onClick={onStarter}
       >
         {starterLabel}
-      </button>
+      </button>}
       {stages.map((stage, i) => {
         const role = getStageRole(stage)
-        const rolePrefix = role === 'support' ? '' : `${role}: `
-        const revealSuffix = isRevealableStage(stage) ? ' (revealable)' : ''
+        const rolePrefix = unifiedStages ? `${role}: ` : (role === 'support' ? '' : `${role}: `)
+        const revealSuffix = !unifiedStages && isRevealableStage(stage) ? ' (revealable)' : ''
         return (
           <button
             key={i}
@@ -40,7 +41,7 @@ export default function TeacherCodeTabs({
           </button>
         )
       })}
-      {onComplete && (
+      {!unifiedStages && onComplete && (
         <button
           type="button"
           className={`ui-tab${activeTab === 'complete' ? ' is-active' : ''}`}
@@ -58,13 +59,17 @@ export default function TeacherCodeTabs({
             style={sendStageBtn}
             title="Send this stage's code to all students"
             onClick={() => {
-              const action = activeTab === 'complete' ? 'complete' : activeTab.startsWith('stage_') ? activeTab : 'starter'
-              if (window.confirm(`Send ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : stages[parseInt(activeTab.replace('stage_', ''), 10)]?.label ?? activeTab} to all students?`)) {
+              const stage = activeTab.startsWith('stage_') ? stages[parseInt(activeTab.replace('stage_', ''), 10)] : null
+              const action = unifiedStages && stage && getStageRole(stage) !== 'starter'
+                ? `reveal_stage_${activeTab.replace('stage_', '')}`
+                : activeTab === 'complete' ? 'complete' : activeTab.startsWith('stage_') ? activeTab : 'starter'
+              const verb = unifiedStages && stage && getStageRole(stage) !== 'starter' ? 'Reveal' : 'Send'
+              if (window.confirm(`${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : stage?.label ?? activeTab} to all students?`)) {
                 onSendToAll(action)
               }
             }}
           >
-            Send to all
+            {unifiedStages && activeTab.startsWith('stage_') && getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter' ? 'Reveal to all' : 'Send to all'}
           </button>
         </div>
       )}

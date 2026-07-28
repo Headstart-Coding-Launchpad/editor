@@ -40,12 +40,12 @@ describe('LandingPage', () => {
     expect(screen.getByRole('button', { name: /Go/i })).toBeInTheDocument()
   })
 
-  it('opens the Python playground from the sandbox chooser', async () => {
+  it('opens the Python playground from the playground chooser', async () => {
     const user = userEvent.setup()
     render(<LandingPage />)
 
-    await user.click(screen.getByRole('button', { name: /Open sandbox/i }))
-    expect(screen.getByRole('dialog', { name: /Choose a sandbox/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Open playgrounds/i }))
+    expect(screen.getByRole('dialog', { name: /Choose a playground/i })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Python' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/playground/python')

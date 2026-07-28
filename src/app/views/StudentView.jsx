@@ -6,7 +6,7 @@ import { useLessonLoader } from '../hooks/useLessonLoader'
 import { applyLessonOverride } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
-import { flattenTasks, filterTasksByMode, getRevealableStages } from '../../shared/taskUtils'
+import { flattenTasks, filterTasksByMode, getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -265,6 +265,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     isForcedTeacherLive,
     displayedTaskId,
     displayCode,
+    displayArcadeDesign,
     displayFiles,
     displayActiveFile,
     displayOutput,
@@ -303,35 +304,33 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
+  const unifiedCompleteStage = getCompleteStage(task)?.stage
   const hasCompleteSolution = displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
-    ? !!task?.completeCode
+    ? !!(unifiedCompleteStage?.code ?? task?.completeCode)
     : displayedLesson.type === 'scratch'
     ? !!task?.completeBlocks
     : displayedLesson.type === 'filesystem'
     ? !!task?.completeFs
     : displayedLesson.type === 'electronics'
     ? !!task?.completeCircuit
-    : (task?.completeFiles?.length > 0)
+    : (unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0)
   const taskCodeStages = task?.codeStages ?? []
+  const hasUnifiedCodeStages = ['python', 'html'].includes(displayedLesson.type) && taskCodeStages.some(stage => ['starter', 'complete'].includes(stage?.role))
   const revealableStages = getRevealableStages(task)
   const hasProgressiveReferences = ['python', 'html'].includes(displayedLesson.type) && revealableStages.length > 0
   const nextStageIndex = cs.offeredStageIndex + 1
-  const canOfferNextStage = isSolo && !hasProgressiveReferences && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
+  const canOfferNextStage = isSolo && !['python', 'html'].includes(displayedLesson.type) && !hasProgressiveReferences && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
   const revealedSupportStageIndexes = Object.keys(cs.supportStageReveals ?? {}).map(Number)
-  const allReferencesRevealed = revealableStages.length > 0 && revealableStages.every(({ index }) => revealedSupportStageIndexes.includes(index))
+  const allReferencesRevealed = revealableStages.every(({ index }) => revealedSupportStageIndexes.includes(index))
   const stagesExhausted = isSolo && hasCompleteSolution && !displayCheckPassed && cs.checkFailCount >= 2 && (
-    hasProgressiveReferences ? allReferencesRevealed : nextStageIndex >= taskCodeStages.length
+    hasUnifiedCodeStages || hasProgressiveReferences ? allReferencesRevealed : nextStageIndex >= taskCodeStages.length
   )
   // Python previews the complete solution read-only in the reference area before offering
   // to load it into the editor. Other lesson types have no such preview yet, so they
   // keep the original single-step "load complete solution" offer.
-  const canOfferCompletePreview = displayedLesson.type === 'python' && stagesExhausted && !cs.completePreviewShown
-  const canOfferCompleteSolution = displayedLesson.type === 'python' ? (stagesExhausted && cs.completePreviewShown) : stagesExhausted
-  // The class-wide teacher toggle swaps the task explainer panel to show the
-  // complete solution. Student self-serve previews render in the reference area.
-  const explainerShowsComplete = displayedLesson.type === 'python' && !!task?.completeCode && (
-    !isSolo && !teacherPresentation && !!session?.explainerShowComplete
-  )
+  const canOfferCompletePreview = ['python', 'html'].includes(displayedLesson.type) && stagesExhausted && !cs.completePreviewShown
+  const canOfferCompleteSolution = ['python', 'html'].includes(displayedLesson.type) ? (stagesExhausted && cs.completePreviewShown) : stagesExhausted
+  const explainerShowsComplete = false
   const hasPersonalSandbox = activeLesson.type === 'python' || activeLesson.type === 'arcade'
     ? true
     : activeLesson.type === 'html'
@@ -599,6 +598,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
           isInformationTask={isInformationTask}
           displayCode={displayCode}
+          displayArcadeDesign={displayArcadeDesign}
           displayFiles={displayFiles}
           displayActiveFile={displayActiveFile}
           displayOutput={displayOutput}

@@ -41,6 +41,22 @@ describe('selectPythonTaskCode', () => {
     expect(readSavedCode).toHaveBeenCalledTimes(1)
   })
 
+  it('uses the first unified Starter stage before legacy starterCode', () => {
+    expect(selectPythonTaskCode({
+      tasks: [],
+      task: {
+        starterCode: 'legacy starter',
+        codeStages: [
+          { role: 'starter', code: 'first starter' },
+          { role: 'starter', code: 'second starter' },
+        ],
+      },
+      taskId: 1,
+      phase: 'lesson',
+      readSavedCode: () => null,
+    })).toBe('first starter')
+  })
+
   it('uses carried code, including an intentionally saved empty editor', () => {
     expect(selectPythonTaskCode({
       tasks: groupedTasks,
@@ -163,6 +179,20 @@ describe('selectHtmlTaskFiles', () => {
       { name: 'style.css', content: 'carried css' },
     ])
     expect(task.starterFiles[0].content).toBe('starter html')
+  })
+
+  it('uses files from the first unified Starter stage', () => {
+    const files = selectHtmlTaskFiles({
+      tasks: [],
+      task: {
+        starterFiles: [{ name: 'legacy.html', content: 'legacy' }],
+        codeStages: [{ role: 'starter', files: [{ name: 'index.html', content: 'unified' }] }],
+      },
+      taskId: 1,
+      phase: 'lesson',
+      readSavedFile: () => null,
+    })
+    expect(files).toEqual([{ name: 'index.html', content: 'unified' }])
   })
 
   it('walks the authored chain per starter filename', () => {

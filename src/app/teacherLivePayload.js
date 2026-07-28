@@ -15,6 +15,7 @@ export function buildStudentLivePayload({ student, lesson, taskId, entryFileTask
     taskId,
     lessonType: getTaskModuleType(lesson, taskId) ?? lesson?.type,
     code: student.currentCode ?? '',
+    arcadeDesign: student.currentArcadeDesign ?? null,
     files,
     activeFile: task?.entryFile ?? Object.keys(files)[0] ?? '',
     output: student.currentOutput ?? '',

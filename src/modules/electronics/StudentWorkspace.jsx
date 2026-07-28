@@ -1,13 +1,26 @@
 import React, { useMemo } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
+import { resolveSavedCarrySource } from '../../app/studentTaskContent'
 
 export default function StudentWorkspace({
-  task, cs, isViewingPrev, isForcedTeacherLive,
+  lesson, task, cs, viewingTaskId, isViewingPrev, isForcedTeacherLive,
   displayCode, displayOutput, displayRunStatus, displayCheckPassed,
   isTeacherEditing, teacherLiveCode, teacherLiveWorkspace,
 }) {
-  const raw = isForcedTeacherLive ? displayCode : isTeacherEditing ? teacherLiveCode : cs.code
+  const viewedWork = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
+  const viewedCarry = isViewingPrev && viewedWork == null
+    ? resolveSavedCarrySource({
+      tasks: lesson.tasks,
+      taskId: viewingTaskId,
+      carryFromId: task?.carryCircuitFrom,
+      carryField: 'carryCircuitFrom',
+      readSavedState: cs.readSavedTaskCode,
+      hasSavedState: saved => saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
+    })
+    : null
+  const viewedCode = viewedWork?.code ?? viewedCarry?.saved?.code ?? serializeCircuit(task?.starterCircuit ?? DEFAULT_CIRCUIT)
+  const raw = isForcedTeacherLive ? displayCode : isTeacherEditing ? teacherLiveCode : isViewingPrev ? viewedCode : cs.code
   const circuit = useMemo(() => parseCircuit(raw, task?.starterCircuit ?? DEFAULT_CIRCUIT), [raw, task?.starterCircuit])
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCodeTab = task?.microcontroller?.enabled === true

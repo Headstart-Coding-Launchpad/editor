@@ -58,4 +58,13 @@ describe('Arcade design model', () => {
     expect(enlargedMap.rows).toEqual(['AB.', 'CD.', '...'])
     expect(resizeArcadeMap(enlargedMap, 1, 1).rows).toEqual(['A'])
   })
+
+  it('keeps an intentionally blank 16 by 16 sprite at its selected size', () => {
+    const design = createArcadeDesign({ sprites: [{ name: 'blank.png', width: 16, height: 16, frames: [Array(256).fill(null)] }] })
+
+    expect(design.sprites[0].width).toBe(16)
+    expect(design.sprites[0].height).toBe(16)
+    expect(design.sprites[0].frames[0]).toHaveLength(256)
+    expect(design.sprites[0].frames[0]).toStrictEqual(Array(256).fill(null))
+  })
 })

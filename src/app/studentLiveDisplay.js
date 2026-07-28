@@ -54,6 +54,7 @@ export function deriveStudentLiveDisplay({
     isForcedTeacherLive,
     displayedTaskId: isForcedTeacherLive ? (teacherLive?.taskId ?? currentTaskId) : (viewingTaskId ?? currentTaskId),
     displayCode: isForcedTeacherLive ? (teacherLive.code ?? '') : code,
+    displayArcadeDesign: isForcedTeacherLive ? (teacherLive.arcadeDesign ?? null) : null,
     displayFiles: isForcedTeacherLive ? teacherLiveFiles : files,
     displayActiveFile: isForcedTeacherLive ? (teacherLive.activeFile ?? teacherLiveFiles[0]?.name ?? '') : activeFile,
     displayOutput: isForcedTeacherLive ? (teacherLive.output ?? '') : output,

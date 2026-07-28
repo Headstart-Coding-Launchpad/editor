@@ -9,7 +9,7 @@ import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import SupportStagePanel from './SupportStagePanel'
-import { getRevealableStages } from '../../shared/taskUtils'
+import { getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
 
 const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
 
@@ -33,6 +33,7 @@ export default function LessonTaskContent({
   isAutoEvaluatedQuiz,
   isInformationTask,
   displayCode,
+  displayArcadeDesign,
   displayFiles,
   displayActiveFile,
   displayOutput,
@@ -70,12 +71,15 @@ export default function LessonTaskContent({
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
-  const supportsStageReveal = ['python', 'html'].includes(lessonMod?.type ?? lesson.type)
+  const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonMod?.type ?? lesson.type)
   const activeSupportStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && supportsStageReveal && cs.activeSupportStageIndex != null
     ? getRevealableStages(task).find(({ index }) => index === cs.activeSupportStageIndex) ?? null
     : null
-  const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && lesson.type === 'python' && task?.completeCode
-    ? { label: 'Complete solution', code: task.completeCode }
+  const authoredCompleteStage = getCompleteStage(task)?.stage
+  const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && ['python', 'html'].includes(lesson.type) && (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
+    ? authoredCompleteStage ?? (lesson.type === 'html'
+      ? { label: 'Complete solution', files: task.completeFiles ?? [], entryFile: task.completeEntryFile ?? task.entryFile }
+      : { label: 'Complete solution', code: task.completeCode })
     : null
   const targetedReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.targetedPreviewStageIndex != null
     ? task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null
@@ -137,7 +141,7 @@ export default function LessonTaskContent({
       failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
       onShowCodeStage={targetedOfferStage
-        ? (cs.targetedStageOffer.action === 'replace' ? cs.handleAcceptTargetedStage : cs.handlePreviewTargetedStage)
+        ? cs.handlePreviewTargetedStage
         : cs.offeredSupportStageIndex != null
         ? cs.handleRevealOfferedSupportStage
         : canOfferNextStage ? () => {
@@ -145,7 +149,7 @@ export default function LessonTaskContent({
         cs.handleAcceptGenericNextStage(nextStageIndex)
       } : undefined}
       stageActionLabel={targetedOfferStage
-        ? (cs.targetedStageOffer.action === 'replace' ? `Try ${targetedOfferStage.label || 'guided stage'}` : `Show ${targetedOfferStage.label || 'reference'}`)
+        ? `Show ${targetedOfferStage.label || 'reference'}`
         : cs.offeredSupportStageIndex != null ? 'Show reference'
         : genericNextStage ? `Use ${genericNextStage.label || 'next stage'}` : undefined}
       stageActionConfirm={targetedOfferStage?.action === 'replace'
@@ -214,6 +218,7 @@ export default function LessonTaskContent({
           activeStudentView={activeStudentView}
           previewMode={previewMode}
           displayCode={displayCode}
+          displayArcadeDesign={displayArcadeDesign}
           displayFiles={displayFiles}
           displayActiveFile={displayActiveFile}
           displayOutput={displayOutput}

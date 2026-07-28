@@ -11,26 +11,27 @@ function makeLesson(type) {
     ? {
       id: 1,
       title: 'Arcade playground',
-      explainer: 'Build and run a game.',
       starterCode: 'from headstart_arcade import game, Sprite, keys\n\n# Write your game here.\n\ngame.run()\n',
+      arcadeTools: 'both',
     }
     : type === 'electronics'
       ? {
         id: 1,
         title: 'Electronics playground',
-        explainer: 'Build a circuit and experiment with MicroPython.',
         starterCircuit: cloneCircuit(DEFAULT_CIRCUIT),
         microcontroller: { enabled: false, boardType: null, starterCode: '' },
       }
       : {
         id: 1,
         title: 'Python playground',
-        explainer: 'Try out Python ideas.',
         starterCode: '',
       }
 
   return {
-    id: `playground-${type}`,
+    // This is intentionally not a valid lesson ID. Playground work must never
+    // share local persistence or a Storage asset folder with a real lesson.
+    id: `__playground__${type}`,
+    isPlayground: true,
     type,
     title: `${type === 'arcade' ? 'Arcade Kit' : type === 'electronics' ? 'Electronics' : 'Python'} Playground`,
     description: 'A private, local coding space.',

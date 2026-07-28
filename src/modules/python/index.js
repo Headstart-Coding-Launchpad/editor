@@ -29,12 +29,14 @@ const pythonModule = {
   makeCodeTaskFields: (task) => ({
     starterCode: task.starterCode ?? '',
     carryCodeFrom: task.carryCodeFrom ?? null,
+    codeStages: task.codeStages ?? [{ label: 'Starter', role: 'starter', code: task.starterCode ?? '' }],
   }),
 
   makeNewStage: (task, existing) => ({
-    label: `Stage ${existing.length + 1}`,
-    role: 'support',
-    code: task.starterCode ?? '',
+    label: existing.length === 0 ? 'Starter' : `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
+    role: existing.length === 0 ? 'starter' : 'support',
+    revealable: existing.length > 0,
+    code: existing.length === 0 ? (task.starterCode ?? '') : '',
   }),
 
   initCompleteTab: (task, { onUpdate }) => {

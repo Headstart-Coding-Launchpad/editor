@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { CarryThroughPicker } from '../TaskEditorFields'
+import { getLessonModule } from '../../../../modules/registry'
 
 function makeLesson() {
   return {
@@ -57,5 +58,23 @@ describe('CarryThroughPicker scratch stage copy', () => {
     expect(updated.backdrops).toEqual(lesson.tasks[0].backdrops)
     expect(updated.variables).toEqual(lesson.tasks[0].variables)
     expect(updated.sprites).not.toBe(lesson.tasks[0].sprites)
+  })
+
+  it('limits composed lessons to earlier tasks in the same module', async () => {
+    const lesson = {
+      type: 'composed',
+      tasks: [
+        { id: 1, moduleType: 'python', title: 'Python one', starterCode: 'print(1)', completeCode: 'print(1)' },
+        { id: 2, moduleType: 'scratch', title: 'Scratch task', starterBlocks: {} },
+        { id: 3, moduleType: 'python', title: 'Python two', starterCode: '', carryCodeFrom: null },
+      ],
+    }
+    const onUpdate = vi.fn()
+
+    render(<CarryThroughPicker task={lesson.tasks[2]} lesson={lesson} lessonMod={getLessonModule('python')} onUpdate={onUpdate} />)
+
+    await userEvent.click(screen.getByText('Carry from last task').closest('label').querySelector('input'))
+
+    expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ carryCodeFrom: 1, starterCode: 'print(1)' }))
   })
 })

@@ -13,6 +13,7 @@ describe('buildStudentLivePayload', () => {
       student: {
         anonymousId: 'student-1',
         displayName: 'Jamie',
+        currentArcadeDesign: { sprites: [{ name: 'hero.png' }] },
         currentFiles: { 'index__dot__html': '<h1>Hello</h1>' },
         currentOutput: 'done',
         lastRunStatus: 'success',
@@ -27,6 +28,7 @@ describe('buildStudentLivePayload', () => {
       lessonType: 'html',
       files: { 'index.html': '<h1>Hello</h1>' },
       activeFile: 'index.html',
+      arcadeDesign: { sprites: [{ name: 'hero.png' }] },
       checkPassed: true,
       checkAttempted: true,
     })

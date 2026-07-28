@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { execFileSync } from 'node:child_process'
 import { validateLessonForMcp } from './validate.mjs'
 
 describe('CLI lesson validation', () => {
+  it('loads the validator through Node ESM resolution', () => {
+    expect(() => execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', "import './cli/validate.mjs'"],
+      { cwd: process.cwd(), stdio: 'pipe' },
+    )).not.toThrow()
+  })
+
   it('loads the shared check dispatcher and validates a basic lesson', () => {
     const result = validateLessonForMcp({
       id: 'python-basics',
@@ -117,7 +126,7 @@ describe('CLI lesson validation', () => {
       }],
     })
     expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 stage 1 role must be one of: support, core, extension, solution',
+      'Task 1 stage 1 role must be one of: starter, support, complete',
     ]))
   })
 

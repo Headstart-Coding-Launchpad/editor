@@ -36,6 +36,7 @@ describe('deriveStudentLiveDisplay', () => {
     source: 'teacher',
     taskId: 2,
     code: 'live code',
+    arcadeDesign: { sprites: [{ name: 'hero.png' }], maps: [] },
     files: { 'index.html': 'live html' },
     output: 'live output',
     selection: { from: 1, to: 2 },
@@ -57,6 +58,7 @@ describe('deriveStudentLiveDisplay', () => {
     expect(display.isForcedTeacherLive).toBe(true)
     expect(display.displayedTaskId).toBe(2)
     expect(display.displayCode).toBe('live code')
+    expect(display.displayArcadeDesign).toEqual({ sprites: [{ name: 'hero.png' }], maps: [] })
     expect(display.displayFiles).toEqual([{ name: 'index.html', content: 'live html', type: 'html' }])
     expect(display.displayOutput).toBe('live output')
     expect(display.displayCheckPassed).toBe(false)
@@ -94,9 +96,11 @@ describe('deriveStudentLiveDisplay', () => {
     expect(ownerDisplay.isForcedTeacherLive).toBe(false)
     expect(ownerDisplay.displayedTaskId).toBe(4)
     expect(ownerDisplay.displayCode).toBe('local code')
+    expect(ownerDisplay.displayArcadeDesign).toBeNull()
     expect(classmateDisplay.isStudentGoLiveViewer).toBe(true)
     expect(classmateDisplay.displayedTaskId).toBe(3)
     expect(classmateDisplay.displayCode).toBe('shared student code')
+    expect(classmateDisplay.displayArcadeDesign).toBeNull()
   })
 
   it("shows a student broadcast in presentation mode but treats teacher broadcast as the presenter's source", () => {

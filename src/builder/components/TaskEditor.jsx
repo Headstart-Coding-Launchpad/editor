@@ -21,7 +21,8 @@ export { ScratchToolboxPicker, SpriteManager, BackdropManager }
 
 export default function TaskEditor({ task, lesson, onUpdate, parentGroup, composedLesson = null }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
-  const [codeTab, setCodeTab] = useState('starter')
+  const usesUnifiedCodeStages = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lesson.type)
+  const [codeTab, setCodeTab] = useState(usesUnifiedCodeStages ? 'stage_0' : 'starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
   const { typeStorageAssets } = useTypeAssets(lesson.type)
   const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
@@ -48,7 +49,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const supportsCopyCode = lessonMod?.supportsCopyCode === true
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
-  const isCompleteTab = codeTab === 'complete'
+  const isCompleteTab = !usesUnifiedCodeStages && codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
   const isStageTab = activeStageIndex !== null
@@ -92,6 +93,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   function handleModuleChange(moduleType) {
     if (moduleType === task.moduleType) return
     const next = { ...task, moduleType: moduleType || undefined }
+    // A module-type conversion cannot safely retain an instance ID from an
+    // imported composed lesson; it could resolve to the old workspace type.
+    delete next.moduleId
     for (const field of [
       'starterCode', 'completeCode', 'starterFiles', 'completeFiles', 'entryFile', 'completeEntryFile',
       'starterBlocks', 'completeBlocks', 'toolbox', 'sprites', 'backdrops', 'variables',
@@ -125,7 +129,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     if (tab === codeTab) return
     resetRunState()
 
-    if (tab === 'complete') {
+    if (!usesUnifiedCodeStages && tab === 'complete') {
       lessonMod?.initCompleteTab?.(task, { onUpdate, selectedFile, setSelectedCompleteFile })
     }
 
@@ -171,7 +175,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       ...(task.feedbackChecks != null ? { feedbackChecks: nextFeedbackChecks } : {}),
       ...(task.incorrectChecks != null ? { incorrectChecks: nextFeedbackChecks } : {}),
     })
-    setCodeTab('starter')
+    setCodeTab(updated.length > 0 ? `stage_${Math.max(0, idx - 1)}` : (usesUnifiedCodeStages ? 'stage_0' : 'starter'))
   }
 
   function makeDefaultQuizOptions() {

@@ -1,12 +1,12 @@
-# Arcade Kit Lesson Authoring
+# Arcade Kit Module Code-Task Authoring
 
-Arcade Kit is a single-file Python lesson type for small pixel-style browser
+Arcade Kit is a single-file Python workspace module for small pixel-style browser
 games. It provides the built-in `headstart_arcade` module; it is not Pygame,
 Pygame Zero, or a general Python package.
 
 ## Lesson and task shape
 
-Use `type: arcade` at lesson level. Arcade tasks use the same source-stage
+Use `type: composed` at lesson level and `moduleType: arcade` on each Arcade task. Arcade tasks use the same source-stage
 fields as a Python code task: `starterCode`, `completeCode`, `codeStages`,
 `carryCodeFrom`, and `copyCode`.
 
@@ -15,6 +15,8 @@ fields as a Python code task: `starterCode`, `completeCode`, `codeStages`,
 The Builder can attach portable pixel art and tilemaps to each Arcade code
 state. The data belongs to the Starter tab as `arcadeDesign`, a code stage as
 `codeStages[n].arcadeDesign`, and the Complete tab as `completeArcadeDesign`.
+For a `role: starter` code stage, include `arcadeDesign` alongside that stage's
+`code` so the teacher can apply the full starter state.
 It remains in the lesson JSON: generated images do not require Firebase
 Storage and downloaded lessons keep their artwork.
 
@@ -44,11 +46,12 @@ available as a named `.tilemap` design asset; reference it with
 
 ```yaml
 id: move-a-sprite
-type: arcade
+type: composed
 title: Move a Sprite
 description: Make a player respond to the arrow keys.
 tasks:
   - title: Move the player
+    moduleType: arcade
     starterCode: |
       from headstart_arcade import game, Sprite, keys
 

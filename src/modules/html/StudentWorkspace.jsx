@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import HtmlEditor from './HtmlEditor'
 import CollapsibleIframePreview from '../../app/components/CollapsibleIframePreview'
 import SplitPane from '../../shared/SplitPane'
@@ -7,15 +7,20 @@ import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
+import { buildIframeSrc } from './iframe'
+import { selectHtmlTaskFiles } from '../../app/studentTaskContent'
 
 export default function StudentWorkspace({
   lesson, task, cs, isSandbox,
-  isViewingPrev, isForcedTeacherLive, isMobile,
+  viewingTaskId, isViewingPrev, isForcedTeacherLive, isMobile,
   displayFiles, displayActiveFile, displayRunStatus, displaySelection,
   isTeacherEditing, teacherLiveFiles = [], teacherLiveActiveFile,
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
-  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
+  const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(
+    lesson?.isPlayground ? null : lesson.id,
+    lesson.storageAssets ?? [],
+  )
   const htmlSharedAssetNames = lesson.sharedAssetNames ?? null
   const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
     ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
@@ -24,11 +29,37 @@ export default function StudentWorkspace({
     ...lessonStorageAssets.filter(a => a.showInEditor),
     ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
   ]
-  const files = isTeacherEditing ? teacherLiveFiles : displayFiles
+  const viewedFiles = isViewingPrev
+    ? selectHtmlTaskFiles({
+      tasks: lesson.tasks,
+      task,
+      taskId: viewingTaskId,
+      phase: 'solo',
+      readSavedFile: cs.readSavedTaskFile,
+    })
+    : null
+  const files = isTeacherEditing ? teacherLiveFiles : (viewedFiles ?? displayFiles)
   const activeFile = isTeacherEditing
     ? (teacherLiveActiveFile ?? teacherLiveFiles[0]?.name ?? displayActiveFile)
-    : displayActiveFile
-  const previewSrc = isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc
+    : isViewingPrev
+      ? (files.find(file => file.name === task?.entryFile)?.name ?? files[0]?.name ?? '')
+      : displayActiveFile
+  const viewedFilesKey = files.map(file => `${file.name}\u0000${file.content}`).join('\u0001')
+  const viewedAssetsKey = [
+    ...(lesson.assets ?? []),
+    ...htmlStorageAssets.map(asset => `${asset.name}\u0000${asset.url ?? ''}`),
+  ].join('\u0001')
+  const viewedIframeSrc = useMemo(() => isViewingPrev
+    ? buildIframeSrc(files, task?.entryFile ?? 'index.html', {
+      assets: lesson.assets ?? [],
+      assetsPath: resolveAssetsPath(lesson.assetsPath) || '',
+      storageAssets: htmlStorageAssets,
+    })
+    : null,
+  // Rebuild only when the selected task's file content or entry point changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [isViewingPrev, viewedFilesKey, viewedAssetsKey, task?.entryFile, lesson.assetsPath])
+  const previewSrc = isForcedTeacherLive ? cs.teacherLiveIframeSrc : (isViewingPrev ? viewedIframeSrc : cs.iframeSrc)
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
