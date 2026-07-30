@@ -58,6 +58,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Classroom live-view, sandbox, Pyodide, carry-through behaviours | `docs/agents/classroom-behaviours.md` |
 | Git, PRs, review comments, testing, doc hygiene | `docs/agents/workflows.md` |
 | Writing or editing a lesson (envelope, common fields, quiz, groups) | `docs/authoring/AUTHORING_GUIDE.md` |
+| Recent lesson-authoring contract changes | `docs/authoring/CHANGELOG.md` |
 | Authoring a Python lesson (task fields, checks, tests, examples) | `docs/authoring/python.md` |
 | Authoring an HTML lesson (task fields, element checks, examples) | `docs/authoring/html.md` |
 | Authoring a Scratch lesson (sprites, opcodes, checks, examples) | `docs/authoring/scratch.md` |
@@ -82,7 +83,8 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 - Preserve unrelated user changes in the worktree.
 - Add or update tests when behaviour changes.
 - Update relevant docs after significant changes.
+- Update `docs/authoring/CHANGELOG.md` when a change affects how lessons, tasks, topics, checks, assets, or lesson Markdown should be written.
 - Run `npm run docs:check` when docs, source files, or documented behaviours change.
 - Run `npm test` before handing work back.
 
-*Last updated: June 2026*
+*Last updated: July 2026*

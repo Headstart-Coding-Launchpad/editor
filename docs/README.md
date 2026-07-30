@@ -144,6 +144,11 @@ The main YAML-first lesson authoring guide: how to structure a lesson YAML file,
 
 **Load when:** writing a new lesson or making structural edits to an existing one.
 
+### [authoring/CHANGELOG.md](authoring/CHANGELOG.md)
+Author-facing changelog for changes that affect how lessons, tasks, topics, checks, assets, or lesson Markdown should be written.
+
+**Load when:** checking what recently changed for lesson authors, or when making a change that alters the lesson authoring contract.
+
 ### [authoring/task-types.md](authoring/task-types.md)
 Very high-level, non-technical overview of the kinds of tasks a lesson can contain (code, information, quiz, group) — no field names or YAML.
 

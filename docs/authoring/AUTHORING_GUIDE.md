@@ -10,7 +10,7 @@ YAML-first reference for writing HSC lessons and topics. Use the CLI to convert 
 - Filesystem: `docs/authoring/filesystem.md`
 - Electronics: `docs/authoring/electronics.md`
 
-**Other references:** `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/lesson-assets-cli.md` · `docs/authoring/markdown-renderer.md`
+**Other references:** `docs/authoring/CHANGELOG.md` · `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/lesson-assets-cli.md` · `docs/authoring/markdown-renderer.md`
 
 ---
 
