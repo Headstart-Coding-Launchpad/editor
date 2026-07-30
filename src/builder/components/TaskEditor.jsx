@@ -285,23 +285,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   return (
     <div className="te-wrap">
       {parentGroup ? (
-      <Field label="Task title">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              className="te-input"
-              style={{ flex: 1 }}
-              value={task.title}
-              onChange={e => set('title', e.target.value)}
-              placeholder={`${parentGroup.title} - N`}
-            />
-            {task._customTitle ? (
-              <button type="button" className="te-reset-title-btn" title="Reset to auto-generated name" onClick={() => onUpdate({ ...task, title: '', _customTitle: undefined })}>
-                reset
-              </button>
-            ) : (
-              <span className="te-auto-title-badge">auto</span>
-            )}
-          </div>
+        <Field label="Task title">
+          <input className="te-input" value={task.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Counted loops" />
         </Field>
       ) : (
         <Field label="Task title">

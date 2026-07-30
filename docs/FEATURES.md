@@ -150,7 +150,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 ### Task Management
 - All task types: code (all lesson types), information, and quiz (all variants)
-- Task groups with drag-reorder and auto-titled subtasks
+- Task groups with drag-reorder and independent subtask titles
 - Duplicate and delete tasks
 
 ### Task Editor

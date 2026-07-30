@@ -147,7 +147,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const groupId = `g-${Date.now()}`
     const firstSubtask = {
       id: newId,
-      title: 'New Group - 1',
+      title: '',
       intent: '',
       explainer: '',
       ...(isComposedLesson(lesson) ? {} : defaultTypeFields(null)),
@@ -173,7 +173,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const prevSubtask = selectedSubtaskIdx >= 0 ? subtasks[selectedSubtaskIdx] : (subtasks[subtasks.length - 1] ?? null)
     const newSubtask = {
       id: newId,
-      title: `${group.title} - ${subtasks.length + 1}`,
+      title: '',
       intent: '',
       explainer: '',
       ...(isComposedLesson(lesson) ? {} : defaultTypeFields(prevSubtask, group.moduleType ?? lesson.type)),
@@ -192,9 +192,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   function handleDuplicate(task, groupId = null) {
     const newId = nextId()
     if (groupId) {
-      const group = lesson.tasks.find(t => t.type === 'group' && t.id === groupId)
-      const newTitle = group ? `${group.title} - ${(group.subtasks?.length ?? 0) + 1}` : task.title
-      const dup = { ...task, id: newId, title: newTitle }
+      const dup = { ...task, id: newId, title: task.title ? `${task.title} (copy)` : '' }
       handleLessonUpdate(prev => ({
         ...prev,
         tasks: prev.tasks.map(t =>

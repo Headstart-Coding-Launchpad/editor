@@ -215,15 +215,16 @@ describe('applyTaskUpdate', () => {
     expect(result[0]).toBe(updated)
   })
 
-  it('flags a subtask as custom-titled when its title diverges from the group default', () => {
+  it('updates a grouped subtask without marking the title as custom', () => {
     const updated = { ...sub1, title: 'My Special Step' }
     const result = applyTaskUpdate([group], group, sub1, updated)
-    expect(result[0].subtasks[0]).toMatchObject({ title: 'My Special Step', _customTitle: true })
+    expect(result[0].subtasks[0]).toMatchObject({ title: 'My Special Step' })
+    expect(result[0].subtasks[0]).not.toHaveProperty('_customTitle')
   })
 
-  it('clears the _customTitle flag when a subtask title is reverted', () => {
+  it('strips obsolete _customTitle metadata from grouped subtask updates', () => {
     const customSub = { ...sub1, _customTitle: true }
-    const updated = { ...customSub, _customTitle: false }
+    const updated = { ...customSub, explainer: 'Changed' }
     const result = applyTaskUpdate([{ ...group, subtasks: [customSub, sub2] }], group, customSub, updated)
     expect(result[0].subtasks[0]).not.toHaveProperty('_customTitle')
   })
@@ -248,7 +249,7 @@ describe('updateSubtaskTitles', () => {
     expect(result[1]).toBe(task2)
   })
 
-  it('renames subtasks to "GroupTitle - N" format', () => {
+  it('leaves grouped subtask titles independent of the group title', () => {
     const groupWithWrongTitles = {
       id: 'g2', type: 'group', title: 'My Group',
       subtasks: [
@@ -257,8 +258,9 @@ describe('updateSubtaskTitles', () => {
       ],
     }
     const [result] = updateSubtaskTitles([groupWithWrongTitles])
-    expect(result.subtasks[0].title).toBe('My Group - 1')
-    expect(result.subtasks[1].title).toBe('My Group - 2')
+    expect(result).toBe(groupWithWrongTitles)
+    expect(result.subtasks[0].title).toBe('Wrong')
+    expect(result.subtasks[1].title).toBe('Also Wrong')
   })
 
   it('preserves subtask objects whose title is already correct', () => {
@@ -283,44 +285,14 @@ describe('updateSubtaskTitles', () => {
     expect(result.subtasks[0].title).toBe('Keep Me')
   })
 
-  it('leaves subtasks with _customTitle unchanged', () => {
+  it('strips obsolete _customTitle metadata from subtasks', () => {
     const g = {
       id: 'g5', type: 'group', title: 'Task',
       subtasks: [{ id: 'c1', title: 'My Custom Name', _customTitle: true }],
     }
     const [result] = updateSubtaskTitles([g])
     expect(result.subtasks[0].title).toBe('My Custom Name')
-    expect(result.subtasks[0]).toBe(g.subtasks[0])
-  })
-
-  it('numbers default subtasks skipping custom ones', () => {
-    const g = {
-      id: 'g6', type: 'group', title: 'Task',
-      subtasks: [
-        { id: 'd1', title: 'Task - 1' },
-        { id: 'd2', title: 'My Name', _customTitle: true },
-        { id: 'd3', title: 'Task - 2' },
-      ],
-    }
-    const [result] = updateSubtaskTitles([g])
-    expect(result.subtasks[0].title).toBe('Task - 1')
-    expect(result.subtasks[1].title).toBe('My Name')
-    expect(result.subtasks[2].title).toBe('Task - 2')
-  })
-
-  it('renumbers default subtasks correctly after a group rename', () => {
-    const g = {
-      id: 'g7', type: 'group', title: 'NewName',
-      subtasks: [
-        { id: 'e1', title: 'OldName - 1' },
-        { id: 'e2', title: 'Custom', _customTitle: true },
-        { id: 'e3', title: 'OldName - 2' },
-      ],
-    }
-    const [result] = updateSubtaskTitles([g])
-    expect(result.subtasks[0].title).toBe('NewName - 1')
-    expect(result.subtasks[1].title).toBe('Custom')
-    expect(result.subtasks[2].title).toBe('NewName - 2')
+    expect(result.subtasks[0]).not.toHaveProperty('_customTitle')
   })
 })
 

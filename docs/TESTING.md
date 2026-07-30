@@ -28,7 +28,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 |---|---|
 | `src/modules/checks.js` | `evaluateSingleCheck` (all 37+ check types dispatched via module evaluators), `evaluateCheckResults`, `normalizeChecks`, `checkRequiresRun`, `checkAllowedForSubmit` |
 | `src/shared/checkHelpers.js` | `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeExactOutput`, `countOutputLines`, `parseCheckValue`, `deepEqual` |
-| `src/shared/taskUtils.js` | `flattenTasks`, priority helpers, stage role/reveal helpers, estimated-duration helpers, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, `updateSubtaskTitles` |
+| `src/shared/taskUtils.js` | `flattenTasks`, priority helpers, stage role/reveal helpers, estimated-duration helpers, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, grouped-task title normalization |
 | `src/shared/codemirror.js` | `getTabSize`, `getLanguageExtension`, `createBaseExtensions` |
 | `src/modules/html/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |

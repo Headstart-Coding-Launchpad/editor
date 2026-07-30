@@ -553,7 +553,6 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
 
     const { _checkTested, _customTitle, hints: _hints, ...rest } = task
     const exported = { ...rest, id: idMap[task.id] }
-    if (preserveIds && _customTitle) exported._customTitle = _customTitle
     if (exported.copyCode != null && !String(exported.copyCode).trim()) delete exported.copyCode
     if (exported.taskType === 'quiz') delete exported.copyCode
     if (exported.taskMode === 'both') delete exported.taskMode

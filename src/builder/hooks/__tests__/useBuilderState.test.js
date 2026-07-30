@@ -123,3 +123,64 @@ describe('useBuilderState task renumbering', () => {
     expect(result.current.selectedTaskId).toBe(3)
   })
 })
+
+describe('useBuilderState grouped task titles', () => {
+  it('creates and duplicates grouped subtasks without deriving titles from the group', () => {
+    const lesson = {
+      type: 'python',
+      tasks: [
+        {
+          id: 'group-a',
+          type: 'group',
+          title: 'Practice',
+          subtasks: [{ id: 1, title: 'Write a loop', starterCode: '' }],
+        },
+      ],
+    }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.handleAddSubtask('group-a')
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0].subtasks[0].title).toBe('Write a loop')
+    expect(currentLesson.tasks[0].subtasks[1].title).toBe('')
+
+    act(() => {
+      result.current.handleDuplicate(currentLesson.tasks[0].subtasks[0], 'group-a')
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0].subtasks[2].title).toBe('Write a loop (copy)')
+  })
+
+  it('starts the first task in a new group with an independent blank title', () => {
+    const lesson = { type: 'python', tasks: [] }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.handleAddGroup()
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0].title).toBe('New Group')
+    expect(currentLesson.tasks[0].subtasks[0].title).toBe('')
+  })
+})

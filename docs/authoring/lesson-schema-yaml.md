@@ -230,17 +230,17 @@ Groups cannot be nested. Group IDs are auto-generated (e.g. `g-1234567890`). `ca
 
 ### Subtask titles
 
-Set `_customTitle: true` on every subtask inside a group that has its own `title`. Without it a grouped subtask does not keep the authored name.
+Subtask titles are independent from the group title. Set `title` on each subtask exactly as you would for a top-level task.
 
 ```yaml
 tasks:
   - group: Loop Basics
     tasks:
-      - _customTitle: true       # required for the title below to stick
-        title: Counted loops
+      - title: Counted loops
+      - title: Loop over a list
 ```
 
-It is only needed on grouped subtasks. Top-level tasks keep their `title` without it.
+The legacy `_customTitle` field is no longer needed. Builder saves and exports strip it from grouped subtasks.
 
 ---
 

@@ -18,6 +18,14 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-07-30
+
+### Changed grouped subtask titles
+
+Grouped subtasks now keep their own `title` values instead of being auto-renamed from the parent group title. Authors no longer need `_customTitle`; Builder saves and exports strip that legacy field from grouped subtasks.
+
+See `docs/authoring/lesson-schema-yaml.md` for the updated group example.
+
 ## 2026-07-29
 
 ### Added authoring changelog maintenance rule

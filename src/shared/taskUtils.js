@@ -255,39 +255,30 @@ export function updateTaskInTasks(tasks, updatedTask) {
   })
 }
 
-// Merge an updated task into the tasks array, tracking whether a subtask's
-// title was manually overridden (vs. left to the group's auto-title pattern).
+// Merge an updated task into the tasks array. `_customTitle` is legacy metadata
+// from when grouped subtasks were auto-named from their parent group.
 // selectedTaskGroup/selectedTask are null for standalone (non-subtask) tasks.
 export function applyTaskUpdate(tasks, selectedTaskGroup, selectedTask, updatedTask) {
-  let finalUpdated = updatedTask
-  if (selectedTaskGroup) {
-    if ('_customTitle' in updatedTask && !updatedTask._customTitle) {
-      const { _customTitle, ...withoutFlag } = finalUpdated
-      finalUpdated = withoutFlag
-    } else if (updatedTask.title !== selectedTask.title) {
-      finalUpdated = { ...updatedTask, _customTitle: true }
-    }
-  }
+  const finalUpdated = selectedTaskGroup
+    ? stripLegacyCustomTitle(updatedTask)
+    : updatedTask
   return updateTaskInTasks(tasks, finalUpdated)
 }
 
-// Ensure the titles of all subtasks in all groups match their group's title and index.
-// Subtasks with _customTitle:true are skipped — their title was manually set.
-// The "N" counter only increments for non-custom subtasks, so:
-//   "Group - 1" / "My Custom Name" / "Group - 2"
+function stripLegacyCustomTitle(task) {
+  if (!task || !Object.prototype.hasOwnProperty.call(task, '_customTitle')) return task
+  const { _customTitle, ...rest } = task
+  return rest
+}
+
+// Backwards-compatible group normalizer. Grouped subtask titles are now
+// independent, so this only removes obsolete `_customTitle` metadata.
 export function updateSubtaskTitles(tasks) {
   if (!tasks) return []
   return tasks.map(item => {
     if (item.type === 'group') {
-      let defaultCount = 0
       const subtasks = (item.subtasks ?? []).map(subtask => {
-        if (subtask._customTitle) return subtask
-        defaultCount++
-        const expectedTitle = item.title ? `${item.title} - ${defaultCount}` : subtask.title
-        if (subtask.title !== expectedTitle) {
-          return { ...subtask, title: expectedTitle }
-        }
-        return subtask
+        return stripLegacyCustomTitle(subtask)
       })
 
       const subtasksChanged = subtasks.some((s, idx) => s !== (item.subtasks?.[idx]))

@@ -1166,27 +1166,6 @@ select {
   background: #fff;
 }
 
-/* Title badges and reset */
-.te-auto-title-badge {
-  font-size: 0.75rem;
-  font-family: var(--font-body);
-  color: var(--colour-primary);
-  opacity: 0.6;
-  flex-shrink: 0;
-  user-select: none;
-}
-.te-reset-title-btn {
-  font-size: 0.75rem;
-  font-family: var(--font-body);
-  color: var(--colour-primary);
-  background: transparent;
-  border: 1px solid #c4b5fd;
-  border-radius: 4px;
-  padding: 3px 7px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
 /* Generic collapsible field */
 .te-collapsible {
   display: flex;
