@@ -16,6 +16,15 @@ function maxDepth(value, d = 0) {
   return m
 }
 
+function hasNestedArray(value, insideArray = false) {
+  if (Array.isArray(value)) {
+    if (insideArray) return true
+    return value.some(item => hasNestedArray(item, true))
+  }
+  if (value === null || typeof value !== 'object') return false
+  return Object.values(value).some(item => hasNestedArray(item, false))
+}
+
 describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () => {
   it('round-trips starterBlocks, completeBlocks, and codeStages block trees', () => {
     const lesson = {
@@ -68,6 +77,51 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
 
     const encoded = encodeLessonBlocksForFirestore(lesson)
     expect(typeof encoded.tasks[0].subtasks[0].starterBlocks).toBe('string')
+    expect(decodeLessonBlocksFromFirestore(encoded)).toEqual(lesson)
+  })
+
+  it('round-trips Arcade Kit designs without leaving Firestore-invalid nested arrays', () => {
+    const frameA = [null, '#ff004d', null, '#29adff']
+    const frameB = ['#00e436', null, '#ffec27', null]
+    const lesson = {
+      id: 'l1',
+      tasks: [
+        {
+          id: 1,
+          moduleType: 'arcade',
+          arcadeDesign: {
+            version: 1,
+            sprites: [{ id: 'hero', name: 'hero.png', width: 2, height: 2, frames: [frameA, frameB] }],
+            maps: [],
+          },
+          completeArcadeDesign: {
+            version: 1,
+            sprites: [{ id: 'goal', name: 'goal.png', width: 2, height: 2, frames: [frameB] }],
+            maps: [],
+          },
+          codeStages: [
+            {
+              label: 'Starter',
+              role: 'starter',
+              arcadeDesign: {
+                version: 1,
+                sprites: [{ id: 'stage', name: 'stage.png', width: 2, height: 2, frames: [frameA] }],
+                maps: [],
+              },
+            },
+          ],
+        },
+      ],
+    }
+
+    expect(hasNestedArray(lesson)).toBe(true)
+
+    const encoded = encodeLessonBlocksForFirestore(lesson)
+    expect(typeof encoded.tasks[0].arcadeDesign).toBe('string')
+    expect(typeof encoded.tasks[0].completeArcadeDesign).toBe('string')
+    expect(typeof encoded.tasks[0].codeStages[0].arcadeDesign).toBe('string')
+    expect(hasNestedArray(encoded)).toBe(false)
+
     expect(decodeLessonBlocksFromFirestore(encoded)).toEqual(lesson)
   })
 
