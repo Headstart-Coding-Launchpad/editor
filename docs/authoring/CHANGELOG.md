@@ -18,6 +18,21 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-08-03
+
+### Arcade Kit now honours the "Web editor" asset flag
+
+Arcade's student workspace and the Builder's author preview now filter both
+per-lesson `storageAssets` and Arcade-wide shared assets by `showInEditor`,
+matching the existing HTML module behaviour. Generated sprites and tilemaps
+from the visual design tools are unaffected.
+
+**Migration note:** shared Arcade assets uploaded before this change default
+to `showInEditor: false` and will disappear from lessons until an admin
+re-ticks **Web editor** for them in the Admin Portal's Shared Assets panel.
+
+See `docs/authoring/arcade.md#assets` for details.
+
 ## 2026-07-30
 
 ### Changed grouped subtask titles
