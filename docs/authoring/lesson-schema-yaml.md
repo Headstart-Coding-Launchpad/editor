@@ -84,6 +84,7 @@ tasks:
     taskMode: both              # optional — both (default) | live | solo
     intent: |                    # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
+    taskActivity: Pair-share discussion  # optional plain text; author-only
     # taskType is not set directly in YAML — use `type: information` or `type: quiz`;
     # omit it entirely for a code task.
     moduleType: python          # required for every code task in a new composed lesson
@@ -103,6 +104,7 @@ tasks:
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
 | `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
+| `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task. Always optional, even in Draft. Never student-facing. |
 | `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
 | `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. |

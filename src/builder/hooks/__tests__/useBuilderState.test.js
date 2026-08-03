@@ -80,6 +80,91 @@ describe('useBuilderState scratch task creation', () => {
   })
 })
 
+describe('useBuilderState taskActivity default-seeding', () => {
+  it('seeds an empty taskActivity on a new top-level task, alongside intent', () => {
+    const lesson = { type: 'python', tasks: [{ id: 1, title: 'First', starterCode: '' }] }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.handleAddTask()
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[1]).toMatchObject({ intent: '', taskActivity: '' })
+  })
+
+  it('seeds an empty taskActivity on a new composed-lesson task', () => {
+    const lesson = { type: 'composed', tasks: [] }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.handleAddTask()
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0]).toMatchObject({ intent: '', taskActivity: '' })
+  })
+
+  it('seeds an empty taskActivity on a new group\'s first subtask', () => {
+    const lesson = { type: 'python', tasks: [] }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.handleAddGroup()
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0].subtasks[0]).toMatchObject({ intent: '', taskActivity: '' })
+  })
+
+  it('seeds an empty taskActivity on a new subtask added to an existing group', () => {
+    const lesson = {
+      type: 'python',
+      tasks: [{ id: 'group-a', type: 'group', title: 'Group', subtasks: [{ id: 1, title: 'First', starterCode: '' }] }],
+    }
+    let currentLesson = lesson
+    const onUpdate = vi.fn(updater => {
+      currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
+    })
+
+    const { result, rerender } = renderHook(
+      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
+      { initialProps: { lesson } }
+    )
+
+    act(() => {
+      result.current.handleAddSubtask('group-a')
+    })
+    rerender({ lesson: currentLesson })
+
+    expect(currentLesson.tasks[0].subtasks[1]).toMatchObject({ intent: '', taskActivity: '' })
+  })
+})
+
 describe('useBuilderState task renumbering', () => {
   it('renumbers lesson tasks and keeps the selected task selected by position', () => {
     const lesson = {
