@@ -111,6 +111,31 @@ const teacherHighlightsField = StateField.define({
   provide: field => EditorView.decorations.from(field),
 })
 
+// Runtime error-line highlight: a single whole-line marker showing where the
+// student's last Run threw. Cleared automatically the moment the document
+// changes (first keystroke after the error), not just on the next Run.
+export const setErrorLine = StateEffect.define()
+
+export const errorLineField = StateField.define({
+  create() {
+    return Decoration.none
+  },
+  update(deco, transaction) {
+    for (const effect of transaction.effects) {
+      if (!effect.is(setErrorLine)) continue
+      const line = effect.value
+      if (line == null) return Decoration.none
+      const maxLine = transaction.state.doc.lines
+      const lineNum = Math.min(Math.max(Math.trunc(line), 1), maxLine)
+      const lineInfo = transaction.state.doc.line(lineNum)
+      return Decoration.set([Decoration.line({ class: 'cm-errorLine' }).range(lineInfo.from)])
+    }
+    if (transaction.docChanged) return Decoration.none
+    return deco
+  },
+  provide: field => EditorView.decorations.from(field),
+})
+
 export function CodeEditor({
   value = '',
   language = 'python',
@@ -121,6 +146,7 @@ export function CodeEditor({
   remoteSelection = null,
   teacherHighlights = [],
   onHighlightDismiss,
+  errorLine = null,
   style,
 }) {
   const containerRef = useRef(null)
@@ -145,6 +171,7 @@ export function CodeEditor({
           ...createBaseExtensions(language, readOnly),
           remoteSelectionField,
           teacherHighlightsField,
+          errorLineField,
           EditorView.updateListener.of(update => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
@@ -224,6 +251,12 @@ export function CodeEditor({
     if (!view) return
     view.dispatch({ effects: setTeacherHighlights.of(teacherHighlights) })
   }, [teacherHighlights])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({ effects: setErrorLine.of(errorLine) })
+  }, [errorLine])
 
   return (
     <div

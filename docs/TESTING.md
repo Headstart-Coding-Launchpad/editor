@@ -30,7 +30,9 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/shared/checkHelpers.js` | `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeExactOutput`, `countOutputLines`, `parseCheckValue`, `deepEqual` |
 | `src/shared/taskUtils.js` | `flattenTasks`, priority helpers, stage role/reveal helpers, estimated-duration helpers, `findTaskById`, `findGroupForTask`, `getProgressItems`, `updateTaskInTasks`, grouped-task title normalization |
 | `src/shared/codemirror.js` | `getTabSize`, `getLanguageExtension`, `createBaseExtensions` |
-| `src/modules/html/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL) |
+| `src/shared/CodeEditor.jsx` | `errorLineField`/`setErrorLine` StateField set/clear behaviour, tested against an `EditorState` directly (no EditorView/DOM — see "What NOT to Test") |
+| `src/modules/html/iframe.js` | `getMime` (pure lookup), `buildIframeSrc` string-rewriting logic (mock Blob + URL.createObjectURL), `resolveIframeErrorLocation` runtime-error → `{file, line}` mapping (inline-script offset, external-script direct mapping, stale-loadId/unrecognised-filename rejection) |
+| `src/modules/python/pyodide.worker.js` | `formatPythonError` traceback → `{ text, line }` parsing (innermost `<student>` frame, no-frame fallback) — the only export from this file that's unit-tested; see the coverage-exclusion note below |
 | `src/shared/assetPaths.js` | Absolute asset URL encoding and base-path handling |
 | `src/shared/storageAssets.js` | Firebase Storage folder inventory merged with optional schema metadata |
 | `src/shared/workspaceData.js` | Scratch state parsing/cloning and decoded HTML file conversion |
@@ -73,7 +75,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/ExplainerPanel.jsx` | Collapsible toggle; aria-expanded; non-collapsible mode; content passes to MarkdownRenderer |
 | `src/app/components/CopyCodePanel.jsx` | Renders task `copyCode` only when non-empty; preserves whitespace; blocks copy/selection-adjacent browser actions |
 | `src/app/components/SupportStagePanel.jsx` | Renders the current opt-in stage or complete-solution reference; hides content until revealed; blocks copy/selection-adjacent browser actions |
-| `src/app/components/IframePreview.jsx` | Displays iframe console entries and reports runtime errors to the student support-stage flow |
+| `src/app/components/IframePreview.jsx` | Displays iframe console entries and reports runtime errors (with `filename`/`lineno`/`loadId` location) to the student support-stage flow and error-line highlight |
 | `src/app/components/TopBar.jsx` | Solo/Live/Sandbox badge logic; displayName visibility; right slot; desktop mode |
 | `src/app/components/TaskProgressDots.jsx` | Renders past/current/locked dots; click on past dot fires callback; locked dot is not clickable |
 | `src/app/components/CheckFeedbackBanner.jsx` | Renders pass state; renders fail + hint; renders "see complete code" when unlocked |
@@ -174,7 +176,7 @@ Set in `vitest.config.js`. Current thresholds reflect the initial test scope (pu
 | Phase 3 | 50% | StudentView, TeacherView partially covered |
 | Phase 4 | 70% | Builder views + remaining components |
 
-`src/modules/python/pyodide.worker.js` and `src/modules/scratch/scratch.js` are permanently excluded from coverage because they require Web Worker and canvas runtime environments that jsdom cannot measure.
+`src/modules/python/pyodide.worker.js` and `src/modules/scratch/scratch.js` are permanently excluded from coverage because they require Web Worker and canvas runtime environments that jsdom cannot measure. The one exception is `formatPythonError`, a pure traceback-parsing function with no Worker/Pyodide dependency — it's unit-tested directly (see Layer 1 above) even though the rest of the file stays excluded.
 
 ---
 

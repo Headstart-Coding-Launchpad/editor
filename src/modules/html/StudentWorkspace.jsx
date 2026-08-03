@@ -62,6 +62,7 @@ export default function StudentWorkspace({
   const previewSrc = isForcedTeacherLive ? cs.teacherLiveIframeSrc : (isViewingPrev ? viewedIframeSrc : cs.iframeSrc)
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+  const errorLine = !readOnly && cs.htmlErrorLocation?.file === activeFile ? cs.htmlErrorLocation.line : null
 
   if (isMobile) {
     return (
@@ -91,6 +92,7 @@ export default function StudentWorkspace({
             assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
             assets={lesson.assets}
             storageAssets={htmlStorageAssets}
+            errorLine={errorLine}
           />
         </div>
         {task?.interactionMode !== 'submit' && (
@@ -154,6 +156,7 @@ export default function StudentWorkspace({
               assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
               assets={lesson.assets}
               storageAssets={htmlStorageAssets}
+              errorLine={errorLine}
             />
           </div>
         }

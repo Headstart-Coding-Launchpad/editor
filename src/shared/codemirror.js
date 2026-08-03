@@ -71,6 +71,10 @@ export const headstartTheme = EditorView.theme({
   '.cm-teacherHighlightBadgeLabel': {
     letterSpacing: '0.01em',
   },
+  '.cm-errorLine': {
+    backgroundColor: 'rgba(220, 38, 38, 0.14)',
+    borderLeft: '3px solid #dc2626',
+  },
   '.cm-cursor': { borderLeftColor: '#6222CC', borderLeftWidth: '2px' },
   '.cm-matchingBracket': { backgroundColor: '#e9d5ff', outline: 'none' },
   '.cm-tooltip.cm-tooltip-autocomplete': {

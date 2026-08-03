@@ -122,6 +122,7 @@ export default function StudentWorkspace({
         teacherHighlights={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? [] : cs.teacherHighlights}
         onHighlightDismiss={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight}
         pyodideStatus={cs.pyodideStatus}
+        errorLine={readOnly ? null : cs.errorLine}
       />
       {showSubmitBanner && (
         <div style={s.submitBanner}>Code submitted</div>

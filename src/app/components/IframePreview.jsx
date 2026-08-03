@@ -23,7 +23,9 @@ export default function IframePreview({ src, iframeRef, height = 300, fill = fal
         level: e.data.level,
         args: e.data.args,
       }])
-      if (e.data.level === 'error') onConsoleError?.(src)
+      if (e.data.level === 'error') {
+        onConsoleError?.(src, { filename: e.data.filename, lineno: e.data.lineno, loadId: e.data.id })
+      }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)

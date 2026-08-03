@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { buildIframeSrc } from '../iframe.js'
+import { buildIframeSrc, getLastLoadId, resolveIframeErrorLocation } from '../iframe.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -165,5 +165,97 @@ describe('buildIframeSrc — assetsPath option', () => {
     buildIframeSrc(files, 'index.html', options)
     expect(await blobs[2].text()).toContain('href="blob:test-2"')
     expect(await blobs[2].text()).not.toContain('https://cdn.example.com/style.css')
+  })
+})
+
+// ─── resolveIframeErrorLocation — error → student file/line mapping ─────────
+
+describe('resolveIframeErrorLocation', () => {
+  function mockIncrementingBlobUrls() {
+    const blobs = []
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(blob => {
+      blobs.push(blob)
+      return `blob:test-${blobs.length}`
+    })
+    return blobs
+  }
+
+  it('maps an inline <script> error in the entry file back to its original line', async () => {
+    const blobs = mockIncrementingBlobUrls()
+    const original = [
+      '<html>',
+      '<head></head>',
+      '<body>',
+      '<script>',
+      'function boom() {',
+      "  throw new Error('boom')",
+      '}',
+      'boom()',
+      '</script>',
+      '</body>',
+      '</html>',
+    ].join('\n')
+
+    const entrySrc = buildIframeSrc([{ name: 'index.html', type: 'html', content: original }])
+    const loadId = getLastLoadId()
+
+    // Simulate the browser reporting the line number as it appears in the
+    // actual (injected) document served to the iframe.
+    const rewrittenHtml = await blobs[blobs.length - 1].text()
+    const rewrittenLineIndex = rewrittenHtml.split('\n').findIndex(l => l.includes("throw new Error('boom')"))
+    expect(rewrittenLineIndex).toBeGreaterThan(-1)
+    const browserReportedLine = rewrittenLineIndex + 1
+
+    const location = resolveIframeErrorLocation(loadId, entrySrc, browserReportedLine)
+
+    // "throw new Error('boom')" is line 6 of the original student source.
+    expect(location).toEqual({ file: 'index.html', line: 6 })
+  })
+
+  it('maps an external script file error directly, with no line offset', () => {
+    mockIncrementingBlobUrls()
+    const files = [
+      { name: 'index.html', type: 'html', content: '<html><body><script src="app.js"></script></body></html>' },
+      { name: 'app.js', type: 'javascript', content: 'function boom(){\n  throw new Error("x")\n}\nboom()' },
+    ]
+
+    buildIframeSrc(files)
+    const loadId = getLastLoadId()
+    // resolvedFiles is iterated in file order, so index.html -> blob:test-1,
+    // app.js -> blob:test-2 (the entry's live document is the later blob:test-3).
+    const appJsUrl = 'blob:test-2'
+
+    const location = resolveIframeErrorLocation(loadId, appJsUrl, 2)
+
+    expect(location).toEqual({ file: 'app.js', line: 2 })
+  })
+
+  it('returns null for a filename it does not recognise', () => {
+    mockIncrementingBlobUrls()
+    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<html><body>hi</body></html>' }])
+    const loadId = getLastLoadId()
+
+    expect(resolveIframeErrorLocation(loadId, 'blob:unrelated', 3)).toBeNull()
+  })
+
+  it('returns null for a stale loadId from a previous run', () => {
+    mockIncrementingBlobUrls()
+    const entrySrc = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<html><body>hi</body></html>' }])
+    const staleLoadId = getLastLoadId()
+
+    // A second Run replaces the tracked context.
+    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<html><body>bye</body></html>' }])
+
+    expect(resolveIframeErrorLocation(staleLoadId, entrySrc, 1)).toBeNull()
+  })
+
+  it('returns null when the mapped line would fall before the start of the file', () => {
+    mockIncrementingBlobUrls()
+    const entrySrc = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<html><body>hi</body></html>' }])
+    const loadId = getLastLoadId()
+
+    // The injected CSP + console interceptor always add at least one line
+    // ahead of the student's markup, so browser line 1 can never be theirs.
+    expect(resolveIframeErrorLocation(loadId, entrySrc, 1)).toBeNull()
   })
 })

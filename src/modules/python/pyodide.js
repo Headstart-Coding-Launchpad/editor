@@ -72,7 +72,7 @@ function handleWorkerMessage({ data }) {
       break
 
     case 'output':
-      if (!_stopped) _onOutput?.(data.text, data.kind)
+      if (!_stopped) _onOutput?.(data.text, data.kind, data.line)
       break
 
     case 'gpio_write':
