@@ -84,8 +84,9 @@ tasks:
     taskMode: both              # optional — both (default) | live | solo
     intent: |                    # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
-    # taskType is not set directly in YAML — use `type: information` or `type: quiz`;
-    # omit it entirely for a code task.
+    # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
+    # or `type: code_arrange` (drag-and-drop runnable code — see lesson-schema.md's
+    # "Code Arrange Task Fields"); omit it entirely for a normal code task.
     moduleType: python          # required for every code task in a new composed lesson
     moduleId: python-practice   # optional — named workspace instance from `modules`
     check: {}                   # optional — completion check, see the lesson-type docs

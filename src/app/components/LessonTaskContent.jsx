@@ -5,6 +5,7 @@ import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
 import QuizTask from './QuizTask'
+import CodeArrangeTaskContainer from './CodeArrangeTaskContainer'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
@@ -32,6 +33,7 @@ export default function LessonTaskContent({
   isQuizTask,
   isAutoEvaluatedQuiz,
   isInformationTask,
+  isCodeArrangeTask,
   displayCode,
   displayArcadeDesign,
   displayFiles,
@@ -201,6 +203,24 @@ export default function LessonTaskContent({
           checkPassed={cs.checkPassed}
           disabled={isViewingPrev}
           showResult={false}
+        />
+      ) : !isSandbox && isCodeArrangeTask ? (
+        <CodeArrangeTaskContainer
+          task={task}
+          cs={cs}
+          viewingTaskId={viewingTaskId}
+          currentTaskId={currentTaskId}
+          isViewingPrev={isViewingPrev}
+          isForcedTeacherLive={isForcedTeacherLive}
+          isTeacherEditing={isTeacherEditing}
+          displayCode={displayCode}
+          displayFiles={displayFiles}
+          displayOutput={displayOutput}
+          displayRunStatus={displayRunStatus}
+          displayCheckPassed={displayCheckPassed}
+          displayCheckAttempted={displayCheckAttempted}
+          teacherLiveCode={teacherLiveCode}
+          teacherLiveFiles={teacherLiveFiles}
         />
       ) : StudentWorkspace ? (
         <StudentWorkspace

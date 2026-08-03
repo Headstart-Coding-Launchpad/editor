@@ -86,6 +86,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
+| `CodeArrangeTask.jsx` | `taskType: code_arrange` presentational workspace: renders each authored line as either a whole-line drop slot or fixed text with small inline blanks in place (via `useTileDragAndDrop`), all fed from the one shared "Code tiles" pool below the program, Run button, Python output panel or HTML iframe preview. Reused by both the student container and the Builder preview |
+| `CodeArrangeTaskContainer.jsx` | Wires `CodeArrangeTask` to `useStudentCodeState` (`cs`): persists the tile arrangement, pushes assembled code into `cs.handleCodeChange`/`handleFileChange`, and runs via `cs.handleRun` — the real Python/HTML pipeline, unmodified |
 | `CheckFeedbackBanner.jsx` | Pass/fail banner with optional hint and "see complete code" action |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message |
 | `JoinChoiceScreen.jsx` | Choice screen: Wait for Teacher or Work Solo (shown when no active session) |
@@ -114,7 +116,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LoadingScreen.jsx` | Branded reusable spinner/loading/error message screen for route, auth, and StudentView phases |
 | `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended' |
 | `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
-| `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz and Information rendered inline; all code types delegated to their module's `StudentWorkspace`) |
+| `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz, Information, and Code Arrange rendered inline; other code types delegated to their module's `StudentWorkspace`) |
 | `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut |
 
 ### Quiz Components (`src/app/components/quiz/`)
@@ -228,6 +230,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
 | `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
+| `CodeArrangeEditor.jsx` | Visual Builder authoring + live preview for `taskType: code_arrange`: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list, entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly |
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, and feedback priority/stage-offer controls |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
@@ -376,6 +379,7 @@ Each `index.js` exports a default object with:
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting |
 | `composedLesson.js` | Pure composed-lesson module resolution, structural validation, sandbox adaptation, and scoped carry-source helpers |
+| `codeArrange.js` | Pure helpers for the `code_arrange` task type: the one shared task-level tile pool, slot-completeness, assembling the final runnable code string from tile placements (`assembleCodeArrangement`), and its inverse (`deriveSlotStateFromCode`, backtracking over the shared pool using each line's fixed text as anchors) — the run pipeline and check evaluator only ever see the final assembled string |
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |

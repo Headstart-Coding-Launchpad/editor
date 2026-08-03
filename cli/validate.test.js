@@ -50,6 +50,72 @@ describe('CLI lesson validation', () => {
     expect(result.warnings.some(w => w.includes('complete solution fails a code check'))).toBe(true)
   })
 
+  it('validates code_arrange tasks', () => {
+    const valid = validateLessonForMcp({
+      id: 'arrange-basics',
+      type: 'python',
+      title: 'Arrange basics',
+      description: 'A short arrange lesson',
+      tasks: [
+        {
+          title: 'Arrange a loop',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [
+            { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'for i in range(3):' }] },
+            { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: '    print(i)' }] },
+          ],
+          distractors: [{ id: 'D1', code: '    print(i * 2)' }],
+          check: { type: 'output_contains', value: '0' },
+        },
+      ],
+    })
+    expect(valid.valid).toBe(true)
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLessonForMcp({
+      id: 'arrange-invalid',
+      type: 'scratch',
+      title: 'Arrange invalid',
+      description: 'An invalid arrange lesson',
+      tasks: [
+        {
+          title: 'Arrange',
+          taskType: 'code_arrange',
+          moduleType: 'scratch',
+          lines: [],
+        },
+      ],
+    })
+    expect(invalid.valid).toBe(false)
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'Task 1 is a code-arrange task but must use the Python or HTML module',
+      'Task 1 is a code-arrange task but has no lines',
+      'Task 1 is a code-arrange task but has no completion check',
+    ]))
+
+    const invalidInline = validateLessonForMcp({
+      id: 'arrange-invalid-inline',
+      type: 'python',
+      title: 'Arrange invalid inline',
+      description: 'An invalid inline arrange lesson',
+      tasks: [
+        {
+          title: 'Arrange',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [{ id: 'L1', parts: [{ type: 'slot', code: '' }] }],
+          check: { type: 'output_contains', value: '0' },
+        },
+      ],
+    })
+    expect(invalidInline.valid).toBe(false)
+    expect(invalidInline.errors).toEqual(expect.arrayContaining([
+      'Task 1 line 1 blank 1 has no id',
+      'Task 1 line 1 blank 1 has no correct value',
+    ]))
+  })
+
   it('accepts electronics lessons supported by the app module registry', () => {
     const result = validateLessonForMcp({
       id: 'electronics-basics',

@@ -1,4 +1,4 @@
-const TASK_TYPES = new Set(['information', 'quiz'])
+const TASK_TYPES = new Set(['information', 'quiz', 'code_arrange'])
 const QUIZ_TYPES = new Set(['multiple_choice', 'match', 'fill_blank', 'short_answer', 'confidence'])
 
 function isObject(value) {
@@ -23,7 +23,7 @@ function validateTaskShape(task, label, draft, errors) {
   if (draft && (typeof task.intent !== 'string' || !task.intent.trim())) errors.push(`${label} intent must be a non-empty Markdown string while lesson draft is enabled`)
   if (!draft && task.intent != null && typeof task.intent !== 'string') errors.push(`${label} intent must be a Markdown string when provided`)
   if (task.quizType != null && !QUIZ_TYPES.has(task.quizType)) errors.push(`${label} has an invalid quiz type`)
-  for (const field of ['options', 'pairs', 'blanks', 'starterFiles', 'completeFiles', 'codeStages', 'tests', 'feedbackChecks']) {
+  for (const field of ['options', 'pairs', 'blanks', 'lines', 'distractors', 'starterFiles', 'completeFiles', 'codeStages', 'tests', 'feedbackChecks']) {
     requireArrayOfObjects(task[field], `${label} ${field}`, errors)
   }
   if (task.check != null && !isObject(task.check) && !(Array.isArray(task.check) && task.check.every(isObject))) {

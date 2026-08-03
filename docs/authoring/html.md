@@ -123,6 +123,48 @@ If a completion check passes but a blocking feedback check also matches, the tas
 
 ---
 
+## Drag-and-Drop Runnable Code (`code_arrange`)
+
+Instead of a free-typed editor, an HTML task can be `taskType: code_arrange`:
+each line is built from fixed text and blanks — a line that's just one blank
+is dragged into place as a whole line. Every blank draws from one shared
+tile pool (the task's `distractors` plus every blank's own correct value).
+The assembled lines become `entryFile`'s content and are rendered/checked
+through this same iframe pipeline. Full field reference:
+`docs/authoring/lesson-schema.md` ("Code Arrange Task Fields").
+
+```yaml
+- title: Arrange a heading and paragraph
+  taskType: code_arrange
+  moduleType: html
+  explainer: Build the page by arranging the lines.
+  entryFile: index.html
+  starterFiles:
+    - name: index.html
+      type: html
+      content: ""
+  lines:
+    - id: L1
+      parts:
+        - type: slot
+          id: L1
+          code: "<h1>Hello</h1>"
+    - id: L2
+      parts:
+        - type: slot
+          id: L2
+          code: "<p>Welcome to my page.</p>"
+  distractors:
+    - id: D1
+      code: "<h2>Hello</h2>"
+  check:
+    type: html_element
+    operator: exists
+    selector: h1
+```
+
+---
+
 ## Minimal JSON Example
 
 ```json

@@ -4,6 +4,13 @@ All five quiz sub-types. Set `type: quiz` on the task; the converter sets `taskT
 
 Do not include code fields, carry fields, or `interactionMode` on quiz tasks.
 
+For a drag-and-drop code exercise that genuinely runs (rather than a tile-identity
+match), use `taskType: code_arrange` instead of `quizType: fill_blank` — see
+"Code Arrange Task Fields" in `docs/authoring/lesson-schema.md`. It is a separate
+task type alongside `python`/`html` code tasks, not a quiz sub-type, precisely
+because it needs the code/output check fields this page says quiz tasks must not
+carry.
+
 ---
 
 ## Multiple Choice

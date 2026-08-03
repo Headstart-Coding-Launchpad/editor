@@ -313,6 +313,51 @@ export function validateLesson(lesson) {
       }
       if (task.check) validateElectronicsChecks(task.check, n, errors)
       if (feedbackChecks.length > 0) validateElectronicsChecks(feedbackChecks, n, errors, 'feedback')
+    } else if (task.taskType === 'code_arrange') {
+      if (!['python', 'html'].includes(type)) {
+        errors.push(`Task ${n} is a code-arrange task but must use the Python or HTML module`)
+      }
+      const lines = Array.isArray(task.lines) ? task.lines : []
+      if (lines.length === 0) errors.push(`Task ${n} is a code-arrange task but has no lines.`)
+      const lineIds = []
+      const poolIds = []
+      lines.forEach((line, li) => {
+        const ln = li + 1
+        if (!line?.id) errors.push(`Task ${n} line ${ln} has no id.`)
+        else lineIds.push(line.id)
+        const parts = Array.isArray(line?.parts) ? line.parts : []
+        if (parts.length === 0) errors.push(`Task ${n} line ${ln} has no parts.`)
+        if (!parts.some(part => part?.type === 'slot')) errors.push(`Task ${n} line ${ln} has no blanks.`)
+        parts.forEach((part, pi) => {
+          const pn = pi + 1
+          if (part?.type === 'slot') {
+            if (!part.id) errors.push(`Task ${n} line ${ln} blank ${pn} has no id.`)
+            else poolIds.push(part.id)
+            if (!part.code?.trim()) errors.push(`Task ${n} line ${ln} blank ${pn} has no correct value.`)
+          } else if (part?.type !== 'text') {
+            errors.push(`Task ${n} line ${ln} part ${pn} has an invalid type.`)
+          }
+        })
+      })
+      if (new Set(lineIds).size !== lineIds.length) errors.push(`Task ${n} is a code-arrange task but has duplicate line ids.`)
+      const distractors = Array.isArray(task.distractors) ? task.distractors : []
+      distractors.forEach((d, di) => {
+        if (!d?.id) errors.push(`Task ${n} distractor ${di + 1} has no id.`)
+        else poolIds.push(d.id)
+        if (!d?.code?.trim()) errors.push(`Task ${n} distractor ${di + 1} has no code.`)
+      })
+      if (new Set(poolIds).size !== poolIds.length) errors.push(`Task ${n} is a code-arrange task but has duplicate blank/distractor ids.`)
+      if (!task.check) errors.push(`Task ${n} is a code-arrange task but has no completion check.`)
+      if (type === 'html') {
+        if (!task.starterFiles || task.starterFiles.length === 0) errors.push(`Task ${n} has no files`)
+        else {
+          const names = task.starterFiles.map(file => file.name)
+          if (new Set(names).size !== names.length) errors.push(`Task ${n} has duplicate filenames`)
+          if (!task.starterFiles.some(file => file.type === 'html' || file.name.endsWith('.html'))) {
+            errors.push(`Task ${n} has no HTML file to use as entry point`)
+          }
+        }
+      }
     } else if (task.taskType !== 'information' && type === 'html') {
       if (!task.starterFiles || task.starterFiles.length === 0) errors.push(`Task ${n} has no files`)
       else {
@@ -356,7 +401,7 @@ export function validateLesson(lesson) {
       })
     }
 
-    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || type === 'filesystem' || type === 'electronics'
+    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || task.taskType === 'code_arrange' || type === 'filesystem' || type === 'electronics'
       ? null
       : type === 'scratch' ? task.carryBlocksFrom : task.carryCodeFrom
     if (carryFrom != null && !flat.some(candidate => candidate.id === carryFrom)) {
@@ -371,7 +416,9 @@ export function validateLesson(lesson) {
       ? true
       : task.taskType === 'quiz'
         ? quizHasStarter(task)
-        : type === 'python' || type === 'arcade'
+        : task.taskType === 'code_arrange'
+          ? (Array.isArray(task.lines) && task.lines.length > 0)
+          : type === 'python' || type === 'arcade'
           ? !!task.starterCode
           : type === 'scratch'
             ? !!task.starterBlocks
