@@ -255,7 +255,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
-| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`, `CHECK_TYPES` — delegates filesystem, Python variable, HTML element, and electronics checks to their module evaluators |
+| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`, `CHECK_TYPES` — delegates filesystem, Python variable, HTML element, and electronics `circuit_*` checks to their module evaluators; also routes generic `code` checks to the electronics evaluator when `context.circuit` is present, so they run against Micro Controller MicroPython source instead of raw circuit JSON |
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
@@ -290,8 +290,8 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `filesystem/BuilderWorkspace.jsx` | Re-export of `FilesystemTaskWorkspace` |
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
 | `electronics/index.js` | Electronics module definition: breadboard state helpers, builder/student/teacher workspaces, checks, carry-through, sandbox state, and MicroPython runtime bridge |
-| `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, and `circuit_*` check evaluation |
-| `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI: drag/drop palette and board, visual parts, animated pin-to-pin wiring, component inspector with Micro Controller GPIO editing, MicroPython Code tab, and output panel |
+| `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, `circuit_*` check evaluation, and generic `code`-family check evaluation against the Micro Controller's MicroPython source |
+| `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI: drag/drop palette and board, visual parts (including an on-canvas draggable potentiometer slider), animated pin-to-pin wiring with lockable wires, component inspector with Micro Controller GPIO editing, MicroPython Code tab, and output panel |
 | `electronics/StudentWorkspace.jsx` | Student electronics workspace wrapper: serialized circuit state, reset/check actions, teacher-live/read-only handling |
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs, board sizing, and available component controls |
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |
@@ -362,7 +362,7 @@ Each `index.js` exports a default object with:
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
-| `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeCode`, `parseMultipleContainOptions`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, and related helpers — used by `modules/checks.js` and sub-module evaluators |
+| `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeCode`, `parseMultipleContainOptions`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, `evaluateCodeCheck` (shared `code`-family evaluation reused by both `modules/checks.js` and `electronics/circuit.js`, avoiding a circular import), and related helpers — used by `modules/checks.js` and sub-module evaluators |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 | `codemirror.js` | CodeMirror config: `headstartTheme`, `headstartHighlight`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |

@@ -7,12 +7,11 @@ import {
   wildcardEquals,
   normalizeOutput,
   normalizeExactOutput,
-  normalizeCode,
   countOutputLines,
-  parseMultipleContainOptions,
   matchesContainValue,
   matchesRegex,
   compareValues,
+  evaluateCodeCheck,
 } from '../shared/checkHelpers.js'
 
 export function substituteTestInputs(value, inputs) {
@@ -233,6 +232,14 @@ export function evaluateSingleCheck(check, output, context = {}) {
     return evaluateElectronicsCheck(check, context.circuit ?? context.code)
   }
 
+  // Generic `code` checks are shared across Python/HTML/Arcade. When evaluated
+  // in an electronics context (a circuit is available), route them through the
+  // electronics evaluator so they run against the Micro Controller's MicroPython
+  // source rather than the raw serialized circuit that `context.code` holds there.
+  if (check.type === 'code' && context.circuit !== undefined) {
+    return evaluateElectronicsCheck(check, context.circuit)
+  }
+
   if (check.type === 'code_no_error') {
     return context.status === 'success'
   }
@@ -275,34 +282,10 @@ export function evaluateSingleCheck(check, output, context = {}) {
   }
 
   if (check.type === 'code') {
-    if (check.operator === 'contains') return codeContains(context.code ?? '', check.value)
-    if (check.operator === 'not_contains') return !codeContains(context.code ?? '', check.value)
-    if (check.operator === 'equals') return wildcardEquals(normalizeCode(context.code ?? ''), normalizeCode(check.value))
-    if (check.operator === 'not_equals') return !wildcardEquals(normalizeCode(context.code ?? ''), normalizeCode(check.value))
-    if (check.operator === 'matches_regex') return matchesRegex(normalizeCode(context.code ?? '', true), check.value, check.flags)
-    if (check.operator === 'not_matches_regex') return !matchesRegex(normalizeCode(context.code ?? '', true), check.value, check.flags)
+    return evaluateCodeCheck(check, context.code)
   }
 
   return false
-}
-
-// Source-text fragments entered without quotes should still match text inside a
-// quoted string. `normalizeCode` deliberately preserves whitespace inside
-// strings, so use a whitespace-free fallback only for unquoted fragments.
-function codeContains(code, value) {
-  const options = parseMultipleContainOptions(value)
-  if (options) return options.some(option => codeContainsFragment(code, option))
-  return codeContainsFragment(code, value)
-}
-
-function codeContainsFragment(code, value) {
-  if (wildcardContains(normalizeCode(code), normalizeCode(value))) return true
-  if (/["'`]/.test(String(value ?? ''))) return false
-  return wildcardContains(stripAllCodeWhitespace(code), stripAllCodeWhitespace(value))
-}
-
-function stripAllCodeWhitespace(value) {
-  return String(value ?? '').replace(/\s/g, '').toLowerCase()
 }
 
 export function evaluateCheck(check, output, context = {}) {
@@ -404,9 +387,11 @@ export function getIncorrectCheckHint(incorrectChecks, output, context = {}) {
 }
 
 // Evaluates only code-based checks (no run required). Safe to call without executing the code.
-export function evaluateCheckWithCode(check, code) {
+// `context` may carry extra keys (e.g. `circuit` for electronics, so generic
+// `code` checks resolve against the Micro Controller's MicroPython source).
+export function evaluateCheckWithCode(check, code, context = {}) {
   const checks = normalizeChecks(check)
   if (checks.length === 0) return false
   if (!checks.every(c => checkAllowedForSubmit(c) || ELECTRONICS_CHECK_TYPES.includes(c.type))) return false
-  return checks.every(c => evaluateSingleCheck(c, '', { code }))
+  return checks.every(c => evaluateSingleCheck(c, '', { code, ...context }))
 }

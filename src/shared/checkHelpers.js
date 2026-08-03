@@ -177,6 +177,55 @@ export function getVariableEntry(variables, name) {
   }
 }
 
+// Source-text fragments entered without quotes should still match text inside a
+// quoted string. `normalizeCode` deliberately preserves whitespace inside
+// strings, so use a whitespace-free fallback only for unquoted fragments.
+function codeContains(code, value) {
+  const options = parseMultipleContainOptions(value)
+  if (options) return options.some(option => codeContainsFragment(code, option))
+  return codeContainsFragment(code, value)
+}
+
+function codeContainsFragment(code, value) {
+  if (wildcardContains(normalizeCode(code), normalizeCode(value))) return true
+  if (/["'`]/.test(String(value ?? ''))) return false
+  return wildcardContains(stripAllCodeWhitespace(code), stripAllCodeWhitespace(value))
+}
+
+function stripAllCodeWhitespace(value) {
+  return String(value ?? '').replace(/\s/g, '').toLowerCase()
+}
+
+const CODE_CHECK_ALIAS_OPERATORS = {
+  code_contains: 'contains',
+  code_does_not_contain: 'not_contains',
+  code_not_contains: 'not_contains',
+  code_equals: 'equals',
+  code_not_equals: 'not_equals',
+  code_matches_regex: 'matches_regex',
+  code_not_matches_regex: 'not_matches_regex',
+}
+
+// Shared "code"-family check evaluation (contains/equals/matches_regex + negated
+// variants), reused by both `modules/checks.js` (Python/HTML/Arcade, via the
+// `code` check type) and `modules/electronics/circuit.js` (MicroPython source
+// extracted from the circuit's Micro Controller component). Accepts either the
+// normalized `{ type: 'code', operator }` shape or the legacy `code_contains`
+// style alias types directly, so callers that skip `normalizeCheckShape` still work.
+export function evaluateCodeCheck(check, code) {
+  if (!check || check.value == null) return false
+  const operator = check.type === 'code' ? check.operator : CODE_CHECK_ALIAS_OPERATORS[check.type]
+  if (!operator) return false
+  const source = code ?? ''
+  if (operator === 'contains') return codeContains(source, check.value)
+  if (operator === 'not_contains') return !codeContains(source, check.value)
+  if (operator === 'equals') return wildcardEquals(normalizeCode(source), normalizeCode(check.value))
+  if (operator === 'not_equals') return !wildcardEquals(normalizeCode(source), normalizeCode(check.value))
+  if (operator === 'matches_regex') return matchesRegex(normalizeCode(source, true), check.value, check.flags)
+  if (operator === 'not_matches_regex') return !matchesRegex(normalizeCode(source, true), check.value, check.flags)
+  return false
+}
+
 export function normalizeTypeName(type) {
   const raw = normalizeOutput(type)
   const aliases = {

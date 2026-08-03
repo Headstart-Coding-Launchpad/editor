@@ -18,6 +18,16 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-08-03
+
+### Electronics: generic code checks and lockable wires
+
+Electronics tasks with a `microcontroller` component can now use the shared generic check types — `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants — alongside the existing `circuit_*` checks. These evaluate against the Micro Controller's MicroPython source, not the raw circuit. See `docs/authoring/electronics.md` (Checks section) for an example.
+
+Wires now support an optional `wire.locked: true` field, mirroring the existing component `locked` convention: a locked wire cannot be deleted or recolored by students (new wires can still be attached to its pins). The builder's wire inspector gained a "Fixed for students" checkbox alongside the existing color select. See `docs/authoring/electronics.md` for the field description.
+
+No lesson migration is required — omitted `wire.locked` behaves exactly as before (unlocked).
+
 ## 2026-07-30
 
 ### Changed grouped subtask titles

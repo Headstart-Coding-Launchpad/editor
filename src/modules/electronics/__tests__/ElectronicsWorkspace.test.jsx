@@ -1,0 +1,163 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import ElectronicsWorkspace from '../ElectronicsWorkspace.jsx'
+import { DEFAULT_CIRCUIT, makeComponent } from '../circuit.js'
+
+function potentiometerCircuit(componentOverrides = {}) {
+  const pot = { ...makeComponent('potentiometer', 1, { row: 2, col: 2 }), ...componentOverrides }
+  return {
+    ...DEFAULT_CIRCUIT,
+    components: [pot],
+    controls: { [pot.id]: { value: 50 } },
+  }
+}
+
+function dragSlider(handle) {
+  fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(handle, { clientX: 116, clientY: 100 })
+  fireEvent.pointerUp(handle, { clientX: 116, clientY: 100 })
+}
+
+describe('ElectronicsWorkspace — on-canvas potentiometer slider', () => {
+  it('drags the slider handle to update the potentiometer value via the same onControl/update path', () => {
+    const circuit = potentiometerCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const handle = document.querySelector('[data-component] circle[data-control-action]')
+    expect(handle).toBeTruthy()
+
+    dragSlider(handle)
+
+    expect(onChange).toHaveBeenCalled()
+    const lastCircuit = onChange.mock.calls.at(-1)[0]
+    expect(lastCircuit.controls[circuit.components[0].id].value).toBe(75)
+  })
+
+  it('does not change the value when the workspace is read-only', () => {
+    const circuit = potentiometerCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} readOnly />)
+
+    const handle = document.querySelector('[data-component] circle[data-control-action]')
+    dragSlider(handle)
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not change the value when the potentiometer is locked outside setup mode', () => {
+    const circuit = potentiometerCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} setupMode={false} />)
+
+    const handle = document.querySelector('[data-component] circle[data-control-action]')
+    dragSlider(handle)
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('allows dragging a locked potentiometer while in setup mode (builder)', () => {
+    const circuit = potentiometerCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} setupMode />)
+
+    const handle = document.querySelector('[data-component] circle[data-control-action]')
+    dragSlider(handle)
+
+    expect(onChange).toHaveBeenCalled()
+  })
+})
+
+function wireCircuit(locked) {
+  const battery = makeComponent('battery', 1, { row: 1, col: 1 })
+  const led = makeComponent('led', 1, { row: 2, col: 4 })
+  return {
+    ...DEFAULT_CIRCUIT,
+    components: [battery, led],
+    wires: [{ id: 'wire1', from: `${battery.id}.positive`, to: `${led.id}.anode`, color: '#ef4444', locked }],
+  }
+}
+
+function selectWire() {
+  const hit = document.querySelector('[data-wire-hit]')
+  fireEvent.pointerDown(hit, { button: 0 })
+}
+
+describe('ElectronicsWorkspace — lockable wires', () => {
+  it('renders and connects a locked wire normally', () => {
+    const circuit = wireCircuit(true)
+    render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+
+    expect(document.querySelectorAll('[data-wire-hit]')).toHaveLength(1)
+    expect(document.querySelectorAll('[data-pin-ref]').length).toBeGreaterThan(0)
+  })
+
+  it('blocks deleting a locked wire via the Delete key and the inspector button', () => {
+    const circuit = wireCircuit(true)
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    selectWire()
+    expect(screen.getByText('Wire')).toBeInTheDocument()
+    const deleteButton = screen.getByText('Delete wire')
+    expect(deleteButton).toBeDisabled()
+
+    const board = document.querySelector('[tabindex]')
+    fireEvent.keyDown(board, { key: 'Delete' })
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(document.querySelectorAll('[data-wire-hit]')).toHaveLength(1)
+  })
+
+  it('blocks recoloring a locked wire', () => {
+    const circuit = wireCircuit(true)
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    selectWire()
+    // The palette also renders a "Wire colour" select for new wires; the
+    // inspector's select for the currently-selected wire renders after it.
+    const colorSelect = screen.getAllByRole('combobox').at(-1)
+    expect(colorSelect).toBeDisabled()
+
+    fireEvent.change(colorSelect, { target: { value: '#111827' } })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('allows deleting and recoloring an unlocked wire', () => {
+    const circuit = wireCircuit(false)
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    selectWire()
+    const colorSelect = screen.getAllByRole('combobox').at(-1)
+    expect(colorSelect).not.toBeDisabled()
+    fireEvent.change(colorSelect, { target: { value: '#111827' } })
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].wires[0].color).toBe('#111827')
+
+    onChange.mockClear()
+    const deleteButton = screen.getByText('Delete wire')
+    expect(deleteButton).not.toBeDisabled()
+    fireEvent.click(deleteButton)
+
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].wires).toHaveLength(0)
+  })
+
+  it('shows a "Fixed for students" lock checkbox in the wire inspector during setup', () => {
+    const circuit = wireCircuit(false)
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} setupMode />)
+
+    selectWire()
+    const lockCheckbox = screen.getByLabelText('Fixed for students')
+    expect(lockCheckbox).not.toBeChecked()
+
+    fireEvent.click(lockCheckbox)
+
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].wires[0].locked).toBe(true)
+  })
+})

@@ -47,6 +47,8 @@ The default board is `18 x 30`. The builder can switch between compact `14 x 20`
 
 Components support `label`, `position`, `rotation`, `pins`, `props`, and optional `locked: true`. Locked starter components are fixed for students: they can attach wires to the pins, but cannot move, delete, or edit the component. The builder can still label and configure them.
 
+Wires support `id`, `from`, `to`, `color`, and optional `locked: true`, mirroring the component convention. A locked wire cannot be deleted or recolored by students; the builder can still toggle its "Fixed for students" checkbox, change its color, or delete it. Students can still attach new wires to the same pins.
+
 Available component types are `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `servo_motor`, `buzzer`, `rgb_led`, `lcd1602`, `microcontroller`, `transistor`, `diode`, `sensor`, and `terminal`.
 
 In the builder, available components can be toggled one at a time or by group: Power, Basics, Outputs, and Control. Lessons still save `availableComponents` as the individual component type array shown above.
@@ -126,6 +128,18 @@ checks:
 | `circuit_control_affects_power` | `control` selector, `component` selector | Opening/closing a switch or button changes whether the target part is powered. |
 | `circuit_path_exists` | `from`, `to` endpoints | A closed connection path exists between matching part pins. |
 | `circuit_path_includes` | `from`, `to` endpoints, `includes` selector | A closed connection path exists and passes through a matching part. |
+
+Electronics tasks with a `microcontroller` component can also use the shared generic code checks — `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants (`code_not_contains`, `code_not_equals`, `code_not_matches_regex`) — the same check types Python, HTML, and Arcade Kit lessons use. These evaluate against the Micro Controller's MicroPython source (`props.code`), not the serialized circuit, so authors can check for specific code patterns alongside circuit-shape checks:
+
+```yaml
+checks:
+  - type: circuit_has_component
+    component: { type: microcontroller }
+  - type: code_contains
+    value: Pin("GP0", Pin.OUT)
+```
+
+If a board has more than one `microcontroller` component, code checks evaluate against the first one found.
 
 Selectors use component type and an optional label:
 

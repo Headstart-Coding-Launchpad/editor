@@ -714,6 +714,29 @@ describe('evaluateCheckWithFeedback', () => {
     expect(result.suggestion).toBe('Add power before the LED.')
   })
 
+  it('evaluates generic code checks against an electronics circuit via context.circuit', () => {
+    const circuit = {
+      components: [{
+        id: 'microcontroller1',
+        type: 'microcontroller',
+        pins: ['3V3', 'GND', 'GP0'],
+        props: { code: 'led = Pin("GP0", Pin.OUT)\nled.on()' },
+      }],
+      wires: [],
+      controls: {},
+    }
+
+    expect(evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'led.on()' }, '', { circuit })).toBe(true)
+    expect(evaluateSingleCheck({ type: 'code_contains', value: 'led.off()' }, '', { circuit })).toBe(false)
+
+    const task = { check: { type: 'code_contains', value: 'led.on()' } }
+    expect(evaluateCheckWithFeedback(task, '', { circuit }).passed).toBe(true)
+
+    // Python/HTML/Arcade lessons never set context.circuit, so their generic
+    // `code` checks keep evaluating against context.code directly (unaffected).
+    expect(evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'print(' }, '', { code: 'print("hi")' })).toBe(true)
+  })
+
   it('supports custom feedback evaluators for Scratch checks', () => {
     const task = {
       check: { type: 'block_used', opcode: 'motion_movesteps' },
