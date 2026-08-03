@@ -295,7 +295,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `electronics/StudentWorkspace.jsx` | Student electronics workspace wrapper: serialized circuit state, reset/check actions, teacher-live/read-only handling |
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs, board sizing, and available component controls |
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |
-| `electronics/CheckEditor.jsx` | Electronics check list editor for `circuit_*` completion and feedback checks |
+| `electronics/CheckEditor.jsx` | Electronics check list editor for `circuit_*` completion and feedback checks, plus a Code subject that reuses `builder/components/task-editor/check-editors/checkEditorUtils.js` and `CheckEditors.jsx`'s `CheckValueEditor` for generic code checks |
 | `arcade/index.js` | Arcade Kit module definition: single-file Python pixel-game task schema and classroom capabilities |
 | `arcade/StudentWorkspace.jsx` | Student Arcade Kit workspace: Python editor, sandboxed game canvas, lesson/type/local asset browser, and Run/Stop controls |
 | `arcade/BuilderWorkspace.jsx` | Builder Arcade Kit code-stage editor and on-demand game preview |

@@ -108,7 +108,7 @@ lcd.print("Headstart")
 
 ## Checks
 
-Electronics checks evaluate from the current board state after circuit edits, simulation updates, or the Check Circuit action. The builder groups them as Safety, Part, Control, and Connection checks, then stores the circuit-specific selector fields such as `component`, `control`, `from`, `to`, and `includes`. `feedbackChecks` use the same circuit check shapes and require a completion `check`. Use `show: on_idle` for guidance after a student pauses editing the circuit, or `show: after_attempt` for feedback after Check Circuit. `mode: nudge` shows guidance without failing; `incorrectChecks` is a legacy alias for blocking feedback.
+Electronics checks evaluate from the current board state after circuit edits, simulation updates, or the Check Circuit action. The builder groups them as Safety, Part, Control, Connection, and Code checks, then stores the circuit-specific selector fields such as `component`, `control`, `from`, `to`, and `includes`. `feedbackChecks` use the same circuit check shapes and require a completion `check`. Use `show: on_idle` for guidance after a student pauses editing the circuit, or `show: after_attempt` for feedback after Check Circuit. `mode: nudge` shows guidance without failing; `incorrectChecks` is a legacy alias for blocking feedback.
 
 ```yaml
 checks:
@@ -129,7 +129,7 @@ checks:
 | `circuit_path_exists` | `from`, `to` endpoints | A closed connection path exists between matching part pins. |
 | `circuit_path_includes` | `from`, `to` endpoints, `includes` selector | A closed connection path exists and passes through a matching part. |
 
-Electronics tasks with a `microcontroller` component can also use the shared generic code checks — `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants (`code_not_contains`, `code_not_equals`, `code_not_matches_regex`) — the same check types Python, HTML, and Arcade Kit lessons use. These evaluate against the Micro Controller's MicroPython source (`props.code`), not the serialized circuit, so authors can check for specific code patterns alongside circuit-shape checks:
+Electronics tasks with a `microcontroller` component can also use the shared generic code checks — `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants (`code_not_contains`, `code_not_equals`, `code_not_matches_regex`) — the same check types Python, HTML, and Arcade Kit lessons use. These evaluate against the Micro Controller's MicroPython source (`props.code`), not the serialized circuit, so authors can check for specific code patterns alongside circuit-shape checks. The Builder's check editor exposes this as a **Code** subject (alongside Safety, Part, Control, and Connection) with the same contains/equals/matches regex operators and wording used for Python and HTML code checks, so authors do not need to hand-edit lesson JSON/YAML to add one:
 
 ```yaml
 checks:
