@@ -27,6 +27,7 @@ export function useTypeAssets(lessonType) {
   return {
     typeStorageAssets: data?.storageAssets ?? [],
     defaultSprites: data?.defaultSprites ?? [],
+    defaultBackdrops: data?.defaultBackdrops ?? [],
     loading,
   }
 }
