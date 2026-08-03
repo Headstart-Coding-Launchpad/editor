@@ -57,6 +57,11 @@ modules:
     prebuiltStacks: []        # optional — drag-in block stacks shown in the toolbox
     codeStages: []            # optional — intermediate stages (label, role?, blocks, prebuiltStacks)
     carryBlocksFrom: null     # optional — carry saved blocks from task ID
+    allowAddSprite: false     # optional — show a student-facing "Add sprite" picker (default false)
+    addSpritePresetIds: []    # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultSprites` ids; omitted/empty = whole library
+    allowAddBackdrop: false   # optional — show a student-facing "Add backdrop" picker (default false)
+    addBackdropPresetIds: []  # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultBackdrops` ids; omitted/empty = whole library
+    allowCreateVariable: false # optional — add a "Make a Variable" button to the Variables flyout (default false)
     check:
       type: sprite_property
       evaluation: after_run
@@ -266,7 +271,9 @@ values can be mixed with builder-authored ones.
 
 ## Public Sprite Presets
 
-`public/scratch-assets/sprites.json` defines reusable sprite definitions. Selected in the builder, copied with a new unique ID. Root-relative costume paths allow sharing across lessons:
+The sprite/backdrop library the builder's own "Add sprite"/"Add backdrop" pickers and the student-facing pickers above draw from is `lessonTypeAssets/scratch.defaultSprites` / `.defaultBackdrops` in Firestore — admin-curated via Admin → Shared Assets → Scratch (`DefaultSpritesEditor` / `DefaultBackdropsEditor` in `SharedAssetsPanel.jsx`), fetched with `useTypeAssets('scratch')`. Selected presets are copied with a new unique ID via `createSpriteFromPreset` / `createBackdropFromPreset` in `src/shared/spritePresets.js`.
+
+`public/scratch-assets/sprites.json` is a legacy static preset file (same shape) that predates the Firestore-based library above and is not currently read by any code path — do not add sprites there.
 
 ```json
 [
@@ -278,6 +285,25 @@ values can be mixed with builder-authored ones.
   }
 ]
 ```
+
+---
+
+## Student-Added Sprites, Backdrops, and Variables
+
+Three per-task toggles let students extend their own project beyond what the author placed, without breaking checks that assume an author-known sprite/variable set:
+
+- `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library.
+- `allowAddBackdrop` / `addBackdropPresetIds` — same pattern for backdrops, sourced from `lessonTypeAssets/scratch.defaultBackdrops` (`DefaultBackdropsEditor`).
+- `allowCreateVariable` — adds a "Make a Variable" button to the Variables toolbox flyout. The student is prompted for a name (must be non-empty and not collide, case-insensitively, with any existing variable name); the new variable becomes available immediately in every variable dropdown block (`data_variable`, `data_setvariableto`, etc.) for every sprite in the task.
+
+**Checks never see these.** A student-added sprite, a student-added backdrop, or a student-created variable is decorative only:
+
+- `sprite_property`, `sprite_property_delta`, `sprite_property_changed`, `block_used`, `blocks_in_order`, `block_count`, and `block_run` checks with no `spriteName` (or a `spriteName` that doesn't match) only ever consider author-authored sprites — a student-added sprite can never become the fallback target.
+- `variable_equals` / `variable_compare` checks reference a `variableName` your task authored; since a student cannot create a variable whose name collides with one that already exists, a student-created variable can never satisfy a check written against an author-defined name.
+
+Both are enforced structurally (author sprites/variables are always distinguishable from student-added ones), not by convention, so no extra authoring care is needed beyond picking `variableName`/`spriteName` values that match what you authored.
+
+**Persistence.** Student-added sprites/backdrops and created variables persist the same way as everything else in the task — saved, carried through (`carryBlocksFrom`), and pushed by remote reset/teacher-live-view — under a `__meta__` key alongside the per-sprite Blockly workspace state, opaque to any code that only stores or forwards the state blob.
 
 ---
 

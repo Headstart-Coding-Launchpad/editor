@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runWorkspace, addPrebuiltStacksToToolbox, addPredefinedBlocksToToolbox, buildAlwaysOpenToolbox, createScratchBlockStack, DEFAULT_TOOLBOX, createRunSignal } from '../scratch'
+import { runWorkspace, addPrebuiltStacksToToolbox, addPredefinedBlocksToToolbox, buildAlwaysOpenToolbox, createScratchBlockStack, DEFAULT_TOOLBOX, createRunSignal, addCreateVariableButtonToToolbox, CREATE_VARIABLE_CALLBACK_KEY } from '../scratch'
 
 // Tests for scratch.js interpreter helpers — pure logic only.
 // Blockly workspace internals (inject, serialization, rendering) are not tested here.
@@ -239,6 +239,64 @@ describe('addPrebuiltStacksToToolbox', () => {
 
     expect(added.type).toBe('motion_movesteps')
     expect(added.inputs.STEPS.shadow.fields.NUM).toBe('50')
+  })
+})
+
+describe('addCreateVariableButtonToToolbox', () => {
+  it('inserts the button ahead of the existing Variables category contents in a JSON toolbox', () => {
+    const result = addCreateVariableButtonToToolbox(DEFAULT_TOOLBOX)
+    const varsCat = result.contents.find(c => c.name === 'Variables')
+
+    expect(varsCat.contents[0]).toEqual({ kind: 'button', text: 'Make a Variable', callbackKey: CREATE_VARIABLE_CALLBACK_KEY })
+    expect(varsCat.contents.slice(1)).toEqual(DEFAULT_TOOLBOX.contents.find(c => c.name === 'Variables').contents)
+    // Original toolbox is untouched.
+    expect(DEFAULT_TOOLBOX.contents.find(c => c.name === 'Variables').contents[0].kind).toBe('block')
+  })
+
+  it('creates a Variables category when the toolbox has none (JSON)', () => {
+    const toolbox = { kind: 'categoryToolbox', contents: [{ kind: 'category', name: 'Motion', colour: '#4C97FF', contents: [{ kind: 'block', type: 'motion_movesteps' }] }] }
+    const result = addCreateVariableButtonToToolbox(toolbox)
+    const varsCat = result.contents.find(c => c.name === 'Variables')
+
+    expect(varsCat.contents).toEqual([{ kind: 'button', text: 'Make a Variable', callbackKey: CREATE_VARIABLE_CALLBACK_KEY }])
+  })
+
+  it('is idempotent for a JSON toolbox that already has the button', () => {
+    const once = addCreateVariableButtonToToolbox(DEFAULT_TOOLBOX)
+    const twice = addCreateVariableButtonToToolbox(once)
+    const varsCat = twice.contents.find(c => c.name === 'Variables')
+
+    expect(varsCat.contents.filter(item => item.kind === 'button')).toHaveLength(1)
+  })
+
+  it('inserts the button into an existing Variables category in an XML toolbox', () => {
+    const xml = '<xml><category name="Variables" colour="#FF8C1A"><block type="data_variable"/></category></xml>'
+    const result = addCreateVariableButtonToToolbox(xml)
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const category = doc.querySelector('category[name="Variables"]')
+
+    expect(category.children[0].tagName.toLowerCase()).toBe('button')
+    expect(category.children[0].getAttribute('callbackkey')).toBe(CREATE_VARIABLE_CALLBACK_KEY)
+    expect(category.children[1].getAttribute('type')).toBe('data_variable')
+  })
+
+  it('creates a Variables category when an XML toolbox has none', () => {
+    const xml = '<xml><category name="Motion" colour="#4C97FF"><block type="motion_movesteps"/></category></xml>'
+    const result = addCreateVariableButtonToToolbox(xml)
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const category = doc.querySelector('category[name="Variables"]')
+
+    expect(category).not.toBeNull()
+    expect(category.querySelector('button')?.getAttribute('callbackkey')).toBe(CREATE_VARIABLE_CALLBACK_KEY)
+  })
+
+  it('is idempotent for an XML toolbox that already has the button', () => {
+    const xml = '<xml><category name="Variables" colour="#FF8C1A"><block type="data_variable"/></category></xml>'
+    const once = addCreateVariableButtonToToolbox(xml)
+    const twice = addCreateVariableButtonToToolbox(once)
+    const doc = new DOMParser().parseFromString(twice, 'text/xml')
+
+    expect(doc.querySelectorAll('button')).toHaveLength(1)
   })
 })
 

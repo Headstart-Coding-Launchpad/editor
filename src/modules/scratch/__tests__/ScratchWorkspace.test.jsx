@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { getSelectableScratchSprites, isSpriteStudentEditable, wrapScratchBubbleText } from '../ScratchWorkspace'
+import {
+  getSelectableScratchSprites,
+  isSpriteStudentEditable,
+  wrapScratchBubbleText,
+  isSpriteCheckable,
+  filterCheckableSpriteWorkspaces,
+  isValidNewVariableName,
+} from '../ScratchWorkspace'
 
 describe('ScratchWorkspace student-editable sprite helpers', () => {
   it('treats sprites as student-editable by default', () => {
@@ -15,6 +22,50 @@ describe('ScratchWorkspace student-editable sprite helpers', () => {
 
     expect(getSelectableScratchSprites(sprites, false)).toEqual(sprites)
     expect(getSelectableScratchSprites(sprites, true)).toEqual([sprites[0]])
+  })
+})
+
+describe('student-added sprite/backdrop check-invisibility', () => {
+  it('treats author-authored sprites as checkable and student-added ones as not', () => {
+    expect(isSpriteCheckable({ id: 'sprite1', name: 'Rocket' })).toBe(true)
+    expect(isSpriteCheckable({ id: 'sprite2', name: 'Rocket', studentAdded: false })).toBe(true)
+    expect(isSpriteCheckable({ id: 'sprite3', name: 'Extra', studentAdded: true })).toBe(false)
+  })
+
+  it('filters student-added sprite workspaces out of check evaluation, keeping authored ones (and their order)', () => {
+    const spriteWorkspaces = [
+      { id: 'sprite1', name: 'Sprite 1' },
+      { id: 'sprite2', name: 'Extra', studentAdded: true },
+      { id: 'sprite3', name: 'Sprite 3' },
+    ]
+
+    expect(filterCheckableSpriteWorkspaces(spriteWorkspaces)).toEqual([spriteWorkspaces[0], spriteWorkspaces[2]])
+  })
+
+  it('handles an empty/missing list', () => {
+    expect(filterCheckableSpriteWorkspaces([])).toEqual([])
+    expect(filterCheckableSpriteWorkspaces(undefined)).toEqual([])
+  })
+})
+
+describe('isValidNewVariableName', () => {
+  const existing = [{ name: 'score' }, { name: 'Lives' }]
+
+  it('rejects empty or whitespace-only names', () => {
+    expect(isValidNewVariableName('', existing)).toBe(false)
+    expect(isValidNewVariableName('   ', existing)).toBe(false)
+    expect(isValidNewVariableName(undefined, existing)).toBe(false)
+  })
+
+  it('rejects a name that collides case-insensitively with an existing variable', () => {
+    expect(isValidNewVariableName('score', existing)).toBe(false)
+    expect(isValidNewVariableName('SCORE', existing)).toBe(false)
+    expect(isValidNewVariableName('lives', existing)).toBe(false)
+  })
+
+  it('accepts a trimmed, non-colliding name', () => {
+    expect(isValidNewVariableName('  combo  ', existing)).toBe(true)
+    expect(isValidNewVariableName('combo', [])).toBe(true)
   })
 })
 

@@ -14,7 +14,6 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/code`, `/playground/:type`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
 | `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, composed-lesson creation, restore/save dialogs |
-| `src/builder/spritePresets.js` | Pure reusable Scratch sprite preset validation and unique lesson-sprite creation helpers |
 
 ---
 
@@ -40,7 +39,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
-| `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite editor |
+| `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite/backdrop library editors (`DefaultSpritesEditor`, `DefaultBackdropsEditor`) |
 
 ---
 
@@ -274,10 +273,10 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
 | `scratch/index.js` | Scratch module definition |
 | `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
-| `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
+| `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds, `CREATE_VARIABLE_CALLBACK_KEY`/`addCreateVariableButtonToToolbox` flyout button injection; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
 | `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |
 | `scratch/scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
-| `scratch/ScratchWorkspace.jsx` | Full Scratch IDE: multi-sprite Blockly workspaces, stage canvas, sprite drag, check evaluation |
+| `scratch/ScratchWorkspace.jsx` | Full Scratch IDE: multi-sprite Blockly workspaces, stage canvas, sprite drag, check evaluation; author-gated (`task.allowAddSprite`/`allowAddBackdrop`/`allowCreateVariable`) student "Add sprite"/"Add backdrop" pickers and a runtime "Make a Variable" flyout button — all decorative/check-invisible (`isSpriteCheckable`, `filterCheckableSpriteWorkspaces`, `isValidNewVariableName`), persisted under a `__meta__` key alongside the per-sprite Blockly state |
 | `scratch/StudentWorkspace.jsx` | Scratch workspace with Reset Blocks button (extracted from `LessonTaskContent`) |
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
@@ -355,10 +354,11 @@ Each `index.js` exports a default object with:
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
+| `spritePresets.js` | Pure Scratch sprite/backdrop preset validation, unique lesson-sprite/backdrop creation, and admin-library-vs-author-subset resolution (`resolvePresetLibrary`) — shared by the builder's author-side "Add sprite"/"Add backdrop" pickers and the student-facing runtime pickers in `ScratchWorkspace.jsx` |
 | `storageAssets.js` | Pure Firebase Storage asset metadata merge helper: folder listing is inventory, schema entries preserve per-file options |
 | `useAssets.js` | Hook for fetching `public/assets/manifest.json` (returns empty arrays when absent); exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` for static asset paths — currently returns empty everywhere |
 | `useLessonStorageAssets.js` | Hook for listing `lessons/{lessonId}/assets/` in Firebase Storage and merging discovered files with optional `lesson.storageAssets` metadata |
-| `useTypeAssets.js` | Hook for fetching `lessonTypeAssets/{type}` from Firestore; returns `typeStorageAssets` and `defaultSprites` for type-wide shared files and Scratch sprite defaults |
+| `useTypeAssets.js` | Hook for fetching `lessonTypeAssets/{type}` from Firestore; returns `typeStorageAssets`, `defaultSprites`, and `defaultBackdrops` for type-wide shared files and the Scratch sprite/backdrop libraries |
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
