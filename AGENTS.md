@@ -64,6 +64,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Authoring a Scratch lesson (sprites, opcodes, checks, examples) | `docs/authoring/scratch.md` |
 | Authoring a Filesystem lesson (task fields, fs checks, examples) | `docs/authoring/filesystem.md` |
 | Authoring a Desktop lesson (windowed shell, File Manager app, desktop checks) | `docs/authoring/desktop.md` |
+| Desktop module status/roadmap (what's built, what's left) | `docs/architecture/desktop-module-roadmap.md` |
 | Authoring an Electronics lesson (breadboard fields, circuit checks, examples) | `docs/authoring/electronics.md` |
 | Quiz sub-types and quiz check types in detail | `docs/authoring/quiz-tasks.md` |
 | Lesson JSON field reference (cross-cutting schema) | `docs/authoring/lesson-schema.md` |

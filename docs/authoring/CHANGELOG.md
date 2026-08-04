@@ -28,6 +28,14 @@ New check types: `fs_recycle_bin` (`is_in`/`not_in`), `window_state` (`opened`/`
 
 This first release ships File Manager only — Text Editor, Image Viewer, Paint, and a simulated Browser/search engine are planned for later releases. The support-stage reveal ladder is not available for Desktop tasks yet, matching the Filesystem module. See `docs/authoring/desktop.md`.
 
+### Added Text Editor and Image Viewer apps to the Desktop module
+
+Two new Desktop-module apps: **Text Editor** (plain text, no rich formatting yet) and **Image Viewer** (read-only, zoom + next/prev). Opening a file in File Manager now launches the matching app as its own window instead of showing an inline preview, regardless of `availableApps` — `availableApps` (now `fileManager`/`textEditor`/`imageViewer`, with a Builder checkbox picker) only controls which app icons appear on the desktop for standalone launch.
+
+Text Editor is the platform's first explicit-save UI — content lives in a window's local `draftContent` until Save/Save As/Ctrl+S commits it, unlike every other module type's continuous autosave. A window with unsaved changes shows a `•` in its title and asks for confirmation before closing. Window objects gained two optional fields: `filePath` and `draftContent`; several Text Editor windows can now be open at once (windows dedupe by `(appId, filePath)`, not `appId` alone).
+
+No new check types: `window_state` already worked generically by `appId`, and `fs_opened` already worked off the same `openFile` interaction context File Manager uses — both new apps just report through it. See `docs/authoring/desktop.md`.
+
 ## 2026-08-03
 
 ### Added student-added sprites/backdrops and student-created variables (Scratch)

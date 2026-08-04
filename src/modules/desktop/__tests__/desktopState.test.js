@@ -11,6 +11,7 @@ import {
   setWindowMaximized,
   closeWindow,
   openWindow,
+  isWindowDirty,
   arrangeSideBySide,
 } from '../desktopState.js'
 
@@ -83,6 +84,32 @@ describe('desktopState', () => {
     const reopened = openWindow(minimizedFirst, 'fileManager')
     expect(reopened.windows).toHaveLength(2)
     expect(reopened.windows.find(w => w.appId === 'fileManager').minimized).toBe(false)
+  })
+
+  it('openWindow with a filePath opens a separate window per file, but reuses one for the same file', () => {
+    let state = makeDefaultDesktop()
+    state = openWindow(state, 'textEditor', { filePath: '/a.txt' })
+    state = openWindow(state, 'textEditor', { filePath: '/b.txt' })
+    expect(state.windows.filter(w => w.appId === 'textEditor')).toHaveLength(2)
+
+    const reopened = openWindow(state, 'textEditor', { filePath: '/a.txt' })
+    expect(reopened.windows.filter(w => w.appId === 'textEditor')).toHaveLength(2)
+  })
+
+  it('openWindow with no filePath still dedupes to a single window per app', () => {
+    let state = makeDefaultDesktop()
+    state = openWindow(state, 'imageViewer')
+    const reopened = openWindow(state, 'imageViewer')
+    expect(reopened.windows.filter(w => w.appId === 'imageViewer')).toHaveLength(1)
+  })
+
+  it('isWindowDirty is false for windows with no draftContent, and compares draftContent against saved fs otherwise', () => {
+    const fs = { '/a.txt': { type: 'file', content: 'saved' } }
+    expect(isWindowDirty({ appId: 'fileManager' }, fs)).toBe(false)
+    expect(isWindowDirty({ appId: 'textEditor', filePath: '/a.txt', draftContent: 'saved' }, fs)).toBe(false)
+    expect(isWindowDirty({ appId: 'textEditor', filePath: '/a.txt', draftContent: 'edited' }, fs)).toBe(true)
+    expect(isWindowDirty({ appId: 'textEditor', filePath: null, draftContent: '' }, fs)).toBe(false)
+    expect(isWindowDirty({ appId: 'textEditor', filePath: null, draftContent: 'untitled text' }, fs)).toBe(true)
   })
 
   it('arrangeSideBySide places two windows edge to edge across the viewport', () => {

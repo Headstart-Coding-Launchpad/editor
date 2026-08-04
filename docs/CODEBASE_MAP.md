@@ -239,7 +239,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), feedback checks with targeted stage offers, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
 | `PythonTaskWorkspace.jsx` | Python code editor + run controls panel for the builder (starter/complete/stage tabs) |
 | `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
-| `DesktopTaskWorkspace.jsx` | Desktop starter/complete filesystem tree editor panel for the builder (reuses `FsTreeEditor` against `starterDesktop.fs`/`completeDesktop.fs`), plus `startsInDir` |
+| `DesktopTaskWorkspace.jsx` | Desktop starter/complete filesystem tree editor panel for the builder (reuses `FsTreeEditor` against `starterDesktop.fs`/`completeDesktop.fs`), plus `startsInDir` and an `availableApps` checkbox picker |
 | `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |
 | `ScratchTaskSetup.jsx` | Scratch block editor modal and setup summary; owns all scratch-specific state and handlers |
 
@@ -293,15 +293,18 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `filesystem/BuilderWorkspace.jsx` | Re-export of `FilesystemTaskWorkspace` |
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
 | `desktop/index.js` | Desktop module definition |
-| `desktop/desktopState.js` | Desktop state shape (`{ fs, recycleBin, windows }`), window CRUD helpers (`openWindow`, `moveWindow`, `resizeWindow`, `setWindowMinimized`, `setWindowMaximized`, `closeWindow`, `focusWindow`, `arrangeSideBySide`), serialize/deserialize |
+| `desktop/desktopState.js` | Desktop state shape (`{ fs, recycleBin, windows }`), window CRUD helpers (`openWindow` — dedupes by `(appId, filePath)`, `moveWindow`, `resizeWindow`, `setWindowMinimized`, `setWindowMaximized`, `closeWindow`, `focusWindow`, `arrangeSideBySide`, `isWindowDirty`), serialize/deserialize |
 | `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `evaluateDesktopCheck` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
 | `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*` and desktop-specific check definitions |
 | `desktop/Desktop.jsx` | Desktop shell: background, app icon grid, taskbar with clock and open-window buttons |
 | `desktop/WindowManager.jsx` | Renders open windows for the current desktop state, wires drag/resize/minimize/maximize/close/focus to `desktopState.js` |
 | `desktop/Window.jsx` | Window chrome: draggable title bar, resize handle, minimize/maximize/close controls |
-| `desktop/apps/fileManager/FileManagerApp.jsx` | File Manager "app": wraps `FilesystemTask`, adds a Recycle Bin panel, search, and sort |
+| `desktop/apps/fileManager/FileManagerApp.jsx` | File Manager "app": wraps `FilesystemTask`, adds a Recycle Bin panel, search, and sort; calls `onOpenFile` on file open instead of showing `FilesystemTask`'s inline preview |
 | `desktop/apps/fileManager/recycleBin.js` | Soft-delete/restore layered on the filesystem module's pure operations, without modifying them |
-| `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` |
+| `desktop/apps/textEditor/TextEditorApp.jsx` | Text Editor "app": plain-text editor with local `draftContent`/dirty tracking and explicit Open/Save/Save As (no autosave) |
+| `desktop/apps/imageViewer/ImageViewerApp.jsx` | Image Viewer "app": read-only image display, zoom, and Prev/Next across sibling images in a folder |
+| `desktop/apps/shared/FileDialog.jsx` | Shared Open/Save As dialog (folder navigation, New Folder, overwrite confirm) used by Text Editor and Image Viewer |
+| `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler |
 | `desktop/BuilderWorkspace.jsx` | Re-export of `DesktopTaskWorkspace` |
 | `desktop/CheckEditor.jsx` | `DesktopCheckListEditor` wrapper |
 | `desktop/TeacherLiveView.jsx` | Reuses `Desktop` read-only or sandbox-editable against `displayState` |

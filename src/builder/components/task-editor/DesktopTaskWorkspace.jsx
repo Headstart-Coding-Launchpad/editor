@@ -2,6 +2,12 @@ import { CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
 import { FsTreeEditor } from '../../../modules/filesystem/filesystemEditors'
 import { makeDefaultDesktop } from '../../../modules/desktop/desktopState'
 
+const APP_OPTIONS = [
+  { id: 'fileManager', label: 'File Manager' },
+  { id: 'textEditor', label: 'Text Editor' },
+  { id: 'imageViewer', label: 'Image Viewer' },
+]
+
 export default function DesktopTaskWorkspace({
   task, lesson, onUpdate,
   codeTab, codeStages,
@@ -17,6 +23,13 @@ export default function DesktopTaskWorkspace({
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
+  }
+
+  function toggleApp(appId) {
+    const next = availableApps.includes(appId)
+      ? availableApps.filter(id => id !== appId)
+      : [...availableApps, appId]
+    set('availableApps', next.length ? next : ['fileManager'])
   }
 
   function updateStage(idx, updates) {
@@ -115,10 +128,29 @@ export default function DesktopTaskWorkspace({
                 Directory the File Manager window opens in. Leave blank to start at the root.
               </p>
             </div>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: 0 }}>
-              Available apps: File Manager (the only app in this release). The File Manager window
-              opens by default with a seeded <code>/Downloads/</code> folder and its own Recycle Bin.
-            </p>
+            <div>
+              <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'block', marginBottom: 6 }}>
+                Available apps
+              </label>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                {APP_OPTIONS.map(opt => (
+                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)' }}>
+                    <input
+                      type="checkbox"
+                      checked={availableApps.includes(opt.id)}
+                      onChange={() => toggleApp(opt.id)}
+                      disabled={opt.id === 'fileManager' && availableApps.length === 1}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '6px 0 0' }}>
+                Icons for the checked apps appear on the desktop. Opening a file from File Manager always
+                launches Text Editor or Image Viewer as needed, even if unchecked here. The File Manager
+                window opens by default with a seeded <code>/Downloads/</code> folder and its own Recycle Bin.
+              </p>
+            </div>
           </div>
         )}
       </div>

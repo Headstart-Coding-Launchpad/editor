@@ -7,6 +7,7 @@ import {
   setWindowMinimized,
   setWindowMaximized,
   closeWindow,
+  isWindowDirty,
 } from './desktopState.js'
 
 // Renders every open window for the current desktop state and wires window-chrome
@@ -33,6 +34,15 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
     onStateChange(focusWindow(state, windowId))
   }
 
+  // Generic unsaved-changes guard: any window carrying a `draftContent` buffer (Text Editor)
+  // is checked against its saved fs content before closing — apps that never set
+  // `draftContent` (File Manager, Image Viewer) are never dirty and close immediately.
+  function requestClose(win) {
+    if (disabled) return
+    if (isWindowDirty(win, state.fs) && !window.confirm('You have unsaved changes. Close this window anyway?')) return
+    onStateChange(closeWindow(state, win.id))
+  }
+
   const sortedWindows = [...state.windows].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
 
   return (
@@ -44,7 +54,7 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
           <Window
             key={win.id}
             win={win}
-            title={app.title}
+            title={app.windowTitle ? app.windowTitle(win, state) : app.title}
             icon={app.icon}
             isFocused={!disabled && focusedId === win.id}
             bounds={bounds}
@@ -53,7 +63,7 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
             onResize={(w, h) => !disabled && onStateChange(resizeWindow(state, win.id, w, h))}
             onMinimize={minimized => !disabled && onStateChange(setWindowMinimized(state, win.id, minimized))}
             onMaximize={maximized => !disabled && onStateChange(setWindowMaximized(state, win.id, maximized))}
-            onClose={() => !disabled && onStateChange(closeWindow(state, win.id))}
+            onClose={() => requestClose(win)}
           >
             {app.render({ win, state, onStateChange, disabled, focused: focusedId === win.id })}
           </Window>

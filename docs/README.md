@@ -62,6 +62,11 @@ Proposed technical specification for backward-compatible multi-workspace compose
 
 **Load when:** implementing or reviewing composed lessons, module-aware task routing, scoped sandbox persistence, or the first standalone playgrounds.
 
+### [architecture/desktop-module-roadmap.md](architecture/desktop-module-roadmap.md)
+Status and phased roadmap for the `desktop` lesson module (windowed desktop shell + File Manager, replacing/superseding the plain `filesystem` panel for the Digital Literacy Foundations course). Tracks what Phase 1 shipped and what Phases 2–4 (Text Editor/Image Viewer, simulated Browser/search engine, Paint/hints/accessibility) still need.
+
+**Load when:** picking up or planning further Desktop module work, or checking what's built vs. outstanding.
+
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
 

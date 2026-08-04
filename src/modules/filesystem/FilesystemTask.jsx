@@ -19,12 +19,12 @@ const ICON_FILE = '📄'
 const ICON_IMG = '🖼️'
 const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp']
 
-function isImage(path) {
+export function isImage(path) {
   const lower = path.toLowerCase()
   return IMAGE_EXTS.some(ext => lower.endsWith(ext))
 }
 
-function imagePreviewSrc(path, entry, assetsPath, assets) {
+export function imagePreviewSrc(path, entry, assetsPath, assets) {
   if (entry?.src) return resolveAssetFileUrl(assetsPath, entry.src)
   const name = entryName(path)
   const asset = assets.find(assetPath => assetPath === name || assetPath.endsWith('/' + name))
@@ -357,7 +357,7 @@ function AddressBar({ currentDir, onNavigate }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false, initialDir = '/', onDeletePath, extraToolbarItems = null }) {
+export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false, initialDir = '/', onDeletePath, extraToolbarItems = null, onOpenFile }) {
   const [currentDir, setCurrentDir] = useState(initialDir)
   const [selected, setSelected] = useState(null)
   const [openFile, setOpenFile] = useState(null)
@@ -399,16 +399,17 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   function handleSelect(path) {
     setSelected(path)
     setRenamingPath(null)
-    if (!path.endsWith('/') && !isImage(path)) {
-      setOpenFile(path)
-      onInteraction?.({ currentDir, openFile: path })
-    } else if (path.endsWith('/')) {
+    if (path.endsWith('/')) {
       setOpenFile(null)
       onInteraction?.({ currentDir, openFile: null })
-    } else {
-      setOpenFile(path) // image
-      onInteraction?.({ currentDir, openFile: path })
+      return
     }
+    // When onOpenFile is provided (the Desktop module's File Manager app), opening a file
+    // launches a Text Editor/Image Viewer window instead of this component's own inline
+    // preview — local openFile stays null so showEditor/showImage below never render.
+    if (onOpenFile) onOpenFile(path)
+    else setOpenFile(path)
+    onInteraction?.({ currentDir, openFile: path })
   }
 
   function handleNewFolder(name) {
@@ -421,8 +422,9 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
     const newPath = currentDir === '/' ? '/' + name : currentDir + name
     onFsChange(createEntry(fs, newPath, 'file', ''))
     setCreating(null)
-    setOpenFile(newPath)
     setSelected(newPath)
+    if (onOpenFile) onOpenFile(newPath)
+    else setOpenFile(newPath)
     onInteraction?.({ currentDir, openFile: newPath })
   }
 

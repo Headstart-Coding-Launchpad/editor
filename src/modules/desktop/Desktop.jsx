@@ -118,7 +118,7 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
               }}
             >
               <span>{app.icon}</span>
-              <span>{app.title}</span>
+              <span>{app.windowTitle ? app.windowTitle(win, state) : app.title}</span>
             </button>
           )
         })}

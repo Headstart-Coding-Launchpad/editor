@@ -5,8 +5,11 @@ import { DEFAULT_FS } from '../filesystem/filesystem.js'
 // {
 //   fs: { "/": { type: 'dir' }, "/Downloads/": { type: 'dir' }, ... }, // same flat map as filesystem.js
 //   recycleBin: [{ path, entry, deletedAt, originalParent }],
-//   windows: [{ id, appId, x, y, width, height, minimized, maximized, zIndex }],
+//   windows: [{ id, appId, x, y, width, height, minimized, maximized, zIndex, filePath? }],
 // }
+//
+// `filePath` is optional and only meaningful for apps that can show several windows at
+// once (Text Editor); it's the path of the file that window is displaying/editing.
 
 export const DEFAULT_DESKTOP_FS = { ...DEFAULT_FS, '/Downloads/': { type: 'dir' } }
 
@@ -102,8 +105,23 @@ export function closeWindow(state, windowId) {
   }
 }
 
+// A window is "dirty" (has unsaved edits) when it carries a `draftContent` buffer that
+// differs from what's actually saved in `fs` at its `filePath` (or, for an untitled window
+// with no filePath yet, differs from empty). Only apps that opt in by setting `draftContent`
+// on their window (Text Editor) are ever dirty — File Manager windows never set it.
+export function isWindowDirty(win, fs) {
+  if (win?.draftContent === undefined) return false
+  const saved = win.filePath ? (fs?.[win.filePath]?.content ?? '') : ''
+  return win.draftContent !== saved
+}
+
+// Opens a window for `appId`, or restores/focuses one already open for the same
+// (appId, filePath) pair. `filePath` is omitted for singleton apps (File Manager, or
+// Image Viewer/Text Editor launched blank) so those keep today's one-window-per-app
+// behaviour; passing a filePath lets several Text Editor windows be open at once.
 export function openWindow(state, appId, overrides = {}) {
-  const existing = state.windows.find(w => w.appId === appId)
+  const filePath = overrides.filePath ?? null
+  const existing = state.windows.find(w => w.appId === appId && (w.filePath ?? null) === filePath)
   if (existing) return setWindowMinimized(focusWindow(state, existing.id), existing.id, false)
   const maxZ = Math.max(0, ...state.windows.map(w => w.zIndex ?? 0))
   const win = {
