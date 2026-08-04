@@ -48,34 +48,40 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
             style={s.metaRailCollapsed}
           />
         ) : (
-          <AnimatedPanelShell animate>
-            <div style={s.metaSection}>
-              <div style={s.metaHeader}>
-                <span style={s.metaHeaderLabel}>Authoring metadata (author-only)</span>
-                <CollapseTabButton
-                  onClick={() => setMetaCollapsed(true)}
-                  direction="left"
-                  title="Collapse authoring metadata"
-                  ariaLabel="Collapse authoring metadata"
-                  style={s.metaCollapseBtn}
-                />
+          // AnimatedPanelShell's wrapper div is `flex: 1`, which is inert inside TaskEditor's
+          // height:auto form layout but — inside this view's height:100% flex column — would
+          // otherwise claim an equal share of remaining space alongside `studentWrap` and leave
+          // dead space beneath the (much smaller, capped) metaSection. Pin it to content height.
+          <div style={s.metaShellFix}>
+            <AnimatedPanelShell animate>
+              <div style={s.metaSection}>
+                <div style={s.metaHeader}>
+                  <span style={s.metaHeaderLabel}>Authoring metadata (author-only)</span>
+                  <CollapseTabButton
+                    onClick={() => setMetaCollapsed(true)}
+                    direction="left"
+                    title="Collapse authoring metadata"
+                    ariaLabel="Collapse authoring metadata"
+                    style={s.metaCollapseBtn}
+                  />
+                </div>
+                <div style={s.metaBody}>
+                  {intent && (
+                    <div style={s.metaField}>
+                      <span style={s.metaFieldLabel}>Authoring intent</span>
+                      <MarkdownRenderer content={currentTask.intent} disableCopy />
+                    </div>
+                  )}
+                  {taskActivity && (
+                    <div style={s.metaField}>
+                      <span style={s.metaFieldLabel}>Task activity</span>
+                      <p style={s.metaFieldText}>{currentTask.taskActivity}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={s.metaBody}>
-                {intent && (
-                  <div style={s.metaField}>
-                    <span style={s.metaFieldLabel}>Authoring intent</span>
-                    <MarkdownRenderer content={currentTask.intent} disableCopy />
-                  </div>
-                )}
-                {taskActivity && (
-                  <div style={s.metaField}>
-                    <span style={s.metaFieldLabel}>Task activity</span>
-                    <p style={s.metaFieldText}>{currentTask.taskActivity}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </AnimatedPanelShell>
+            </AnimatedPanelShell>
+          </div>
         )
       )}
 
@@ -135,6 +141,9 @@ const s = {
     flexShrink: 0,
     margin: '10px 16px 0',
     width: 'auto',
+  },
+  metaShellFix: {
+    flex: 'none',
   },
   metaSection: {
     flexShrink: 0,
