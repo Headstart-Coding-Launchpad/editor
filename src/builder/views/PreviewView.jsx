@@ -3,14 +3,24 @@ import StudentView from '../../app/views/StudentView'
 import TeacherFeedbackModal from '../../app/components/TeacherFeedbackModal'
 import { useAuth } from '../../auth/useAuth'
 import { flattenTasks } from '../../shared/taskUtils'
+import { MarkdownRenderer } from '../../shared/markdown'
+import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
 
+// This view is only reachable from the Builder (`/builder`, a teacher/author workflow operating
+// on a locally-loaded lesson draft) — never from the student-facing `/lesson/:lessonId` route.
+// Authoring metadata (intent, task activity) is therefore safe to render here, strictly for the
+// person already editing this lesson; it must never be added to StudentView itself.
 export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
   const { user } = useAuth()
   const [currentTaskId, setCurrentTaskId] = useState(initialTaskId ?? null)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [metaCollapsed, setMetaCollapsed] = useState(() => lesson?.draft !== true)
 
   const flatTasks = flattenTasks(lesson?.tasks ?? [])
   const currentTask = flatTasks.find(t => t.id === currentTaskId) ?? null
+  const intent = typeof currentTask?.intent === 'string' ? currentTask.intent.trim() : ''
+  const taskActivity = typeof currentTask?.taskActivity === 'string' ? currentTask.taskActivity.trim() : ''
+  const hasMeta = !!(intent || taskActivity)
 
   return (
     <div style={s.page}>
@@ -25,6 +35,48 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
           </button>
         </div>
       </div>
+
+      {hasMeta && (
+        metaCollapsed ? (
+          <CollapsedPanelRail
+            onClick={() => setMetaCollapsed(false)}
+            label="Authoring metadata"
+            direction="down"
+            orientation="horizontal"
+            title="Show authoring metadata"
+            ariaLabel="Show authoring metadata"
+            style={s.metaRailCollapsed}
+          />
+        ) : (
+          <AnimatedPanelShell animate>
+            <div style={s.metaSection}>
+              <div style={s.metaHeader}>
+                <span style={s.metaHeaderLabel}>Authoring metadata (author-only)</span>
+                <CollapseTabButton
+                  onClick={() => setMetaCollapsed(true)}
+                  direction="left"
+                  title="Collapse authoring metadata"
+                  ariaLabel="Collapse authoring metadata"
+                  style={s.metaCollapseBtn}
+                />
+              </div>
+              {intent && (
+                <div style={s.metaField}>
+                  <span style={s.metaFieldLabel}>Authoring intent</span>
+                  <MarkdownRenderer content={currentTask.intent} disableCopy />
+                </div>
+              )}
+              {taskActivity && (
+                <div style={s.metaField}>
+                  <span style={s.metaFieldLabel}>Task activity</span>
+                  <p style={s.metaFieldText}>{currentTask.taskActivity}</p>
+                </div>
+              )}
+            </div>
+          </AnimatedPanelShell>
+        )
+      )}
+
       <div style={s.studentWrap}>
         <StudentView
           lesson={lesson}
@@ -76,6 +128,57 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
+  },
+  metaRailCollapsed: {
+    flexShrink: 0,
+    margin: '10px 16px 0',
+    width: 'auto',
+  },
+  metaSection: {
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: 12,
+    margin: '10px 16px 0',
+    borderRadius: 8,
+    border: '1px dashed #d8b4fe',
+    background: '#faf5ff',
+  },
+  metaHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  metaHeaderLabel: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.78rem',
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: 'var(--colour-primary)',
+  },
+  metaCollapseBtn: {
+    width: 26,
+    fontSize: 15,
+  },
+  metaField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  metaFieldLabel: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.76rem',
+    color: '#6b5b7d',
+  },
+  metaFieldText: {
+    margin: 0,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    color: 'var(--colour-text)',
+    lineHeight: 1.5,
   },
   feedbackBtn: {
     fontSize: 13,

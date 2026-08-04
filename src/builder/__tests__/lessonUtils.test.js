@@ -467,6 +467,40 @@ describe('normalizeTasksForExport', () => {
     }])
   })
 
+  it('retains taskActivity for information tasks alongside intent', () => {
+    expect(normalizeTasksForExport([{
+      id: 4,
+      taskType: 'information',
+      informationType: 'introduction',
+      title: 'Welcome',
+      explainer: 'Hello',
+      intent: 'Warm the class up.',
+      taskActivity: 'Pair-share discussion',
+    }])).toEqual([{
+      id: 1,
+      taskType: 'information',
+      informationType: 'introduction',
+      title: 'Welcome',
+      explainer: 'Hello',
+      intent: 'Warm the class up.',
+      taskActivity: 'Pair-share discussion',
+    }])
+  })
+
+  it('omits taskActivity from information task export when not set', () => {
+    const exported = normalizeTasksForExport([{
+      id: 4, taskType: 'information', informationType: 'introduction', title: 'Welcome', explainer: 'Hello',
+    }])
+    expect(exported[0].taskActivity).toBeUndefined()
+  })
+
+  it('passes taskActivity through for non-information task types via the generic export path', () => {
+    const exported = normalizeTasksForExport([{
+      id: 5, title: 'Loop practice', starterCode: 'print(1)', taskActivity: 'Whiteboard demo',
+    }])
+    expect(exported[0].taskActivity).toBe('Whiteboard demo')
+  })
+
   it('preserves original task IDs when preserveIds is true', () => {
     const exported = normalizeTasksForExport([{
       id: 70,

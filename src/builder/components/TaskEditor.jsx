@@ -15,12 +15,16 @@ import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
 import { getLessonModule } from '../../modules/registry'
 import { LESSON_MODULE_TYPES } from '../../shared/composedLesson'
+import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
 
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
 
 export default function TaskEditor({ task, lesson, onUpdate, parentGroup, composedLesson = null }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
+  // Visible by default while authoring a Draft lesson; collapsed by default once Draft is off,
+  // since this section is author-only and adds noise for a lesson ready for full validation.
+  const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(() => lesson.draft !== true)
   const usesUnifiedCodeStages = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lesson.type)
   const [codeTab, setCodeTab] = useState(usesUnifiedCodeStages ? 'stage_0' : 'starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
@@ -309,19 +313,54 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         />
       </Field>
 
-      <Field label="Authoring intent (Markdown)" hint="Visible to authors only; students never see this field.">
-        <ExplainerEditor
-          title={task.title || 'Task intent'} value={task.intent ?? ''} onChange={value => set('intent', value)}
-          lessonType={lesson.type} inlineCodeLanguages={explainerInlineCodeLanguages}
-          assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={allStorageAssets}
+      {authoringMetaCollapsed ? (
+        <CollapsedPanelRail
+          onClick={() => setAuthoringMetaCollapsed(false)}
+          label="Authoring metadata"
+          direction="down"
+          orientation="horizontal"
+          title="Show authoring metadata"
+          ariaLabel="Show authoring metadata"
         />
-      </Field>
+      ) : (
+        <AnimatedPanelShell animate>
+          <div style={s.authoringMetaSection}>
+            <div style={s.authoringMetaHeader}>
+              <span style={s.authoringMetaHeaderLabel}>Authoring metadata</span>
+              <CollapseTabButton
+                onClick={() => setAuthoringMetaCollapsed(true)}
+                direction="left"
+                title="Collapse authoring metadata"
+                ariaLabel="Collapse authoring metadata"
+                style={s.authoringMetaCollapseBtn}
+              />
+            </div>
 
-      {(task.intentLastChangedAt || task.taskLastChangedAt) && (
-        <div style={s.auditMeta}>
-          {task.intentLastChangedAt && <span>Intent updated: {String(task.intentLastChangedAt)}</span>}
-          {task.taskLastChangedAt && <span>Task content updated: {String(task.taskLastChangedAt)}</span>}
-        </div>
+            <Field label="Authoring intent (Markdown)" hint="Visible to authors only; students never see this field.">
+              <ExplainerEditor
+                title={task.title || 'Task intent'} value={task.intent ?? ''} onChange={value => set('intent', value)}
+                lessonType={lesson.type} inlineCodeLanguages={explainerInlineCodeLanguages}
+                assets={lesson.assets ?? []} assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''} storageAssets={allStorageAssets}
+              />
+            </Field>
+
+            <Field label="Task activity" hint="Visible to authors only; students never see this field.">
+              <input
+                className="te-input"
+                value={task.taskActivity ?? ''}
+                onChange={e => set('taskActivity', e.target.value)}
+                placeholder="e.g. Pair-share discussion, quick demo, whiteboard sketch"
+              />
+            </Field>
+
+            {(task.intentLastChangedAt || task.taskLastChangedAt) && (
+              <div style={s.auditMeta}>
+                {task.intentLastChangedAt && <span>Intent updated: {String(task.intentLastChangedAt)}</span>}
+                {task.taskLastChangedAt && <span>Task content updated: {String(task.taskLastChangedAt)}</span>}
+              </div>
+            )}
+          </div>
+        </AnimatedPanelShell>
       )}
 
       <Field label="Priority">
@@ -480,7 +519,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       )}
 
       {isInformation && (
-        <TaskPreviewPanel>
+        <TaskPreviewPanel task={task} draft={lesson.draft}>
           <div className="te-info-preview"><InformationTask task={task} lesson={lesson} /></div>
         </TaskPreviewPanel>
       )}
@@ -512,7 +551,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               Students rate their confidence 1–5 (red to green). No options or check needed — any rating counts as complete.
             </div>
           ) : null}
-          <TaskPreviewPanel>
+          <TaskPreviewPanel task={task} draft={lesson.draft}>
             <QuizTask task={task} showQuestion selectedAnswer={quizSelectedAnswer} onSelectAnswer={handleQuizPreviewSelect} submitted={runStatus === 'submitted'} checkPassed={checkResults?.every(r => r.passed) ?? false} />
             {checkResults !== null && (() => {
               const allPassed = checkResults.every(r => r.passed)
@@ -563,6 +602,32 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
 }
 
 const s = {
+  authoringMetaSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 12,
+    borderRadius: 8,
+    border: '1px dashed #d8b4fe',
+    background: '#faf5ff',
+  },
+  authoringMetaHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  authoringMetaHeaderLabel: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.8rem',
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: 'var(--colour-primary)',
+  },
+  authoringMetaCollapseBtn: {
+    width: 26,
+    fontSize: 15,
+  },
   auditMeta: {
     display: 'flex', flexDirection: 'column', gap: 3, padding: '8px 10px', borderRadius: 6,
     background: '#f8fafc', border: '1px solid #e2e8f0', fontFamily: 'var(--font-body)', fontSize: '0.76rem', color: '#64748b',

@@ -24,20 +24,22 @@ export function CollapsedPanelRail({
   onClick,
   label = 'Panel',
   direction = 'left',
+  orientation = 'vertical',
   title = `Show ${label}`,
   ariaLabel = title,
   style,
 }) {
+  const chevron = direction === 'left' ? '<' : direction === 'up' ? '^' : direction === 'down' ? 'v' : '>'
   return (
     <button
       type="button"
-      style={{ ...s.rail, ...style }}
+      style={{ ...(orientation === 'horizontal' ? s.railHorizontal : s.rail), ...style }}
       onClick={onClick}
       title={title}
       aria-label={ariaLabel}
     >
-      <span style={s.railChevron}>{direction === 'left' ? '<' : '>'}</span>
-      <span style={s.railLabel}>{label}</span>
+      <span style={s.railChevron}>{chevron}</span>
+      <span style={orientation === 'horizontal' ? s.railLabelHorizontal : s.railLabel}>{label}</span>
     </button>
   )
 }
@@ -97,6 +99,28 @@ const s = {
     transform: 'rotate(180deg)',
     fontSize: '0.78rem',
     letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+  },
+  railHorizontal: {
+    width: '100%',
+    height: 'auto',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '10px 12px',
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+  },
+  railLabelHorizontal: {
+    fontSize: '0.78rem',
+    letterSpacing: '0.04em',
     textTransform: 'uppercase',
   },
   panelShell: {

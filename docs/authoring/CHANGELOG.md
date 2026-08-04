@@ -47,6 +47,14 @@ re-ticks **Web editor** for them in the Admin Portal's Shared Assets panel.
 
 See `docs/authoring/arcade.md#assets` for details.
 
+### Added `taskActivity` field; authoring intent now previewable
+
+Tasks may now carry an optional `taskActivity` field — a plain-text, author-only note on the intended in-class activity (e.g. "Pair-share discussion"). Like `intent`, it is stored but never shown to students, and it is always optional (not required in Draft). It rides along under the existing generic `taskLastChangedAt` timestamp; it has no dedicated `taskActivityLastChangedAt`.
+
+Authoring intent (and the new `taskActivity`) are now also visible in the Builder's inline student/quiz preview and in the teacher's full read-only lesson preview, in an "Authoring metadata" section above the student-facing content. This section is visible by default while `lesson.draft: true`, and collapsed (one click to expand) once Draft is cleared. Both fields remain strictly author-only in every case — never rendered on any student-facing render path.
+
+See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md` for the field reference.
+
 ## 2026-07-30
 
 ### Changed grouped subtask titles

@@ -124,6 +124,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
         id: newId,
         title: 'New code task',
         intent: '',
+        taskActivity: '',
         explainer: '',
       }
       handleLessonUpdate(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }))
@@ -132,7 +133,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     }
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
-    const newTask = { id: newId, title: '', intent: '', explainer: '', ...defaultTypeFields(prevTask) }
+    const newTask = { id: newId, title: '', intent: '', taskActivity: '', explainer: '', ...defaultTypeFields(prevTask) }
     handleLessonUpdate(prev => {
       const next = [...prev.tasks]
       next.splice(index, 0, newTask)
@@ -149,6 +150,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       id: newId,
       title: '',
       intent: '',
+      taskActivity: '',
       explainer: '',
       ...(isComposedLesson(lesson) ? {} : defaultTypeFields(null)),
     }
@@ -175,6 +177,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       id: newId,
       title: '',
       intent: '',
+      taskActivity: '',
       explainer: '',
       ...(isComposedLesson(lesson) ? {} : defaultTypeFields(prevSubtask, group.moduleType ?? lesson.type)),
     }
