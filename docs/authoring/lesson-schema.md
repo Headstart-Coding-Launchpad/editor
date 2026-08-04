@@ -3,6 +3,7 @@
 Full JSON field reference for cross-cutting fields. For YAML authoring see `docs/authoring/AUTHORING_GUIDE.md` or the basic-field reference at `docs/authoring/lesson-schema-yaml.md`. For type-specific code task fields, checks, and minimal examples see the relevant `docs/authoring/<type>.md` guide.
 
 **Quiz sub-types:** `docs/authoring/quiz-tasks.md`
+**Drag-and-drop runnable code:** see "Code Arrange Task Fields" below
 
 Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson.
 
@@ -66,7 +67,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
-| `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types. |
+| `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types, or `code_arrange` for a drag-and-drop runnable-code task (see "Code Arrange Task Fields" below). |
 | `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `moduleId` | No | string | ID of a named entry in the lesson `modules` array. It distinguishes separate instances of the same workspace type. |
 | `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
@@ -147,6 +148,131 @@ Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `
 | `title` | Yes | Shown in progress UI. |
 | `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata). |
 | `leftContent` | No | Left-pane Markdown for `recap` only. |
+
+---
+
+## Code Arrange Task Fields
+
+`taskType: "code_arrange"` is a drag-and-drop runnable-code task, alongside
+`information` and `quiz` — not a `quiz` sub-type, since `quiz` tasks must
+never carry code/output check fields (see `docs/authoring/quiz-tasks.md`)
+and this task type needs exactly those fields. Students assemble a program
+line by line and run it for real through the Python or HTML pipeline — the
+same Pyodide/HTML run function and the same check evaluator
+(`src/modules/checks.js`) an ordinary code task uses, unmodified. Completion
+is decided by running the assembled code against the task's ordinary
+`check`, not by matching tile identity or order.
+
+Every line in `lines` is authored the same way: as an ordered `parts`
+sequence alternating fixed text and blanks — never parsed out of a `___`
+marker in a text blob. A blank (`{type: "slot", id, code}`) owns its correct
+value; a text segment (`{type: "text", text}`) is fixed, non-draggable
+content. A line that's just a single blank with no surrounding text (e.g.
+`parts: [{type: "slot", id: "L1", code: "for i in range(5):"}]`) behaves
+like a traditional whole draggable line; a line mixing text and blanks
+reads like `for i in range(___):`. There is no separate schema branch for
+either case — it's purely how many/which parts a line has.
+
+There is exactly one shared tile pool for the whole task: every blank's own
+correct code, plus the task-level `distractors` list (`{id, code}[]`). Any
+tile in that pool can be dropped into any blank — whatever tile currently
+sits in a blank, correct or distractor, is exactly what gets spliced into
+the final program and run: a distractor produces a real error or wrong
+output, never a silent exclusion.
+
+Currently supported for `moduleType: python` and `moduleType: html` only.
+`interactionMode`, `tests`, and code carry-through (`carryCodeFrom`) are not
+supported for `code_arrange` in this version — omit them. In the Lesson
+Builder, choose **Arrange** in the task format picker (composed lessons
+only); every line uses the same part-by-part composer (a new line defaults
+to a single blank, the whole-line shape, as a starting point).
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `taskType` | Yes | Must be `"code_arrange"`. |
+| `moduleType` | Yes | `python` or `html` only. Selects which run pipeline executes the assembled code. |
+| `lines` | Yes | Ordered program lines: `{id, parts}[]`. At least one required. One assembled program line (`parts` joined together) is produced per entry, in order, joined by newlines. |
+| `lines[].id` | Yes | Stable string id for the line (Builder list identity/reordering only — not itself a pool tile id). |
+| `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. At least one `slot` part required. |
+| `lines[].parts[].id` | Slot parts | Stable string id; doubles as the id of that blank's own "correct" tile in the task's shared pool. |
+| `lines[].parts[].code` | Slot parts | The exact correct value for this blank. |
+| `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code}[]`. |
+| `entryFile` / `starterFiles` | HTML only | Same shape as ordinary HTML tasks (see `docs/authoring/html.md`); the assembled lines become `entryFile`'s content, so include an entry for it with any placeholder `content` (an empty string is fine). Other files (e.g. `style.css`) are not assembled from tiles. |
+| `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error` checks as an ordinary Python task, or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task — see `docs/authoring/python.md` / `docs/authoring/html.md`. |
+| `feedbackChecks` | No | Same shape as other code tasks. |
+
+### Python Example (a whole-line blank + a line with an inline blank, sharing one pool)
+
+```yaml
+- title: Print the first five even numbers
+  taskType: code_arrange
+  moduleType: python
+  explainer: Drag the line into place and fill in the blank to print 0 2 4 6 8, one per line.
+  lines:
+    - id: L1
+      parts:
+        - type: text
+          text: "for i in range("
+        - type: slot
+          id: S1
+          code: "5"
+        - type: text
+          text: "):"
+    - id: L2
+      parts:
+        - type: slot
+          id: L2
+          code: "    print(i * 2)"
+  distractors:
+    - id: S1d1
+      code: "10"
+    - id: D1
+      code: "    print(i + 2)"
+  check:
+    type: output
+    operator: equals
+    value: |
+      0
+      2
+      4
+      6
+      8
+```
+
+### HTML Example
+
+```yaml
+- title: Arrange a heading and paragraph
+  taskType: code_arrange
+  moduleType: html
+  explainer: Build the page by arranging the lines.
+  entryFile: index.html
+  starterFiles:
+    - name: index.html
+      type: html
+      content: ""
+    - name: style.css
+      type: css
+      content: "h1 { color: navy; }"
+  lines:
+    - id: L1
+      parts:
+        - type: slot
+          id: L1
+          code: "<h1>Hello</h1>"
+    - id: L2
+      parts:
+        - type: slot
+          id: L2
+          code: "<p>Welcome to my page.</p>"
+  distractors:
+    - id: D1
+      code: "<h2>Hello</h2>"
+  check:
+    type: html_element
+    operator: exists
+    selector: h1
+```
 
 ---
 

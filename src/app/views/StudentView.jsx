@@ -303,6 +303,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const isQuizTask = task?.taskType === 'quiz'
   const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
+  const isCodeArrangeTask = task?.taskType === 'code_arrange'
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
   const unifiedCompleteStage = getCompleteStage(task)?.stage
   const hasCompleteSolution = displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
@@ -597,6 +598,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           isQuizTask={isQuizTask}
           isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
           isInformationTask={isInformationTask}
+          isCodeArrangeTask={isCodeArrangeTask}
           displayCode={displayCode}
           displayArcadeDesign={displayArcadeDesign}
           displayFiles={displayFiles}

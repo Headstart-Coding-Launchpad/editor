@@ -96,6 +96,111 @@ describe('validateLesson', () => {
     ]))
   })
 
+  it('validates code_arrange tasks (single-slot lines, shared task-level distractors)', () => {
+    const valid = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Arrange a loop',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [
+        { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'for i in range(3):' }] },
+        { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: '    print(i)' }] },
+      ],
+      distractors: [{ id: 'D1', code: '    print(i * 2)' }],
+      check: { type: 'output_contains', value: '0' },
+      _checkTested: true,
+    }]))
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLesson(lesson('scratch', [{
+      id: 1,
+      title: 'Arrange',
+      taskType: 'code_arrange',
+      moduleType: 'scratch',
+      lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: '' }] }],
+      distractors: [{ id: 'L1', code: 'dup id' }],
+    }]))
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'Task 1 is a code-arrange task but must use the Python or HTML module',
+      'Task 1 line 1 blank 1 has no correct value.',
+      'Task 1 is a code-arrange task but has duplicate blank/distractor ids.',
+      'Task 1 is a code-arrange task but has no completion check.',
+    ]))
+
+    const noLines = validateLesson(lesson('html', [{
+      id: 1,
+      title: 'Arrange HTML',
+      taskType: 'code_arrange',
+      moduleType: 'html',
+      lines: [],
+      check: { type: 'html_element', operator: 'exists', selector: 'h1' },
+    }]))
+    expect(noLines.errors).toEqual(expect.arrayContaining([
+      'Task 1 is a code-arrange task but has no lines.',
+      'Task 1 has no files',
+    ]))
+  })
+
+  it('validates code_arrange tasks (lines with inline blanks)', () => {
+    const valid = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Arrange a loop',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [{
+        id: 'L1',
+        parts: [
+          { type: 'text', text: 'for i in range(' },
+          { type: 'slot', id: 'S1', code: '5' },
+          { type: 'text', text: '):' },
+        ],
+      }],
+      distractors: [{ id: 'S1d1', code: '10' }],
+      check: { type: 'output_contains', value: '0' },
+      _checkTested: true,
+    }]))
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Arrange',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [{ id: 'L1', parts: [] }],
+      check: { type: 'output_contains', value: '0' },
+    }]))
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'Task 1 line 1 has no parts.',
+      'Task 1 line 1 has no blanks.',
+    ]))
+
+    const blankWithNoCode = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Arrange',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [{ id: 'L1', parts: [{ type: 'slot', id: '', code: '' }] }],
+      check: { type: 'output_contains', value: '0' },
+    }]))
+    expect(blankWithNoCode.errors).toEqual(expect.arrayContaining([
+      'Task 1 line 1 blank 1 has no id.',
+      'Task 1 line 1 blank 1 has no correct value.',
+    ]))
+  })
+
+  it('does not warn about missing starter code for a code_arrange task with lines', () => {
+    const result = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Arrange a loop',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] }],
+      check: { type: 'output_contains', value: '1' },
+      _checkTested: true,
+    }]))
+    expect(result.warnings).not.toContain('Task 1 has no starter code — students will start with an empty editor')
+  })
+
   it('validates feedback check fields using the same lesson-type rules', () => {
     const fsResult = validateLesson(lesson('filesystem', [{
       id: 1,

@@ -1653,6 +1653,14 @@ export function useStudentCodeState({
     readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,
     readSavedTaskFile: (taskId, filename) => effectiveIdentity ? persistence.readSavedFile(effectiveIdentity.anonymousId, taskId, filename) : null,
     readSavedTaskFs: taskId => effectiveIdentity ? persistence.readSavedFs(effectiveIdentity.anonymousId, taskId) : null,
+    // Generic per-task auxiliary storage (mode-aware, same key format as
+    // readSavedTaskFile/saveHtmlFile). Used by task types that need to persist
+    // something alongside their code that isn't itself a code file — for
+    // example the code_arrange task type's tile-to-slot arrangement.
+    saveTaskAuxFile: (taskId, filename, content) => {
+      if (!effectiveIdentity) return
+      persistence.saveHtmlFile(effectiveIdentity.anonymousId, taskId, filename, content)
+    },
     recordCarryFallback,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,

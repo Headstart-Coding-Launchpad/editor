@@ -9,6 +9,7 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { copyStarterToComplete } from '../lessonUtils'
 import { Field, TaskFormatIcon, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, MatchPairsBuilder, FillBlankBuilder, ShortAnswerBuilder, QuizOptionsBuilder } from './task-editor/QuizEditors'
+import CodeArrangeEditor from './task-editor/CodeArrangeEditor'
 import { ScratchToolboxPicker } from '../../modules/scratch/scratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
@@ -53,6 +54,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const supportsCopyCode = lessonMod?.supportsCopyCode === true
   const isQuiz = task.taskType === 'quiz'
   const isInformation = task.taskType === 'information'
+  const isCodeArrange = task.taskType === 'code_arrange'
   const isCompleteTab = !usesUnifiedCodeStages && codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
@@ -75,7 +77,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     ? (activeStage?.entryFile ?? task.entryFile ?? 'index.html')
     : (task.entryFile ?? 'index.html')
   const explainerInlineCodeLanguages = lessonMod?.explainerInlineCodeLanguages ?? []
-  const incompleteDraftWorkspace = lesson.draft === true && !isQuiz && !isInformation && (
+  const incompleteDraftWorkspace = lesson.draft === true && !isQuiz && !isInformation && !isCodeArrange && (
     (lesson.type === 'html' && !Array.isArray(task.starterFiles))
     || (lesson.type === 'filesystem' && !task.starterFs)
     || (lesson.type === 'electronics' && !task.starterCircuit)
@@ -207,6 +209,28 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       return
     }
 
+    if (taskType === 'code_arrange') {
+      const nextModuleType = ['python', 'html'].includes(task.moduleType) ? task.moduleType : 'python'
+      const { copyCode: _copyCode, codeStages: _codeStages, carryCodeFrom: _c1, carryBlocksFrom: _c2, carryFsFrom: _c3, carryCircuitFrom: _c4, ...rest } = task
+      onUpdate({
+        ...rest,
+        taskType: 'code_arrange',
+        moduleType: nextModuleType,
+        moduleId: task.moduleId,
+        lines: task.lines?.length ? task.lines : [
+          { id: 'line-1', parts: [{ type: 'slot', id: 'line-1-slot-1', code: '' }] },
+          { id: 'line-2', parts: [{ type: 'slot', id: 'line-2-slot-1', code: '' }] },
+        ],
+        distractors: task.distractors ?? [],
+        ...(nextModuleType === 'html' ? {
+          entryFile: task.entryFile ?? 'index.html',
+          starterFiles: task.starterFiles?.length ? task.starterFiles : [{ name: task.entryFile ?? 'index.html', type: 'html', content: '' }],
+        } : {}),
+        check: null,
+      })
+      return
+    }
+
     if (taskType === 'information') {
       const {
         options: _options, check: _check, carryCodeFrom: _c1, carryBlocksFrom: _c2,
@@ -217,13 +241,18 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         starterCircuit: _starterCircuit, completeCircuit: _completeCircuit, carryCircuitFrom: _carryCircuitFrom,
         microcontroller: _microcontroller, copyCode: _copyCode,
         interactionMode: _im, _checkTested,
+        lines: _lines, distractors: _distractors,
         ...rest
       } = task
       onUpdate({ ...rest, taskType: 'information', informationType: task.informationType ?? 'standard', explainer: task.explainer ?? '' })
       return
     }
 
-    const { taskType: _t, informationType: _i, options: _o, ...rest } = task
+    const {
+      taskType: _t, informationType: _i, options: _o,
+      lines: _l2, distractors: _d2,
+      ...rest
+    } = task
     const typeFields = lessonMod?.makeCodeTaskFields(task) ?? {}
     onUpdate({ ...rest, ...typeFields, check: null })
   }
@@ -409,8 +438,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             { value: 'code', label: lesson.type === 'scratch' ? 'Scratch' : 'Code', iconType: lesson.type === 'scratch' ? 'scratch' : 'code' },
             { value: 'information', label: 'Information', iconType: 'information' },
             { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
+            ...(composedLesson?.type === 'composed' ? [{ value: 'code_arrange', label: 'Arrange', iconType: 'code_arrange' }] : []),
           ].map(({ value, label, iconType }) => {
-            const active = value === (isQuiz ? 'quiz' : isInformation ? 'information' : 'code')
+            const active = value === (isQuiz ? 'quiz' : isInformation ? 'information' : isCodeArrange ? 'code_arrange' : 'code')
             return (
               <button key={value} type="button" className={active ? 'te-task-format-btn te-task-format-btn--active' : 'te-task-format-btn'} onClick={() => handleTaskTypeChange(value)}>
                 <TaskFormatIcon type={iconType} />
@@ -424,7 +454,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       {!isInformation && !isQuiz && composedLesson?.type === 'composed' && (
         <Field label="Code task module" hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings.">
           <div className="te-info-type-grid">
-            {LESSON_MODULE_TYPES.map(moduleType => {
+            {(isCodeArrange ? ['python', 'html'] : LESSON_MODULE_TYPES).map(moduleType => {
               const active = task.moduleType === moduleType
               const icon = {
                 python: '🐍', arcade: '🕹️', html: '🌐', scratch: '🧩', filesystem: '🗂️', electronics: '⚡',
@@ -524,7 +554,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         </TaskPreviewPanel>
       )}
 
-      {!isQuiz && !isInformation && (
+      {!isQuiz && !isInformation && !isCodeArrange && (
         <TaskOptionsSection
           task={task} lesson={lessonWithStorageAssets} onUpdate={onUpdate}
           activePythonCode={activePythonCode} activeFiles={activeFiles} output={output}
@@ -569,6 +599,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             })()}
           </TaskPreviewPanel>
         </>
+      ) : isCodeArrange ? (
+        <CodeArrangeEditor task={task} onUpdate={onUpdate} />
       ) : incompleteDraftWorkspace ? (
         <div style={s.incompleteDraft}>
           This draft task has no {lesson.type === 'html' ? 'starter files' : lesson.type === 'filesystem' ? 'starter filesystem' : 'starter breadboard'} yet.

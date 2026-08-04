@@ -144,6 +144,55 @@ For a misconception-specific recovery path, add `priority` and `stageOffer` to a
 
 ---
 
+## Drag-and-Drop Runnable Code (`code_arrange`)
+
+Instead of a free-typed editor, a Python task can be `taskType: code_arrange`:
+each line is built from fixed text and blanks — a line that's just one blank
+is dragged into place as a whole line, and a line mixing text and blanks
+reads like `for i in range(___):`. Every blank draws from one shared tile
+pool (the task's `distractors` plus every blank's own correct value). The
+assembled program runs for real through this same Pyodide pipeline. Full
+field reference: `docs/authoring/lesson-schema.md` ("Code Arrange Task
+Fields").
+
+```yaml
+- title: Print the first five even numbers
+  taskType: code_arrange
+  moduleType: python
+  explainer: Fill in the blank and drag the second line into place to print 0 2 4 6 8, one per line.
+  lines:
+    - id: L1
+      parts:
+        - type: text
+          text: "for i in range("
+        - type: slot
+          id: S1
+          code: "5"
+        - type: text
+          text: "):"
+    - id: L2
+      parts:
+        - type: slot
+          id: L2
+          code: "    print(i * 2)"
+  distractors:
+    - id: S1d1
+      code: "10"
+    - id: D1
+      code: "    print(i + 2)"
+  check:
+    type: output
+    operator: equals
+    value: |
+      0
+      2
+      4
+      6
+      8
+```
+
+---
+
 ## Minimal JSON Example
 
 ```json
