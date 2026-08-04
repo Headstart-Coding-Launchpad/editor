@@ -14,7 +14,7 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
   const { user } = useAuth()
   const [currentTaskId, setCurrentTaskId] = useState(initialTaskId ?? null)
   const [showFeedback, setShowFeedback] = useState(false)
-  const [metaCollapsed, setMetaCollapsed] = useState(() => lesson?.draft !== true)
+  const [metaCollapsed, setMetaCollapsed] = useState(true)
 
   const flatTasks = flattenTasks(lesson?.tasks ?? [])
   const currentTask = flatTasks.find(t => t.id === currentTaskId) ?? null
@@ -60,18 +60,20 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
                   style={s.metaCollapseBtn}
                 />
               </div>
-              {intent && (
-                <div style={s.metaField}>
-                  <span style={s.metaFieldLabel}>Authoring intent</span>
-                  <MarkdownRenderer content={currentTask.intent} disableCopy />
-                </div>
-              )}
-              {taskActivity && (
-                <div style={s.metaField}>
-                  <span style={s.metaFieldLabel}>Task activity</span>
-                  <p style={s.metaFieldText}>{currentTask.taskActivity}</p>
-                </div>
-              )}
+              <div style={s.metaBody}>
+                {intent && (
+                  <div style={s.metaField}>
+                    <span style={s.metaFieldLabel}>Authoring intent</span>
+                    <MarkdownRenderer content={currentTask.intent} disableCopy />
+                  </div>
+                )}
+                {taskActivity && (
+                  <div style={s.metaField}>
+                    <span style={s.metaFieldLabel}>Task activity</span>
+                    <p style={s.metaFieldText}>{currentTask.taskActivity}</p>
+                  </div>
+                )}
+              </div>
             </div>
           </AnimatedPanelShell>
         )
@@ -138,12 +140,20 @@ const s = {
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 8,
     padding: 12,
     margin: '10px 16px 0',
     borderRadius: 8,
     border: '1px dashed #d8b4fe',
     background: '#faf5ff',
+    maxHeight: '35vh',
+  },
+  metaBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    minHeight: 0,
+    overflowY: 'auto',
   },
   metaHeader: {
     display: 'flex',

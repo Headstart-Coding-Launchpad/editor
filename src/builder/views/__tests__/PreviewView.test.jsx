@@ -32,8 +32,11 @@ const lesson = {
 }
 
 describe('PreviewView authoring metadata (teacher-only preview)', () => {
-  it('is visible by default when the lesson is a draft', () => {
+  it('collapses by default when the lesson is a draft, and expands on click', () => {
     render(<PreviewView lesson={{ ...lesson, draft: true }} onClose={() => {}} initialTaskId={1} />)
+    expect(screen.queryByText('Pair-share discussion')).not.toBeInTheDocument()
+    const showButton = screen.getByRole('button', { name: 'Show authoring metadata' })
+    fireEvent.click(showButton)
     expect(screen.getByText('Authoring metadata (author-only)')).toBeInTheDocument()
     expect(screen.getByText('Explain', { exact: false })).toBeInTheDocument()
     expect(screen.getByText('Pair-share discussion')).toBeInTheDocument()
