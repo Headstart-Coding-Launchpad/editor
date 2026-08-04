@@ -264,10 +264,10 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
 | `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
-| `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming |
+| `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming; `formatPythonError()` parses the failing `<student>` line for the error-line highlight |
 | `html/index.js` | HTML module definition |
 | `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck` — all `element_*` types |
-| `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection |
+| `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection; `resolveIframeErrorLocation()` maps a reported runtime error back to `{ file, line }` for the error-line highlight |
 | `html/HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer |
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
 | `html/BuilderWorkspace.jsx` | Re-export of `HtmlTaskWorkspace` |
@@ -349,7 +349,7 @@ Each `index.js` exports a default object with:
 
 | File | Role |
 |---|---|
-| `CodeEditor.jsx` | Shared CodeMirror React wrapper: language/readOnly via compartments, no remount on prop change |
+| `CodeEditor.jsx` | Shared CodeMirror React wrapper: language/readOnly via compartments, no remount on prop change; `errorLineField`/`setErrorLine` drive the red runtime-error-line highlight, cleared on any document change |
 | `SplitPane.jsx` | Draggable two-pane splitter: [15%, 85%] clamped, collapsible right pane with fixed width option |
 | `AssetBrowser.jsx` | Read-only lesson asset browser: file tree, click-to-copy paths, image hover preview |
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |

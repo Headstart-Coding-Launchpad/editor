@@ -11,9 +11,13 @@
  * Worker → Main : { type: 'progress',      msg: string }
  *                 { type: 'ready' }
  *                 { type: 'load_error',    msg: string }
- *                 { type: 'output',        text: string, kind: 'stdout'|'stderr' }
+ *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
  *                 { type: 'done',          status: 'success'|'error' }
+ *
+ * `line` is only meaningful on a 'stderr' output produced from a caught Python
+ * exception (see formatPythonError): it is the innermost `<student>` frame's
+ * line number, used by the UI to highlight the failing line in the editor.
  */
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
@@ -261,7 +265,8 @@ self.onmessage = async ({ data }) => {
     } catch (err) {
       flushBuffers()
       const raw = String(err).replace(/^PythonError:\s*/, '')
-      self.postMessage({ type: 'output', text: formatPythonError(raw) + '\n', kind: 'stderr' })
+      const { text, line } = formatPythonError(raw)
+      self.postMessage({ type: 'output', text: text + '\n', kind: 'stderr', line })
       self.postMessage({ type: 'done', status: 'error', variables: _lastVariables })
     }
     return
@@ -283,20 +288,25 @@ self.onmessage = async ({ data }) => {
   }
 }
 
-function formatPythonError(traceback) {
+// Exported for unit testing (see src/modules/python/__tests__/pyodide.worker.test.js).
+// Returns { text, line } — `text` is the existing flat display string (unchanged
+// shape, still relied on elsewhere); `line` is the parsed student line number
+// (or null when no clean line number could be determined, e.g. a raw
+// SyntaxError before the student's <student> frame exists).
+export function formatPythonError(traceback) {
   const lines = traceback.split('\n').map(l => l.trimEnd()).filter(Boolean)
-  if (lines.length === 0) return traceback
+  if (lines.length === 0) return { text: traceback, line: null }
 
   // Find the innermost <student> frame to get the student's line number
   let lineNum = null
   for (let i = lines.length - 1; i >= 0; i--) {
     const m = lines[i].match(/File "<student>", line (\d+)/)
-    if (m) { lineNum = m[1]; break }
+    if (m) { lineNum = parseInt(m[1], 10); break }
   }
 
   // The last line is the actual error type and message
   const errorLine = lines[lines.length - 1]
-  return lineNum ? `Line ${lineNum}: ${errorLine}` : errorLine
+  return lineNum != null ? { text: `Line ${lineNum}: ${errorLine}`, line: lineNum } : { text: errorLine, line: null }
 }
 
 async function loadPyodide_() {

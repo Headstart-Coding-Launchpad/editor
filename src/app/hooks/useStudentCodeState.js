@@ -8,6 +8,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, clearEphemeralStorage } from '../studentStorage'
 import { resolveSavedCarrySource, selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
+import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
 import { createStudentPersistence } from './createStudentPersistence'
@@ -73,6 +74,13 @@ export function useStudentCodeState({
   const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
+  // Runtime error-line highlight (see src/shared/CodeEditor.jsx errorLineField).
+  // errorLine: Python's failing line number (single-file editor).
+  // htmlErrorLocation: { file, line } — HTML/JS has multiple files/tabs, so the
+  // errored file name travels with the line number; the workspace only shows
+  // the highlight while that file's tab is active.
+  const [errorLine, setErrorLine] = useState(null)
+  const [htmlErrorLocation, setHtmlErrorLocation] = useState(null)
   const [inPersonalSandbox, setInPersonalSandbox] = useState(false)
   const [localSupportStageReveals, setLocalSupportStageReveals] = useState({})
   const [supportStageVisibility, setSupportStageVisibility] = useState({})
@@ -433,6 +441,8 @@ export function useStudentCodeState({
   function resetForTaskChange() {
     setOutput('')
     setRunStatus(null)
+    setErrorLine(null)
+    setHtmlErrorLocation(null)
     resetCheckFeedback()
     setTargetedStageOffer(null)
     setTargetedPreviewStageIndex(null)
@@ -860,6 +870,8 @@ export function useStudentCodeState({
     setOutput('')
     setRunStatus(null)
     setTestResults(null)
+    setErrorLine(null)
+    setHtmlErrorLocation(null)
     if (!alreadySolved) resetRunFeedback()
 
     if (lesson.type === 'python' || lesson.type === 'electronics') {
@@ -914,7 +926,12 @@ export function useStudentCodeState({
       }
       appendOutputRef.current = echoOutput
       const result = await mod.runtime.run(code, task, {
-        onOutput: (text, _kind) => echoOutput(text),
+        onOutput: (text, kind, line) => {
+          echoOutput(text)
+          if (lesson.type === 'python' && kind === 'stderr' && typeof line === 'number') {
+            setErrorLine(line)
+          }
+        },
         onInputRequired: (prompt) => setInputPrompt(prompt),
         onCodeUpdate: scheduleRuntimeCodeUpdate,
         getRuntimeCode: () => codeRef.current,
@@ -1110,6 +1127,7 @@ export function useStudentCodeState({
 
   function handleCodeChange(newCode) {
     setCode(newCode)
+    if (errorLine != null) setErrorLine(null)
     if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
     if (effectiveIdentity && (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')) {
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode, output, runStatus, ...(lesson?.type === 'arcade' ? { arcadeDesign: arcadeDesignRef.current } : {}) })
@@ -1175,6 +1193,7 @@ export function useStudentCodeState({
   function handleFileChange(filename, content) {
     const nextFiles = filesRef.current.map(f => f.name === filename ? { ...f, content } : f)
     setFiles(nextFiles)
+    if (htmlErrorLocation?.file === filename) setHtmlErrorLocation(null)
     if (canPublishTeacherLive()) {
       publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
     }
@@ -1398,13 +1417,19 @@ export function useStudentCodeState({
     }
   }
 
-  function handleHtmlRuntimeError(src) {
+  function handleHtmlRuntimeError(src, errorMeta) {
     const supportAttempt = htmlSupportAttemptsRef.current.get(src)
     if (!supportAttempt) return
     supportAttempt.hasError = true
     if (supportAttempt.outcomeApplied && supportAttempt.passed) {
       supportAttempt.passed = false
       updateSupportStageForAttempt(false)
+    }
+    // Keep the first error's line for this run — later errors (e.g. a second,
+    // unrelated console.error) shouldn't bump the highlight around.
+    if (errorMeta && htmlErrorLocation == null) {
+      const location = resolveIframeErrorLocation(errorMeta.loadId, errorMeta.filename, errorMeta.lineno)
+      if (location) setHtmlErrorLocation(location)
     }
   }
 
@@ -1612,6 +1637,7 @@ export function useStudentCodeState({
     selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
     fsState, fsInteraction, editorSelection, editorActivity, inPersonalSandbox,
     teacherHighlights, dismissHighlight,
+    errorLine, htmlErrorLocation,
     // Refs
     iframeRef,
     // Event handlers

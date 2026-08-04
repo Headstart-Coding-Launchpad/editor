@@ -127,6 +127,14 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - A replacement worker is pre-warmed immediately.
 - `input()` is handled with a Python AST transform and resolves when `provideInput()` is called.
 
+## Runtime Error-Line Highlight
+
+- On a runtime error (Python traceback or an HTML/JS `window.onerror`), the failing line is highlighted red in the CodeMirror editor via `errorLineField`/`setErrorLine` in `src/shared/CodeEditor.jsx` (`.cm-errorLine` in `src/shared/codemirror.js`).
+- Python: `formatPythonError` in `pyodide.worker.js` parses the innermost `File "<student>", line N` frame from the traceback and posts it as a structured `line` field alongside the existing stderr text; `useStudentCodeState`'s `errorLine` state drives the Python editor.
+- HTML/JS: `iframe.js` embeds a per-load ID in the injected console interceptor and tracks the offset the injected CSP/console-interceptor script adds ahead of the entry file's own markup. `resolveIframeErrorLocation(loadId, filename, lineno)` maps a browser-reported `(filename, lineno)` back to `{ file, line }` — exact for external script files (unmodified content), offset-corrected for inline `<script>` errors in the entry file. `useStudentCodeState`'s `htmlErrorLocation` state (`{ file, line }`) drives the highlight only while that file's tab is active.
+- When no clean line number can be determined (Pyodide startup failure, a raw `SyntaxError` before the student's `<student>` frame exists, or an HTML error whose file/line can't be confidently attributed), no highlight is shown — the error text still displays as before. A wrong highlight is treated as worse than no highlight.
+- The highlight clears the moment the student edits the code (first keystroke), not just on the next Run — enforced both in the CodeMirror field (any document change clears it) and in `useStudentCodeState` (`errorLine`/`htmlErrorLocation` reset in `handleCodeChange`/`handleFileChange`).
+
 ## File Key Encoding
 
 - Firebase file keys cannot contain raw dots.

@@ -19,6 +19,7 @@ export default function CodeFileWorkspace() {
   const [running, setRunning] = useState(false)
   const [inputPrompt, setInputPrompt] = useState(null)
   const [pythonStatus, setPythonStatus] = useState(() => isPyodideReady() ? 'ready' : 'loading')
+  const [errorLine, setErrorLine] = useState(null)
 
   useEffect(() => {
     if (!codeFile) return
@@ -37,6 +38,7 @@ export default function CodeFileWorkspace() {
 
   function updateActiveCode(code) {
     setTasks(current => current.map(task => task.id === activeTask?.id ? { ...task, code } : task))
+    if (errorLine != null) setErrorLine(null)
   }
 
   async function handleRun() {
@@ -44,12 +46,14 @@ export default function CodeFileWorkspace() {
     setRunning(true)
     setOutput('')
     setRunStatus(null)
+    setErrorLine(null)
     try {
       let nextOutput = ''
       const result = await runPython(activeTask.code, {
-        onOutput: text => {
+        onOutput: (text, kind, line) => {
           nextOutput += text
           setOutput(nextOutput)
+          if (kind === 'stderr' && typeof line === 'number') setErrorLine(line)
         },
         onInputRequired: prompt => setInputPrompt(prompt),
       })
@@ -113,6 +117,7 @@ export default function CodeFileWorkspace() {
                 setActiveTaskId(task.id)
                 setOutput('')
                 setRunStatus(null)
+                setErrorLine(null)
               }}
             >
               {task.title}
@@ -138,6 +143,7 @@ export default function CodeFileWorkspace() {
             code={activeTask?.code ?? ''}
             onChange={updateActiveCode}
             pyodideStatus={pythonStatus}
+            errorLine={errorLine}
           />
         </section>
         <section style={s.outputPane} aria-label="Python output">
