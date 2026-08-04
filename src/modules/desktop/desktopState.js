@@ -15,18 +15,21 @@ export const DEFAULT_DESKTOP_FS = { ...DEFAULT_FS, '/Downloads/': { type: 'dir' 
 
 export const DEFAULT_WINDOW = { x: 80, y: 60, width: 640, height: 420 }
 
+// Only the first available app starts open — the rest wait for the student to launch them
+// from a desktop icon (or, for Text Editor/Image Viewer, from opening a file in File
+// Manager). Opening a window per available app would defeat the point of desktop icons the
+// moment a task offers more than one app.
 export function makeDefaultWindows(availableApps = ['fileManager']) {
-  return availableApps.map((appId, i) => ({
-    id: `${appId}-1`,
-    appId,
-    x: DEFAULT_WINDOW.x + i * 32,
-    y: DEFAULT_WINDOW.y + i * 32,
-    width: DEFAULT_WINDOW.width,
-    height: DEFAULT_WINDOW.height,
+  const first = availableApps[0]
+  if (!first) return []
+  return [{
+    id: `${first}-1`,
+    appId: first,
+    ...DEFAULT_WINDOW,
     minimized: false,
     maximized: false,
-    zIndex: i + 1,
-  }))
+    zIndex: 1,
+  }]
 }
 
 export function makeDefaultDesktop(availableApps = ['fileManager']) {

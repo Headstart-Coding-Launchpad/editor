@@ -16,12 +16,18 @@ import {
 } from '../desktopState.js'
 
 describe('desktopState', () => {
-  it('makeDefaultDesktop seeds a Downloads folder and one window per available app', () => {
+  it('makeDefaultDesktop seeds a Downloads folder and opens only the first available app', () => {
     const state = makeDefaultDesktop(['fileManager'])
     expect(state.fs['/Downloads/']).toEqual({ type: 'dir' })
     expect(state.windows).toHaveLength(1)
     expect(state.windows[0].appId).toBe('fileManager')
     expect(state.recycleBin).toEqual([])
+  })
+
+  it('makeDefaultDesktop leaves additional available apps closed, launchable only from their icon', () => {
+    const state = makeDefaultDesktop(['fileManager', 'textEditor', 'imageViewer'])
+    expect(state.windows).toHaveLength(1)
+    expect(state.windows[0].appId).toBe('fileManager')
   })
 
   it('normaliseDesktop fills in missing fields with defaults', () => {
