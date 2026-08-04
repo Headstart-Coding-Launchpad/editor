@@ -146,7 +146,8 @@ const s = {
     borderRadius: 8,
     border: '1px dashed #d8b4fe',
     background: '#faf5ff',
-    maxHeight: '35vh',
+    maxWidth: 640,
+    maxHeight: 220,
   },
   metaBody: {
     display: 'flex',
