@@ -25,6 +25,7 @@ export default function TeacherEditorPanel({
   const showCompleteTab = !usesUnifiedStages && (mod.type === 'python' || mod.type === 'html'
     || (mod.type === 'scratch' && task?.completeBlocks != null)
     || (mod.type === 'filesystem' && !!task?.completeFs)
+    || (mod.type === 'desktop' && !!task?.completeDesktop)
     || (mod.type === 'electronics' && !!task?.completeCircuit))
 
   const wrapStyle = mod.type === 'scratch' || mod.type === 'html'

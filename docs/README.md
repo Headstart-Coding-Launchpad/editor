@@ -224,6 +224,11 @@ Filesystem code task field reference: the flat path-map state model, `starterFs`
 
 **Load when:** authoring or editing a filesystem code task.
 
+### [authoring/desktop.md](authoring/desktop.md)
+Desktop module code-task authoring reference: the windowed desktop shell around the File Manager app, `starterDesktop`/`completeDesktop` state shape (`{ fs, recycleBin, windows }`), Desktop-only check types (`fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side`), and known first-release limitations.
+
+**Load when:** authoring or editing a Desktop module code task.
+
 ### [authoring/electronics.md](authoring/electronics.md)
 Electronics module code-task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, role-based `codeStages`, `carryCircuitFrom`, checks, and MicroPython code tab fields.
 

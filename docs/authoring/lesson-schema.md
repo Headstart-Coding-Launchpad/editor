@@ -14,7 +14,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `composed` for new lessons; legacy lessons may use `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `type` | Yes | string | `composed` for new lessons; legacy lessons may use `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. New lessons should link a reusable level with `levelId`/`levelRef`; legacy scalar values are migrated automatically when published through the app or CLI. |
@@ -68,7 +68,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types, or `code_arrange` for a drag-and-drop runnable-code task (see "Code Arrange Task Fields" below). |
-| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of a named entry in the lesson `modules` array. It distinguishes separate instances of the same workspace type. |
 | `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
@@ -85,11 +85,11 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 
 New lessons use `type: "composed"`. Every code task then supplies `moduleType`; information and quiz tasks are lesson-wide. When no `modules` array is authored, LaunchPad derives one module instance per `moduleType`.
 
-Use `modules` with task `moduleId` when a lesson needs named or repeated workspace instances. A module object is `{ id, type, title?, sandbox? }`, where `type` is one of `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. The module's optional `sandbox` object uses the ordinary type-specific sandbox fields: `sandboxStarter` (Python/Arcade), `sandboxStarterFiles` (HTML), `sandboxStarter`/`sandboxToolbox`/`sandboxSprites`/`sandboxBackdrops` (Scratch), `sandboxStarterFs` (Filesystem), or `sandboxStarterCircuit` (Electronics). Each sandbox is isolated from the others. Without an authored module sandbox, the first code task in that module supplies the starting sandbox state.
+Use `modules` with task `moduleId` when a lesson needs named or repeated workspace instances. A module object is `{ id, type, title?, sandbox? }`, where `type` is one of `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. The module's optional `sandbox` object uses the ordinary type-specific sandbox fields: `sandboxStarter` (Python/Arcade), `sandboxStarterFiles` (HTML), `sandboxStarter`/`sandboxToolbox`/`sandboxSprites`/`sandboxBackdrops` (Scratch), `sandboxStarterFs` (Filesystem), `sandboxStarterDesktop` (Desktop), or `sandboxStarterCircuit` (Electronics). Each sandbox is isolated from the others. Without an authored module sandbox, the first code task in that module supplies the starting sandbox state.
 
 When both `moduleId` and `moduleType` are supplied, they must identify the same workspace type. Carry-through can only reference earlier code tasks in the same named module, including when two modules share a type.
 
-Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`.
+Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`.
 
 ---
 
@@ -102,6 +102,7 @@ Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratc
 | `html` | Multi-file editor + iframe | Supported | Supported |
 | `scratch` | Scratch blocks + stage | Supported | Supported |
 | `filesystem` | Virtual file manager | Supported | Supported |
+| `desktop` | Windowed desktop shell + File Manager app | Supported | Supported |
 | `electronics` | Editable breadboard | Supported | Supported |
 
 In a composed lesson, every code task chooses one row with `moduleType`; `moduleId` optionally selects a named instance of that row's workspace.

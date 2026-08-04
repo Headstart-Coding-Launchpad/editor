@@ -45,6 +45,7 @@ export default function LessonTaskContent({
   displayCheckSuggestion,
   displaySelection,
   displayFs,
+  displayDesktop,
   isTeacherEditing,
   teacherLiveCode,
   teacherLiveFiles,
@@ -247,6 +248,7 @@ export default function LessonTaskContent({
           displayCheckAttempted={displayCheckAttempted}
           displaySelection={displaySelection}
           displayFs={displayFs}
+          displayDesktop={displayDesktop}
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
           teacherLiveFiles={teacherLiveFiles}

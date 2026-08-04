@@ -5,6 +5,7 @@ import { HTML_ONLY } from '../components/FileManager'
 import { createSpriteFromPreset } from '../../shared/spritePresets'
 import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
 import { DEFAULT_FS } from '../../modules/filesystem/filesystem'
+import { makeDefaultDesktop } from '../../modules/desktop/desktopState'
 import { getEffectiveLessonForTask, isComposedLesson } from '../../shared/composedLesson'
 
 export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
@@ -74,6 +75,13 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       return {
         starterFs: prevTask?.completeFs ?? prevTask?.starterFs ?? DEFAULT_FS,
         carryFsFrom: prevTask?.id ?? null,
+      }
+    }
+    if (moduleType === 'desktop') {
+      return {
+        starterDesktop: prevTask?.completeDesktop ?? prevTask?.starterDesktop ?? makeDefaultDesktop(prevTask?.availableApps),
+        carryDesktopFrom: prevTask?.id ?? null,
+        availableApps: prevTask?.availableApps ?? ['fileManager'],
       }
     }
     return {

@@ -297,6 +297,9 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const displayFs = isForcedTeacherLive && displayedLesson.type === 'filesystem'
     ? (() => { try { return JSON.parse(session?.teacherLive?.code ?? '') } catch { return cs.fsState } })()
     : cs.fsState
+  const displayDesktop = isForcedTeacherLive && displayedLesson.type === 'desktop'
+    ? (() => { try { return JSON.parse(session?.teacherLive?.code ?? '') } catch { return cs.desktopState } })()
+    : cs.desktopState
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'
@@ -312,6 +315,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!task?.completeBlocks
     : displayedLesson.type === 'filesystem'
     ? !!task?.completeFs
+    : displayedLesson.type === 'desktop'
+    ? !!task?.completeDesktop
     : displayedLesson.type === 'electronics'
     ? !!task?.completeCircuit
     : (unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0)
@@ -340,6 +345,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ? !!(activeLesson.sandboxStarter != null)
     : activeLesson.type === 'filesystem'
     ? !!(activeLesson.sandboxStarterFs != null)
+    : activeLesson.type === 'desktop'
+    ? !!(activeLesson.sandboxStarterDesktop != null)
     : activeLesson.type === 'electronics'
     ? !!(activeLesson.sandboxStarterCircuit != null)
     : false
@@ -610,6 +617,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displayCheckSuggestion={displayCheckSuggestion}
           displaySelection={displaySelection}
           displayFs={displayFs}
+          displayDesktop={displayDesktop}
           isTeacherEditing={isTeacherEditing}
           teacherLiveCode={teacherLiveCode}
           teacherLiveFiles={teacherLiveFiles}

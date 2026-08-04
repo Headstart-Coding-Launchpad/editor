@@ -5,7 +5,7 @@ import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } f
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../src/shared/composedLesson.js'
 
-const VALID_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics', 'composed']
+const VALID_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'desktop', 'electronics', 'composed']
 
 function flattenTasks(tasks) {
   const result = []
@@ -78,7 +78,7 @@ export function validateLessonForMcp(lesson) {
     if (!task || typeof task !== 'object' || Array.isArray(task)) return
     const taskType = getTaskModuleType(lesson, task) ?? type
     const allowedCarrySources = getModuleCarrySourceIds(lesson, task)
-    for (const field of ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']) {
+    for (const field of ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryDesktopFrom', 'carryCircuitFrom']) {
       if (task[field] != null && allowedCarrySources && !allowedCarrySources.includes(task[field])) {
         errors.push(`Task ${n} ${field} must reference an earlier task in the same lesson module`)
       }
@@ -195,6 +195,25 @@ export function validateLessonForMcp(lesson) {
           errors.push(`Task ${n} has a file-in-dir check but no parent folder`)
         }
       }
+    } else if (task.taskType !== 'information' && taskType === 'desktop') {
+      if (task.codeStages?.length > 0) {
+        task.codeStages.forEach((stage, si) => {
+          if (!stage.label?.trim()) errors.push(`Task ${n} stage ${si + 1} is missing a label`)
+          if (!stage.desktop || typeof stage.desktop !== 'object') errors.push(`Task ${n} stage ${si + 1} has no desktop state`)
+        })
+      }
+      if (task.check) {
+        const checks = normalizeChecks(task.check)
+        if (checks.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
+          errors.push(`Task ${n} has a filesystem check but no path`)
+        }
+        if (checks.some(c => c.type === 'fs_content_contains' && !c.value?.trim())) {
+          errors.push(`Task ${n} has a file content check but no expected value`)
+        }
+        if (checks.some(c => c.type === 'fs_file_in_dir' && !c.dir?.trim())) {
+          errors.push(`Task ${n} has a file-in-dir check but no parent folder`)
+        }
+      }
     } else if (task.taskType !== 'information' && task.taskType !== 'quiz' && taskType === 'scratch') {
       if (task.check?.type === 'sprite_property') {
         if (!task.check.property) errors.push(`Task ${n} sprite check is missing a property`)
@@ -210,9 +229,10 @@ export function validateLessonForMcp(lesson) {
       const hasStarter = taskType === 'python' || taskType === 'arcade' ? !!task.starterCode
         : taskType === 'scratch' ? !!task.starterBlocks
         : taskType === 'filesystem' ? !!task.starterFs
+        : taskType === 'desktop' ? !!task.starterDesktop
         : taskType === 'electronics' ? !!task.starterCircuit
         : task.starterFiles?.some(f => f.content?.trim())
-      if (!hasStarter && taskType !== 'filesystem' && taskType !== 'electronics') {
+      if (!hasStarter && taskType !== 'filesystem' && taskType !== 'desktop' && taskType !== 'electronics') {
         warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
       }
     }
@@ -246,6 +266,13 @@ export function validateLessonForMcp(lesson) {
         const fsChecks = allChecks.filter(c => c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened')
         if (fsChecks.length > 0 && fsChecks.some(c => !evaluateSingleCheck(c, '', { fs: task.completeFs }))) {
           warnings.push(`Task ${n} complete filesystem does not satisfy a check — review the complete filesystem`)
+        }
+      }
+      if (taskType === 'desktop' && task.completeDesktop && typeof task.completeDesktop === 'object') {
+        const desktopContext = { fs: task.completeDesktop.fs, desktop: task.completeDesktop }
+        const desktopChecks = allChecks.filter(c => (c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened') || ['window_state', 'windows_arranged_side_by_side'].includes(c.type))
+        if (desktopChecks.length > 0 && desktopChecks.some(c => !evaluateSingleCheck(c, '', desktopContext))) {
+          warnings.push(`Task ${n} complete desktop does not satisfy a check — review the complete desktop`)
         }
       }
     }

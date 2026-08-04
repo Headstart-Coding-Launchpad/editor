@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { getLessonModule } from '../registry.js'
 import { buildMicroPythonProgram } from '../electronics/index.js'
 
-const LESSON_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics']
+const LESSON_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics', 'desktop']
 
 describe('module interface contract', () => {
   for (const type of LESSON_TYPES) {
@@ -204,6 +204,21 @@ describe('module interface contract', () => {
       const result = mod.makeNewStage({}, [])
       expect(result.role).toBe('support')
       expect(result).toHaveProperty('fs')
+    })
+  })
+
+  describe('desktop-specific', () => {
+    const mod = getLessonModule('desktop')
+    it('makeCodeTaskFields sets starterDesktop and availableApps', () => {
+      const result = mod.makeCodeTaskFields({})
+      expect(result).toHaveProperty('starterDesktop')
+      expect(result.availableApps).toEqual(['fileManager'])
+    })
+
+    it('makeNewStage creates a stage with a desktop snapshot', () => {
+      const result = mod.makeNewStage({}, [])
+      expect(result.role).toBe('support')
+      expect(result).toHaveProperty('desktop')
     })
   })
 

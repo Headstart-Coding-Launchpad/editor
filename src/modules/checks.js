@@ -2,6 +2,7 @@ import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem/checks.js'
 import { evaluatePythonCheck, PYTHON_CHECK_TYPES } from './python/checks.js'
 import { evaluateHtmlCheck, HTML_CHECK_TYPES } from './html/checks.js'
 import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics/circuit.js'
+import { DESKTOP_CHECK_TYPES, evaluateDesktopCheck } from './desktop/checks.js'
 import {
   wildcardContains,
   wildcardEquals,
@@ -194,6 +195,7 @@ export const CHECK_TYPES = {
   ],
   FS: FS_CHECK_TYPES,
   ELECTRONICS: ELECTRONICS_CHECK_TYPES,
+  DESKTOP: DESKTOP_CHECK_TYPES,
 }
 
 export function checkRequiresRun(check) {
@@ -218,6 +220,10 @@ export function evaluateSingleCheck(check, output, context = {}) {
 
   if (FS_CHECK_TYPES.includes(check.type)) {
     return evaluateFsCheck(check, context.fs, context)
+  }
+
+  if (DESKTOP_CHECK_TYPES.includes(check.type)) {
+    return evaluateDesktopCheck(check, context.desktop, context)
   }
 
   if (PYTHON_CHECK_TYPES.includes(check.type)) {

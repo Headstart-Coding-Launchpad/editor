@@ -170,6 +170,10 @@ const STAGE_OPTION_METADATA = {
     completeField: 'completeFs',
     stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   },
+  desktop: {
+    completeField: 'completeDesktop',
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
   electronics: {
     completeField: 'completeCircuit',
     stageLabels: { starterLabel: 'Starter board', completeLabel: 'Complete board' },

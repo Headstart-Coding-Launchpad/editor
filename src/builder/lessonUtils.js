@@ -10,7 +10,7 @@ import { validateDraftLessonStructure } from '../shared/draftLesson'
 import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../shared/composedLesson'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
-const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
+const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryDesktopFrom', 'carryCircuitFrom']
 
 function validateStageMetadata(task, n, errors) {
   if (!Array.isArray(task.codeStages)) return
@@ -303,6 +303,19 @@ export function validateLesson(lesson) {
       if (carryFsFrom != null && !flat.some(t => t.id === carryFsFrom)) {
         errors.push(`Task ${n} references task ${carryFsFrom} for carry-through but that task does not exist`)
       }
+    } else if (task.taskType !== 'information' && type === 'desktop') {
+      if (task.codeStages?.length > 0) {
+        task.codeStages.forEach((stage, si) => {
+          if (!stage.label?.trim()) errors.push(`Task ${n} stage ${si + 1} is missing a label`)
+          if (!stage.desktop || typeof stage.desktop !== 'object') errors.push(`Task ${n} stage ${si + 1} has no desktop state`)
+        })
+      }
+      if (task.check) validateFilesystemChecks(task.check, n, errors)
+      if (feedbackChecks.length > 0) validateFilesystemChecks(feedbackChecks, n, errors, 'feedback')
+      const carryDesktopFrom = task.carryDesktopFrom ?? null
+      if (carryDesktopFrom != null && !flat.some(t => t.id === carryDesktopFrom)) {
+        errors.push(`Task ${n} references task ${carryDesktopFrom} for carry-through but that task does not exist`)
+      }
     } else if (task.taskType !== 'information' && type === 'electronics') {
       if (!task.starterCircuit || !Array.isArray(task.starterCircuit.components)) {
         errors.push(`Task ${n} has no starter breadboard`)
@@ -381,7 +394,7 @@ export function validateLesson(lesson) {
         }
         if (task.check) validateScratchChecks(task.check, n, errors)
         if (feedbackChecks.length > 0) validateScratchChecks(feedbackChecks, n, errors, 'feedback')
-      } else if (type !== 'filesystem' && type !== 'electronics') {
+      } else if (type !== 'filesystem' && type !== 'desktop' && type !== 'electronics') {
         if (task.check) validateCodeChecks(task.check, n, errors, { type, interactionMode: task.interactionMode })
         if (feedbackChecks.length > 0) validateCodeChecks(feedbackChecks, n, errors, { type, interactionMode: task.interactionMode, kind: 'feedback' })
       }
@@ -401,7 +414,7 @@ export function validateLesson(lesson) {
       })
     }
 
-    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || task.taskType === 'code_arrange' || type === 'filesystem' || type === 'electronics'
+    const carryFrom = task.taskType === 'quiz' || task.taskType === 'information' || task.taskType === 'code_arrange' || type === 'filesystem' || type === 'desktop' || type === 'electronics'
       ? null
       : type === 'scratch' ? task.carryBlocksFrom : task.carryCodeFrom
     if (carryFrom != null && !flat.some(candidate => candidate.id === carryFrom)) {
@@ -424,10 +437,12 @@ export function validateLesson(lesson) {
             ? !!task.starterBlocks
             : type === 'filesystem'
               ? !!task.starterFs
-              : type === 'electronics'
+              : type === 'desktop'
+                ? !!task.starterDesktop
+                : type === 'electronics'
                 ? !!task.starterCircuit
                 : task.starterFiles?.some(file => file.content.trim())
-    if (!hasStarter && type !== 'filesystem' && type !== 'electronics') warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
+    if (!hasStarter && type !== 'filesystem' && type !== 'desktop' && type !== 'electronics') warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
 
     if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check) {
       const allChecks = normalizeChecks(task.check)
@@ -460,6 +475,13 @@ export function validateLesson(lesson) {
           warnings.push(`Task ${n} complete filesystem does not satisfy a check — review the complete filesystem`)
         }
       }
+      if (type === 'desktop' && task.completeDesktop && typeof task.completeDesktop === 'object') {
+        const desktopContext = { fs: task.completeDesktop.fs, desktop: task.completeDesktop }
+        const desktopChecks = allChecks.filter(c => (c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened') || ['window_state', 'windows_arranged_side_by_side'].includes(c.type))
+        if (desktopChecks.length > 0 && desktopChecks.some(c => !evaluateSingleCheck(c, '', desktopContext))) {
+          warnings.push(`Task ${n} complete desktop does not satisfy a check — review the complete desktop`)
+        }
+      }
     }
 
     if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check && type === 'electronics' && task.completeCircuit) {
@@ -477,6 +499,8 @@ export function validateLesson(lesson) {
           ? !!task.check
           : type === 'filesystem'
             ? !!task.check
+            : type === 'desktop'
+              ? !!task.check
             : type === 'electronics'
               ? !!task.check
               : normalizeChecks(task.check).some(check => ['code_no_error', 'output_not_empty', 'output_empty', 'element_exists', 'element_attribute', 'element_style_property', 'variable_exists'].includes(check.type) || check.value)

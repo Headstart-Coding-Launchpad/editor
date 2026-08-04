@@ -71,6 +71,28 @@ export function saveFsState(lessonId, taskId, anonymousId, fs) {
   localStorage.setItem(studentTaskStorageKey(lessonId, taskId, anonymousId), JSON.stringify({ fs }))
 }
 
+export function loadPersonalSandboxDesktop(lessonId, anonymousId, moduleId = null) {
+  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
+  if (!raw) return null
+  const parsed = JSON.parse(raw)
+  return parsed.desktop ?? null
+}
+
+export function savePersonalSandboxDesktop(lessonId, anonymousId, desktop, moduleId = null) {
+  localStorage.setItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId), JSON.stringify({ desktop }))
+}
+
+export function loadSavedDesktop(lessonId, taskId, anonymousId) {
+  const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
+  if (!raw) return null
+  const parsed = JSON.parse(raw)
+  return parsed.desktop ?? null
+}
+
+export function saveDesktopState(lessonId, taskId, anonymousId, desktop) {
+  localStorage.setItem(studentTaskStorageKey(lessonId, taskId, anonymousId), JSON.stringify({ desktop }))
+}
+
 // ── Ephemeral (in-memory) storage ─────────────────────────────────────────────
 // Backing store for teacher presentation and builder preview: work persists for
 // the current page session only, so carry-through behaves like a real student
@@ -105,4 +127,8 @@ export const ephemeralStorage = {
     ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId))?.fs ?? null,
   saveFsState: (lessonId, taskId, anonymousId, fs) =>
     ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), { fs }),
+  loadSavedDesktop: (lessonId, taskId, anonymousId) =>
+    ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId))?.desktop ?? null,
+  saveDesktopState: (lessonId, taskId, anonymousId, desktop) =>
+    ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), { desktop }),
 }

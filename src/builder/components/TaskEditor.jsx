@@ -80,6 +80,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const incompleteDraftWorkspace = lesson.draft === true && !isQuiz && !isInformation && !isCodeArrange && (
     (lesson.type === 'html' && !Array.isArray(task.starterFiles))
     || (lesson.type === 'filesystem' && !task.starterFs)
+    || (lesson.type === 'desktop' && !task.starterDesktop)
     || (lesson.type === 'electronics' && !task.starterCircuit)
   )
 
@@ -106,8 +107,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       'starterCode', 'completeCode', 'starterFiles', 'completeFiles', 'entryFile', 'completeEntryFile',
       'starterBlocks', 'completeBlocks', 'toolbox', 'sprites', 'backdrops', 'variables',
       'starterFs', 'completeFs', 'startsInDir', 'starterCircuit', 'completeCircuit', 'microcontroller',
+      'starterDesktop', 'completeDesktop', 'availableApps',
       'arcadeDesign', 'completeArcadeDesign', 'arcadeTools', 'codeStages',
-      'carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom',
+      'carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryDesktopFrom', 'carryCircuitFrom',
       'check', 'feedbackChecks', 'incorrectChecks', '_checkTested', 'copyCode',
     ]) delete next[field]
     onUpdate(next)
@@ -457,7 +459,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             {(isCodeArrange ? ['python', 'html'] : LESSON_MODULE_TYPES).map(moduleType => {
               const active = task.moduleType === moduleType
               const icon = {
-                python: '🐍', arcade: '🕹️', html: '🌐', scratch: '🧩', filesystem: '🗂️', electronics: '⚡',
+                python: '🐍', arcade: '🕹️', html: '🌐', scratch: '🧩', filesystem: '🗂️', desktop: '🖥️', electronics: '⚡',
               }[moduleType]
               return (
                 <button
@@ -467,7 +469,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                   onClick={() => handleModuleChange(moduleType)}
                 >
                   <span className="te-info-type-label">{icon} {moduleType === 'arcade' ? 'Arcade Kit' : moduleType[0].toUpperCase() + moduleType.slice(1)}</span>
-                  <span className="te-info-type-hint">{moduleType === 'filesystem' ? 'File manager' : 'Workspace'}</span>
+                  <span className="te-info-type-hint">{moduleType === 'filesystem' ? 'File manager' : moduleType === 'desktop' ? 'Windowed desktop' : 'Workspace'}</span>
                 </button>
               )
             })}
@@ -603,7 +605,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         <CodeArrangeEditor task={task} onUpdate={onUpdate} />
       ) : incompleteDraftWorkspace ? (
         <div style={s.incompleteDraft}>
-          This draft task has no {lesson.type === 'html' ? 'starter files' : lesson.type === 'filesystem' ? 'starter filesystem' : 'starter breadboard'} yet.
+          This draft task has no {lesson.type === 'html' ? 'starter files' : lesson.type === 'filesystem' ? 'starter filesystem' : lesson.type === 'desktop' ? 'starter desktop' : 'starter breadboard'} yet.
           Choose the Code format above to initialise the standard editor fields, then continue editing the task.
         </div>
       ) : lessonMod?.BuilderWorkspace ? (

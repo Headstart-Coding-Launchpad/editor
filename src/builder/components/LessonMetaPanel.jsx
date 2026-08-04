@@ -214,6 +214,7 @@ function getLessonTypeLabel(type) {
   if (type === 'arcade') return 'Arcade Kit'
   if (type === 'scratch') return 'Scratch'
   if (type === 'filesystem') return 'Files & Folders'
+  if (type === 'desktop') return 'Desktop'
   if (type === 'electronics') return 'Electronics'
   return 'Web'
 }

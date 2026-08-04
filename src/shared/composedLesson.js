@@ -1,6 +1,6 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
 
-export const LESSON_MODULE_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics']
+export const LESSON_MODULE_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'desktop', 'electronics']
 
 export function isComposedLesson(lesson) {
   return lesson?.type === 'composed'
@@ -74,6 +74,7 @@ function sandboxFields(moduleType, fallbackTask) {
     return { sandboxStarter: blocks == null ? null : JSON.stringify(blocks) }
   }
   if (moduleType === 'filesystem') return { sandboxStarterFs: fallbackTask?.starterFs ?? null }
+  if (moduleType === 'desktop') return { sandboxStarterDesktop: fallbackTask?.starterDesktop ?? null }
   if (moduleType === 'electronics') return { sandboxStarterCircuit: fallbackTask?.starterCircuit ?? null }
   return {}
 }

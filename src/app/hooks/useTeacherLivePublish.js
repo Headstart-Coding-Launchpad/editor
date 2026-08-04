@@ -24,6 +24,7 @@ export function useTeacherLivePublish({
   outputRef,
   runStatusRef,
   fsStateRef,
+  desktopStateRef,
   editorSelectionRef,
   editorActivityRef,
   // Reactive values — used by the sync dep array and payload snapshot
@@ -40,6 +41,7 @@ export function useTeacherLivePublish({
   checkAttempted,
   checkSuggestion,
   fsState,
+  desktopState,
   iframeStorageAssets = null,
   // Callbacks
   updateTeacherLive,
@@ -63,7 +65,8 @@ export function useTeacherLivePublish({
 
   function currentTeacherLivePayload(extra = {}) {
     const isFilesystem = lessonRef.current?.type === 'filesystem'
-    const filesMap = isFilesystem ? {} : Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
+    const isDesktop = lessonRef.current?.type === 'desktop'
+    const filesMap = (isFilesystem || isDesktop) ? {} : Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -73,7 +76,11 @@ export function useTeacherLivePublish({
       sourceStudentName,
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
-      code: isFilesystem ? JSON.stringify(fsStateRef.current) : codeRef.current,
+      code: isFilesystem
+        ? JSON.stringify(fsStateRef.current)
+        : isDesktop
+          ? JSON.stringify(desktopStateRef.current)
+          : codeRef.current,
       arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
       files: filesMap,
       activeFile: activeFileRef.current,
@@ -121,7 +128,7 @@ export function useTeacherLivePublish({
     if (!canPublishTeacherLive()) return
     updateTeacherLive(currentTeacherLivePayload())
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, JSON.stringify(files), activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
+  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, JSON.stringify(files), activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState, desktopState])
 
   return { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive }
 }

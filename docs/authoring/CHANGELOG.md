@@ -18,6 +18,16 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-08-04
+
+### Added the Desktop module type
+
+New `desktop` composed-lesson module type: a windowed desktop shell (icon grid, taskbar, draggable/resizable windows) hosting a File Manager app that wraps the Filesystem module's UI plus a Recycle Bin, search, and sort. New task fields: `starterDesktop`/`completeDesktop` (`{ fs, recycleBin, windows }`, reusing the Filesystem module's flat path-map for `fs`), `carryDesktopFrom`, `availableApps` (defaults to `["fileManager"]`), and stage snapshots use a `desktop` key instead of `fs`. `startsInDir` is reused unchanged from the Filesystem module.
+
+New check types: `fs_recycle_bin` (`is_in`/`not_in`), `window_state` (`opened`/`closed`/`minimized`/`maximized`), and `windows_arranged_side_by_side` (a tolerant two-window geometry check). All existing `fs_*` check types work unchanged against a Desktop task's `fs`.
+
+This first release ships File Manager only — Text Editor, Image Viewer, Paint, and a simulated Browser/search engine are planned for later releases. The support-stage reveal ladder is not available for Desktop tasks yet, matching the Filesystem module. See `docs/authoring/desktop.md`.
+
 ## 2026-08-03
 
 ### Added student-added sprites/backdrops and student-created variables (Scratch)

@@ -5,26 +5,31 @@ vi.mock('../../studentStorage', () => ({
   saveCode: vi.fn(),
   saveFile: vi.fn(),
   saveFsState: vi.fn(),
+  saveDesktopState: vi.fn(),
   loadSavedCode: vi.fn(),
   loadSavedFile: vi.fn(),
   loadSavedFs: vi.fn(),
+  loadSavedDesktop: vi.fn(),
   savePersonalSandboxCode: vi.fn(),
   savePersonalSandboxFile: vi.fn(),
   savePersonalSandboxFs: vi.fn(),
+  savePersonalSandboxDesktop: vi.fn(),
   ephemeralStorage: {
     saveCode: vi.fn(),
     saveFile: vi.fn(),
     saveFsState: vi.fn(),
+    saveDesktopState: vi.fn(),
     loadSavedCode: vi.fn(),
     loadSavedFile: vi.fn(),
     loadSavedFs: vi.fn(),
+    loadSavedDesktop: vi.fn(),
   },
 }))
 
 import {
-  saveCode, saveFile, saveFsState,
-  loadSavedCode, loadSavedFile, loadSavedFs,
-  savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs,
+  saveCode, saveFile, saveFsState, saveDesktopState,
+  loadSavedCode, loadSavedFile, loadSavedFs, loadSavedDesktop,
+  savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs, savePersonalSandboxDesktop,
   ephemeralStorage,
 } from '../../studentStorage'
 
@@ -173,6 +178,30 @@ describe('createStudentPersistence', () => {
     })
   })
 
+  describe('saveDesktop', () => {
+    it('calls saveDesktopState in normal mode', () => {
+      const { persistence } = setup()
+      const desktop = { fs: { '/': { type: 'dir' } }, recycleBin: [], windows: [] }
+      persistence.saveDesktop('anon-1', 6, desktop)
+      expect(saveDesktopState).toHaveBeenCalledWith('lesson-1', 6, 'anon-1', desktop)
+    })
+
+    it('calls savePersonalSandboxDesktop in sandbox mode', () => {
+      const { persistence } = setup({ inPersonalSandbox: true })
+      const desktop = { fs: {}, recycleBin: [], windows: [] }
+      persistence.saveDesktop('anon-1', 6, desktop)
+      expect(savePersonalSandboxDesktop).toHaveBeenCalledWith('lesson-1', 'anon-1', desktop)
+      expect(saveDesktopState).not.toHaveBeenCalled()
+    })
+
+    it('routes to ephemeral storage when previewMode', () => {
+      const { persistence } = setup({ previewMode: true })
+      persistence.saveDesktop('anon-1', 6, {})
+      expect(ephemeralStorage.saveDesktopState).toHaveBeenCalledWith('lesson-1', 6, 'anon-1', {})
+      expect(saveDesktopState).not.toHaveBeenCalled()
+    })
+  })
+
   describe('readers', () => {
     it('readSavedCode reads localStorage in normal mode', () => {
       const { persistence } = setup()
@@ -202,6 +231,16 @@ describe('createStudentPersistence', () => {
       ephemeral.readSavedFs('anon-1', 3)
       expect(ephemeralStorage.loadSavedFile).toHaveBeenCalledWith('lesson-1', 2, 'index.html', 'anon-1')
       expect(ephemeralStorage.loadSavedFs).toHaveBeenCalledWith('lesson-1', 3, 'anon-1')
+    })
+
+    it('readSavedDesktop routes by mode', () => {
+      const normal = setup().persistence
+      normal.readSavedDesktop('anon-1', 6)
+      expect(loadSavedDesktop).toHaveBeenCalledWith('lesson-1', 6, 'anon-1')
+
+      const ephemeral = setup({ previewMode: true }).persistence
+      ephemeral.readSavedDesktop('anon-1', 6)
+      expect(ephemeralStorage.loadSavedDesktop).toHaveBeenCalledWith('lesson-1', 6, 'anon-1')
     })
   })
 

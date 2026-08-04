@@ -1,7 +1,7 @@
 import {
-  saveCode, saveFile, saveFsState,
-  loadSavedCode, loadSavedFile, loadSavedFs,
-  savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs,
+  saveCode, saveFile, saveFsState, saveDesktopState,
+  loadSavedCode, loadSavedFile, loadSavedFs, loadSavedDesktop,
+  savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs, savePersonalSandboxDesktop,
   ephemeralStorage,
 } from '../studentStorage'
 
@@ -26,6 +26,9 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
   const saveSandboxFs = (actorId, fs) => sandboxModuleId
     ? savePersonalSandboxFs(lessonId, actorId, fs, sandboxModuleId)
     : savePersonalSandboxFs(lessonId, actorId, fs)
+  const saveSandboxDesktop = (actorId, desktop) => sandboxModuleId
+    ? savePersonalSandboxDesktop(lessonId, actorId, desktop, sandboxModuleId)
+    : savePersonalSandboxDesktop(lessonId, actorId, desktop)
   const ephemeral = teacherPresentation || previewMode
 
   function savePythonCode(actorId, taskId, data) {
@@ -76,6 +79,17 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
     }
   }
 
+  function saveDesktop(actorId, taskId, newDesktop) {
+    if (inPersonalSandboxRef.current) {
+      if (ephemeral) return
+      saveSandboxDesktop(actorId, newDesktop)
+    } else if (ephemeral) {
+      ephemeralStorage.saveDesktopState(lessonId, taskId, actorId, newDesktop)
+    } else {
+      saveDesktopState(lessonId, taskId, actorId, newDesktop)
+    }
+  }
+
   // Task-save readers matching the write routing above, so carry-through and
   // own-saved restore see what was written in the current mode.
   function readSavedCode(actorId, taskId) {
@@ -96,8 +110,14 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
       : loadSavedFs(lessonId, taskId, actorId)
   }
 
+  function readSavedDesktop(actorId, taskId) {
+    return ephemeral
+      ? ephemeralStorage.loadSavedDesktop(lessonId, taskId, actorId)
+      : loadSavedDesktop(lessonId, taskId, actorId)
+  }
+
   return {
-    savePythonCode, saveHtmlFile, saveHtmlFiles, saveScratch, saveFs,
-    readSavedCode, readSavedFile, readSavedFs,
+    savePythonCode, saveHtmlFile, saveHtmlFiles, saveScratch, saveFs, saveDesktop,
+    readSavedCode, readSavedFile, readSavedFs, readSavedDesktop,
   }
 }

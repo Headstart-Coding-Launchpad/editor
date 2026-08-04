@@ -357,7 +357,7 @@ function AddressBar({ currentDir, onNavigate }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false, initialDir = '/' }) {
+export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false, initialDir = '/', onDeletePath, extraToolbarItems = null }) {
   const [currentDir, setCurrentDir] = useState(initialDir)
   const [selected, setSelected] = useState(null)
   const [openFile, setOpenFile] = useState(null)
@@ -427,8 +427,12 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   }
 
   function handleDeletePath(path) {
-    if (!window.confirm(`Delete "${entryName(path)}"?`)) return
-    onFsChange(deleteEntry(fs, path))
+    if (onDeletePath) {
+      onDeletePath(path)
+    } else {
+      if (!window.confirm(`Delete "${entryName(path)}"?`)) return
+      onFsChange(deleteEntry(fs, path))
+    }
     if (selected === path) { setSelected(null); setOpenFile(null) }
     if (clipboard?.path === path) setClipboard(null)
   }
@@ -668,6 +672,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
           </>
         )}
         <AddressBar currentDir={currentDir} onNavigate={navigate} />
+        {extraToolbarItems}
       </div>
 
       {/* Main area: tree + grid */}
