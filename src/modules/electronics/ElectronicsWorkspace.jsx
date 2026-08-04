@@ -39,6 +39,7 @@ const PART_H = 70
 const LCD_PART_W = 196
 const LCD_PART_H = 118
 const PIN_SNAP_RADIUS = 34
+const CONTROL_SLIDE_RANGE_PX = 64
 const WIRE_CLEARANCE = 18
 const WIRE_OBSTACLE_PAD = 8
 const WIRE_EXIT_STUB = 12
@@ -248,6 +249,7 @@ export default function ElectronicsWorkspace({
     if (!selected && !selectedWire) return
     const next = cloneCircuit(circuit)
     if (selectedWire) {
+      if (selectedWire.locked && !setupMode) return
       next.wires = next.wires.filter(wire => wire.id !== selectedWire.id)
       setSelectedWireId(null)
       setSelectedId(next.components[0]?.id ?? null)
@@ -262,9 +264,16 @@ export default function ElectronicsWorkspace({
   }
 
   function updateSelectedWireColor(color) {
-    if (!selectedWire) return
+    if (!selectedWire || (selectedWire.locked && !setupMode)) return
     const next = cloneCircuit(circuit)
     next.wires = next.wires.map(wire => wire.id === selectedWire.id ? { ...wire, color } : wire)
+    update(next)
+  }
+
+  function updateSelectedWireLocked(locked) {
+    if (!selectedWire) return
+    const next = cloneCircuit(circuit)
+    next.wires = next.wires.map(wire => wire.id === selectedWire.id ? { ...wire, locked } : wire)
     update(next)
   }
 
@@ -459,6 +468,21 @@ export default function ElectronicsWorkspace({
     boardRef.current?.setPointerCapture?.(event.pointerId)
   }
 
+  // Drags a component's on-canvas slider handle (currently the potentiometer)
+  // using the same board-level pointer-capture machinery as component/wire
+  // drags. The value change is relative to the pointer's horizontal movement
+  // since pointer-down, so it stays correct regardless of the component's
+  // on-board position or rotation.
+  function startControlSlide(event, component) {
+    if (readOnly || (component.locked && !setupMode) || event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    selectComponent(component.id)
+    const startValue = Number(circuit.controls[component.id]?.value ?? component.props?.value ?? 50)
+    setDrag({ type: 'control', id: component.id, startPoint: boardPoint(event), startValue })
+    boardRef.current?.setPointerCapture?.(event.pointerId)
+  }
+
   function handleBoardPointerMove(event) {
     if (!drag) return
     const point = boardPoint(event)
@@ -468,6 +492,10 @@ export default function ElectronicsWorkspace({
     } else if (drag.type === 'wire') {
       const snap = nearestPin(point, drag.from)
       setDrag(current => current?.type === 'wire' ? { ...current, current: snap?.point ?? point, to: snap?.ref ?? null } : current)
+    } else if (drag.type === 'control') {
+      const deltaX = point.x - drag.startPoint.x
+      const nextValue = Math.round(Math.min(100, Math.max(0, drag.startValue + (deltaX / CONTROL_SLIDE_RANGE_PX) * 100)))
+      updateControlFor(drag.id, 'value', nextValue)
     }
   }
 
@@ -716,6 +744,7 @@ export default function ElectronicsWorkspace({
                       state={state}
                       controls={circuit.controls[component.id] ?? {}}
                       readOnly={readOnly || isLockedForUser}
+                      onSlideStart={event => startControlSlide(event, component)}
                       rotation={component.rotation ?? 0}
                       onControl={(key, value) => updateControlFor(component.id, key, value)}
                     />
@@ -782,13 +811,24 @@ export default function ElectronicsWorkspace({
                     <dd style={s.stateValue}>{selectedWireState.direction === 'reverse' ? 'reverse' : 'forward'}</dd>
                   </dl>
                 )}
+                {setupMode && (
+                  <label style={s.toggle}>
+                    <input
+                      type="checkbox"
+                      disabled={readOnly}
+                      checked={selectedWire.locked === true}
+                      onChange={event => updateSelectedWireLocked(event.target.checked)}
+                    />
+                    Fixed for students
+                  </label>
+                )}
                 <label style={s.wireColorField}>
                   <span style={s.wireColorLabel}>Wire colour</span>
-                  <select disabled={readOnly} value={selectedWire.color ?? '#ef4444'} onChange={event => updateSelectedWireColor(event.target.value)} style={s.wireColorSelect}>
+                  <select disabled={readOnly || (selectedWire.locked && !setupMode)} value={selectedWire.color ?? '#ef4444'} onChange={event => updateSelectedWireColor(event.target.value)} style={s.wireColorSelect}>
                     {WIRE_COLORS.filter(color => color.value !== 'auto').map(color => <option key={color.value} value={color.value}>{color.label}</option>)}
                   </select>
                 </label>
-                <button disabled={readOnly} className="btn-danger" style={s.removeBtn} onClick={removeSelected}>Delete wire</button>
+                <button disabled={readOnly || (selectedWire.locked && !setupMode)} className="btn-danger" style={s.removeBtn} onClick={removeSelected}>Delete wire</button>
               </>
             ) : selected ? (
               <>
@@ -1534,7 +1574,7 @@ function PaletteGlyph({ type }) {
   )
 }
 
-function ComponentBody({ component, state, controls, readOnly, rotation = 0, onControl }) {
+function ComponentBody({ component, state, controls, readOnly, rotation = 0, onControl, onSlideStart }) {
   const pressed = controls.pressed === true
   const closed = controls.closed === true
   const value = Number(controls.value ?? component.props?.value ?? 50)
@@ -1647,8 +1687,32 @@ function ComponentBody({ component, state, controls, readOnly, rotation = 0, onC
       {component.type === 'potentiometer' && (
         <>
           <path d="M26 58v8M56 58v8M86 58v8" stroke="#475569" strokeWidth="4" strokeLinecap="round" />
-          <circle cx="56" cy="32" r="25" fill="#f59e0b" stroke="#92400e" strokeWidth="3" />
-          <path d={`M56 32 L${56 + 18 * Math.cos((value * 2.7 - 225) * Math.PI / 180)} ${32 + 18 * Math.sin((value * 2.7 - 225) * Math.PI / 180)}`} stroke="#7c2d12" strokeWidth="5" strokeLinecap="round" />
+          <rect
+            data-control-action
+            x="20"
+            y="25"
+            width="72"
+            height="10"
+            rx="5"
+            fill="#fde68a"
+            stroke="#92400e"
+            strokeWidth="2"
+            style={{ cursor: readOnly ? 'default' : 'ew-resize' }}
+            onPointerDown={event => { if (!readOnly) { event.stopPropagation(); onSlideStart?.(event) } }}
+          />
+          <rect x="21" y="26" width={Math.max(2, 70 * (Math.min(100, Math.max(0, value)) / 100))} height="8" rx="4" fill="#f59e0b" style={{ pointerEvents: 'none' }} />
+          <circle
+            data-control-action
+            cx={20 + 72 * (Math.min(100, Math.max(0, value)) / 100)}
+            cy="30"
+            r="9"
+            fill="#7c2d12"
+            stroke="#fde68a"
+            strokeWidth="2"
+            style={{ cursor: readOnly ? 'default' : 'ew-resize' }}
+            onPointerDown={event => { if (!readOnly) { event.stopPropagation(); onSlideStart?.(event) } }}
+          />
+          <text x="56" y="50" textAnchor="middle" fontSize="9" fontWeight="700" fill="#7c2d12" style={{ pointerEvents: 'none' }}>{Math.round(value)}%</text>
         </>
       )}
       {component.type === 'motor' && (

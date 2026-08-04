@@ -1,7 +1,29 @@
 import React from 'react'
 import { COMPONENT_LABELS, COMPONENT_TYPES } from './circuit'
+import {
+  subjectOpFromCheck,
+  getAspectOptions,
+  getOperatorOptions,
+  defaultOperatorForAspect,
+  checkFromSubjectOp,
+} from '../../builder/components/task-editor/check-editors/checkEditorUtils'
+import { CheckValueEditor } from '../../builder/components/task-editor/CheckEditors'
 
 const CONTROL_TYPES = ['slide_switch', 'push_button']
+
+// Generic code checks — shared with Python/HTML/Arcade via `evaluateCodeCheck`
+// (see modules/checks.js and modules/electronics/circuit.js). Evaluated against
+// the circuit's Micro Controller MicroPython source, not the raw circuit.
+const CODE_CHECK_TYPES = [
+  'code',
+  'code_contains',
+  'code_does_not_contain',
+  'code_not_contains',
+  'code_equals',
+  'code_not_equals',
+  'code_matches_regex',
+  'code_not_matches_regex',
+]
 
 const CHECK_OPTIONS = [
   ['circuit_no_short', 'No short circuit'],
@@ -18,6 +40,7 @@ const SUBJECT_OPTIONS = [
   { value: 'part', label: 'Part' },
   { value: 'control', label: 'Control' },
   { value: 'connection', label: 'Connection' },
+  { value: 'code', label: 'Code' },
 ]
 
 function uiFromCheck(check) {
@@ -27,6 +50,10 @@ function uiFromCheck(check) {
   if (check.type === 'circuit_control_affects_power') return { subject: 'control', aspect: 'effect', operator: 'affects_power' }
   if (check.type === 'circuit_path_exists') return { subject: 'connection', aspect: 'path', operator: 'exists' }
   if (check.type === 'circuit_path_includes') return { subject: 'connection', aspect: 'path', operator: 'includes' }
+  if (CODE_CHECK_TYPES.includes(check.type)) {
+    const { operator } = subjectOpFromCheck(check)
+    return { subject: 'code', aspect: 'source', operator }
+  }
   return { subject: 'safety', aspect: 'short', operator: 'no_short' }
 }
 
@@ -37,6 +64,7 @@ function aspectOptions(subject) {
   ]
   if (subject === 'control') return [{ value: 'effect', label: 'Effect' }]
   if (subject === 'connection') return [{ value: 'path', label: 'Path' }]
+  if (subject === 'code') return getAspectOptions('code')
   return [{ value: 'short', label: 'Short circuit' }]
 }
 
@@ -49,6 +77,7 @@ function defaultOperator(subject, aspect) {
   if (subject === 'part') return 'exists'
   if (subject === 'control') return 'affects_power'
   if (subject === 'connection') return 'exists'
+  if (subject === 'code') return defaultOperatorForAspect('code', aspect)
   return 'no_short'
 }
 
@@ -63,6 +92,7 @@ function operatorOptions(subject, aspect) {
     { value: 'exists', label: 'path exists' },
     { value: 'includes', label: 'path includes part' },
   ]
+  if (subject === 'code') return getOperatorOptions('code', null, aspect)
   return [{ value: 'no_short', label: 'has no short' }]
 }
 
@@ -253,6 +283,11 @@ function CheckFields({ check, onChange }) {
     )
   }
 
+  if (CODE_CHECK_TYPES.includes(check.type)) {
+    const { operator } = subjectOpFromCheck(check)
+    return <CheckValueEditor check={check} subject="code" operator={operator} onChange={onChange} />
+  }
+
   return null
 }
 
@@ -294,13 +329,17 @@ export default function CheckEditor({ task, onUpdate, checks: checksProp, onChan
   }
 
   function updateFromUi(index, subject, aspect, operator, prev) {
+    if (subject === 'code') {
+      updateCheck(index, checkFromSubjectOp('code', operator, prev))
+      return
+    }
     updateCheck(index, skeleton(typeFromUi(subject, aspect, operator), prev))
   }
 
   return (
     <div style={s.wrap}>
       {checks.map((check, index) => {
-        const knownType = CHECK_OPTIONS.some(([value]) => value === check.type)
+        const knownType = CHECK_OPTIONS.some(([value]) => value === check.type) || CODE_CHECK_TYPES.includes(check.type)
         const activeCheck = knownType ? check : skeleton('circuit_no_short')
         const ui = uiFromCheck(activeCheck)
         const aspects = aspectOptions(ui.subject)

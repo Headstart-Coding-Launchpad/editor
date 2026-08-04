@@ -1544,8 +1544,9 @@ export function useStudentCodeState({
     let passed, suggestion = ''
     if (!alreadySolved) {
       const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code
-      const completionPassed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck) : false
-      const evaluation = evaluateCheckWithFeedback(task, '', { code: codeForCheck }, { completionPassed })
+      const checkContext = lesson?.type === 'electronics' ? { code: codeForCheck, circuit: codeForCheck } : { code: codeForCheck }
+      const completionPassed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck, checkContext) : false
+      const evaluation = evaluateCheckWithFeedback(task, '', checkContext, { completionPassed })
       passed = task?.check ? evaluation.passed : false
       suggestion = task?.check ? evaluation.suggestion : ''
       if (task?.check) {

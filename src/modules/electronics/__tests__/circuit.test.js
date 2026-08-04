@@ -491,4 +491,22 @@ describe('electronics circuit helpers', () => {
     expect(getComponentState(drivenCircuit, 'transistor1').switched).toBe(true)
     expect(getComponentState(drivenCircuit, 'motor1').on).toBe(true)
   })
+
+  it('evaluates generic code checks against the Micro Controller MicroPython source', () => {
+    const microcontroller = makeComponent('microcontroller', 1, { row: 2, col: 2 })
+    microcontroller.props.code = 'from machine import Pin\n\nled = Pin("GP0", Pin.OUT)\nled.on()'
+    const circuit = { ...DEFAULT_CIRCUIT, components: [microcontroller] }
+
+    expect(evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led.on()' }, circuit)).toBe(true)
+    expect(evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led.off()' }, circuit)).toBe(false)
+    expect(evaluateElectronicsCheck({ type: 'code_contains', value: 'Pin("GP0"' }, circuit)).toBe(true)
+    expect(evaluateElectronicsCheck({ type: 'code_not_contains', value: 'Pin("GP0"' }, circuit)).toBe(false)
+    expect(evaluateElectronicsCheck({ type: 'code_matches_regex', value: 'Pin\\("GP0",\\s*Pin\\.OUT\\)' }, circuit)).toBe(true)
+    expect(evaluateElectronicsCheck({ type: 'code_equals', value: microcontroller.props.code }, circuit)).toBe(true)
+
+    // Falls back to false for unknown check types, same as before.
+    expect(evaluateElectronicsCheck({ type: 'not_a_real_check' }, circuit)).toBe(false)
+    // With no Micro Controller on the board, code checks evaluate against empty source.
+    expect(evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led' }, { ...DEFAULT_CIRCUIT, components: [] })).toBe(false)
+  })
 })

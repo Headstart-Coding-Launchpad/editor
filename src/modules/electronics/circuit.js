@@ -1,3 +1,5 @@
+import { evaluateCodeCheck } from '../../shared/checkHelpers.js'
+
 export const ELECTRONICS_CHECK_TYPES = [
   'circuit_no_short',
   'circuit_has_component',
@@ -1246,7 +1248,11 @@ export function evaluateElectronicsCheck(check, circuitLike) {
   if (check.type === 'circuit_path_includes') {
     return pathIncludesComponent(circuit, check.from, check.to, check.includes)
   }
-  return false
+  // Any other check type is treated as a generic code check (`code`,
+  // `code_contains`, `code_equals`, `code_matches_regex`, and their negated
+  // variants — the same shared check types Python/HTML/Arcade lessons use)
+  // evaluated against the circuit's Micro Controller MicroPython source.
+  return evaluateCodeCheck(check, getMicrocontrollerCode(circuit))
 }
 
 export function makeComponent(type, index, position = { row: 2, col: 2 }) {

@@ -26,6 +26,14 @@ Five new optional Scratch task fields: `allowAddSprite`, `addSpritePresetIds`, `
 
 See `docs/authoring/scratch.md#student-added-sprites-backdrops-and-variables`.
 
+### Electronics: generic code checks and lockable wires
+
+Electronics tasks with a `microcontroller` component can now use the shared generic check types — `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants — alongside the existing `circuit_*` checks. These evaluate against the Micro Controller's MicroPython source, not the raw circuit. The Builder's electronics check editor now exposes this as a **Code** subject (with the same operators and wording as the Python/HTML code check editor), so authors can add these checks without hand-editing lesson JSON/YAML. See `docs/authoring/electronics.md` (Checks section) for an example.
+
+Wires now support an optional `wire.locked: true` field, mirroring the existing component `locked` convention: a locked wire cannot be deleted or recolored by students (new wires can still be attached to its pins). The builder's wire inspector gained a "Fixed for students" checkbox alongside the existing color select. See `docs/authoring/electronics.md` for the field description.
+
+No lesson migration is required — omitted `wire.locked` behaves exactly as before (unlocked).
+
 ## 2026-07-30
 
 ### Changed grouped subtask titles
