@@ -15,8 +15,10 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
   const [runCode, setRunCode] = useState('')
   const [running, setRunning] = useState(false)
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('code')
-  const { storageAssets } = useLessonStorageAssets(lesson?.isPlayground ? null : lessonId, lesson?.storageAssets ?? [])
-  const { typeStorageAssets } = useTypeAssets('arcade')
+  const { storageAssets: allStorageAssets } = useLessonStorageAssets(lesson?.isPlayground ? null : lessonId, lesson?.storageAssets ?? [])
+  const { typeStorageAssets: allTypeStorageAssets } = useTypeAssets('arcade')
+  const storageAssets = useMemo(() => allStorageAssets.filter(a => a.showInEditor), [allStorageAssets])
+  const typeStorageAssets = useMemo(() => allTypeStorageAssets.filter(a => a.showInEditor), [allTypeStorageAssets])
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const viewedWork = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const viewedCode = isViewingPrev

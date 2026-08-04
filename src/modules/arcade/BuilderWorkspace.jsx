@@ -13,8 +13,10 @@ export default function BuilderWorkspace({ task, lesson, onUpdate, codeTab, code
   const [runId, setRunId] = useState(0)
   const [previewCode, setPreviewCode] = useState('')
   const [previewRunning, setPreviewRunning] = useState(false)
-  const { storageAssets } = useLessonStorageAssets(lesson?.id, lesson?.storageAssets ?? [])
-  const { typeStorageAssets } = useTypeAssets('arcade')
+  const { storageAssets: allStorageAssets } = useLessonStorageAssets(lesson?.id, lesson?.storageAssets ?? [])
+  const { typeStorageAssets: allTypeStorageAssets } = useTypeAssets('arcade')
+  const storageAssets = useMemo(() => allStorageAssets.filter(a => a.showInEditor), [allStorageAssets])
+  const typeStorageAssets = useMemo(() => allTypeStorageAssets.filter(a => a.showInEditor), [allTypeStorageAssets])
   const previewDesign = useMemo(() => designForCodeTab(task, codeTab), [task, codeTab])
   const previewAssets = useMemo(() => {
     const staticAssets = (lesson?.assets ?? []).map(name => ({ name, url: resolveAssetFileUrl(resolveAssetsPath(lesson.assetsPath ?? ''), name) }))

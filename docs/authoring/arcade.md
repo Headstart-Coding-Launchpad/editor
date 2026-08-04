@@ -274,6 +274,18 @@ name. For example, an uploaded `sprites/player.png` is used as
 `Sprite("sprites/player.png")`. Arcade Kit preloads image assets before game
 code starts, preventing sprites from popping into the first frames.
 
+Uploaded Firebase Storage assets (both per-lesson `storageAssets` and
+Arcade-wide shared assets managed in the Admin Portal's Shared Assets panel)
+only appear in the student workspace and the Builder's author preview when
+their **Web editor** checkbox (`showInEditor`) is ticked. Generated sprites
+and tilemaps made in the visual design tools are unaffected — they have no
+`showInEditor` concept and always show.
+
+**Admin heads-up:** shared Arcade assets uploaded before this filter was
+added default to `showInEditor: false`, so any existing shared Arcade asset
+will disappear from lessons until an admin re-ticks **Web editor** for it in
+the Admin Portal's Shared Assets panel.
+
 ## Runtime notes and limits
 
 The first **Run game** loads a separate Pyodide runtime inside a sandboxed

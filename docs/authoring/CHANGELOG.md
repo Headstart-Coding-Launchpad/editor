@@ -34,6 +34,19 @@ Wires now support an optional `wire.locked: true` field, mirroring the existing 
 
 No lesson migration is required — omitted `wire.locked` behaves exactly as before (unlocked).
 
+### Arcade Kit now honours the "Web editor" asset flag
+
+Arcade's student workspace and the Builder's author preview now filter both
+per-lesson `storageAssets` and Arcade-wide shared assets by `showInEditor`,
+matching the existing HTML module behaviour. Generated sprites and tilemaps
+from the visual design tools are unaffected.
+
+**Migration note:** shared Arcade assets uploaded before this change default
+to `showInEditor: false` and will disappear from lessons until an admin
+re-ticks **Web editor** for them in the Admin Portal's Shared Assets panel.
+
+See `docs/authoring/arcade.md#assets` for details.
+
 ## 2026-07-30
 
 ### Changed grouped subtask titles
