@@ -67,6 +67,7 @@ function TypeAssetsEditor({ lessonType }) {
 
   const storageAssets = typeData?.storageAssets ?? []
   const defaultSprites = typeData?.defaultSprites ?? []
+  const defaultBackdrops = typeData?.defaultBackdrops ?? []
 
   async function ensureDoc() {
     const ref = doc(firestore, 'lessonTypeAssets', lessonType)
@@ -176,6 +177,14 @@ function TypeAssetsEditor({ lessonType }) {
           sprites={defaultSprites}
           storageAssets={storageAssets}
           onChange={sprites => updateField('defaultSprites', sprites)}
+        />
+      )}
+
+      {isScratch && (
+        <DefaultBackdropsEditor
+          backdrops={defaultBackdrops}
+          storageAssets={storageAssets}
+          onChange={backdrops => updateField('defaultBackdrops', backdrops)}
         />
       )}
     </div>
@@ -400,6 +409,86 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function DefaultBackdropsEditor({ backdrops, storageAssets, onChange }) {
+  function addBackdrop() {
+    const next = backdrops.length + 1
+    let id = `backdrop${next}`
+    while (backdrops.some(b => b.id === id)) { id = `backdrop${parseInt(id.replace('backdrop', '')) + 1}` }
+    onChange([...backdrops, { id, name: `Backdrop ${next}`, colour: '#ffffff' }])
+  }
+
+  function removeBackdrop(id) {
+    onChange(backdrops.filter(b => b.id !== id))
+  }
+
+  function update(id, field, value) {
+    onChange(backdrops.map(b => b.id === id ? { ...b, [field]: value } : b))
+  }
+
+  const imageAssets = (storageAssets ?? []).filter(a => /\.(png|jpe?g|gif|svg|webp)$/i.test(a.name))
+
+  return (
+    <div style={s.sectionCard}>
+      <div style={s.cardTitleRow}>
+        <span style={s.cardTitle}>Default backdrops</span>
+        <button className="btn-ghost" style={s.uploadBtn} onClick={addBackdrop}>
+          + Add backdrop
+        </button>
+      </div>
+      <p style={s.muted}>
+        These backdrops appear in the &ldquo;Add backdrop&rdquo; picker offered to students
+        (when a lesson author turns that on for a task) and can be reused across lessons.
+      </p>
+
+      {backdrops.length === 0 && (
+        <p style={s.muted}>No default backdrops configured yet.</p>
+      )}
+
+      {backdrops.map((b, i) => (
+        <div key={b.id} style={s.spriteBlock}>
+          <div style={s.spriteRow}>
+            <span style={s.spriteIndex}>{i + 1}</span>
+            <input
+              style={s.spriteInput}
+              value={b.name}
+              onChange={e => update(b.id, 'name', e.target.value)}
+              placeholder="Name"
+            />
+            <button style={s.removeBtn} onClick={() => removeBackdrop(b.id)} title="Remove backdrop">×</button>
+          </div>
+          <div style={{ ...s.spriteRow, paddingLeft: 28 }}>
+            {imageAssets.length > 0 ? (
+              <select
+                style={{ ...s.spriteSelect, flex: '2 1 160px' }}
+                value={b.image ?? ''}
+                onChange={e => update(b.id, 'image', e.target.value || undefined)}
+              >
+                <option value="">Solid colour</option>
+                {imageAssets.map(a => <option key={a.name} value={a.url}>{a.name}</option>)}
+              </select>
+            ) : (
+              <input
+                style={{ ...s.spriteInput, flex: '2 1 160px', fontFamily: 'var(--font-code)', fontSize: '0.78rem' }}
+                value={b.image ?? ''}
+                onChange={e => update(b.id, 'image', e.target.value || undefined)}
+                placeholder="Image URL (upload files above first)"
+              />
+            )}
+            {!b.image && (
+              <input
+                type="color"
+                style={{ width: 36, height: 30, padding: 0, border: '1px solid #e5e7eb', borderRadius: 5, cursor: 'pointer' }}
+                value={b.colour ?? '#ffffff'}
+                onChange={e => update(b.id, 'colour', e.target.value)}
+              />
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

@@ -3,9 +3,45 @@ import ExplainerEditor from '../ExplainerEditor'
 import ScratchWorkspace from '../../../modules/scratch/ScratchWorkspace'
 import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
+import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
 import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager, StageMetadataEditor } from './TaskEditorFields'
 import { ScratchToolboxPicker, VariableManager, PrebuiltStacksEditor } from '../../../modules/scratch/scratchEditors'
+
+// A checked-subset picker for the two "student additions" library restrictions
+// (`addSpritePresetIds` / `addBackdropPresetIds`). No checks = the author is offering the
+// whole admin-curated library; checking any item switches to "restricted to just these".
+function PresetSubsetEditor({ presets, selectedIds, onChange, emptyLabel }) {
+  if (!presets?.length) {
+    return <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0 24px' }}>{emptyLabel}</p>
+  }
+  const restricted = Array.isArray(selectedIds) && selectedIds.length > 0
+  return (
+    <div style={{ margin: '2px 0 0 24px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: 0 }}>
+        {restricted ? 'Restricted to the checked items below:' : 'The whole library is offered — check items to restrict to a subset.'}
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {presets.map(p => (
+          <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: '0.78rem', border: '1px solid #e5e7eb', borderRadius: 5, padding: '2px 6px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={restricted && selectedIds.includes(p.id)}
+              onChange={e => {
+                const current = new Set(restricted ? selectedIds : [])
+                if (e.target.checked) current.add(p.id)
+                else current.delete(p.id)
+                const next = Array.from(current)
+                onChange(next.length ? next : undefined)
+              }}
+            />
+            {p.name}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, setCheckResult }) {
   const [testScratchBlocks, setTestScratchBlocks] = useState(null)
@@ -16,7 +52,8 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const [scratchModalTab, setScratchModalTab] = useState('starter')
   const [modalSelectedSpriteId, setModalSelectedSpriteId] = useState(null)
   const [modalSpritePanelTarget, setModalSpritePanelTarget] = useState(null)
-  const [sidebarSections, setSidebarSections] = useState({ toolbox: true, sprites: true, backdrops: true, variables: false })
+  const [sidebarSections, setSidebarSections] = useState({ toolbox: true, sprites: true, backdrops: true, variables: false, studentAdditions: false })
+  const { defaultSprites: libSprites, defaultBackdrops: libBackdrops } = useTypeAssets('scratch')
   const [modalStarterBlocks, setModalStarterBlocks] = useState(null)
   const modalStarterBlocksRef = useRef(null)
   const modalCompleteBlocksRef = useRef(null)
@@ -304,6 +341,64 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           variables={task.variables ?? []}
                           onChange={variables => set('variables', variables.length > 0 ? variables : undefined)}
                         />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="te-collapsible">
+                    <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('studentAdditions')}>
+                      <span className="te-collapsible__label">Student additions</span>
+                      <span className="te-collapsible__chevron" style={{ transform: sidebarSections.studentAdditions ? 'rotate(180deg)' : 'none' }}>▾</span>
+                    </button>
+                    {sidebarSections.studentAdditions && (
+                      <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.86rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!task.allowAddSprite}
+                              onChange={e => onUpdate({ ...task, allowAddSprite: e.target.checked || undefined, addSpritePresetIds: e.target.checked ? task.addSpritePresetIds : undefined })}
+                            />
+                            <span style={{ fontWeight: 600 }}>Allow students to add sprites</span>
+                          </label>
+                          {task.allowAddSprite && (
+                            <PresetSubsetEditor
+                              presets={libSprites}
+                              selectedIds={task.addSpritePresetIds}
+                              onChange={ids => set('addSpritePresetIds', ids)}
+                              emptyLabel="No shared sprites configured yet — add some in Admin → Shared Assets → Scratch first."
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.86rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!task.allowAddBackdrop}
+                              onChange={e => onUpdate({ ...task, allowAddBackdrop: e.target.checked || undefined, addBackdropPresetIds: e.target.checked ? task.addBackdropPresetIds : undefined })}
+                            />
+                            <span style={{ fontWeight: 600 }}>Allow students to add backdrops</span>
+                          </label>
+                          {task.allowAddBackdrop && (
+                            <PresetSubsetEditor
+                              presets={libBackdrops}
+                              selectedIds={task.addBackdropPresetIds}
+                              onChange={ids => set('addBackdropPresetIds', ids)}
+                              emptyLabel="No shared backdrops configured yet — add some in Admin → Shared Assets → Scratch first."
+                            />
+                          )}
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.86rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!task.allowCreateVariable}
+                            onChange={e => set('allowCreateVariable', e.target.checked || undefined)}
+                          />
+                          <span style={{ fontWeight: 600 }}>Allow students to create their own variables</span>
+                        </label>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: 0 }}>
+                          Student-added sprites/backdrops and student-created variables are decorative — they never satisfy a check that targets an author-known sprite or variable name.
+                        </p>
                       </div>
                     )}
                   </div>

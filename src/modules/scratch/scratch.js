@@ -1082,6 +1082,67 @@ export function addPredefinedBlocksToToolbox(toolbox, predefinedBlocks) {
   return addPrebuiltStacksToToolbox(toolbox, [], predefinedBlocks)
 }
 
+// Blockly flyout "button" callback key registered on each sprite/stage workspace when a
+// task has `allowCreateVariable: true` (see ScratchWorkspace). Real Blockly variable
+// machinery is not used here — this is a plain flyout button wired up per-workspace.
+export const CREATE_VARIABLE_CALLBACK_KEY = 'CREATE_VARIABLE'
+
+// Adds a "Make a Variable" flyout button to a task's toolbox, ahead of the Variables
+// category contents (or as a new Variables category, if the toolbox was authored/restricted
+// without one). No-op when the toolbox shape isn't recognised.
+export function addCreateVariableButtonToToolbox(toolbox) {
+  const base = toolbox || DEFAULT_TOOLBOX
+  if (typeof base === 'string') return addCreateVariableButtonToXmlToolbox(base)
+  if (base?.kind === 'categoryToolbox') return addCreateVariableButtonToJsonToolbox(base)
+  return base
+}
+
+const CREATE_VARIABLE_BUTTON_JSON = { kind: 'button', text: 'Make a Variable', callbackKey: CREATE_VARIABLE_CALLBACK_KEY }
+
+function addCreateVariableButtonToJsonToolbox(toolbox) {
+  const contents = toolbox.contents ?? []
+  const varIndex = contents.findIndex(item => item.kind === 'category' && item.name === 'Variables')
+  if (varIndex === -1) {
+    return {
+      ...toolbox,
+      contents: [...contents, { kind: 'category', name: 'Variables', colour: '#FF8C1A', contents: [CREATE_VARIABLE_BUTTON_JSON] }],
+    }
+  }
+  const category = contents[varIndex]
+  if (category.contents?.some(item => item.kind === 'button' && item.callbackKey === CREATE_VARIABLE_CALLBACK_KEY)) return toolbox
+  const nextContents = [...contents]
+  nextContents[varIndex] = { ...category, contents: [CREATE_VARIABLE_BUTTON_JSON, ...(category.contents ?? [])] }
+  return { ...toolbox, contents: nextContents }
+}
+
+function addCreateVariableButtonToXmlToolbox(toolbox) {
+  if (typeof DOMParser === 'undefined') return toolbox
+  const doc = new DOMParser().parseFromString(toolbox, 'text/xml')
+  if (doc.querySelector('parsererror')) return toolbox
+
+  const hasButton = Array.from(doc.querySelectorAll('button')).some(b => b.getAttribute('callbackkey') === CREATE_VARIABLE_CALLBACK_KEY)
+  if (hasButton) return toolbox
+
+  const button = doc.createElement('button')
+  button.setAttribute('text', 'Make a Variable')
+  button.setAttribute('callbackkey', CREATE_VARIABLE_CALLBACK_KEY)
+
+  const category = Array.from(doc.querySelectorAll('category')).find(cat => cat.getAttribute('name') === 'Variables')
+  if (category) {
+    category.insertBefore(button, category.firstChild)
+    return new XMLSerializer().serializeToString(doc)
+  }
+
+  const root = doc.documentElement
+  if (!root) return toolbox
+  const newCategory = doc.createElement('category')
+  newCategory.setAttribute('name', 'Variables')
+  newCategory.setAttribute('colour', '#FF8C1A')
+  newCategory.appendChild(button)
+  root.appendChild(newCategory)
+  return new XMLSerializer().serializeToString(doc)
+}
+
 function flattenXmlToolbox(toolbox, options = {}) {
   if (typeof DOMParser === 'undefined') return toolbox
   const source = new DOMParser().parseFromString(toolbox, 'text/xml')

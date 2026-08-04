@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
 import {
@@ -21,9 +21,19 @@ import {
   setBackdropContext,
   setCostumeContext,
   setVariableContext,
+  addCreateVariableButtonToToolbox,
+  CREATE_VARIABLE_CALLBACK_KEY,
 } from './scratch'
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
+import { useTypeAssets } from '../../shared/useTypeAssets'
+import {
+  createSpriteFromPreset,
+  normalizeSpritePresets,
+  createBackdropFromPreset,
+  normalizeBackdropPresets,
+  resolvePresetLibrary,
+} from '../../shared/spritePresets'
 
 const STAGE_W = 480
 const STAGE_H = 360
@@ -62,6 +72,29 @@ export function isSpriteStudentEditable(sprite) {
 
 export function getSelectableScratchSprites(sprites, respectStudentEditable = false) {
   return respectStudentEditable ? sprites.filter(isSpriteStudentEditable) : sprites
+}
+
+// A student-added sprite/backdrop (from the runtime "Add sprite"/"Add backdrop" picker, or
+// restored from persisted `__meta__`) is decorative only: it must never satisfy a check that
+// assumes an author-known sprite set (`sprite_property`, `block_used`, etc. with no explicit
+// `spriteName`, or `spriteWorkspaces[0]` fallbacks). Author-authored sprites are always
+// checkable; student-added ones are excluded before check evaluation.
+export function isSpriteCheckable(sprite) {
+  return sprite?.studentAdded !== true
+}
+
+export function filterCheckableSpriteWorkspaces(spriteWorkspaces) {
+  return (spriteWorkspaces ?? []).filter(isSpriteCheckable)
+}
+
+// A student-typed variable name must be non-empty and must not collide (case-insensitively)
+// with an existing author-defined or already-created variable — collisions would let a
+// student variable accidentally satisfy a `variable_equals`/`variable_compare` check that
+// targets an author-known name.
+export function isValidNewVariableName(name, existingVariables = []) {
+  const trimmed = String(name ?? '').trim()
+  if (!trimmed) return false
+  return !(existingVariables ?? []).some(v => v.name.toLowerCase() === trimmed.toLowerCase())
 }
 
 const ROT_STYLES = [
@@ -436,10 +469,30 @@ export default function ScratchWorkspace({
   respectStudentEditable = false,
   preferStageSidePanel = false,
 }) {
-  const sprites = task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
-  const backdrops = task?.backdrops?.length > 0 ? task.backdrops : []
-  const variables = task?.variables ?? []
+  // Sprites/backdrops start from the task's authored lists but become mutable local state so
+  // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
+  // a session without disturbing already-injected Blockly workspaces. ScratchWorkspace remounts
+  // per task (callers key it by task id), so these re-seed correctly on every task change.
+  const [sprites, setSprites] = useState(() => task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES)
+  const [backdrops, setBackdrops] = useState(() => task?.backdrops?.length > 0 ? task.backdrops : [])
+  // Variables shown/selectable at runtime = author-authored + any the student created this
+  // session (restored from persisted `__meta__.createdVariables` on mount — see the init effect).
+  const [createdVariables, setCreatedVariables] = useState([])
+  const variables = useMemo(() => [...(task?.variables ?? []), ...createdVariables], [task?.variables, createdVariables])
   const selectableSprites = getSelectableScratchSprites(sprites, respectStudentEditable)
+
+  const canAddSprite = !readOnly && !!task?.allowAddSprite
+  const canAddBackdrop = !readOnly && !!task?.allowAddBackdrop
+  const canCreateVariable = !readOnly && !!task?.allowCreateVariable
+  const { defaultSprites: libSprites, defaultBackdrops: libBackdrops } = useTypeAssets(
+    (canAddSprite || canAddBackdrop) ? 'scratch' : null,
+  )
+  const spriteLibraryOptions = resolvePresetLibrary(normalizeSpritePresets(libSprites), task?.addSpritePresetIds)
+  const backdropLibraryOptions = resolvePresetLibrary(normalizeBackdropPresets(libBackdrops), task?.addBackdropPresetIds)
+  const [spritePickerOpen, setSpritePickerOpen] = useState(false)
+  const [backdropPickerOpen, setBackdropPickerOpen] = useState(false)
+  const [variablePrompt, setVariablePrompt] = useState(null) // { value, error } | null
+  const normInitStatesRef = useRef(null)
 
   // initialStates/initialState may be a function: it is resolved lazily inside the
   // init effect, AFTER the previous task's workspace has unmounted and flushed its
@@ -482,6 +535,15 @@ export default function ScratchWorkspace({
   const backdropNameRef     = useRef(backdrops[0]?.name ?? null)
   const imageCacheRef       = useRef({})
   const variableRuntimeRef  = useRef({})
+  // Kept in sync every render (see below) so the `useCallback([])`-memoized emitWorkspaceState
+  // — bound once per sprite workspace at injection time via addChangeListener — always reads
+  // the latest sprites/backdrops/createdVariables instead of a stale closure from whichever
+  // render was active when that workspace was injected.
+  const spritesRef          = useRef(sprites)
+  const backdropsRef        = useRef(backdrops)
+  const createdVariablesRef = useRef(createdVariables)
+  const spriteAddWrapRef    = useRef(null)
+  const backdropAddWrapRef  = useRef(null)
 
   const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null))
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
@@ -526,6 +588,9 @@ export default function ScratchWorkspace({
   flyoutCollapsedRef.current = flyoutCollapsed
   stagePanelCollapsedRef.current = stagePanelCollapsed
   hideStageRef.current = hideStage
+  spritesRef.current = sprites
+  backdropsRef.current = backdrops
+  createdVariablesRef.current = createdVariables
 
   statusRef.current = status
   runningRef.current = running
@@ -644,11 +709,34 @@ export default function ScratchWorkspace({
       for (const [id, ws] of Object.entries(workspaceRefs.current)) {
         states[id] = saveWorkspace(BlocklyRef.current, ws)
       }
+      // Student-added sprites/backdrops/variables carry through the same save/carry/remote-reset
+      // path as authored blocks: stashed under a `__meta__` key alongside the per-sprite Blockly
+      // states so callers that store this blob opaquely (carry-through, teacher live view) need
+      // no changes. Restored on mount — see the init effect's `restoreAddedSprites` call.
+      const addedSprites = spritesRef.current.filter(sp => sp.studentAdded)
+      const addedBackdrops = backdropsRef.current.filter(b => b.studentAdded)
+      const createdVars = createdVariablesRef.current
+      if (addedSprites.length || addedBackdrops.length || createdVars.length) {
+        states.__meta__ = {
+          addedSprites,
+          addedBackdrops,
+          createdVariables: createdVars,
+          variableValues: { ...variableRuntimeRef.current },
+        }
+      }
       pendingSyncRef.current = false
       lastEmittedStateRef.current = states
       onStateChangeRef.current?.(states)
     } catch {}
   }, [])
+
+  // Persists a student sprite/backdrop addition or variable creation immediately, rather than
+  // waiting for the next Blockly block-change event (a freshly-added sprite/backdrop/variable
+  // may have no blocks of its own yet, so nothing would otherwise trigger a save).
+  function persistMetaNow() {
+    clearTimeout(syncTimerRef.current)
+    emitWorkspaceState()
+  }
 
   // ── Build sprite workspace array for run calls ───────────────────────────────
   const resizeBlocklyWorkspaces = useCallback(() => {
@@ -686,6 +774,7 @@ export default function ScratchWorkspace({
     const result = sprites.map(sp => ({
       id: sp.id,
       name: sp.name,
+      studentAdded: !!sp.studentAdded,
       workspace: workspaceRefs.current[sp.id],
       state: spriteStatesRef.current[sp.id],
       costumes: sp.costumes ?? [],
@@ -731,7 +820,8 @@ export default function ScratchWorkspace({
     const withStacks = prebuiltStacks?.length || predefinedBlocks?.length
       ? addPrebuiltStacksToToolbox(baseToolbox, prebuiltStacks, predefinedBlocks)
       : baseToolbox
-    return buildAlwaysOpenToolbox(withStacks, { position: { x: state.x, y: state.y } })
+    const withCreateVariable = canCreateVariable ? addCreateVariableButtonToToolbox(withStacks) : withStacks
+    return buildAlwaysOpenToolbox(withCreateVariable, { position: { x: state.x, y: state.y } })
   }
 
   function refreshSpriteToolbox(spriteId) {
@@ -778,6 +868,110 @@ export default function ScratchWorkspace({
     }, 0)
   }
 
+  // Adds sprites restored from persisted `__meta__.addedSprites`, or one newly created via the
+  // "Add sprite" picker, to workspace state. Blockly workspace injection for these happens in
+  // the "ensure workspaces" effect below, keyed off `sprites`.
+  function restoreAddedSprites(addedSprites) {
+    if (!addedSprites?.length) return
+    setSprites(prev => [...prev, ...addedSprites])
+    const nextStates = { ...spriteStatesRef.current }
+    for (const sp of addedSprites) nextStates[sp.id] = defaultSpriteState(sp)
+    commitSpriteStates(nextStates)
+  }
+
+  // ── Student "Add sprite"/"Add backdrop" pickers, and "Make a Variable" ──────
+  // Tagged `studentAdded: true` so checks (see filterCheckableSpriteWorkspaces) and the
+  // author's own sprite/backdrop set never confuse these with authored ones. Persisted
+  // immediately (see persistMetaNow) since a freshly-added sprite/backdrop/variable has no
+  // Blockly block-change event of its own to trigger the usual debounced save.
+  function handleAddSprite(preset) {
+    const newSprite = { ...createSpriteFromPreset(sprites, preset), studentAdded: true }
+    setSprites(prev => [...prev, newSprite])
+    commitSpriteStates({ ...spriteStatesRef.current, [newSprite.id]: defaultSpriteState(newSprite) })
+    setSpritePickerOpen(false)
+    requestAnimationFrame(persistMetaNow)
+  }
+
+  function handleAddBackdrop(preset) {
+    const newBackdrop = { ...createBackdropFromPreset(backdrops, preset), studentAdded: true }
+    setBackdrops(prev => [...prev, newBackdrop])
+    backdropNameRef.current = newBackdrop.name
+    setBackdropName(newBackdrop.name)
+    setBackdropPickerOpen(false)
+    requestAnimationFrame(persistMetaNow)
+  }
+
+  function submitCreateVariable(rawName) {
+    if (!isValidNewVariableName(rawName, variables)) {
+      setVariablePrompt(prev => ({
+        value: prev?.value ?? rawName ?? '',
+        error: String(rawName ?? '').trim() ? 'That name is already used.' : 'Enter a name.',
+      }))
+      return
+    }
+    const name = String(rawName).trim()
+    setCreatedVariables(prev => [...prev, { name }])
+    setVariablePrompt(null)
+    requestAnimationFrame(persistMetaNow)
+  }
+
+  function attachWorkspaceListeners(ws, div, spriteId, Blockly) {
+    if (readOnly) return
+    ws.addChangeListener((event) => {
+      if (handleWorkspaceClickEvent(event, ws, spriteId, Blockly)) return
+      if (suppressChangeRef.current) return
+      if (!preferStageSidePanel && !flyoutCollapsedRef.current && event.type === 'create') {
+        const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
+        if (w < 1000) {
+          setFlyoutCollapsed(true)
+          flyoutCollapsedRef.current = true
+        }
+      }
+      // UI-only events (viewport, selection, toolbox) don't change the blocks —
+      // saving on them would persist an empty/no-op state on mere task visits.
+      if (event.isUiEvent) return
+      pendingSyncRef.current = true
+      clearTimeout(syncTimerRef.current)
+      syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+      clearTimeout(blockPlacedTimerRef.current)
+      blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
+      clearTimeout(idleFeedbackTimerRef.current)
+      idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
+    })
+    div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, spriteId, Blockly))
+  }
+
+  // Injects a Blockly workspace for one sprite/stage id, unless one already exists. Used both
+  // by the initial mount effect and by the "ensure workspaces" effect that reacts to sprites
+  // added later (student picker, or restored from persisted `__meta__.addedSprites`).
+  function injectWorkspaceFor(Blockly, spriteId, initState) {
+    const div = blocksDivRefs.current[spriteId]
+    if (!div || workspaceRefs.current[spriteId]) return null
+    const ws = Blockly.inject(div, {
+      toolbox: buildToolboxForSprite(spriteId),
+      renderer: 'zelos',
+      grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
+      zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.35, scaleSpeed: 1.2 },
+      move: { scrollbars: true, drag: true, wheel: false },
+      trashcan: true,
+      readOnly,
+    })
+    workspaceRefs.current[spriteId] = ws
+    Blockly.svgResize(ws)
+    if (canCreateVariable && !readOnly) {
+      try { ws.registerButtonCallback(CREATE_VARIABLE_CALLBACK_KEY, () => setVariablePrompt({ value: '', error: '' })) } catch {}
+    }
+    if (initState) {
+      try {
+        suppressChangeRef.current = true
+        loadWorkspace(Blockly, ws, initState)
+        requestAnimationFrame(() => { suppressChangeRef.current = false })
+      } catch { suppressChangeRef.current = false }
+    }
+    attachWorkspaceListeners(ws, div, spriteId, Blockly)
+    return ws
+  }
+
   // ── Initialise Blockly (one workspace per sprite) ────────────────────────────
   useEffect(() => {
     let cancelled = false
@@ -792,110 +986,29 @@ export default function ScratchWorkspace({
         if (cancelled) return
 
         const normInitStates = resolveInitStates()
+        normInitStatesRef.current = normInitStates
 
-        for (const sp of sprites) {
-          const div = blocksDivRefs.current[sp.id]
-          if (!div) continue
-
-          const ws = Blockly.inject(div, {
-            toolbox: buildToolboxForSprite(sp.id),
-            renderer: 'zelos',
-            grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
-            zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.35, scaleSpeed: 1.2 },
-            move: { scrollbars: true, drag: true, wheel: false },
-            trashcan: true,
-            readOnly,
-          })
-          workspaceRefs.current[sp.id] = ws
-          Blockly.svgResize(ws)
-
-          // Load initial state for this sprite
-          const initState = normInitStates[sp.id]
-          if (initState) {
-            try {
-              suppressChangeRef.current = true
-              loadWorkspace(Blockly, ws, initState)
-              requestAnimationFrame(() => { suppressChangeRef.current = false })
-            } catch { suppressChangeRef.current = false }
-          }
-
-          if (!readOnly) {
-            ws.addChangeListener((event) => {
-              if (handleWorkspaceClickEvent(event, ws, sp.id, Blockly)) return
-              if (suppressChangeRef.current) return
-              if (!preferStageSidePanel && !flyoutCollapsedRef.current && event.type === 'create') {
-                const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
-                if (w < 1000) {
-                  setFlyoutCollapsed(true)
-                  flyoutCollapsedRef.current = true
-                }
-              }
-              // UI-only events (viewport, selection, toolbox) don't change the blocks —
-              // saving on them would persist an empty/no-op state on mere task visits.
-              if (event.isUiEvent) return
-              pendingSyncRef.current = true
-              clearTimeout(syncTimerRef.current)
-              syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
-              clearTimeout(blockPlacedTimerRef.current)
-              blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
-              clearTimeout(idleFeedbackTimerRef.current)
-              idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
-            })
-
-            div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, sp.id, Blockly))
-          }
-        }
+        for (const sp of sprites) injectWorkspaceFor(Blockly, sp.id, normInitStates[sp.id])
 
         // Create stage workspace if enabled
-        if (task?.enableStageCode) {
-          const stageDiv = blocksDivRefs.current['__stage__']
-          if (stageDiv) {
-            const stageWs = Blockly.inject(stageDiv, {
-              toolbox: buildToolboxForSprite('__stage__'),
-              renderer: 'zelos',
-              grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
-              zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.35, scaleSpeed: 1.2 },
-              move: { scrollbars: true, drag: true, wheel: false },
-              trashcan: true,
-              readOnly,
-            })
-            workspaceRefs.current['__stage__'] = stageWs
-            Blockly.svgResize(stageWs)
-            const stageInitState = normInitStates?.['__stage__']
-            if (stageInitState) {
-              try {
-                suppressChangeRef.current = true
-                loadWorkspace(Blockly, stageWs, stageInitState)
-                requestAnimationFrame(() => { suppressChangeRef.current = false })
-              } catch { suppressChangeRef.current = false }
-            }
-            if (!readOnly) {
-              stageWs.addChangeListener((event) => {
-                if (handleWorkspaceClickEvent(event, stageWs, '__stage__', Blockly)) return
-                if (suppressChangeRef.current) return
-                if (!preferStageSidePanel && !flyoutCollapsedRef.current && event.type === 'create') {
-                  const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
-                  if (w < 1000) {
-                    setFlyoutCollapsed(true)
-                    flyoutCollapsedRef.current = true
-                  }
-                }
-                if (event.isUiEvent) return
-                pendingSyncRef.current = true
-                clearTimeout(syncTimerRef.current)
-                syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
-                clearTimeout(blockPlacedTimerRef.current)
-                blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
-                clearTimeout(idleFeedbackTimerRef.current)
-                idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
-              })
-
-              stageDiv.addEventListener('click', event => handleWorkspaceDomClick(event, stageWs, '__stage__', Blockly))
-            }
-          }
-        }
+        if (task?.enableStageCode) injectWorkspaceFor(Blockly, '__stage__', normInitStates?.['__stage__'])
 
         if (!cancelled) setStatus('ready')
+
+        // Restore student-added sprites/backdrops/variables from the persisted `__meta__`
+        // blob (same "state" object blocks are saved in — see emitWorkspaceState/notifyCheck).
+        // Injecting Blockly workspaces for any restored sprites happens in the "ensure
+        // workspaces" effect below, once `sprites` state grows to include them.
+        const meta = normInitStates?.__meta__ ?? null
+        if (!cancelled && meta) {
+          restoreAddedSprites(meta.addedSprites)
+          if (meta.addedBackdrops?.length) setBackdrops(prev => [...prev, ...meta.addedBackdrops])
+          if (meta.createdVariables?.length) setCreatedVariables(meta.createdVariables)
+          if (meta.variableValues) {
+            variableRuntimeRef.current = { ...meta.variableValues }
+            setVariableValues({ ...meta.variableValues })
+          }
+        }
       } catch (err) {
         console.error('Scratch init error:', err)
         if (!cancelled) setStatus('error')
@@ -921,6 +1034,22 @@ export default function ScratchWorkspace({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Ensure a Blockly workspace exists for every current sprite ───────────────
+  // Fires whenever `sprites` grows after the initial mount (a student added one via the
+  // picker, or one was just restored from persisted `__meta__.addedSprites` above). Sprites
+  // already injected are skipped, so this never disturbs an in-progress edit.
+  useEffect(() => {
+    if (status !== 'ready' || !BlocklyRef.current) return
+    let injectedAny = false
+    for (const sp of sprites) {
+      if (workspaceRefs.current[sp.id]) continue
+      injectWorkspaceFor(BlocklyRef.current, sp.id, normInitStatesRef.current?.[sp.id])
+      injectedAny = true
+    }
+    if (injectedAny) requestAnimationFrame(resizeBlocklyWorkspaces)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprites, status])
 
   // ── Resize active workspace when sprite selection changes ────────────────────
   useEffect(() => {
@@ -1182,7 +1311,7 @@ export default function ScratchWorkspace({
     if (!BlocklyRef.current) return
     const afterBlockChecks = scratchChecks.filter(c => c.evaluation === 'after_block_placed')
     if (afterBlockChecks.length === 0) return
-    const sws = buildSpriteWorkspaces()
+    const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
     const results = afterBlockChecks.map(c => evalSingleCheckPartial(c, sws))
     const completionPassed = results.every(r => r === 'pass')
     if (results.every(r => r === 'pass')) {
@@ -1213,7 +1342,7 @@ export default function ScratchWorkspace({
 
   function evaluateIdleFeedback() {
     if (!BlocklyRef.current || (!task?.feedbackChecks && !task?.incorrectChecks)) return
-    const sws = buildSpriteWorkspaces()
+    const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
     const completionPassed = scratchChecks.length > 0 && scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
@@ -1234,7 +1363,7 @@ export default function ScratchWorkspace({
       runningRef.current = false
       setRunning(false)
       if (scratchChecks.length > 0 && hasAfterRunCheck) {
-        const sws = buildSpriteWorkspaces()
+        const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
         const afterRunChecks = scratchChecks.filter(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
         const completionPassed = afterRunChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current))
         const evaluation = evaluateCheckWithCustomFeedback(
@@ -1337,7 +1466,7 @@ export default function ScratchWorkspace({
   }
 
   function handleCheck() {
-    const sws = buildSpriteWorkspaces()
+    const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
     const completionPassed = scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current))
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
@@ -1480,6 +1609,17 @@ export default function ScratchWorkspace({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
 
+  // Close the sprite/backdrop add pickers on an outside click.
+  useEffect(() => {
+    if (!spritePickerOpen && !backdropPickerOpen) return
+    function onPointerDown(e) {
+      if (spritePickerOpen && spriteAddWrapRef.current && !spriteAddWrapRef.current.contains(e.target)) setSpritePickerOpen(false)
+      if (backdropPickerOpen && backdropAddWrapRef.current && !backdropAddWrapRef.current.contains(e.target)) setBackdropPickerOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [spritePickerOpen, backdropPickerOpen])
+
   const showManualCheck = scratchChecks.some(c => c.evaluation === 'manual')
 
   // ── Sprite panel (tiles + properties) ────────────────────────────────────────
@@ -1616,6 +1756,34 @@ export default function ScratchWorkspace({
             <span style={s.spriteTileName}>Add</span>
           </button>
         )}
+        {canAddSprite && (
+          <div style={s.addPickerWrap} ref={spriteAddWrapRef}>
+            <button
+              type="button"
+              style={s.spriteAddTile}
+              onClick={() => setSpritePickerOpen(open => !open)}
+              aria-expanded={spritePickerOpen}
+              aria-label="Add sprite"
+              title="Add sprite"
+            >
+              <span style={s.spriteAddIcon}>+</span>
+              <span style={s.spriteTileName}>Add</span>
+            </button>
+            {spritePickerOpen && (
+              <div style={s.addPickerPanel} role="listbox" aria-label="Choose a sprite to add">
+                {spriteLibraryOptions.length === 0 && <p style={s.addPickerEmpty}>No sprites available</p>}
+                {spriteLibraryOptions.map(preset => (
+                  <button key={preset.id} type="button" style={s.addPickerItem} role="option" onClick={() => handleAddSprite(preset)}>
+                    {preset.costumes?.[0]?.image
+                      ? <img src={resolveAssetFileUrl(assetsPath, preset.costumes[0].image)} alt="" style={s.addPickerThumbImg} onError={e => { e.target.style.display = 'none' }} />
+                      : <span style={s.addPickerThumbEmoji}>{preset.costumes?.[0]?.emoji || preset.emoji || '🟢'}</span>}
+                    <span style={s.addPickerName}>{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {selectedSpriteId !== '__stage__' && !hideSpriteProps && renderSpriteProps(false)}
       {spritePanelEditor && <div style={s.spritePanelEditor}>{spritePanelEditor}</div>}
@@ -1656,6 +1824,30 @@ export default function ScratchWorkspace({
               : <p style={s.errorText}>Scratch failed to load. Please refresh the page.</p>
             }
           </div>
+        </div>
+      )}
+
+      {variablePrompt && (
+        <div style={s.modalOverlay} onClick={() => setVariablePrompt(null)}>
+          <form
+            style={s.variableModal}
+            onClick={e => e.stopPropagation()}
+            onSubmit={e => { e.preventDefault(); submitCreateVariable(variablePrompt.value) }}
+          >
+            <label style={s.askLabel} htmlFor="scratch-new-variable-name">New variable name</label>
+            <input
+              id="scratch-new-variable-name"
+              style={s.askInput}
+              autoFocus
+              value={variablePrompt.value}
+              onChange={e => setVariablePrompt({ value: e.target.value, error: '' })}
+            />
+            {variablePrompt.error && <span style={s.errorText}>{variablePrompt.error}</span>}
+            <div style={s.variableModalRow}>
+              <button type="button" className="btn-secondary" onClick={() => setVariablePrompt(null)}>Cancel</button>
+              <button type="submit" className="btn-primary" style={s.askBtn}>Create</button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -1763,6 +1955,33 @@ export default function ScratchWorkspace({
             <button type="button" className="btn-secondary" style={s.resetBtn} onClick={handleResetStage} title="Reset stage">
               Reset
             </button>
+            {canAddBackdrop && (
+              <div style={s.addPickerWrap} ref={backdropAddWrapRef}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={s.resetBtn}
+                  onClick={() => setBackdropPickerOpen(open => !open)}
+                  aria-expanded={backdropPickerOpen}
+                  title="Add backdrop"
+                >
+                  + Backdrop
+                </button>
+                {backdropPickerOpen && (
+                  <div style={s.addPickerPanel} role="listbox" aria-label="Choose a backdrop to add">
+                    {backdropLibraryOptions.length === 0 && <p style={s.addPickerEmpty}>No backdrops available</p>}
+                    {backdropLibraryOptions.map(preset => (
+                      <button key={preset.id} type="button" style={s.addPickerItem} role="option" onClick={() => handleAddBackdrop(preset)}>
+                        {preset.image
+                          ? <img src={resolveAssetFileUrl(assetsPath, preset.image)} alt="" style={s.addPickerThumbImg} onError={e => { e.target.style.display = 'none' }} />
+                          : <span style={{ ...s.addPickerThumbEmoji, background: preset.colour ?? '#fff', borderRadius: 4 }} />}
+                        <span style={s.addPickerName}>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ ...s.stageFrame, width: STAGE_W * stageScale, height: STAGE_H * stageScale }}>
@@ -1866,6 +2085,25 @@ const s = {
     background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-primary)',
   },
   spriteAddIcon: { fontSize: '1.5rem', lineHeight: 1, fontWeight: 500 },
+  // ── Student "Add sprite"/"Add backdrop" pickers ──────────────────────────────
+  addPickerWrap: { position: 'relative' },
+  addPickerPanel: {
+    position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20,
+    display: 'flex', flexWrap: 'wrap', gap: 6, width: 220, maxHeight: 220, overflowY: 'auto',
+    padding: 8, background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
+  },
+  addPickerEmpty: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: 0 },
+  addPickerItem: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 64,
+    padding: '4px 4px 6px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
+  },
+  addPickerThumbImg: { width: 32, height: 32, objectFit: 'contain' },
+  addPickerThumbEmoji: { width: 32, height: 32, fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  addPickerName: { fontSize: '0.68rem', fontWeight: 600, color: 'var(--colour-text)', maxWidth: 58, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  // ── "Make a Variable" modal ──────────────────────────────────────────────────
+  modalOverlay: { position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  variableModal: { display: 'grid', gap: 8, width: 260, padding: 16, background: '#fff', border: '1px solid #d1d5db', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.22)' },
+  variableModalRow: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 },
   spritePropBar: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '4px 2px', borderTop: '1px solid #e5e7eb' },
   spritePanelEditor: { paddingTop: 10, borderTop: '1px solid #e5e7eb' },
   spritePanelFooter: { paddingTop: 8 },
