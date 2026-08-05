@@ -41,9 +41,24 @@ node cli/cli.mjs topics publish-yaml topics.yaml   # upsert all topics to Firest
 node cli/cli.mjs topics yaml-to-json topics.yaml   # validate without Firebase
 node cli/cli.mjs topics json-to-yaml topics.json topics.yaml
 node cli/cli.mjs topics get for-loop --format yaml
+node cli/cli.mjs topics upsert topic.yaml          # upsert a single topic
 ```
 
 `topics publish-yaml` upserts every topic in the file; it does not delete topics absent from the file.
+
+### Single-Topic Upsert
+
+`topics upsert [file]` (reads from stdin when `file` is omitted) writes **one topic** and expects a **bare topic object** — not the `topics:` array wrapper used by `publish-yaml` and `upsert-library`:
+
+```yaml
+id: for-loop
+title: For loops
+types: [python]
+category: Loop
+summary: Repeats indented code once for each item in a sequence.
+```
+
+A single-item `topics:` array (or bare single-item array) is also accepted as a convenience and is unwrapped automatically; any other array length is rejected with `Expected exactly one topic, received N`. Use `upsert-library` or `publish-yaml` to write more than one topic in a call.
 
 ---
 

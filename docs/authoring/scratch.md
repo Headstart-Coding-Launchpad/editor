@@ -131,6 +131,11 @@ prebuiltStacks:
     stack: {}                 # required — Blockly toolbox-compatible block JSON
 ```
 
+**Student mechanic:** a prebuilt stack is not a separate chip or button — it's inserted straight into the existing toolbox category matching its root block's type (e.g. a `say` stack appears in the Looks flyout, next to the plain `say` block). There's no click-to-insert:
+- **Drag** the stack out of its flyout into the workspace to add it, exactly like any other block. It arrives as a normal, fully editable/movable/deletable block stack — nothing marks it as special. Dragging alone does not run it.
+- **Click** any block or stack — whether still sitting in the flyout or already dragged into the workspace — to run it immediately as a standalone script. Clicking in the flyout runs it as a one-off without adding it to the workspace.
+- If the stack starts with a `when green flag clicked` hat and has been dragged into the workspace, the green-flag **Run** button also runs it along with every other green-flag script.
+
 ## Populated Block-State JSON
 
 Scratch uses two related JSON shapes. Use the toolbox-stack shape for

@@ -70,6 +70,8 @@ for i in range(5):
 | `scratch` | Stacked Scratch block visual |
 | *(none)* | Auto-renders as Scratch if all non-empty lines match patterns; otherwise plain monospace |
 
+A fence opening directly under a paragraph line, with **no blank line** in between, still renders as its own code block and correctly interrupts the paragraph — this is standard CommonMark fenced-code-block-interrupts-paragraph behaviour, honoured by default by the renderer's `remark-parse`/micromark pipeline. No blank line is required before a fence.
+
 ---
 
 ## Scratch Blocks (fenced)

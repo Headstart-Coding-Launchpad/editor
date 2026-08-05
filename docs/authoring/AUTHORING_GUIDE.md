@@ -345,6 +345,7 @@ topics:
 node cli/cli.mjs topics publish-yaml topics.yaml   # upsert all topics to Firestore
 node cli/cli.mjs topics yaml-to-json topics.yaml   # validate without Firebase
 node cli/cli.mjs topics upsert-library topics.yaml # save a YAML or JSON topic library
+node cli/cli.mjs topics upsert topic.yaml          # save a single bare topic object (no `topics:` wrapper)
 node cli/cli.mjs topics get for-loop --format yaml # fetch a topic as YAML
 ```
 
