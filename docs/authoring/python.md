@@ -24,18 +24,24 @@ modules:
 
 ## Code Task Fields
 
+Author starter and complete code as `codeStages` entries with `role: starter` / `role: complete` — this is the current authoring convention and what the Builder's own UI creates and edits:
+
 ```yaml
   - title: Print a message
     moduleType: python
     moduleId: python-practice # optional — omit when one Python workspace is enough
     explainer: Use `print()` to show text.
-    starterCode: |            # optional — loaded when no carry-through exists
-      print('Hello')
-    completeCode: |           # optional — reference solution (builder only)
-      print('Hello Headstart')
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          print('Hello')
+      - role: complete
+        label: Complete
+        code: |
+          print('Hello Headstart')
     copyCode: |               # optional — read-only panel above the student editor
       print('Hello Headstart')
-    codeStages: []            # optional — intermediate stages (label, role?, code)
     carryCodeFrom: 1          # optional — carry saved code from task ID
     interactionMode: run      # optional — run (default) | submit
     check:
@@ -48,6 +54,8 @@ modules:
 - `run` or omitted: Run executes Python; checks run against output/code/variables/status.
 - `submit`: Submit checks code text only; use only submit-compatible checks (`type: code`).
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
+
+**Legacy `starterCode` / `completeCode`:** older lessons author starter and complete code as separate `starterCode: "..."` / `completeCode: "..."` string fields instead of `codeStages` roles. Both still work fully at runtime and are read whenever an equivalent stage is absent, but the current Builder UI no longer creates or edits them — don't use them in new lessons. See `docs/authoring/legacy-lesson-compatibility.md`.
 
 ---
 

@@ -45,7 +45,7 @@ The session report generator is **not** in `cli/`. Searching `cli/*.mjs` for `ta
 | T19 | Variant authoring in the Lesson Builder                   | PA1c | M    | T16         |
 | T20 | Document stage roles and variants                         | PA1  | S    | T15, T16    |
 | T21 | Add an `ordering` quiz type                               | PA4  | M    | **Blocked** |
-| T22 | Fix `copyCode` omission in the code-task field references | Docs | XS   | —           |
+| T22 | [Done] Fix `copyCode` omission in the code-task field references | Docs | XS   | —           |
 
 ---
 
@@ -521,6 +521,8 @@ Consistent with existing types: shuffled on render, immediate per-item feedback 
 # Documentation defects
 
 ## T22 — Fix `copyCode` omission in the code-task field references
+
+**Status: Done, 2026-08-05.** Added a `copyCode` row to the field tables in `platform-docs/python-tasks.md` and `platform-docs/html-tasks.md`, matching the description already used in `platform-docs/python.md:30` and `platform-docs/html.md:49`.
 
 **Size: extra small. Independent of everything else.**
 

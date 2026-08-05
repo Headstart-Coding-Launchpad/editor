@@ -255,6 +255,63 @@ for hit in player.last_tile_collisions:
         player_health -= hit["properties"]["damage"]
 ```
 
+## `arcadeDesign` Object Reference
+
+The Builder's pixel-art and tilemap editors are the normal way to author
+`arcadeDesign`, but the object itself is plain, hand-authorable JSON/YAML.
+Any missing field is auto-filled with its default when the design loads, so
+a hand-authored object doesn't need to specify every field.
+
+```yaml
+arcadeDesign:
+  version: 1                # always 1; informational only
+  sprites:
+    - id: sprite-1           # optional — auto-generated if omitted
+      name: player.png       # sanitised; always forced to end in .png
+      width: 16               # 1-64, default 8; editor only offers 8 or 16
+      height: 16               # 1-64, default 8
+      frames:                 # at least one frame required
+        - ["#ff004d", null, "#ff004d", "..."]   # flat array, length width*height
+                                                   # each entry is a palette colour or null (transparent)
+  maps:
+    - id: map-1               # optional — auto-generated if omitted
+      name: world             # sanitised; becomes the "world.tilemap" asset name
+      columns: 16              # 1-64, default 16
+      tileSize: 16             # 1-64, default 16 (logical pixels per tile)
+      rows:                    # one string per row, each padded/truncated to `columns` chars; "." = empty
+        - "................"
+        - "....##..##......"
+      tiles:                   # map of tile symbol -> tile definition
+        "#":
+          asset: ground.png     # must match a sprites[].name or another asset name
+          properties:
+            solid: true          # marks the tile solid for collision
+            tag: hazard           # free-text convention; no special runtime meaning
+      objects:                 # object spawns, read via world.find_objects(type)
+        - id: object-1
+          type: coin
+          x: 32
+          y: 48
+          properties: {}
+```
+
+**Sprite `frames`:** each frame is a flat pixel array, not a 2D grid — index
+`row * width + column`. Every colour value must be one of the fixed 16
+palette names/hexes listed under [Palette](#palette); anything else is
+silently treated as an empty (transparent) pixel.
+
+**`tiles` and `objects` are not schema-validated** at runtime — they're
+deep-copied as-is. The shapes above are the convention the visual editor
+itself uses and that `TileMap("name.tilemap")` expects: `tiles[symbol].asset`
+selects the drawn image, and `properties.solid` is the only property with
+built-in meaning (collision). Everything else in `properties` is free-form
+and only meaningful to your own game code via `tile_properties()` /
+`tile_property()`.
+
+Attachment points: a Starter state uses the task-level `arcadeDesign`; a
+Complete state uses `completeArcadeDesign`; a `role: starter` code stage can
+carry its own `arcadeDesign` alongside that stage's `code`, as noted above.
+
 ### Camera
 
 The camera shifts all world drawing, including sprites, tile maps, rectangles,
@@ -298,3 +355,19 @@ input, scrolling cameras, and basic audio. It does not yet support Python
 packages, file I/O, gamepads, a full physics engine, or completion checks based on game state. See
 [ARCADE_KIT_STATUS.md](../ARCADE_KIT_STATUS.md) for the current implementation
 status and planned work.
+
+**`input()` does not work.** Arcade Kit loads its own independent Pyodide
+runtime in a sandboxed iframe and only configures stdout/stderr — it does not
+reuse the Python module's `input()` shim (the one Electronics' MicroPython
+also relies on), so a blocking `input()` call inside the `update()`/`draw()`
+game loop has no way to receive a value. Do not author a task that relies on
+`input()` inside Arcade Kit.
+
+**`check` is not evaluated by Run game.** Pressing **Run game** never calls the
+completion-check pipeline at all — not because a `check` is absent, but
+because Arcade's Run button doesn't wire into it yet, checked or not. A
+checkless Arcade task therefore behaves identically to a checked one today:
+neither ever auto-passes from gameplay. Don't author a `check` expecting it
+to gate progression on an Arcade task until runtime-state checks land (see
+[ARCADE_KIT_STATUS.md](../ARCADE_KIT_STATUS.md)); a demo task left checkless
+on the required path is safe in the same sense a checked one would be.

@@ -74,7 +74,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
 | `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task (e.g. "Pair-share discussion"). Never shown to students. |
-| `check` | No | object or array | Completion check. Arrays require every check to pass. |
+| `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run — its check-passed state stays permanently false and it's never logged as passed in teacher reports. This does **not** block the student from advancing to the next task; forward navigation isn't gated by check state. Arcade is a special case: its Run button doesn't yet evaluate checks against game state at all (tracked in `docs/ARCADE_KIT_STATUS.md`), so a checkless Arcade task currently behaves no differently from a checked one — don't rely on an Arcade check to gate progression yet. |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
 | `_checkTested` | No | boolean | Builder-only validation flag set when an author has run/tested the completion checks in the builder. It is not read by the student experience. |
@@ -109,6 +109,24 @@ In a composed lesson, every code task chooses one row with `moduleType`; `module
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
 Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `role: starter | support | complete`. The first Starter is the default; teachers may apply any Starter to a class or individual learner. Arcade Kit Starter stages carry `code` plus `arcadeDesign` (sprites and tilemaps); Electronics Starter stages carry `circuit`; Scratch Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference: Arcade Kit and Electronics currently show code only, while Scratch uses `markdown` and renders fenced or inline Scratch blocks. Complete stages are revealed read-only before the student or teacher explicitly takes them over, using the same preview-then-replace flow as Support stages. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
+
+### Code stage runtime behaviour
+
+- **Labels are shown to students**, not just teachers — a revealed stage's `label` is the panel header the student sees, and it's interpolated into the confirmation text when a stage push would replace their work (e.g. "This will replace your current work with '{label}'").
+- **The `check` lives on the task, never on a stage.** Every stage — Starter, Support, or Complete — is graded against the one `check` defined on the task; there is no way to author a stage with its own, differently-graded check. Loading a Complete stage doesn't evaluate the check against it — it force-sets the task to passed directly.
+- **Support-stage reveal is offer-based, one at a time, and happens in both live and solo sessions**: after each failed run or check (including runtime/syntax errors), the student is offered the next not-yet-revealed Support stage. They must click to open it. Revealing is non-destructive — it opens a side reference panel and never touches the editor. A teacher can also reveal a Support or Complete stage reference for one student instantly from the student roster, with the same non-destructive effect.
+- **Starter/Complete stage pushes from a teacher are destructive but consent-based**: the teacher's push is a request the student must accept or decline before their editor/files are overwritten. This is different from a Support-stage reveal, which needs no confirmation because it doesn't touch the student's own work.
+- **Targeted feedback offers** (`stageOffer`, below) can point at either a Support stage or a Complete stage. A `preview` action is always non-destructive; a `replace` action always asks the student to confirm before overwriting their work.
+
+### Solo-mode complete-code self-reveal
+
+A student working in **Solo mode** (no teacher/live session) can destructively overwrite their own code with the task's Complete stage, without any teacher involved. This is distinct from the teacher-driven push covered above and from the read-only `copyCode` panel: it actually replaces the student's saved work and immediately marks the task's `check` as passed, the same as a genuine solve.
+
+- Offered only once the student has exhausted any authored Support stages and failed the check (or a run) at least twice (`checkFailCount >= 2`). It is **not available in a live session** — teachers still use the destructive stage push described above for that.
+- Available for every module type that has a Complete stage: Python, HTML, Arcade Kit, Scratch, Filesystem, and Electronics.
+- **Python and HTML** show a read-only "See complete code?" preview first; only after that preview has been opened does a second offer appear to load it into the editor.
+- **Arcade Kit, Scratch, Filesystem, and Electronics** have no preview step — the single offer to load the complete solution is destructive immediately.
+- There is **no confirmation dialog** before the destructive load (unlike moving to a stage, which does ask the student to confirm) — the button's label ("Load complete code into my editor") is the only warning.
 
 ### Targeted feedback-stage offers
 
