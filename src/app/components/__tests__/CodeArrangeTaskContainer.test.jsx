@@ -192,4 +192,39 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
     expect(screen.getByText('print("done")')).toBeInTheDocument()
   })
+
+  it('shows an input box wired to handleInputSubmit while the student\'s own code is awaiting input()', () => {
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null), inputPrompt: '', output: 'What is your name?' })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(screen.getByPlaceholderText('Type your input and press Enter')).toBeInTheDocument()
+  })
+
+  it('never shows an input box for a teacher live mirror, even if this browser\'s own cs.inputPrompt happens to be set', () => {
+    const cs = makeCs({ inputPrompt: '' })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={'for i in range(5): print(i * 2)\nprint("done")'}
+      />
+    )
+
+    expect(screen.queryByPlaceholderText('Type your input and press Enter')).not.toBeInTheDocument()
+  })
 })

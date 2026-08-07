@@ -30,6 +30,8 @@ export default function CodeArrangeTask({
   onAssembledCodeChange,
   output = '',
   runStatus = null,
+  inputPrompt = null,
+  onInputSubmit,
   running = false,
   checkPassed = false,
   checkAttempted = false,
@@ -210,6 +212,8 @@ export default function CodeArrangeTask({
           <OutputPanel
             output={output}
             runStatus={runStatus}
+            inputPrompt={inputPrompt}
+            onInputSubmit={onInputSubmit}
             checkPassed={checkPassed}
             hasCheck={!!task?.check}
             checkAttempted={checkAttempted}
