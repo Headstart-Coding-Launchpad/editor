@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { getLessonModule } from '../../../modules/registry'
 import { evaluateFeedbackCheckResults, evaluateSingleCheck, normalizeChecks } from '../../../modules/checks'
 import {
@@ -48,7 +48,9 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
   const [previewCheckPassed, setPreviewCheckPassed] = useState(false)
   const [previewCheckAttempted, setPreviewCheckAttempted] = useState(false)
   const [previewPyodideStatus, setPreviewPyodideStatus] = useState(lessonMod.runtime.isReady?.() ? 'ready' : 'idle')
+  const [previewInputPrompt, setPreviewInputPrompt] = useState(null)
   const iframeRef = React.useRef(null)
+  const previewAppendOutputRef = useRef(null)
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -163,6 +165,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
     setPreviewCheckAttempted(false)
     setPreviewCheckPassed(false)
     setPreviewIframeSrc(null)
+    setPreviewInputPrompt(null)
   }
 
   function buildPreviewFiles(assembledCode) {
@@ -184,10 +187,19 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         setPreviewPyodideStatus('ready')
       }
       let accumulated = ''
+      const echoOutput = text => { accumulated += text; setPreviewOutput(accumulated) }
+      previewAppendOutputRef.current = echoOutput
       const result = await lessonMod.runtime.run(assembled, task, {
-        onOutput: text => { accumulated += text; setPreviewOutput(accumulated) },
-        onInputRequired: () => {},
+        onOutput: echoOutput,
+        onInputRequired: p => setPreviewInputPrompt(p),
       })
+      setPreviewInputPrompt(null)
+
+      if (result.status === 'stopped') {
+        setPreviewRunning(false)
+        return
+      }
+
       setPreviewRunStatus(result.status)
       if (task.check) {
         const context = { status: result.status, code: assembled, variables: result.variables ?? {} }
@@ -216,6 +228,12 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
       }
       setPreviewRunning(false)
     })
+  }
+
+  function handlePreviewInputSubmit(value) {
+    previewAppendOutputRef.current?.(value + '\n')
+    setPreviewInputPrompt(null)
+    lessonMod.runtime.provideInput(value)
   }
 
   function handleLoadSolution() {
@@ -363,6 +381,8 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
           onSelectAnswer={setPreviewSlotState}
           output={previewOutput}
           runStatus={previewRunStatus}
+          inputPrompt={previewInputPrompt}
+          onInputSubmit={handlePreviewInputSubmit}
           running={previewRunning}
           checkPassed={previewCheckPassed}
           checkAttempted={previewCheckAttempted}

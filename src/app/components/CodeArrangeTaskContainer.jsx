@@ -111,6 +111,7 @@ export default function CodeArrangeTaskContainer({
       : isViewingPrev
         ? (savedView?.runStatus ?? null)
         : cs.runStatus
+  const inputPrompt = readOnly ? null : cs.inputPrompt
   const checkPassed = isForcedTeacherLive
     ? !!displayCheckPassed
     : (isLiveMirror || isViewingPrev)
@@ -136,6 +137,8 @@ export default function CodeArrangeTaskContainer({
       onAssembledCodeChange={readOnly ? undefined : handleAssembledCodeChange}
       output={output}
       runStatus={runStatus}
+      inputPrompt={inputPrompt}
+      onInputSubmit={readOnly ? undefined : cs.handleInputSubmit}
       running={readOnly ? false : cs.running}
       checkPassed={checkPassed}
       checkAttempted={checkAttempted}
