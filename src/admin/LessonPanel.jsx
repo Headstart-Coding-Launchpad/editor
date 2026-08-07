@@ -729,6 +729,9 @@ function LevelLessonGroup({
                                 >
                                   <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
                                   <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
+                                  {lesson.draft === true && (
+                                    <span style={s.draftPill}>Draft</span>
+                                  )}
                                   {isFork && (
                                     <span style={s.classPill}>{getForkClassLabel(lesson, classes)}</span>
                                   )}
@@ -1377,6 +1380,7 @@ const s = {
   lessonToggleTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   forkFamilyToggle: { border: 'none', background: 'transparent', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5, color: '#6b7280', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.76rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 },
   classPill: { border: '1px solid #bfdbfe', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8', fontSize: '0.68rem', fontWeight: 700, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0 },
+  draftPill: { border: '1px solid #fde68a', borderRadius: 999, background: '#fffbeb', color: '#92400e', fontSize: '0.68rem', fontWeight: 700, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.02em' },
   lessonDetailCell: { padding: '0 12px 10px 38px', background: '#fbfbfd', borderBottom: '1px solid #eef0f4' },
   lessonAdminPanel: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 },
   lessonAdminActions: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },

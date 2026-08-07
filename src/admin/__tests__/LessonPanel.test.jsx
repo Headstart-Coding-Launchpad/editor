@@ -168,6 +168,47 @@ describe('LessonPanel', () => {
     expect(links[0].getAttribute('href')).toContain('/lesson/py-intro?teacher=true')
   })
 
+  it('shows a Draft badge for lessons with draft: true', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON, { ...HTML_LESSON, draft: true }] })
+
+    await openFirstLevel(user)
+    expect(screen.getByText('Draft')).toBeInTheDocument()
+  })
+
+  it('does not show a Draft badge for lessons without draft: true', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+
+    await openFirstLevel(user)
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument()
+  })
+
+  it('shows a Draft badge on a fork whose own draft flag is true, even if the source lesson is not a draft', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        PYTHON_LESSON,
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-maple',
+          title: 'Intro to Python - Maple',
+          draft: true,
+          fork: { sourceLessonId: 'py-intro', classId: 'maple', className: 'Maple' },
+        },
+      ],
+      classes: [{ id: 'maple', name: 'Maple', archived: false }],
+    })
+
+    await openFirstLevel(user)
+    await user.click(screen.getByRole('button', { name: '1 class fork' }))
+
+    expect(screen.getByText('Draft')).toBeInTheDocument()
+  })
+
   it('opens the builder in a new tab when New Lesson is clicked', async () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'open').mockReturnValue(null)
