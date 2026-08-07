@@ -200,6 +200,10 @@ export const baseStyles = {
     flexShrink: 1,
     minHeight: 0,
     overflowY: 'auto',
+    // Reserve the scrollbar's width whether or not it's currently needed, so a
+    // scrollbar appearing/disappearing never changes the width available to
+    // fit against (that feedback loop caused answers to shake/thrash).
+    scrollbarGutter: 'stable',
   },
   options: {
     display: 'grid',

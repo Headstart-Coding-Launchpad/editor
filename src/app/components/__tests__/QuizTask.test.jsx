@@ -253,6 +253,22 @@ describe('QuizTask multiple choice', () => {
     }
   })
 
+  it('only watches the options frame for resize, not the grid it resizes itself (avoids a shrink/scrollbar feedback loop)', () => {
+    const observed = []
+    const originalResizeObserver = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class {
+      observe(el) { observed.push(el) }
+      disconnect() {}
+    }
+
+    try {
+      render(<QuizTask task={MULTIPLE_CHOICE_TASK} />)
+      expect(observed).toHaveLength(1)
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver
+    }
+  })
+
   it('supports keyboard selection for answer options', async () => {
     const user = userEvent.setup()
     const onSelectAnswer = vi.fn()

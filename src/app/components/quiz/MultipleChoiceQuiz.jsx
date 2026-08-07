@@ -37,9 +37,11 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
 
     run()
     if (typeof ResizeObserver === 'undefined') return undefined
+    // Only observe the frame, not the grid itself: the grid is what we resize,
+    // and font-size changes (unlike transform: scale) affect layout, so
+    // observing it here would re-trigger this same observer on our own writes.
     const observer = new ResizeObserver(run)
     observer.observe(container)
-    observer.observe(content)
     return () => observer.disconnect()
   }, [shuffledOptions])
 
