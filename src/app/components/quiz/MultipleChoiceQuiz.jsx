@@ -10,6 +10,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
   const locked = disabled || (submitted && checkPassed)
   const optionsFrameRef = React.useRef(null)
   const optionsGridRef = React.useRef(null)
+  const [optionsScale, setOptionsScale] = React.useState(1)
 
   const shuffledOptions = useMemo(() => {
     const arr = [...options]
@@ -27,7 +28,10 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
     if (!container || !content) return undefined
 
     const run = () => shrinkToFit({
-      setScale: scale => content.style.setProperty('--quiz-option-scale', String(scale)),
+      setScale: scale => {
+        content.style.setProperty('--quiz-option-scale', String(scale))
+        setOptionsScale(scale)
+      },
       isOverflowing: () => content.scrollHeight > container.clientHeight + 1 || content.scrollWidth > container.clientWidth + 1,
     })
 
@@ -99,7 +103,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
                       </ScratchQuizOptionContent>
                     )
                     : usesBlockMarkdown
-                    ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
+                    ? <MarkdownRenderer content={optionText} textScale={1.2 * optionsScale} inheritColor={active || isCorrect || isWrong} />
                     : (
                       <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
                         <InlineMarkdown content={optionText} />

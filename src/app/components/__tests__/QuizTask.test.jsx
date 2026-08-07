@@ -35,6 +35,16 @@ const SCRATCH_STACK_MULTIPLE_CHOICE_TASK = {
   ],
 }
 
+const FENCED_CODE_MULTIPLE_CHOICE_TASK = {
+  title: 'Pick the print statement',
+  taskType: 'quiz',
+  quizType: 'multiple_choice',
+  options: [
+    { id: 'a', text: '```python\nprint("hi")\n```' },
+    { id: 'b', text: '```python\nprint(\'bye\')\n```' },
+  ],
+}
+
 const IMAGE_QUESTION_TASK = {
   ...MULTIPLE_CHOICE_TASK,
   title: 'Image question',
@@ -222,6 +232,25 @@ describe('QuizTask multiple choice', () => {
 
     expect(scale).toBe(0.65)
     expect(setScale).toHaveBeenLastCalledWith(0.65)
+  })
+
+  it('shrinks fenced code-block answers along with the rest of the option when answers overflow', () => {
+    const clientHeightDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight')
+    const scrollHeightDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight')
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 100 })
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, value: 400 })
+
+    try {
+      const { container } = render(<QuizTask task={FENCED_CODE_MULTIPLE_CHOICE_TASK} />)
+      const codeBlock = container.querySelector('pre')
+
+      expect(parseFloat(codeBlock.style.fontSize)).toBeLessThan(14 * 1.2)
+    } finally {
+      if (clientHeightDescriptor) Object.defineProperty(HTMLElement.prototype, 'clientHeight', clientHeightDescriptor)
+      else delete HTMLElement.prototype.clientHeight
+      if (scrollHeightDescriptor) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollHeightDescriptor)
+      else delete HTMLElement.prototype.scrollHeight
+    }
   })
 
   it('supports keyboard selection for answer options', async () => {
