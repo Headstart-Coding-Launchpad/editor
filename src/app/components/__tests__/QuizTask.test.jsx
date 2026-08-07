@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
-import { fitScratchQuizScale } from '../quiz/quizUtils'
+import { fitScratchQuizScale, shrinkToFit } from '../quiz/quizUtils'
 
 const MULTIPLE_CHOICE_TASK = {
   title: 'Pick one',
@@ -127,7 +127,7 @@ describe('QuizTask multiple choice', () => {
     expect(loops.style.fontSize).toBe(arrays.style.fontSize)
   })
 
-  it('keeps question images compact and renders larger quiz question text', () => {
+  it('keeps question images compact, never caps or shrinks the question panel, and renders larger quiz question text', () => {
     render(<QuizTask task={IMAGE_QUESTION_TASK} showQuestion />)
 
     const image = screen.getByRole('img', { name: /diagram/i })
@@ -135,7 +135,8 @@ describe('QuizTask multiple choice', () => {
     const questionTextWrap = closestElementWithFontSize(/what does this show/i)
 
     expect(image.style.maxHeight).toBe('min(240px, 32vh)')
-    expect(questionPanel.style.maxHeight).toBe('min(360px, 48vh)')
+    expect(questionPanel.style.maxHeight).toBe('')
+    expect(questionPanel.style.flexShrink).toBe('0')
     expect(questionTextWrap.style.fontSize).toBe('17.25px')
   })
 
@@ -179,6 +180,48 @@ describe('QuizTask multiple choice', () => {
       contentWidth: 400,
       contentHeight: 100,
     })).toBeCloseTo(0.73, 2)
+  })
+
+  it('leaves the options scale at 1 when everything already fits', () => {
+    const setScale = vi.fn()
+    const scale = shrinkToFit({ setScale, isOverflowing: () => false })
+
+    expect(scale).toBe(1)
+    expect(setScale).toHaveBeenCalledTimes(1)
+    expect(setScale).toHaveBeenCalledWith(1)
+  })
+
+  it('steps the options scale down until the content fits', () => {
+    const setScale = vi.fn()
+    let stillOverflowing = true
+    const isOverflowing = vi.fn(() => stillOverflowing)
+
+    const scale = shrinkToFit({
+      setScale: value => {
+        setScale(value)
+        if (value <= 0.9) stillOverflowing = false
+      },
+      isOverflowing,
+      minScale: 0.65,
+      step: 0.05,
+    })
+
+    expect(scale).toBeCloseTo(0.9, 5)
+    expect(setScale).toHaveBeenLastCalledWith(scale)
+  })
+
+  it('never shrinks the options past the configured floor', () => {
+    const setScale = vi.fn()
+
+    const scale = shrinkToFit({
+      setScale,
+      isOverflowing: () => true,
+      minScale: 0.65,
+      step: 0.05,
+    })
+
+    expect(scale).toBe(0.65)
+    expect(setScale).toHaveBeenLastCalledWith(0.65)
   })
 
   it('supports keyboard selection for answer options', async () => {

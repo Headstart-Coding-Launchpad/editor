@@ -16,6 +16,23 @@ export function fitScratchQuizScale({ preferredScale, availableWidth, availableH
   return Math.max(minimumScale, Math.min(...limits))
 }
 
+export const OPTIONS_MIN_SCALE = 0.65
+export const OPTIONS_SCALE_STEP = 0.05
+export const OPTIONS_MAX_SHRINK_STEPS = 8
+
+// Steps a font-size scale down (via setScale) until isOverflowing() reports the
+// content fits, or the floor/step budget is reached. Used to shrink quiz answer
+// options to fit the space left after the question, without shrinking the question.
+export function shrinkToFit({ setScale, isOverflowing, minScale = OPTIONS_MIN_SCALE, step = OPTIONS_SCALE_STEP, maxSteps = OPTIONS_MAX_SHRINK_STEPS }) {
+  let scale = 1
+  setScale(scale)
+  for (let i = 0; i < maxSteps && scale > minScale && isOverflowing(); i++) {
+    scale = Math.max(minScale, scale - step)
+    setScale(scale)
+  }
+  return scale
+}
+
 export const CONFIDENCE_COLOURS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
 
 export const OPTION_COLOURS = [
@@ -159,8 +176,7 @@ export const baseStyles = {
     border: '1px solid #e5e7eb',
     borderRadius: 8,
     overflow: 'hidden',
-    flex: '0 1 auto',
-    maxHeight: 'min(360px, 48vh)',
+    flex: '0 0 auto',
   },
   questionLabel: {
     background: 'var(--colour-primary)',
@@ -177,16 +193,20 @@ export const baseStyles = {
     padding: '16px 18px',
     fontSize: '1.16rem',
     lineHeight: 1.7,
-    overflowY: 'auto',
     overflowWrap: 'anywhere',
+  },
+  optionsFrame: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    overflowY: 'auto',
   },
   options: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gridAutoRows: 'minmax(min-content, 1fr)',
-    gap: 10,
-    flexGrow: 1,
-    flexShrink: 0,
+    gap: 'calc(var(--quiz-option-scale, 1) * 10px)',
+    minHeight: '100%',
   },
   option: {
     display: 'flex',
@@ -196,13 +216,13 @@ export const baseStyles = {
     width: '100%',
     minHeight: 0,
     height: '100%',
-    padding: '18px 20px',
+    padding: 'calc(var(--quiz-option-scale, 1) * 18px) calc(var(--quiz-option-scale, 1) * 20px)',
     border: '2px solid',
     borderRadius: 8,
     cursor: 'pointer',
     textAlign: 'left',
     fontFamily: 'var(--font-body)',
-    fontSize: '1.42rem',
+    fontSize: 'calc(var(--quiz-option-scale, 1) * 1.42rem)',
     fontWeight: 600,
     transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s',
   },
@@ -211,8 +231,8 @@ export const baseStyles = {
     zIndex: 2,
   },
   optionId: {
-    width: 42,
-    height: 42,
+    width: 'calc(var(--quiz-option-scale, 1) * 42px)',
+    height: 'calc(var(--quiz-option-scale, 1) * 42px)',
     borderRadius: 6,
     display: 'inline-flex',
     alignItems: 'center',
