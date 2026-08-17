@@ -169,12 +169,15 @@ describe('addPredefinedBlocksToToolbox', () => {
     expect(field?.textContent).toBe('50')
   })
 
-  it('skips a predefined block whose type is not in the XML toolbox', () => {
+  it('creates the matching category for a predefined block whose type is not in the XML toolbox', () => {
     const xml = '<xml><category name="Events" colour="#FFAB19"><block type="event_whenflagclicked"/></category></xml>'
     const result = addPredefinedBlocksToToolbox(xml, predefined)
     const doc = new DOMParser().parseFromString(result, 'text/xml')
-    const motionBlocks = doc.querySelectorAll('category[name="Motion"] block')
-    expect(motionBlocks.length).toBe(0)
+    const motionCategory = doc.querySelector('category[name="Motion"]')
+    expect(motionCategory?.getAttribute('colour')).toBe('#4C97FF')
+    const motionBlocks = motionCategory.querySelectorAll('block')
+    expect(motionBlocks.length).toBe(1)
+    expect(motionBlocks[0].getAttribute('type')).toBe('motion_movesteps')
   })
 
   it('returns a non-category JSON toolbox unchanged', () => {
@@ -231,6 +234,16 @@ describe('addPrebuiltStacksToToolbox', () => {
     expect(blocks.at(-1)?.querySelector('next > block')?.getAttribute('type')).toBe('looks_say')
   })
 
+  it('appends a stack to a completely empty XML toolbox (every block deselected)', () => {
+    const xml = '<xml></xml>'
+    const result = addPrebuiltStacksToToolbox(xml, [connectedStack])
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const motionCategory = doc.querySelector('category[name="Motion"]')
+
+    expect(motionCategory?.getAttribute('colour')).toBe('#4C97FF')
+    expect(motionCategory.querySelector('block')?.getAttribute('type')).toBe('motion_movesteps')
+  })
+
   it('converts legacy predefined blocks through the stack path', () => {
     const predefined = [{ id: 'pb1', type: 'motion_movesteps', inputs: { STEPS: 50 } }]
     const result = addPrebuiltStacksToToolbox(DEFAULT_TOOLBOX, [], predefined)
@@ -239,6 +252,40 @@ describe('addPrebuiltStacksToToolbox', () => {
 
     expect(added.type).toBe('motion_movesteps')
     expect(added.inputs.STEPS.shadow.fields.NUM).toBe('50')
+  })
+
+  it('creates a missing category in a JSON toolbox for a stack whose block type is absent', () => {
+    const noControl = { ...DEFAULT_TOOLBOX, contents: DEFAULT_TOOLBOX.contents.filter(c => c.name !== 'Control') }
+    const controlStack = { id: 'stack-2', stack: createScratchBlockStack('control_repeat_until') }
+
+    expect(noControl.contents.find(c => c.name === 'Control')).toBeUndefined()
+
+    const result = addPrebuiltStacksToToolbox(noControl, [controlStack])
+    const controlCat = result.contents.find(c => c.name === 'Control')
+
+    expect(controlCat).toBeDefined()
+    expect(controlCat.colour).toBe('#FFAB19')
+    expect(controlCat.contents.at(-1).type).toBe('control_repeat_until')
+  })
+
+  it('places a stack into an existing category rather than duplicating it', () => {
+    const result = addPrebuiltStacksToToolbox(DEFAULT_TOOLBOX, [connectedStack])
+    const motionCats = result.contents.filter(c => c.name === 'Motion')
+
+    expect(motionCats).toHaveLength(1)
+  })
+
+  it('creates a missing category in an XML toolbox for a stack whose block type is absent', () => {
+    const xml = '<xml><category name="Motion" colour="#4C97FF"><block type="motion_movesteps"/></category></xml>'
+    const looksStack = { id: 'stack-3', stack: createScratchBlockStack('looks_say', { MESSAGE: 'Hi' }) }
+
+    const result = addPrebuiltStacksToToolbox(xml, [looksStack])
+    const doc = new DOMParser().parseFromString(result, 'text/xml')
+    const looksCategory = doc.querySelector('category[name="Looks"]')
+
+    expect(looksCategory?.getAttribute('colour')).toBe('#9966FF')
+    expect(looksCategory.querySelector('block')?.getAttribute('type')).toBe('looks_say')
+    expect(doc.querySelectorAll('category[name="Motion"] block')).toHaveLength(1)
   })
 })
 

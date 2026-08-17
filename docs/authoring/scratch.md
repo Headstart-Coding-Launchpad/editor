@@ -131,10 +131,12 @@ prebuiltStacks:
     stack: {}                 # required — Blockly toolbox-compatible block JSON
 ```
 
-**Student mechanic:** a prebuilt stack is not a separate chip or button — it's inserted straight into the existing toolbox category matching its root block's type (e.g. a `say` stack appears in the Looks flyout, next to the plain `say` block). There's no click-to-insert:
+**Student mechanic:** a prebuilt stack is not a separate chip or button — it's inserted into the toolbox category matching its root block's type (e.g. a `say` stack appears in the Looks flyout, next to the plain `say` block). There's no click-to-insert:
 - **Drag** the stack out of its flyout into the workspace to add it, exactly like any other block. It arrives as a normal, fully editable/movable/deletable block stack — nothing marks it as special. Dragging alone does not run it.
 - **Click** any block or stack — whether still sitting in the flyout or already dragged into the workspace — to run it immediately as a standalone script. Clicking in the flyout runs it as a one-off without adding it to the workspace.
 - If the stack starts with a `when green flag clicked` hat and has been dragged into the workspace, the green-flag **Run** button also runs it along with every other green-flag script.
+
+**The stack's block types don't need to already be in the task's `toolbox`.** The platform resolves the root block's category (Motion, Looks, Control, etc.) and appends the stack there, creating that category if the toolbox doesn't have it yet — so a task's toolbox can be restricted to only the blocks taught so far, even down to every block deselected, while a prebuilt stack still hands out a scaffolded script that uses blocks ahead of it. The one exception is a minimal/flat toolbox that already has blocks listed directly under `<xml>` (no categories) — that authored pattern is left as-is, and a stack only appends there if its root block type is already one of those root-level blocks — see [Scratch Toolbox XML](scratch-toolbox-xml.md).
 
 ## Populated Block-State JSON
 
