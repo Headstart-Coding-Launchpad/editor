@@ -856,6 +856,10 @@ export default function ScratchWorkspace({
   function handleWorkspaceDomClick(event, ws, spriteId, Blockly) {
     if (event.button !== 0) return
     if (!event.target?.closest?.('.blocklyDraggable')) return
+    // A click that lands on an editable field (text/number/dropdown) opens that field's editor —
+    // Blockly's own click-event path (handleWorkspaceClickEvent) already excludes this case, but
+    // this raw DOM listener doesn't, so it would run the block just from clicking in to edit it.
+    if (event.target?.closest?.('.blocklyEditableField')) return
     setTimeout(() => {
       const selected = Blockly.getSelected?.()
       const flyoutWs = ws.getFlyout?.()?.getWorkspace?.()
@@ -930,6 +934,12 @@ export default function ScratchWorkspace({
       // UI-only events (viewport, selection, toolbox) don't change the blocks —
       // saving on them would persist an empty/no-op state on mere task visits.
       if (event.isUiEvent) return
+      // Any real edit invalidates a prior check attempt (e.g. clicking a block to edit its
+      // field runs it via click-to-run, which can fail; the failure banner must not linger
+      // once the learner starts fixing it). The debounced evaluators below recompute a fresh
+      // verdict for after_block_placed/idle-feedback checks; after_run-only checks stay
+      // cleared until the learner runs again.
+      if (lastCheckRef.current !== null) clearCheckFeedback()
       pendingSyncRef.current = true
       clearTimeout(syncTimerRef.current)
       syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
@@ -1314,7 +1324,11 @@ export default function ScratchWorkspace({
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
     const results = afterBlockChecks.map(c => evalSingleCheckPartial(c, sws))
     const completionPassed = results.every(r => r === 'pass')
-    if (results.every(r => r === 'pass')) {
+    if (completionPassed && hasAfterRunCheck) {
+      // All block-placement checks pass, but there are also after_run checks (e.g. block_run)
+      // that only a real Run can verify — don't declare the check attempted/passed yet.
+      clearCheckFeedback()
+    } else if (results.every(r => r === 'pass')) {
       const evaluation = evaluateCheckWithCustomFeedback(
         task,
         completionPassed,
@@ -1343,7 +1357,11 @@ export default function ScratchWorkspace({
   function evaluateIdleFeedback() {
     if (!BlocklyRef.current || (!task?.feedbackChecks && !task?.incorrectChecks)) return
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const completionPassed = scratchChecks.length > 0 && scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
+    // Idle evaluation happens purely from editing, without a run — only after_block_placed
+    // checks can be assessed here. after_run checks (e.g. block_run) need a real run and must
+    // not be judged against a stale signalRef from a previous run.
+    const idleChecks = scratchChecks.filter(c => c.evaluation === 'after_block_placed')
+    const completionPassed = idleChecks.length > 0 && idleChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
@@ -1591,6 +1609,11 @@ export default function ScratchWorkspace({
   useEffect(() => {
     if (readOnly) return
     function onKeyDown(event) {
+      // Typing into a Blockly field editor (or any other text input) fires DOM keydown events
+      // on that input — those keystrokes are text, not a stage "key pressed" event, and must
+      // not run whenkeypressed hats or re-evaluate after_run checks against a no-op run.
+      const tag = event.target?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'select' || tag === 'textarea' || event.target?.isContentEditable) return
       const key = normalizeKey(event.key)
       if (!key) return
       if (document.activeElement === canvasRef.current && PAGE_NAVIGATION_KEYS.has(event.key)) {
