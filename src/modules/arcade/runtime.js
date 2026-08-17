@@ -390,7 +390,7 @@ class _Game:
     def shake(self, amount=2, duration=0.15): js.hsArcadeShake(float(amount), float(duration))
     async def run(self):
         caller = inspect.currentframe().f_back
-        callbacks = caller.f_locals if caller else (self._namespace or {})
+        callbacks = (caller.f_globals if caller else None) or self._namespace or {}
         setup, update, draw = callbacks.get('setup'), callbacks.get('update'), callbacks.get('draw')
         if setup: setup()
         js.hsArcadeReady()
@@ -407,32 +407,23 @@ module.game, module.keys, module.pointer, module.mouse = game, keys, pointer, po
 module.Sprite, module.TileMap = Sprite, TileMap
 sys.modules['headstart_arcade'] = module
 
-def _sync_game_scope():
-    """Make top-level game values available to callbacks that use global."""
-    caller = inspect.currentframe().f_back
-    if caller:
-        caller.f_globals.update(caller.f_locals)
-
 class _RunCall(ast.NodeTransformer):
     def visit_Expr(self, node):
         self.generic_visit(node)
         if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == 'run':
             node.value = ast.Await(value=node.value)
-            sync_scope = ast.Expr(value=ast.Call(func=ast.Name(id='_sync_game_scope', ctx=ast.Load()), args=[], keywords=[]))
-            return [ast.copy_location(sync_scope, node), node]
         return node
 
 tree = ast.parse(_hs_source, filename='<game>')
 tree = _RunCall().visit(tree)
 ast.fix_missing_locations(tree)
-runner_body = tree.body or [ast.Pass(lineno=1, col_offset=0)]
-runner = ast.AsyncFunctionDef(name='__hs_game__', args=ast.arguments(posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), body=runner_body, decorator_list=[], returns=None, lineno=1, col_offset=0)
-mod = ast.Module(body=[runner], type_ignores=[])
-ast.fix_missing_locations(mod)
-scope = {'__name__': '__main__', '_sync_game_scope': _sync_game_scope}
-exec(compile(mod, '<game>', 'exec'), scope)
+scope = {'__name__': '__main__'}
 game._namespace = scope
-await scope['__hs_game__']()
+code = compile(tree, '<game>', 'exec', flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+if code.co_flags & inspect.CO_COROUTINE:
+    await eval(code, scope)
+else:
+    exec(code, scope)
 \`;
 
 try {
