@@ -930,6 +930,12 @@ export default function ScratchWorkspace({
       // UI-only events (viewport, selection, toolbox) don't change the blocks —
       // saving on them would persist an empty/no-op state on mere task visits.
       if (event.isUiEvent) return
+      // Any real edit invalidates a prior check attempt (e.g. clicking a block to edit its
+      // field runs it via click-to-run, which can fail; the failure banner must not linger
+      // once the learner starts fixing it). The debounced evaluators below recompute a fresh
+      // verdict for after_block_placed/idle-feedback checks; after_run-only checks stay
+      // cleared until the learner runs again.
+      if (lastCheckRef.current !== null) clearCheckFeedback()
       pendingSyncRef.current = true
       clearTimeout(syncTimerRef.current)
       syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
