@@ -316,17 +316,17 @@ Both are enforced structurally (author sprites/variables are always distinguisha
 
 ## Scratch Check Types
 
-Scratch checks can be a single object or an array. Prefer `evaluation: continuous` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
+Scratch checks can be a single object or an array. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
 
-Students should not see a failure just because they are still building. Continuous checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
+Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
-`feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback.
+`feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback. Avoid using `after_run` check types (`block_run`, `sprite_property`/`variable_compare` reading run-dependent state) as `on_idle` feedback checks — idle evaluation happens purely from editing, without a fresh run, so an `after_run` check there is judged against the last Run's state rather than the learner's current unedited workspace.
 
 ### `block_used`
 ```yaml
 check:
   type: block_used
-  evaluation: continuous
+  evaluation: after_block_placed
   spriteName: Sprite 1  # optional
   opcode: control_repeat
   fieldValues:          # optional — require specific input values
@@ -344,6 +344,28 @@ check:
   operator: greater_than   # equals | greater_than | less_than
   value: 50
 ```
+
+### `sprite_property_delta`
+```yaml
+check:
+  type: sprite_property_delta
+  evaluation: after_run
+  spriteName: Rocket
+  property: x          # x | y | size | direction | visible | costume
+  operator: greater_than   # equals | greater_than | less_than
+  value: 10
+```
+Compares the change in `property` between the state just before Run and the state after Run finishes — use this for "moved by at least N" style checks rather than an absolute position.
+
+### `sprite_property_changed`
+```yaml
+check:
+  type: sprite_property_changed
+  evaluation: after_run
+  spriteName: Rocket
+  property: costume
+```
+Passes if `property` differs from its value just before Run, regardless of direction or amount — use this when any change counts (e.g. "the costume must switch").
 
 ### `variable_equals`
 ```yaml
@@ -369,7 +391,7 @@ Use `variable_compare` for non-equality operators; `variable_equals` is legacy b
 ```yaml
 check:
   type: blocks_in_order
-  evaluation: continuous
+  evaluation: after_block_placed
   spriteName: Sprite 1   # optional — if omitted, any sprite satisfying it passes
   sequence:
     - event_whenflagclicked
@@ -384,7 +406,7 @@ Passes if any connected stack contains the opcodes **consecutively** (no gaps). 
 ```yaml
 check:
   type: block_count
-  evaluation: continuous
+  evaluation: after_block_placed
   spriteName: Sprite 1   # optional
   opcode: motion_movesteps
   operator: equals
@@ -416,6 +438,14 @@ check:
       value: "50"
 ```
 Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace.
+
+**Always set `fieldValues` when the block has a student-editable input (text, number).** A block is marked "executed" the instant it runs, before its field values are inspected — and this app's click-to-run-a-single-block feature means a bare click on the block (e.g. while a student is clicking in to edit its text) already counts as a run. Without `fieldValues`, `block_run` only asserts "this opcode executed at least once," which can pass on a still-blank/default field. For a task like "type your own message into this say block," require the field to be non-empty rather than leaving `fieldValues` unset:
+```yaml
+    fieldValues:
+      MESSAGE:
+        operator: not_equals
+        value: ""
+```
 
 ---
 

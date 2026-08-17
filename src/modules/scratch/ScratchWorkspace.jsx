@@ -1314,7 +1314,11 @@ export default function ScratchWorkspace({
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
     const results = afterBlockChecks.map(c => evalSingleCheckPartial(c, sws))
     const completionPassed = results.every(r => r === 'pass')
-    if (results.every(r => r === 'pass')) {
+    if (completionPassed && hasAfterRunCheck) {
+      // All block-placement checks pass, but there are also after_run checks (e.g. block_run)
+      // that only a real Run can verify — don't declare the check attempted/passed yet.
+      clearCheckFeedback()
+    } else if (results.every(r => r === 'pass')) {
       const evaluation = evaluateCheckWithCustomFeedback(
         task,
         completionPassed,
@@ -1343,7 +1347,11 @@ export default function ScratchWorkspace({
   function evaluateIdleFeedback() {
     if (!BlocklyRef.current || (!task?.feedbackChecks && !task?.incorrectChecks)) return
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const completionPassed = scratchChecks.length > 0 && scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
+    // Idle evaluation happens purely from editing, without a run — only after_block_placed
+    // checks can be assessed here. after_run checks (e.g. block_run) need a real run and must
+    // not be judged against a stale signalRef from a previous run.
+    const idleChecks = scratchChecks.filter(c => c.evaluation === 'after_block_placed')
+    const completionPassed = idleChecks.length > 0 && idleChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
