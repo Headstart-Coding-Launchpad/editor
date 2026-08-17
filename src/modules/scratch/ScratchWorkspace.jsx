@@ -856,6 +856,10 @@ export default function ScratchWorkspace({
   function handleWorkspaceDomClick(event, ws, spriteId, Blockly) {
     if (event.button !== 0) return
     if (!event.target?.closest?.('.blocklyDraggable')) return
+    // A click that lands on an editable field (text/number/dropdown) opens that field's editor —
+    // Blockly's own click-event path (handleWorkspaceClickEvent) already excludes this case, but
+    // this raw DOM listener doesn't, so it would run the block just from clicking in to edit it.
+    if (event.target?.closest?.('.blocklyEditableField')) return
     setTimeout(() => {
       const selected = Blockly.getSelected?.()
       const flyoutWs = ws.getFlyout?.()?.getWorkspace?.()
@@ -1605,6 +1609,11 @@ export default function ScratchWorkspace({
   useEffect(() => {
     if (readOnly) return
     function onKeyDown(event) {
+      // Typing into a Blockly field editor (or any other text input) fires DOM keydown events
+      // on that input — those keystrokes are text, not a stage "key pressed" event, and must
+      // not run whenkeypressed hats or re-evaluate after_run checks against a no-op run.
+      const tag = event.target?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'select' || tag === 'textarea' || event.target?.isContentEditable) return
       const key = normalizeKey(event.key)
       if (!key) return
       if (document.activeElement === canvasRef.current && PAGE_NAVIGATION_KEYS.has(event.key)) {
