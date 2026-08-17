@@ -47,18 +47,36 @@ describe('PrebuiltStacksEditor', () => {
     render(
       <PrebuiltStacksEditor
         prebuiltStacks={[]}
-        toolbox={buildScratchToolboxXml(['motion_movesteps', 'looks_say'])}
         onChange={onChange}
       />
     )
 
     fireEvent.click(screen.getByRole('button', { name: /\+ add stack/i }))
-    fireEvent.click(screen.getByRole('option', { name: /say/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'say' }))
 
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({
         label: '💬 say',
         stack: expect.objectContaining({ type: 'looks_say' }),
+      }),
+    ])
+  })
+
+  it('offers a block type that is not present in the task toolbox', () => {
+    const onChange = vi.fn()
+    render(
+      <PrebuiltStacksEditor
+        prebuiltStacks={[]}
+        onChange={onChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ add stack/i }))
+    fireEvent.click(screen.getByRole('option', { name: /repeat until/i }))
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        stack: expect.objectContaining({ type: 'control_repeat_until' }),
       }),
     ])
   })

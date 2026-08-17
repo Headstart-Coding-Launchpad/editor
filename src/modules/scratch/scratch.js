@@ -3,7 +3,7 @@
 // Pure check/state helpers are in scratchChecks.js; persistence helpers are in scratchPersistence.js.
 // Re-exported here for backward compatibility.
 import * as Blockly from 'blockly'
-import { SCRATCH_BLOCK_BY_OPCODE, scratchBlockBadgeIcon } from '../../shared/scratchBlockCatalog'
+import { SCRATCH_BLOCK_BY_OPCODE, SCRATCH_CATEGORY_COLOURS, scratchBlockBadgeIcon } from '../../shared/scratchBlockCatalog'
 
 export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from './checks'
 export { saveWorkspace, loadWorkspace, migrateBroadcastState, migrateVariableFields } from './scratchPersistence'
@@ -1016,10 +1016,30 @@ function xmlBlockFromSerialized(doc, block, tagName = 'block') {
   return el
 }
 
+function findOrCreateXmlCategory(doc, name) {
+  const existing = Array.from(doc.querySelectorAll('category')).find(cat => cat.getAttribute('name') === name)
+  if (existing) return existing
+  const category = doc.createElement('category')
+  category.setAttribute('name', name)
+  category.setAttribute('colour', SCRATCH_CATEGORY_COLOURS[name] ?? '#6b7280')
+  doc.documentElement.appendChild(category)
+  return category
+}
+
 function appendStacksToXmlToolbox(toolbox, stacks) {
   if (typeof DOMParser === 'undefined') return toolbox
   const doc = new DOMParser().parseFromString(toolbox, 'text/xml')
   if (doc.querySelector('parsererror')) return toolbox
+
+  // A minimal/flat authored toolbox puts blocks directly under <xml> with no
+  // <category> elements at all. Respect that pattern only when it's actually
+  // populated — an empty toolbox (no categories, no root blocks, e.g. every
+  // block deselected in the toolbox picker) should still get a category-based
+  // placement so a prebuilt stack isn't stranded with nowhere to appear.
+  const hasRootBlocks = Array.from(doc.documentElement?.children ?? []).some(child =>
+    child.tagName?.toLowerCase() === 'block'
+  )
+  const preserveFlatToolbox = doc.querySelectorAll('category').length === 0 && hasRootBlocks
 
   for (const stack of stacks) {
     const category = Array.from(doc.querySelectorAll('category')).find(cat =>
@@ -1030,8 +1050,15 @@ function appendStacksToXmlToolbox(toolbox, stacks) {
       continue
     }
 
-    // A minimal XML toolbox may put blocks directly under <xml>. Keep those
-    // toolboxes usable too: append a compatible prebuilt stack at the root.
+    if (!preserveFlatToolbox) {
+      const categoryName = SCRATCH_BLOCK_BY_OPCODE[stack.type]?.category
+      if (categoryName) {
+        findOrCreateXmlCategory(doc, categoryName).appendChild(xmlBlockFromSerialized(doc, stack))
+        continue
+      }
+    }
+
+    // Keep flat/minimal toolboxes usable too: append a compatible prebuilt stack at the root.
     const hasRootBlock = Array.from(doc.documentElement?.children ?? []).some(child =>
       child.tagName?.toLowerCase() === 'block' && child.getAttribute('type') === stack.type
     )
@@ -1045,8 +1072,10 @@ function appendStacksToJsonToolbox(toolbox, stacks) {
   if (toolbox?.kind !== 'categoryToolbox') return toolbox
 
   const typeToCategory = {}
+  const nameToCategory = {}
   for (const [ci, cat] of (toolbox.contents ?? []).entries()) {
     if (cat.kind !== 'category') continue
+    nameToCategory[cat.name] = ci
     for (const item of cat.contents ?? []) {
       if (item.kind === 'block') typeToCategory[item.type] = ci
     }
@@ -1054,7 +1083,18 @@ function appendStacksToJsonToolbox(toolbox, stacks) {
 
   const newContents = toolbox.contents.map(cat => ({ ...cat, contents: cat.contents ? [...cat.contents] : [] }))
   for (const stack of stacks) {
-    const ci = typeToCategory[stack.type]
+    let ci = typeToCategory[stack.type]
+    if (ci == null) {
+      const categoryName = SCRATCH_BLOCK_BY_OPCODE[stack.type]?.category
+      if (categoryName != null) {
+        ci = nameToCategory[categoryName]
+        if (ci == null) {
+          ci = newContents.length
+          newContents.push({ kind: 'category', name: categoryName, colour: SCRATCH_CATEGORY_COLOURS[categoryName], contents: [] })
+          nameToCategory[categoryName] = ci
+        }
+      }
+    }
     if (ci == null) continue
     newContents[ci].contents.push({ kind: 'block', ...stack })
   }

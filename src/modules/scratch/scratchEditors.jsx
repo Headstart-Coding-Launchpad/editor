@@ -544,7 +544,7 @@ function stripRuntimeBlockFields(block) {
   if (block.next?.block) stripRuntimeBlockFields(block.next.block)
 }
 
-function ScratchStackWorkspace({ stack, toolbox, onChange }) {
+function ScratchStackWorkspace({ stack, onChange }) {
   const hostRef = React.useRef(null)
   const workspaceRef = React.useRef(null)
   const suppressRef = React.useRef(false)
@@ -555,7 +555,7 @@ function ScratchStackWorkspace({ stack, toolbox, onChange }) {
       const { Blockly } = await loadBlocklyModules()
       if (cancelled || !hostRef.current) return
       const ws = Blockly.inject(hostRef.current, {
-        toolbox: buildAlwaysOpenToolbox(toolbox || DEFAULT_TOOLBOX),
+        toolbox: buildAlwaysOpenToolbox(DEFAULT_TOOLBOX),
         renderer: 'zelos',
         grid: { spacing: 20, length: 2, colour: '#e5e7eb', snap: true },
         zoom: { startScale: 0.7 },
@@ -586,15 +586,13 @@ function ScratchStackWorkspace({ stack, toolbox, onChange }) {
       workspaceRef.current?.dispose?.()
       workspaceRef.current = null
     }
-  }, [toolbox])
+  }, [])
 
   return <div className="te-stack-workspace" ref={hostRef} />
 }
 
-export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [], toolbox = '', onChange }) {
+export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [], onChange }) {
   const [editingStackId, setEditingStackId] = React.useState(null)
-  const toolboxTypes = new Set(parseScratchToolboxXml(toolbox))
-  const eligibleTypes = SCRATCH_ALL_BLOCK_TYPES.filter(t => !toolbox || toolboxTypes.has(t))
 
   const legacyStacks = (predefinedBlocks ?? [])
     .map((pb, index) => predefinedBlockToStack({ ...pb, id: pb.id ?? `legacy-${index}` }))
@@ -620,14 +618,6 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
 
   function updateStack(id, updates) {
     onChange(stacks.map(stack => stack.id === id ? { ...stack, ...updates } : stack))
-  }
-
-  if (eligibleTypes.length === 0) {
-    return (
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af', margin: '4px 0 0' }}>
-        No blocks are available in the current toolbox. Enable blocks to add prebuilt stacks.
-      </p>
-    )
   }
 
   const editingStack = stacks.find(s => s.id === editingStackId)
@@ -661,7 +651,7 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
         <ScratchBlockPicker
           value={null}
           onChange={addStack}
-          allowedTypes={eligibleTypes}
+          allowedTypes={SCRATCH_ALL_BLOCK_TYPES}
           compact
           placeholder="+ Add stack"
         />
@@ -682,7 +672,6 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
             <ScratchStackWorkspace
               key={`edit-${editingStackId}`}
               stack={editingStack.stack}
-              toolbox={toolbox}
               onChange={stack => updateStack(editingStackId, { stack })}
             />
           </div>

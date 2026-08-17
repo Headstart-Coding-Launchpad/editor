@@ -293,7 +293,6 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           <PrebuiltStacksEditor
                             prebuiltStacks={task.prebuiltStacks ?? []}
                             predefinedBlocks={task.predefinedBlocks ?? []}
-                            toolbox={task.toolbox ?? ''}
                             onChange={stacks => onUpdate({ ...task, prebuiltStacks: stacks.length ? stacks : undefined, predefinedBlocks: undefined })}
                           />
                         </div>
@@ -549,7 +548,6 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           <PrebuiltStacksEditor
                             prebuiltStacks={stage.prebuiltStacks ?? []}
                             predefinedBlocks={stage.predefinedBlocks ?? []}
-                            toolbox={task.toolbox ?? ''}
                             onChange={stacks => updateStage(stageIdx, { prebuiltStacks: stacks.length ? stacks : undefined, predefinedBlocks: undefined })}
                           />
                         </div>
