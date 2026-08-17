@@ -49,6 +49,16 @@ Components support `label`, `position`, `rotation`, `pins`, `props`, and optiona
 
 Wires support `id`, `from`, `to`, `color`, and optional `locked: true`, mirroring the component convention. A locked wire cannot be deleted or recolored by students; the builder can still toggle its "Fixed for students" checkbox, change its color, or delete it. Students can still attach new wires to the same pins.
 
+A populated wire connects two placed components by id and pin, using the same `{ component, pin }` shape as a Checks endpoint selector below, but naming one specific placed component rather than matching flexibly by type:
+
+```yaml
+wires:
+  - id: w1
+    from: { component: battery1, pin: positive }
+    to: { component: led1, pin: anode }
+    color: red
+```
+
 Available component types are `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `servo_motor`, `buzzer`, `rgb_led`, `lcd1602`, `microcontroller`, `transistor`, `diode`, `sensor`, and `terminal`.
 
 In the builder, available components can be toggled one at a time or by group: Power, Basics, Outputs, and Control. Lessons still save `availableComponents` as the individual component type array shown above.

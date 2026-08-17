@@ -33,6 +33,8 @@ node cli/cli.mjs lessons get python-for-loops --format yaml
 
 `test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. For example, `check-cases.yaml` can be:
 
+**Limitation:** `test-checks` only evaluates source-code checks. A task carrying an `output`, `output_not_empty`, `output_line_count`, `code_no_error`, or `variable_*` check has no run behind it here, so it reports a false `completion: fail` against its own correct complete code — indistinguishable from a genuinely broken check. To verify the source-code half of a lesson that mixes families, run `test-checks` against a stripped copy of the YAML with the runtime checks removed, and verify the runtime checks by reasoning against the task's complete code instead. The cases format has no field for stdin or expected output.
+
 ```yaml
 tasks:
   - id: 4
