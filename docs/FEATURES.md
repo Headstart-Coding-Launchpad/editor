@@ -15,7 +15,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
 | Scratch | Drag-and-drop block programming with a live stage canvas |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |
-| Desktop | A windowed desktop shell (icons, taskbar, draggable/resizable windows) hosting File Manager (with a Recycle Bin, search, and sort), Text Editor, Image Viewer, and a simulated Browser with a search engine |
+| Desktop | A windowed desktop shell (icons, taskbar, draggable/resizable windows) hosting File Manager (with a Recycle Bin, search, and sort), Text Editor, Image Viewer, Paint, and a simulated Browser with a search engine |
 | Electronics | Build and test breadboard-style circuits with guided checks |
 
 ---

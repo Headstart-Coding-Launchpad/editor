@@ -28,7 +28,11 @@ export function imagePreviewSrc(path, entry, assetsPath, assets) {
   if (entry?.src) return resolveAssetFileUrl(assetsPath, entry.src)
   const name = entryName(path)
   const asset = assets.find(assetPath => assetPath === name || assetPath.endsWith('/' + name))
-  return asset ? resolveAssetFileUrl(assetsPath, asset) : ''
+  if (asset) return resolveAssetFileUrl(assetsPath, asset)
+  // Runtime-generated images (currently just the Desktop module's Paint app) store a
+  // data: URL directly on the entry's content, rather than pointing at an authored asset.
+  if (typeof entry?.content === 'string' && entry.content.startsWith('data:image/')) return entry.content
+  return ''
 }
 
 // ── Folder Tree ───────────────────────────────────────────────────────────────

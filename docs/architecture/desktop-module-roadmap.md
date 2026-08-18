@@ -1,6 +1,6 @@
 # Desktop Module Roadmap
 
-**Status:** Phases 1–3 shipped (Phase 3: 2026-08-18, branch `feature/digital-literacy-desktop-module`). Phase 4 is scoped below but not yet designed in detail — it needs its own short planning pass before implementation.
+**Status:** Phases 1–3 shipped, plus Paint and a teacher-live-view fix from Phase 4 (2026-08-18, branch `feature/digital-literacy-desktop-module`). The rest of Phase 4 — a graduated textual hint ladder and an accessibility/difficulty-scaling pass — needs its own design pass before implementation; see the notes under Phase 4 below for why.
 
 ## Purpose
 
@@ -98,12 +98,53 @@ Verified: full `npm test` suite (132 files / 1764 tests, zero regressions).
   specific Browser window among several open at once (same known Phase 2 gap, now also true of
   Browser windows).
 
-## Phase 4 — Paint, hints, teacher streaming, accessibility (not started)
+## Phase 4 — Paint, hints, teacher streaming, accessibility
 
-- Paint app: new canvas, informed by Arcade Kit's pixel-paint interaction pattern in `ArcadeDesignStudio.jsx`.
-- Extend the existing support-stage/hint escalation (`useCheckFeedback.js`, `supportRevealLog`) to the spec's 4-level ladder (restate outcome → identify app/area → name control/action → highlight control). The fail-count-driven state machine already exists; "highlight the control" has no analog yet.
-- Extend teacher live-view from a JSON-snapshot `code` field to real window/app state streaming in `teacherLive` payloads, plus a richer `DesktopTeacherLiveView`.
-- Accessibility pass: a UI-scale token, reduced-visual-complexity mode, and adjustable difficulty (file/folder count, control size, guidance amount, search distractors, app count).
+### Paint — shipped
+
+A freehand canvas app (`apps/paint/PaintApp.jsx`): Brush/Eraser, an 8-colour palette plus a custom
+colour picker, three brush sizes, per-session Undo (up to 20 steps), and Clear. Explicit-save,
+same model as Text Editor (`draftContent`/dirty tracking, Open/Save/Save As via the shared
+`FileDialog`). Saved files store their image directly as a `data:image/png;base64,...` URL on
+`content` — this required extending `imagePreviewSrc` (`FilesystemTask.jsx`) to fall back to
+inline `content` when there's no authored `src`/asset, since previously it only resolved
+lesson-authored asset images. That extension is what lets Image Viewer and File Manager preview a
+Paint drawing with no other change needed. No new check type — `window_state` and `fs_*` checks
+already cover it.
+
+While wiring Paint into `TeacherLiveView.jsx`, found and fixed a real gap Phase 3 shipped with:
+the Browser app was never registered there, so a teacher observing a student's live desktop
+session couldn't see the Browser icon or any open Browser window at all (`Desktop.jsx`/
+`WindowManager.jsx` both silently skip a window when `apps[appId]` is missing). Browser and Paint
+are both now registered in the teacher live view.
+
+### Teacher live-view streaming — already substantially covered, doc corrected
+
+This roadmap previously described teacher live-view as needing to move "from a JSON-snapshot
+`code` field to real window/app state streaming." That undersold what Phase 1 already built:
+`useTeacherLivePublish.js` re-publishes the *entire* `desktopState` (fs, recycleBin, windows,
+browserVisited, lastSearchQuery — everything) as JSON in the `code` field on every state change,
+and `DesktopTeacherLiveView.jsx` renders that through the same interactive `Desktop` shell the
+student uses, not a static snapshot. A teacher already sees window drags, app opens, file edits,
+Browser navigation, and Paint strokes as they happen (each committed change, not sub-stroke/
+sub-drag granularity — there's no equivalent yet of the continuous cursor/drag streaming the
+Scratch live-view added for block dragging). If that finer granularity turns out to matter for
+Desktop specifically, it's a separate, scoped follow-up — not a gap in today's live view.
+
+### Remaining: graduated hint ladder, accessibility pass (not started)
+
+- The source spec's 4-level hint ladder (restate outcome → identify app/area → name control/
+  action → highlight control) is a *different* feature from the "reveal next `codeStages`
+  checkpoint" mechanism Phase 1 already exposed generically for Desktop (in solo mode, after 2
+  failed attempts) — that mechanism replaces the student's whole state with an authored snapshot;
+  it isn't graduated textual hint copy. Building the real ladder needs a design decision this
+  session didn't make: where does each level's hint text live (a new authored field per check?
+  per task?), and what does "highlight this control" even mean generically across File Manager/
+  Text Editor/Paint/Browser's very different UIs. `useCheckFeedback.js`'s `checkFailCount` is the
+  right signal to key off; the authored-content model is the open question.
+- Accessibility pass: a UI-scale token, reduced-visual-complexity mode. "Adjustable difficulty"
+  (file/folder count, guidance amount, search distractors, app count) is already achievable today
+  through how a lesson is authored — that part isn't a platform gap, just an authoring choice.
 - Needed for Lesson 12's consolidation challenge (combines file management, Recycle Bin, browsing, search, downloads in one scenario) and general polish.
 
 ## Usually changes with

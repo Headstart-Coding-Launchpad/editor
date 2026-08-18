@@ -6,6 +6,7 @@ const APP_OPTIONS = [
   { id: 'fileManager', label: 'File Manager' },
   { id: 'textEditor', label: 'Text Editor' },
   { id: 'imageViewer', label: 'Image Viewer' },
+  { id: 'paint', label: 'Paint' },
   { id: 'browser', label: 'Browser' },
 ]
 

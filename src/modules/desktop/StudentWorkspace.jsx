@@ -3,6 +3,7 @@ import Desktop from './Desktop.jsx'
 import FileManagerApp from './apps/fileManager/FileManagerApp.jsx'
 import TextEditorApp from './apps/textEditor/TextEditorApp.jsx'
 import ImageViewerApp from './apps/imageViewer/ImageViewerApp.jsx'
+import PaintApp from './apps/paint/PaintApp.jsx'
 import BrowserApp from './apps/browser/BrowserApp.jsx'
 import { normaliseSiteGraph } from './apps/browser/siteGraph.js'
 import { makeDefaultDesktop, normaliseDesktop, openWindow, isWindowDirty } from './desktopState.js'
@@ -86,6 +87,14 @@ export default function StudentWorkspace({
           assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
           assets={lesson.assets}
         />
+      ),
+    },
+    paint: {
+      title: 'Paint',
+      icon: '🎨',
+      windowTitle: (win, state) => `${win.filePath ? entryName(win.filePath) : 'Untitled'}${isWindowDirty(win, state.fs) ? ' •' : ''} — Paint`,
+      render: (props) => (
+        <PaintApp {...props} onInteraction={disabled ? undefined : cs.handleDesktopInteraction} />
       ),
     },
     browser: {

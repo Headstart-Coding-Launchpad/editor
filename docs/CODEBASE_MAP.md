@@ -306,6 +306,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `desktop/apps/shared/FileDialog.jsx` | Shared Open/Save As dialog (folder navigation, New Folder, overwrite confirm) used by Text Editor and Image Viewer |
 | `desktop/apps/browser/BrowserApp.jsx` | Browser "app": simulated browser chrome (Back/Forward/Refresh/Home, address bar), search engine, and downloads over a lesson-authored `siteGraph` |
 | `desktop/apps/browser/siteGraph.js` | Pure helpers for the Browser's lesson-authored site graph: normalise, page lookup, free-text search ranking, URL lookup |
+| `desktop/apps/paint/PaintApp.jsx` | Paint "app": freehand canvas (brush/eraser, palette, sizes, undo, clear) with Text Editor's explicit Open/Save/Save As model; saves a PNG `data:` URL onto the file entry's `content` |
 | `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler |
 | `desktop/BuilderWorkspace.jsx` | Re-export of `DesktopTaskWorkspace` |
 | `desktop/CheckEditor.jsx` | `DesktopCheckListEditor` wrapper |

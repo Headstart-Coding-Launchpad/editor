@@ -18,7 +18,19 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
-## 2026-08-18
+## 2026-08-18 (2)
+
+### Added a Paint app to the Desktop module
+
+New `paint` desktop app: a freehand drawing canvas (Brush/Eraser, 8-colour palette + custom
+colour, three brush sizes, Undo, Clear) with the same explicit Open/Save/Save As model as Text
+Editor. `availableApps` now also accepts `"paint"`. Saved drawings store their image as a
+`data:image/png;...` URL directly on the file entry's `content` — Image Viewer and File Manager
+now fall back to reading that when there's no authored `src`/asset, so a Paint drawing previews
+like any other image with no other authoring change needed. No new check type. See
+`docs/authoring/desktop.md`.
+
+## 2026-08-18 (1)
 
 ### Added a simulated Browser + search engine to the Desktop module
 

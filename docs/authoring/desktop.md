@@ -2,7 +2,7 @@
 
 Everything needed to author Desktop code tasks in a composed lesson. For envelope and common task fields see `docs/authoring/AUTHORING_GUIDE.md`.
 
-The Desktop module renders a windowed desktop shell (icons, taskbar, draggable/resizable windows) around one or more "apps." Four apps ship so far: **File Manager**, which wraps the Filesystem module's file/folder UI and adds a Recycle Bin, search, and sort; **Text Editor**, a plain-text editor with explicit Open/Save/Save As actions; **Image Viewer**, a read-only image viewer with zoom and next/prev navigation; and **Browser**, a simulated web browser over a lesson-authored `siteGraph` of fake pages, with a search engine, sponsored/broken/download pages, and controlled downloads into `/Downloads/`. It is the richer, window-based successor to a plain Filesystem task; use Filesystem when a task only needs a single file-manager panel, and Desktop when the lesson is teaching window/desktop skills (opening/closing/arranging apps) alongside file management.
+The Desktop module renders a windowed desktop shell (icons, taskbar, draggable/resizable windows) around one or more "apps." Five apps ship so far: **File Manager**, which wraps the Filesystem module's file/folder UI and adds a Recycle Bin, search, and sort; **Text Editor**, a plain-text editor with explicit Open/Save/Save As actions; **Image Viewer**, a read-only image viewer with zoom and next/prev navigation; **Paint**, a freehand drawing canvas with the same explicit-save model; and **Browser**, a simulated web browser over a lesson-authored `siteGraph` of fake pages, with a search engine, sponsored/broken/download pages, and controlled downloads into `/Downloads/`. It is the richer, window-based successor to a plain Filesystem task; use Filesystem when a task only needs a single file-manager panel, and Desktop when the lesson is teaching window/desktop skills (opening/closing/arranging apps) alongside file management.
 
 Opening a file from File Manager always launches Text Editor or Image Viewer as appropriate (by file extension) — this happens regardless of `availableApps`, which only controls which app icons appear directly on the desktop for standalone launch.
 
@@ -39,7 +39,7 @@ modules:
     moduleType: desktop
     moduleId: desktop-practice   # optional — omit when one Desktop workspace is enough
     explainer: Open **File Manager** from the desktop and create a folder called **Documents**.
-    availableApps: [fileManager] # optional — defaults to ["fileManager"]; also: textEditor, imageViewer, browser
+    availableApps: [fileManager] # optional — defaults to ["fileManager"]; also: textEditor, imageViewer, paint, browser
     siteGraph:                    # optional — only meaningful when availableApps includes "browser"; see "Browser" below
     starterDesktop:               # optional — initial desktop state
       fs:
@@ -106,6 +106,25 @@ Both apps can also be launched blank from a desktop icon when listed in `availab
   image files in the same folder (sorted by name).
 - The Save As / Open dialog supports folder navigation and **New Folder**, and warns before
   overwriting an existing file.
+
+---
+
+## Paint
+
+A freehand drawing canvas: Brush/Eraser tools, an 8-colour palette plus a custom colour picker,
+three brush sizes, Undo (per-session, up to 20 steps), and Clear. Like Text Editor, it does
+**not** autosave — drawing updates the window's `draftContent` (a PNG `data:` URL snapshot taken
+after each stroke), and only Save/Save As writes it into `fs`. Opening a different file while the
+current window has unsaved edits opens a **new** Paint window, same as Text Editor.
+
+Saved files carry their image data directly on `content` as a `data:image/png;base64,...` URL —
+Image Viewer and File Manager both already read that as a fallback when there's no authored
+`src`/asset (see `imagePreviewSrc` in `docs/authoring/filesystem.md`'s underlying code), so a
+Paint drawing previews correctly everywhere a lesson-authored image does. Opening an image from
+File Manager always launches **Image Viewer** (read-only), never Paint — to edit an existing
+drawing, open it from inside Paint's own Open dialog instead. Paint's Open dialog only lists
+`.png` files whose content is actually a `data:image/` URL (i.e. files Paint itself saved); an
+author-provided static asset image can't be loaded into the canvas for editing.
 
 ---
 
@@ -187,7 +206,7 @@ Additional Desktop-only check types:
 | Type | Operators | Fields | Notes |
 |---|---|---|---|
 | `fs_recycle_bin` | `is_in`, `not_in` | `path` | Whether an item (matched by its original path) is currently in the Recycle Bin |
-| `window_state` | `opened`, `closed`, `minimized`, `maximized` | `appId` | State of the named app's window (`fileManager`, `textEditor`, `imageViewer`, or `browser`) |
+| `window_state` | `opened`, `closed`, `minimized`, `maximized` | `appId` | State of the named app's window (`fileManager`, `textEditor`, `imageViewer`, `paint`, or `browser`) |
 | `windows_arranged_side_by_side` | `is_arranged` | `appIds` (two app IDs) | Tolerant geometry check: both windows visible, each occupying a meaningful share of the screen, minimal overlap. Assesses "arranged side by side" as an outcome, not exact pixel positions |
 | `browser_visited` | `visited`, `not_visited` | `pageId` | Whether the student has ever navigated to that `siteGraph` page id, in any Browser window |
 | `search_query` | `contains`, `not_contains`, `equals` | `text` | Compares the most recent search-engine query (case-insensitive) against `text` |
@@ -218,12 +237,25 @@ Additional Desktop-only check types:
 
 ## Known limitations
 
-- Text Editor is plain text only — bold/italic/underline/alignment formatting and Paint are
-  planned for later releases and are not part of this contract yet.
+- Text Editor is plain text only — bold/italic/underline/alignment formatting are planned for a
+  later release and are not part of this contract yet.
 - `window_state` matches the *first* window found for an `appId`; it doesn't distinguish between
-  several simultaneously-open Text Editor or Browser windows.
+  several simultaneously-open Text Editor, Paint, or Browser windows.
+- Paint's Undo is per-window-session only (not persisted) and capped at 20 steps; there's no Redo.
+  It has no shape/fill/text tools — freehand brush and eraser only.
 - `siteGraph` has no visual Builder editor yet — author it as hand-written JSON/YAML on the task,
   the same gap `sandboxStarterDesktop` has.
+- There's no 4-level graduated hint ladder (restate outcome → identify app/area → name control →
+  highlight control) from the source spec yet. The existing generic "reveal the next `codeStages`
+  checkpoint after repeated failures" mechanism already works for Desktop tasks in solo mode (it's
+  gated by lesson type, not module type), but that replaces the student's whole state with an
+  authored snapshot — it isn't a graduated textual hint, and there's no "highlight this control"
+  UI primitive yet. This needs its own authored-content design (where would per-level hint text
+  live?) before it can be built.
+- No dedicated accessibility/difficulty-scaling pass (UI-scale token, reduced-visual-complexity
+  mode) yet — an author can already vary difficulty indirectly (file/folder count, `siteGraph`
+  page/distractor count, app count) through what they author, but there's no platform-level control
+  for it.
 - The Browser's back/forward history and current page are local to a window session — closing and
   reopening a Browser window resets to the site graph's homepage; only *that a page was ever
   visited* (`browserVisited`) and the *last* search query (`lastSearchQuery`) persist.

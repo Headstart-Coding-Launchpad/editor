@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import FilesystemTask from '../FilesystemTask'
+import FilesystemTask, { imagePreviewSrc } from '../FilesystemTask'
 
 const fs = {
   '/': { type: 'dir' },
@@ -43,5 +43,27 @@ describe('FilesystemTask', () => {
 
     expect(screen.getByAltText('avatar.png')).toHaveAttribute('src', 'https://assets.example/lesson/avatar.png')
     expect(onInteraction).toHaveBeenLastCalledWith({ currentDir: '/Pictures/', openFile: '/Pictures/avatar.png' })
+  })
+})
+
+describe('imagePreviewSrc', () => {
+  it('prefers an authored asset src over inline content', () => {
+    const entry = { type: 'file', src: 'avatar.png', content: 'data:image/png;base64,AAAA' }
+    expect(imagePreviewSrc('/avatar.png', entry, 'https://assets.example/', [])).toBe('https://assets.example/avatar.png')
+  })
+
+  it('resolves a matching lesson asset by name', () => {
+    const entry = { type: 'file' }
+    expect(imagePreviewSrc('/Pictures/avatar.png', entry, 'https://assets.example/', ['avatar.png'])).toBe('https://assets.example/avatar.png')
+  })
+
+  it('falls back to an inline data: URL (e.g. a Paint drawing) when there is no asset', () => {
+    const entry = { type: 'file', content: 'data:image/png;base64,AAAA' }
+    expect(imagePreviewSrc('/drawing.png', entry, '', [])).toBe('data:image/png;base64,AAAA')
+  })
+
+  it('returns empty string when there is no src, no matching asset, and no data: content', () => {
+    const entry = { type: 'file', content: 'not an image' }
+    expect(imagePreviewSrc('/drawing.png', entry, '', [])).toBe('')
   })
 })

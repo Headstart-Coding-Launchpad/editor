@@ -3,6 +3,9 @@ import Desktop from './Desktop.jsx'
 import FileManagerApp from './apps/fileManager/FileManagerApp.jsx'
 import TextEditorApp from './apps/textEditor/TextEditorApp.jsx'
 import ImageViewerApp from './apps/imageViewer/ImageViewerApp.jsx'
+import PaintApp from './apps/paint/PaintApp.jsx'
+import BrowserApp from './apps/browser/BrowserApp.jsx'
+import { normaliseSiteGraph } from './apps/browser/siteGraph.js'
 import { normaliseDesktop, openWindow, isWindowDirty } from './desktopState.js'
 import { parentPath, entryName } from '../filesystem/filesystem.js'
 import { isImage } from '../filesystem/FilesystemTask.jsx'
@@ -11,6 +14,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 export default function DesktopTeacherLiveView({ task, lesson, displayState, readOnly, onChange }) {
   const availableApps = task?.availableApps ?? ['fileManager']
   const desktop = normaliseDesktop(displayState)
+  const siteGraph = normaliseSiteGraph(task?.siteGraph)
 
   function handleOpenFile(path) {
     if (readOnly) return
@@ -51,8 +55,24 @@ export default function DesktopTeacherLiveView({ task, lesson, displayState, rea
         />
       ),
     },
+    paint: {
+      title: 'Paint',
+      icon: '🎨',
+      windowTitle: (win, state) => `${win.filePath ? entryName(win.filePath) : 'Untitled'}${isWindowDirty(win, state.fs) ? ' •' : ''} — Paint`,
+      render: (props) => <PaintApp {...props} />,
+    },
+    browser: {
+      title: 'Browser',
+      icon: '🌐',
+      windowTitle: (win) => {
+        if (win.pageId) return `${siteGraph.pages[win.pageId]?.title ?? 'Browser'} — Browser`
+        if (win.searchQuery) return `"${win.searchQuery}" — Browser`
+        return 'Browser'
+      },
+      render: (props) => <BrowserApp {...props} siteGraph={siteGraph} />,
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [lesson, task, readOnly, desktop])
+  }), [lesson, task, readOnly, desktop, siteGraph])
 
   return (
     <Desktop
