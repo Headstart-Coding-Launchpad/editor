@@ -97,6 +97,9 @@ export default function Window({
         boxShadow: isFocused ? '0 12px 32px rgba(0,0,0,0.28)' : '0 4px 14px rgba(0,0,0,0.16)',
         border: isFocused ? '1.5px solid var(--colour-primary)' : '1.5px solid var(--ui-border)',
         overflow: 'hidden',
+        // Re-enable pointer events on the window itself — WindowManager's wrapper turns
+        // them off so clicks can fall through to desktop icons wherever there's no window.
+        pointerEvents: 'auto',
       }}
       onPointerDown={() => onFocus?.()}
     >

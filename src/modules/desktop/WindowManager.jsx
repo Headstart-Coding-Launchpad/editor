@@ -46,7 +46,13 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
   const sortedWindows = [...state.windows].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+    // pointerEvents: 'none' lets clicks fall through to the desktop icon layer beneath
+    // (Desktop.jsx) wherever there's no window — this wrapper spans the full desktop area
+    // even when empty or between windows, and without this it silently swallows every icon
+    // click site-wide (confirmed: icons are unclickable in a real browser even with zero
+    // windows open, though jsdom-based tests never catch it since jsdom doesn't do real
+    // hit-testing/stacking). Each Window re-enables pointerEvents: 'auto' on itself.
+    <div ref={containerRef} style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', pointerEvents: 'none' }}>
       {sortedWindows.map(win => {
         const app = apps[win.appId]
         if (!app) return null
