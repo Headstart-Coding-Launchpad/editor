@@ -13,6 +13,8 @@ import {
   openWindow,
   isWindowDirty,
   arrangeSideBySide,
+  recordPageVisit,
+  recordSearchQuery,
 } from '../desktopState.js'
 
 describe('desktopState', () => {
@@ -36,6 +38,8 @@ describe('desktopState', () => {
       fs: { '/': { type: 'dir' } },
       recycleBin: [],
       windows: expect.any(Array),
+      browserVisited: [],
+      lastSearchQuery: null,
     })
   })
 
@@ -129,5 +133,26 @@ describe('desktopState', () => {
     expect(wa.width).toBe(500)
     expect(wb.x).toBe(500)
     expect(wa.width + wb.width).toBe(1000)
+  })
+
+  it('recordPageVisit dedups the browser visit log', () => {
+    let state = makeDefaultDesktop()
+    state = recordPageVisit(state, 'home')
+    state = recordPageVisit(state, 'wildlife-facts')
+    state = recordPageVisit(state, 'home')
+    expect(state.browserVisited).toEqual(['home', 'wildlife-facts'])
+  })
+
+  it('recordPageVisit with no pageId is a no-op', () => {
+    const state = makeDefaultDesktop()
+    expect(recordPageVisit(state, null)).toBe(state)
+  })
+
+  it('recordSearchQuery overwrites the last search query', () => {
+    let state = makeDefaultDesktop()
+    state = recordSearchQuery(state, 'blue whales')
+    expect(state.lastSearchQuery).toBe('blue whales')
+    state = recordSearchQuery(state, 'sharks')
+    expect(state.lastSearchQuery).toBe('sharks')
   })
 })

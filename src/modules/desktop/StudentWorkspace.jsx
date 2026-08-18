@@ -3,6 +3,8 @@ import Desktop from './Desktop.jsx'
 import FileManagerApp from './apps/fileManager/FileManagerApp.jsx'
 import TextEditorApp from './apps/textEditor/TextEditorApp.jsx'
 import ImageViewerApp from './apps/imageViewer/ImageViewerApp.jsx'
+import BrowserApp from './apps/browser/BrowserApp.jsx'
+import { normaliseSiteGraph } from './apps/browser/siteGraph.js'
 import { makeDefaultDesktop, normaliseDesktop, openWindow, isWindowDirty } from './desktopState.js'
 import { normaliseDirPath, parentPath, entryName } from '../filesystem/filesystem.js'
 import { isImage } from '../filesystem/FilesystemTask.jsx'
@@ -32,6 +34,8 @@ export default function StudentWorkspace({
   const desktop = isViewingPrev
     ? normaliseDesktop(viewedDesktop ?? viewedCarry?.saved ?? task?.starterDesktop ?? makeDefaultDesktop(availableApps))
     : normaliseDesktop(displayDesktop)
+
+  const siteGraph = useMemo(() => normaliseSiteGraph(task?.siteGraph), [task?.siteGraph])
 
   const startsInDir = task?.carryDesktopFrom
     ? (cs.desktopInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/'))
@@ -84,8 +88,24 @@ export default function StudentWorkspace({
         />
       ),
     },
+    browser: {
+      title: 'Browser',
+      icon: '🌐',
+      windowTitle: (win) => {
+        if (win.pageId) return `${siteGraph.pages[win.pageId]?.title ?? 'Browser'} — Browser`
+        if (win.searchQuery) return `"${win.searchQuery}" — Browser`
+        return 'Browser'
+      },
+      render: (props) => (
+        <BrowserApp
+          {...props}
+          siteGraph={siteGraph}
+          onInteraction={disabled ? undefined : cs.handleDesktopInteraction}
+        />
+      ),
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [disabled, cs.handleDesktopInteraction, cs.handleDesktopChange, lesson.assetsPath, lesson.assets, startsInDir, desktop])
+  }), [disabled, cs.handleDesktopInteraction, cs.handleDesktopChange, lesson.assetsPath, lesson.assets, startsInDir, desktop, siteGraph])
 
   return (
     <div style={s.desktopStudentWorkspace} key={`desktop-${viewingTaskId ?? currentTaskId}`}>

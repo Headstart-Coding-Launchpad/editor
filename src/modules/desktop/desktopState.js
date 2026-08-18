@@ -6,6 +6,8 @@ import { DEFAULT_FS } from '../filesystem/filesystem.js'
 //   fs: { "/": { type: 'dir' }, "/Downloads/": { type: 'dir' }, ... }, // same flat map as filesystem.js
 //   recycleBin: [{ path, entry, deletedAt, originalParent }],
 //   windows: [{ id, appId, x, y, width, height, minimized, maximized, zIndex, filePath? }],
+//   browserVisited: ['pageId', ...],   // every simulated-browser page ever visited (dedup log)
+//   lastSearchQuery: 'free text' | null, // most recent query submitted to the simulated search engine
 // }
 //
 // `filePath` is optional and only meaningful for apps that can show several windows at
@@ -37,6 +39,8 @@ export function makeDefaultDesktop(availableApps = ['fileManager']) {
     fs: DEFAULT_DESKTOP_FS,
     recycleBin: [],
     windows: makeDefaultWindows(availableApps),
+    browserVisited: [],
+    lastSearchQuery: null,
   }
 }
 
@@ -48,6 +52,8 @@ export function normaliseDesktop(raw) {
     fs: raw.fs && typeof raw.fs === 'object' ? raw.fs : DEFAULT_DESKTOP_FS,
     recycleBin: Array.isArray(raw.recycleBin) ? raw.recycleBin : [],
     windows: Array.isArray(raw.windows) ? raw.windows : makeDefaultWindows(),
+    browserVisited: Array.isArray(raw.browserVisited) ? raw.browserVisited : [],
+    lastSearchQuery: typeof raw.lastSearchQuery === 'string' ? raw.lastSearchQuery : null,
   }
 }
 
@@ -137,6 +143,19 @@ export function openWindow(state, appId, overrides = {}) {
     ...overrides,
   }
   return { ...state, windows: [...state.windows, win] }
+}
+
+// Records a simulated-browser page visit in the dedup log used by the `browser_visited`
+// check — a no-op if that page has already been logged.
+export function recordPageVisit(state, pageId) {
+  if (!pageId || state.browserVisited?.includes(pageId)) return state
+  return { ...state, browserVisited: [...(state.browserVisited ?? []), pageId] }
+}
+
+// Records the most recent free-text query submitted to the simulated search engine,
+// used by the `search_query` check.
+export function recordSearchQuery(state, query) {
+  return { ...state, lastSearchQuery: query }
 }
 
 // Arranges two windows side by side across the given viewport width/height.

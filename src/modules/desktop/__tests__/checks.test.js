@@ -7,6 +7,8 @@ function desktop(overrides = {}) {
     fs: { '/': { type: 'dir' } },
     recycleBin: [],
     windows: [],
+    browserVisited: [],
+    lastSearchQuery: null,
     ...overrides,
   }
 }
@@ -55,6 +57,26 @@ describe('evaluateDesktopCheck', () => {
       ],
     })
     expect(evaluateDesktopCheck({ type: 'windows_arranged_side_by_side', appIds: ['a', 'b'] }, minimized, { viewport: { width: 1200 } })).toBe(false)
+  })
+
+  it('browser_visited visited / not_visited', () => {
+    const state = desktop({ browserVisited: ['wildlife-facts'] })
+    expect(evaluateDesktopCheck({ type: 'browser_visited', operator: 'visited', pageId: 'wildlife-facts' }, state)).toBe(true)
+    expect(evaluateDesktopCheck({ type: 'browser_visited', operator: 'visited', pageId: 'sponsored-ad' }, state)).toBe(false)
+    expect(evaluateDesktopCheck({ type: 'browser_visited', operator: 'not_visited', pageId: 'sponsored-ad' }, state)).toBe(true)
+  })
+
+  it('search_query contains / not_contains / equals is case-insensitive', () => {
+    const state = desktop({ lastSearchQuery: 'Blue Whale Facts' })
+    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'contains', text: 'whale' }, state)).toBe(true)
+    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'not_contains', text: 'shark' }, state)).toBe(true)
+    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'equals', text: 'blue whale facts' }, state)).toBe(true)
+    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'equals', text: 'whale' }, state)).toBe(false)
+  })
+
+  it('search_query with no lastSearchQuery is false', () => {
+    const state = desktop()
+    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'contains', text: 'whale' }, state)).toBe(false)
   })
 
   it('is registered with the central check dispatcher via context.desktop', () => {

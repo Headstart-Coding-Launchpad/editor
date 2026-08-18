@@ -15,7 +15,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
 | Scratch | Drag-and-drop block programming with a live stage canvas |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |
-| Desktop | A windowed desktop shell (icons, taskbar, draggable/resizable windows) hosting File Manager (with a Recycle Bin, search, and sort), Text Editor, and Image Viewer apps |
+| Desktop | A windowed desktop shell (icons, taskbar, draggable/resizable windows) hosting File Manager (with a Recycle Bin, search, and sort), Text Editor, Image Viewer, and a simulated Browser with a search engine |
 | Electronics | Build and test breadboard-style circuits with guided checks |
 
 ---
@@ -50,7 +50,7 @@ Checks can verify:
 - **Python only**: variable existence, type, and value (including lists and dicts)
 - **Scratch**: block usage, sprite position/size/direction/visibility, variable values
 - **Filesystem**: file and directory existence, which directory is currently open
-- **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, and two windows arranged side by side
+- **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, two windows arranged side by side, simulated-browser page visits, and search-engine query matching
 - **Quiz**: correct answer match
 
 After the same hint appears twice in a row, solo students can optionally view the complete reference code (if defined on the task).

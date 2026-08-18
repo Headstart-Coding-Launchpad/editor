@@ -18,6 +18,24 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-08-18
+
+### Added a simulated Browser + search engine to the Desktop module
+
+New `browser` desktop app: a simulated web browser (Back/Forward/Refresh/Home, editable address
+bar) over a new task field, `siteGraph` — a lesson-authored, read-only set of fake pages with
+content, links, an optional `sponsored` flag, `kind: 'search'` (an inline search box), `kind:
+'broken'` (unreachable pages), and `kind: 'download'` (writes into `/Downloads/` via the existing
+Filesystem `fs` map). `availableApps` now also accepts `"browser"`.
+
+New check types: `browser_visited` (`visited`/`not_visited`, field `pageId`) and `search_query`
+(`contains`/`not_contains`/`equals`, field `text`), backed by two new desktop-state fields —
+`browserVisited` (dedup visit log) and `lastSearchQuery` — alongside the existing `fs`/`recycleBin`/
+`windows`. Downloads reuse `fs_path`/`fs_file_content`; no new check type was needed for them.
+
+`siteGraph` has no visual Builder editor yet — author it as JSON/YAML on the task, the same gap
+`sandboxStarterDesktop` has. See `docs/authoring/desktop.md`.
+
 ## 2026-08-04
 
 ### Added the Desktop module type

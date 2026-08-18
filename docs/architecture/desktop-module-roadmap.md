@@ -1,6 +1,6 @@
 # Desktop Module Roadmap
 
-**Status:** Phases 1–2 shipped (2026-08-04, branch `feature/digital-literacy-desktop-module`). Phases 3–4 are scoped below but not yet designed in detail — each needs its own short planning pass before implementation.
+**Status:** Phases 1–3 shipped (Phase 3: 2026-08-18, branch `feature/digital-literacy-desktop-module`). Phase 4 is scoped below but not yet designed in detail — it needs its own short planning pass before implementation.
 
 ## Purpose
 
@@ -61,15 +61,42 @@ type autosaves continuously.
 - Text Editor's Open dialog doesn't filter out image files (opening one shows an empty/garbled
   buffer since image entries don't carry meaningful `content`).
 
-## Phase 3 — Simulated Browser + Search Engine (not started)
+## Phase 3 — Simulated Browser + Search Engine — shipped
 
-The largest remaining piece — nothing in the codebase to reuse beyond the Blob-URL/sandboxed-iframe technique in `src/modules/html/iframe.js` as a rendering precedent.
+A **Browser** app (`apps/browser/BrowserApp.jsx`) over a lesson-authored, read-only `siteGraph`
+(`apps/browser/siteGraph.js`): pages with content and links, a `sponsored` flag for ad-style
+search results, `kind: 'broken'` unreachable pages, and `kind: 'download'` pages whose Download
+button writes into the desktop's `/Downloads/` folder (reusing `filesystem.js`'s `createEntry` —
+no new check type needed, `fs_path`/`fs_file_content` already verify it, matching Phase 2's
+"reuse what already exists" pattern).
 
-- A lesson-authored "site graph": pages, links, search index, sponsored/irrelevant/misleading results, broken pages, downloadable files.
-- Browser chrome: address bar, tabs, Back/Forward/Refresh/Home, loading state.
-- A simulated search engine: free-text query matching, ranked results, sponsored-result distinction, and a check type that can inspect the pupil's query.
-- Controlled downloads that write into the desktop's `/Downloads/` folder (the folder already exists in `desktopState.js`'s default fs — Phase 1 seeded it for this).
+- Browser chrome: Back/Forward/Refresh/Home and an editable address bar that resolves a typed URL
+  against `siteGraph` page `url`s (case-insensitive, trailing-slash tolerant), or shows an
+  unreachable-page message.
+- A simulated search engine: free-text query matching over each page's optional `searchable`
+  field (title > keywords > snippet scoring), with `sponsored` results pinned ahead of organic
+  ones and labelled "Ad". The engine does not itself judge relevance/truthfulness — ranking a
+  misleading/irrelevant authored page correctly is the pupil's job, not the platform's, per spec.
+- Two new check types: `browser_visited` (has the pupil ever navigated to a given page id) and
+  `search_query` (does the last submitted search query match). Both read off two new desktop-state
+  fields, `browserVisited` (dedup visit log) and `lastSearchQuery` — plain arrays/strings alongside
+  `fs`/`recycleBin`/`windows`, following the exact pattern `recycleBin` already established.
 - Unlocks Unit 3 (Lessons 8–11) — the largest single unit in the course.
+
+Verified: full `npm test` suite (132 files / 1764 tests, zero regressions).
+
+### Known gaps left in Phase 3 on purpose
+
+- `siteGraph` has no visual Builder editor — hand-authored JSON/YAML on the task, the same gap
+  `sandboxStarterDesktop` has (see Phase 1's known gaps).
+- Back/forward history and the current page are local to a Browser window's session, not
+  persisted desktop state — closing and reopening a window resets to the homepage. Only *that* a
+  page was ever visited, and the *last* search query, persist (via `browserVisited`/`lastSearchQuery`).
+- No tabs — one page/search-result view per Browser window, same one-view-per-window model as
+  Text Editor/Image Viewer.
+- `window_state` still matches the first window found for an `appId`, so it can't target one
+  specific Browser window among several open at once (same known Phase 2 gap, now also true of
+  Browser windows).
 
 ## Phase 4 — Paint, hints, teacher streaming, accessibility (not started)
 

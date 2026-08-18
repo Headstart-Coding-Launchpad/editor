@@ -270,7 +270,7 @@ export function validateLessonForMcp(lesson) {
       }
       if (taskType === 'desktop' && task.completeDesktop && typeof task.completeDesktop === 'object') {
         const desktopContext = { fs: task.completeDesktop.fs, desktop: task.completeDesktop }
-        const desktopChecks = allChecks.filter(c => (c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened') || ['window_state', 'windows_arranged_side_by_side'].includes(c.type))
+        const desktopChecks = allChecks.filter(c => (c.type?.startsWith('fs_') && c.type !== 'fs_dir_opened' && c.type !== 'fs_file_opened') || ['window_state', 'windows_arranged_side_by_side', 'browser_visited', 'search_query'].includes(c.type))
         if (desktopChecks.length > 0 && desktopChecks.some(c => !evaluateSingleCheck(c, '', desktopContext))) {
           warnings.push(`Task ${n} complete desktop does not satisfy a check — review the complete desktop`)
         }

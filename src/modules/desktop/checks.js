@@ -2,6 +2,8 @@ export const DESKTOP_CHECK_TYPES = [
   'fs_recycle_bin',
   'window_state',
   'windows_arranged_side_by_side',
+  'browser_visited',
+  'search_query',
 ]
 
 export const DESKTOP_CHECK_DEFINITIONS = {
@@ -21,6 +23,18 @@ export const DESKTOP_CHECK_DEFINITIONS = {
     subject: 'Windows arranged side by side',
     operators: ['is_arranged'],
     fields: ['appIds'],
+    evaluate: 'on_change',
+  },
+  browser_visited: {
+    subject: 'Browser page visited',
+    operators: ['visited', 'not_visited'],
+    fields: ['pageId'],
+    evaluate: 'on_change',
+  },
+  search_query: {
+    subject: 'Search engine query',
+    operators: ['contains', 'not_contains', 'equals'],
+    fields: ['text'],
     evaluate: 'on_change',
   },
 }
@@ -71,12 +85,30 @@ function evaluateArrangedSideBySide(check, windows, context) {
   return true
 }
 
-// `desktop` is the desktop module's full state: { fs, recycleBin, windows }. fs_* checks are
-// evaluated separately (see src/modules/checks.js), which already knows how to route them
-// through evaluateFsCheck using context.fs — this evaluator only owns desktop-specific checks.
+function evaluateBrowserVisited(check, browserVisited) {
+  const visited = (browserVisited ?? []).includes(check.pageId)
+  return check.operator === 'not_visited' ? !visited : visited
+}
+
+function evaluateSearchQuery(check, lastSearchQuery) {
+  const query = (lastSearchQuery ?? '').trim().toLowerCase()
+  const expected = (check.text ?? '').trim().toLowerCase()
+  if (!expected) return false
+  switch (check.operator) {
+    case 'equals': return query === expected
+    case 'not_contains': return !query.includes(expected)
+    case 'contains':
+    default: return query.includes(expected)
+  }
+}
+
+// `desktop` is the desktop module's full state: { fs, recycleBin, windows, browserVisited,
+// lastSearchQuery }. fs_* checks are evaluated separately (see src/modules/checks.js), which
+// already knows how to route them through evaluateFsCheck using context.fs — this evaluator
+// only owns desktop-specific checks.
 export function evaluateDesktopCheck(check, desktop, context = {}) {
   if (!desktop) return false
-  const { recycleBin = [], windows = [] } = desktop
+  const { recycleBin = [], windows = [], browserVisited = [], lastSearchQuery = null } = desktop
 
   switch (check.type) {
     case 'fs_recycle_bin': {
@@ -87,6 +119,10 @@ export function evaluateDesktopCheck(check, desktop, context = {}) {
       return evaluateWindowState(check, windows)
     case 'windows_arranged_side_by_side':
       return evaluateArrangedSideBySide(check, windows, context)
+    case 'browser_visited':
+      return evaluateBrowserVisited(check, browserVisited)
+    case 'search_query':
+      return evaluateSearchQuery(check, lastSearchQuery)
     default:
       return false
   }
