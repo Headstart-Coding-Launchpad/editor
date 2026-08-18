@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import ScratchWorkspace from './ScratchWorkspace'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { loadPersonalSandboxCode } from '../../app/studentStorage'
@@ -10,6 +10,7 @@ export default function StudentWorkspace({
   activeStudentView, viewingTaskId, currentTaskId,
   isSandbox, isViewingPrev, isForcedTeacherLive,
   isTeacherEditing, teacherLiveCode,
+  displayCode, displaySpriteState, displayCursor, displayBlockDrag,
 }) {
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
@@ -23,11 +24,15 @@ export default function StudentWorkspace({
     readSavedCode: cs.readSavedTaskCode,
     onCarryFallback: cs.recordCarryFallback,
   })
-  const { predefinedBlocks, prebuiltStacks } = selectScratchToolboxSnippets({
+  // Memoized so an unrelated re-render (e.g. a live-view activity notice firing
+  // mid-drag) doesn't hand ScratchWorkspace a new array reference — that would
+  // re-trigger its toolbox-rebuild effect (Blockly's updateToolbox) and disrupt
+  // whatever flyout drag is in progress.
+  const { predefinedBlocks, prebuiltStacks } = useMemo(() => selectScratchToolboxSnippets({
     task,
     activeStageIndex: cs.scratchActiveStageIndex,
     disabled: cs.inPersonalSandbox,
-  })
+  }), [task, cs.scratchActiveStageIndex, cs.inPersonalSandbox])
 
   return (
     <div style={s.scratchStudentWorkspace}>
@@ -54,8 +59,15 @@ export default function StudentWorkspace({
         assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
         initialState={initialProject}
         onStateChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchChange}
+        onActivity={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchActivity}
+        onSpriteStatesChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchSpriteState}
+        onCursorMove={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchCursor}
+        onBlockDragMove={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchBlockDrag}
         onCheckResult={isViewingPrev || isForcedTeacherLive || isTeacherEditing || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
-        externalState={isTeacherEditing ? parseScratchState(teacherLiveCode) : isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
+        externalState={isTeacherEditing ? parseScratchState(teacherLiveCode) : isForcedTeacherLive ? parseScratchState(displayCode) : isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
+        externalSpriteState={isForcedTeacherLive ? displaySpriteState : null}
+        externalCursor={isForcedTeacherLive ? displayCursor : null}
+        externalBlockDrag={isForcedTeacherLive ? displayBlockDrag : null}
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
         preferStageSidePanel
       />

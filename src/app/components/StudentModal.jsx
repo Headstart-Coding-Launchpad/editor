@@ -21,16 +21,6 @@ import StageDropdown from './student-modal/StageDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 
-function parseSpriteState(raw) {
-  if (!raw) return null
-  try {
-    const parsed = typeof raw === 'object' ? raw : JSON.parse(raw)
-    return parsed && typeof parsed === 'object' && 'x' in parsed && 'y' in parsed ? parsed : null
-  } catch {
-    return null
-  }
-}
-
 function getModuleDisplayState(module, raw) {
   if (!module) return null
   if (raw != null && raw !== '') return module.deserializeState ? module.deserializeState(raw) : raw
@@ -275,7 +265,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const lessonModule = getLessonModule(taskLesson?.type)
   const ModuleTeacherLiveView = !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
   const scratchState = isScratch ? parseScratchState(student.currentCode) : null
-  const spriteState = isScratch ? parseSpriteState(student.currentOutput) : null
+  const spriteState = isScratch ? (student.currentSpriteState ?? null) : null
+  const cursorState = isScratch ? (student.currentCursor ?? null) : null
+  const blockDragState = isScratch ? (student.currentBlockDrag ?? null) : null
   const moduleDisplayState = ModuleTeacherLiveView
     ? getModuleDisplayState(lessonModule, student.currentCode)
     : null
@@ -610,6 +602,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               remoteSelection={remoteSelection}
               scratchState={scratchState}
               spriteState={spriteState}
+              cursorState={cursorState}
+              blockDragState={blockDragState}
               iframeSrc={iframeSrc}
               iframeRef={iframeRef}
               canHighlight={canHighlight}

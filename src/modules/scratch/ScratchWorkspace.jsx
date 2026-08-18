@@ -38,6 +38,8 @@ import {
 const STAGE_W = 480
 const STAGE_H = 360
 const SYNC_DEBOUNCE = 1000
+const CURSOR_THROTTLE_MS = 50
+const CURSOR_STALE_MS = 2000
 const BLOCK_PLACED_CHECK_DEBOUNCE = 500
 const IDLE_FEEDBACK_DEBOUNCE = 900
 const MIN_STAGE_SCALE = 0.35
@@ -448,12 +450,17 @@ export default function ScratchWorkspace({
   assetsPath = '',
   initialStates = null,
   initialState  = null,      // legacy single-sprite alias
-  initialSpriteStates = null,
   onStateChange,
   onSpriteStatesChange,
+  onActivity,
+  onCursorMove,
+  onBlockDragMove,
   onCheckResult,
   externalStates = null,
   externalState  = null,     // legacy alias
+  externalSpriteState = null,
+  externalCursor = null,
+  externalBlockDrag = null,
   syncNowKey = null,
   hideStage = false,
   selectedSpriteId: controlledSpriteId = null,
@@ -524,7 +531,11 @@ export default function ScratchWorkspace({
   const runningRef          = useRef(false)
   const onStateChangeRef    = useRef(onStateChange)
   const onSpriteStatesChangeRef = useRef(onSpriteStatesChange)
+  const onActivityRef       = useRef(onActivity)
+  const onCursorMoveRef     = useRef(onCursorMove)
+  const onBlockDragMoveRef  = useRef(onBlockDragMove)
   const onCheckResultRef    = useRef(onCheckResult)
+  const draggingBlockRef    = useRef(null)
   const askResolveRef       = useRef(null)
   const inputStateRef       = useRef({ keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0 })
   const keySignalsRef       = useRef(new Map()) // normalizedKey → active signal (at most one per key)
@@ -533,6 +544,10 @@ export default function ScratchWorkspace({
   const dragMovedRef        = useRef(false)
   const draggingSpriteIdRef = useRef(null)
   const backdropNameRef     = useRef(backdrops[0]?.name ?? null)
+  const lastCursorSentRef   = useRef(0)
+  const cursorDotElRef      = useRef(null)
+  const cursorRafRef        = useRef(null)
+  const pendingCursorRef    = useRef(null)
   const imageCacheRef       = useRef({})
   const variableRuntimeRef  = useRef({})
   // Kept in sync every render (see below) so the `useCallback([])`-memoized emitWorkspaceState
@@ -574,6 +589,7 @@ export default function ScratchWorkspace({
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
   const [imageVersion, setImageVersion] = useState(0)
+  const [cursorStale, setCursorStale] = useState(false)
   const canvasRef              = useRef(null)
   const rootRef                = useRef(null)
   const flyoutCollapsedRef     = useRef(false)
@@ -596,6 +612,9 @@ export default function ScratchWorkspace({
   runningRef.current = running
   onStateChangeRef.current = onStateChange
   onSpriteStatesChangeRef.current = onSpriteStatesChange
+  onActivityRef.current = onActivity
+  onCursorMoveRef.current = onCursorMove
+  onBlockDragMoveRef.current = onBlockDragMove
   onCheckResultRef.current = onCheckResult
 
   // ── Sync Blockly context globals (lazy — only read when dropdowns open) ──────
@@ -799,7 +818,7 @@ export default function ScratchWorkspace({
   function commitSpriteStates(nextStates) {
     spriteStatesRef.current = nextStates
     setSpriteStates(nextStates)
-    onSpriteStatesChangeRef.current?.(nextStates)
+    onSpriteStatesChangeRef.current?.(nextStates, clonesRef.current, backdropNameRef.current)
   }
 
   function updateSpriteStateOverride(id, updates) {
@@ -931,6 +950,15 @@ export default function ScratchWorkspace({
           flyoutCollapsedRef.current = true
         }
       }
+      if (event.type === Blockly.Events.BLOCK_DRAG) {
+        if (event.isStart) {
+          onActivityRef.current?.({ type: 'block_drag', at: Date.now() })
+          draggingBlockRef.current = { ws, spriteId, blockId: event.blockId }
+        } else if (draggingBlockRef.current?.blockId === event.blockId) {
+          draggingBlockRef.current = null
+          onBlockDragMoveRef.current?.(null)
+        }
+      }
       // UI-only events (viewport, selection, toolbox) don't change the blocks —
       // saving on them would persist an empty/no-op state on mere task visits.
       if (event.isUiEvent) return
@@ -942,13 +970,64 @@ export default function ScratchWorkspace({
       if (lastCheckRef.current !== null) clearCheckFeedback()
       pendingSyncRef.current = true
       clearTimeout(syncTimerRef.current)
-      syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+      if (event.type === 'create') {
+        // A brand-new block (e.g. just dragged out of the flyout) doesn't exist
+        // in a watching mirror's last-synced copy yet, so the live block-drag
+        // position stream has nothing to move there until this lands — sync
+        // right away instead of waiting out the debounce, so it appears (at
+        // wherever it currently sits) and live-following can pick it up for
+        // the rest of the drag instead of only once the drag settles.
+        emitWorkspaceState()
+      } else {
+        syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+      }
       clearTimeout(blockPlacedTimerRef.current)
       blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
       clearTimeout(idleFeedbackTimerRef.current)
       idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
     })
     div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, spriteId, Blockly))
+    // Cursor position is captured off the hot path: a block (or flyout-stack) drag
+    // fires very frequent native pointermove events on this same div, and reading
+    // layout synchronously inside that handler (screenToWsCoordinates forces a
+    // getBoundingClientRect) interleaves with Blockly's own drag rendering and
+    // visibly delays it. Stash the raw point and do the conversion in the next
+    // animation frame instead — by then Blockly's own pointermove-driven DOM
+    // writes for this frame have already happened, so the read doesn't force an
+    // extra out-of-band layout pass. Deliberately still runs during drags: that's
+    // when a watching teacher most wants to see the cursor.
+    div.addEventListener('pointermove', event => {
+      if (!onCursorMoveRef.current && !onBlockDragMoveRef.current) return
+      pendingCursorRef.current = { ws, spriteId, clientX: event.clientX, clientY: event.clientY }
+      if (cursorRafRef.current) return
+      cursorRafRef.current = requestAnimationFrame(() => {
+        cursorRafRef.current = null
+        const pending = pendingCursorRef.current
+        if (!pending) return
+        const now = Date.now()
+        if (now - lastCursorSentRef.current < CURSOR_THROTTLE_MS) return
+        lastCursorSentRef.current = now
+        // A block actively being dragged in this workspace: stream its live
+        // position too, read straight off Blockly's own drag-tracked coordinate
+        // (no layout involved) so the mirror can follow it in real time instead
+        // of only jumping to the settled position once the drag ends.
+        const dragging = draggingBlockRef.current
+        if (dragging && dragging.ws === pending.ws && onBlockDragMoveRef.current) {
+          const block = pending.ws.getBlockById(dragging.blockId)
+          if (block) {
+            const xy = block.getRelativeToSurfaceXY()
+            onBlockDragMoveRef.current({ spriteId: dragging.spriteId, blockId: dragging.blockId, x: xy.x, y: xy.y, at: now })
+          }
+        }
+        if (!onCursorMoveRef.current) return
+        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(pending.ws, { x: pending.clientX, y: pending.clientY })
+        onCursorMoveRef.current({ target: 'workspace', spriteId: pending.spriteId, x: wsCoord.x, y: wsCoord.y, at: now })
+      })
+    })
+    div.addEventListener('pointerleave', () => {
+      pendingCursorRef.current = null
+      onCursorMoveRef.current?.(null)
+    })
   }
 
   // Injects a Blockly workspace for one sprite/stage id, unless one already exists. Used both
@@ -1106,6 +1185,96 @@ export default function ScratchWorkspace({
       requestAnimationFrame(() => { suppressChangeRef.current = false })
     } catch { suppressChangeRef.current = false }
   }, [normExtStates, status])
+
+  // ── Load external sprite/stage state (mirror) ────────────────────────────────
+  // Read-only mirror instances receive live sprite/clone/backdrop state from a
+  // remote source (Go-Live or broadcast) and must render it without ever running
+  // the interpreter — drawStage() already redraws purely from this state, so a
+  // plain setState here is sufficient and never touches commitSpriteStates
+  // (which would re-fire onSpriteStatesChange and echo the mirror's own state back).
+  useEffect(() => {
+    if (!readOnly || !externalSpriteState || status !== 'ready') return
+    if (externalSpriteState.spriteStates) {
+      spriteStatesRef.current = externalSpriteState.spriteStates
+      setSpriteStates(externalSpriteState.spriteStates)
+    }
+    setCloneStates(externalSpriteState.cloneStates ?? {})
+    if (externalSpriteState.backdropName) {
+      backdropNameRef.current = externalSpriteState.backdropName
+      setBackdropName(externalSpriteState.backdropName)
+    }
+  }, [externalSpriteState, status, readOnly])
+
+  // ── Live cursor (mirror) ──────────────────────────────────────────────────────
+  // A stale (no longer updating) cursor fades out rather than freezing in place.
+  useEffect(() => {
+    setCursorStale(false)
+    if (!externalCursor?.at) return undefined
+    const remaining = CURSOR_STALE_MS - (Date.now() - externalCursor.at)
+    if (remaining <= 0) { setCursorStale(true); return undefined }
+    const t = setTimeout(() => setCursorStale(true), remaining)
+    return () => clearTimeout(t)
+  }, [externalCursor?.at])
+
+  const effectiveCursor = (!readOnly || !externalCursor || cursorStale) ? null : externalCursor
+
+  // Follow the source's active sprite tab while a workspace-target cursor is live,
+  // so the cursor is never moving on a tab the mirror isn't currently showing.
+  useEffect(() => {
+    if (!effectiveCursor || effectiveCursor.target !== 'workspace') return
+    if (effectiveCursor.spriteId && effectiveCursor.spriteId !== selectedSpriteId) {
+      setSelectedSpriteId(effectiveCursor.spriteId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveCursor?.target, effectiveCursor?.spriteId])
+
+  // Render the workspace cursor as an SVG dot appended directly into that sprite's
+  // Blockly block-canvas group, so it inherits the workspace's own pan/zoom/scroll
+  // transform automatically — no manual workspace-to-screen conversion needed.
+  useEffect(() => {
+    if (cursorDotElRef.current) {
+      cursorDotElRef.current.remove()
+      cursorDotElRef.current = null
+    }
+    if (!effectiveCursor || effectiveCursor.target !== 'workspace' || status !== 'ready') return undefined
+    const ws = workspaceRefs.current[effectiveCursor.spriteId]
+    const canvas = ws?.getCanvas?.()
+    if (!canvas) return undefined
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    dot.setAttribute('r', '6')
+    dot.setAttribute('fill', '#7c3aed')
+    dot.setAttribute('stroke', '#fff')
+    dot.setAttribute('stroke-width', '2')
+    dot.style.pointerEvents = 'none'
+    canvas.appendChild(dot)
+    cursorDotElRef.current = dot
+    return () => dot.remove()
+  }, [effectiveCursor?.target, effectiveCursor?.spriteId, status])
+
+  useEffect(() => {
+    if (!cursorDotElRef.current || effectiveCursor?.target !== 'workspace') return
+    cursorDotElRef.current.setAttribute('cx', effectiveCursor.x)
+    cursorDotElRef.current.setAttribute('cy', effectiveCursor.y)
+  }, [effectiveCursor?.x, effectiveCursor?.y, effectiveCursor?.target])
+
+  // ── Live block drag (mirror) ──────────────────────────────────────────────────
+  // Repositions a block the mirror already has (from the last settled state) to
+  // follow the source's in-progress drag, so the watcher sees it move in real
+  // time instead of only jumping once the drag ends and the full state resyncs.
+  // moveTo() is a plain reposition, not a real drag — it doesn't touch connections
+  // or fire through addChangeListener (mirror workspaces never register one), so
+  // it can't loop back into this component's own sync logic. If the dragged block
+  // isn't part of the mirror's currently-loaded state (e.g. just pulled from the
+  // flyout) there's nothing to move yet — it appears once the drag ends.
+  useEffect(() => {
+    if (!readOnly || !externalBlockDrag || status !== 'ready' || !BlocklyRef.current) return
+    const ws = workspaceRefs.current[externalBlockDrag.spriteId]
+    const block = ws?.getBlockById(externalBlockDrag.blockId)
+    if (!block || typeof block.moveTo !== 'function') return
+    try {
+      block.moveTo(new BlocklyRef.current.utils.Coordinate(externalBlockDrag.x, externalBlockDrag.y))
+    } catch {}
+  }, [externalBlockDrag, status, readOnly])
 
   useEffect(() => {
     if (!syncNowKey || status !== 'ready' || readOnly) return
@@ -1407,6 +1576,7 @@ export default function ScratchWorkspace({
   // ── Run / Stop ────────────────────────────────────────────────────────────────
   async function handleRun() {
     if (status !== 'ready') return
+    onActivityRef.current?.({ type: 'green_flag', at: Date.now() })
     stopAll()
     clearClones()
     lastCheckRef.current = null
@@ -1423,6 +1593,7 @@ export default function ScratchWorkspace({
 
   async function runClickedBlock(block, spriteId) {
     if (runningRef.current || statusRef.current !== 'ready') return
+    onActivityRef.current?.({ type: 'block_click', at: Date.now() })
     stopAll()
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
@@ -1453,6 +1624,7 @@ export default function ScratchWorkspace({
   }
 
   function handleStop() {
+    onActivityRef.current?.({ type: 'stop', at: Date.now() })
     stopAll()
     clearClones()
     runningRef.current = false
@@ -1530,7 +1702,10 @@ export default function ScratchWorkspace({
     if (isDraggingRef.current && dragStartRef.current && draggingSpriteIdRef.current) {
       const dx = x - dragStartRef.current.canvasX
       const dy = y - dragStartRef.current.canvasY
-      if (!dragMovedRef.current && Math.hypot(dx, dy) > 3) dragMovedRef.current = true
+      if (!dragMovedRef.current && Math.hypot(dx, dy) > 3) {
+        dragMovedRef.current = true
+        onActivityRef.current?.({ type: 'sprite_drag', at: Date.now(), spriteId: draggingSpriteIdRef.current })
+      }
       if (respectStudentEditable && !isSpriteStudentEditable(sprites.find(sp => sp.id === draggingSpriteIdRef.current))) return
       if (dragMovedRef.current) {
         const id = draggingSpriteIdRef.current
@@ -1547,6 +1722,14 @@ export default function ScratchWorkspace({
     inputStateRef.current.mouseX = scratchX
     inputStateRef.current.mouseY = scratchY
     if (signalRef.current) { signalRef.current.mouseX = scratchX; signalRef.current.mouseY = scratchY }
+
+    if (!readOnly && onCursorMoveRef.current) {
+      const now = Date.now()
+      if (now - lastCursorSentRef.current >= CURSOR_THROTTLE_MS) {
+        lastCursorSentRef.current = now
+        onCursorMoveRef.current({ target: 'stage', x: scratchX, y: scratchY, at: now })
+      }
+    }
 
     let overSprite = false
     for (let i = sprites.length - 1; i >= 0; i--) {
@@ -1595,6 +1778,7 @@ export default function ScratchWorkspace({
 
   function handleCanvasPointerLeave() {
     if (!isDraggingRef.current) setStageCursor('default')
+    if (!readOnly) onCursorMoveRef.current?.(null)
   }
 
   function handleAskSubmit(event) {
@@ -2046,6 +2230,16 @@ export default function ScratchWorkspace({
                   <button className="btn-primary" style={s.askBtn} type="submit">OK</button>
                 </div>
               </form>
+            )}
+            {effectiveCursor?.target === 'stage' && (
+              <div style={{
+                position: 'absolute',
+                left: toCanvasX(effectiveCursor.x) * stageScale - 6,
+                top: toCanvasY(effectiveCursor.y) * stageScale - 6,
+                width: 12, height: 12, borderRadius: '50%',
+                background: '#7c3aed', border: '2px solid #fff',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.3)', pointerEvents: 'none', zIndex: 6,
+              }} />
             )}
           </div>
 

@@ -13,7 +13,7 @@ export default function StudentWorkspaceBody({
   isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isHtml,
   ModuleTeacherLiveView, moduleDisplayState,
   files, activeFile, setActiveFile, activeFileObj,
-  remoteSelection, scratchState, spriteState,
+  remoteSelection, scratchState, spriteState, cursorState, blockDragState,
   iframeSrc, iframeRef,
   canHighlight, pendingHighlight, highlights, onMirrorSelectionChange, onDismissHighlight,
   highlightEmoji, onHighlightEmojiChange, highlightNote, onHighlightNoteChange,
@@ -112,7 +112,9 @@ export default function StudentWorkspaceBody({
         assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
         initialState={scratchState}
         externalState={scratchState}
-        initialSpriteStates={spriteState}
+        externalSpriteState={spriteState}
+        externalCursor={cursorState}
+        externalBlockDrag={blockDragState}
         unrestricted={isSessionSandbox}
       />
     )

@@ -141,6 +141,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentOutput`]         = ''
       updates[`students/${anonymousId}/currentCode`]           = ''
       updates[`students/${anonymousId}/currentArcadeDesign`]   = null
+      updates[`students/${anonymousId}/currentSpriteState`]    = null
+      updates[`students/${anonymousId}/currentCursor`]         = null
+      updates[`students/${anonymousId}/currentBlockDrag`]      = null
       updates[`students/${anonymousId}/currentFiles`]          = null
       updates[`students/${anonymousId}/currentAnswer`]         = null
       updates[`students/${anonymousId}/currentSelection`]      = null
@@ -461,6 +464,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       joinedAt:      Date.now(),
       currentCode:   '',
       currentArcadeDesign: null,
+      currentSpriteState: null,
       currentOutput: '',
       currentAnswer: null,
       lastRunStatus: null,
@@ -531,6 +535,18 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentArcadeDesign(anonymousId, design) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentArcadeDesign`), design ?? null)
+  }
+
+  async function writeStudentSpriteState(anonymousId, spriteState) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`), spriteState ?? null)
+  }
+
+  async function writeStudentCursor(anonymousId, cursor) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentCursor`), cursor ?? null)
+  }
+
+  async function writeStudentBlockDrag(anonymousId, blockDrag) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentBlockDrag`), blockDrag ?? null)
   }
 
   async function writeStudentFiles(anonymousId, files) {
@@ -642,7 +658,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }
