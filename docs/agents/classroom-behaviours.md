@@ -22,6 +22,11 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Closing the modal by any route must clear `activeStudentView`: close button, outside click, Escape, or tab close.
 - Firebase `onDisconnect` clears `activeStudentView` on unexpected teacher tab close.
 - Only one student streams at a time.
+- Scratch has the same live-view standard as Python/HTML, extended with sprite/stage motion and a live cursor:
+  - Block drags, block clicks (click-to-run), green-flag, stop, and sprite drags on the stage surface as short notices via `LiveActivityToast` (`currentActivity`/`teacherLive.activity`, same generic `{ type, at }` shape as copy/paste/click).
+  - `ScratchWorkspace`'s stage canvas mirrors live sprite motion, not just authored starting positions: `onSpriteStatesChange` (`ScratchWorkspace.jsx`) publishes a throttled (~120ms) `{ spriteStates, cloneStates, backdropName }` snapshot to `currentSpriteState`/`teacherLive.spriteState`, and a read-only mirror instance loads it via the `externalSpriteState` prop without ever running the interpreter.
+  - A live pointer dot tracks the source's mouse over both the stage and each sprite's Blockly block workspace (throttled ~50ms, `currentCursor`/`teacherLive.cursor`, shape `{ target: 'stage' | 'workspace', spriteId, x, y, at }`). The mirror's visible sprite tab automatically follows the source's tab whenever a workspace-target cursor is live. A cursor with no update for 2s fades out rather than freezing in place.
+  - A block actively being dragged streams its own live position too (`currentBlockDrag`/`teacherLive.blockDrag`, `{ spriteId, blockId, x, y, at }`), read straight off Blockly's own drag-tracked coordinates and cleared to `null` when the drag ends — without this, the mirror only ever saw the settled block state on drop (debounced ~1s), so a dragged block would jump into place rather than visibly follow. The mirror moves the block via Blockly's `moveTo` (a plain reposition, not a real drag) and only if that block already exists in its last-synced state.
 
 ## Teacher Code Highlights: `teacherHighlights`
 
@@ -39,6 +44,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Broadcasts the teacher's or a pinned student's screen to all students.
 - Opens through `?teacher=true&present=true`.
 - Broadcast code views stream selection/cursor plus copy, paste, and click notices.
+- Scratch broadcasts stream the same block-activity notices, sprite/stage state, and live cursor as the Go-Live direction (see above) — the source is whichever `StudentWorkspace` instance is live-writing (the presenting teacher's own editor, or a pinned student's), since presentation mode (`?teacher=true&present=true`) renders the same `StudentWorkspace`/`ScratchWorkspace` pipeline students use, just with `teacherPresentation` flipping the publish gating to `source: 'teacher'`.
 - `onDisconnect` clears `teacherLive` automatically.
 
 ## Teacher Timers

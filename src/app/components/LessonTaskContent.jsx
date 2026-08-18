@@ -36,6 +36,9 @@ export default function LessonTaskContent({
   isCodeArrangeTask,
   displayCode,
   displayArcadeDesign,
+  displaySpriteState,
+  displayCursor,
+  displayBlockDrag,
   displayFiles,
   displayActiveFile,
   displayOutput,
@@ -239,6 +242,9 @@ export default function LessonTaskContent({
           previewMode={previewMode}
           displayCode={displayCode}
           displayArcadeDesign={displayArcadeDesign}
+          displaySpriteState={displaySpriteState}
+          displayCursor={displayCursor}
+          displayBlockDrag={displayBlockDrag}
           displayFiles={displayFiles}
           displayActiveFile={displayActiveFile}
           displayOutput={displayOutput}

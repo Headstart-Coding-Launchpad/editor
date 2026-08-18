@@ -33,7 +33,10 @@ Do not deviate from this shape.
         "runStatus": "success | error | stopped | submitted | null",
         "checkPassed": true,
         "selection": { "from": 0, "to": 5, "file": "index.html" },
-        "activity": { "type": "copy | paste | click", "at": 1234567890, "file": "index.html" },
+        "activity": { "type": "copy | paste | click | block_drag | block_click | green_flag | stop | sprite_drag", "at": 1234567890, "file": "index.html" },
+        "spriteState": "object | null (watched Scratch student's throttled sprite/clone/backdrop snapshot, ~8Hz)",
+        "cursor": "object | null (watched Scratch student's throttled live pointer position, ~20Hz — see students.{id}.currentCursor shape)",
+        "blockDrag": "object | null ({ spriteId, blockId, x, y, at } — watched Scratch student's in-progress block-drag position within a sprite's Blockly workspace, read live off Blockly's own drag tracking and throttled with the cursor, ~20Hz; null once the drag ends)",
         "updatedAt": 1234567890
       },
       "sandboxCode": "string | null",
@@ -105,12 +108,15 @@ Do not deviate from this shape.
           "online": true,
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
+          "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz)",
+          "currentCursor": "object | null ({ target: 'stage' | 'workspace', spriteId, x, y, at } — watched Scratch student's throttled live pointer position, ~20Hz; stage coords are origin-centred same as sprite x/y, workspace coords are that sprite's Blockly workspace units)",
+          "currentBlockDrag": "object | null ({ spriteId, blockId, x, y, at } — the top block of an in-progress drag, live position in that sprite's Blockly workspace units, cleared to null when the drag ends)",
           "currentFiles": { "index__dot__html": "..." },
           "currentOutput": "string",
           "currentAnswer": "b",
           "currentActiveFile": "index.html",
           "currentSelection": { "from": 0, "to": 5, "file": "index.html" },
-          "currentActivity": { "type": "copy | paste | click", "at": 1234567890, "file": "index.html" },
+          "currentActivity": { "type": "copy | paste | click | block_drag | block_click | green_flag | stop | sprite_drag", "at": 1234567890, "file": "index.html" },
           "lastRunStatus": "success | error | null",
           "checkPassed": true,
           "lastRunAt": 1234567890,
@@ -186,6 +192,7 @@ Student writes:
 - When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
 - When watched, Arcade design changes are saved locally immediately and publish a throttled `currentArcadeDesign` snapshot. Pixel/map edits never stream unless that student is `activeStudentView`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
+- When watched, Scratch: `currentCode` (settled block state) on change, `currentActivity` for block drags/clicks/green-flag/stop/sprite-drag notices, a throttled (~120ms) `currentSpriteState` snapshot of sprite/clone/backdrop runtime state so the mirror renders live stage motion instead of authored starting positions, and a throttled (~50ms) `currentCursor` live pointer position covering both the stage and each sprite's block workspace. While a block is actively being dragged, its live in-progress position (not just the settled `currentCode` state on drop) also streams as `currentBlockDrag`, read directly off Blockly's own drag-tracked coordinates — the mirror repositions that block (if it already has it from the last settled sync) via Blockly's `moveTo`, without treating it as a real drag. The broadcast direction (`teacherLive`) mirrors the same fields (`code`, `activity`, `spriteState`, `cursor`, `blockDrag`); the mirror's visible sprite tab follows the source's tab automatically whenever a workspace-target cursor is live, and a cursor with no update for 2s fades out rather than freezing in place.
 - Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.

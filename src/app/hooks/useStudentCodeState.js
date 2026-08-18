@@ -43,6 +43,9 @@ export function useStudentCodeState({
   writeStudentAnswer,
   writeStudentCode,
   writeStudentArcadeDesign,
+  writeStudentSpriteState,
+  writeStudentCursor,
+  writeStudentBlockDrag,
   writeStudentFiles,
   writeStudentOutput,
   writeStudentInteraction,
@@ -116,6 +119,8 @@ export function useStudentCodeState({
   const arcadeDesignRef      = useRef(arcadeDesign)
   arcadeDesignRef.current    = arcadeDesign
   const arcadeDesignWriteTimerRef = useRef(null)
+  const spriteStateLastSentRef = useRef(0)
+  const spriteStatePendingTimerRef = useRef(null)
   const filesRef             = useRef(files)
   filesRef.current           = files
   const outputRef            = useRef(output)
@@ -1180,6 +1185,16 @@ export function useStudentCodeState({
     }
   }
 
+  function handleScratchActivity(activity) {
+    const nextActivity = { ...activity }
+    editorActivityRef.current = nextActivity
+    setEditorActivity(nextActivity)
+    if (canPublishTeacherLive()) publishTeacherLive({ activity: nextActivity })
+    if (!teacherPresentation && session?.activeStudentView === identity?.anonymousId) {
+      writeStudentInteraction(identity.anonymousId, { activity: nextActivity })
+    }
+  }
+
   function handleFileTabChange(filename) {
     setActiveFile(filename)
     editorSelectionRef.current = null
@@ -1224,6 +1239,47 @@ export function useStudentCodeState({
     }
   }
 
+  const SPRITE_STATE_THROTTLE_MS = 120
+
+  function handleScratchSpriteState(spriteStates, cloneStates, backdropName) {
+    if (!identity) return
+    const payload = { spriteStates, cloneStates, backdropName, updatedAt: Date.now() }
+    const flush = () => {
+      spriteStateLastSentRef.current = Date.now()
+      if (canPublishTeacherLive()) publishTeacherLive({ spriteState: payload })
+      if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+        writeStudentSpriteState?.(identity.anonymousId, payload)
+      }
+    }
+    const elapsed = Date.now() - spriteStateLastSentRef.current
+    if (elapsed >= SPRITE_STATE_THROTTLE_MS) {
+      clearTimeout(spriteStatePendingTimerRef.current)
+      spriteStatePendingTimerRef.current = null
+      flush()
+    } else if (!spriteStatePendingTimerRef.current) {
+      spriteStatePendingTimerRef.current = setTimeout(() => {
+        spriteStatePendingTimerRef.current = null
+        flush()
+      }, SPRITE_STATE_THROTTLE_MS - elapsed)
+    }
+  }
+
+  function handleScratchCursor(payload) {
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ cursor: payload })
+    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+      writeStudentCursor?.(identity.anonymousId, payload)
+    }
+  }
+
+  function handleScratchBlockDrag(payload) {
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ blockDrag: payload })
+    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+      writeStudentBlockDrag?.(identity.anonymousId, payload)
+    }
+  }
+
   function handleScratchCheck(passed, snapshot) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
@@ -1236,7 +1292,6 @@ export function useStudentCodeState({
       const states = snapshot?.workspaceStates ?? loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ?? null
       writeStudentRun(identity.anonymousId, {
         code: states ? JSON.stringify(states) : undefined,
-        output: snapshot?.spriteStates ? JSON.stringify(snapshot.spriteStates) : undefined,
         status: 'success',
         checkPassed: effectivePassed,
       })
@@ -1644,7 +1699,7 @@ export function useStudentCodeState({
     // Event handlers
     handleRun, handleStop, handleRunTests, handleSubmit, handleQuizSelect,
     handleCodeChange, handleArcadeDesignChange, handleFileChange, handleFileTabChange,
-    handleEditorSelection, handleEditorActivity,
+    handleEditorSelection, handleEditorActivity, handleScratchActivity, handleScratchSpriteState, handleScratchCursor, handleScratchBlockDrag,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
     handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewTargetedStage, handleAcceptTargetedStage, handleAcceptGenericNextStage, handlePreviewCompleteCode, handleShowCompleteCode,

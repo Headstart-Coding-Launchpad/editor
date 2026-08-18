@@ -33,7 +33,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
     session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
     setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
     acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
     removeTeacherHighlight,
@@ -91,7 +91,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     lessonId, lesson: activeLesson, currentTaskId, viewingTaskId, phase,
     effectiveIdentity, identity, session, connected,
     teacherPresentation, previewMode,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentFiles, writeStudentOutput,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentFiles, writeStudentOutput,
     writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
     registerPresence, removeStudent,
     updateTeacherLive, setTeacherLive,
@@ -266,6 +266,9 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     displayedTaskId,
     displayCode,
     displayArcadeDesign,
+    displaySpriteState,
+    displayCursor,
+    displayBlockDrag,
     displayFiles,
     displayActiveFile,
     displayOutput,
@@ -601,6 +604,9 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           isCodeArrangeTask={isCodeArrangeTask}
           displayCode={displayCode}
           displayArcadeDesign={displayArcadeDesign}
+          displaySpriteState={displaySpriteState}
+          displayCursor={displayCursor}
+          displayBlockDrag={displayBlockDrag}
           displayFiles={displayFiles}
           displayActiveFile={displayActiveFile}
           displayOutput={displayOutput}

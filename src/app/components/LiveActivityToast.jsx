@@ -4,6 +4,11 @@ const ACTIVITY_LABELS = {
   copy: 'Copied text',
   paste: 'Pasted text',
   click: 'Clicked in the editor',
+  block_drag: 'Dragging a block',
+  block_click: 'Ran a block',
+  green_flag: 'Clicked green flag',
+  stop: 'Stopped scripts',
+  sprite_drag: 'Moving a sprite',
 }
 
 export default function LiveActivityToast({ activity, showClicks = true, style }) {
