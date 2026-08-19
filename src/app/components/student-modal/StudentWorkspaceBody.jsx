@@ -1,6 +1,8 @@
 import React from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
 import ScratchTeacherLiveView from '../../../modules/scratch/TeacherLiveView.jsx'
+import CodeArrangeTask from '../CodeArrangeTask'
+import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../../shared/codeArrange'
 import ExplainerPanel from '../ExplainerPanel'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
@@ -9,7 +11,7 @@ import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 
 export default function StudentWorkspaceBody({
   lesson, task, student, session,
-  isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isHtml,
+  isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isHtml, isCodeArrangeTask,
   ModuleTeacherLiveView, moduleDisplayState,
   files, activeFile, setActiveFile, activeFileObj,
   remoteSelection, scratchState, spriteState, cursorState, blockDragState,
@@ -71,6 +73,26 @@ export default function StudentWorkspaceBody({
       showCorrectAnswer
     />
   )
+
+  if (isCodeArrangeTask) {
+    const entryFile = getCodeArrangeEntryFile(task)
+    const code = isHtml ? (files.find(f => f.name === entryFile)?.content ?? '') : (student.currentCode ?? '')
+    const selectedAnswer = deriveSlotStateFromCode(task, code)
+    return (
+      <CodeArrangeTask
+        task={task}
+        moduleType={isHtml ? 'html' : 'python'}
+        selectedAnswer={selectedAnswer}
+        output={student.currentOutput ?? ''}
+        runStatus={student.lastRunStatus}
+        checkPassed={student.checkPassed}
+        iframeSrc={iframeSrc}
+        iframeRef={iframeRef}
+        disabled
+        showQuestion={false}
+      />
+    )
+  }
 
   if (isPython) return (
     <>

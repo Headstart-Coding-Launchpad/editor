@@ -259,6 +259,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const taskLesson = getEffectiveLessonForTask(lesson, task)
   const { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(taskLesson, task, session)
+  const isCodeArrangeTask = task?.taskType === 'code_arrange'
   const isArcade = taskLesson?.type === 'arcade'
   const isElectronics = taskLesson?.type === 'electronics'
   const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
@@ -283,7 +284,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     ? null
     : student.currentSelection
 
-  const canHighlight = isLive && !isInformation && !isQuiz && (isPython || isHtml) && !isScratch && !isFilesystem && teacherEditState === 'idle'
+  const canHighlight = isLive && !isInformation && !isQuiz && !isCodeArrangeTask && (isPython || isHtml) && !isScratch && !isFilesystem && teacherEditState === 'idle'
   const highlightsForActiveFile = useMemo(() => {
     const raw = student.teacherHighlights
     if (!raw) return []
@@ -533,7 +534,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
         </div>
 
         {/* Content */}
-        <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isPython ? s.bodyPython : isScratch ? s.bodyScratch : ModuleTeacherLiveView ? s.bodyFilesystem : s.bodyHtml}>
+        <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isCodeArrangeTask ? s.bodyCodeArrange : isPython ? s.bodyPython : isScratch ? s.bodyScratch : ModuleTeacherLiveView ? s.bodyFilesystem : s.bodyHtml}>
           {teacherEditState === 'editing' && isScratch ? (
             <ScratchWorkspace
               key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
@@ -593,6 +594,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               isPython={isPython}
               isScratch={isScratch}
               isHtml={isHtml}
+              isCodeArrangeTask={isCodeArrangeTask}
               ModuleTeacherLiveView={ModuleTeacherLiveView}
               moduleDisplayState={moduleDisplayState}
               files={files}
@@ -779,6 +781,13 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
+  },
+  bodyCodeArrange: {
+    flex: 1,
+    overflow: 'auto',
+    padding: 16,
+    display: 'flex',
+    flexDirection: 'column',
   },
   bodyHtml: {
     flex: 1,
