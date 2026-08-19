@@ -35,7 +35,7 @@ export default function InformationTask({ task, lesson, fill = true, disableCopy
           <MarkdownRenderer content={task?.leftContent ?? ''} textScale={markdownTextScale} inheritColor topicType={lesson?.type} disableCopy={disableCopy} />
         </div>
         <div className="information-recap__content">
-          <MarkdownRenderer content={task?.explainer ?? ''} textScale={markdownTextScale} topicType={lesson?.type} showLibrary disableCopy={disableCopy} />
+          <MarkdownRenderer content={task?.explainer ?? ''} textScale={markdownTextScale} topicType={lesson?.type} showLibrary disableCopy={disableCopy} imageLayout="float" />
         </div>
       </section>
     )
@@ -50,6 +50,7 @@ export default function InformationTask({ task, lesson, fill = true, disableCopy
       markdownTextScale={markdownTextScale}
       topicType={lesson?.type}
       disableCopy={disableCopy}
+      imageLayout="float"
     />
   )
 }

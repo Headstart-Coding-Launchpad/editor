@@ -176,6 +176,22 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     if (identity?.anonymousId && phase === 'lesson') setStudentTopic?.(identity.anonymousId, null)
   }
 
+  // Lets the teacher's student list show what a student can currently see (e.g. Scratch's
+  // Instructions/Code and Blocks/Stage tabs) — see LessonTaskContent's visiblePanes comment.
+  // Gated like writeStudentPresence's windowFocused/lastActivityAt writes in
+  // useStudentCodeState.js: real students in a live/sandbox session only, never the
+  // teacher's own presentation screen.
+  const lastVisiblePanesRef = useRef(null)
+  const handleVisiblePanesChange = useCallback((panes) => {
+    if (teacherPresentation || !identity?.anonymousId) return
+    if (phase !== 'lesson' && phase !== 'sandbox') return
+    const key = panes?.join(',') ?? ''
+    if (lastVisiblePanesRef.current === key) return
+    lastVisiblePanesRef.current = key
+    writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherPresentation, identity?.anonymousId, phase])
+
   // ─── Navigation handlers ───────────────────────────────────────────────────
 
   function handleSoloNavigate(taskId) {
@@ -632,6 +648,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
           onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
           openTopicId={phase === 'lesson' ? openTopicId : null}
+          onVisiblePanesChange={handleVisiblePanesChange}
         />
       </div>
     </div>

@@ -502,6 +502,7 @@ export default function ScratchWorkspace({
   prebuiltStacks = null,     // Visual stack snippets merged for current tab
   respectStudentEditable = false,
   forceCompact = false,
+  onVisiblePanesChange = null,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -562,6 +563,7 @@ export default function ScratchWorkspace({
   const onCursorMoveRef     = useRef(onCursorMove)
   const onBlockDragMoveRef  = useRef(onBlockDragMove)
   const onCheckResultRef    = useRef(onCheckResult)
+  const onVisiblePanesChangeRef = useRef(onVisiblePanesChange)
   const draggingBlockRef    = useRef(null)
   const askResolveRef       = useRef(null)
   const inputStateRef       = useRef({ keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0 })
@@ -652,6 +654,7 @@ export default function ScratchWorkspace({
   onCursorMoveRef.current = onCursorMove
   onBlockDragMoveRef.current = onBlockDragMove
   onCheckResultRef.current = onCheckResult
+  onVisiblePanesChangeRef.current = onVisiblePanesChange
 
   // ── Sync Blockly context globals (lazy — only read when dropdowns open) ──────
   useEffect(() => {
@@ -660,6 +663,21 @@ export default function ScratchWorkspace({
     setVariableContext(variables)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprites, backdrops, variables])
+
+  // ── Report which of Blocks/Stage are actually on screen ──────────────────────
+  // Mirrors the rendering conditions above (compact tab switcher, hideStage, and the
+  // student's manual stage-collapse rail) so callers — e.g. the teacher's student list —
+  // can show what a student is currently looking at without duplicating this logic.
+  useEffect(() => {
+    const panes = hideStage
+      ? ['blocks']
+      : compact
+        ? [activePane]
+        : stagePanelCollapsed
+          ? ['blocks']
+          : ['blocks', 'stage']
+    onVisiblePanesChangeRef.current?.(panes)
+  }, [hideStage, compact, activePane, stagePanelCollapsed])
 
   useEffect(() => {
     const costumes = (sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []

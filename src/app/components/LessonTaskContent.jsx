@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import SplitPane from '../../shared/SplitPane'
@@ -86,10 +86,16 @@ export default function LessonTaskContent({
   onTopicOpen,
   onTopicClose,
   openTopicId,
+  onVisiblePanesChange,
 }) {
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   const [taskPanelTab, setTaskPanelTab] = useState(() => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code')
   const [taskPanelSizeRef, taskPanelSize] = useElementSize()
+  // Only Scratch has a pane that ever actually hides — Instructions/Code (desktop-compact,
+  // below) and, inside ScratchWorkspace itself, Blocks/Stage. Every other lesson type's
+  // explainer and code panes are always both on screen at once (resizable split on desktop,
+  // stacked-and-scrollable on mobile), so there's nothing meaningful to report for them.
+  const [scratchCodePanes, setScratchCodePanes] = useState(['blocks', 'stage'])
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -102,6 +108,21 @@ export default function LessonTaskContent({
   // for no benefit.
   const taskPanelCompact = isScratchLesson && taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
+
+  // What's actually on screen right now, for the teacher's student list — see the
+  // `scratchCodePanes` comment above for why this only applies to Scratch.
+  const instructionsPaneVisible = !taskPanelCompact || taskPanelTab === 'instructions'
+  const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
+  const visiblePanes = isScratchLesson
+    ? [...(instructionsPaneVisible ? ['instructions'] : []), ...(codePaneVisible ? scratchCodePanes : [])]
+    : null
+  const visiblePanesKey = visiblePanes?.join(',') ?? ''
+
+  useEffect(() => {
+    if (isScratchLesson) onVisiblePanesChange?.(visiblePanes)
+  // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScratchLesson, visiblePanesKey, onVisiblePanesChange])
 
   function handleTaskPanelTabChange(id) {
     setTaskPanelTab(id)
@@ -313,6 +334,7 @@ export default function LessonTaskContent({
           teacherLiveActiveFile={teacherLiveActiveFile}
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+          onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : undefined}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>

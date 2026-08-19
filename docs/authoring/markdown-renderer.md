@@ -217,6 +217,11 @@ The marker text is stripped from rendered output.
 
 Block-level, `max-width: 100%`, small border radius.
 
+Information tasks (`InformationTask.jsx`) are the one exception: there, every image floats
+beside its surrounding paragraph text instead of always breaking onto its own line (stacks
+full-width again below ~640px). This is automatic — authors write the same `![alt](url)`
+markdown, nothing to opt into — driven by `MarkdownRenderer`'s `imageLayout="float"` prop.
+
 ---
 
 ## Links

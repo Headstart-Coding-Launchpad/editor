@@ -15,6 +15,13 @@ function formatLastRun(ts) {
   return `${hrs}h ago`
 }
 
+// Matches the pane ids ScratchWorkspace/LessonTaskContent report — see visiblePanes
+// in LessonTaskContent.jsx (only Scratch has panes that ever actually hide).
+const VISIBLE_PANE_LABELS = { instructions: 'Info', blocks: 'Blocks', stage: 'Stage' }
+function formatVisiblePanes(panes) {
+  return panes.map(p => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
+}
+
 export default function StudentCard({ student, lesson, lessonId, session, topics, onRename, onRemove, onExpand }) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
@@ -172,6 +179,11 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
               </span>
             )
           })()}
+          {Array.isArray(student.visiblePanes) && student.visiblePanes.length > 0 && (
+            <span style={{ ...s.checkBadge, ...s.checkBadgeView }} title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}>
+              👀 {formatVisiblePanes(student.visiblePanes)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -367,6 +379,13 @@ const s = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     display: 'inline-block',
+  },
+  checkBadgeView: {
+    background: '#f3f4f6',
+    color: '#4b5563',
+    border: '1px solid #d1d5db',
+    textTransform: 'none',
+    letterSpacing: 0,
   },
   checkBadgeAway: {
     background: '#f3f4f6',
