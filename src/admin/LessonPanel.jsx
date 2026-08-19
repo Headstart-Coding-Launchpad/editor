@@ -60,7 +60,7 @@ function groupByTypeAndLevel(lessons, levels) {
       const levelA = findLessonLevel(a, levels)
       const levelB = findLessonLevel(b, levels)
       if (levelA || levelB) return compareLevels(levelA ?? {}, levelB ?? {})
-      return String(a.title ?? a.id).localeCompare(String(b.title ?? b.id))
+      return String(a.id).localeCompare(String(b.id))
     })
   }
   const sortedTypes = Object.keys(byType).sort((a, b) => {
@@ -116,7 +116,7 @@ function makeLevelBuckets(lessons, levels, activeType) {
     })
     .map(bucket => ({
       ...bucket,
-      lessons: bucket.lessons.sort((a, b) => String(a.title ?? a.id).localeCompare(String(b.title ?? b.id))),
+      lessons: bucket.lessons.sort((a, b) => String(a.id).localeCompare(String(b.id))),
     }))
 }
 
@@ -162,7 +162,7 @@ function makeLessonFamilyGroups(lessons) {
 
   const stockLessons = lessons
     .filter(lesson => !isLessonFork(lesson))
-    .sort((a, b) => String(a.title ?? a.id).localeCompare(String(b.title ?? b.id)))
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)))
 
   for (const lesson of stockLessons) {
     const forks = (forksBySource.get(lesson.id) ?? [])
