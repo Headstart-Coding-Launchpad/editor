@@ -6,7 +6,29 @@ import {
   isSpriteCheckable,
   filterCheckableSpriteWorkspaces,
   isValidNewVariableName,
+  computeBlockScale,
 } from '../ScratchWorkspace'
+
+describe('computeBlockScale', () => {
+  it('returns the default (max) scale at/above the wide reference size', () => {
+    expect(computeBlockScale(1000, 600)).toBeCloseTo(0.75)
+    expect(computeBlockScale(2000, 2000)).toBeCloseTo(0.75)
+  })
+
+  it('interpolates down as either dimension shrinks below the reference size', () => {
+    expect(computeBlockScale(500, 600)).toBeCloseTo(0.675) // half width, full height
+    expect(computeBlockScale(1000, 300)).toBeCloseTo(0.675) // full width, half height
+  })
+
+  it('is bound by the smaller of width/height factor (both must be roomy for full scale)', () => {
+    expect(computeBlockScale(1000, 300)).toBeCloseTo(computeBlockScale(500, 600))
+  })
+
+  it('never goes below the readability floor, even at zero size', () => {
+    expect(computeBlockScale(0, 0)).toBeCloseTo(0.6)
+    expect(computeBlockScale(0, 0)).toBeGreaterThanOrEqual(0.6)
+  })
+})
 
 describe('ScratchWorkspace student-editable sprite helpers', () => {
   it('treats sprites as student-editable by default', () => {

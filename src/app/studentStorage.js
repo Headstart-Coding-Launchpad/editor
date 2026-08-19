@@ -71,6 +71,19 @@ export function saveFsState(lessonId, taskId, anonymousId, fs) {
   localStorage.setItem(studentTaskStorageKey(lessonId, taskId, anonymousId), JSON.stringify({ fs }))
 }
 
+// ── Layout tab preference ──────────────────────────────────────────────────────
+// A device-level display preference (which compact-layout tab was last active),
+// not lesson/task-specific, so the key is unscoped like `headstart_builder_current`.
+export const layoutTabStorageKey = surface => `headstart_layout_${surface}`
+
+export function loadLayoutTab(surface) {
+  return localStorage.getItem(layoutTabStorageKey(surface))
+}
+
+export function saveLayoutTab(surface, tabId) {
+  localStorage.setItem(layoutTabStorageKey(surface), tabId)
+}
+
 // ── Ephemeral (in-memory) storage ─────────────────────────────────────────────
 // Backing store for teacher presentation and builder preview: work persists for
 // the current page session only, so carry-through behaves like a real student

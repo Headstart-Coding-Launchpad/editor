@@ -27,6 +27,8 @@ import {
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 import { useTypeAssets } from '../../shared/useTypeAssets'
+import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
+import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
 import {
   createSpriteFromPreset,
   normalizeSpritePresets,
@@ -47,7 +49,32 @@ const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
 const MIN_EDITOR_WIDTH_COLLAPSED = 280
 const MIN_EDITOR_WIDTH_COLLAPSED_COMPACT = 180
-const NARROW_BREAKPOINT = 1000
+// Below this width or height, side-by-side editor+stage is too cramped — switch to an
+// explicit Blocks/Stage tab switcher instead (see the `compact` state below). Matches
+// the thresholds LessonTaskContent.jsx uses for its own Instructions/Code tab tier.
+// Exported: LessonTaskContent.jsx reuses this to decide when to tab Instructions away
+// *before* the code area would otherwise be squeezed under it (see EXPLAINER_FIXED_WIDTH
+// there) — the two thresholds must stay in lockstep, not just coincidentally match.
+export const NARROW_BREAKPOINT = 1000
+export const NARROW_BREAKPOINT_HEIGHT = 600
+const SCRATCH_PANEL_TABS_SURFACE = 'scratch_panel'
+// Block canvas auto-zoom range. There's no manual zoom any more (wheel/on-canvas controls
+// were removed as confusing) — scale is purely a function of available space, continuously
+// recalculated (see computeBlockScale). MAX matches the old fixed default scale, so a wide
+// screen looks exactly as before; MIN is a readability floor — below it we lean on the
+// flyout-collapse/compact-tab mechanisms instead of shrinking blocks further.
+const BLOCK_SCALE_MAX = 0.75
+const BLOCK_SCALE_MIN = 0.6
+
+// Continuous, not tiered: full size whenever the container is at/above the same 1000×600
+// "wide" reference point `compact` uses, interpolating down to the floor as it shrinks
+// within compact territory. Exported (and pure) so it's unit-testable without Blockly.
+export function computeBlockScale(width, height) {
+  const wFactor = Math.min(1, width / NARROW_BREAKPOINT)
+  const hFactor = Math.min(1, height / NARROW_BREAKPOINT_HEIGHT)
+  const factor = Math.min(wFactor, hFactor)
+  return BLOCK_SCALE_MIN + (BLOCK_SCALE_MAX - BLOCK_SCALE_MIN) * factor
+}
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 const STAGE_RUNTIME_STATE = {
   x: 0,
@@ -474,7 +501,7 @@ export default function ScratchWorkspace({
   predefinedBlocks = null,   // Legacy PredefinedBlock[] merged for current tab
   prebuiltStacks = null,     // Visual stack snippets merged for current tab
   respectStudentEditable = false,
-  preferStageSidePanel = false,
+  forceCompact = false,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -573,6 +600,11 @@ export default function ScratchWorkspace({
     else setInternalSelectedSpriteId(id)
   }
 
+  function handleActivePaneChange(id) {
+    setActivePane(id)
+    saveLayoutTab(SCRATCH_PANEL_TABS_SURFACE, id)
+  }
+
   const [status, setStatus]         = useState('loading')
   const [running, setRunning]       = useState(false)
   const [checkPassed, setCheckPassed] = useState(false)
@@ -586,23 +618,27 @@ export default function ScratchWorkspace({
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(false)
+  // Manual-only rail collapse for the stage panel in the wide (non-compact) layout — the
+  // student clicks to reclaim editor space; nothing auto-toggles it. See `compact` below
+  // for the separate, measurement-driven Blocks/Stage tab switcher used at narrow sizes.
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
+  const [compact, setCompact] = useState(forceCompact)
+  const [activePane, setActivePane] = useState(() => loadLayoutTab(SCRATCH_PANEL_TABS_SURFACE) || 'blocks')
   const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
   const canvasRef              = useRef(null)
   const rootRef                = useRef(null)
   const flyoutCollapsedRef     = useRef(false)
-  const stagePanelCollapsedRef = useRef(false)
-  const stagePanelAutoCollapsedRef = useRef(false)
-  const prevWidthRef           = useRef(null)
+  const compactRef             = useRef(forceCompact)
+  const blockScaleRef          = useRef(BLOCK_SCALE_MAX)
   const blockDragActiveRef     = useRef(false)
   const pendingScaleRecalcRef  = useRef(false)
   const hideStageRef           = useRef(hideStage)
   const isWindowResizeRef      = useRef(false)
 
   flyoutCollapsedRef.current = flyoutCollapsed
-  stagePanelCollapsedRef.current = stagePanelCollapsed
+  compactRef.current = compact
   hideStageRef.current = hideStage
   spritesRef.current = sprites
   backdropsRef.current = backdrops
@@ -720,6 +756,26 @@ export default function ScratchWorkspace({
     }
   }, [assetsPath, sprites])
 
+  // ── Wait for the emoji web font ───────────────────────────────────────────────
+  // Canvas text is drawn with whatever font is *already* loaded at the moment
+  // fillText() runs — unlike DOM text, it doesn't automatically repaint once a
+  // `font-display: swap` web font (Noto Color Emoji, loaded via index.css) finishes
+  // downloading. A sprite/clone drawn as an emoji before the font is ready renders in
+  // the browser's fallback emoji glyphs and then never updates, even after the real
+  // font loads — unless something else happens to trigger a redraw first, which is why
+  // it can look like it "flips" between the fallback and Noto styles inconsistently.
+  // Explicitly wait for it once, then force one redraw via the same imageVersion bump
+  // preload effects above use.
+  useEffect(() => {
+    let cancelled = false
+    // Promise.resolve(...) wraps the possibly-undefined result (older browsers with no
+    // Font Loading API) so .catch()/.finally() are always safe to chain.
+    Promise.resolve(document.fonts?.load("16px 'Noto Color Emoji'"))
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setImageVersion(v => v + 1) })
+    return () => { cancelled = true }
+  }, [])
+
   // ── Emit workspace states ────────────────────────────────────────────────────
   const emitWorkspaceState = useCallback(() => {
     if (!BlocklyRef.current || suppressChangeRef.current) return
@@ -773,6 +829,7 @@ export default function ScratchWorkspace({
     isWindowResizeRef.current = false
     for (const ws of Object.values(workspaceRefs.current)) {
       try {
+        try { ws.setScale(blockScaleRef.current) } catch {}
         const scrollX = ws.scrollX
         const scrollY = ws.scrollY
         Blockly.svgResize(ws)
@@ -943,13 +1000,6 @@ export default function ScratchWorkspace({
     ws.addChangeListener((event) => {
       if (handleWorkspaceClickEvent(event, ws, spriteId, Blockly)) return
       if (suppressChangeRef.current) return
-      if (!preferStageSidePanel && !flyoutCollapsedRef.current && event.type === 'create') {
-        const w = rootRef.current?.getBoundingClientRect().width ?? Infinity
-        if (w < 1000) {
-          setFlyoutCollapsed(true)
-          flyoutCollapsedRef.current = true
-        }
-      }
       if (event.type === Blockly.Events.BLOCK_DRAG) {
         if (event.isStart) {
           onActivityRef.current?.({ type: 'block_drag', at: Date.now() })
@@ -1040,8 +1090,13 @@ export default function ScratchWorkspace({
       toolbox: buildToolboxForSprite(spriteId),
       renderer: 'zelos',
       grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
-      zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.35, scaleSpeed: 1.2 },
-      move: { scrollbars: true, drag: true, wheel: false },
+      // Zoom is fully automatic (see computeBlockScale/blockScaleRef) — no manual wheel-zoom
+      // or on-canvas zoom controls, since a student fighting an auto-zoom that keeps
+      // recalculating from container size is exactly the "auto behavior fights a manual
+      // choice" problem the compact-tab rework above was built to avoid. The wheel now
+      // pans instead, since it no longer has a zoom job to do.
+      zoom: { controls: false, wheel: false, startScale: BLOCK_SCALE_MAX, minScale: BLOCK_SCALE_MIN, maxScale: BLOCK_SCALE_MAX },
+      move: { scrollbars: true, drag: true, wheel: true },
       trashcan: true,
       readOnly,
     })
@@ -1288,41 +1343,30 @@ export default function ScratchWorkspace({
     evaluateBlockPlacedChecksRef.current?.()
   }, [status])
 
-  // Responsive stage scaling — shrink canvas CSS size to keep editor visible.
-  // Driven by available width only: the stage must hold a constant size when the
-  // page's vertical content changes (explainer text, check banners, etc.) so those
-  // elements shift/scroll around it instead of squeezing the stage smaller.
+  // Responsive stage scaling — shrink canvas CSS size to keep editor visible — plus the
+  // compact-mode (Blocks/Stage tabs) decision. Stage scaling stays width-only: the stage
+  // must hold a constant size when the page's vertical content changes (explainer text,
+  // check banners, etc.) so those elements shift/scroll around it instead of squeezing the
+  // stage smaller. Compact mode additionally checks height, since a short window (a laptop
+  // with limited vertical space) is just as cramped as a narrow one.
   useEffect(() => {
     const el = rootRef.current
-    if (!el) return
+    if (!el) return undefined
     let resizeFrame = 0
     const obs = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width
+      const { width: w, height: h } = entry.contentRect
+      const isCompact = forceCompact || w < NARROW_BREAKPOINT || h < NARROW_BREAKPOINT_HEIGHT
+      setCompact(isCompact)
+      compactRef.current = isCompact
+      blockScaleRef.current = computeBlockScale(w, h)
 
-      // In the student side-panel layout, keep the block palette visible and
-      // collapse the stage panel first when the workspace gets narrow.
-      const wasNarrow = prevWidthRef.current !== null && prevWidthRef.current < NARROW_BREAKPOINT
-      if (preferStageSidePanel) {
-        if (w < NARROW_BREAKPOINT && !stagePanelCollapsedRef.current) {
-          setStagePanelCollapsed(true)
-          stagePanelCollapsedRef.current = true
-          stagePanelAutoCollapsedRef.current = true
-        } else if (w >= NARROW_BREAKPOINT && stagePanelAutoCollapsedRef.current) {
-          setStagePanelCollapsed(false)
-          stagePanelCollapsedRef.current = false
-          stagePanelAutoCollapsedRef.current = false
-        }
-      } else if (w < NARROW_BREAKPOINT && !wasNarrow) {
-        setFlyoutCollapsed(true)
-        flyoutCollapsedRef.current = true
-      }
-      prevWidthRef.current = w
-
+      // In compact mode each pane (Blocks tab or Stage tab) gets the full width in turn,
+      // so there's no editor pane to share space with.
       const collapsed = flyoutCollapsedRef.current
       const editorReserve = collapsed
         ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
         : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-      const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
+      const widthScale = isCompact ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
       const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
       const scale = Number.isFinite(nextScale) ? nextScale : 1
       setStageScale(scale)
@@ -1335,7 +1379,7 @@ export default function ScratchWorkspace({
       obs.disconnect()
       cancelAnimationFrame(resizeFrame)
     }
-  }, [hideStage, preferStageSidePanel, resizeBlocklyWorkspaces])
+  }, [hideStage, forceCompact, resizeBlocklyWorkspaces])
 
   // Re-calculate stage scale when flyout collapses/expands (ResizeObserver won't re-fire).
   // If a pointer drag is active (block being dragged from the palette), defer until pointerup
@@ -1353,11 +1397,11 @@ export default function ScratchWorkspace({
     const editorReserve = flyoutCollapsed
       ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
       : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-    const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
+    const widthScale = compact ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
     const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
     setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
     requestAnimationFrame(resizeBlocklyWorkspaces)
-  }, [flyoutCollapsed, hideStage, resizeBlocklyWorkspaces])
+  }, [flyoutCollapsed, hideStage, compact, resizeBlocklyWorkspaces])
 
   // Track pointer drags on the root so scale recalc is deferred until the drag ends.
   useEffect(() => {
@@ -1375,7 +1419,7 @@ export default function ScratchWorkspace({
       const editorReserve = flyoutCollapsedRef.current
         ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
         : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-      const widthScale = (w - editorReserve - 8) / (STAGE_W + 2)
+      const widthScale = compactRef.current ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
       const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
       setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
       requestAnimationFrame(resizeBlocklyWorkspaces)
@@ -2022,7 +2066,7 @@ export default function ScratchWorkspace({
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="scratch-workspace" style={hideStage ? s.rootColumn : s.root} ref={rootRef}>
+    <div className="scratch-workspace" style={hideStage ? s.rootColumn : compact ? s.rootCompact : s.root} ref={rootRef}>
       {status !== 'ready' && (
         <div style={s.overlay}>
           <div style={s.centre}>
@@ -2062,8 +2106,21 @@ export default function ScratchWorkspace({
       {hideStage && !onSpriteSelect && spritePanelCompact}
       {spritePanelTarget && createPortal(spritePanelFull, spritePanelTarget)}
 
+      {/* Blocks/Stage tab switcher — compact layouts only. Both panes below stay mounted
+          regardless of which tab is active (hidden via `display:none`, not unmounted): the
+          Blocks pane holds live Blockly-injected DOM the workspaces are bound to, and the
+          Stage pane must keep mirroring live sprite/backdrop state for teacher live-view. */}
+      {!hideStage && compact && (
+        <PanelTabs
+          label="Scratch panel"
+          tabs={[{ id: 'blocks', label: 'Blocks' }, { id: 'stage', label: 'Stage' }]}
+          activeId={activePane}
+          onChange={handleActivePaneChange}
+        />
+      )}
+
       {/* Block editor — all workspace divs stacked, only selected one visible */}
-      <div style={s.editorPane}>
+      <div style={compact ? { ...s.editorPane, display: activePane === 'blocks' ? 'flex' : 'none' } : s.editorPane}>
         <div style={s.editorPaneHeader}>
           <button
             type="button"
@@ -2111,13 +2168,10 @@ export default function ScratchWorkspace({
       </div>
 
       {/* Stage + controls */}
-      {!hideStage && preferStageSidePanel && stagePanelCollapsed && (
+      {!hideStage && !compact && stagePanelCollapsed && (
         <div style={s.stageRailPane}>
           <CollapsedPanelRail
-            onClick={() => {
-              stagePanelAutoCollapsedRef.current = false
-              setStagePanelCollapsed(false)
-            }}
+            onClick={() => setStagePanelCollapsed(false)}
             label="Stage"
             direction="left"
             title="Show Stage"
@@ -2125,15 +2179,12 @@ export default function ScratchWorkspace({
           />
         </div>
       )}
-      {!hideStage && (!preferStageSidePanel || !stagePanelCollapsed) && (
-        <div style={s.stagePane}>
+      {!hideStage && (compact || !stagePanelCollapsed) && (
+        <div style={compact ? { ...s.stagePane, display: activePane === 'stage' ? 'flex' : 'none', flex: 1 } : s.stagePane}>
           <div style={s.stageToolbar}>
-            {preferStageSidePanel && (
+            {!compact && (
               <CollapseTabButton
-                onClick={() => {
-                  stagePanelAutoCollapsedRef.current = false
-                  setStagePanelCollapsed(true)
-                }}
+                onClick={() => setStagePanelCollapsed(true)}
                 direction="right"
                 title="Collapse Stage"
                 ariaLabel="Collapse Stage"
@@ -2272,6 +2323,8 @@ const s = {
   // whatever vertical space sibling page content happens to leave.
   root: { display: 'flex', flex: '1 1 auto', minWidth: 0, minHeight: 0, height: '100%', gap: 8, position: 'relative' },
   rootColumn: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 0, height: '100%', position: 'relative' },
+  // Compact layout: Blocks/Stage tab bar on top, one full-width pane below (see `compact`).
+  rootCompact: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minWidth: 0, minHeight: 0, height: '100%', gap: 8, position: 'relative' },
   overlay: { position: 'absolute', inset: 0, zIndex: 10, background: '#f5f5f5', borderRadius: 8 },
   editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
   editorPaneHeader: { display: 'flex', alignItems: 'center', height: 30, padding: '0 6px', borderBottom: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 },

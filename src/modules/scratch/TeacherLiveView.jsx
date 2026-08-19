@@ -2,28 +2,34 @@ import React from 'react'
 import ScratchWorkspace from './ScratchWorkspace.jsx'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
-export default function ScratchTeacherLiveView({ task, lesson, displayState, readOnly, onChange, isInSandbox, activeStage }) {
-  const predefinedBlocks = !isInSandbox ? [
-    ...(task?.predefinedBlocks ?? []),
-    ...(activeStage?.predefinedBlocks ?? []),
-  ] : null
-  const prebuiltStacks = !isInSandbox ? [
-    ...(task?.prebuiltStacks ?? []),
-    ...(activeStage?.prebuiltStacks ?? []),
-  ] : null
-
+// Read-only view used by the teacher dashboard's "watch one student" modal
+// (StudentWorkspaceBody.jsx). Always renders the compact Blocks/Stage tab layout
+// (`forceCompact`) regardless of the modal's own width, so it shows the same
+// predictable layout every time instead of depending on the teacher's own window size —
+// unlike the interactive student/presentation surfaces, which measure their container
+// and only go compact when genuinely cramped (see ScratchWorkspace.jsx's `compact` state).
+export default function ScratchTeacherLiveView({
+  task,
+  lesson,
+  readOnly = true,
+  scratchState,
+  spriteState,
+  cursorState,
+  blockDragState,
+  isSessionSandbox = false,
+}) {
   return (
     <ScratchWorkspace
       task={task}
-      predefinedBlocks={predefinedBlocks}
-      prebuiltStacks={prebuiltStacks}
-      unrestricted={isInSandbox}
-      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-      initialState={displayState}
-      externalState={displayState}
       readOnly={readOnly}
-      hideStage
-      onStateChange={onChange}
+      forceCompact
+      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+      initialState={scratchState}
+      externalState={scratchState}
+      externalSpriteState={spriteState}
+      externalCursor={cursorState}
+      externalBlockDrag={blockDragState}
+      unrestricted={isSessionSandbox}
     />
   )
 }

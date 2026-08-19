@@ -30,6 +30,19 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 })
 
+// ResizeObserver — jsdom does not implement it. No-op by default so components that
+// merely mount it (SplitPane's minLeftPx, useElementSize, ScratchWorkspace) don't crash;
+// tests that need to actually drive resize behavior stub it locally instead (see
+// useElementSize.test.jsx) — a local `globalThis.ResizeObserver = ...` override in a test
+// takes precedence for that test and is expected to restore this default afterward.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
 // Blob URL mocks
 global.URL.createObjectURL = () => 'blob:mock-url'
 global.URL.revokeObjectURL = () => {}

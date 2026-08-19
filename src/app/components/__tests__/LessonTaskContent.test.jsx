@@ -1,19 +1,44 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 vi.mock('../../../modules/registry', () => ({
-  getLessonModule: () => ({
-    type: 'python',
-    StudentWorkspace: () => <div>Workspace</div>,
-    getLayoutStyles: () => ({}),
-  }),
+  getLessonModule: vi.fn(),
 }))
 
+vi.mock('../../../shared/useElementSize', () => ({
+  useElementSize: vi.fn(),
+}))
+
+import { getLessonModule } from '../../../modules/registry'
+import { useElementSize } from '../../../shared/useElementSize'
 import LessonTaskContent from '../LessonTaskContent'
+
+const PYTHON_MODULE = {
+  type: 'python',
+  StudentWorkspace: () => <div>Workspace</div>,
+  getLayoutStyles: () => ({}),
+}
+
+const SCRATCH_MODULE = {
+  type: 'scratch',
+  StudentWorkspace: () => <div>Workspace</div>,
+  getLayoutStyles: () => ({}),
+}
+
+beforeEach(() => {
+  useElementSize.mockReturnValue([{ current: null }, { width: 0, height: 0 }])
+  // Isolate tests from each other's persisted tab choice (layoutTabStorageKey) —
+  // a test that clicks a tab writes to localStorage, which would otherwise leak
+  // into a later test's "what's the default?" assertions.
+  localStorage.clear()
+})
 
 describe('LessonTaskContent', () => {
   it('renders a teacher-revealed support stage without crashing student view', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+
     render(
       <LessonTaskContent
         lesson={{ type: 'python' }}
@@ -41,5 +66,174 @@ describe('LessonTaskContent', () => {
 
     expect(screen.getByLabelText('Greeting stage reference')).toHaveTextContent('print("Hello")')
     expect(screen.getByText('Opened by your teacher')).toBeInTheDocument()
+  })
+})
+
+describe('LessonTaskContent compact Scratch layout', () => {
+  const scratchProps = {
+    lesson: { type: 'scratch' },
+    task: { id: 1, title: 'Move the cat', explainer: 'Drag the move block.' },
+    cs: { inPersonalSandbox: false },
+    currentTaskId: 1,
+    isSandbox: false,
+    isViewingPrev: false,
+    isForcedTeacherLive: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+  }
+
+  it('keeps the side-by-side split (no tabs) when the panel is measured as wide, with the explainer at its fixed 400px width — not draggable, not proportional', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(<LessonTaskContent {...scratchProps} />)
+
+    expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
+    expect(screen.getByText('Workspace')).toBeVisible()
+    const explainerText = screen.getByText('Drag the move block.')
+    const explainerColumn = explainerText.closest('[style*="width: 400px"]')
+    expect(explainerColumn).toBeInTheDocument()
+    // No drag handle — SplitPane's draggable divider has this cursor; the fixed layout has none.
+    expect(document.querySelector('[style*="cursor: col-resize"]')).not.toBeInTheDocument()
+  })
+
+  it('keeps the explainer at exactly 400px regardless of how wide the panel is (no proportional growth)', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+    const { rerender } = render(<LessonTaskContent {...scratchProps} />)
+    const widthAt1600 = screen.getByText('Drag the move block.').closest('[style*="width: 400px"]')
+    expect(widthAt1600).toBeInTheDocument()
+
+    useElementSize.mockReturnValue([{ current: null }, { width: 3000, height: 900 }])
+    rerender(<LessonTaskContent {...scratchProps} />)
+    const widthAt3000 = screen.getByText('Drag the move block.').closest('[style*="width: 400px"]')
+    expect(widthAt3000).toBeInTheDocument()
+  })
+
+  it('switches to an Instructions/Code tab switcher when the panel is measured as narrow, defaulting to Code, without unmounting either pane', async () => {
+    const user = userEvent.setup()
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 700, height: 500 }])
+
+    render(<LessonTaskContent {...scratchProps} />)
+
+    expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Code' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('Workspace')).toBeVisible()
+    // The explainer stays mounted (not unmounted) even while its tab isn't active.
+    expect(screen.getByText('Drag the move block.')).not.toBeVisible()
+
+    await user.click(screen.getByRole('tab', { name: 'Instructions' }))
+
+    expect(screen.getByRole('tab', { name: 'Instructions' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('Drag the move block.')).toBeVisible()
+    expect(screen.getByText('Workspace')).not.toBeVisible()
+  })
+
+  it('tabs Instructions away before the code area would be squeezed under 1000px by a fixed 400px explainer, instead of leaving Blocks/Stage to compact on their own', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    // 1200 - 400 (fixed explainer) = 800px code area, under ScratchWorkspace's own 1000px
+    // "wide" threshold — but 1200px is plenty if Code gets the whole row via a tab.
+    useElementSize.mockReturnValue([{ current: null }, { width: 1200, height: 900 }])
+
+    render(<LessonTaskContent {...scratchProps} />)
+
+    expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
+    expect(screen.getByText('Workspace')).toBeVisible()
+  })
+
+  it('sits right at the boundary: 1412px (400 explainer + 12 gap + 1000 code) stays split, 1411px tabs', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+
+    useElementSize.mockReturnValue([{ current: null }, { width: 1412, height: 900 }])
+    const { rerender } = render(<LessonTaskContent {...scratchProps} />)
+    expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
+
+    useElementSize.mockReturnValue([{ current: null }, { width: 1411, height: 900 }])
+    rerender(<LessonTaskContent {...scratchProps} />)
+    expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
+  })
+
+  it('ignores height for the Instructions/Code decision — a short-but-wide panel stays split, leaving ScratchWorkspace to compact its own Blocks/Stage split if needed', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 300 }])
+
+    render(<LessonTaskContent {...scratchProps} />)
+
+    expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
+  })
+
+  it('still supports manually collapsing the explainer to a rail in the fixed-width layout', async () => {
+    const user = userEvent.setup()
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(<LessonTaskContent {...scratchProps} />)
+
+    expect(screen.getByText('Drag the move block.')).toBeVisible()
+
+    await user.click(screen.getByTitle('Collapse Explainer'))
+
+    expect(screen.queryByText('Drag the move block.')).not.toBeInTheDocument()
+    expect(screen.getByTitle('Show Explainer')).toBeInTheDocument()
+  })
+
+  it('gives the panel a real minimum height and avoids clipping overflow, so a growing sibling (e.g. the completion banner) scrolls the page instead of shrinking ScratchWorkspace below its own compact-height threshold', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(<LessonTaskContent {...scratchProps} />)
+
+    expect(screen.getByText('Workspace').closest('[style*="min-height: 600px"]')).toBeInTheDocument()
+    expect(document.querySelector('.task-slide-viewport').style.overflow).toBe('visible')
+    // Both ancestors between s.body's scroll container and the panel bake in
+    // `min-height: 0` (one via taskContentStyle, one via TaskSlideTransition's own
+    // .task-slide-panel CSS class) — overriding only one of them still lets the other
+    // clip the 600px floor above, which is what made the completion-banner symptom
+    // survive the first fix. Both need `min-height: auto` to actually take effect.
+    expect(document.querySelector('.task-slide-viewport').style.minHeight).toBe('auto')
+    expect(document.querySelector('.task-slide-panel--entering').style.minHeight).toBe('auto')
+  })
+
+  it('never applies the compact tab tier to non-Scratch lesson types', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 500, height: 400 }])
+
+    render(<LessonTaskContent {...scratchProps} lesson={{ type: 'python' }} />)
+
+    expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
+  })
+
+  // Regression test: split and compact modes used to render structurally different
+  // trees at this position (PanelTabPanel-wrapped fragment vs. plain divs), so React
+  // would unmount and remount everything below — including ScratchWorkspace, destroying
+  // and re-injecting every Blockly workspace — on every threshold crossing. That could
+  // leave ScratchWorkspace's own compact-detection mid-remeasurement and stuck, which is
+  // what "sometimes the stage shows, sometimes it stays collapsed" traced back to.
+  it('does not remount the workspace when toggling between split and compact as the panel resizes', () => {
+    let mountCount = 0
+    getLessonModule.mockReturnValue({
+      type: 'scratch',
+      StudentWorkspace: () => {
+        useEffect(() => { mountCount++ }, [])
+        return <div>Workspace</div>
+      },
+      getLayoutStyles: () => ({}),
+    })
+
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }]) // split
+    const { rerender } = render(<LessonTaskContent {...scratchProps} />)
+    expect(mountCount).toBe(1)
+
+    useElementSize.mockReturnValue([{ current: null }, { width: 700, height: 500 }]) // compact
+    rerender(<LessonTaskContent {...scratchProps} />)
+    expect(mountCount).toBe(1)
+
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }]) // back to split
+    rerender(<LessonTaskContent {...scratchProps} />)
+    expect(mountCount).toBe(1)
   })
 })

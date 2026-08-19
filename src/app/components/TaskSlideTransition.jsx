@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useState, useRef } from 'react'
 
 const TASK_TRANSITION_MS = 380
 
-export default function TaskSlideTransition({ transitionKey, children, style }) {
+export default function TaskSlideTransition({ transitionKey, children, style, panelStyle }) {
   const previousRenderRef = useRef({ key: transitionKey, children })
   const [leavingRender, setLeavingRender] = useState(null)
 
@@ -40,6 +40,7 @@ export default function TaskSlideTransition({ transitionKey, children, style }) 
       <div
         key={`entering-${transitionKey}`}
         className="task-slide-panel task-slide-panel--entering"
+        style={panelStyle}
       >
         {children}
       </div>

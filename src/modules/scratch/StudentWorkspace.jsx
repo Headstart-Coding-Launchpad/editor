@@ -69,7 +69,6 @@ export default function StudentWorkspace({
         externalCursor={isForcedTeacherLive ? displayCursor : null}
         externalBlockDrag={isForcedTeacherLive ? displayBlockDrag : null}
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
-        preferStageSidePanel
       />
     </div>
   )
