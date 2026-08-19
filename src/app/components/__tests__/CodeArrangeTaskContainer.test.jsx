@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CodeArrangeTaskContainer from '../CodeArrangeTaskContainer'
 
@@ -32,6 +33,7 @@ function makeCs(overrides = {}) {
     saveTaskAuxFile: vi.fn(),
     handleCodeChange: vi.fn(),
     handleFileChange: vi.fn(),
+    handleCodeArrangeSlotsChange: vi.fn(),
     handleRun: vi.fn(),
     handleStop: vi.fn(),
     output: '',
@@ -191,6 +193,48 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(cs.readSavedTaskFile).toHaveBeenCalledWith(1, '__code_arrange_slots__')
     expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
     expect(screen.getByText('print("done")')).toBeInTheDocument()
+  })
+
+  it('mirrors each tile placement live via cs.handleCodeArrangeSlotsChange, not just on completion', async () => {
+    const user = userEvent.setup()
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    await user.click(screen.getByText('print("done")'))
+    await user.click(screen.getAllByText('Tap to place')[0])
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({ L1: 'L2' })
+    // Only one blank is filled — the assembled code isn't complete yet, so
+    // the normal code-sync path must not have fired.
+    expect(cs.handleCodeChange).not.toHaveBeenCalled()
+  })
+
+  it('never mirrors tile placements live for a teacher live mirror (read-only)', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={'for i in range(5): print(i * 2)\nprint("done")'}
+      />
+    )
+
+    expect(cs.handleCodeArrangeSlotsChange).not.toHaveBeenCalled()
   })
 
   it('shows an input box wired to handleInputSubmit while the student\'s own code is awaiting input()', () => {

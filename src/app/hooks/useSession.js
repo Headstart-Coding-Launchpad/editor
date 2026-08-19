@@ -144,6 +144,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentSpriteState`]    = null
       updates[`students/${anonymousId}/currentCursor`]         = null
       updates[`students/${anonymousId}/currentBlockDrag`]      = null
+      updates[`students/${anonymousId}/currentCodeArrangeSlots`] = null
       updates[`students/${anonymousId}/currentFiles`]          = null
       updates[`students/${anonymousId}/currentAnswer`]         = null
       updates[`students/${anonymousId}/currentSelection`]      = null
@@ -549,6 +550,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentBlockDrag`), blockDrag ?? null)
   }
 
+  // Live tile-placement state for the code_arrange task type — mirrors
+  // writeStudentCursor/writeStudentBlockDrag above. The assembled code itself
+  // (currentCode/currentFiles) only ever updates once every blank is filled
+  // (see CodeArrangeTaskContainer), so without this field a teacher watching
+  // a student mid-arrangement would see stale code from a previous task
+  // instead of the tiles actually being placed.
+  async function writeStudentCodeArrangeSlots(anonymousId, slotState) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentCodeArrangeSlots`), slotState ?? null)
+  }
+
   async function writeStudentFiles(anonymousId, files) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentFiles`), encodeFileKeys(files))
   }
@@ -659,7 +670,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushTeacherHighlight, removeTeacherHighlight,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
+    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentCodeArrangeSlots, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
     setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
   }
 }

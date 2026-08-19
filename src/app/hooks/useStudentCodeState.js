@@ -46,6 +46,7 @@ export function useStudentCodeState({
   writeStudentSpriteState,
   writeStudentCursor,
   writeStudentBlockDrag,
+  writeStudentCodeArrangeSlots,
   writeStudentFiles,
   writeStudentOutput,
   writeStudentInteraction,
@@ -1280,6 +1281,17 @@ export function useStudentCodeState({
     }
   }
 
+  // Live tile-placement mirror for code_arrange tasks — the assembled code
+  // itself only syncs once every blank is filled (see handleCodeChange /
+  // handleFileChange), so without this a teacher watching a student would
+  // see stale code from a previous task until the student finishes.
+  function handleCodeArrangeSlotsChange(slotState) {
+    if (!identity) return
+    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+      writeStudentCodeArrangeSlots?.(identity.anonymousId, slotState)
+    }
+  }
+
   function handleScratchCheck(passed, snapshot) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
@@ -1700,6 +1712,7 @@ export function useStudentCodeState({
     handleRun, handleStop, handleRunTests, handleSubmit, handleQuizSelect,
     handleCodeChange, handleArcadeDesignChange, handleFileChange, handleFileTabChange,
     handleEditorSelection, handleEditorActivity, handleScratchActivity, handleScratchSpriteState, handleScratchCursor, handleScratchBlockDrag,
+    handleCodeArrangeSlotsChange,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
     handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewTargetedStage, handleAcceptTargetedStage, handleAcceptGenericNextStage, handlePreviewCompleteCode, handleShowCompleteCode,

@@ -35,6 +35,16 @@ function fileContent(files, name) {
 //     Live" broadcast viewer, teacherLiveCode/teacherLiveFiles for an
 //     accepted teacher-edit session — see PythonEditor/HtmlEditor
 //     StudentWorkspace for the identical pattern).
+//
+// Every non-read-only slot change is also mirrored live to
+// currentCodeArrangeSlots via cs.handleCodeArrangeSlotsChange (gated by
+// activeStudentView, same pattern as Scratch's currentCursor/currentBlockDrag
+// in useStudentCodeState.js) — separate from the assembled code/file sync
+// above, which only fires once every blank is filled. Without this, a
+// teacher passively watching a student in StudentModal (not one of the two
+// mirror modes above) would see stale code from a previous task until the
+// student finished the arrangement. See StudentWorkspaceBody.jsx, which
+// prefers currentCodeArrangeSlots over deriving from currentCode/currentFiles.
 export default function CodeArrangeTaskContainer({
   task, cs, viewingTaskId, currentTaskId,
   isViewingPrev, isForcedTeacherLive, isTeacherEditing,
@@ -73,7 +83,10 @@ export default function CodeArrangeTaskContainer({
 
   function handleSlotStateChange(next) {
     setSlotState(next)
-    if (!readOnly) cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, JSON.stringify(next))
+    if (!readOnly) {
+      cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, JSON.stringify(next))
+      cs.handleCodeArrangeSlotsChange?.(next)
+    }
   }
 
   function handleAssembledCodeChange(assembledCode) {

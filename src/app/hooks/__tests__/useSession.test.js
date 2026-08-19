@@ -493,6 +493,38 @@ describe('useSession', () => {
     })
   })
 
+  describe('writeStudentCodeArrangeSlots', () => {
+    it('writes slot state to the student currentCodeArrangeSlots path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.writeStudentCodeArrangeSlots('student-abc', { L1: 'L1', L2: 'D1' }) })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/currentCodeArrangeSlots' },
+        { L1: 'L1', L2: 'D1' },
+      )
+    })
+
+    it('writes null when passed no slot state', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.writeStudentCodeArrangeSlots('student-abc', undefined) })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/currentCodeArrangeSlots' },
+        null,
+      )
+    })
+  })
+
+  describe('setTaskId clears currentCodeArrangeSlots', () => {
+    it('nulls currentCodeArrangeSlots for every student on task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'active', currentTaskId: 1, isPaused: false, students: { 'student-abc': { displayName: 'Jamie' } } })
+      await act(async () => { await result.current.setTaskId(2) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ 'students/student-abc/currentCodeArrangeSlots': null }),
+      )
+    })
+  })
+
   // ─── Remote reset ───────────────────────────────────────────────────────────
 
   describe('recordStudentCarryFallback', () => {

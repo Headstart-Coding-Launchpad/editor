@@ -75,9 +75,17 @@ export default function StudentWorkspaceBody({
   )
 
   if (isCodeArrangeTask) {
+    // currentCodeArrangeSlots mirrors every tile placement live (see
+    // CodeArrangeTaskContainer.jsx / useStudentCodeState.js
+    // handleCodeArrangeSlotsChange) — prefer it over currentCode/currentFiles,
+    // which only update once the arrangement is fully assembled and would
+    // otherwise show stale code from a previous task while the student is
+    // still mid-arrangement.
     const entryFile = getCodeArrangeEntryFile(task)
     const code = isHtml ? (files.find(f => f.name === entryFile)?.content ?? '') : (student.currentCode ?? '')
-    const selectedAnswer = deriveSlotStateFromCode(task, code)
+    const selectedAnswer = student.currentCodeArrangeSlots && typeof student.currentCodeArrangeSlots === 'object'
+      ? student.currentCodeArrangeSlots
+      : deriveSlotStateFromCode(task, code)
     return (
       <CodeArrangeTask
         task={task}
