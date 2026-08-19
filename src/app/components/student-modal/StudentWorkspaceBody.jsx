@@ -1,7 +1,6 @@
 import React from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
-import { resolveAssetsPath } from '../../../shared/assetPaths'
-import ScratchWorkspace from '../../../modules/scratch/ScratchWorkspace.jsx'
+import ScratchTeacherLiveView from '../../../modules/scratch/TeacherLiveView.jsx'
 import ExplainerPanel from '../ExplainerPanel'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
@@ -105,17 +104,16 @@ export default function StudentWorkspaceBody({
 
   if (isScratch) {
     return (
-      <ScratchWorkspace
+      <ScratchTeacherLiveView
         key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
         task={task}
+        lesson={lesson}
         readOnly
-        assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-        initialState={scratchState}
-        externalState={scratchState}
-        externalSpriteState={spriteState}
-        externalCursor={cursorState}
-        externalBlockDrag={blockDragState}
-        unrestricted={isSessionSandbox}
+        scratchState={scratchState}
+        spriteState={spriteState}
+        cursorState={cursorState}
+        blockDragState={blockDragState}
+        isSessionSandbox={isSessionSandbox}
       />
     )
   }

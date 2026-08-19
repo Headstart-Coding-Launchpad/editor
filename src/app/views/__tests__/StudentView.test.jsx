@@ -100,6 +100,10 @@ vi.mock('../../../modules/scratch/ScratchWorkspace', () => ({
     return <div>Scratch</div>
   },
   SPRITE_TYPES: ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot'],
+  // Real values (not mocked) — LessonTaskContent.jsx imports these directly to keep its
+  // own Instructions/Code threshold in lockstep with ScratchWorkspace's compact detection.
+  NARROW_BREAKPOINT: 1000,
+  NARROW_BREAKPOINT_HEIGHT: 600,
 }))
 
 vi.mock('../../components/QuizTask', () => ({
