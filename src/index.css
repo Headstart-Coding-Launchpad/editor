@@ -851,6 +851,23 @@ select {
   color: inherit;
 }
 
+/* Lets an information task's image sit beside its paragraph text instead of always
+   breaking onto its own line — floats stack top-to-bottom in document order when a
+   task has more than one image, so each stays paired with the text after it. */
+.markdown-img--float {
+  float: right;
+  max-width: min(45%, 320px);
+  margin: 4px 0 14px 18px;
+}
+
+@media (max-width: 640px) {
+  .markdown-img--float {
+    float: none;
+    max-width: 100%;
+    margin: 10px 0;
+  }
+}
+
 .information-recap__left code {
   background: rgba(0, 0, 0, 0.2);
   color: inherit;

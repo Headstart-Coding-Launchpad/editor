@@ -59,6 +59,10 @@ const BlockCodeContext = React.createContext(false)
 const MarkdownScaleContext = React.createContext(1)
 const MarkdownInheritColorContext = React.createContext(false)
 const MarkdownImageMaxHeightContext = React.createContext('min(420px, 60vh)')
+// 'stacked' (default) keeps images full-width in document flow; 'float' lets an image sit
+// beside its surrounding paragraph text (used by information tasks) instead of always
+// breaking onto its own line.
+const MarkdownImageLayoutContext = React.createContext('stacked')
 const INLINE_CODE_LINE_BREAK = '@@HSC_INLINE_CODE_LINE_BREAK@@'
 
 // InlineMarkdown only allows inline elements (see allowedElements below) — headings,
@@ -441,25 +445,30 @@ const components = {
   },
   img({ src, alt }) {
     const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
+    const imageLayout = React.useContext(MarkdownImageLayoutContext)
+    const floating = imageLayout === 'float'
     return (
       <img
         src={src}
         alt={alt ?? ''}
+        className={floating ? 'markdown-img--float' : undefined}
         style={{
           maxWidth: '100%',
           maxHeight: imageMaxHeight,
           height: 'auto',
           objectFit: 'contain',
           borderRadius: 6,
-          display: 'block',
-          margin: '10px 0',
+          // Float layout's positioning/spacing/width comes from the .markdown-img--float
+          // CSS class instead (it also needs a narrow-screen media query, which an inline
+          // style can't express).
+          ...(floating ? {} : { display: 'block', margin: '10px 0' }),
         }}
       />
     )
   },
 }
 
-export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageMaxHeight = 'min(420px, 60vh)' }) {
+export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageMaxHeight = 'min(420px, 60vh)', imageLayout = 'stacked' }) {
   const topicEnabled = showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics, loading } = useTopicLibrary(topicType, topicEnabled)
   const [libraryOpen, setLibraryOpen] = React.useState(false)
@@ -508,6 +517,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
   return (
     <MarkdownInheritColorContext.Provider value={inheritColor}>
     <MarkdownImageMaxHeightContext.Provider value={imageMaxHeight}>
+    <MarkdownImageLayoutContext.Provider value={imageLayout}>
     <MarkdownScaleContext.Provider value={textScale}>
       <div
         style={{
@@ -580,6 +590,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
         />
       )}
     </MarkdownScaleContext.Provider>
+    </MarkdownImageLayoutContext.Provider>
     </MarkdownImageMaxHeightContext.Provider>
     </MarkdownInheritColorContext.Provider>
   )

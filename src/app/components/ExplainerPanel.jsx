@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, onTopicOpen, onTopicClose, openTopicId, disableCopy = false }) {
+export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageLayout = 'stacked' }) {
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
@@ -84,7 +84,7 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
             }}
             onScroll={updateScrollState}
           >
-            <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} />
+            <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} imageLayout={imageLayout} />
           </div>
           {!expanded && canExpandOverlay && canScroll && !atBottom && (
             <div style={s.showMoreBar}>
@@ -106,7 +106,7 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
               </button>
             </div>
             <div style={s.contentExpanded}>
-              <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} />
+              <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} imageLayout={imageLayout} />
             </div>
           </div>
         </>

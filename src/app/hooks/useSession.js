@@ -592,10 +592,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
-  async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt } = {}) {
+  async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt, visiblePanes } = {}) {
     const updates = {}
     if (windowFocused !== undefined) updates.windowFocused = windowFocused
     if (lastActivityAt !== undefined) updates.lastActivityAt = lastActivityAt
+    if (visiblePanes !== undefined) updates.visiblePanes = visiblePanes
     if (Object.keys(updates).length > 0) {
       await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
     }
