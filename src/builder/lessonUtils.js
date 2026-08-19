@@ -1,5 +1,5 @@
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck, normalizeChecks, normalizeFeedbackChecks } from '../modules/checks'
-import { flattenTasks, isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } from '../shared/taskUtils'
+import { flattenTasks, isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES, getStarterStage } from '../shared/taskUtils'
 import { validateTopicProposals } from '../shared/topicAudit'
 import { makeForkLessonId } from '../shared/lessonForks'
 import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
@@ -304,7 +304,8 @@ export function validateLesson(lesson) {
         errors.push(`Task ${n} references task ${carryFsFrom} for carry-through but that task does not exist`)
       }
     } else if (task.taskType !== 'information' && type === 'electronics') {
-      if (!task.starterCircuit || !Array.isArray(task.starterCircuit.components)) {
+      const starterCircuit = getStarterStage(task)?.stage?.circuit ?? task.starterCircuit
+      if (!starterCircuit || !Array.isArray(starterCircuit.components)) {
         errors.push(`Task ${n} has no starter breadboard`)
       }
       const carryCircuitFrom = task.carryCircuitFrom ?? null
