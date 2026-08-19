@@ -220,6 +220,13 @@ describe('validateLesson', () => {
     }]))
     expect(electronicsResult.errors).toContain('Task 1 has a circuit connection feedback check but no source or destination part/pin')
 
+    const stageStarterResult = validateLesson(lesson('electronics', [{
+      id: 1,
+      title: 'Circuit via stage',
+      codeStages: [{ label: 'Starter', role: 'starter', circuit: { components: [], wires: [], controls: {} } }],
+    }]))
+    expect(stageStarterResult.errors).not.toContain('Task 1 has no starter breadboard')
+
     const htmlResult = validateLesson(lesson('html', [{
       id: 1,
       title: 'Web',
