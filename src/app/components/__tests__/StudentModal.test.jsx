@@ -102,6 +102,46 @@ function mkProps(overrides = {}, studentOverrides = {}) {
   }
 }
 
+const CODE_ARRANGE_LESSON = {
+  type: 'python',
+  tasks: [{
+    id: 1,
+    title: 'Arrange Task',
+    taskType: 'code_arrange',
+    moduleType: 'python',
+    lines: [
+      { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] },
+      { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: 'print(2)' }] },
+    ],
+    distractors: [{ id: 'D1', code: 'print(99)' }],
+  }],
+}
+
+describe('code_arrange tasks', () => {
+  it('renders the tile board matching the student\'s assembled code, not a raw code editor', () => {
+    render(<StudentModal {...mkProps(
+      { lesson: CODE_ARRANGE_LESSON },
+      { currentCode: 'print(1)\nprint(2)' }
+    )} />)
+
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    // Both tiles are placed in their slots — the distractor stays in the pool.
+    expect(screen.getAllByText('print(1)')).toHaveLength(1)
+    expect(screen.getAllByText('print(2)')).toHaveLength(1)
+    expect(screen.getByText('print(99)')).toBeInTheDocument()
+  })
+
+  it('shows empty slots when the student has not placed any tiles yet', () => {
+    render(<StudentModal {...mkProps(
+      { lesson: CODE_ARRANGE_LESSON },
+      { currentCode: '' }
+    )} />)
+
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Empty line')).toHaveLength(2)
+  })
+})
+
 describe('StudentModal', () => {
   afterEach(() => {
     vi.restoreAllMocks()

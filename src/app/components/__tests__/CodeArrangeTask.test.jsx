@@ -1,8 +1,18 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CodeArrangeTask from '../CodeArrangeTask'
+
+function makeDataTransfer() {
+  return {
+    effectAllowed: null,
+    dropEffect: null,
+    setData: vi.fn(),
+    getData: vi.fn(() => ''),
+    setDragImage: vi.fn(),
+  }
+}
 
 const PYTHON_TASK = {
   taskType: 'code_arrange',
@@ -105,6 +115,31 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
     await user.click(screen.getAllByText('Tap to place')[0])
 
     expect(onSelectAnswer).toHaveBeenLastCalledWith({ L1: 'L1' })
+  })
+
+  it('never mutates the transform of a pool tile while it is the active native-drag source', () => {
+    // Regression test: a CSS transform applied to an element while it is the
+    // live source of a native HTML5 drag (dragstart fired, no dragend/drop
+    // yet) is a known way to destabilise the drag session in Chromium —
+    // reported as "dragging feels wonky / only works from part of the tile".
+    // The pool tile may dim (opacity), but must never change size/position.
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} />)
+
+    const tile = screen.getByRole('button', { name: 'for i in range(5): print(i * 2)' })
+    fireEvent.dragStart(tile, { dataTransfer: makeDataTransfer() })
+
+    expect(tile.style.transform).toBeFalsy()
+    expect(tile.style.opacity).toBe('0.35')
+  })
+
+  it('still applies the lifted transform for tap-to-select (no native drag session to disrupt)', async () => {
+    const user = userEvent.setup()
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} />)
+
+    const tile = screen.getByRole('button', { name: 'for i in range(5): print(i * 2)' })
+    await user.click(tile)
+
+    expect(tile.style.transform).toBeTruthy()
   })
 
   it('renders an iframe preview instead of an output panel for HTML tasks', () => {
