@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
 import SplitPane from '../../shared/SplitPane'
@@ -11,6 +11,7 @@ export default function StudentWorkspace({
   displayCode, displayOutput, displayRunStatus,
   displayCheckPassed, displayCheckAttempted, displaySelection,
   isTeacherEditing, teacherLiveCode,
+  onVisiblePanesChange,
 }) {
   const [outputCollapsed, setOutputCollapsed] = useState(() => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev)
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
@@ -25,6 +26,10 @@ export default function StudentWorkspace({
   const showEditableHeader = !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing
   const showSubmitBanner = showEditableHeader && task?.interactionMode === 'submit' && cs.runStatus === 'submitted' && !task?.check
   const shouldShowOutput = task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
+
+  useEffect(() => {
+    onVisiblePanesChange?.(shouldShowOutput && !outputCollapsed ? ['code', 'console'] : ['code'])
+  }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
   const outputProps = isForcedTeacherLive || isTeacherEditing
     ? {

@@ -114,8 +114,13 @@ export default function ElectronicsWorkspace({
 
   function selectTab(nextTab) {
     if (activeTab == null) setTab(nextTab)
-    onTabChange?.(nextTab)
   }
+
+  // Reports the tab actually on screen, including its initial value and changes driven by
+  // the controlled `activeTab` prop (teacher-live), not just local clicks.
+  useEffect(() => {
+    onTabChange?.(selectedTab)
+  }, [selectedTab, onTabChange])
 
   useEffect(() => {
     if (stats.buzzersOn === 0 || typeof window === 'undefined') return undefined

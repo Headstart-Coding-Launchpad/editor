@@ -10,7 +10,7 @@ import ArcadeDesignStudio from './ArcadeDesignStudio'
 import { allowsArcadeTool, cloneArcadeDesign, designForCodeTab, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet } from './design'
 import { selectPythonTaskCode } from '../../app/studentTaskContent'
 
-export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, viewingTaskId, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, displayArcadeDesign, teacherLiveCode, teacherLiveArcadeDesign, teacherLiveWorkspace }) {
+export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile, viewingTaskId, isViewingPrev, isForcedTeacherLive, isTeacherEditing, displayCode, displayArcadeDesign, teacherLiveCode, teacherLiveArcadeDesign, teacherLiveWorkspace, onVisiblePanesChange }) {
   const [runId, setRunId] = useState(0)
   const [runCode, setRunCode] = useState('')
   const [running, setRunning] = useState(false)
@@ -74,6 +74,9 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
     if (activeWorkspaceTab === 'sprites' && !canDrawSprites) setActiveWorkspaceTab('code')
     if (activeWorkspaceTab === 'tilemaps' && !canDrawMaps) setActiveWorkspaceTab('code')
   }, [activeWorkspaceTab, canDrawMaps, canDrawSprites])
+  useEffect(() => {
+    onVisiblePanesChange?.([workspaceTab, ...(running ? ['running'] : [])])
+  }, [workspaceTab, running, onVisiblePanesChange])
 
   const editor = <div style={s.editor}>
     {!readOnly && <div style={s.workspaceTabs} role="tablist" aria-label="Arcade workspace">

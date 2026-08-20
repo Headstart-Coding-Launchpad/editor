@@ -17,6 +17,10 @@ import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH, NARROW_BREAKPOINT_HEIGHT as SCRATCH_CODE_WIDE_HEIGHT } from '../../modules/scratch/ScratchWorkspace'
 
 const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
+// Lesson types whose module StudentWorkspace reports its own visiblePanes (a togglable
+// pane/tab/run-state that's meaningful to show on the teacher's student list) via the
+// generic `modulePanes` state below, rather than the Scratch-specific plumbing.
+const MODULE_PANES_TYPES = ['electronics', 'python', 'arcade', 'html']
 // Scratch's explainer is a fixed, non-resizable width (no drag-to-resize) rather than a
 // percentage split — Scratch explainers often carry block-pill images/markdown that need
 // real width, and a fixed size is simpler and more predictable than a shrinking one.
@@ -91,16 +95,20 @@ export default function LessonTaskContent({
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   const [taskPanelTab, setTaskPanelTab] = useState(() => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code')
   const [taskPanelSizeRef, taskPanelSize] = useElementSize()
-  // Only Scratch has a pane that ever actually hides — Instructions/Code (desktop-compact,
-  // below) and, inside ScratchWorkspace itself, Blocks/Stage. Every other lesson type's
-  // explainer and code panes are always both on screen at once (resizable split on desktop,
-  // stacked-and-scrollable on mobile), so there's nothing meaningful to report for them.
+  // Scratch's Instructions/Code (desktop-compact, below) and, inside ScratchWorkspace
+  // itself, Blocks/Stage are the only panes that hide via this shared explainer/code
+  // split, so they get their own dedicated state. Other module-internal togglable state
+  // (Electronics' Breadboard/Code tab, Python's console, Arcade's tab+running, HTML's
+  // active file+preview) is reported by each module's own StudentWorkspace into the
+  // generic `modulePanes` state instead — see MODULE_PANES_TYPES above.
   const [scratchCodePanes, setScratchCodePanes] = useState(['blocks', 'stage'])
+  const [modulePanes, setModulePanes] = useState([])
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
   const supportsSideExplainer = SIDE_EXPLAINER_TYPES.includes(lessonMod?.type ?? lesson.type)
   const isScratchLesson = (lessonMod?.type ?? lesson.type) === 'scratch'
+  const supportsModulePanes = MODULE_PANES_TYPES.includes(lessonMod?.type ?? lesson.type)
   const taskPanelMeasured = taskPanelSize.width > 0
   // Width-only: giving Code its own tab doesn't add height (explainer and code already
   // share the same row's height), so a short-but-wide window is left to ScratchWorkspace's
@@ -110,19 +118,22 @@ export default function LessonTaskContent({
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
 
   // What's actually on screen right now, for the teacher's student list — see the
-  // `scratchCodePanes` comment above for why this only applies to Scratch.
+  // `scratchCodePanes` comment above for why Scratch and the other modules compute this
+  // differently.
   const instructionsPaneVisible = !taskPanelCompact || taskPanelTab === 'instructions'
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
   const visiblePanes = isScratchLesson
     ? [...(instructionsPaneVisible ? ['instructions'] : []), ...(codePaneVisible ? scratchCodePanes : [])]
+    : supportsModulePanes
+    ? modulePanes
     : null
   const visiblePanesKey = visiblePanes?.join(',') ?? ''
 
   useEffect(() => {
-    if (isScratchLesson) onVisiblePanesChange?.(visiblePanes)
+    if (isScratchLesson || supportsModulePanes) onVisiblePanesChange?.(visiblePanes)
   // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScratchLesson, visiblePanesKey, onVisiblePanesChange])
+  }, [isScratchLesson, supportsModulePanes, visiblePanesKey, onVisiblePanesChange])
 
   function handleTaskPanelTabChange(id) {
     setTaskPanelTab(id)
@@ -334,7 +345,7 @@ export default function LessonTaskContent({
           teacherLiveActiveFile={teacherLiveActiveFile}
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-          onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : undefined}
+          onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>

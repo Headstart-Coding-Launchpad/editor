@@ -15,9 +15,14 @@ function formatLastRun(ts) {
   return `${hrs}h ago`
 }
 
-// Matches the pane ids ScratchWorkspace/LessonTaskContent report — see visiblePanes
-// in LessonTaskContent.jsx (only Scratch has panes that ever actually hide).
-const VISIBLE_PANE_LABELS = { instructions: 'Info', blocks: 'Blocks', stage: 'Stage' }
+// Matches the pane ids each module's StudentWorkspace/LessonTaskContent report — see
+// visiblePanes in LessonTaskContent.jsx. Ids with no entry here (e.g. HTML file names)
+// pass through as-is via the ?? fallback below.
+const VISIBLE_PANE_LABELS = {
+  instructions: 'Info', blocks: 'Blocks', stage: 'Stage',
+  breadboard: 'Breadboard', code: 'Code', console: 'Console',
+  sprites: 'Sprites', tilemaps: 'Tilemaps', running: 'Running', preview: 'Preview',
+}
 function formatVisiblePanes(panes) {
   return panes.map(p => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
 }

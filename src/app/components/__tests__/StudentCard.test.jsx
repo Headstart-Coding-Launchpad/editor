@@ -157,6 +157,33 @@ describe('StudentCard', () => {
     })
   })
 
+  describe('visible panes badge', () => {
+    it('labels Scratch pane ids', () => {
+      render(<StudentCard {...mkProps({}, { visiblePanes: ['instructions', 'blocks'] })} />)
+      expect(screen.getByText('👀 Info + Blocks')).toBeInTheDocument()
+    })
+
+    it('labels Electronics, Python, Arcade and HTML pane ids', () => {
+      render(<StudentCard {...mkProps({}, { visiblePanes: ['breadboard'] })} />)
+      expect(screen.getByText('👀 Breadboard')).toBeInTheDocument()
+    })
+
+    it('labels console, running and preview toggle states', () => {
+      render(<StudentCard {...mkProps({}, { visiblePanes: ['code', 'console'] })} />)
+      expect(screen.getByText('👀 Code + Console')).toBeInTheDocument()
+    })
+
+    it('passes an unmapped pane id (e.g. an HTML file name) through as-is', () => {
+      render(<StudentCard {...mkProps({}, { visiblePanes: ['index.html', 'preview'] })} />)
+      expect(screen.getByText('👀 index.html + Preview')).toBeInTheDocument()
+    })
+
+    it('shows no badge when visiblePanes is empty', () => {
+      render(<StudentCard {...mkProps({}, { visiblePanes: [] })} />)
+      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+    })
+  })
+
   describe('rename form', () => {
     it('calls onRename with anonymousId and the new trimmed name on form submit', () => {
       const props = mkProps()

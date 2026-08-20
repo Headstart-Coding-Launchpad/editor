@@ -161,3 +161,50 @@ describe('ElectronicsWorkspace — lockable wires', () => {
     expect(onChange.mock.calls.at(-1)[0].wires[0].locked).toBe(true)
   })
 })
+
+describe('ElectronicsWorkspace — onTabChange reporting (teacher live-status badge)', () => {
+  it('reports the initial tab and each tab switch', () => {
+    const onTabChange = vi.fn()
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        onTabChange={onTabChange}
+      />
+    )
+
+    expect(onTabChange).toHaveBeenCalledWith('breadboard')
+
+    fireEvent.click(screen.getByRole('button', { name: 'MicroPython' }))
+    expect(onTabChange).toHaveBeenLastCalledWith('code')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Breadboard' }))
+    expect(onTabChange).toHaveBeenLastCalledWith('breadboard')
+  })
+
+  it('reports the externally controlled tab (teacher live view) without local clicks', () => {
+    const onTabChange = vi.fn()
+    const { rerender } = render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        activeTab="breadboard"
+        onTabChange={onTabChange}
+      />
+    )
+    expect(onTabChange).toHaveBeenLastCalledWith('breadboard')
+
+    rerender(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        activeTab="code"
+        onTabChange={onTabChange}
+      />
+    )
+    expect(onTabChange).toHaveBeenLastCalledWith('code')
+  })
+})

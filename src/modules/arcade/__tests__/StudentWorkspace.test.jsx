@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
 
@@ -61,5 +61,42 @@ describe('Arcade StudentWorkspace asset filtering', () => {
     expect(assetBrowserText).toContain('shown.png')
     expect(assetBrowserText).toContain('shared-shown.png')
     expect(assetBrowserText).toBe('asset-browser:shown.png,shared-shown.png')
+  })
+})
+
+describe('Arcade StudentWorkspace onVisiblePanesChange reporting (teacher live-status badge)', () => {
+  it('reports the active workspace tab, and adds "running" while the game is running', () => {
+    const onVisiblePanesChange = vi.fn()
+    render(
+      <StudentWorkspace
+        task={{ arcadeTools: 'both' }}
+        lessonId="lesson-1"
+        lesson={lesson}
+        cs={cs}
+        isMobile={false}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+        displayCode=""
+        displayArcadeDesign={null}
+        teacherLiveCode=""
+        teacherLiveArcadeDesign={null}
+        teacherLiveWorkspace="code"
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
+
+    fireEvent.click(screen.getByText('Sprites'))
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['sprites'])
+
+    fireEvent.click(screen.getByText('Code'))
+    fireEvent.click(screen.getByText('Run game'))
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'running'])
+
+    fireEvent.click(screen.getByText('Stop'))
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
   })
 })
