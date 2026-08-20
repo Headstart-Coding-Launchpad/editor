@@ -44,4 +44,26 @@ describe('FilesystemTask', () => {
     expect(screen.getByAltText('avatar.png')).toHaveAttribute('src', 'https://assets.example/lesson/avatar.png')
     expect(onInteraction).toHaveBeenLastCalledWith({ currentDir: '/Pictures/', openFile: '/Pictures/avatar.png' })
   })
+
+  it('shows a status message and does not call onFsChange when a rename collides by name, case-insensitively', () => {
+    const fsWithTwo = {
+      '/': { type: 'dir' },
+      '/Pictures/': { type: 'dir' },
+      '/Pictures/avatar.png': { type: 'file', content: '' },
+      '/Pictures/AVATAR2.png': { type: 'file', content: '' },
+    }
+    const onFsChange = vi.fn()
+    render(<FilesystemTask fs={fsWithTwo} onFsChange={onFsChange} />)
+
+    fireEvent.doubleClick(gridItem('Pictures'))
+    fireEvent.click(gridItem('avatar.png'))
+    fireEvent.click(screen.getByRole('button', { name: /Rename/ }))
+
+    const input = screen.getByDisplayValue('avatar.png')
+    fireEvent.change(input, { target: { value: 'avatar2.png' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onFsChange).not.toHaveBeenCalled()
+    expect(screen.getByText(/already exists here/)).toBeInTheDocument()
+  })
 })

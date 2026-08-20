@@ -55,8 +55,10 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     const results = []
     try {
       if (!pythonMod.runtime.isReady()) {
+        // No progress callback — nothing displays the raw progress text, and passing
+        // one previously clobbered pyodideStatus's enum with progress strings mid-load.
         setPyodideStatus('loading')
-        await pythonMod.runtime.init(msg => setPyodideStatus(msg))
+        await pythonMod.runtime.init()
         setPyodideStatus('ready')
       }
 
@@ -100,8 +102,10 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
 
     if (isPython) {
       if (!pythonMod.runtime.isReady()) {
+        // No progress callback — nothing displays the raw progress text, and passing
+        // one previously clobbered pyodideStatus's enum with progress strings mid-load.
         setPyodideStatus('loading')
-        await pythonMod.runtime.init(msg => setPyodideStatus(msg))
+        await pythonMod.runtime.init()
         setPyodideStatus('ready')
       }
 

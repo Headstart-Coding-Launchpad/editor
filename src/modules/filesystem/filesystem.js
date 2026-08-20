@@ -18,6 +18,16 @@ export function isDir(entry) {
   return entry?.type === 'dir'
 }
 
+// Case-insensitive collision check, matching how checks.js's fsFindKey and the
+// "Windows Explorer-style" framing in the docs already treat paths — without this, a
+// student could create "Notes.txt" and "notes.txt" side by side, which real Explorer
+// (and the check-evaluation layer) both treat as the same entry. excludePath lets a
+// pure case-only rename of an entry succeed against its own prior path.
+function findCaseInsensitiveMatch(fs, targetPath, excludePath = null) {
+  const target = targetPath.toLowerCase()
+  return Object.keys(fs).find(key => key !== excludePath && key.toLowerCase() === target) ?? null
+}
+
 export function parentPath(path) {
   const isDirectory = path.endsWith('/')
   const trimmed = isDirectory ? path.slice(0, -1) : path
@@ -44,7 +54,7 @@ export function listChildren(fs, dirPath) {
 
 export function createEntry(fs, path, type, content = '') {
   const normPath = type === 'dir' ? normaliseDirPath(path) : normaliseFilePath(path)
-  if (fs[normPath]) return fs
+  if (fs[normPath] || findCaseInsensitiveMatch(fs, normPath)) return fs
   return { ...fs, [normPath]: type === 'dir' ? { type: 'dir' } : { type: 'file', content } }
 }
 
@@ -66,7 +76,7 @@ export function renameEntry(fs, oldPath, newName) {
   const newPath = isDirectory
     ? normaliseDirPath(parent + newName.trim())
     : normaliseFilePath(parent + newName.trim())
-  if (fs[newPath]) return fs
+  if (fs[newPath] || findCaseInsensitiveMatch(fs, newPath, oldPath)) return fs
 
   const next = {}
   for (const [key, value] of Object.entries(fs)) {
@@ -93,7 +103,7 @@ export function moveEntry(fs, srcPath, destDirPath) {
   const newPath = isDirectory
     ? normaliseDirPath(destDir + name)
     : normaliseFilePath(destDir + name)
-  if (fs[newPath]) return fs
+  if (fs[newPath] || findCaseInsensitiveMatch(fs, newPath, srcPath)) return fs
 
   const next = {}
   for (const [key, value] of Object.entries(fs)) {
@@ -118,7 +128,7 @@ export function copyEntry(fs, srcPath, destDirPath) {
   const newPath = isDirectory
     ? normaliseDirPath(destDir + name)
     : normaliseFilePath(destDir + name)
-  if (fs[newPath]) return fs
+  if (fs[newPath] || findCaseInsensitiveMatch(fs, newPath, srcPath)) return fs
 
   const additions = {}
   for (const [key, value] of Object.entries(fs)) {

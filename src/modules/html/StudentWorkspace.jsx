@@ -132,7 +132,7 @@ export default function StudentWorkspace({
         collapsedRight={
           task?.interactionMode === 'submit' ? null : (
             <CollapsibleIframePreview
-              src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+              src={previewSrc}
               iframeRef={cs.iframeRef}
               collapsed
               onToggle={() => cs.setHtmlPreviewCollapsed(false)}

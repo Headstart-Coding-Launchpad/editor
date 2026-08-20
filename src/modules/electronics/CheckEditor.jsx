@@ -1,5 +1,5 @@
 import React from 'react'
-import { COMPONENT_LABELS, COMPONENT_TYPES } from './circuit'
+import { COMPONENT_LABELS, COMPONENT_PINS, COMPONENT_TYPES } from './circuit'
 import {
   subjectOpFromCheck,
   getAspectOptions,
@@ -9,7 +9,8 @@ import {
 } from '../../builder/components/task-editor/check-editors/checkEditorUtils'
 import { CheckValueEditor } from '../../builder/components/task-editor/CheckEditors'
 
-const CONTROL_TYPES = ['slide_switch', 'push_button']
+// Matches controlAffectsComponentPower's own control-type filter in circuit.js.
+const CONTROL_TYPES = ['slide_switch', 'push_button', 'transistor']
 
 // Generic code checks — shared with Python/HTML/Arcade via `evaluateCodeCheck`
 // (see modules/checks.js and modules/electronics/circuit.js). Evaluated against
@@ -106,18 +107,12 @@ function typeFromUi(subject, aspect, operator) {
   return 'circuit_no_short'
 }
 
-const PIN_OPTIONS = {
-  battery: ['positive', 'negative'],
-  led: ['anode', 'cathode'],
-  motor: ['positive', 'negative'],
-  buzzer: ['positive', 'negative'],
-  resistor: ['a', 'b'],
-  push_button: ['a', 'b'],
-  slide_switch: ['a', 'b'],
-  potentiometer: ['left', 'wiper', 'right'],
-  lcd1602: ['VCC', 'GND', 'SDA', 'SCL'],
-  terminal: ['pin'],
-}
+// Sourced from circuit.js's COMPONENT_PINS — the simulator's own pin table — instead of a
+// second, hand-copied list, so adding a component type there can't silently leave check
+// authoring unable to target its real pins (previously six types, including transistor,
+// diode, sensor, servo_motor, rgb_led, and microcontroller, fell back to a generic ['a','b']
+// here even though none of them actually have pins named 'a'/'b').
+const PIN_OPTIONS = COMPONENT_PINS
 
 function normalize(checks) {
   if (!checks) return []

@@ -7,9 +7,15 @@ vi.mock('../HtmlEditor', () => ({
   default: () => <div>html-editor</div>,
 }))
 vi.mock('../../../app/components/CollapsibleIframePreview', () => ({
-  default: ({ collapsed, onToggle }) => (
-    <button onClick={onToggle}>{collapsed ? 'show-preview' : 'hide-preview'}</button>
+  default: ({ collapsed, onToggle, src }) => (
+    <button onClick={onToggle} data-src={src}>{collapsed ? 'show-preview' : 'hide-preview'}</button>
   ),
+}))
+vi.mock('../iframe', () => ({
+  buildIframeSrc: vi.fn(() => 'PREV_TASK_SRC'),
+}))
+vi.mock('../../../app/studentTaskContent', () => ({
+  selectHtmlTaskFiles: vi.fn(() => [{ name: 'index.html', content: '<p>prev task</p>' }]),
 }))
 vi.mock('../../../app/components/StudentEditorHeader', () => ({
   default: () => <div>editor-header</div>,
@@ -111,5 +117,54 @@ describe('HTML StudentWorkspace onVisiblePanesChange reporting (teacher live-sta
     )
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['index.html'])
+  })
+})
+
+describe('HTML StudentWorkspace collapsed preview source (desktop)', () => {
+  it('shows the previous task\'s content, not the current task\'s, while collapsed and viewing a previous task', () => {
+    const cs = makeCs({ htmlPreviewCollapsed: true, iframeSrc: 'CURRENT_TASK_SRC' })
+    render(
+      <StudentWorkspace
+        lesson={lesson}
+        task={{}}
+        cs={cs}
+        isSandbox={false}
+        viewingTaskId="prev-task-id"
+        isViewingPrev
+        isForcedTeacherLive={false}
+        isMobile={false}
+        displayFiles={files}
+        displayActiveFile="index.html"
+        isTeacherEditing={false}
+        onVisiblePanesChange={vi.fn()}
+      />
+    )
+
+    const collapsedButton = screen.getByText('show-preview')
+    expect(collapsedButton).toHaveAttribute('data-src', 'PREV_TASK_SRC')
+    expect(collapsedButton).not.toHaveAttribute('data-src', 'CURRENT_TASK_SRC')
+  })
+
+  it('shows the current task\'s content while collapsed and not viewing a previous task', () => {
+    const cs = makeCs({ htmlPreviewCollapsed: true, iframeSrc: 'CURRENT_TASK_SRC' })
+    render(
+      <StudentWorkspace
+        lesson={lesson}
+        task={{}}
+        cs={cs}
+        isSandbox={false}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        displayFiles={files}
+        displayActiveFile="index.html"
+        isTeacherEditing={false}
+        onVisiblePanesChange={vi.fn()}
+      />
+    )
+
+    const collapsedButton = screen.getByText('show-preview')
+    expect(collapsedButton).toHaveAttribute('data-src', 'CURRENT_TASK_SRC')
   })
 })

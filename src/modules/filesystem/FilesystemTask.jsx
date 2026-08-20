@@ -365,6 +365,30 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   const [renamingPath, setRenamingPath] = useState(null)
   const [contextMenu, setContextMenu] = useState(null) // { x, y, targetPath }
   const [clipboard, setClipboard] = useState(null) // { path, mode: 'copy' | 'cut' }
+  const [statusMessage, setStatusMessage] = useState(null)
+
+  // Auto-dismiss the status message after a few seconds.
+  useEffect(() => {
+    if (!statusMessage) return undefined
+    const t = setTimeout(() => setStatusMessage(null), 4000)
+    return () => clearTimeout(t)
+  }, [statusMessage])
+
+  // The fs.js operations (createEntry/renameEntry/moveEntry/copyEntry) are pure functions
+  // that return the *same* fs object reference, unchanged, when they refuse an operation
+  // (e.g. a name collision) — that's a cheap, reliable way to detect a rejected operation
+  // without each one needing its own error-reporting shape. Returns whether it succeeded,
+  // so a caller can skip follow-up state updates (like moving the open-file selection) that
+  // only make sense once the change actually applied.
+  function applyFsChange(nextFs, failureMessage) {
+    if (nextFs === fs) {
+      setStatusMessage(failureMessage)
+      return false
+    }
+    setStatusMessage(null)
+    onFsChange(nextFs)
+    return true
+  }
   // Tracks whether the user has explicitly navigated since mount. Guards the safety reset
   // below from firing on the initial render when fsState is still stale (from the previous
   // task) and initialDir hasn't loaded yet. Resets naturally when the component remounts.
@@ -413,14 +437,14 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
 
   function handleNewFolder(name) {
     const newPath = normaliseDirPath(currentDir + name)
-    onFsChange(createEntry(fs, newPath, 'dir'))
     setCreating(null)
+    if (!applyFsChange(createEntry(fs, newPath, 'dir'), `"${name}" already exists here.`)) return
   }
 
   function handleNewFile(name) {
     const newPath = currentDir === '/' ? '/' + name : currentDir + name
-    onFsChange(createEntry(fs, newPath, 'file', ''))
     setCreating(null)
+    if (!applyFsChange(createEntry(fs, newPath, 'file', ''), `"${name}" already exists here.`)) return
     setOpenFile(newPath)
     setSelected(newPath)
     onInteraction?.({ currentDir, openFile: newPath })
@@ -449,10 +473,10 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   function handlePaste() {
     if (!clipboard) return
     const { path: srcPath, mode } = clipboard
+    const failureMessage = `"${entryName(srcPath)}" already exists here.`
     if (mode === 'copy') {
-      onFsChange(copyEntry(fs, srcPath, currentDir))
-    } else {
-      onFsChange(moveEntry(fs, srcPath, currentDir))
+      applyFsChange(copyEntry(fs, srcPath, currentDir), failureMessage)
+    } else if (applyFsChange(moveEntry(fs, srcPath, currentDir), failureMessage)) {
       setClipboard(null)
     }
   }
@@ -522,8 +546,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   function handleRenameCommit(path, newName) {
     setRenamingPath(null)
     if (newName.trim() && newName.trim() !== entryName(path)) {
-      const newFs = renameEntry(fs, path, newName.trim())
-      onFsChange(newFs)
+      if (!applyFsChange(renameEntry(fs, path, newName.trim()), `"${newName.trim()}" already exists here.`)) return
       // update open file if it was renamed
       if (openFile === path) {
         const isDirectory = path.endsWith('/')
@@ -542,7 +565,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   }
 
   function handleDrop(srcPath, destDir) {
-    onFsChange(moveEntry(fs, srcPath, destDir))
+    if (!applyFsChange(moveEntry(fs, srcPath, destDir), `"${entryName(srcPath)}" already exists there.`)) return
     if (openFile === srcPath) {
       const name = entryName(srcPath)
       const destDirNorm = normaliseDirPath(destDir)
@@ -669,6 +692,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
         )}
         <AddressBar currentDir={currentDir} onNavigate={navigate} />
       </div>
+
+      {statusMessage && (
+        <div style={{
+          padding: '4px 12px', fontSize: '0.75rem', color: '#991b1b',
+          background: '#fef2f2', borderBottom: '1px solid #fecaca',
+        }}>
+          {statusMessage}
+        </div>
+      )}
 
       {/* Main area: tree + grid */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

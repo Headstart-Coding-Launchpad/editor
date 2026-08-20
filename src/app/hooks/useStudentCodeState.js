@@ -152,8 +152,12 @@ export function useStudentCodeState({
   useEffect(() => {
     const mod = getLessonModule(lesson?.type)
     if (!lesson || !mod?.runtime?.init || mod.runtime.isReady()) return
+    // No progress callback — nothing currently displays the raw progress text (the
+    // loading banner just shows a static message), and passing one here previously
+    // clobbered pyodideStatus's 'loading'/'ready'/'error' enum with human-readable
+    // progress strings for most of the load, breaking the banner and Run-button state.
     setPyodideStatus('loading')
-    mod.runtime.init(msg => setPyodideStatus(msg))
+    mod.runtime.init()
       .then(() => setPyodideStatus('ready'))
       .catch(() => setPyodideStatus('error'))
   }, [lesson])

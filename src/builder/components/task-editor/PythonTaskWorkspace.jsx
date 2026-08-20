@@ -93,11 +93,6 @@ export default function PythonTaskWorkspace({
         </>
       ) : (
         <>
-          {false && task.check && (
-            <div style={{ padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.8rem', color: '#1d4ed8', fontFamily: 'var(--font-body)', margin: '4px 0' }}>
-              Complete tab active — run to verify this solution passes all checks.
-            </div>
-          )}
           <TaskRunControls
             running={running}
             runningTests={runningTests}

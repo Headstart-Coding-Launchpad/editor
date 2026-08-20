@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 
-export default function ElectronicsTeacherLiveView({ task, displayState, readOnly = true, onChange, onTabChange }) {
+export default function ElectronicsTeacherLiveView({ task, displayState, readOnly = true, onChange, onTabChange, onActivity, isInSandbox }) {
   const circuit = useMemo(() => parseCircuit(displayState, DEFAULT_CIRCUIT), [displayState])
   function handleLegacyCodeChange(nextCode) {
     onChange?.(serializeCircuit({
@@ -20,6 +20,8 @@ export default function ElectronicsTeacherLiveView({ task, displayState, readOnl
       code={task?.microcontroller?.starterCode ?? ''}
       onCodeChange={handleLegacyCodeChange}
       onTabChange={onTabChange}
+      onActivity={onActivity}
+      isInSandbox={isInSandbox}
       title="Electronics"
     />
   )

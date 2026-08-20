@@ -229,9 +229,15 @@ const electronicsModule = {
 
   carryThroughField: 'carryCircuitFrom',
   carryThroughLabel: 'Carry circuit from task',
-  getCarryThroughUpdates: (sourceTask) => ({
-    starterCircuit: cloneCircuit(sourceTask.completeCircuit ?? sourceTask.starterCircuit ?? DEFAULT_CIRCUIT),
-  }),
+  // Also patches codeStages[0].circuit (see python/index.js's getCarryThroughUpdates for why).
+  getCarryThroughUpdates: (sourceTask, targetTask) => {
+    const circuit = cloneCircuit(sourceTask.completeCircuit ?? sourceTask.starterCircuit ?? DEFAULT_CIRCUIT)
+    const updates = { starterCircuit: circuit }
+    if (targetTask?.codeStages?.length) {
+      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, circuit: cloneCircuit(circuit) } : stage)
+    }
+    return updates
+  },
   getNewStarterUpdates: () => ({ starterCircuit: cloneCircuit(DEFAULT_CIRCUIT) }),
 
   supportsInteractionMode: false,
