@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useRef } from 'react'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
-import { Decoration, EditorView, WidgetType } from '@codemirror/view'
+import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import {
   createBaseExtensions,
   readOnlyCompartment,
@@ -147,6 +147,7 @@ export function CodeEditor({
   teacherHighlights = [],
   onHighlightDismiss,
   errorLine = null,
+  onRunShortcut,
   style,
 }) {
   const containerRef = useRef(null)
@@ -155,10 +156,12 @@ export function CodeEditor({
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onActivityRef = useRef(onActivity)
   const onHighlightDismissRef = useRef(onHighlightDismiss)
+  const onRunShortcutRef = useRef(onRunShortcut)
   onChangeRef.current = onChange
   onSelectionChangeRef.current = onSelectionChange
   onActivityRef.current = onActivity
   onHighlightDismissRef.current = onHighlightDismiss
+  onRunShortcutRef.current = onRunShortcut
 
   // Mount the editor once
   useEffect(() => {
@@ -172,6 +175,14 @@ export function CodeEditor({
           remoteSelectionField,
           teacherHighlightsField,
           errorLineField,
+          keymap.of([{
+            key: 'Mod-Enter',
+            run: () => {
+              if (!onRunShortcutRef.current) return false
+              onRunShortcutRef.current()
+              return true
+            },
+          }]),
           EditorView.updateListener.of(update => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())

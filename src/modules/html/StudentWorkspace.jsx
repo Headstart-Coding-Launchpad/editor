@@ -101,6 +101,7 @@ export default function StudentWorkspace({
             assets={lesson.assets}
             storageAssets={htmlStorageAssets}
             errorLine={errorLine}
+            onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun}
           />
         </div>
         {task?.interactionMode !== 'submit' && (
@@ -165,6 +166,7 @@ export default function StudentWorkspace({
               assets={lesson.assets}
               storageAssets={htmlStorageAssets}
               errorLine={errorLine}
+              onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun}
             />
           </div>
         }

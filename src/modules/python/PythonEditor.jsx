@@ -1,7 +1,7 @@
 import React from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 
-export default function PythonEditor({ code, onChange, onSelectionChange, onActivity, remoteSelection, teacherHighlights, onHighlightDismiss, readOnly = false, pyodideStatus, editorStyle, errorLine = null }) {
+export default function PythonEditor({ code, onChange, onSelectionChange, onActivity, remoteSelection, teacherHighlights, onHighlightDismiss, readOnly = false, pyodideStatus, editorStyle, errorLine = null, onRunShortcut }) {
   return (
     <div style={s.wrap}>
       {pyodideStatus === 'loading' && (
@@ -23,6 +23,7 @@ export default function PythonEditor({ code, onChange, onSelectionChange, onActi
         teacherHighlights={teacherHighlights}
         onHighlightDismiss={onHighlightDismiss}
         errorLine={errorLine}
+        onRunShortcut={onRunShortcut}
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />
     </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import AssetBrowser from '../../shared/AssetBrowser'
 
-export default function HtmlEditor({ files = [], activeFile, onTabChange, onFileChange, onSelectionChange, onActivity, remoteSelection, teacherHighlights, onHighlightDismiss, readOnly = false, assetsPath, assets, storageAssets, attachedTop = false, errorLine = null }) {
+export default function HtmlEditor({ files = [], activeFile, onTabChange, onFileChange, onSelectionChange, onActivity, remoteSelection, teacherHighlights, onHighlightDismiss, readOnly = false, assetsPath, assets, storageAssets, attachedTop = false, errorLine = null, onRunShortcut }) {
   const [showAssets, setShowAssets] = useState(false)
   const current = files.find(f => f.name === activeFile) ?? files[0]
   const hasAssets = !!(assetsPath && assets?.length) || storageAssets?.length > 0
@@ -60,6 +60,7 @@ export default function HtmlEditor({ files = [], activeFile, onTabChange, onFile
           teacherHighlights={teacherHighlights}
           onHighlightDismiss={onHighlightDismiss}
           errorLine={errorLine}
+          onRunShortcut={onRunShortcut}
           style={{ flex: 1, minHeight: 240, ...(attachedTop ? s.editorAttachedTop : {}) }}
         />
       )}

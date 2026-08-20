@@ -208,3 +208,45 @@ describe('ElectronicsWorkspace — onTabChange reporting (teacher live-status ba
     expect(onTabChange).toHaveBeenLastCalledWith('code')
   })
 })
+
+describe('ElectronicsWorkspace — breadboard zoom', () => {
+  it('starts at 100% and zooms in/out via the toolbar buttons, clamped to the 50–150% range', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+
+    expect(screen.getByText('100%')).toBeInTheDocument()
+
+    const zoomIn = screen.getByLabelText('Zoom in')
+    const zoomOut = screen.getByLabelText('Zoom out')
+
+    for (let i = 0; i < 10; i++) fireEvent.click(zoomIn)
+    expect(screen.getByText('150%')).toBeInTheDocument()
+
+    for (let i = 0; i < 20; i++) fireEvent.click(zoomOut)
+    expect(screen.getByText('50%')).toBeInTheDocument()
+  })
+
+  it('zooms with Ctrl+wheel but leaves plain wheel scrolling alone', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+
+    const boardWrap = document.querySelector('[tabindex]').parentElement.parentElement
+
+    fireEvent.wheel(boardWrap, { deltaY: -100, ctrlKey: true })
+    expect(screen.getByText('110%')).toBeInTheDocument()
+
+    fireEvent.wheel(boardWrap, { deltaY: 100 })
+    expect(screen.getByText('110%')).toBeInTheDocument()
+  })
+
+  it('resets to 100% via the Reset button, which only appears when zoomed', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+
+    expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('Zoom in'))
+    const resetBtn = screen.getByText('Reset')
+    fireEvent.click(resetBtn)
+
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+  })
+})

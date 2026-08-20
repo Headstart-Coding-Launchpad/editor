@@ -128,6 +128,7 @@ export default function StudentWorkspace({
         onHighlightDismiss={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight}
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
+        onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
       />
       {showSubmitBanner && (
         <div style={s.submitBanner}>Code submitted</div>

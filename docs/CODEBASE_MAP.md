@@ -156,6 +156,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `useIdentity.js` | Anonymous ID and display name management; localStorage persistence; session timestamp comparison |
+| `useCrossTabPresence.js` | BroadcastChannel-based ping/pong presence check for the same student+lesson open in another tab; returns a boolean, informational only |
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal logging, session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`) |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
 | `useStudentPhase.js` | Student phase state machine (loading → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |

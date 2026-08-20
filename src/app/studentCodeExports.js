@@ -18,3 +18,17 @@ export function getSavedPythonTasks({ lesson, anonymousId, readSavedCode = loadS
     })
     .filter(Boolean)
 }
+
+// Storage-loss warning is shown for every module type (not just Python), since
+// all six write to the same `studentTaskStorageKey` format — see
+// docs/agents/runtime-model.md. Only Python tasks are downloadable as a
+// `.launchpad` file today, so this is counted separately from
+// getSavedPythonTasks and surfaced with different copy.
+export function getSavedNonPythonTaskCount({ lesson, anonymousId, readSavedCode = loadSavedCode }) {
+  if (!lesson || !anonymousId) return 0
+
+  return flattenTasks(lesson.tasks)
+    .filter(task => isPythonCodeTask(task) && getTaskModuleType(lesson, task) && getTaskModuleType(lesson, task) !== 'python')
+    .filter(task => !!readSavedCode(lesson.id, task.id, anonymousId))
+    .length
+}

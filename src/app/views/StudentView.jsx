@@ -6,6 +6,7 @@ import { useLessonLoader } from '../hooks/useLessonLoader'
 import { applyLessonOverride } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
+import { useCrossTabPresence } from '../hooks/useCrossTabPresence'
 import { flattenTasks, filterTasksByMode, getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
@@ -20,7 +21,7 @@ import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
-import { getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
+import { getSavedNonPythonTaskCount, getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { decodeSessionFiles } from '../../shared/workspaceData'
@@ -119,6 +120,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     lesson,
     anonymousId: teacherPresentation ? null : identity?.anonymousId,
   }), [lesson, identity?.anonymousId, teacherPresentation, cs.code])
+  const savedOtherTaskCount = useMemo(() => getSavedNonPythonTaskCount({
+    lesson,
+    anonymousId: teacherPresentation ? null : identity?.anonymousId,
+  }), [lesson, identity?.anonymousId, teacherPresentation, cs.code])
+  const [otherTabDismissed, setOtherTabDismissed] = useState(false)
+  const otherTabOpen = useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) && !otherTabDismissed
 
   function downloadTasks(tasks, filename) {
     if (tasks.length === 0) return
@@ -264,6 +271,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     return (
       <SessionEndedScreen
         savedCodeTaskCount={savedPythonTasks.length}
+        savedOtherTaskCount={savedOtherTaskCount}
         onDownloadAllCode={handleDownloadAllCode}
         onContinueSolo={() => setPhase('solo')}
       />
@@ -595,6 +603,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         inPersonalSandbox={cs.inPersonalSandbox}
         onLeavePersonalSandbox={cs.handleLeavePersonalSandbox}
         isTeacherEditing={isTeacherEditing}
+        otherTabOpen={otherTabOpen}
+        onDismissOtherTab={() => setOtherTabDismissed(true)}
       />
       <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...s.body, overflow: 'hidden' } : s.body}>
         <LessonTaskContent
