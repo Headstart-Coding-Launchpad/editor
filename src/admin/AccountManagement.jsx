@@ -3,6 +3,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { firestore, functions } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
+import { AdminBadge, AdminCell, AdminTable } from './AdminUi'
 
 const createAccount  = httpsCallable(functions, 'createAccount')
 const setUserRole    = httpsCallable(functions, 'setUserRole')
@@ -130,23 +131,15 @@ export default function AccountManagement() {
       {snapshotError && <p style={s.error}>Could not load accounts: {snapshotError}</p>}
       {actionError && <p style={s.error}>{actionError}</p>}
 
-      <table style={s.table}>
-        <thead>
-          <tr>
-            {['Name', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-              <th key={h} style={s.th}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
+      <AdminTable headers={['Name', 'Email', 'Role', 'Status', 'Actions']}>
           {accounts.length === 0 && (
-            <tr><td colSpan={5} style={{ ...s.td, color: '#888', textAlign: 'center' }}>No accounts yet.</td></tr>
+            <tr><AdminCell colSpan={5} style={{ color: '#888', textAlign: 'center' }}>No accounts yet.</AdminCell></tr>
           )}
           {accounts.map(account => (
             <tr key={account.id}>
-              <td style={s.td}>{account.displayName || '—'}</td>
-              <td style={s.td}>{account.email}</td>
-              <td style={s.td}>
+              <AdminCell>{account.displayName || '—'}</AdminCell>
+              <AdminCell>{account.email}</AdminCell>
+              <AdminCell>
                 <select
                   style={s.roleSelect}
                   value={account.role}
@@ -156,13 +149,13 @@ export default function AccountManagement() {
                   <option value="teacher">Teacher</option>
                   <option value="admin">Admin</option>
                 </select>
-              </td>
-              <td style={s.td}>
-                <span style={{ ...s.badge, background: account.disabled ? '#e5e7eb' : '#dcfce7', color: account.disabled ? '#6b7280' : '#15803d' }}>
+              </AdminCell>
+              <AdminCell>
+                <AdminBadge style={{ background: account.disabled ? '#e5e7eb' : '#dcfce7', color: account.disabled ? '#6b7280' : '#15803d' }}>
                   {account.disabled ? 'Disabled' : 'Active'}
-                </span>
-              </td>
-              <td style={{ ...s.td }}>
+                </AdminBadge>
+              </AdminCell>
+              <AdminCell>
                 <div style={s.actionsCell}>
                 {account.disabled ? (
                   <button
@@ -222,11 +215,10 @@ export default function AccountManagement() {
                     </button>
                   </div>
                 )}
-              </td>
+              </AdminCell>
             </tr>
           ))}
-        </tbody>
-      </table>
+      </AdminTable>
 
       {accounts.length > 0 && (
         <p style={s.note}>Role and disable/delete actions are unavailable for your own account.</p>
@@ -249,10 +241,6 @@ const s = {
   select:  { fontFamily: 'var(--font-body)', fontSize: '0.9rem', padding: '8px 10px', border: '1.5px solid #d1d5db', borderRadius: 6, outline: 'none', color: 'var(--colour-text)', background: '#fff', cursor: 'pointer' },
   submitBtn: { alignSelf: 'flex-start', padding: '8px 20px', fontSize: '0.9rem' },
   error:   { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
-  table:   { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
-  th:      { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
-  td:      { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
-  badge:   { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 },
   roleSelect: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: '#fff' },
   actionBtn:  { padding: '4px 10px', fontSize: '0.82rem' },
   actionsCell: { display: 'flex', gap: 6, flexWrap: 'wrap' },

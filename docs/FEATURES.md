@@ -187,7 +187,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Admin Portal Features
 
 - **Account management**: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete. Signed-in users can change their own password from Account settings.
-- **Lesson management**: browse all lessons by type and referenced level; group stock lessons with class forks; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, copy student links, or create/overwrite a class fork
+- **Lesson management**: browse all published lessons in one library (not grouped by type); group stock lessons with class forks; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, copy student links, or create/overwrite a class fork
+- **Level management**: its own Admin tab (`Levels`) for creating and editing the reusable levels lessons can reference
 - **Class management**: create and archive admin-only class records used for reusable lesson forks
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry

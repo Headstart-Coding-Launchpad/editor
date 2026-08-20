@@ -83,11 +83,13 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   }, [])
 
   function handleDeletePlatform(id) {
+    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
     updateDoc(doc(firestore, 'platformFeedback', id), { archived: true })
   }
 
   function handleDeleteLesson(item) {
     if (!item.lessonId) return
+    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
     updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), { archived: true })
   }
 
@@ -177,7 +179,7 @@ const s = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#9ca3af',
+    color: '#dc2626',
     fontSize: '1.2rem',
     lineHeight: 1,
     padding: '0 2px',

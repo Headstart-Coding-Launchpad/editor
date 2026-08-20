@@ -19,9 +19,10 @@ export function AdminSection({ title, subtitle, children, as: Component = 'secti
   )
 }
 
-export function AdminTable({ headers, children }) {
+export function AdminTable({ headers, children, colgroup, style }) {
   return (
-    <table style={styles.table}>
+    <table style={{ ...styles.table, ...style }}>
+      {colgroup}
       <thead>
         <tr>
           {headers.map((header, index) => (
@@ -34,8 +35,8 @@ export function AdminTable({ headers, children }) {
   )
 }
 
-export function AdminCell({ children, style }) {
-  return <td style={{ ...styles.td, ...style }}>{children}</td>
+export function AdminCell({ children, style, colSpan }) {
+  return <td style={{ ...styles.td, ...style }} colSpan={colSpan}>{children}</td>
 }
 
 export function AdminMessage({ tone = 'muted', children }) {

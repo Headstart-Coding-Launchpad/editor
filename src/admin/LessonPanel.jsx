@@ -28,6 +28,7 @@ import {
 import { getLessonModules } from '../modules/registry'
 import { validateLesson } from '../builder/lessonUtils'
 import TeacherReportModal from '../app/components/TeacherReportModal'
+import { AdminCell, AdminTable } from './AdminUi'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -690,20 +691,17 @@ function LevelLessonGroup({
           {bucket.lessons.length === 0 ? (
             <p style={s.detailEmpty}>No lessons in this level yet.</p>
           ) : (
-            <table style={s.table}>
-              <colgroup>
-                <col style={{ width: '45%' }} />
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '30%' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  {['Title', 'ID', 'Actions'].map(h => (
-                    <th key={h} style={s.th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+            <AdminTable
+              headers={['Title', 'ID', 'Actions']}
+              style={s.table}
+              colgroup={(
+                <colgroup>
+                  <col style={{ width: '45%' }} />
+                  <col style={{ width: '25%' }} />
+                  <col style={{ width: '30%' }} />
+                </colgroup>
+              )}
+            >
                 {makeLessonFamilyGroups(bucket.lessons).map(family => (
                   <React.Fragment key={family.id}>
                     {family.items.map((lesson, index) => {
@@ -719,7 +717,7 @@ function LevelLessonGroup({
                       return (
                         <React.Fragment key={lesson.id}>
                           <tr>
-                            <td style={s.td}>
+                            <AdminCell>
                               <div style={s.lessonTitleCell}>
                                 <button
                                   type="button"
@@ -749,9 +747,9 @@ function LevelLessonGroup({
                                   </button>
                                 )}
                               </div>
-                            </td>
-                            <td style={{ ...s.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</td>
-                            <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
+                            </AdminCell>
+                            <AdminCell style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#9ca3af' }}>{lesson.id}</AdminCell>
+                            <AdminCell style={{ whiteSpace: 'nowrap' }}>
                               <div style={s.actions}>
                                 <a
                                   href={makeTeacherUrl(lesson.id)}
@@ -763,11 +761,11 @@ function LevelLessonGroup({
                                   Launch as Teacher
                                 </a>
                               </div>
-                            </td>
+                            </AdminCell>
                           </tr>
                           {lessonOpen && (
                             <tr>
-                              <td colSpan={4} style={s.lessonDetailCell}>
+                              <AdminCell colSpan={4} style={s.lessonDetailCell}>
                                 <LessonAdminPanel
                                   lesson={lesson}
                                   reports={lessonReports}
@@ -789,7 +787,7 @@ function LevelLessonGroup({
                                   onViewReport={onViewReport}
                                   onResolveFeedback={onResolveFeedback}
                                 />
-                              </td>
+                              </AdminCell>
                             </tr>
                           )}
                         </React.Fragment>
@@ -797,8 +795,7 @@ function LevelLessonGroup({
                     })}
                   </React.Fragment>
                 ))}
-              </tbody>
-            </table>
+            </AdminTable>
           )}
         </div>
       )}
@@ -1367,9 +1364,7 @@ const s = {
   headerBtn:    { padding: '6px 14px', fontSize: '0.85rem' },
   group:      { display: 'flex', flexDirection: 'column', gap: 0 },
   tabCount:   { background: '#f0eafa', color: 'var(--colour-primary)', borderRadius: 999, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700, marginLeft: 4 },
-  table:      { width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '0.9rem', tableLayout: 'fixed' },
-  th:         { textAlign: 'left', padding: '10px 12px', borderBottom: '2px solid #e5e7eb', fontWeight: 600, fontSize: '0.82rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' },
-  td:         { padding: '10px 12px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' },
+  table:      { tableLayout: 'fixed' },
   stageBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, color: '#fff', letterSpacing: '0.02em' },
   actions:    { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
   actionBtn:  { padding: '4px 7px', fontSize: '0.76rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 },
