@@ -168,7 +168,22 @@ export default function CodeArrangeTask({
                 <button
                   key={fragment.id}
                   type="button"
-                  style={{ ...ca.tile, ...((draggingTile === fragment.id || touchSelectedTile === fragment.id) ? sm.tileSelected : {}) }}
+                  style={{
+                    ...ca.tile,
+                    // touchSelectedTile (tap-to-place) is safe to style with the
+                    // "lifted" transform/box-shadow look — there's no native OS
+                    // drag session in progress. draggingTile must NOT get that
+                    // treatment: mutating an element's own transform while it is
+                    // the active source of a native HTML5 drag is a known way to
+                    // destabilise the drag session in Chromium (the browser keeps
+                    // re-hitting-testing the shifted/rescaled box against the
+                    // still-tracked grab point) — this is what made dragging feel
+                    // "wonky"/position-dependent. The lifted drag-image ghost
+                    // (setLiftedDragImage, above) already gives the "picked up"
+                    // visual feedback without touching this element.
+                    ...(touchSelectedTile === fragment.id ? sm.tileSelected : {}),
+                    ...(draggingTile === fragment.id ? ca.tileDragging : {}),
+                  }}
                   draggable={!blocked}
                   onDragStart={event => dnd.handleDragStart(event, fragment.id)}
                   onDragEnd={dnd.handleDragEnd}
@@ -349,6 +364,13 @@ const ca = {
     userSelect: 'none',
     whiteSpace: 'pre',
     transition: 'border-color 0.12s, background 0.12s, box-shadow 0.12s, transform 0.12s',
+  },
+  // Applied to a pool tile only while it is the active source of a native
+  // drag — deliberately has no transform/size change (see the comment where
+  // this is used) so the browser's hit-testing of the drag origin never
+  // shifts mid-gesture. Opacity is safe: it doesn't affect layout geometry.
+  tileDragging: {
+    opacity: 0.35,
   },
   runRow: {
     display: 'flex',
