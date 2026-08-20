@@ -221,6 +221,7 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleGoLiveSandbox() {
+    const previousTaskId = currentTaskId
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
     const sandboxTask = isComposedLesson(lesson)
       ? flattenTasks(lesson?.tasks ?? []).find(task => getTaskModuleId(lesson, task) === sandboxModuleId && task.taskType !== 'information' && task.taskType !== 'quiz')
@@ -231,16 +232,16 @@ export default function TeacherView({ lessonId }) {
     }
     if (activeSandboxLesson.type === 'python' || activeSandboxLesson.type === 'arcade' || activeSandboxLesson.type === 'electronics') {
       sandboxDraftRef.current.code = code
-      await enterSandbox({ code })
+      await enterSandbox({ code, previousTaskId })
     } else if (activeSandboxLesson.type === 'scratch') {
       sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
-      await enterSandbox({ code: JSON.stringify(scratchState ?? {}) })
+      await enterSandbox({ code: JSON.stringify(scratchState ?? {}), previousTaskId })
     } else if (activeSandboxLesson.type === 'filesystem') {
       sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
-      await enterSandbox({ code: JSON.stringify(fsState) })
+      await enterSandbox({ code: JSON.stringify(fsState), previousTaskId })
     } else {
       sandboxDraftRef.current.files = cloneFiles(files)
-      await enterSandbox({ files })
+      await enterSandbox({ files, previousTaskId })
     }
     setSandboxStaging(false)
   }
@@ -296,8 +297,10 @@ export default function TeacherView({ lessonId }) {
     else if (activeSandboxLesson.type === 'filesystem') sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
     else sandboxDraftRef.current.files = cloneFiles(files)
     setSandboxStaging(false)
+    const restoredTaskId = session?.sandboxPreviousTaskId ?? currentTaskId
     await exitSandbox()
-    loadCurrentTaskContent(currentTaskId)
+    setCurrentTaskId(restoredTaskId)
+    loadCurrentTaskContent(restoredTaskId)
   }
 
   async function handleEndSession(goHome) {

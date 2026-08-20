@@ -140,6 +140,16 @@ describe('code_arrange tasks', () => {
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     expect(screen.getAllByText('Empty line')).toHaveLength(2)
   })
+
+  it('shows the live code editor, not the stale tile board, once the session is in sandbox mode', () => {
+    render(<StudentModal {...mkProps(
+      { lesson: CODE_ARRANGE_LESSON, session: { state: 'sandbox', currentTaskId: 1 } },
+      { currentCode: 'print("free code")' }
+    )} />)
+
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument()
+    expect(screen.queryByText('print(1)')).not.toBeInTheDocument()
+  })
 })
 
 describe('StudentModal', () => {

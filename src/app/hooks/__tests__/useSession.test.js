@@ -139,6 +139,35 @@ describe('useSession', () => {
     })
   })
 
+  describe('enterSandbox / exitSandbox', () => {
+    it('records previousTaskId as sandboxPreviousTaskId when provided', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.enterSandbox({ code: 'x = 1', previousTaskId: 5 }) })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ state: 'sandbox', sandboxPreviousTaskId: 5 }),
+      )
+    })
+
+    it('restores currentTaskId from sandboxPreviousTaskId and clears it on exit', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'sandbox', currentTaskId: 9, sandboxPreviousTaskId: 4 })
+      await act(async () => { await result.current.exitSandbox() })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ state: 'active', currentTaskId: 4, sandboxPreviousTaskId: null }),
+      )
+    })
+
+    it('leaves currentTaskId untouched when no sandboxPreviousTaskId was recorded', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'sandbox', currentTaskId: 9, sandboxPreviousTaskId: null })
+      await act(async () => { await result.current.exitSandbox() })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(updates).not.toHaveProperty('currentTaskId')
+    })
+  })
+
   describe('teacher live editing', () => {
     it('encodes HTML file arrays by filename before sending a live edit', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

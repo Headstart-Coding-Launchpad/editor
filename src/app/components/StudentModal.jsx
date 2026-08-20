@@ -259,7 +259,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const taskLesson = getEffectiveLessonForTask(lesson, task)
   const { isPython, isScratch, isFilesystem, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(taskLesson, task, session)
-  const isCodeArrangeTask = task?.taskType === 'code_arrange'
+  const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
   const isArcade = taskLesson?.type === 'arcade'
   const isElectronics = taskLesson?.type === 'electronics'
   const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
