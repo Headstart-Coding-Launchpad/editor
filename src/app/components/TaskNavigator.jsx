@@ -158,9 +158,10 @@ export default function TaskNavigator({
       <div style={s.navButtons}>
         <button
           className="btn-secondary"
-          style={s.navBtn}
+          style={{ ...s.navBtn, ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}) }}
           disabled={displayIndex <= 0}
           onClick={() => {
+            if (isSandbox || sandboxStaging) return
             const prev = flatTasks[displayIndex - 1]
             if (prev) onTaskSelect?.(prev.id)
           }}
@@ -169,9 +170,10 @@ export default function TaskNavigator({
         </button>
         <button
           className="btn-secondary"
-          style={s.navBtn}
+          style={{ ...s.navBtn, ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}) }}
           disabled={displayIndex >= flatTasks.length - 1}
           onClick={() => {
+            if (isSandbox || sandboxStaging) return
             const next = flatTasks[displayIndex + 1]
             if (next) onTaskSelect?.(next.id)
           }}

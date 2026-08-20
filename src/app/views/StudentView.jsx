@@ -679,6 +679,8 @@ const s = {
   presentationBtn: {
     fontSize: 13,
     padding: '5px 12px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   presentationTaskLabel: {
     fontFamily: 'var(--font-body)',
@@ -688,6 +690,8 @@ const s = {
     opacity: 0.9,
     minWidth: 72,
     textAlign: 'center',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   presenterLayoutGroup: {
     display: 'flex',
@@ -696,6 +700,7 @@ const s = {
     marginLeft: 4,
     paddingLeft: 8,
     borderLeft: '1px solid rgba(255,255,255,0.35)',
+    flexShrink: 0,
   },
   presenterLayoutBtnActive: {
     background: 'rgba(255,255,255,0.22)',

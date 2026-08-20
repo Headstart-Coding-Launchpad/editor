@@ -99,7 +99,7 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'join-choice' || phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
+      if (phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
         if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
         else setPhase('waiting')
         return
@@ -124,7 +124,7 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'loading' || phaseRef.current === 'join-choice') {
+      if (phaseRef.current === 'loading') {
         if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
         else setPhase('waiting')
         return
