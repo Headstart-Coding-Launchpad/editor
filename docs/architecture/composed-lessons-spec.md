@@ -1,6 +1,6 @@
 # Composed Lessons Technical Specification
 
-**Status:** Proposed implementation specification  
+**Status:** Implemented — composed lessons and the standalone playgrounds described here are shipped and are the default multi-workspace lesson mechanism.  
 **Scope:** `composed` lessons and standalone Python, Arcade Kit, and Electronics playgrounds.  
 **Out of scope:** Virtual OS/VFS work, automatic code translation between modules, and pedagogical sequencing rules.
 
