@@ -103,10 +103,10 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
     <div style={s.wrap}>
       <h2 style={s.heading}>Feedback</h2>
 
-      <div className="ui-tabs">
-        <button className={`ui-tab${subTab === 'platform' ? ' is-active' : ''}`} onClick={() => setSubTab('platform')}>Platform</button>
-        <button className={`ui-tab${subTab === 'lesson' ? ' is-active' : ''}`} onClick={() => setSubTab('lesson')}>Lesson</button>
-        <button className={`ui-tab${subTab === 'task' ? ' is-active' : ''}`} onClick={() => setSubTab('task')}>Task</button>
+      <div className="ui-tabs" role="tablist" aria-label="Feedback source">
+        <button className={`ui-tab${subTab === 'platform' ? ' is-active' : ''}`} role="tab" aria-selected={subTab === 'platform'} onClick={() => setSubTab('platform')}>Platform</button>
+        <button className={`ui-tab${subTab === 'lesson' ? ' is-active' : ''}`} role="tab" aria-selected={subTab === 'lesson'} onClick={() => setSubTab('lesson')}>Lesson</button>
+        <button className={`ui-tab${subTab === 'task' ? ' is-active' : ''}`} role="tab" aria-selected={subTab === 'task'} onClick={() => setSubTab('task')}>Task</button>
       </div>
 
       {loading ? (
@@ -205,7 +205,7 @@ const s = {
     color: 'var(--colour-text)',
   },
   lessonIdPill: {
-    fontFamily: 'var(--font-mono, monospace)',
+    fontFamily: 'var(--font-code)',
     fontSize: '0.75rem',
     color: '#6b7280',
     background: '#f3f4f6',

@@ -92,7 +92,7 @@ const styles = {
     fontSize: '0.78rem', fontWeight: 600,
   },
   lessonIdPill: {
-    fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#6b7280',
+    fontFamily: 'var(--font-code)', fontSize: '0.75rem', color: '#6b7280',
     background: '#f3f4f6', borderRadius: 4, padding: '1px 6px',
   },
 }

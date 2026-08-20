@@ -286,7 +286,7 @@ const s = {
   attemptHeader: { display: 'flex', alignItems: 'center', gap: 8 },
   suggestion: { fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280' },
   submission: {
-    fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', background: '#f9fafb',
+    fontFamily: 'var(--font-code)', fontSize: '0.78rem', background: '#f9fafb',
     border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
     maxHeight: 160, overflowY: 'auto',
   },

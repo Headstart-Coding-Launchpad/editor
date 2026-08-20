@@ -34,11 +34,13 @@ export default function SharedAssetsPanel({ subtab, onSubtabChange }) {
         </p>
       </div>
 
-      <div className="ui-tabs">
+      <div className="ui-tabs" role="tablist" aria-label="Lesson type">
         {LESSON_TYPES.map(t => (
           <button
             key={t.id}
             className={`ui-tab${activeType === t.id ? ' is-active' : ''}`}
+            role="tab"
+            aria-selected={activeType === t.id}
             onClick={() => setActiveType(t.id)}
           >
             {t.label}
