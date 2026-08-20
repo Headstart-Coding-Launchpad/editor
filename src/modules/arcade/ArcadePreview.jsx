@@ -38,6 +38,18 @@ export default function ArcadePreview({ code, assets, tilemaps, runId, running =
     setConsoleLines([])
   }, [runId])
 
+  // The game's own canvas.focus() call (fired once it's ready, inside runtime.js's
+  // hsArcadeReady) only moves focus within the iframe's own document — it can't shift
+  // the browser's actual focused frame from cross-origin script without a user gesture
+  // (browsers block iframes from stealing focus this way). Focusing the <iframe> element
+  // itself is a same-origin, parent-side operation with no such restriction, and it runs
+  // synchronously off the Run click's render, so it stays within that gesture and makes
+  // this frame the focused one — canvas.focus() inside it then just moves focus within an
+  // already-focused frame, which is unrestricted, so arrow keys work without a manual click.
+  useEffect(() => {
+    if (running) frameRef.current?.focus()
+  }, [running, runId])
+
   const output = consoleLines.map(line => line.text).join('')
 
   return (

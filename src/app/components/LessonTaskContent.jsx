@@ -355,9 +355,15 @@ export default function LessonTaskContent({
     </>
   )
 
+  // code_arrange isn't a SplitPane-managed workspace with its own internal per-pane
+  // scrolling like the other fluid-workspace types (python/html/scratch/electronics/arcade
+  // editors) — it's plain flowing content (program lines + tile pool) that can outgrow the
+  // available height, so it needs the editor area itself to scroll instead of clipping it.
   const editorArea = (
     <div
-      style={useFluidWorkspace ? { ...editorAreaStyle, ...s.fluidWorkspace } : editorAreaStyle}
+      style={useFluidWorkspace
+        ? { ...editorAreaStyle, ...s.fluidWorkspace, ...(isCodeArrangeTask ? { overflow: 'auto' } : {}) }
+        : editorAreaStyle}
       className={isForcedTeacherLive ? 'live-view-active' : undefined}
     >
       {workspaceContent}
