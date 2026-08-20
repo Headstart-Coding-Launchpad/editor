@@ -414,7 +414,7 @@ describe('deriveTaskContext', () => {
 
   it('handles null lesson and task gracefully', () => {
     const ctx = deriveTaskContext(null, null)
-    expect(ctx).toEqual({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: false, isQuiz: false, isInformation: false, isSessionSandbox: false })
+    expect(ctx).toEqual({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isArcade: false, isHtml: false, isQuiz: false, isInformation: false, isSessionSandbox: false })
   })
 })
 

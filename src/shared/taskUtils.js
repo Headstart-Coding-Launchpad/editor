@@ -150,11 +150,12 @@ export function deriveTaskContext(lesson, task, session) {
   const isScratch    = lesson?.type === 'scratch'
   const isFilesystem = lesson?.type === 'filesystem'
   const isElectronics = lesson?.type === 'electronics'
+  const isArcade      = lesson?.type === 'arcade'
   const isHtml       = lesson?.type === 'html'
   const isQuiz        = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'
-  return { isPython, isScratch, isFilesystem, isElectronics, isHtml, isQuiz, isInformation, isSessionSandbox }
+  return { isPython, isScratch, isFilesystem, isElectronics, isArcade, isHtml, isQuiz, isInformation, isSessionSandbox }
 }
 
 const STAGE_OPTION_METADATA = {

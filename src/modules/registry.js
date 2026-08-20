@@ -34,15 +34,3 @@ export function getLessonModules() {
 export function getLessonModule(type) {
   return MODULES[type] ?? null
 }
-
-export function getStudentWorkspace(type) {
-  return MODULES[type]?.StudentWorkspace ?? null
-}
-
-export function getBuilderWorkspace(type) {
-  return MODULES[type]?.BuilderWorkspace ?? null
-}
-
-export function getCheckEditor(type) {
-  return MODULES[type]?.CheckEditor ?? null
-}

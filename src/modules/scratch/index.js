@@ -4,25 +4,11 @@ import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import ScratchTeacherLiveView from './TeacherLiveView.jsx'
 import { DEFAULT_SPRITES } from './checks'
+import { flexLayoutStyles } from '../sharedStyles.js'
 
 export { DEFAULT_SPRITES, SPRITE_TYPES }
 
-const taskContentStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-  minHeight: 0,
-  overflow: 'visible',
-}
-
-const editorAreaStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-  minHeight: 0,
-}
+const { taskContentStyle, editorAreaStyle } = flexLayoutStyles
 
 const scratchModule = {
   type: 'scratch',

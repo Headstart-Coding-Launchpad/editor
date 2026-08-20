@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
+import { useElementSize } from '../../shared/useElementSize.js'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,
@@ -631,6 +632,12 @@ export default function ScratchWorkspace({
   const [cursorStale, setCursorStale] = useState(false)
   const canvasRef              = useRef(null)
   const rootRef                = useRef(null)
+  const [rootSizeRef, rootSize] = useElementSize()
+  const setRootNode = useCallback(node => {
+    rootRef.current = node
+    rootSizeRef(node)
+  }, [rootSizeRef])
+  const rootResizeFrameRef     = useRef(0)
   const flyoutCollapsedRef     = useRef(false)
   const compactRef             = useRef(forceCompact)
   const blockScaleRef          = useRef(BLOCK_SCALE_MAX)
@@ -1368,36 +1375,30 @@ export default function ScratchWorkspace({
   // stage smaller. Compact mode additionally checks height, since a short window (a laptop
   // with limited vertical space) is just as cramped as a narrow one.
   useEffect(() => {
-    const el = rootRef.current
-    if (!el) return undefined
-    let resizeFrame = 0
-    const obs = new ResizeObserver(([entry]) => {
-      const { width: w, height: h } = entry.contentRect
-      const isCompact = forceCompact || w < NARROW_BREAKPOINT || h < NARROW_BREAKPOINT_HEIGHT
-      setCompact(isCompact)
-      compactRef.current = isCompact
-      blockScaleRef.current = computeBlockScale(w, h)
+    const w = rootSize.width
+    const h = rootSize.height
+    // Not measured yet (ref not attached / first paint hasn't happened) — wait for a real size.
+    if (!w && !h) return
+    const isCompact = forceCompact || w < NARROW_BREAKPOINT || h < NARROW_BREAKPOINT_HEIGHT
+    setCompact(isCompact)
+    compactRef.current = isCompact
+    blockScaleRef.current = computeBlockScale(w, h)
 
-      // In compact mode each pane (Blocks tab or Stage tab) gets the full width in turn,
-      // so there's no editor pane to share space with.
-      const collapsed = flyoutCollapsedRef.current
-      const editorReserve = collapsed
-        ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
-        : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-      const widthScale = isCompact ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
-      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
-      const scale = Number.isFinite(nextScale) ? nextScale : 1
-      setStageScale(scale)
-      cancelAnimationFrame(resizeFrame)
-      isWindowResizeRef.current = true
-      resizeFrame = requestAnimationFrame(resizeBlocklyWorkspaces)
-    })
-    obs.observe(el)
-    return () => {
-      obs.disconnect()
-      cancelAnimationFrame(resizeFrame)
-    }
-  }, [hideStage, forceCompact, resizeBlocklyWorkspaces])
+    // In compact mode each pane (Blocks tab or Stage tab) gets the full width in turn,
+    // so there's no editor pane to share space with.
+    const collapsed = flyoutCollapsedRef.current
+    const editorReserve = collapsed
+      ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
+      : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
+    const widthScale = isCompact ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
+    const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
+    const scale = Number.isFinite(nextScale) ? nextScale : 1
+    setStageScale(scale)
+    cancelAnimationFrame(rootResizeFrameRef.current)
+    isWindowResizeRef.current = true
+    rootResizeFrameRef.current = requestAnimationFrame(resizeBlocklyWorkspaces)
+    return () => cancelAnimationFrame(rootResizeFrameRef.current)
+  }, [rootSize.width, rootSize.height, hideStage, forceCompact, resizeBlocklyWorkspaces])
 
   // Re-calculate stage scale when flyout collapses/expands (ResizeObserver won't re-fire).
   // If a pointer drag is active (block being dragged from the palette), defer until pointerup
@@ -2084,7 +2085,7 @@ export default function ScratchWorkspace({
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="scratch-workspace" style={hideStage ? s.rootColumn : compact ? s.rootCompact : s.root} ref={rootRef}>
+    <div className="scratch-workspace" style={hideStage ? s.rootColumn : compact ? s.rootCompact : s.root} ref={setRootNode}>
       {status !== 'ready' && (
         <div style={s.overlay}>
           <div style={s.centre}>
