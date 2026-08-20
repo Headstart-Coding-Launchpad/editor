@@ -451,7 +451,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     ) : !isSandbox && (
       <div style={s.topBarTaskControls}>
         {taskProgressControl}
-        {!isForcedTeacherLive && currentPythonTask && (
+        {!isSolo && !isForcedTeacherLive && currentPythonTask && (
           <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadCurrentCode}>
             Download code
           </button>
@@ -461,9 +461,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             flatTasks={flatTasks}
             currentIndex={currentIndex}
             cs={cs}
-            hasPersonalSandbox={hasPersonalSandbox}
-            isQuizTask={isQuizTask}
-            isInformationTask={isInformationTask}
             canNavigateNextSolo={canNavigateNextSolo}
             onNavigate={handleSoloNavigate}
             compact
@@ -706,7 +703,8 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    flexWrap: 'wrap',
+    minWidth: 0,
+    overflow: 'hidden',
     justifyContent: 'flex-end',
   },
   downloadCodeBtn: {

@@ -1,23 +1,55 @@
-import React from 'react'
-import { useIsMobile } from '../../shared/useIsMobile'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getProgressItems } from '../../shared/taskUtils'
 
-export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, onDotClick, isSolo, canSelectTask }) {
-  const isMobile = useIsMobile()
-  const items = getProgressItems(tasks)
+const DOT_WIDTH = 32
+const DOT_GAP = 6
 
-  if (isMobile) {
-    const currentIndex = items.findIndex(item => item.taskIds.includes(currentTaskId))
-    const completed = Math.max(0, currentIndex)
+// Fitting the dots is a two-phase measurement, not something CSS can decide alone:
+// a flex item's "natural" size (used to divide space with its siblings, e.g. the
+// lesson title) is based on its content, so an invisible-but-still-present row of
+// dots would keep claiming its full width forever and the title would never get
+// that space back. So instead: mount the (possibly-too-wide) row hidden to measure
+// it via a synchronous layout read (no ResizeObserver — an async measurement could
+// fire after we've already swapped away from the probing row's DOM, acting on stale
+// data and getting stuck), then commit to either the dots or the compact counter —
+// dropping the dots from layout in counter mode, so the title can reclaim the freed
+// space. A window resize (or the task count changing) reopens the probe, since the
+// answer may no longer hold.
+export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, onDotClick, isSolo, canSelectTask }) {
+  const rowRef = useRef(null)
+  const items = getProgressItems(tasks)
+  const naturalWidth = items.length * (DOT_WIDTH + DOT_GAP) - DOT_GAP
+  const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'collapsed'
+
+  useLayoutEffect(() => {
+    if (mode !== 'probing') return
+    const width = rowRef.current?.getBoundingClientRect().width ?? 0
+    setMode(width >= naturalWidth ? 'fits' : 'collapsed')
+  }, [mode, naturalWidth])
+
+  useEffect(() => {
+    setMode('probing')
+  }, [naturalWidth])
+
+  useEffect(() => {
+    const reopen = () => setMode('probing')
+    window.addEventListener('resize', reopen)
+    return () => window.removeEventListener('resize', reopen)
+  }, [])
+
+  const currentIndex = items.findIndex(item => item.taskIds.includes(currentTaskId))
+  const currentNumber = Math.max(1, currentIndex + 1)
+
+  if (mode === 'collapsed') {
     return (
       <span style={s.counter} title="Task progress">
-        {completed}/{items.length}
+        {currentNumber}/{items.length}
       </span>
     )
   }
 
   return (
-    <div style={s.row} title="Task progress">
+    <div ref={rowRef} style={{ ...s.row, visibility: mode === 'fits' ? 'visible' : 'hidden' }} title="Task progress">
       {items.map((item, index) => {
         const isCurrent = item.taskIds.includes(currentTaskId)
         const isViewing = viewingTaskId != null && item.taskIds.includes(viewingTaskId)
@@ -53,21 +85,26 @@ export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, 
 }
 
 const s = {
+  row: {
+    display: 'flex',
+    gap: DOT_GAP,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    minWidth: 0,
+    flexShrink: 1,
+  },
   counter: {
     fontFamily: 'var(--font-body)',
     fontWeight: 600,
     fontSize: '0.85rem',
     color: '#fff',
     opacity: 0.9,
-  },
-  row: {
-    display: 'flex',
-    gap: 6,
-    alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   dot: {
     width: 32,
     height: 32,
+    flexShrink: 0,
     borderRadius: '50%',
     border: '2px solid rgba(255,255,255,0.5)',
     background: 'transparent',
