@@ -137,6 +137,57 @@ describe('CLI lesson validation', () => {
     expect(result.errors).toEqual([])
   })
 
+  it('rejects an electronics task with no starter breadboard, matching the Builder', () => {
+    const result = validateLessonForMcp({
+      id: 'electronics-no-starter',
+      type: 'electronics',
+      title: 'Electronics no starter',
+      description: 'A breadboard lesson missing its starter circuit',
+      tasks: [{ title: 'Light an LED' }],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toEqual(expect.arrayContaining(['Task 1 has no starter breadboard']))
+  })
+
+  it('rejects an electronics check with no target component, matching the Builder', () => {
+    const result = validateLessonForMcp({
+      id: 'electronics-bad-check',
+      type: 'electronics',
+      title: 'Electronics bad check',
+      description: 'A breadboard lesson with an incomplete check',
+      tasks: [
+        {
+          title: 'Light an LED',
+          starterCircuit: { components: [], wires: [] },
+          check: { type: 'circuit_has_component', component: {} },
+        },
+      ],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toEqual(expect.arrayContaining(['Task 1 has a part-exists check but no part type or label']))
+  })
+
+  it('recognizes canonical (non-legacy) filesystem check type names, matching the Builder', () => {
+    const result = validateLessonForMcp({
+      id: 'filesystem-canonical-check',
+      type: 'filesystem',
+      title: 'Filesystem canonical check',
+      description: 'A filesystem lesson using the current-convention check names',
+      tasks: [
+        {
+          title: 'Create a file',
+          starterFs: { '/': { type: 'dir' } },
+          check: { type: 'fs_file_content', path: '/notes.txt', value: '' },
+        },
+      ],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toEqual(expect.arrayContaining(['Task 1 has a file-content check but no expected value']))
+  })
+
   it('validates optional task priority values', () => {
     const valid = validateLessonForMcp({
       id: 'priority-demo',

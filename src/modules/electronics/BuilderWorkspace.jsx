@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
 import {
   BOARD_SIZE_OPTIONS,
@@ -19,12 +19,16 @@ import {
 import { CodeWorkspaceTabs, StageMetadataEditor } from '../../builder/components/task-editor/TaskEditorFields'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { getStageRole } from '../../shared/taskUtils'
+import { evaluateFeedbackCheckResults, evaluateSingleCheck, normalizeChecks } from '../checks'
+import TaskCheckResults from '../../builder/components/task-editor/TaskCheckResults'
 
 export default function BuilderWorkspace({
   task, onUpdate, codeTab, codeStages,
   handleCodeTabChange, handleAddStage, handleRemoveStage,
   resetToStarterBtn,
 }) {
+  const [checkResults, setCheckResults] = useState(null)
+  const [incorrectCheckResults, setIncorrectCheckResults] = useState(null)
   const stageMatch = codeTab?.match(/^stage_(\d+)$/)
   const activeStageIndex = stageMatch ? Number(stageMatch[1]) : null
   const activeStage = activeStageIndex !== null ? (codeStages?.[activeStageIndex] ?? null) : null
@@ -90,6 +94,21 @@ export default function BuilderWorkspace({
     const stages = [...(task.codeStages ?? [])]
     stages[idx] = nextStage
     onUpdate({ ...task, codeStages: stages })
+  }
+
+  // Electronics has no Run action — evaluating checks against the currently-viewed tab's
+  // circuit (mirroring Python/HTML's "Test checks") is the only way an author gets any
+  // confidence a check will actually pass, and clears the Builder's "run the task to verify
+  // it" warning for this type.
+  function handleTestChecks() {
+    const checksToEval = normalizeChecks(task.check)
+    if (checksToEval.length === 0) return
+    const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, '', { circuit: activeCircuit }) }))
+    setCheckResults(results)
+    setIncorrectCheckResults(null)
+    onUpdate({ ...task, _checkTested: true })
+    const feedbackResults = evaluateFeedbackCheckResults(task, '', { circuit: activeCircuit })
+    if (feedbackResults.length > 0) setIncorrectCheckResults(feedbackResults)
   }
 
   function updateLegacyMicrocontrollerCode(code) {
@@ -330,6 +349,22 @@ export default function BuilderWorkspace({
       </div>
       <p style={s.microHint}>Add a Micro Controller component to enable the MicroPython tab. Select the component to edit its GPIO pins.</p>
       </>}
+      <div className="te-run-row">
+        <button
+          className="btn-primary"
+          onClick={handleTestChecks}
+          disabled={!task.check}
+          style={{ padding: '10px 28px', fontSize: 15 }}
+        >
+          Test checks
+        </button>
+        {!task.check && (
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af' }}>
+            No checks configured — add a check to test.
+          </span>
+        )}
+      </div>
+      <TaskCheckResults task={task} lessonType="electronics" checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
     </div>
   )
 }

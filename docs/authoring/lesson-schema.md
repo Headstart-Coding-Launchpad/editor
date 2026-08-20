@@ -147,7 +147,7 @@ feedbackChecks:
 
 `preview` opens the named stage read-only from the feedback banner and keeps the student's work. `replace` offers the named stage from the same banner, but the student must confirm before their work is replaced. A later matching attempt offers the stage again if the student previously declined or did not use it. Removing a stage in the builder removes links to it and keeps later stage links aligned.
 
-When a feedback check matches in the Builder, its result area includes a **Student feedback preview**. Use it to exercise the same preview or replacement prompt a learner will receive; replacement previews never alter the lesson's authoring code.
+When a feedback check matches in the Builder **on a Python code task**, its result area includes a **Student feedback preview**. Use it to exercise the same preview or replacement prompt a learner will receive; replacement previews never alter the lesson's authoring code. This preview is currently Python-only (`TargetedStageOfferPreview`, rendered from `PythonTaskWorkspace.jsx`) — HTML, Scratch, Filesystem, and Electronics tasks support `stageOffer` the same way at runtime, but the Builder has no equivalent preview tool for them yet, so double-check those with the module's real student view instead.
 
 ## Draft lessons
 
@@ -328,6 +328,10 @@ Two separate validators exist and they do not enforce the same rules. `cli lesso
 - Multiple-choice quiz tasks need at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules.
 - HTML code tasks should have files with unique filenames and an HTML entry file.
 - Scratch `sprite_property` and `block_used` checks need their type-specific fields (`property`/`operator`/`value`, `opcode`) filled in.
+- Filesystem checks (`fs_*`, including legacy aliases) need their type-specific fields — a `path`, an expected `value`/count where applicable, a parent `dir` for location checks.
+- Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry). Electronics checks (`circuit_*`) need a real target — a component/control selector (`type`, `label`, or `id`) and, for connection checks, an endpoint `pin`.
+
+Both validators share the same filesystem/electronics check-field logic (`src/shared/checkAuthoringValidation.js`) so they can't drift apart the way they used to — a lesson published via the CLI alone can no longer ship a filesystem or electronics check the Builder would have flagged as broken.
 
 **Builder-only (not checked by the CLI):**
 

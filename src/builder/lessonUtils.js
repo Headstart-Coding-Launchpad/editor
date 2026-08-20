@@ -3,11 +3,14 @@ import { flattenTasks, isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, S
 import { validateTopicProposals } from '../shared/topicAudit'
 import { makeForkLessonId } from '../shared/lessonForks'
 import { DEFAULT_CIRCUIT, cloneCircuit, ELECTRONICS_CHECK_TYPES } from '../modules/electronics/circuit'
-import { normalizeFsCheck } from '../modules/filesystem/checks'
 import { normalizeHtmlCheck } from '../modules/html/checks'
 import { normalizeSequenceItem } from '../modules/scratch/checks'
 import { validateDraftLessonStructure } from '../shared/draftLesson'
 import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../shared/composedLesson'
+import {
+  hasValue, labelCheckKind,
+  validateFilesystemChecks, validateElectronicsChecks,
+} from '../shared/checkAuthoringValidation'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = ['x', 'y', 'size', 'direction', 'visible', 'rotationStyle', 'costume']
 const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
@@ -19,28 +22,6 @@ function validateStageMetadata(task, n, errors) {
       errors.push(`Task ${n} stage ${si + 1} role must be one of: ${STAGE_ROLES.join(', ')}`)
     }
   })
-}
-
-function hasCircuitSelectorTarget(selector) {
-  return !!(
-    selector?.type?.trim?.()
-    || selector?.componentType?.trim?.()
-    || selector?.typeName?.trim?.()
-    || selector?.label?.trim?.()
-    || selector?.id?.trim?.()
-  )
-}
-
-function hasCircuitEndpointTarget(endpoint) {
-  return hasCircuitSelectorTarget(endpoint?.component ?? endpoint) && !!endpoint?.pin?.trim?.()
-}
-
-function hasValue(value) {
-  return value === 0 || value === false || String(value ?? '').trim() !== ''
-}
-
-function labelCheckKind(kind) {
-  return kind === 'feedback' ? 'feedback check' : 'check'
 }
 
 function collectFeedbackChecks(task) {
@@ -72,46 +53,6 @@ function validateFeedbackBasics(task, n, errors, warnings) {
     }
   })
   return feedbackChecks
-}
-
-function validateFilesystemChecks(checks, n, errors, kind = 'completion') {
-  const label = labelCheckKind(kind)
-  const normalized = normalizeChecks(checks).map(normalizeFsCheck)
-  if (normalized.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
-    errors.push(`Task ${n} has a filesystem ${label} but no path`)
-  }
-  if (normalized.some(c => c.type === 'fs_file_content' && !hasValue(c.value))) {
-    errors.push(`Task ${n} has a file-content ${label} but no expected value`)
-  }
-  if (normalized.some(c => c.type === 'fs_file_line_count' && !hasValue(c.value))) {
-    errors.push(`Task ${n} has a file line-count ${label} but no expected count`)
-  }
-  if (normalized.some(c => c.type === 'fs_file_location' && !c.dir?.trim())) {
-    errors.push(`Task ${n} has a file-location ${label} but no parent folder`)
-  }
-  if (normalized.some(c => c.type === 'fs_folder_count' && !hasValue(c.value))) {
-    errors.push(`Task ${n} has a folder-count ${label} but no expected count`)
-  }
-}
-
-function validateElectronicsChecks(checks, n, errors, kind = 'completion') {
-  const label = labelCheckKind(kind)
-  const normalized = normalizeChecks(checks)
-  if (normalized.some(c => c.type === 'circuit_has_component' && !hasCircuitSelectorTarget(c.component))) {
-    errors.push(`Task ${n} has a part-exists ${label} but no part type or label`)
-  }
-  if (normalized.some(c => (c.type === 'circuit_component_powered' || c.type === 'circuit_component_unpowered') && !hasCircuitSelectorTarget(c.component))) {
-    errors.push(`Task ${n} has a powered-part ${label} but no part type or label`)
-  }
-  if (normalized.some(c => c.type === 'circuit_control_affects_power' && (!hasCircuitSelectorTarget(c.control) || !hasCircuitSelectorTarget(c.component)))) {
-    errors.push(`Task ${n} has a control ${label} but no control or controlled part`)
-  }
-  if (normalized.some(c => (c.type === 'circuit_path_exists' || c.type === 'circuit_path_includes') && (!hasCircuitEndpointTarget(c.from) || !hasCircuitEndpointTarget(c.to)))) {
-    errors.push(`Task ${n} has a circuit connection ${label} but no source or destination part/pin`)
-  }
-  if (normalized.some(c => c.type === 'circuit_path_includes' && !hasCircuitSelectorTarget(c.includes))) {
-    errors.push(`Task ${n} has a circuit connection-includes ${label} but no required part`)
-  }
 }
 
 function validateScratchChecks(checks, n, errors, kind = 'completion') {
