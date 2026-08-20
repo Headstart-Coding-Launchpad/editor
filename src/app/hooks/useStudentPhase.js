@@ -25,6 +25,7 @@ export function useStudentPhase({
   const [phase, setPhase] = useState('loading')
   const [currentTaskId, setCurrentTaskId] = useState(firstTaskId ?? 1)
   const [viewingTaskId, setViewingTaskId] = useState(null)
+  const [joinError, setJoinError] = useState(null)
 
   const phaseRef = useRef(phase)
   phaseRef.current = phase
@@ -210,13 +211,20 @@ export function useStudentPhase({
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleNameSubmit(displayName) {
+    setJoinError(null)
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
     if (joiningTempIdRef.current) {
       unregisterJoining(joiningTempIdRef.current)
       joiningTempIdRef.current = null
     }
-    await joinSession(id.anonymousId, displayName)
+    try {
+      await joinSession(id.anonymousId, displayName)
+    } catch (err) {
+      console.warn('Failed to join session:', err)
+      setJoinError("Couldn't connect to the class session. Check your connection and try again.")
+      return
+    }
     if (!session || session.state === 'ended') { setPhase('waiting'); return }
     if (session.state === 'waiting') { setPhase('waiting'); return }
     if (session.state === 'sandbox') { setPhase('sandbox'); return }
@@ -241,6 +249,7 @@ export function useStudentPhase({
     phase, setPhase,
     currentTaskId, setCurrentTaskId,
     viewingTaskId, setViewingTaskId,
+    joinError,
     handleNameSubmit, handleWaitForTeacher, handleGoSolo,
   }
 }

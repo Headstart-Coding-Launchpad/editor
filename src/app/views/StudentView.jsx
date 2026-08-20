@@ -68,6 +68,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     phase, setPhase,
     currentTaskId, setCurrentTaskId,
     viewingTaskId, setViewingTaskId,
+    joinError,
     handleNameSubmit, handleWaitForTeacher, handleGoSolo,
   } = useStudentPhase({
     session, sessionLoading,
@@ -245,6 +246,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         onSubmit={handleNameSubmit}
         onGoSolo={handleGoSolo}
         waitingForSession={session?.state === 'waiting'}
+        joinError={joinError}
       />
     )
   }

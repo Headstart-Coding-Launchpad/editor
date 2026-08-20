@@ -39,8 +39,13 @@ export async function publishLessonTasks(lessonId, tasks) {
   await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
 }
 
+// Deletes a published lesson document. Firestore does not cascade-delete
+// subcollections, so this also purges the lesson's sessionReports/feedback
+// subcollections first — otherwise a deleted lesson silently leaves orphaned
+// run data behind despite the admin UI describing the delete as unrecoverable.
 export async function deletePublishedLesson(lessonId) {
   if (!lessonId) throw new Error('Lesson id is required')
+  await clearLessonRunData(lessonId)
   await deleteDoc(doc(firestore, 'lessons', lessonId))
 }
 
