@@ -38,7 +38,6 @@ export default function TopBar({ lessonTitle, lessonLevel, displayName, isSandbo
           </>
         ))}
       </div>
-      <div style={s.centre}>{/* progress dots injected here by parent */}</div>
       <div style={s.rightSlot}>
         {right}
         {displayName && !isSolo && (
@@ -56,17 +55,19 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'nowrap',
     padding: '0 16px',
     height: 52,
     flexShrink: 0,
-    gap: 12,
+    gap: 8,
   },
   left: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     minWidth: 0,
-    flex: '0 0 auto',
+    overflow: 'hidden',
+    flex: '1 1 auto',
   },
   logo: {
     display: 'flex',
@@ -77,6 +78,7 @@ const s = {
     fontSize: '1rem',
     whiteSpace: 'nowrap',
     color: '#ffffff',
+    flexShrink: 0,
   },
   level: {
     fontFamily: 'var(--font-body)',
@@ -87,9 +89,11 @@ const s = {
     color: '#ffffff',
     padding: '2px 8px',
     borderRadius: 4,
+    flexShrink: 0,
   },
   divider: {
     opacity: 0.4,
+    flexShrink: 0,
   },
   title: {
     fontFamily: 'var(--font-body)',
@@ -98,7 +102,7 @@ const s = {
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    maxWidth: 240,
+    minWidth: 0,
   },
   sandboxBadge: {
     background: 'var(--colour-secondary)',
@@ -109,6 +113,8 @@ const s = {
     padding: '2px 8px',
     borderRadius: 4,
     letterSpacing: '0.05em',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   modeBadge: {
     color: '#fff',
@@ -118,17 +124,16 @@ const s = {
     padding: '2px 8px',
     borderRadius: 4,
     letterSpacing: '0.05em',
-  },
-  centre: {
-    flex: 1,
-    display: 'flex',
-    justifyContent: 'center',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   rightSlot: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    flex: '0 0 auto',
+    flexWrap: 'nowrap',
+    gap: 8,
+    minWidth: 0,
+    flex: '0 1 auto',
   },
   name: {
     fontFamily: 'var(--font-body)',
