@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import HtmlEditor from './HtmlEditor'
 import CollapsibleIframePreview from '../../app/components/CollapsibleIframePreview'
 import SplitPane from '../../shared/SplitPane'
@@ -15,6 +15,7 @@ export default function StudentWorkspace({
   viewingTaskId, isViewingPrev, isForcedTeacherLive, isMobile,
   displayFiles, displayActiveFile, displayRunStatus, displaySelection,
   isTeacherEditing, teacherLiveFiles = [], teacherLiveActiveFile,
+  onVisiblePanesChange,
 }) {
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
   const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(
@@ -63,6 +64,13 @@ export default function StudentWorkspace({
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
   const errorLine = !readOnly && cs.htmlErrorLocation?.file === activeFile ? cs.htmlErrorLocation.line : null
+  // Preview is never rendered at all in submit-mode tasks (rightCollapsed forced, width 0
+  // below), so it's never meaningfully "visible" there regardless of htmlPreviewCollapsed.
+  const previewPaneVisible = task?.interactionMode !== 'submit' && !cs.htmlPreviewCollapsed
+
+  useEffect(() => {
+    onVisiblePanesChange?.([...(activeFile ? [activeFile] : []), ...(previewPaneVisible ? ['preview'] : [])])
+  }, [activeFile, previewPaneVisible, onVisiblePanesChange])
 
   if (isMobile) {
     return (
