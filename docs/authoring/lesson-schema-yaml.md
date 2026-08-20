@@ -99,7 +99,7 @@ tasks:
 | `id` | No | integer | Auto-assigned sequential integer if omitted. |
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes in final mode | string | Markdown shown to students. Draft permits it to be omitted. |
-| `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
+| `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |

@@ -32,7 +32,7 @@ export function flattenTasks(tasks) {
 
 export function getEstimatedMinutes(task) {
   const minutes = Number(task?.estimatedMinutes)
-  return Number.isInteger(minutes) && minutes > 0 ? minutes : null
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : null
 }
 
 export function getTotalEstimatedMinutes(tasks) {
@@ -114,7 +114,7 @@ export function getTaskPriorityCounts(tasks) {
 export function formatEstimatedMinutes(minutes) {
   if (!minutes) return 'No estimate'
   const hours = Math.floor(minutes / 60)
-  const remainder = minutes % 60
+  const remainder = Math.round((minutes - hours * 60) * 100) / 100
   if (!hours) return `${remainder} min`
   if (!remainder) return `${hours} hr`
   return `${hours} hr ${remainder} min`

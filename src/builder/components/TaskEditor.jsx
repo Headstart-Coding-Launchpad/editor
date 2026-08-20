@@ -331,14 +331,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         <input
           className="te-input"
           type="number"
-          min="1"
-          step="1"
+          min="0.5"
+          step="0.5"
           value={task.estimatedMinutes ?? ''}
           onChange={e => {
             const value = e.target.value
-            set('estimatedMinutes', value === '' ? undefined : Math.max(1, Number.parseInt(value, 10) || 1))
+            if (value === '') { set('estimatedMinutes', undefined); return }
+            const parsed = Number.parseFloat(value)
+            set('estimatedMinutes', Math.max(0.5, Number.isFinite(parsed) ? parsed : 0.5))
           }}
-          placeholder="e.g. 10"
+          placeholder="e.g. 10 or 7.5"
         />
       </Field>
 

@@ -18,7 +18,7 @@ describe('validateLesson', () => {
     }]))
 
     expect(result.errors).toEqual(expect.arrayContaining([
-      'Task 1 estimated time must be a positive whole number of minutes',
+      'Task 1 estimated time must be a positive number of minutes',
       'Task 1 uses submit mode but has a check that requires running the code',
       'Task 1 has a check enabled but no check value',
       'Task 1 references task 99 for carry-through but that task does not exist',

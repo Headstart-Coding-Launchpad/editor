@@ -66,17 +66,18 @@ describe('flattenTasks', () => {
 describe('estimated task duration helpers', () => {
   it('normalizes positive duration values and ignores missing or invalid values', () => {
     expect(getEstimatedMinutes({ estimatedMinutes: '12' })).toBe(12)
-    expect(getEstimatedMinutes({ estimatedMinutes: 2.6 })).toBeNull()
+    expect(getEstimatedMinutes({ estimatedMinutes: 2.5 })).toBe(2.5)
     expect(getEstimatedMinutes({ estimatedMinutes: 0 })).toBeNull()
+    expect(getEstimatedMinutes({ estimatedMinutes: -1.5 })).toBeNull()
     expect(getEstimatedMinutes({ estimatedMinutes: 'nope' })).toBeNull()
   })
 
   it('totals estimates across standalone tasks and grouped subtasks', () => {
     const timedGroup = {
       ...group,
-      subtasks: [{ ...sub1, estimatedMinutes: 4 }, { ...sub2, estimatedMinutes: 6 }],
+      subtasks: [{ ...sub1, estimatedMinutes: 4.5 }, { ...sub2, estimatedMinutes: 6 }],
     }
-    expect(getTotalEstimatedMinutes([{ ...task1, estimatedMinutes: 5 }, timedGroup, task2])).toBe(15)
+    expect(getTotalEstimatedMinutes([{ ...task1, estimatedMinutes: 5 }, timedGroup, task2])).toBe(15.5)
   })
 
   it('formats minute totals for the builder', () => {
@@ -84,6 +85,8 @@ describe('estimated task duration helpers', () => {
     expect(formatEstimatedMinutes(15)).toBe('15 min')
     expect(formatEstimatedMinutes(60)).toBe('1 hr')
     expect(formatEstimatedMinutes(75)).toBe('1 hr 15 min')
+    expect(formatEstimatedMinutes(7.5)).toBe('7.5 min')
+    expect(formatEstimatedMinutes(90.5)).toBe('1 hr 30.5 min')
   })
 })
 

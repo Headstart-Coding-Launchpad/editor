@@ -86,8 +86,8 @@ export function validateLessonForMcp(lesson) {
 
     if (!task.title) errors.push(`Task ${n} is missing a title`)
 
-    if (task.estimatedMinutes != null && (!Number.isInteger(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
-      errors.push(`Task ${n} estimated time must be a positive whole number of minutes`)
+    if (task.estimatedMinutes != null && (!Number.isFinite(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)) {
+      errors.push(`Task ${n} estimated time must be a positive number of minutes`)
     }
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)

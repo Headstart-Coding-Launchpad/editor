@@ -74,7 +74,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 
 ## Teacher Timers
 
-- A task may define `estimatedMinutes` as a positive integer.
+- A task may define `estimatedMinutes` as a positive number (decimals allowed, e.g. `7.5`).
 - Builder displays the lesson-wide estimated total.
 - Starting a session sets `startedAt` and `currentTaskStartedAt`.
 - Moving the class to a task or returning from sandbox restarts `currentTaskStartedAt`.

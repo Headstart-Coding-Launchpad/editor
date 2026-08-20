@@ -18,6 +18,12 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-08-20
+
+### `estimatedMinutes` now accepts decimal values
+
+`estimatedMinutes` previously had to be a positive whole number; it now accepts any positive number, e.g. `estimatedMinutes: 7.5`. The Builder's task editor input steps by 0.5 minutes. See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md`.
+
 ## 2026-08-17
 
 ### Corrected Scratch `evaluation` values and documented `sprite_property_delta`/`sprite_property_changed`

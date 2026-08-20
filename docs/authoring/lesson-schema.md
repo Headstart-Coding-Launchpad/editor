@@ -64,7 +64,7 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `id` | Yes | integer | Sequential task number. |
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes | string | Markdown shown to students. |
-| `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
+| `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types, or `code_arrange` for a drag-and-drop runnable-code task (see "Code Arrange Task Fields" below). |
