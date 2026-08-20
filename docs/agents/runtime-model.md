@@ -43,6 +43,7 @@ Do not deviate from this shape.
       "sandboxCodePushedAt": 1234567890,
       "sandboxFiles": { "index__dot__html": "..." },
       "sandboxFilesUpdatedAt": 1234567890,
+      "sandboxPreviousTaskId": "string | number | null (currentTaskId to restore on exitSandbox, when handleGoLiveSandbox moved it for a composed-lesson module switch)",
       "lessonOverrideTasks": "Task[] | null",
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
@@ -170,6 +171,7 @@ Teacher writes:
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
 - `activeStudentView`, `teacherLive`
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
+- `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - any student's `displayName`

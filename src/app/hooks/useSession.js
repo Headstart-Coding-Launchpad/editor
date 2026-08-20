@@ -82,6 +82,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
+      sandboxPreviousTaskId: null,
       lessonOverrideTasks:   null,
       explainerShowComplete: false,
       taskStartTimes:        {},
@@ -116,6 +117,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
+      sandboxPreviousTaskId: null,
       lessonOverrideTasks:   null,
       explainerShowComplete: false,
       students:              null,
@@ -223,8 +225,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     }
   }
 
-  async function enterSandbox({ code = null, files = null } = {}) {
+  async function enterSandbox({ code = null, files = null, previousTaskId = null } = {}) {
     const updates = { state: 'sandbox' }
+    if (previousTaskId != null) updates.sandboxPreviousTaskId = previousTaskId
     if (code != null) {
       updates.sandboxCode        = code
       updates.sandboxCodePushedAt = Date.now()
@@ -238,7 +241,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function exitSandbox() {
-    await update(ref(db, `sessions/${lessonId}`), {
+    const updates = {
       state:                 'active',
       currentTaskStartedAt:  Date.now(),
       sandboxCode:           null,
@@ -246,7 +249,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFiles:          null,
       sandboxFilesUpdatedAt: null,
       sandboxExplainer:      null,
-    })
+      sandboxPreviousTaskId: null,
+    }
+    // Going live can silently move the class onto the sandbox module's first
+    // task (see TeacherView.handleGoLiveSandbox) so the right editor/module
+    // renders; restore whatever task was actually active before that jump.
+    if (session?.sandboxPreviousTaskId != null && session.sandboxPreviousTaskId !== session?.currentTaskId) {
+      updates.currentTaskId = session.sandboxPreviousTaskId
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
   async function pushSandboxCode(code) {

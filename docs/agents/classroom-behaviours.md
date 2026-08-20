@@ -125,6 +125,7 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - `sandboxCodePushedAt` and `sandboxFilesUpdatedAt` timestamps are change triggers.
 - HTML sandbox stores files in Firebase `sandboxFiles` with `__dot__` encoded keys.
 - Filesystem sandbox stores state as a JSON string in `sandboxCode`.
+- Going live on a composed lesson can move `session.currentTaskId` to the sandbox module's first non-info/quiz task (`TeacherView.handleGoLiveSandbox`), so the right module/editor renders. `enterSandbox` records that prior task in `sandboxPreviousTaskId`; `exitSandbox` restores `currentTaskId` from it and clears the field, so the class returns to the task it was actually on before the sandbox push.
 
 ## Live Lesson Task Editing: `lessonOverrideTasks`
 
