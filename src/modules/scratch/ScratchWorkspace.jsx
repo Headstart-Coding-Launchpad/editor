@@ -618,6 +618,11 @@ export default function ScratchWorkspace({
   const [askPrompt, setAskPrompt]   = useState(null)
   const [askValue, setAskValue]     = useState('')
   const [broadcastToasts, setBroadcastToasts] = useState([])
+  function pushToast(message, kind = 'broadcast', duration = 2000) {
+    const id = Date.now() + Math.random()
+    setBroadcastToasts(prev => [...prev, { id, message, kind }])
+    setTimeout(() => setBroadcastToasts(prev => prev.filter(t => t.id !== id)), duration)
+  }
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(false)
@@ -1480,11 +1485,14 @@ export default function ScratchWorkspace({
       variableRuntimeRef.current = { ...vars }
       setVariableValues({ ...vars })
     }
-    signal.onBroadcast = msg => {
-      const id = Date.now() + Math.random()
-      setBroadcastToasts(prev => [...prev, { id, message: msg }])
-      setTimeout(() => setBroadcastToasts(prev => prev.filter(t => t.id !== id)), 2000)
-    }
+    signal.onBroadcast = msg => pushToast(msg, 'broadcast')
+    // A script threw instead of running to completion (a bad block combination, a missing
+    // sprite/variable reference, etc.). This used to be swallowed silently — no message, no
+    // console line, nothing — so a broken script just appeared to do nothing. Surface it via
+    // the same toast mechanism broadcasts already use, in plain language rather than the raw
+    // error text, since this module's audience is often younger learners debugging by trial
+    // and error and a raw stack trace wouldn't mean much to them.
+    signal.onError = () => pushToast('This script ran into a problem and stopped.', 'error', 4000)
     signal.onCloneCreated = clone => {
       clonesRef.current = { ...clonesRef.current, [clone.id]: clone }
       setCloneStates(clonesRef.current)
@@ -1650,7 +1658,7 @@ export default function ScratchWorkspace({
     setCheckAttempted(false)
     const signal = createSignal()
     signalRef.current = signal
-    try { await runAllSprites(buildSpriteWorkspaces(), signal) } catch {}
+    try { await runAllSprites(buildSpriteWorkspaces(), signal) } catch (err) { signal.onError?.(err) }
     finishRun(signal)
   }
 
@@ -1667,7 +1675,7 @@ export default function ScratchWorkspace({
     const signal = createSignal()
     signalRef.current = signal
     const startBlock = block.type === 'event_whenflagclicked' ? block.getNextBlock() : block
-    try { await runBlockInContext(startBlock, buildSpriteWorkspaces(), spriteId, signal) } catch {}
+    try { await runBlockInContext(startBlock, buildSpriteWorkspaces(), spriteId, signal) } catch (err) { signal.onError?.(err) }
     finishRun(signal)
   }
 
@@ -1681,7 +1689,7 @@ export default function ScratchWorkspace({
     if (shouldFinishRun) preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     const signal = createSignal()
     keySignalsRef.current.set(key, signal)
-    try { await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key) } catch {}
+    try { await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key) } catch (err) { signal.onError?.(err) }
     if (keySignalsRef.current.get(key) === signal) keySignalsRef.current.delete(key)
     if (shouldFinishRun) finishRun(signal)
   }
@@ -2275,8 +2283,8 @@ export default function ScratchWorkspace({
             {broadcastToasts.length > 0 && (
               <div style={s.broadcastToastStack}>
                 {broadcastToasts.map(t => (
-                  <div key={t.id} style={s.broadcastToast}>
-                    <span style={s.broadcastToastIcon}>📢</span> {t.message}
+                  <div key={t.id} style={t.kind === 'error' ? s.errorToast : s.broadcastToast}>
+                    <span style={s.broadcastToastIcon}>{t.kind === 'error' ? '⚠️' : '📢'}</span> {t.message}
                   </div>
                 ))}
               </div>
@@ -2425,6 +2433,7 @@ const s = {
   variableMonitorValue: { padding: '2px 6px', color: '#fff', minWidth: 24, textAlign: 'right' },
   broadcastToastStack: { position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', zIndex: 6, pointerEvents: 'none' },
   broadcastToast: { background: 'rgba(255, 171, 25, 0.96)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.22)', whiteSpace: 'nowrap', animation: 'scratch-toast-in 0.18s ease' },
+  errorToast: { background: 'rgba(220, 38, 38, 0.96)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.22)', whiteSpace: 'nowrap', animation: 'scratch-toast-in 0.18s ease' },
   broadcastToastIcon: { fontSize: '0.75rem' },
   askBox: { position: 'absolute', left: 12, right: 12, bottom: 12, display: 'grid', gap: 8, padding: 10, background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.14)' },
   askLabel: { fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--colour-text)' },
