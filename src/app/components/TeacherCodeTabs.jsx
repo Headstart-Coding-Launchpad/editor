@@ -58,17 +58,23 @@ export default function TeacherCodeTabs({
             style={sendStageBtn}
             title="Send this stage's code to all students"
             onClick={() => {
+              // A non-starter stage (support/complete role) is always safe to "reveal" — a
+              // read-only reference — rather than force-reset every student's saved work to
+              // it, regardless of whether this module type uses the unified tab layout. This
+              // is the same safe path the per-student Reveal action already uses for every
+              // module type (see StudentModal.jsx's onRevealSupportStage).
               const stage = activeTab.startsWith('stage_') ? stages[parseInt(activeTab.replace('stage_', ''), 10)] : null
-              const action = unifiedStages && stage && getStageRole(stage) !== 'starter'
+              const isRevealableStage = stage && getStageRole(stage) !== 'starter'
+              const action = isRevealableStage
                 ? `reveal_stage_${activeTab.replace('stage_', '')}`
                 : activeTab === 'complete' ? 'complete' : activeTab.startsWith('stage_') ? activeTab : 'starter'
-              const verb = unifiedStages && stage && getStageRole(stage) !== 'starter' ? 'Reveal' : 'Send'
+              const verb = isRevealableStage ? 'Reveal' : 'Send'
               if (window.confirm(`${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : stage?.label ?? activeTab} to all students?`)) {
                 onSendToAll(action)
               }
             }}
           >
-            {unifiedStages && activeTab.startsWith('stage_') && getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter' ? 'Reveal to all' : 'Send to all'}
+            {activeTab.startsWith('stage_') && getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter' ? 'Reveal to all' : 'Send to all'}
           </button>
         </div>
       )}

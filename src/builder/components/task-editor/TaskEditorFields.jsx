@@ -110,7 +110,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
     : (prevTask && carryFrom === prevTask.id ? 'last' : 'other')
 
   function copyCompleteCode(sourceTask) {
-    const updates = { [carryField]: sourceTask.id, ...resolvedLessonMod?.getCarryThroughUpdates?.(sourceTask) }
+    const updates = { [carryField]: sourceTask.id, ...resolvedLessonMod?.getCarryThroughUpdates?.(sourceTask, task) }
     onUpdate({ ...task, ...updates })
   }
 

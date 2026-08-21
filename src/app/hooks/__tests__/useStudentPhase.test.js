@@ -301,5 +301,39 @@ describe('useStudentPhase', () => {
       expect(result.current.phase).toBe('lesson')
       expect(result.current.currentTaskId).toBe(2)
     })
+
+    it('handleNameSubmit sets joinError and stays on name-entry when joinSession rejects', async () => {
+      const joinSession = vi.fn().mockRejectedValue(new Error('permission_denied'))
+      const createIdentity = vi.fn(() => ({ anonymousId: 'a1', displayName: 'Bob', lastSessionTimestamp: 1000 }))
+      const session = makeSession({ state: 'active', currentTaskId: 2 })
+      const { result } = renderHook(() =>
+        useStudentPhase(defaultProps({ session, joinSession, createIdentity, identity: null, identityLoaded: true }))
+      )
+      await waitFor(() => expect(result.current.phase).toBe('name-entry'))
+
+      await act(async () => { await result.current.handleNameSubmit('Bob') })
+
+      expect(result.current.phase).toBe('name-entry')
+      expect(result.current.joinError).toBeTruthy()
+    })
+
+    it('handleNameSubmit clears a prior joinError on a fresh attempt', async () => {
+      const joinSession = vi.fn()
+        .mockRejectedValueOnce(new Error('permission_denied'))
+        .mockResolvedValueOnce(undefined)
+      const createIdentity = vi.fn(() => ({ anonymousId: 'a1', displayName: 'Bob', lastSessionTimestamp: 1000 }))
+      const session = makeSession({ state: 'active', currentTaskId: 2 })
+      const { result } = renderHook(() =>
+        useStudentPhase(defaultProps({ session, joinSession, createIdentity, identity: null, identityLoaded: true }))
+      )
+      await waitFor(() => expect(result.current.phase).toBe('name-entry'))
+
+      await act(async () => { await result.current.handleNameSubmit('Bob') })
+      expect(result.current.joinError).toBeTruthy()
+
+      await act(async () => { await result.current.handleNameSubmit('Bob') })
+      expect(result.current.joinError).toBeNull()
+      expect(result.current.phase).toBe('lesson')
+    })
   })
 })

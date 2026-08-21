@@ -49,6 +49,13 @@ const WIRE_CROSSING_PENALTY = 900
 const WIRE_BEND_PENALTY = 70
 const SENSOR_KIND_OPTIONS = ['light', 'temperature', 'distance']
 const HIDDEN_EDGE_HOLE_ROWS = 1
+const BOARD_SCALE_MIN = 0.5
+const BOARD_SCALE_MAX = 1.5
+const BOARD_SCALE_STEP = 0.1
+
+function clampBoardScale(value) {
+  return Math.min(BOARD_SCALE_MAX, Math.max(BOARD_SCALE_MIN, Math.round(value * 100) / 100))
+}
 
 export default function ElectronicsWorkspace({
   circuit,
@@ -70,6 +77,8 @@ export default function ElectronicsWorkspace({
   setupMode = false,
   activeTab,
   onTabChange,
+  onActivity,
+  isInSandbox,
 }) {
   const boardRef = useRef(null)
   const boardWrapRef = useRef(null)
@@ -80,6 +89,7 @@ export default function ElectronicsWorkspace({
   const [drag, setDrag] = useState(null)
   const [isPanning, setIsPanning] = useState(false)
   const [wireColor, setWireColor] = useState('auto')
+  const [boardScale, setBoardScale] = useState(1)
   const [outputCollapsed, setOutputCollapsed] = useState(!showCodeTab)
   const selectedTab = activeTab ?? tab
   const selected = circuit.components.find(c => c.id === selectedId) ?? null
@@ -204,9 +214,15 @@ export default function ElectronicsWorkspace({
     const rect = boardRef.current?.getBoundingClientRect()
     if (!rect) return { x: 0, y: 0 }
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: (event.clientX - rect.left) / boardScale,
+      y: (event.clientY - rect.top) / boardScale,
     }
+  }
+
+  function handleBoardWheel(event) {
+    if (!event.ctrlKey && !event.metaKey) return
+    event.preventDefault()
+    setBoardScale(prev => clampBoardScale(prev + (event.deltaY < 0 ? BOARD_SCALE_STEP : -BOARD_SCALE_STEP)))
   }
 
   function positionFromPoint(point, offset = { x: PART_W / 2, y: PART_H / 2 }, component = null) {
@@ -595,6 +611,16 @@ export default function ElectronicsWorkspace({
           {hasCodeTab && <button className={selectedTab === 'code' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('code')}>MicroPython</button>}
         </div>
         <div style={s.actions}>
+          {selectedTab === 'breadboard' && (
+            <div style={s.zoomControls}>
+              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setBoardScale(prev => clampBoardScale(prev - BOARD_SCALE_STEP))} aria-label="Zoom out">−</button>
+              <span style={s.zoomLabel}>{Math.round(boardScale * 100)}%</span>
+              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setBoardScale(prev => clampBoardScale(prev + BOARD_SCALE_STEP))} aria-label="Zoom in">+</button>
+              {boardScale !== 1 && (
+                <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setBoardScale(1)}>Reset</button>
+              )}
+            </div>
+          )}
           {setupMode && activeMicrocontroller && (
             <button type="button" className="btn-primary" style={s.actionBtn} onClick={addGpioPin}>
               Add GPIO
@@ -619,14 +645,17 @@ export default function ElectronicsWorkspace({
           <PythonEditor
             code={microPythonCode ?? DEFAULT_MICROPYTHON_CODE}
             onChange={updateMicrocontrollerCode}
+            onActivity={onActivity}
             readOnly={readOnly}
             pyodideStatus={running ? 'ready' : null}
+            onRunShortcut={readOnly || !onRunMicroPython ? undefined : (running ? onStopMicroPython : onRunMicroPython)}
             editorStyle={s.codeEditor}
           />
         </div>
       ) : (
         <div style={s.workspace}>
           <div style={s.palette}>
+            <p style={s.paletteHint}>Drag a part onto the board, then drag from one pin to another to wire them together.</p>
             {PALETTE.filter(([type]) => paletteTypes.includes(type)).map(([type, label]) => (
               <button key={type} type="button" disabled={readOnly} draggable={!readOnly} title={COMPONENT_DESCRIPTIONS[type] ?? label} style={s.paletteBtn} onClick={() => addComponent(type)} onDragStart={event => handlePaletteDragStart(event, type)}>
                 <span style={s.paletteIcon}><PaletteGlyph type={type} /></span>
@@ -647,10 +676,12 @@ export default function ElectronicsWorkspace({
             onPointerMove={moveBoardPan}
             onPointerUp={stopBoardPan}
             onPointerCancel={stopBoardPan}
+            onWheel={handleBoardWheel}
           >
+            <div style={{ ...s.boardScaleSizer, width: boardWidth * boardScale, height: boardHeight * boardScale }}>
             <div
               ref={boardRef}
-              style={{ ...s.board, width: boardWidth, height: boardHeight, minWidth: boardWidth, minHeight: boardHeight }}
+              style={{ ...s.board, width: boardWidth, height: boardHeight, minWidth: boardWidth, minHeight: boardHeight, transform: `scale(${boardScale})` }}
               tabIndex={readOnly ? undefined : 0}
               onPointerMove={handleBoardPointerMove}
               onPointerUp={handleBoardPointerUp}
@@ -782,6 +813,7 @@ export default function ElectronicsWorkspace({
                   </div>
                 )
               })}
+            </div>
             </div>
             <div style={s.status}>
               <span>{circuit.components.length} parts</span>
@@ -1794,8 +1826,12 @@ const s = {
   tabs: { display: 'flex', alignItems: 'center' },
   actions: { marginLeft: 'auto', display: 'flex', gap: 8, paddingRight: 8 },
   actionBtn: { fontSize: 13, padding: '7px 12px' },
+  zoomControls: { display: 'flex', alignItems: 'center', gap: 4 },
+  zoomBtn: { fontSize: 13, padding: '5px 10px', lineHeight: 1 },
+  zoomLabel: { minWidth: 38, textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: '#475569' },
   workspace: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '216px minmax(0, 1fr) 230px', overflow: 'hidden' },
   palette: { minWidth: 0, padding: 10, borderRight: '1px solid #e5e7eb', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, overflowX: 'hidden', overflowY: 'auto' },
+  paletteHint: { margin: 0, fontSize: 11.5, lineHeight: 1.4, color: '#64748b', fontFamily: 'var(--font-body)' },
   paletteBtn: { minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 7, padding: '8px 9px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 650 },
   paletteIcon: { flexShrink: 0, width: 30, height: 26, borderRadius: 5, background: '#e0f2fe', color: '#0369a1', display: 'grid', placeItems: 'center', fontSize: 11 },
   paletteLabel: { minWidth: 0, whiteSpace: 'nowrap' },
@@ -1804,7 +1840,8 @@ const s = {
   wireColorSelect: { width: '100%', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 12, padding: '6px 7px' },
   boardWrap: { minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', background: '#e2e8f0', cursor: 'grab' },
   boardWrapPanning: { cursor: 'grabbing', userSelect: 'none' },
-  board: { position: 'relative', flexShrink: 0, margin: 16, touchAction: 'none', outline: 'none' },
+  boardScaleSizer: { position: 'relative', flexShrink: 0, margin: 16 },
+  board: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', touchAction: 'none', outline: 'none' },
   boardSurface: { position: 'absolute', left: 0, top: 0, borderRadius: 8, background: '#fff7ed', boxShadow: 'inset 0 0 0 2px #fed7aa', pointerEvents: 'none', zIndex: 0 },
   wires: { position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'auto', zIndex: 3 },
   hole: { position: 'absolute', zIndex: 1, width: 7, height: 7, borderRadius: '50%', background: '#334155', opacity: 0.45, transform: 'translate(-50%, -50%)' },

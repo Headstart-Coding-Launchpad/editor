@@ -101,6 +101,7 @@ export default function StudentWorkspace({
             assets={lesson.assets}
             storageAssets={htmlStorageAssets}
             errorLine={errorLine}
+            onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun}
           />
         </div>
         {task?.interactionMode !== 'submit' && (
@@ -132,7 +133,7 @@ export default function StudentWorkspace({
         collapsedRight={
           task?.interactionMode === 'submit' ? null : (
             <CollapsibleIframePreview
-              src={isForcedTeacherLive ? cs.teacherLiveIframeSrc : cs.iframeSrc}
+              src={previewSrc}
               iframeRef={cs.iframeRef}
               collapsed
               onToggle={() => cs.setHtmlPreviewCollapsed(false)}
@@ -165,6 +166,7 @@ export default function StudentWorkspace({
               assets={lesson.assets}
               storageAssets={htmlStorageAssets}
               errorLine={errorLine}
+              onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun}
             />
           </div>
         }

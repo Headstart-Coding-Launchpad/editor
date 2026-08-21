@@ -53,11 +53,13 @@ export default function AdminPortal() {
       </header>
 
       <nav style={s.nav}>
-        <div style={s.tabs}>
+        <div style={s.tabs} role="tablist" aria-label="Admin sections">
           {TABS.map(tab => (
             <button
               key={tab.id}
               className={`ui-tab${activeTab === tab.id ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => navigate(`/admin/${tab.id}`)}
             >
               {tab.label}

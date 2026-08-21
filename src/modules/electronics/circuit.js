@@ -1255,32 +1255,37 @@ export function evaluateElectronicsCheck(check, circuitLike) {
   return evaluateCodeCheck(check, getMicrocontrollerCode(circuit))
 }
 
+// Real pin names per component type — the single source of truth for both the simulator
+// (makeComponent, below) and the Builder's Check Editor (CheckEditor.jsx's PIN_OPTIONS),
+// so a new component type's pins can't be added here without the check-authoring UI
+// picking them up too.
+export const COMPONENT_PINS = {
+  battery: ['positive', 'negative'],
+  resistor: ['a', 'b'],
+  led: ['anode', 'cathode'],
+  rgb_led: ['red', 'green', 'blue', 'cathode'],
+  lcd1602: ['VCC', 'GND', 'SDA', 'SCL'],
+  push_button: ['a', 'b'],
+  slide_switch: ['a', 'b'],
+  potentiometer: ['left', 'wiper', 'right'],
+  motor: ['positive', 'negative'],
+  servo_motor: ['positive', 'signal', 'negative'],
+  buzzer: ['positive', 'negative'],
+  microcontroller: MICROCONTROLLER_DEFAULT_PINS,
+  transistor: ['collector', 'base', 'emitter'],
+  diode: ['anode', 'cathode'],
+  sensor: ['positive', 'signal', 'negative'],
+  terminal: ['pin'],
+}
+
 export function makeComponent(type, index, position = { row: 2, col: 2 }) {
-  const pins = {
-    battery: ['positive', 'negative'],
-    resistor: ['a', 'b'],
-    led: ['anode', 'cathode'],
-    rgb_led: ['red', 'green', 'blue', 'cathode'],
-    lcd1602: ['VCC', 'GND', 'SDA', 'SCL'],
-    push_button: ['a', 'b'],
-    slide_switch: ['a', 'b'],
-    potentiometer: ['left', 'wiper', 'right'],
-    motor: ['positive', 'negative'],
-    servo_motor: ['positive', 'signal', 'negative'],
-    buzzer: ['positive', 'negative'],
-    microcontroller: MICROCONTROLLER_DEFAULT_PINS,
-    transistor: ['collector', 'base', 'emitter'],
-    diode: ['anode', 'cathode'],
-    sensor: ['positive', 'signal', 'negative'],
-    terminal: ['pin'],
-  }
   return {
     id: `${type}${index}`,
     type,
     label: COMPONENT_LABELS[type] ?? type,
     position,
     rotation: 0,
-    pins: pins[type] ?? ['a', 'b'],
+    pins: COMPONENT_PINS[type] ?? ['a', 'b'],
     props: type === 'potentiometer'
       ? { value: 50 }
       : type === 'resistor'

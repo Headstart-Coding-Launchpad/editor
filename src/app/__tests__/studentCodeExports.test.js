@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
+import { getSavedNonPythonTaskCount, getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
 
 const lesson = {
   id: 'python-intro',
@@ -35,5 +35,29 @@ describe('studentCodeExports', () => {
   it('does not export non-Python lessons or anonymous-less sessions', () => {
     expect(getSavedPythonTasks({ lesson: { ...lesson, type: 'html' }, anonymousId: 'student-1' })).toEqual([])
     expect(getSavedPythonTasks({ lesson, anonymousId: null })).toEqual([])
+  })
+})
+
+describe('getSavedNonPythonTaskCount', () => {
+  const scratchLesson = { id: 'scratch-intro', type: 'scratch', tasks: lesson.tasks }
+
+  it('counts non-Python code tasks that have any saved data, regardless of shape', () => {
+    const readSavedCode = vi.fn((_lessonId, taskId) => ({
+      1: { code: 'move 10 steps' },
+      4: { fs: { root: {} } },
+    })[taskId] ?? null)
+
+    expect(getSavedNonPythonTaskCount({ lesson: scratchLesson, anonymousId: 'student-1', readSavedCode })).toBe(2)
+  })
+
+  it('does not count Python tasks, information/quiz tasks, or anonymous-less sessions', () => {
+    const readSavedCode = vi.fn(() => ({ code: 'anything' }))
+
+    expect(getSavedNonPythonTaskCount({ lesson, anonymousId: 'student-1', readSavedCode })).toBe(0)
+    expect(getSavedNonPythonTaskCount({ lesson: scratchLesson, anonymousId: null, readSavedCode })).toBe(0)
+  })
+
+  it('returns 0 when nothing is saved', () => {
+    expect(getSavedNonPythonTaskCount({ lesson: scratchLesson, anonymousId: 'student-1', readSavedCode: () => null })).toBe(0)
   })
 })

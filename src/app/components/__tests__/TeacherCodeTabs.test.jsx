@@ -64,10 +64,26 @@ describe('TeacherCodeTabs', () => {
     expect(screen.queryByRole('button', { name: 'Send to all' })).not.toBeInTheDocument()
   })
 
-  it('calls onSendToAll with correct action after confirmation', () => {
+  it('reveals rather than resets when the active stage is not a starter stage, regardless of unifiedStages', () => {
+    // stages[] here has no explicit role, which getStageRole defaults to 'support' —
+    // this must be safe to reveal, not reset, even when unifiedStages is left at its
+    // default (false), since revealing is correct for every module type, not just the
+    // ones using the unified tab layout.
     const onSendToAll = vi.fn()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderTabs({ activeTab: 'stage_0', stages, hasStudents: true, onSendToAll })
+    expect(screen.getByRole('button', { name: 'Reveal to all' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal to all' }))
+    expect(onSendToAll).toHaveBeenCalledWith('reveal_stage_0')
+    vi.restoreAllMocks()
+  })
+
+  it('sends a raw reset action when the active stage is the starter stage, even without unifiedStages', () => {
+    const onSendToAll = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const starterStages = [{ label: 'Starter Stage', role: 'starter' }]
+    renderTabs({ activeTab: 'stage_0', stages: starterStages, hasStudents: true, onSendToAll })
+    expect(screen.getByRole('button', { name: 'Send to all' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Send to all' }))
     expect(onSendToAll).toHaveBeenCalledWith('stage_0')
     vi.restoreAllMocks()

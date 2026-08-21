@@ -5,6 +5,7 @@ import {
   deleteEntry,
   renameEntry,
   moveEntry,
+  copyEntry,
   updateFileContent,
   listChildren,
   entryName,
@@ -88,6 +89,12 @@ describe('createEntry', () => {
     const fs = createEntry(DEFAULT_FS, 'Documents', 'dir')
     expect(fs['/Documents/']).toBeDefined()
   })
+
+  it('does not create a case-only-different duplicate of an existing entry', () => {
+    const original = { ...DEFAULT_FS, '/Notes.txt': { type: 'file', content: 'hi' } }
+    const after = createEntry(original, '/notes.txt', 'file', 'other')
+    expect(after).toBe(original)
+  })
 })
 
 // ── deleteEntry ───────────────────────────────────────────────────────────────
@@ -151,6 +158,18 @@ describe('renameEntry', () => {
     const after = renameEntry(fsWithConflict, '/Documents/', 'Pics')
     expect(after).toBe(fsWithConflict)
   })
+
+  it('refuses a rename that only differs from another entry by case', () => {
+    const fsWithConflict = { ...fs, '/Documents/readme.txt': { type: 'file', content: '' } }
+    const after = renameEntry(fsWithConflict, '/Documents/notes.txt', 'README.txt')
+    expect(after).toBe(fsWithConflict)
+  })
+
+  it('allows a pure case-only rename of an entry to itself', () => {
+    const after = renameEntry(fs, '/Documents/notes.txt', 'NOTES.txt')
+    expect(after['/Documents/NOTES.txt']).toEqual({ type: 'file', content: 'hi' })
+    expect(after['/Documents/notes.txt']).toBeUndefined()
+  })
 })
 
 // ── moveEntry ─────────────────────────────────────────────────────────────────
@@ -184,6 +203,35 @@ describe('moveEntry', () => {
   it('returns original if destination does not exist', () => {
     const after = moveEntry(fs, '/Documents/notes.txt', '/Nonexistent/')
     expect(after).toBe(fs)
+  })
+
+  it('refuses a move that only differs from an existing entry in the destination by case', () => {
+    const fsWithConflict = { ...fs, '/Archive/NOTES.txt': { type: 'file', content: '' } }
+    const after = moveEntry(fsWithConflict, '/Documents/notes.txt', '/Archive/')
+    expect(after).toBe(fsWithConflict)
+  })
+})
+
+// ── copyEntry ─────────────────────────────────────────────────────────────────
+
+describe('copyEntry', () => {
+  const fs = {
+    '/': { type: 'dir' },
+    '/Documents/': { type: 'dir' },
+    '/Documents/notes.txt': { type: 'file', content: 'hi' },
+    '/Archive/': { type: 'dir' },
+  }
+
+  it('copies a file, leaving the source in place', () => {
+    const after = copyEntry(fs, '/Documents/notes.txt', '/Archive/')
+    expect(after['/Archive/notes.txt']).toEqual({ type: 'file', content: 'hi' })
+    expect(after['/Documents/notes.txt']).toEqual({ type: 'file', content: 'hi' })
+  })
+
+  it('refuses a copy that only differs from an existing entry in the destination by case', () => {
+    const fsWithConflict = { ...fs, '/Archive/NOTES.txt': { type: 'file', content: '' } }
+    const after = copyEntry(fsWithConflict, '/Documents/notes.txt', '/Archive/')
+    expect(after).toBe(fsWithConflict)
   })
 })
 

@@ -9,6 +9,7 @@ import {
   normaliseDirPath,
   normaliseFilePath,
 } from './filesystem.js'
+import { normalizeFsCheck } from './checks.js'
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 const TEXT_EXTS = new Set(['txt', 'md', 'csv'])
@@ -285,21 +286,12 @@ function preserveFsMeta(prev) {
   }
 }
 
-function fsUiFromCheck(check) {
-  if (check.type === 'fs_file_exists') return { subject: 'file_path', aspect: 'path', operator: 'exists' }
-  if (check.type === 'fs_dir_exists') return { subject: 'folder_path', aspect: 'path', operator: 'exists' }
-  if (check.type === 'fs_not_exists') return { subject: 'any_path', aspect: 'path', operator: 'not_exists' }
-  if (check.type === 'fs_content_contains') return { subject: 'file', aspect: 'content', operator: 'contains' }
-  if (check.type === 'fs_content_not_contains') return { subject: 'file', aspect: 'content', operator: 'not_contains' }
-  if (check.type === 'fs_content_equals') return { subject: 'file', aspect: 'content', operator: 'equals' }
-  if (check.type === 'fs_content_matches_regex') return { subject: 'file', aspect: 'content', operator: 'matches_regex' }
-  if (check.type === 'fs_content_not_matches_regex') return { subject: 'file', aspect: 'content', operator: 'not_matches_regex' }
-  if (check.type === 'fs_content_line_count') return { subject: 'file', aspect: 'line_count', operator: check.operator ?? 'equals' }
-  if (check.type === 'fs_file_in_dir') return { subject: 'file', aspect: 'location', operator: 'in_folder' }
-  if (check.type === 'fs_file_count') return { subject: 'folder', aspect: 'file_count', operator: check.operator ?? 'equals' }
-  if (check.type === 'fs_dir_count') return { subject: 'folder', aspect: 'folder_count', operator: check.operator ?? 'equals' }
-  if (check.type === 'fs_dir_opened') return { subject: 'opened', aspect: 'folder', operator: 'is_open' }
-  if (check.type === 'fs_file_opened') return { subject: 'opened', aspect: 'file', operator: 'is_open' }
+// Legacy check types (fs_file_exists, fs_content_contains, ...) are resolved to their
+// canonical form by the same `normalizeFsCheck` the runtime evaluator uses, instead of
+// hand-maintaining a second type->UI mapping here that could drift from checks.js's alias
+// table — see checks.js's FS_LEGACY_CHECK_ALIASES / normalizeFsCheck for the alias source.
+function fsUiFromCheck(rawCheck) {
+  const check = normalizeFsCheck(rawCheck)
 
   if (check.type === 'fs_path') {
     const subject = check.itemType === 'dir' ? 'folder_path' : check.itemType === 'any' ? 'any_path' : 'file_path'

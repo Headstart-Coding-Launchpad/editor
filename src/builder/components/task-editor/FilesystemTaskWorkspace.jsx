@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
 import { FsTreeEditor } from '../../../modules/filesystem/filesystemEditors'
 import { DEFAULT_FS } from '../../../modules/filesystem/filesystem'
+import { evaluateFeedbackCheckResults, evaluateSingleCheck, normalizeChecks } from '../../../modules/checks'
+import TaskCheckResults from './TaskCheckResults'
 
 export default function FilesystemTaskWorkspace({
   task, lesson, onUpdate,
@@ -8,11 +11,39 @@ export default function FilesystemTaskWorkspace({
   handleCodeTabChange, handleAddStage, handleRemoveStage,
   resetToStarterBtn,
 }) {
+  const [checkResults, setCheckResults] = useState(null)
+  const [incorrectCheckResults, setIncorrectCheckResults] = useState(null)
+
+  // Editing the check (via filesystem's CheckEditor) marks the task untested but doesn't
+  // touch this component's state, so without this the pass/fail banner below would keep
+  // showing results from before the edit.
+  useEffect(() => {
+    setCheckResults(null)
+    setIncorrectCheckResults(null)
+  }, [task.check])
+
   const isCompleteTab = codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
   const isStageTab = activeStageIndex !== null
   const activeStage = isStageTab ? (codeStages[activeStageIndex] ?? null) : null
+  const activeFs = isStageTab ? activeStage?.fs : isCompleteTab ? task.completeFs : task.starterFs
+
+  // Filesystem has no Run action — evaluating checks against the currently-viewed tab's
+  // filesystem (mirroring Python/HTML's "Test checks", which uses whatever's in the active
+  // tab too) is the only way an author gets any confidence a check will actually pass,
+  // and is also what clears the Builder's "run the task to verify it" warning for this type.
+  function handleTestChecks() {
+    const checksToEval = normalizeChecks(task.check)
+    if (checksToEval.length === 0) return
+    const fs = activeFs ?? DEFAULT_FS
+    const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, '', { fs }) }))
+    setCheckResults(results)
+    setIncorrectCheckResults(null)
+    onUpdate({ ...task, _checkTested: true })
+    const feedbackResults = evaluateFeedbackCheckResults(task, '', { fs })
+    if (feedbackResults.length > 0) setIncorrectCheckResults(feedbackResults)
+  }
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -117,6 +148,22 @@ export default function FilesystemTaskWorkspace({
           </div>
         )}
       </div>
+      <div className="te-run-row">
+        <button
+          className="btn-primary"
+          onClick={handleTestChecks}
+          disabled={!task.check}
+          style={{ padding: '10px 28px', fontSize: 15 }}
+        >
+          Test checks
+        </button>
+        {!task.check && (
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af' }}>
+            No checks configured — add a check to test.
+          </span>
+        )}
+      </div>
+      <TaskCheckResults task={task} lessonType="filesystem" checkResults={checkResults} incorrectCheckResults={incorrectCheckResults} />
     </div>
   )
 }

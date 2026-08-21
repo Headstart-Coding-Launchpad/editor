@@ -98,4 +98,20 @@ describe('NameEntry', () => {
     renderEntry({ waitingForSession: true })
     expect(screen.getByText(/put you in the waiting room/)).toBeInTheDocument()
   })
+
+  it('shows a join-error banner when joinError is set', () => {
+    renderEntry({ joinError: "Couldn't connect to the class session. Check your connection and try again." })
+    expect(screen.getByText(/Couldn't connect to the class session/)).toBeInTheDocument()
+  })
+
+  it('does not show a join-error banner by default', () => {
+    renderEntry()
+    expect(screen.queryByText(/Couldn't connect/)).not.toBeInTheDocument()
+  })
+
+  it('lets the student click Join again after a join error (name input is preserved)', () => {
+    const props = renderEntry({ joinError: 'Something went wrong.' })
+    typeAndSubmit('Jamie')
+    expect(props.onSubmit).toHaveBeenCalledWith('Jamie')
+  })
 })

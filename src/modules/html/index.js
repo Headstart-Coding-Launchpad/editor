@@ -80,10 +80,18 @@ const htmlModule = {
 
   carryThroughField: 'carryCodeFrom',
   carryThroughLabel: 'Carry code from task',
-  getCarryThroughUpdates: (sourceTask) => {
-    const updates = { starterFiles: (sourceTask.completeFiles ?? sourceTask.starterFiles ?? []).map(f => ({ ...f })) }
+  // Also patches codeStages[0].files/entryFile — see python/index.js's getCarryThroughUpdates
+  // for why the legacy starterFiles field alone isn't enough once a task has stages.
+  getCarryThroughUpdates: (sourceTask, targetTask) => {
+    const files = (sourceTask.completeFiles ?? sourceTask.starterFiles ?? []).map(f => ({ ...f }))
     const newEntry = sourceTask.completeEntryFile ?? sourceTask.entryFile
+    const updates = { starterFiles: files }
     if (newEntry) updates.entryFile = newEntry
+    if (targetTask?.codeStages?.length) {
+      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0
+        ? { ...stage, files: files.map(f => ({ ...f })), ...(newEntry ? { entryFile: newEntry } : {}) }
+        : stage)
+    }
     return updates
   },
   getNewStarterUpdates: (task) => ({

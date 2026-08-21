@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ARCADE_PALETTE, allowsArcadeTool, createArcadeDesign, createArcadeMap, createArcadeSprite, generatedArcadeAssets, generatedArcadeTilemaps, nextTileSymbol, resizeArcadeMap, resizeArcadeSprite, spriteFileName, updateMapCell } from './design'
 
 const DEFAULT_COLOUR = ARCADE_PALETTE[12].hex
+const MAX_HISTORY = 50
 
 function replaceById(items, id, value) {
   return items.map(item => item.id === id ? value : item)
@@ -26,7 +27,26 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
   const [mapRows, setMapRows] = useState('')
   const paintModeRef = useRef(null)
   const mapPaintRef = useRef(false)
+  // Undo/redo history is local to this component even though `design` is controlled by the
+  // parent — undo is just "call onChange with an older snapshot", the same mechanism a
+  // normal edit already uses. Bounded to avoid unbounded growth over a long editing session.
+  const [historyStack, setHistoryStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
+  const selfChangeRef = useRef(false)
+  const sectionRef = useRef(null)
+  const undoRef = useRef(() => {})
+  const redoRef = useRef(() => {})
   const normal = useMemo(() => createArcadeDesign(design), [design])
+
+  // A `design` change this component didn't itself just cause (switching tasks, switching
+  // Builder stage tabs, an incoming teacher/student live update) means the history no longer
+  // corresponds to the design now shown — drop it rather than risk undo restoring a snapshot
+  // from a different task/stage onto the current one.
+  useEffect(() => {
+    if (selfChangeRef.current) { selfChangeRef.current = false; return }
+    setHistoryStack(stack => stack.length === 0 ? stack : [])
+    setRedoStack(stack => stack.length === 0 ? stack : [])
+  }, [design])
   const sprite = normal.sprites.find(item => item.id === selectedSpriteId) ?? normal.sprites[0] ?? null
   const map = normal.maps.find(item => item.id === selectedMapId) ?? normal.maps[0] ?? null
   const selectedTile = map?.tiles?.[selectedSymbol] ?? null
@@ -54,9 +74,52 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
     return () => window.removeEventListener('pointerup', stopPainting)
   }, [])
 
-  function commit(next) { onChange?.(createArcadeDesign(next)) }
-  function updateSprite(nextSprite) { commit({ ...normal, sprites: replaceById(normal.sprites, nextSprite.id, nextSprite) }) }
-  function updateMap(nextMap) { commit({ ...normal, maps: replaceById(normal.maps, nextMap.id, nextMap) }) }
+  // `coalesce: true` skips pushing a new undo checkpoint — used for the paint-drag
+  // continuation calls (continuePaint / paintMapCell's drag branch) so a whole brush stroke
+  // undoes in one step instead of one step per pixel/cell touched.
+  function commit(next, { coalesce = false } = {}) {
+    if (!coalesce) {
+      setHistoryStack(stack => [...stack, normal].slice(-MAX_HISTORY))
+      setRedoStack([])
+    }
+    selfChangeRef.current = true
+    onChange?.(createArcadeDesign(next))
+  }
+  function updateSprite(nextSprite, opts) { commit({ ...normal, sprites: replaceById(normal.sprites, nextSprite.id, nextSprite) }, opts) }
+  function updateMap(nextMap, opts) { commit({ ...normal, maps: replaceById(normal.maps, nextMap.id, nextMap) }, opts) }
+
+  function undo() {
+    if (readOnly || historyStack.length === 0) return
+    const previous = historyStack[historyStack.length - 1]
+    setHistoryStack(stack => stack.slice(0, -1))
+    setRedoStack(stack => [...stack, normal].slice(-MAX_HISTORY))
+    selfChangeRef.current = true
+    onChange?.(createArcadeDesign(previous))
+  }
+  function redo() {
+    if (readOnly || redoStack.length === 0) return
+    const next = redoStack[redoStack.length - 1]
+    setRedoStack(stack => stack.slice(0, -1))
+    setHistoryStack(stack => [...stack, normal].slice(-MAX_HISTORY))
+    selfChangeRef.current = true
+    onChange?.(createArcadeDesign(next))
+  }
+  undoRef.current = undo
+  redoRef.current = redo
+
+  useEffect(() => {
+    if (readOnly) return undefined
+    function onKeyDown(event) {
+      const mod = event.ctrlKey || event.metaKey
+      if (!mod || !sectionRef.current?.contains(document.activeElement)) return
+      const key = event.key.toLowerCase()
+      if (key === 'z' && event.shiftKey) { event.preventDefault(); redoRef.current(); return }
+      if (key === 'z') { event.preventDefault(); undoRef.current(); return }
+      if (key === 'y') { event.preventDefault(); redoRef.current() }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [readOnly])
 
   function addSprite() {
     const next = createArcadeSprite(normal.sprites)
@@ -106,22 +169,22 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
     updateSprite(resizeArcadeSprite(sprite, size, size))
   }
 
-  function paintPixel(frameIndex, index, clear = false) {
+  function paintPixel(frameIndex, index, clear = false, coalesce = false) {
     if (!sprite || readOnly) return
     const frames = sprite.frames.map(frame => [...frame])
     frames[frameIndex][index] = clear ? null : colour
-    updateSprite({ ...sprite, frames })
+    updateSprite({ ...sprite, frames }, { coalesce })
   }
   function beginPaint(frameIndex, index, event) {
     if (readOnly) return
     event.preventDefault()
     const mode = event.button === 2 ? 'erase' : 'paint'
     paintModeRef.current = mode
-    paintPixel(frameIndex, index, mode === 'erase')
+    paintPixel(frameIndex, index, mode === 'erase', false)
   }
   function continuePaint(frameIndex, index) {
     if (!paintModeRef.current || readOnly) return
-    paintPixel(frameIndex, index, paintModeRef.current === 'erase')
+    paintPixel(frameIndex, index, paintModeRef.current === 'erase', true)
   }
 
   function addMap() {
@@ -188,14 +251,19 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
       event.preventDefault()
       mapPaintRef.current = true
     }
-    updateMap(updateMapCell(map, column, row, event?.button === 2 ? '.' : selectedSymbol))
+    updateMap(updateMapCell(map, column, row, event?.button === 2 ? '.' : selectedSymbol), { coalesce: drag })
   }
 
+  const canUndo = historyStack.length > 0
+  const canRedo = redoStack.length > 0
+
   return (
-    <section style={s.section}>
+    <section style={s.section} ref={sectionRef}>
       <header style={s.header}>
         <div><strong>{title}</strong><span style={s.hint}>Pixel art, maps, properties, and spawns</span></div>
         {!readOnly && <div style={s.headerActions}>
+          <button type="button" style={s.secondaryButton} onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
+          <button type="button" style={s.secondaryButton} onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
           {canDrawSprites && <button type="button" style={s.primaryButton} onClick={addSprite}>+ Add sprite</button>}
           {canDrawMaps && <button type="button" style={s.secondaryButton} onClick={addMap}>+ Add map</button>}
         </div>}

@@ -1,6 +1,8 @@
 // Pure Scratch check evaluation helpers and default sprite state.
 // No Blockly dependency — all inputs are plain JS values or workspace references.
 
+import { wildcardEquals, compareValues } from '../../shared/checkHelpers.js'
+
 export const DEFAULT_SPRITES = [
   { id: 'sprite1', name: 'Sprite 1', type: 'cat', x: 0, y: 0, size: 100, direction: 90 },
 ]
@@ -34,12 +36,6 @@ function getInputValue(block, inputName) {
   return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
 }
 
-function wildcardMatchField(actual, expected) {
-  if (!expected.includes('*')) return actual === expected
-  const re = new RegExp('^' + expected.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[\\s\\S]*') + '$')
-  return re.test(actual)
-}
-
 function fieldConditionMatches(actualValue, expectedConfig) {
   const actual = String(actualValue)
   const config = expectedConfig && typeof expectedConfig === 'object' && !Array.isArray(expectedConfig)
@@ -51,7 +47,7 @@ function fieldConditionMatches(actualValue, expectedConfig) {
   const expectedNumber = Number(expected)
   if (operator === 'contains') return actual.toLowerCase().includes(expected.toLowerCase())
   if (operator === 'not_contains') return !actual.toLowerCase().includes(expected.toLowerCase())
-  if (operator === 'not_equals') return !wildcardMatchField(actual, expected)
+  if (operator === 'not_equals') return !wildcardEquals(actual, expected)
   if (operator === 'greater_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber > expectedNumber
   if (operator === 'greater_than_or_equal' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber >= expectedNumber
   if (operator === 'less_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber < expectedNumber
@@ -62,7 +58,7 @@ function fieldConditionMatches(actualValue, expectedConfig) {
   if (operator === 'not_matches_regex') {
     try { return !new RegExp(expected).test(actual) } catch { return false }
   }
-  return wildcardMatchField(actual, expected)
+  return wildcardEquals(actual, expected)
 }
 
 function blockMatchesFieldValues(block, fieldValues) {
@@ -196,13 +192,9 @@ export function evaluateScratchCheck(check, workspace, spriteState, runState = n
   }
 }
 
-export function compare(actual, operator, expected) {
-  const a = Number(actual)
-  const e = Number(expected)
-  if (!Number.isNaN(a) && !Number.isNaN(e)) {
-    if (operator === 'equals') return a === e
-    if (operator === 'greater_than') return a > e
-    if (operator === 'less_than') return a < e
-  }
-  return operator === 'equals' && String(actual) === String(expected)
-}
+// Re-exported under the Scratch-local name kept for existing check-type call sites
+// (sprite_property, sprite_property_delta, block_count, variable_compare) and for
+// `scratch.js`'s re-export — this now delegates to the shared comparator so Scratch
+// checks gain not_equals/greater_than_or_equal/less_than_or_equal for free instead of
+// maintaining a second, narrower copy of the same logic.
+export const compare = compareValues

@@ -127,6 +127,57 @@ describe('broadcast timing', () => {
     // The data_setvariableto block calls onVariablesChange → sets afterBroadcastFired.
     expect(afterBroadcastFired).toBe(true)
   })
+
+  it('reports a broadcast receiver script error via signal.onError instead of swallowing it', async () => {
+    const receiverBody = {
+      type: 'looks_say',
+      getFieldValue: () => { throw new Error('boom') },
+      getInputTargetBlock: () => null,
+      getNextBlock: () => null,
+    }
+    const receiverHat = makeBlock('event_whenbroadcastreceived', { BROADCAST_OPTION: 'go' }, receiverBody)
+    const broadcastBlock = makeBlock('event_broadcast', { BROADCAST_INPUT: 'go' }, null)
+    const flagHat = makeBlock('event_whenflagclicked', {}, broadcastBlock)
+    const workspace = makeWorkspace([flagHat, receiverHat])
+
+    const spriteState = { x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null }
+    const onError = vi.fn()
+    const signal = { stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null, backdrop: null, backdrops: [], onBackdropChange: null, variables: {}, onError }
+
+    // The sender's own chain resolves fine — the broadcast is fire-and-forget.
+    await runWorkspace(workspace, spriteState, () => {}, signal)
+    // Let the fire-and-forget receiver chain's rejected promise settle.
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error)
+  })
+})
+
+// --- A script's own (non-broadcast, non-clone) main chain throwing ---
+// ScratchWorkspace.jsx's handleRun/runClickedBlock/fireKeyEvent await runWorkspace-family
+// calls directly and route a caught error into signal.onError — this just confirms
+// runWorkspace itself actually rejects (rather than swallowing) when a block throws, which
+// is what makes that catch block reachable in the first place.
+
+describe('a script that throws in its own main chain', () => {
+  function makeWorkspace(blocks) {
+    return { getBlocksByType: type => blocks.filter(b => b.type === type), getAllBlocks: () => blocks }
+  }
+  function makeBlock(type, fields = {}, nextBlock = null) {
+    return { type, getFieldValue: name => fields[name] ?? null, getInputTargetBlock: () => null, getNextBlock: () => nextBlock }
+  }
+
+  it('rejects the run promise instead of resolving silently', async () => {
+    const badBlock = makeBlock('motion_movesteps', {})
+    badBlock.getFieldValue = () => { throw new Error('boom') }
+    const flagHat = makeBlock('event_whenflagclicked', {}, badBlock)
+    const workspace = makeWorkspace([flagHat])
+    const spriteState = { x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null }
+    const signal = createRunSignal()
+
+    await expect(runWorkspace(workspace, spriteState, () => {}, signal)).rejects.toThrow('boom')
+  })
 })
 
 // --- addPredefinedBlocksToToolbox ---
@@ -805,6 +856,27 @@ describe('Scratch clones', () => {
 
     expect(created).toHaveLength(300)
     expect(signal.cloneCount).toBe(300)
+  })
+
+  it('reports a clone script error via signal.onError instead of swallowing it', async () => {
+    const cloneBody = makeCloneBlock('motion_movesteps', {})
+    cloneBody.getFieldValue = () => { throw new Error('boom') }
+    const startAsCloneHat = makeCloneBlock('control_start_as_clone', {}, cloneBody)
+    const createCloneBlock = makeCloneBlock('control_create_clone_of', { CLONE_OPTION: '_myself_' })
+    const flagHat = makeCloneBlock('event_whenflagclicked', {}, createCloneBlock)
+    const workspace = makeCloneWorkspace([flagHat, startAsCloneHat])
+
+    const spriteState = makeCloneState()
+    const signal = createRunSignal()
+    const onError = vi.fn()
+    signal.onError = onError
+
+    // The creator's own chain resolves fine — the clone's script runs fire-and-forget.
+    await runWorkspace(workspace, spriteState, () => {}, signal)
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error)
   })
 })
 

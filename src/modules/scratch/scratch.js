@@ -1587,8 +1587,10 @@ async function runBlock(block, context) {
             signal, context.allSprites, source.costumes ?? [], cloneId,
           )
           const hats = source.workspace.getBlocksByType('control_start_as_clone', false)
-          // fire-and-forget: the clone's scripts run concurrently, the creator continues immediately
-          Promise.all(hats.map(hat => runChain(hat.getNextBlock(), cloneContext))).catch(() => {})
+          // fire-and-forget: the clone's scripts run concurrently, the creator continues immediately.
+          // A throw here would otherwise never reach the top-level run's try/catch at all
+          // (this promise chain isn't awaited by the creator), so it needs its own report.
+          Promise.all(hats.map(hat => runChain(hat.getNextBlock(), cloneContext))).catch(err => signal.onError?.(err))
         }
       }
       break
@@ -1607,13 +1609,15 @@ async function runBlock(block, context) {
       const msg = stringValue(block, 'BROADCAST_INPUT', context)
       context.signal.onBroadcast?.(msg)
       const targets = context.allSprites ?? [{ workspace: context.workspace, state: context.state, onUpdate: context.onUpdate }]
-      // fire-and-forget: receivers run concurrently, sender continues immediately
+      // fire-and-forget: receivers run concurrently, sender continues immediately. A throw
+      // here would otherwise never reach the top-level run's try/catch (see the matching
+      // comment on the control_start_as_clone case above).
       Promise.all(targets.map(sp => {
         const ctx = createRunContext(sp.workspace, sp.state, sp.onUpdate, context.signal, context.allSprites, sp.costumes ?? [])
         const hats = sp.workspace.getBlocksByType('event_whenbroadcastreceived', false)
           .filter(hat => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(msg ?? ''))
         return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), ctx)))
-      })).catch(() => {})
+      })).catch(err => context.signal.onError?.(err))
       break
     }
     case 'event_broadcastandwait': {

@@ -214,11 +214,13 @@ export default function TopicLibraryPanel() {
         </div>
       </div>
 
-      <div className="ui-tabs">
+      <div className="ui-tabs" role="tablist" aria-label="Filter topics by lesson type">
         {[{ key: null, label: 'All', count: typeCounts.all }, ...LESSON_TYPES.map(t => ({ key: t, label: LESSON_TYPE_LABELS[t] ?? t, count: typeCounts[t] }))].map(({ key, label, count }) => (
           <button
             key={label}
             className={`ui-tab${typeFilter === key ? ' is-active' : ''}`}
+            role="tab"
+            aria-selected={typeFilter === key}
             onClick={() => setTypeFilter(key)}
           >
             {label} <span style={s.typeTabCount}>{count}</span>

@@ -101,6 +101,7 @@ Evaluated after the Python run completes. `value` accepts a JSON-encoded string 
 | `variable_exists` | `name` | Variable exists in scope |
 | `variable_type` | `name`, `value` | Type matches. Aliases: `str`/`string`, `int`/`float`/`number`, `bool`/`boolean`, `list`/`tuple`/`array`, `dict`/`dictionary` |
 | `variable_equals` | `name`, `value` | Variable equals value |
+| `variable_not_equals` | `name`, `value` | Variable does not equal value |
 | `variable_dict_contains` | `name`, `value` | Dict contains value (any key) |
 | `variable_dict_equals` | `name`, `value` | Dict deep-equals value |
 | `variable_dict_key_value` | `name`, `key`, `value` | Dict key `key` equals value |

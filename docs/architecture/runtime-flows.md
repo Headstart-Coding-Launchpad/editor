@@ -15,11 +15,15 @@ flowchart TD
   App --> Code["/code"]
   App --> Admin["/admin"]
   App --> Builder["/builder"]
+  App --> Account["/account"]
+  App --> Playground["/playground/:type"]
   Lesson --> Student["StudentView"]
   Lesson --> Teacher["TeacherView when teacher query/auth allows"]
   Code --> CodeWorkspace["CodeFileWorkspace"]
   Admin --> Protected["ProtectedRoute admin"]
   Builder --> BuilderApp["Builder route"]
+  Account --> AccountSettings["Teacher/admin password settings"]
+  Playground --> PlaygroundView["Standalone Python/Arcade Kit/Electronics playgrounds"]
 ```
 
 The app stays frontend-only. Firebase supplies auth, durable lesson/admin data, live session data, storage, and account-management functions.
@@ -35,13 +39,15 @@ stateDiagram-v2
   waiting --> nameEntry: teacher starts session
   nameEntry --> lesson: student joins
   solo --> lesson: student joins live session
-  lesson --> sandbox: personal sandbox opened
-  sandbox --> lesson: sandbox closed
+  lesson --> sandbox: teacher activates class sandbox
+  sandbox --> lesson: teacher deactivates class sandbox
   lesson --> ended: teacher ends session
   ended --> solo: continue solo
 ```
 
 `useStudentPhase.js` owns the phase and current/viewing task decisions. Student identity remains login-less and is stored in localStorage.
+
+Note: the `sandbox` phase above is only the teacher-forced, whole-class sandbox (`session.state === 'sandbox'`). A student's personal sandbox is a separate, phase-independent flag (`inPersonalSandbox`) that never changes `phase` and is available in both the `lesson` and `solo` phases — see `docs/agents/classroom-behaviours.md`'s Personal Sandbox section for the accurate description.
 
 ## Student Persistence
 

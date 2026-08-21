@@ -1,6 +1,6 @@
 import {
   collection, deleteDoc, doc, getDoc, getDocs, orderBy, query,
-  setDoc,
+  setDoc, writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
 import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from './lessonBlocksCodec'
@@ -39,8 +39,13 @@ export async function publishLessonTasks(lessonId, tasks) {
   await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
 }
 
+// Deletes a published lesson document. Firestore does not cascade-delete
+// subcollections, so this also purges the lesson's sessionReports/feedback
+// subcollections first — otherwise a deleted lesson silently leaves orphaned
+// run data behind despite the admin UI describing the delete as unrecoverable.
 export async function deletePublishedLesson(lessonId) {
   if (!lessonId) throw new Error('Lesson id is required')
+  await clearLessonRunData(lessonId)
   await deleteDoc(doc(firestore, 'lessons', lessonId))
 }
 
@@ -57,9 +62,16 @@ export async function saveClassRecord(input) {
   return record
 }
 
+const FIRESTORE_BATCH_LIMIT = 500
+
 async function clearLessonChildCollection(lessonId, collectionName) {
   const snap = await getDocs(collection(firestore, 'lessons', lessonId, collectionName))
-  await Promise.all(snap.docs.map(item => deleteDoc(item.ref)))
+  const docs = snap.docs
+  for (let i = 0; i < docs.length; i += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(firestore)
+    for (const item of docs.slice(i, i + FIRESTORE_BATCH_LIMIT)) batch.delete(item.ref)
+    await batch.commit()
+  }
   return snap.size
 }
 

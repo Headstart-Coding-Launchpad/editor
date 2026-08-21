@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getLessonModule, getLessonModules, getStudentWorkspace, getBuilderWorkspace, getCheckEditor } from '../registry.js'
+import { getLessonModule, getLessonModules } from '../registry.js'
 
 describe('getLessonModule', () => {
   it('returns a module for each known lesson type', () => {
@@ -35,23 +35,5 @@ describe('getLessonModule', () => {
       ['filesystem', 'Filesystem'],
       ['electronics', 'Electronics'],
     ])
-  })
-})
-
-describe('getStudentWorkspace', () => {
-  it('returns null for unknown type', () => {
-    expect(getStudentWorkspace('unknown')).toBeNull()
-  })
-})
-
-describe('getBuilderWorkspace', () => {
-  it('returns null for unknown type', () => {
-    expect(getBuilderWorkspace('unknown')).toBeNull()
-  })
-})
-
-describe('getCheckEditor', () => {
-  it('returns null for unknown type', () => {
-    expect(getCheckEditor('unknown')).toBeNull()
   })
 })

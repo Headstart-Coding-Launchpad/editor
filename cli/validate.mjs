@@ -1,9 +1,10 @@
 import { validateTopicProposals } from '../src/shared/topicAudit.js'
 import { checkAllowedForSubmit, checkRequiresRun, evaluateSingleCheck } from '../src/modules/checks.js'
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
-import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES } from '../src/shared/taskUtils.js'
+import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES, getStarterStage } from '../src/shared/taskUtils.js'
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../src/shared/composedLesson.js'
+import { validateFilesystemChecks, validateElectronicsChecks } from '../src/shared/checkAuthoringValidation.js'
 
 const VALID_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics', 'composed']
 
@@ -183,18 +184,18 @@ export function validateLessonForMcp(lesson) {
           if (!stage.fs || typeof stage.fs !== 'object') errors.push(`Task ${n} stage ${si + 1} has no filesystem state`)
         })
       }
-      if (task.check) {
-        const checks = normalizeChecks(task.check)
-        if (checks.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
-          errors.push(`Task ${n} has a filesystem check but no path`)
-        }
-        if (checks.some(c => c.type === 'fs_content_contains' && !c.value?.trim())) {
-          errors.push(`Task ${n} has a file content check but no expected value`)
-        }
-        if (checks.some(c => c.type === 'fs_file_in_dir' && !c.dir?.trim())) {
-          errors.push(`Task ${n} has a file-in-dir check but no parent folder`)
-        }
+      if (task.check) validateFilesystemChecks(task.check, n, errors)
+    } else if (task.taskType !== 'information' && taskType === 'electronics') {
+      const starterCircuit = getStarterStage(task)?.stage?.circuit ?? task.starterCircuit
+      if (!starterCircuit || !Array.isArray(starterCircuit.components)) {
+        errors.push(`Task ${n} has no starter breadboard`)
       }
+      if (task.codeStages?.length > 0) {
+        task.codeStages.forEach((stage, si) => {
+          if (!stage.label?.trim()) errors.push(`Task ${n} stage ${si + 1} is missing a label`)
+        })
+      }
+      if (task.check) validateElectronicsChecks(task.check, n, errors)
     } else if (task.taskType !== 'information' && task.taskType !== 'quiz' && taskType === 'scratch') {
       if (task.check?.type === 'sprite_property') {
         if (!task.check.property) errors.push(`Task ${n} sprite check is missing a property`)

@@ -23,7 +23,15 @@ export default {
     : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', code: '' },
   initCompleteTab: (task, { onUpdate }) => { if (task.completeCode == null) onUpdate({ ...task, completeCode: task.starterCode ?? '' }) }, initStageTab: null,
   defaultCheck: () => [{ type: 'code_contains', value: '' }],
-  carryThroughField: 'carryCodeFrom', carryThroughLabel: 'Carry code from task', getCarryThroughUpdates: source => ({ starterCode: source.completeCode ?? source.starterCode ?? '' }), getNewStarterUpdates: () => ({ starterCode: '' }),
+  carryThroughField: 'carryCodeFrom', carryThroughLabel: 'Carry code from task',
+  // Also patches codeStages[0].code (see python/index.js's getCarryThroughUpdates for why).
+  getCarryThroughUpdates: (source, targetTask) => {
+    const code = source.completeCode ?? source.starterCode ?? ''
+    const updates = { starterCode: code }
+    if (targetTask?.codeStages?.length) updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, code } : stage)
+    return updates
+  },
+  getNewStarterUpdates: () => ({ starterCode: '' }),
   supportsInteractionMode: false, supportsIncorrectChecks: true, supportsTests: false, supportsVariableChecks: false, supportsDomChecks: false, supportsCopyCode: true,
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' }, explainerInlineCodeLanguages: ['python'],
   defaultState: '', initialState: task => task.starterCode ?? '', serializeState: state => state, deserializeState: raw => typeof raw === 'string' ? raw : '',

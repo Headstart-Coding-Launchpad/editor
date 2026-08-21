@@ -4,25 +4,11 @@ import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import ScratchTeacherLiveView from './TeacherLiveView.jsx'
 import { DEFAULT_SPRITES } from './checks'
+import { flexLayoutStyles } from '../sharedStyles.js'
 
 export { DEFAULT_SPRITES, SPRITE_TYPES }
 
-const taskContentStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-  minHeight: 0,
-  overflow: 'visible',
-}
-
-const editorAreaStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-  minHeight: 0,
-}
+const { taskContentStyle, editorAreaStyle } = flexLayoutStyles
 
 const scratchModule = {
   type: 'scratch',
@@ -71,12 +57,23 @@ const scratchModule = {
 
   carryThroughField: 'carryBlocksFrom',
   carryThroughLabel: 'Carry blocks from task',
-  getCarryThroughUpdates: (sourceTask) => ({
-    starterBlocks: sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null,
-    sprites: JSON.parse(JSON.stringify(sourceTask.sprites ?? [])),
-    backdrops: JSON.parse(JSON.stringify(sourceTask.backdrops ?? [])),
-    variables: JSON.parse(JSON.stringify(sourceTask.variables ?? [])),
-  }),
+  // Also patches codeStages[0].blocks (see python/index.js's getCarryThroughUpdates for why)
+  // and carries enableStageCode across — without it, a carried __stage__ blocks entry has
+  // no Stage workspace to render in, so the carried Stage script becomes silently inert.
+  getCarryThroughUpdates: (sourceTask, targetTask) => {
+    const blocks = sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null
+    const updates = {
+      starterBlocks: blocks,
+      sprites: JSON.parse(JSON.stringify(sourceTask.sprites ?? [])),
+      backdrops: JSON.parse(JSON.stringify(sourceTask.backdrops ?? [])),
+      variables: JSON.parse(JSON.stringify(sourceTask.variables ?? [])),
+      enableStageCode: sourceTask.enableStageCode ?? false,
+    }
+    if (targetTask?.codeStages?.length) {
+      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, blocks } : stage)
+    }
+    return updates
+  },
   getNewStarterUpdates: () => ({
     starterBlocks: null,
   }),

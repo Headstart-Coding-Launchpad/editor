@@ -91,7 +91,7 @@ export default function StudentWorkspace({ task, lessonId, lesson, cs, isMobile,
       <button className={running ? 'btn-danger' : 'btn-primary'} style={s.runButton} onClick={running ? stop : run}>{running ? 'Stop' : 'Run game'}</button>
       <button className="btn-ghost-outline" style={s.button} onClick={handleResetCode}>Reset</button>
     </div>}
-    <PythonEditor code={code} readOnly={readOnly} onChange={readOnly ? undefined : handleCodeChange} pyodideStatus="ready" />
+    <PythonEditor code={code} readOnly={readOnly} onChange={readOnly ? undefined : handleCodeChange} pyodideStatus="ready" onRunShortcut={readOnly ? undefined : (running ? stop : run)} />
     {!readOnly && <details style={s.assets} open={generatedAssets.length > 0 || generatedTilemaps.length > 0}>
       <summary style={s.assetsSummary}>Assets</summary>
       <div style={s.assetBar}>

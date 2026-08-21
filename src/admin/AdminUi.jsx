@@ -19,9 +19,10 @@ export function AdminSection({ title, subtitle, children, as: Component = 'secti
   )
 }
 
-export function AdminTable({ headers, children }) {
+export function AdminTable({ headers, children, colgroup, style }) {
   return (
-    <table style={styles.table}>
+    <table style={{ ...styles.table, ...style }}>
+      {colgroup}
       <thead>
         <tr>
           {headers.map((header, index) => (
@@ -34,8 +35,8 @@ export function AdminTable({ headers, children }) {
   )
 }
 
-export function AdminCell({ children, style }) {
-  return <td style={{ ...styles.td, ...style }}>{children}</td>
+export function AdminCell({ children, style, colSpan }) {
+  return <td style={{ ...styles.td, ...style }} colSpan={colSpan}>{children}</td>
 }
 
 export function AdminMessage({ tone = 'muted', children }) {
@@ -91,7 +92,7 @@ const styles = {
     fontSize: '0.78rem', fontWeight: 600,
   },
   lessonIdPill: {
-    fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#6b7280',
+    fontFamily: 'var(--font-code)', fontSize: '0.75rem', color: '#6b7280',
     background: '#f3f4f6', borderRadius: 4, padding: '1px 6px',
   },
 }

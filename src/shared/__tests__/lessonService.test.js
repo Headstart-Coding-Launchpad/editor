@@ -4,6 +4,8 @@ const mockGetDoc = vi.fn()
 const mockGetDocs = vi.fn()
 const mockSetDoc = vi.fn()
 const mockDeleteDoc = vi.fn()
+const mockBatchDelete = vi.fn()
+const mockBatchCommit = vi.fn()
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((firestore, name) => ({ firestore, name })),
@@ -12,6 +14,10 @@ vi.mock('firebase/firestore', () => ({
   getDocs: (...args) => mockGetDocs(...args),
   setDoc: (...args) => mockSetDoc(...args),
   deleteDoc: (...args) => mockDeleteDoc(...args),
+  writeBatch: () => ({
+    delete: (...args) => mockBatchDelete(...args),
+    commit: (...args) => mockBatchCommit(...args),
+  }),
 }))
 
 vi.mock('../firebase', () => ({
@@ -26,6 +32,8 @@ describe('lessonService', () => {
     mockGetDocs.mockReset()
     mockSetDoc.mockReset()
     mockDeleteDoc.mockReset()
+    mockBatchDelete.mockReset()
+    mockBatchCommit.mockReset().mockResolvedValue(undefined)
   })
 
   it('loads a lesson from Firestore by id', async () => {
@@ -109,10 +117,33 @@ describe('applyLessonOverride', () => {
 
 describe('deletePublishedLesson', () => {
   it('deletes the lesson document by id', async () => {
+    mockGetDocs.mockResolvedValue({ docs: [] })
     mockDeleteDoc.mockResolvedValue(undefined)
 
     await deletePublishedLesson('python-1-1')
 
+    expect(mockDeleteDoc).toHaveBeenCalledWith(
+      { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
+    )
+  })
+
+  it('purges the sessionReports and feedback subcollections before deleting the lesson doc', async () => {
+    // clearLessonRunData fires clearLessonChildCollection('sessionReports') and
+    // ('feedback') via Promise.all — each calls getDocs synchronously in that
+    // array order before either await resolves, so mockResolvedValueOnce chaining
+    // reliably corresponds to sessionReports first, feedback second.
+    const reportRef = { id: 'report-1' }
+    const feedbackRef = { id: 'feedback-1' }
+    mockGetDocs
+      .mockResolvedValueOnce({ docs: [{ ref: reportRef }] })
+      .mockResolvedValueOnce({ docs: [{ ref: feedbackRef }] })
+    mockDeleteDoc.mockResolvedValue(undefined)
+
+    await deletePublishedLesson('python-1-1')
+
+    expect(mockBatchDelete).toHaveBeenCalledWith(reportRef)
+    expect(mockBatchDelete).toHaveBeenCalledWith(feedbackRef)
+    expect(mockBatchCommit).toHaveBeenCalled()
     expect(mockDeleteDoc).toHaveBeenCalledWith(
       { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
     )

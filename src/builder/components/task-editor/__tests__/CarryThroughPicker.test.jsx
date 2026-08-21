@@ -60,6 +60,37 @@ describe('CarryThroughPicker scratch stage copy', () => {
     expect(updated.sprites).not.toBe(lesson.tasks[0].sprites)
   })
 
+  it('also patches codeStages[0].blocks and carries enableStageCode when the target task has stages', async () => {
+    const lesson = makeLesson()
+    lesson.tasks[1].enableStageCode = false
+    lesson.tasks[0].enableStageCode = true
+    lesson.tasks[1].codeStages = [
+      { label: 'Starter', role: 'starter', blocks: null },
+      { label: 'Support 1', role: 'support', blocks: { a: 2 } },
+    ]
+    const task = lesson.tasks[1]
+    const onUpdate = vi.fn()
+
+    render(
+      <CarryThroughPicker
+        task={task}
+        lesson={lesson}
+        onUpdate={onUpdate}
+        isScratch
+        isPython={false}
+        isFilesystem={false}
+      />
+    )
+
+    await userEvent.click(screen.getByText('Carry from last task').closest('label').querySelector('input'))
+
+    const updated = onUpdate.mock.calls[0][0]
+    expect(updated.enableStageCode).toBe(true)
+    expect(updated.codeStages[0]).toEqual({ label: 'Starter', role: 'starter', blocks: lesson.tasks[0].completeBlocks })
+    // Stage 1 (support) is untouched — only stage 0 is patched with the carried content.
+    expect(updated.codeStages[1]).toEqual({ label: 'Support 1', role: 'support', blocks: { a: 2 } })
+  })
+
   it('limits composed lessons to earlier tasks in the same module', async () => {
     const lesson = {
       type: 'composed',
@@ -76,5 +107,27 @@ describe('CarryThroughPicker scratch stage copy', () => {
     await userEvent.click(screen.getByText('Carry from last task').closest('label').querySelector('input'))
 
     expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ carryCodeFrom: 1, starterCode: 'print(1)' }))
+  })
+
+  it('also patches codeStages[0].code for a Python task authored with codeStages', async () => {
+    const lesson = {
+      type: 'python',
+      tasks: [
+        { id: 1, title: 'One', starterCode: 'a=1', completeCode: 'a=1; print(a)' },
+        {
+          id: 2, title: 'Two', starterCode: '', carryCodeFrom: null,
+          codeStages: [{ label: 'Starter', role: 'starter', code: '' }],
+        },
+      ],
+    }
+    const onUpdate = vi.fn()
+
+    render(<CarryThroughPicker task={lesson.tasks[1]} lesson={lesson} lessonMod={getLessonModule('python')} onUpdate={onUpdate} />)
+
+    await userEvent.click(screen.getByText('Carry from last task').closest('label').querySelector('input'))
+
+    const updated = onUpdate.mock.calls[0][0]
+    expect(updated.starterCode).toBe('a=1; print(a)')
+    expect(updated.codeStages[0]).toEqual({ label: 'Starter', role: 'starter', code: 'a=1; print(a)' })
   })
 })

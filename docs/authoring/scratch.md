@@ -62,6 +62,7 @@ modules:
     allowAddBackdrop: false   # optional — show a student-facing "Add backdrop" picker (default false)
     addBackdropPresetIds: []  # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultBackdrops` ids; omitted/empty = whole library
     allowCreateVariable: false # optional — add a "Make a Variable" button to the Variables flyout (default false)
+    enableStageCode: false    # optional — give the Stage its own workspace (blocks keyed "__stage__"); carried through automatically when the task carries blocks from an earlier task
     check:
       type: sprite_property
       evaluation: after_run

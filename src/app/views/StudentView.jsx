@@ -6,6 +6,7 @@ import { useLessonLoader } from '../hooks/useLessonLoader'
 import { applyLessonOverride } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
+import { useCrossTabPresence } from '../hooks/useCrossTabPresence'
 import { flattenTasks, filterTasksByMode, getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
@@ -20,7 +21,7 @@ import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
-import { getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
+import { getSavedNonPythonTaskCount, getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { decodeSessionFiles } from '../../shared/workspaceData'
@@ -38,7 +39,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
     removeTeacherHighlight,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
-  const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
+  const { identity, loaded: identityLoaded, authError, retrySignIn, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
   const { lesson: baseLesson, lessonLoading, firstTaskId: baseFirstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
@@ -68,6 +69,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     phase, setPhase,
     currentTaskId, setCurrentTaskId,
     viewingTaskId, setViewingTaskId,
+    joinError,
     handleNameSubmit, handleWaitForTeacher, handleGoSolo,
   } = useStudentPhase({
     session, sessionLoading,
@@ -114,10 +116,18 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     const task = flattenTasks(lesson.tasks).find(item => item.id === currentTaskId)
     return isPythonCodeTask(task) ? task : null
   }, [lesson, activeLesson?.type, currentTaskId])
-  const savedPythonTasks = useMemo(() => getSavedPythonTasks({
-    lesson,
-    anonymousId: teacherPresentation ? null : identity?.anonymousId,
-  }), [lesson, identity?.anonymousId, teacherPresentation, cs.code])
+  // Only shown on the session-ended screen — gating on phase avoids rescanning localStorage
+  // on every keystroke while the student is still working.
+  const savedPythonTasks = useMemo(() => {
+    if (phase !== 'ended') return []
+    return getSavedPythonTasks({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
+  }, [phase, lesson, identity?.anonymousId, teacherPresentation])
+  const savedOtherTaskCount = useMemo(() => {
+    if (phase !== 'ended') return 0
+    return getSavedNonPythonTaskCount({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
+  }, [phase, lesson, identity?.anonymousId, teacherPresentation])
+  const [otherTabDismissed, setOtherTabDismissed] = useState(false)
+  const otherTabOpen = useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) && !otherTabDismissed
 
   function downloadTasks(tasks, filename) {
     if (tasks.length === 0) return
@@ -245,6 +255,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         onSubmit={handleNameSubmit}
         onGoSolo={handleGoSolo}
         waitingForSession={session?.state === 'waiting'}
+        joinError={joinError}
       />
     )
   }
@@ -262,6 +273,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     return (
       <SessionEndedScreen
         savedCodeTaskCount={savedPythonTasks.length}
+        savedOtherTaskCount={savedOtherTaskCount}
         onDownloadAllCode={handleDownloadAllCode}
         onContinueSolo={() => setPhase('solo')}
       />
@@ -593,6 +605,10 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         inPersonalSandbox={cs.inPersonalSandbox}
         onLeavePersonalSandbox={cs.handleLeavePersonalSandbox}
         isTeacherEditing={isTeacherEditing}
+        otherTabOpen={otherTabOpen}
+        onDismissOtherTab={() => setOtherTabDismissed(true)}
+        authError={!teacherPresentation && authError}
+        onRetrySignIn={retrySignIn}
       />
       <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...s.body, overflow: 'hidden' } : s.body}>
         <LessonTaskContent
@@ -677,6 +693,8 @@ const s = {
   presentationBtn: {
     fontSize: 13,
     padding: '5px 12px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   presentationTaskLabel: {
     fontFamily: 'var(--font-body)',
@@ -686,6 +704,8 @@ const s = {
     opacity: 0.9,
     minWidth: 72,
     textAlign: 'center',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   presenterLayoutGroup: {
     display: 'flex',
@@ -694,6 +714,7 @@ const s = {
     marginLeft: 4,
     paddingLeft: 8,
     borderLeft: '1px solid rgba(255,255,255,0.35)',
+    flexShrink: 0,
   },
   presenterLayoutBtnActive: {
     background: 'rgba(255,255,255,0.22)',

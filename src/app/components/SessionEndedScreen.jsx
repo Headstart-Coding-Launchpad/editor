@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function SessionEndedScreen({ savedCodeTaskCount = 0, onDownloadAllCode, onContinueSolo }) {
+export default function SessionEndedScreen({ savedCodeTaskCount = 0, savedOtherTaskCount = 0, onDownloadAllCode, onContinueSolo }) {
   return (
     <div style={s.centreScreen}>
       <h2 style={s.title}>Session ended</h2>
@@ -13,6 +13,11 @@ export default function SessionEndedScreen({ savedCodeTaskCount = 0, onDownloadA
           <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
             Download all my code
           </button>
+        </div>
+      )}
+      {savedOtherTaskCount > 0 && (
+        <div style={s.backupNotice}>
+          <strong>Saved only on this device.</strong> Work in {savedOtherTaskCount === 1 ? 'one other task is' : `${savedOtherTaskCount} other tasks are`} saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost when you change device.
         </div>
       )}
       <p style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}>

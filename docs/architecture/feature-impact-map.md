@@ -46,6 +46,23 @@ Usually changes with:
 - `docs/CODEBASE_MAP.md`
 - `docs/TESTING.md`
 
+## Composed Lessons And Playgrounds
+
+Changes include multi-workspace composed lessons, lesson-module-scoped carry-through/sandboxes, module routing for tasks, or the standalone Python/Arcade Kit/Electronics playgrounds.
+
+Usually changes with:
+
+- `src/shared/composedLesson.js`
+- `src/shared/lessonLevels.js`
+- `src/builder/components/TaskEditor.jsx`
+- `src/builder/views/BuilderView.jsx`
+- `src/builder/App.jsx`
+- `src/app/components/StudentModal.jsx`
+- `src/app/views/StudentView.jsx`
+- `docs/architecture/composed-lessons-spec.md`
+- `docs/authoring/AUTHORING_GUIDE.md`
+- `docs/FEATURES.md`
+
 ## Completion And Feedback Checks
 
 Changes include new check types, operator aliases, feedback suggestions, or builder check editor behavior.

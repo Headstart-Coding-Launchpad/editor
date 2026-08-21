@@ -71,6 +71,17 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* The style guide documents a visible focus ring "through the global --ui-focus ring" for
+   the whole app, but until now that ring was only ever wired up for form inputs (below) —
+   buttons, tabs, and links had no focus-visible rule at all, so keyboard/screen-reader
+   navigation lost all visible focus the moment it left a text field. */
+button:focus-visible,
+.ui-tab:focus-visible,
+a:focus-visible {
+  box-shadow: var(--ui-focus);
+  outline: none;
+}
+
 .btn-primary {
   background: linear-gradient(180deg, #fbb733 0%, var(--colour-secondary) 100%) !important;
   color: var(--colour-text-on-secondary) !important;

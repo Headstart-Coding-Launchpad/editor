@@ -34,11 +34,13 @@ export default function SharedAssetsPanel({ subtab, onSubtabChange }) {
         </p>
       </div>
 
-      <div className="ui-tabs">
+      <div className="ui-tabs" role="tablist" aria-label="Lesson type">
         {LESSON_TYPES.map(t => (
           <button
             key={t.id}
             className={`ui-tab${activeType === t.id ? ' is-active' : ''}`}
+            role="tab"
+            aria-selected={activeType === t.id}
             onClick={() => setActiveType(t.id)}
           >
             {t.label}
@@ -218,6 +220,8 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
 
   function removeSprite(id) {
     if (sprites.length <= 1) return
+    const sprite = sprites.find(sp => sp.id === id)
+    if (!confirm(`Delete "${sprite?.name ?? 'this sprite'}" (and all its costumes) from the shared default sprites?`)) return
     onChange(sprites.filter(sp => sp.id !== id))
   }
 
@@ -257,6 +261,9 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
   }
 
   function removeCostume(spriteId, idx) {
+    const sprite = sprites.find(s => s.id === spriteId)
+    const costumeName = sprite?.costumes?.[idx]?.name
+    if (!confirm(`Delete costume "${costumeName ?? idx + 1}" from "${sprite?.name ?? 'this sprite'}"?`)) return
     onChange(sprites.map(s => s.id === spriteId
       ? { ...s, costumes: (s.costumes ?? []).filter((_, i) => i !== idx) }
       : s
@@ -422,6 +429,8 @@ function DefaultBackdropsEditor({ backdrops, storageAssets, onChange }) {
   }
 
   function removeBackdrop(id) {
+    const backdrop = backdrops.find(b => b.id === id)
+    if (!confirm(`Delete "${backdrop?.name ?? 'this backdrop'}" from the shared default backdrops?`)) return
     onChange(backdrops.filter(b => b.id !== id))
   }
 

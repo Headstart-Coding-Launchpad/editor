@@ -469,7 +469,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                   onClick={() => handleModuleChange(moduleType)}
                 >
                   <span className="te-info-type-label">{icon} {moduleType === 'arcade' ? 'Arcade Kit' : moduleType[0].toUpperCase() + moduleType.slice(1)}</span>
-                  <span className="te-info-type-hint">{moduleType === 'filesystem' ? 'File manager' : 'Workspace'}</span>
+                  <span className="te-info-type-hint">
+                    {moduleType === 'filesystem' ? 'File manager' : 'Workspace'}
+                    {moduleType === 'arcade' ? ' · Experimental' : ''}
+                  </span>
                 </button>
               )
             })}

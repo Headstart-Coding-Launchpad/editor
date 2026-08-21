@@ -11,9 +11,39 @@ export default function StudentStatusBanners({
   inPersonalSandbox,
   onLeavePersonalSandbox,
   isTeacherEditing,
+  otherTabOpen,
+  onDismissOtherTab,
+  authError,
+  onRetrySignIn,
 }) {
   return (
     <>
+      {authError && (
+        <Banner accent="#ef4444" color="#b91c1c">
+          Couldn&apos;t connect to save your progress — your work may not be saved. Check your connection.
+          <button
+            className="btn-secondary"
+            style={{ marginLeft: 16, padding: '4px 12px', fontSize: 13 }}
+            onClick={onRetrySignIn}
+          >
+            Retry
+          </button>
+        </Banner>
+      )}
+
+      {otherTabOpen && (
+        <Banner accent="#f59e0b" color="#92400e">
+          This lesson is open in another tab — your work may be overwritten.
+          <button
+            className="btn-secondary"
+            style={{ marginLeft: 16, padding: '4px 12px', fontSize: 13 }}
+            onClick={onDismissOtherTab}
+          >
+            Dismiss
+          </button>
+        </Banner>
+      )}
+
       {isForcedTeacherLive && (
         <div style={s.teacherLiveBanner}>
           <span className="live-dot" />

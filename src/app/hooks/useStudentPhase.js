@@ -25,6 +25,7 @@ export function useStudentPhase({
   const [phase, setPhase] = useState('loading')
   const [currentTaskId, setCurrentTaskId] = useState(firstTaskId ?? 1)
   const [viewingTaskId, setViewingTaskId] = useState(null)
+  const [joinError, setJoinError] = useState(null)
 
   const phaseRef = useRef(phase)
   phaseRef.current = phase
@@ -98,7 +99,7 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'join-choice' || phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
+      if (phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
         if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
         else setPhase('waiting')
         return
@@ -123,7 +124,7 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'loading' || phaseRef.current === 'join-choice') {
+      if (phaseRef.current === 'loading') {
         if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
         else setPhase('waiting')
         return
@@ -210,13 +211,22 @@ export function useStudentPhase({
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleNameSubmit(displayName) {
+    setJoinError(null)
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
+    try {
+      await joinSession(id.anonymousId, displayName)
+    } catch (err) {
+      console.warn('Failed to join session:', err)
+      setJoinError("Couldn't connect to the class session. Check your connection and try again.")
+      return
+    }
+    // Only remove the joining marker once the real student record is written, so a failed
+    // join (and any retry) keeps the teacher's live view showing this student as joining.
     if (joiningTempIdRef.current) {
       unregisterJoining(joiningTempIdRef.current)
       joiningTempIdRef.current = null
     }
-    await joinSession(id.anonymousId, displayName)
     if (!session || session.state === 'ended') { setPhase('waiting'); return }
     if (session.state === 'waiting') { setPhase('waiting'); return }
     if (session.state === 'sandbox') { setPhase('sandbox'); return }
@@ -241,6 +251,7 @@ export function useStudentPhase({
     phase, setPhase,
     currentTaskId, setCurrentTaskId,
     viewingTaskId, setViewingTaskId,
+    joinError,
     handleNameSubmit, handleWaitForTeacher, handleGoSolo,
   }
 }

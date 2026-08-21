@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import Banner from '../../shared/Banner.jsx'
 
 function applySuffix(name, existing) {
   if (!existing.includes(name)) return name
@@ -7,12 +8,23 @@ function applySuffix(name, existing) {
   return `${name}-${n}`
 }
 
-export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, onGoSolo, waitingForSession = false }) {
+export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, onGoSolo, waitingForSession = false, joinError = null }) {
   const [value, setValue]       = useState('')
   const [confirmed, setConfirmed] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submit(name) {
+    setSubmitting(true)
+    try {
+      await onSubmit(name)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
+    if (submitting) return
     const trimmed = value.trim()
     if (!trimmed) return
     const final = applySuffix(trimmed, existingNames)
@@ -20,7 +32,7 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
       setConfirmed(final)
       return
     }
-    onSubmit(confirmed ?? final)
+    submit(confirmed ?? final)
   }
 
   return (
@@ -31,6 +43,11 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
           <h1 style={s.title}>{lessonTitle}</h1>
         </div>
         <div style={s.body}>
+          {joinError && (
+            <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
+              {joinError}
+            </Banner>
+          )}
           {confirmed ? (
             <>
               <p style={s.note}>
@@ -38,11 +55,11 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
                 You&apos;ll join as <strong>{confirmed}</strong>.
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-primary" onClick={() => onSubmit(confirmed)}>
-                  Join as {confirmed}
+                <button className="btn-primary" disabled={submitting} onClick={() => submit(confirmed)}>
+                  {submitting ? 'Joining…' : `Join as ${confirmed}`}
                 </button>
                 <button className="btn-ghost" style={{ color: 'var(--colour-primary)', border: '1px solid var(--colour-primary)' }}
-                  onClick={() => setConfirmed(null)}>
+                  disabled={submitting} onClick={() => setConfirmed(null)}>
                   Choose a different name
                 </button>
               </div>
@@ -65,11 +82,11 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
                   autoComplete="new-password"
                 />
               </label>
-              <button className="btn-primary" type="submit" disabled={!value.trim()}>
-                {waitingForSession ? 'Join Waiting Room' : 'Join'}
+              <button className="btn-primary" type="submit" disabled={!value.trim() || submitting}>
+                {submitting ? 'Joining…' : waitingForSession ? 'Join Waiting Room' : 'Join'}
               </button>
               {onGoSolo && (
-                <button type="button" onClick={onGoSolo} style={s.soloLink}>
+                <button type="button" onClick={onGoSolo} style={s.soloLink} disabled={submitting}>
                   Work Solo instead
                 </button>
               )}
