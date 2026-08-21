@@ -168,6 +168,7 @@ function cmd(fn) {
 const loadLessons = () => import('./lessons.mjs')
 const loadTopics = () => import('./topics.mjs')
 const loadAssets = () => import('./assets.mjs')
+const loadTypeAssets = () => import('./type-assets.mjs')
 const loadFeedback = () => import('./feedback.mjs')
 const loadTopicUtils = () => import('./topic-utils.mjs')
 const loadLevels = () => import('./levels.mjs')
@@ -601,7 +602,42 @@ await yargs(hideBin(process.argv))
       print(await deleteLessonAsset(lessonId, filename))
     }))
 
-    .demandCommand(1, 'Specify a subcommand: list | upload | delete')
+    .command('list-type <type>', 'List shared assets and Scratch defaults for a lesson type', {}, cmd(async ({ type }) => {
+      const { listTypeAssets } = await loadTypeAssets()
+      print(await listTypeAssets(type))
+    }))
+
+    .command('upload-type <type> <filepath>', 'Upload a local file as a shared asset for a lesson type', {
+      filename: { type: 'string', describe: 'Storage filename (defaults to the file\'s basename)' },
+      'mime-type': { type: 'string', describe: 'MIME type (auto-detected from file extension if omitted)' },
+    }, cmd(async ({ type, filepath, filename, 'mime-type': mimeType }) => {
+      const resolvedFilename = filename ?? basename(filepath)
+      const resolvedMimeType = mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
+      const buffer = await readFile(filepath)
+      const { uploadTypeAsset } = await loadTypeAssets()
+      print(await uploadTypeAsset(type, resolvedFilename, buffer.toString('base64'), resolvedMimeType))
+    }))
+
+    .command('set-default-sprites <type> [file]', 'Replace the default Scratch sprite list for a lesson type — file path or stdin (JSON or YAML)', {}, cmd(async ({ type, file }) => {
+      const { setDefaultSprites } = await loadTypeAssets()
+      print(await setDefaultSprites(type, parseJsonOrYaml(file, await readText(file))))
+    }))
+
+    .command('upload-backdrop <type> <filepath>', 'Upload a local image and add it as a default Scratch backdrop in one step', {
+      id: { type: 'string', describe: 'Backdrop id (auto-generated if omitted)' },
+      name: { type: 'string', describe: 'Backdrop display name (defaults to the generated id)' },
+      colour: { type: 'string', describe: 'Fallback solid colour shown before the image loads (hex, defaults to #ffffff)' },
+      filename: { type: 'string', describe: 'Storage filename (defaults to the file\'s basename)' },
+      'mime-type': { type: 'string', describe: 'MIME type (auto-detected from file extension if omitted)' },
+    }, cmd(async ({ type, filepath, id, name, colour, filename, 'mime-type': mimeType }) => {
+      const resolvedFilename = filename ?? basename(filepath)
+      const resolvedMimeType = mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
+      const buffer = await readFile(filepath)
+      const { uploadDefaultBackdrop } = await loadTypeAssets()
+      print(await uploadDefaultBackdrop(type, resolvedFilename, buffer.toString('base64'), resolvedMimeType, { id, name, colour }))
+    }))
+
+    .demandCommand(1, 'Specify a subcommand: list | upload | delete | list-type | upload-type | set-default-sprites | upload-backdrop')
     .help()
   )
 

@@ -451,6 +451,8 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
 | `cli/feedback.mjs` | Exports Firestore feedback helpers: list (platform/lesson/all), add (lesson/platform), archive by ID (soft-delete via `archived: true`), and bulk-clear (archive) with optional filters |
 | `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |
+| `cli/type-assets.mjs` | Exports async functions for lesson-type-wide shared assets (`lessonTypeAssets/{type}`, storage at `shared/{type}/assets/`): `listTypeAssets`, `uploadTypeAsset`, `setDefaultSprites`, `uploadDefaultBackdrop` (scratch-only defaults) |
+| `cli/storage-utils.mjs` | Firebase Storage helpers shared by `assets.mjs` and `type-assets.mjs`: download-URL building, filename/slug validation, bucket file listing |
 | `cli/levels.mjs` | Exports Firestore reusable-level helpers: `listLevels`, `upsertLevel`, `deleteLevel` |
 | `cli/classes.mjs` | Exports Firestore class helpers for lesson forks: `listClasses`, `getClass`, `upsertClass`, `archiveClass` |
 

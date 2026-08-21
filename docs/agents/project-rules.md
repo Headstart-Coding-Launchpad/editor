@@ -112,6 +112,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 - Classes → Firestore `classes/`
 - Topics → Firestore `topicLibrary/`
 - Assets → Firebase Storage under `lessons/{lessonId}/assets/`; `lesson.storageAssets` is optional metadata, not the source-of-truth inventory
+- Lesson-type-wide shared assets (files, Scratch default sprites/backdrops) → Firestore `lessonTypeAssets/{type}`, files in Storage under `shared/{type}/assets/` — same data the admin "Shared Assets" panel manages
 
 **Auth:**
 - Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
@@ -128,7 +129,7 @@ Command groups:
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
-- `assets list|upload|delete`
+- `assets list|upload|delete|list-type|upload-type|set-default-sprites|upload-backdrop`
 - `levels list|upsert|delete`
 - `classes list|upsert|archive`
 
@@ -137,3 +138,5 @@ Command groups:
 Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.
+
+`assets list-type`/`upload-type` work for any lesson type (shared files only). `set-default-sprites` (accepts a JSON/YAML array or `{ sprites: [...] }`, file or stdin) and `upload-backdrop` (uploads a local image and appends it as a new `defaultBackdrops` entry in one step) are scratch-only — they write `lessonTypeAssets/scratch.defaultSprites`/`defaultBackdrops`, the same fields the Scratch student/builder workspaces read via `useTypeAssets`.
