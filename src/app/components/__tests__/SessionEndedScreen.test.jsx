@@ -22,7 +22,7 @@ describe('SessionEndedScreen', () => {
     render(<SessionEndedScreen savedOtherTaskCount={3} onContinueSolo={vi.fn()} />)
 
     expect(screen.getByText(/saved only on this device/i)).toBeInTheDocument()
-    expect(screen.getByText(/3 other tasks is saved locally too, but isn't downloadable yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/3 other tasks are saved locally too, but isn't downloadable yet/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /download all my code/i })).not.toBeInTheDocument()
   })
 

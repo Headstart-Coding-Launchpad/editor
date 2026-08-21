@@ -30,13 +30,12 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
   // Undo/redo history is local to this component even though `design` is controlled by the
   // parent — undo is just "call onChange with an older snapshot", the same mechanism a
   // normal edit already uses. Bounded to avoid unbounded growth over a long editing session.
-  const historyStackRef = useRef([])
-  const redoStackRef = useRef([])
+  const [historyStack, setHistoryStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
   const selfChangeRef = useRef(false)
   const sectionRef = useRef(null)
   const undoRef = useRef(() => {})
   const redoRef = useRef(() => {})
-  const [historyVersion, setHistoryVersion] = useState(0)
   const normal = useMemo(() => createArcadeDesign(design), [design])
 
   // A `design` change this component didn't itself just cause (switching tasks, switching
@@ -45,10 +44,8 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
   // from a different task/stage onto the current one.
   useEffect(() => {
     if (selfChangeRef.current) { selfChangeRef.current = false; return }
-    if (historyStackRef.current.length === 0 && redoStackRef.current.length === 0) return
-    historyStackRef.current = []
-    redoStackRef.current = []
-    setHistoryVersion(v => v + 1)
+    setHistoryStack(stack => stack.length === 0 ? stack : [])
+    setRedoStack(stack => stack.length === 0 ? stack : [])
   }, [design])
   const sprite = normal.sprites.find(item => item.id === selectedSpriteId) ?? normal.sprites[0] ?? null
   const map = normal.maps.find(item => item.id === selectedMapId) ?? normal.maps[0] ?? null
@@ -82,9 +79,8 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
   // undoes in one step instead of one step per pixel/cell touched.
   function commit(next, { coalesce = false } = {}) {
     if (!coalesce) {
-      historyStackRef.current = [...historyStackRef.current, normal].slice(-MAX_HISTORY)
-      redoStackRef.current = []
-      setHistoryVersion(v => v + 1)
+      setHistoryStack(stack => [...stack, normal].slice(-MAX_HISTORY))
+      setRedoStack([])
     }
     selfChangeRef.current = true
     onChange?.(createArcadeDesign(next))
@@ -93,20 +89,18 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
   function updateMap(nextMap, opts) { commit({ ...normal, maps: replaceById(normal.maps, nextMap.id, nextMap) }, opts) }
 
   function undo() {
-    if (readOnly || historyStackRef.current.length === 0) return
-    const previous = historyStackRef.current[historyStackRef.current.length - 1]
-    historyStackRef.current = historyStackRef.current.slice(0, -1)
-    redoStackRef.current = [...redoStackRef.current, normal].slice(-MAX_HISTORY)
-    setHistoryVersion(v => v + 1)
+    if (readOnly || historyStack.length === 0) return
+    const previous = historyStack[historyStack.length - 1]
+    setHistoryStack(stack => stack.slice(0, -1))
+    setRedoStack(stack => [...stack, normal].slice(-MAX_HISTORY))
     selfChangeRef.current = true
     onChange?.(createArcadeDesign(previous))
   }
   function redo() {
-    if (readOnly || redoStackRef.current.length === 0) return
-    const next = redoStackRef.current[redoStackRef.current.length - 1]
-    redoStackRef.current = redoStackRef.current.slice(0, -1)
-    historyStackRef.current = [...historyStackRef.current, normal].slice(-MAX_HISTORY)
-    setHistoryVersion(v => v + 1)
+    if (readOnly || redoStack.length === 0) return
+    const next = redoStack[redoStack.length - 1]
+    setRedoStack(stack => stack.slice(0, -1))
+    setHistoryStack(stack => [...stack, normal].slice(-MAX_HISTORY))
     selfChangeRef.current = true
     onChange?.(createArcadeDesign(next))
   }
@@ -260,11 +254,8 @@ export default function ArcadeDesignStudio({ task, design, onChange, availableAs
     updateMap(updateMapCell(map, column, row, event?.button === 2 ? '.' : selectedSymbol), { coalesce: drag })
   }
 
-  const canUndo = historyStackRef.current.length > 0
-  const canRedo = redoStackRef.current.length > 0
-  // Referenced via historyVersion so canUndo/canRedo re-derive after a push/pop of the
-  // (otherwise render-invisible) ref-backed history stacks.
-  void historyVersion
+  const canUndo = historyStack.length > 0
+  const canRedo = redoStack.length > 0
 
   return (
     <section style={s.section} ref={sectionRef}>

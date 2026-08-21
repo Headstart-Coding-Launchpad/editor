@@ -1,6 +1,6 @@
 import {
   collection, deleteDoc, doc, getDoc, getDocs, orderBy, query,
-  setDoc,
+  setDoc, writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
 import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from './lessonBlocksCodec'
@@ -62,9 +62,16 @@ export async function saveClassRecord(input) {
   return record
 }
 
+const FIRESTORE_BATCH_LIMIT = 500
+
 async function clearLessonChildCollection(lessonId, collectionName) {
   const snap = await getDocs(collection(firestore, 'lessons', lessonId, collectionName))
-  await Promise.all(snap.docs.map(item => deleteDoc(item.ref)))
+  const docs = snap.docs
+  for (let i = 0; i < docs.length; i += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(firestore)
+    for (const item of docs.slice(i, i + FIRESTORE_BATCH_LIMIT)) batch.delete(item.ref)
+    await batch.commit()
+  }
   return snap.size
 }
 

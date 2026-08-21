@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
 import { FsTreeEditor } from '../../../modules/filesystem/filesystemEditors'
 import { DEFAULT_FS } from '../../../modules/filesystem/filesystem'
@@ -13,6 +13,15 @@ export default function FilesystemTaskWorkspace({
 }) {
   const [checkResults, setCheckResults] = useState(null)
   const [incorrectCheckResults, setIncorrectCheckResults] = useState(null)
+
+  // Editing the check (via filesystem's CheckEditor) marks the task untested but doesn't
+  // touch this component's state, so without this the pass/fail banner below would keep
+  // showing results from before the edit.
+  useEffect(() => {
+    setCheckResults(null)
+    setIncorrectCheckResults(null)
+  }, [task.check])
+
   const isCompleteTab = codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null

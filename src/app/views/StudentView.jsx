@@ -39,7 +39,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
     removeTeacherHighlight,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
-  const { identity, loaded: identityLoaded, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
+  const { identity, loaded: identityLoaded, authError, retrySignIn, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
   const { lesson: baseLesson, lessonLoading, firstTaskId: baseFirstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
@@ -116,14 +116,16 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     const task = flattenTasks(lesson.tasks).find(item => item.id === currentTaskId)
     return isPythonCodeTask(task) ? task : null
   }, [lesson, activeLesson?.type, currentTaskId])
-  const savedPythonTasks = useMemo(() => getSavedPythonTasks({
-    lesson,
-    anonymousId: teacherPresentation ? null : identity?.anonymousId,
-  }), [lesson, identity?.anonymousId, teacherPresentation, cs.code])
-  const savedOtherTaskCount = useMemo(() => getSavedNonPythonTaskCount({
-    lesson,
-    anonymousId: teacherPresentation ? null : identity?.anonymousId,
-  }), [lesson, identity?.anonymousId, teacherPresentation, cs.code])
+  // Only shown on the session-ended screen — gating on phase avoids rescanning localStorage
+  // on every keystroke while the student is still working.
+  const savedPythonTasks = useMemo(() => {
+    if (phase !== 'ended') return []
+    return getSavedPythonTasks({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
+  }, [phase, lesson, identity?.anonymousId, teacherPresentation])
+  const savedOtherTaskCount = useMemo(() => {
+    if (phase !== 'ended') return 0
+    return getSavedNonPythonTaskCount({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
+  }, [phase, lesson, identity?.anonymousId, teacherPresentation])
   const [otherTabDismissed, setOtherTabDismissed] = useState(false)
   const otherTabOpen = useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) && !otherTabDismissed
 
@@ -605,6 +607,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
         isTeacherEditing={isTeacherEditing}
         otherTabOpen={otherTabOpen}
         onDismissOtherTab={() => setOtherTabDismissed(true)}
+        authError={!teacherPresentation && authError}
+        onRetrySignIn={retrySignIn}
       />
       <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask) ? { ...s.body, overflow: 'hidden' } : s.body}>
         <LessonTaskContent

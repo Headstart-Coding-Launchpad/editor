@@ -17,7 +17,7 @@ export default function SessionEndedScreen({ savedCodeTaskCount = 0, savedOtherT
       )}
       {savedOtherTaskCount > 0 && (
         <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong> Work in {savedOtherTaskCount === 1 ? 'one other task is' : `${savedOtherTaskCount} other tasks is`} saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost when you change device.
+          <strong>Saved only on this device.</strong> Work in {savedOtherTaskCount === 1 ? 'one other task is' : `${savedOtherTaskCount} other tasks are`} saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost when you change device.
         </div>
       )}
       <p style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}>

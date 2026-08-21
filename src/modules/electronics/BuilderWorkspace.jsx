@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
 import {
   BOARD_SIZE_OPTIONS,
@@ -29,6 +29,15 @@ export default function BuilderWorkspace({
 }) {
   const [checkResults, setCheckResults] = useState(null)
   const [incorrectCheckResults, setIncorrectCheckResults] = useState(null)
+
+  // Editing the check (via electronics' CheckEditor) marks the task untested but doesn't
+  // touch this component's state, so without this the pass/fail banner below would keep
+  // showing results from before the edit.
+  useEffect(() => {
+    setCheckResults(null)
+    setIncorrectCheckResults(null)
+  }, [task.check])
+
   const stageMatch = codeTab?.match(/^stage_(\d+)$/)
   const activeStageIndex = stageMatch ? Number(stageMatch[1]) : null
   const activeStage = activeStageIndex !== null ? (codeStages?.[activeStageIndex] ?? null) : null

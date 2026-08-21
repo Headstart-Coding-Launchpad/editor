@@ -214,16 +214,18 @@ export function useStudentPhase({
     setJoinError(null)
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
-    if (joiningTempIdRef.current) {
-      unregisterJoining(joiningTempIdRef.current)
-      joiningTempIdRef.current = null
-    }
     try {
       await joinSession(id.anonymousId, displayName)
     } catch (err) {
       console.warn('Failed to join session:', err)
       setJoinError("Couldn't connect to the class session. Check your connection and try again.")
       return
+    }
+    // Only remove the joining marker once the real student record is written, so a failed
+    // join (and any retry) keeps the teacher's live view showing this student as joining.
+    if (joiningTempIdRef.current) {
+      unregisterJoining(joiningTempIdRef.current)
+      joiningTempIdRef.current = null
     }
     if (!session || session.state === 'ended') { setPhase('waiting'); return }
     if (session.state === 'waiting') { setPhase('waiting'); return }

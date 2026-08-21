@@ -41,6 +41,7 @@ export function useIdentity() {
   // browserLocalPersistence (set in firebase.js) makes this UID persistent across
   // page reloads so it can serve as the stable student key in the Realtime Database.
   useEffect(() => {
+    let cancelled = false
     const unsubscribe = onAuthStateChanged(auth, user => {
       if (user) {
         setAuthUid(user.uid)
@@ -48,17 +49,22 @@ export function useIdentity() {
       } else {
         signInWithRetry()
           .then(uid => {
+            if (cancelled) return
             setAuthUid(uid)
             setAuthError(false)
           })
           .catch(err => {
+            if (cancelled) return
             console.warn('Anonymous sign-in failed after retries; falling back to local UUID:', err)
             setAuthUid(crypto.randomUUID())
             setAuthError(true)
           })
       }
     })
-    return () => unsubscribe()
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [signInAttempt])
 
   // Re-subscribes to auth state, which re-triggers the sign-in (and its retries) above.

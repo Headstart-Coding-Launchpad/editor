@@ -47,9 +47,15 @@ const filesystemModule = {
 
   carryThroughField: 'carryFsFrom',
   carryThroughLabel: 'Carry filesystem from task',
-  getCarryThroughUpdates: (sourceTask) => ({
-    starterFs: sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS,
-  }),
+  // Also patches codeStages[0].fs (see python/index.js's getCarryThroughUpdates for why).
+  getCarryThroughUpdates: (sourceTask, targetTask) => {
+    const fs = sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS
+    const updates = { starterFs: fs }
+    if (targetTask?.codeStages?.length) {
+      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, fs: { ...fs } } : stage)
+    }
+    return updates
+  },
   getNewStarterUpdates: () => ({
     starterFs: DEFAULT_FS,
   }),
