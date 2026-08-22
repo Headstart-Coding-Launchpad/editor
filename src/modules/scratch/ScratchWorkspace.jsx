@@ -58,6 +58,15 @@ const MIN_EDITOR_WIDTH_COLLAPSED_COMPACT = 180
 // there) — the two thresholds must stay in lockstep, not just coincidentally match.
 export const NARROW_BREAKPOINT = 1000
 export const NARROW_BREAKPOINT_HEIGHT = 600
+// Hysteresis margin for leaving compact mode once entered. Switching compact on/off changes
+// which panes are mounted with a natural (content-driven) height — e.g. the Blocks pane's
+// Blockly canvas vs. the shorter Stage pane — so the resulting re-measurement can land back on
+// the opposite side of NARROW_BREAKPOINT/_HEIGHT from a single ResizeObserver tick, flip
+// `compact` straight back, and repeat forever (visible as rapid layout flicker, most
+// noticeable with the container width parked just above NARROW_BREAKPOINT). Requiring the
+// container to clear the breakpoint by this margin before *exiting* compact — entry keeps the
+// original threshold — breaks that loop without moving the documented 1000×600 entry point.
+const COMPACT_EXIT_HYSTERESIS = 48
 const SCRATCH_PANEL_TABS_SURFACE = 'scratch_panel'
 // Block canvas auto-zoom range. There's no manual zoom any more (wheel/on-canvas controls
 // were removed as confusing) — scale is purely a function of available space, continuously
@@ -1384,7 +1393,13 @@ export default function ScratchWorkspace({
     const h = rootSize.height
     // Not measured yet (ref not attached / first paint hasn't happened) — wait for a real size.
     if (!w && !h) return
-    const isCompact = forceCompact || w < NARROW_BREAKPOINT || h < NARROW_BREAKPOINT_HEIGHT
+    // See COMPACT_EXIT_HYSTERESIS: once compact, require clearing the breakpoint by that
+    // margin before switching back, so the layout change compact causes can't immediately
+    // re-measure back across the same line and flip straight back.
+    const wasCompact = compactRef.current
+    const isCompact = forceCompact || (wasCompact
+      ? (w < NARROW_BREAKPOINT + COMPACT_EXIT_HYSTERESIS || h < NARROW_BREAKPOINT_HEIGHT + COMPACT_EXIT_HYSTERESIS)
+      : (w < NARROW_BREAKPOINT || h < NARROW_BREAKPOINT_HEIGHT))
     setCompact(isCompact)
     compactRef.current = isCompact
     blockScaleRef.current = computeBlockScale(w, h)
