@@ -812,18 +812,25 @@ select {
 .teacher-end-modal {
   background: #fff;
   border-radius: 12px;
-  padding: 28px 32px;
+  overflow: hidden;
   max-width: 420px;
   width: 90%;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.teacher-end-modal__header {
+  padding: 16px 24px;
 }
 
 .teacher-end-modal__title {
   font-family: var(--font-title);
   font-weight: 700;
   font-size: 1.2rem;
-  color: var(--colour-text);
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+.teacher-end-modal__content {
+  padding: 20px 24px 24px;
 }
 
 .teacher-end-modal__body {

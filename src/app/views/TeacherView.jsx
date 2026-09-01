@@ -6,7 +6,7 @@ import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode, getStarterStage } from '../../shared/taskUtils'
 import { applyLessonOverride, publishLessonTasks, saveSessionReport } from '../../shared/lessonService'
-import { buildSessionReport } from '../../shared/lessonReport'
+import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
@@ -316,6 +316,12 @@ export default function TeacherView({ lessonId }) {
     if (goHome) navigate('/')
   }
 
+  async function handleSaveSessionFeedback(feedback) {
+    const updatedReport = attachTeacherFeedback(lastReport, feedback)
+    if (updatedReport !== lastReport) await saveSessionReport(lessonId, updatedReport.sessionId, updatedReport)
+    setLastReport(updatedReport)
+  }
+
   async function handleApplySessionLessonEdit(tasks) {
     await pushLessonOverride(tasks)
   }
@@ -621,7 +627,11 @@ export default function TeacherView({ lessonId }) {
       )}
 
       {lastReport && (
-        <TeacherReportModal report={lastReport} onClose={() => setLastReport(null)} />
+        <TeacherReportModal
+          report={lastReport}
+          onClose={() => setLastReport(null)}
+          onSaveFeedback={handleSaveSessionFeedback}
+        />
       )}
 
       {showReportsPanel && (
