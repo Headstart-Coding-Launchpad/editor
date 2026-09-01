@@ -77,6 +77,9 @@ export default function ElectronicsWorkspace({
   setupMode = false,
   activeTab,
   onTabChange,
+  highlightedTabs,
+  forcedTab,
+  forcedTabToken,
   onActivity,
   isInSandbox,
 }) {
@@ -131,6 +134,20 @@ export default function ElectronicsWorkspace({
   useEffect(() => {
     onTabChange?.(selectedTab)
   }, [selectedTab, onTabChange])
+
+  // Teacher "force switch tab" — a one-time jump to Breadboard or MicroPython, applied via
+  // the same local `tab` state a manual click would use (not the persistent `activeTab`
+  // controlled prop used for live-mirroring), so the student stays free to switch away
+  // again right after. Guarded by forcedTabToken (the command's pushedAt) so the same
+  // token never re-applies on an unrelated re-render, and skipped entirely while
+  // `activeTab` is actively controlling the tab (teacher live view).
+  const lastForcedTabTokenRef = useRef(null)
+  useEffect(() => {
+    if (activeTab != null || !forcedTab || forcedTabToken == null || lastForcedTabTokenRef.current === forcedTabToken) return
+    lastForcedTabTokenRef.current = forcedTabToken
+    setTab(forcedTab)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, forcedTab, forcedTabToken])
 
   useEffect(() => {
     if (stats.buzzersOn === 0 || typeof window === 'undefined') return undefined
@@ -607,8 +624,8 @@ export default function ElectronicsWorkspace({
       <div style={s.header} className="ui-tabs ui-tabs--editor">
         <span style={s.title}>{title}</span>
         <div style={s.tabs}>
-          <button className={selectedTab === 'breadboard' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('breadboard')}>Breadboard</button>
-          {hasCodeTab && <button className={selectedTab === 'code' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('code')}>MicroPython</button>}
+          <button className={`ui-tab ${selectedTab === 'breadboard' ? 'is-active' : ''} ${highlightedTabs?.includes('breadboard') ? 'pane-highlight-pulse' : ''}`} onClick={() => selectTab('breadboard')}>Breadboard</button>
+          {hasCodeTab && <button className={`ui-tab ${selectedTab === 'code' ? 'is-active' : ''} ${highlightedTabs?.includes('code') ? 'pane-highlight-pulse' : ''}`} onClick={() => selectTab('code')}>MicroPython</button>}
         </div>
         <div style={s.actions}>
           {selectedTab === 'breadboard' && (

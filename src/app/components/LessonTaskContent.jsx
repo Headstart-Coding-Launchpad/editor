@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import SplitPane from '../../shared/SplitPane'
@@ -93,8 +93,15 @@ export default function LessonTaskContent({
   onTopicClose,
   openTopicId,
   onVisiblePanesChange,
+  highlightedPanes,
+  forcedPaneCommand,
 }) {
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
+  // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
+  // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
+  // fallback for every type) so its open/closed state can feed visiblePanes below just
+  // like the side-rail's explainerCollapsed does.
+  const [accordionExplainerCollapsed, setAccordionExplainerCollapsed] = useState(false)
   const [taskPanelTab, setTaskPanelTab] = useState(() => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code')
   const [taskPanelSizeRef, taskPanelSize] = useElementSize()
   // Scratch's Instructions/Code (desktop-compact, below) and, inside ScratchWorkspace
@@ -118,33 +125,64 @@ export default function LessonTaskContent({
   // for no benefit.
   const taskPanelCompact = isScratchLesson && taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
+  const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
+  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
+  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
+  const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
   // `scratchCodePanes` comment above for why Scratch and the other modules compute this
-  // differently.
-  const instructionsPaneVisible = !taskPanelCompact || taskPanelTab === 'instructions'
+  // differently. `hasTaskExplainer` gates this off entirely for tasks with no explainer
+  // to show at all (quizzes, information tasks, sandbox), where compact/useSideExplainer
+  // would otherwise report a phantom always-visible instructions pane.
+  const instructionsPaneVisible = !hasTaskExplainer
+    ? false
+    : taskPanelCompact
+    ? taskPanelTab === 'instructions'
+    : useSideExplainer
+    ? !explainerCollapsed
+    : !accordionExplainerCollapsed
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
   const visiblePanes = isScratchLesson
     ? [...(instructionsPaneVisible ? ['instructions'] : []), ...(codePaneVisible ? scratchCodePanes : [])]
     : supportsModulePanes
-    ? modulePanes
+    ? [...(instructionsPaneVisible ? ['instructions'] : []), ...modulePanes]
+    : hasTaskExplainer
+    ? (instructionsPaneVisible ? ['instructions'] : [])
     : null
   const visiblePanesKey = visiblePanes?.join(',') ?? ''
+  const instructionsHighlighted = !!highlightedPanes?.includes('instructions')
 
   useEffect(() => {
-    if (isScratchLesson || supportsModulePanes) onVisiblePanesChange?.(visiblePanes)
+    if (isScratchLesson || supportsModulePanes || hasTaskExplainer) onVisiblePanesChange?.(visiblePanes)
   // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScratchLesson, supportsModulePanes, visiblePanesKey, onVisiblePanesChange])
+  }, [isScratchLesson, supportsModulePanes, hasTaskExplainer, visiblePanesKey, onVisiblePanesChange])
+
+  // Teacher "force" push for the instructions/explainer pane — applied once per distinct
+  // forcedPaneCommand (guarded by its pushedAt token) via the same collapse/tab state a
+  // manual click would use, so the student is free to close it again right after. The
+  // module-specific half of a force command (e.g. Electronics' breadboard/code,
+  // Scratch's blocks/stage) is applied inside each module's own StudentWorkspace instead —
+  // see forcedPaneCommand passed to StudentWorkspace below.
+  const lastAppliedForceTokenRef = useRef(null)
+  useEffect(() => {
+    if (!forcedPaneCommand || !hasTaskExplainer || lastAppliedForceTokenRef.current === forcedPaneCommand.pushedAt) return
+    lastAppliedForceTokenRef.current = forcedPaneCommand.pushedAt
+    const wantsInstructions = forcedPaneCommand.panes.includes('instructions')
+    if (useSideExplainer) {
+      setExplainerCollapsed(!wantsInstructions)
+      if (taskPanelCompact) handleTaskPanelTabChange(wantsInstructions ? 'instructions' : 'code')
+    } else {
+      setAccordionExplainerCollapsed(!wantsInstructions)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcedPaneCommand, hasTaskExplainer, useSideExplainer, taskPanelCompact])
 
   function handleTaskPanelTabChange(id) {
     setTaskPanelTab(id)
     saveLayoutTab(TASK_PANEL_TABS_SURFACE, id)
   }
-  const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
-  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
-  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
-  const useSideExplainer = hasTaskExplainer && useFluidWorkspace
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
   const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonMod?.type ?? lesson.type)
@@ -196,6 +234,7 @@ export default function LessonTaskContent({
           title="Collapse Explainer"
           ariaLabel="Collapse Explainer"
           style={s.sideExplainerCollapse}
+          highlighted={instructionsHighlighted}
         />
       )}
       <ExplainerPanel
@@ -209,6 +248,8 @@ export default function LessonTaskContent({
         fill={useSideExplainer}
         collapsible={!useSideExplainer}
         markdownTextScale={useSideExplainer ? 1.08 : 1}
+        onCollapsedChange={!useSideExplainer ? setAccordionExplainerCollapsed : undefined}
+        highlighted={!useSideExplainer && instructionsHighlighted}
       />
     </div>
   ) : null
@@ -338,6 +379,8 @@ export default function LessonTaskContent({
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined}
+          highlightedPanes={highlightedPanes}
+          forcedPaneCommand={forcedPaneCommand}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
@@ -392,6 +435,7 @@ export default function LessonTaskContent({
               tabs={[{ id: 'instructions', label: 'Instructions' }, { id: 'code', label: 'Code' }]}
               activeId={taskPanelTab}
               onChange={handleTaskPanelTabChange}
+              highlightedIds={highlightedPanes}
             />
           )}
           <div style={s.scratchFixedSplit}>
@@ -411,6 +455,7 @@ export default function LessonTaskContent({
                   direction="right"
                   title="Show Explainer"
                   ariaLabel="Show Explainer"
+                  highlighted={instructionsHighlighted}
                 />
               ) : taskExplainer}
             </div>
@@ -440,6 +485,7 @@ export default function LessonTaskContent({
               direction="right"
               title="Show Explainer"
               ariaLabel="Show Explainer"
+              highlighted={instructionsHighlighted}
             />
           }
           left={taskExplainer}

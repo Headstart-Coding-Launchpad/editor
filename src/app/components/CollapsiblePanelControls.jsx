@@ -6,10 +6,12 @@ export function CollapseTabButton({
   title = 'Collapse panel',
   ariaLabel = title,
   style,
+  highlighted = false,
 }) {
   return (
     <button
       type="button"
+      className={highlighted ? 'pane-highlight-pulse' : undefined}
       style={{ ...s.tabButton, ...style }}
       onClick={onClick}
       title={title}
@@ -28,11 +30,13 @@ export function CollapsedPanelRail({
   title = `Show ${label}`,
   ariaLabel = title,
   style,
+  highlighted = false,
 }) {
   const chevron = direction === 'left' ? '<' : direction === 'up' ? '^' : direction === 'down' ? 'v' : '>'
   return (
     <button
       type="button"
+      className={highlighted ? 'pane-highlight-pulse' : undefined}
       style={{ ...(orientation === 'horizontal' ? s.railHorizontal : s.rail), ...style }}
       onClick={onClick}
       title={title}

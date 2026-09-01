@@ -349,3 +349,50 @@ describe('StudentModal', () => {
     })
   })
 })
+
+describe('StudentModal — teacher pane highlight/force', () => {
+  it('does not render the Focus control when onPushTeacherPaneCommand is not provided', () => {
+    render(<StudentModal {...mkProps()} />)
+    expect(screen.queryByRole('button', { name: /Focus/ })).not.toBeInTheDocument()
+  })
+
+  it('offers only Instructions for a Python lesson, and pushes a highlight command for that student', async () => {
+    const user = userEvent.setup()
+    const onPushTeacherPaneCommand = vi.fn()
+    render(<StudentModal {...mkProps({ onPushTeacherPaneCommand })} />)
+
+    await user.click(screen.getByRole('button', { name: /Focus/ }))
+    expect(screen.getByText('Instructions')).toBeInTheDocument()
+    expect(screen.queryByText('Breadboard')).not.toBeInTheDocument()
+    expect(screen.queryByText('Blocks')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Highlight/ }))
+    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith('student-1', { mode: 'highlight', panes: ['instructions'] })
+  })
+
+  it('pushes a force command with the checked panes for a Scratch lesson', async () => {
+    const user = userEvent.setup()
+    const onPushTeacherPaneCommand = vi.fn()
+    render(<StudentModal {...mkProps({
+      lesson: SCRATCH_LESSON,
+      onPushTeacherPaneCommand,
+    }, {
+      currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+    })} />)
+
+    await user.click(screen.getByRole('button', { name: /Focus/ }))
+    await user.click(screen.getByText('Blocks'))
+    await user.click(screen.getByRole('button', { name: /Switch to this/ }))
+
+    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith(
+      'student-1',
+      { mode: 'force', panes: expect.arrayContaining(['instructions', 'blocks']) },
+    )
+  })
+
+  it('does not render the Focus control on an Information task', () => {
+    const infoLesson = { type: 'python', tasks: [{ id: 1, title: 'Info', taskType: 'information' }] }
+    render(<StudentModal {...mkProps({ lesson: infoLesson, onPushTeacherPaneCommand: vi.fn() })} />)
+    expect(screen.queryByRole('button', { name: /Focus/ })).not.toBeInTheDocument()
+  })
+})

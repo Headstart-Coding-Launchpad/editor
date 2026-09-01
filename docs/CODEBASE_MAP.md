@@ -139,6 +139,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `OverrideDropdown.jsx` | Teacher check-override menu and fail-hint modal |
 | `MessageCompose.jsx` | Personal teacher message composer for one student |
 | `StageDropdown.jsx` | Teacher request menu for sending starter/stage/complete code to a student |
+| `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand` — reused per-student (StudentModal, "Focus") and whole-class (TeacherView, "Focus Class") |
 | `StudentWorkspaceBody.jsx` | Lesson-type-specific student workspace display inside the teacher modal |
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
 

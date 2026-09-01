@@ -71,4 +71,22 @@ describe('ExplainerPanel', () => {
     render(<ExplainerPanel title="Section" content="Content" disableCopy />)
     expect(screen.getByTestId('markdown')).toHaveAttribute('data-disable-copy', 'true')
   })
+
+  it('reports its open/closed state via onCollapsedChange when collapsible, including the initial open state', () => {
+    const onCollapsedChange = vi.fn()
+    render(<ExplainerPanel title="Section" content="Content" collapsible onCollapsedChange={onCollapsedChange} />)
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
+
+    fireEvent.click(screen.getByRole('button'))
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(true)
+
+    fireEvent.click(screen.getByRole('button'))
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it('does not call onCollapsedChange when not collapsible (e.g. the side-explainer layout)', () => {
+    const onCollapsedChange = vi.fn()
+    render(<ExplainerPanel title="Section" content="Content" collapsible={false} onCollapsedChange={onCollapsedChange} />)
+    expect(onCollapsedChange).not.toHaveBeenCalled()
+  })
 })

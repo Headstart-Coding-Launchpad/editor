@@ -350,6 +350,76 @@ describe('StudentView', () => {
     expect(mocks.buildIframeSrc).toHaveBeenCalled()
   })
 
+  describe('teacher pane highlight/force', () => {
+    function mkScratchSession(sessionOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'scratch-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': {} },
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(), joinSession: vi.fn(),
+        writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(), writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+      }
+    }
+
+    const scratchLesson = {
+      id: 'scratch-1-1', title: 'Scratch 1.1', type: 'scratch',
+      tasks: [{ id: 1, title: 'Move', starterBlocks: null }],
+    }
+
+    it('passes a per-student highlight command down to ScratchWorkspace as highlightedPanes', async () => {
+      mocks.useSession.mockReturnValue(mkScratchSession({
+        students: { 'student-1': { teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 1 } } },
+      }))
+
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+
+      // Checks the FIRST render, not the last: the mocked ScratchWorkspace never reports
+      // real visiblePanes back (it's a dumb prop-capturing stub), so LessonTaskContent's
+      // ['blocks','stage'] default-visible guess looks, after a later render, exactly like
+      // the student "already saw" a 'blocks' highlight — self-dismissing it client-side.
+      // That's a test-only artifact of the stub, not a real dismissal; the first render is
+      // what actually proves the session-to-prop wiring under test here.
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const firstProps = mocks.scratchWorkspace.mock.calls[0][0]
+      expect(firstProps.highlightedPanes).toEqual(['blocks'])
+    })
+
+    it('passes a whole-class force command down to ScratchWorkspace as forcedPane/forcedPaneToken', async () => {
+      mocks.useSession.mockReturnValue(mkScratchSession({
+        teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
+      }))
+
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const firstProps = mocks.scratchWorkspace.mock.calls[0][0]
+      expect(firstProps.forcedPane).toBe('stage')
+      expect(firstProps.forcedPaneToken).toBe(5)
+    })
+
+    it('prefers whichever of the per-student or whole-class command was pushed more recently', async () => {
+      mocks.useSession.mockReturnValue(mkScratchSession({
+        students: { 'student-1': { teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 10 } } },
+        teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
+      }))
+
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const firstProps = mocks.scratchWorkspace.mock.calls[0][0]
+      expect(firstProps.highlightedPanes).toEqual(['blocks'])
+      expect(firstProps.forcedPane).toBeNull()
+    })
+  })
+
   describe('fullscreen request', () => {
     function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
       return {

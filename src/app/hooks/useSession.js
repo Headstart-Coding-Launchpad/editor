@@ -165,6 +165,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       currentTaskId: taskId,
       currentTaskStartedAt: now,
       explainerShowComplete: false,
+      teacherClassPaneCommand: null,
       [`taskStartTimes/${taskId}`]: now,
     }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
@@ -206,6 +207,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
       updates[`students/${anonymousId}/teacherStageAcceptedAt`]   = null
       updates[`students/${anonymousId}/teacherHighlights`]        = null
+      updates[`students/${anonymousId}/teacherPaneCommand`]       = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -489,6 +491,39 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`), null)
   }
 
+  // Draws attention to (mode: 'highlight') or immediately switches (mode: 'force') one or
+  // more tabs/panels — e.g. Electronics' Breadboard/MicroPython tabs, Scratch's
+  // Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type — on a single
+  // student's screen. Cleared automatically once the student's own reported visiblePanes
+  // shows they've looked at every named pane (see StudentView's effective-pane-command
+  // derivation), or explicitly by the teacher via clearTeacherPaneCommand.
+  async function pushTeacherPaneCommand(anonymousId, { mode = 'highlight', panes = [] } = {}) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherPaneCommand`), {
+      mode: mode === 'force' ? 'force' : 'highlight',
+      panes: Array.isArray(panes) ? panes : [],
+      pushedAt: Date.now(),
+    })
+  }
+
+  async function clearTeacherPaneCommand(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherPaneCommand`), null)
+  }
+
+  // Whole-class equivalent of pushTeacherPaneCommand/clearTeacherPaneCommand — lives on
+  // the session root (like teacherLive/activeStudentView) rather than per-student, so
+  // every connected student's client evaluates the same node.
+  async function pushClassPaneCommand({ mode = 'highlight', panes = [] } = {}) {
+    await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), {
+      mode: mode === 'force' ? 'force' : 'highlight',
+      panes: Array.isArray(panes) ? panes : [],
+      pushedAt: Date.now(),
+    })
+  }
+
+  async function clearClassPaneCommand() {
+    await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -717,6 +752,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
     pushTeacherHighlight, removeTeacherHighlight,
+    pushTeacherPaneCommand, clearTeacherPaneCommand, pushClassPaneCommand, clearClassPaneCommand,
     // student
     registerPresence, joinSession, registerJoining, unregisterJoining,
     writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentCodeArrangeSlots, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,

@@ -809,4 +809,74 @@ describe('useSession', () => {
       )
     })
   })
+
+  describe('pushTeacherPaneCommand', () => {
+    it('writes mode, panes, and a pushedAt timestamp to the student node', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherPaneCommand('student-xyz', { mode: 'highlight', panes: ['breadboard'] })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherPaneCommand' },
+        { mode: 'highlight', panes: ['breadboard'], pushedAt: expect.any(Number) },
+      )
+    })
+
+    it('normalises an unrecognised mode to "highlight"', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherPaneCommand('student-xyz', { mode: 'bogus', panes: ['code'] })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: 'highlight' }),
+      )
+    })
+
+    it('accepts mode: "force"', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherPaneCommand('student-xyz', { mode: 'force', panes: ['stage'] })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: 'force', panes: ['stage'] }),
+      )
+    })
+  })
+
+  describe('clearTeacherPaneCommand', () => {
+    it('clears the student pane command', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.clearTeacherPaneCommand('student-xyz') })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherPaneCommand' },
+        null,
+      )
+    })
+  })
+
+  describe('pushClassPaneCommand', () => {
+    it('writes mode, panes, and a pushedAt timestamp to the session root', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushClassPaneCommand({ mode: 'force', panes: ['instructions'] })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherClassPaneCommand' },
+        { mode: 'force', panes: ['instructions'], pushedAt: expect.any(Number) },
+      )
+    })
+  })
+
+  describe('clearClassPaneCommand', () => {
+    it('clears the whole-class pane command', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.clearClassPaneCommand() })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherClassPaneCommand' },
+        null,
+      )
+    })
+  })
 })

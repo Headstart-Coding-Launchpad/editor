@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, showLibrary = true, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageLayout = 'stacked' }) {
+export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, showLibrary = true, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageLayout = 'stacked', onCollapsedChange, highlighted = false }) {
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
@@ -10,6 +10,13 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
   const contentRef = useRef(null)
   const isCollapsed = collapsible && collapsed
   const canExpandOverlay = !fill
+
+  // Reports this accordion's own open/closed state upward — used by LessonTaskContent so
+  // the teacher's student list can show whether the info/explainer pane is open, on lesson
+  // types (and the mobile fallback) that use this accordion instead of the side-rail collapse.
+  useEffect(() => {
+    if (collapsible) onCollapsedChange?.(collapsed)
+  }, [collapsible, collapsed, onCollapsedChange])
 
   const updateScrollState = useCallback(() => {
     const el = contentRef.current
@@ -58,6 +65,7 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
     >
       {collapsible ? (
         <button
+          className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={s.titleBar}
           onClick={() => setCollapsed(c => !c)}
           aria-expanded={!collapsed}

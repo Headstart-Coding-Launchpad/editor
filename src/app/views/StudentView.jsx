@@ -224,7 +224,9 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // useStudentCodeState.js: real students in a live/sandbox session only, never the
   // teacher's own presentation screen.
   const lastVisiblePanesRef = useRef(null)
+  const [localVisiblePanes, setLocalVisiblePanes] = useState(null)
   const handleVisiblePanesChange = useCallback((panes) => {
+    setLocalVisiblePanes(panes)
     if (teacherPresentation || !identity?.anonymousId) return
     if (phase !== 'lesson' && phase !== 'sandbox') return
     const key = panes?.join(',') ?? ''
@@ -233,6 +235,39 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
     writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherPresentation, identity?.anonymousId, phase])
+
+  // Teacher-pushed "highlight this tab/panel" or "force this tab/panel" command — either
+  // targeted at this one student (session.students.{id}.teacherPaneCommand) or the whole
+  // class (session.teacherClassPaneCommand). Whichever was pushed more recently wins.
+  // Dismissal (per "clears when the student looks at it") is tracked purely client-side —
+  // the whole-class command is a single shared Firebase node, so one student looking at it
+  // must not clear it for everyone else, and there's no reason to treat the per-student
+  // case differently from that.
+  const rawStudentPaneCommand = session?.students?.[effectiveIdentity?.anonymousId]?.teacherPaneCommand ?? null
+  const rawClassPaneCommand = session?.teacherClassPaneCommand ?? null
+  const [dismissedPaneCommandAt, setDismissedPaneCommandAt] = useState({ student: null, class: null })
+  useEffect(() => {
+    if (!localVisiblePanes) return
+    setDismissedPaneCommandAt(prev => {
+      const seenAll = panes => panes.every(pane => localVisiblePanes.includes(pane))
+      const nextStudent = rawStudentPaneCommand && prev.student !== rawStudentPaneCommand.pushedAt && seenAll(rawStudentPaneCommand.panes)
+        ? rawStudentPaneCommand.pushedAt : prev.student
+      const nextClass = rawClassPaneCommand && prev.class !== rawClassPaneCommand.pushedAt && seenAll(rawClassPaneCommand.panes)
+        ? rawClassPaneCommand.pushedAt : prev.class
+      return nextStudent === prev.student && nextClass === prev.class ? prev : { student: nextStudent, class: nextClass }
+    })
+  }, [localVisiblePanes, rawStudentPaneCommand, rawClassPaneCommand])
+  const studentPaneCommand = rawStudentPaneCommand && rawStudentPaneCommand.pushedAt !== dismissedPaneCommandAt.student
+    ? rawStudentPaneCommand : null
+  const classPaneCommand = rawClassPaneCommand && rawClassPaneCommand.pushedAt !== dismissedPaneCommandAt.class
+    ? rawClassPaneCommand : null
+  const effectivePaneCommand = !studentPaneCommand
+    ? classPaneCommand
+    : !classPaneCommand
+    ? studentPaneCommand
+    : (classPaneCommand.pushedAt ?? 0) >= (studentPaneCommand.pushedAt ?? 0) ? classPaneCommand : studentPaneCommand
+  const highlightedPanes = effectivePaneCommand?.mode === 'highlight' ? effectivePaneCommand.panes : null
+  const forcedPaneCommand = effectivePaneCommand?.mode === 'force' ? effectivePaneCommand : null
 
   // ─── Navigation handlers ───────────────────────────────────────────────────
 
@@ -745,6 +780,8 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
           onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
           openTopicId={phase === 'lesson' ? openTopicId : null}
           onVisiblePanesChange={handleVisiblePanesChange}
+          highlightedPanes={highlightedPanes}
+          forcedPaneCommand={forcedPaneCommand}
         />
       </div>
     </div>
