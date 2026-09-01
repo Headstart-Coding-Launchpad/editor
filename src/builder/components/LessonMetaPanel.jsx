@@ -121,6 +121,13 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <span style={s.summaryText}>Current version: {lesson.version ?? 0}</span>
         </Field>
 
+        <Field label="Solo-only lesson" hint="When on, every link to this lesson goes straight to solo mode — no live/wait option is ever offered, regardless of the URL.">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontWeight: 600, color: 'var(--colour-text)' }}>
+            <input type="checkbox" checked={lesson.soloOnly === true} onChange={e => set('soloOnly', e.target.checked)} />
+            Solo-only {lesson.soloOnly ? '— live/wait option hidden' : '— live and solo both available'}
+          </label>
+        </Field>
+
         {lesson.fork?.sourceLessonId && (
           <Field label="Class fork">
             <div style={s.summaryText}>

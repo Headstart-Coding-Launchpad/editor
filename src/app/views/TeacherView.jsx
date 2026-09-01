@@ -49,7 +49,7 @@ export default function TeacherView({ lessonId }) {
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
     setPaused, requestFullscreenForAll, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
-    sendToTopic, sendMessageToStudent,
+    sendToTopic, sendMessageToStudent, updateVideoCallLink, sendVideoCallLink,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
     pushTeacherHighlight, removeTeacherHighlight, recordSupportStageReveal,
@@ -443,6 +443,7 @@ export default function TeacherView({ lessonId }) {
             onEndSession={() => setShowEndModal(true)}
             onRestartSession={restartSession}
             onReturnToAdmin={() => navigate('/admin')}
+            onUpdateVideoCallLink={updateVideoCallLink}
           />
         }
       />
@@ -566,6 +567,7 @@ export default function TeacherView({ lessonId }) {
             onOverrideCheck={overrideStudentCheck}
             onDismissHelp={dismissHelp}
             onSendToTopic={sendToTopic}
+            onSendVideoCallLink={session?.videoCallLink ? sendVideoCallLink : undefined}
             onSendTopicToAll={handleSendTopicToAll}
             onSendToIndividual={handleSendToIndividual}
             onSendMessage={sendMessageToStudent}

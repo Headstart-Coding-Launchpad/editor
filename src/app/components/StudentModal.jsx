@@ -29,7 +29,7 @@ function getModuleDisplayState(module, raw) {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage }) {
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onSendVideoCallLink, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
@@ -474,7 +474,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
               const hasEdit = !!(onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz)
               const hasTopic = !!(onSendToTopic && topics?.length > 0)
               const hasMessage = !!onSendMessage
-              if (!hasEdit && !hasTopic && !hasMessage) return null
+              const hasVideoCall = !!onSendVideoCallLink
+              if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall) return null
               return (
                 <DropdownMenu label="More" buttonClassName="btn-ghost">
                   {close => (
@@ -492,6 +493,11 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                       {hasMessage && (
                         <button style={sTo.toolBtn} onClick={() => { close(); setShowMessageModal(true) }}>
                           ✉ Message
+                        </button>
+                      )}
+                      {hasVideoCall && (
+                        <button style={sTo.toolBtn} onClick={() => { close(); onSendVideoCallLink(student.anonymousId) }}>
+                          📹 Send Video Call Link
                         </button>
                       )}
                     </>

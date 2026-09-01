@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 
 /**
- * Owns the student phase state machine: loading → waiting → name-entry → lesson → sandbox → solo → ended.
+ * Owns the student phase state machine: loading → choice → waiting → name-entry → lesson → sandbox → solo → ended.
+ * `choice` is shown when no session exists yet, so the student picks Join Live Lesson (→ waiting/name-entry)
+ * or Go Solo (→ solo), rather than being dropped straight into the waiting room.
  * Also owns currentTaskId and viewingTaskId, which are tightly coupled to phase transitions.
  *
  * onBeforeTaskChange()    — call before currentTaskId is updated (save current work)
@@ -90,7 +92,8 @@ export function useStudentPhase({
       return
     }
 
-    // No session — go straight to solo or waiting depending on URL mode
+    // No session — offer the solo-vs-wait choice, unless the student already committed
+    // to solo, is mid-name-entry, or has already finished (ended screen).
     if (!session) {
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
         onPersonalSandboxExit?.()
@@ -99,19 +102,8 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      if (phaseRef.current === 'loading') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      // Already solo — stay solo
-      if (!identity) createIdentity('Solo', Date.now())
-      setPhase('solo')
+      if (phaseRef.current === 'solo' || phaseRef.current === 'ended') return
+      setPhase('choice')
       return
     }
 
@@ -124,9 +116,8 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'loading') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
+      if (phaseRef.current === 'loading' || phaseRef.current === 'choice') {
+        setPhase('choice')
         return
       }
       if (!identity) createIdentity('Solo', Date.now())

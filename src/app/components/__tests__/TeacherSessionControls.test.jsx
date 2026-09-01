@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeacherSessionControls from '../TeacherSessionControls'
 
@@ -78,5 +78,55 @@ describe('TeacherSessionControls', () => {
 
     expect(props.onRestartSession).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'End Session' })).not.toBeInTheDocument()
+  })
+
+  describe('video call link', () => {
+    it('does not show the video call button when onUpdateVideoCallLink is not provided', () => {
+      renderControls()
+      expect(screen.queryByRole('button', { name: /Video Call/ })).not.toBeInTheDocument()
+    })
+
+    it('shows "Add Video Call" when no link is set yet', () => {
+      renderControls({ onUpdateVideoCallLink: vi.fn() })
+      expect(screen.getByRole('button', { name: '📹 Add Video Call' })).toBeInTheDocument()
+    })
+
+    it('shows "Video Call" when a link is already set', () => {
+      renderControls({ session: { state: 'active', videoCallLink: 'https://zoom.us/j/123' }, onUpdateVideoCallLink: vi.fn() })
+      expect(screen.getByRole('button', { name: '📹 Video Call' })).toBeInTheDocument()
+    })
+
+    it('saves a new link via onUpdateVideoCallLink', async () => {
+      const onUpdateVideoCallLink = vi.fn().mockResolvedValue(undefined)
+      renderControls({ onUpdateVideoCallLink })
+
+      fireEvent.click(screen.getByRole('button', { name: '📹 Add Video Call' }))
+      fireEvent.change(screen.getByPlaceholderText('https://zoom.us/j/…'), { target: { value: 'https://zoom.us/j/123' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(onUpdateVideoCallLink).toHaveBeenCalledWith('https://zoom.us/j/123'))
+    })
+
+    it('shows an error message when onUpdateVideoCallLink rejects', async () => {
+      const onUpdateVideoCallLink = vi.fn().mockRejectedValue(new Error('Video call link must be a valid http(s) URL.'))
+      renderControls({ onUpdateVideoCallLink })
+
+      fireEvent.click(screen.getByRole('button', { name: '📹 Add Video Call' }))
+      fireEvent.change(screen.getByPlaceholderText('https://zoom.us/j/…'), { target: { value: 'not-a-url' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(await screen.findByText('Video call link must be a valid http(s) URL.')).toBeInTheDocument()
+    })
+
+    it('clears the link and saves via onUpdateVideoCallLink', async () => {
+      const onUpdateVideoCallLink = vi.fn().mockResolvedValue(undefined)
+      renderControls({ session: { state: 'active', videoCallLink: 'https://zoom.us/j/123' }, onUpdateVideoCallLink })
+
+      fireEvent.click(screen.getByRole('button', { name: '📹 Video Call' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(onUpdateVideoCallLink).toHaveBeenCalledWith(''))
+    })
   })
 })

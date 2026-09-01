@@ -59,9 +59,9 @@ describe('useStudentPhase', () => {
       expect(result.current.phase).toBe('loading')
     })
 
-    it('goes to waiting when no session and not soloMode', async () => {
+    it('goes to choice when no session and not soloMode', async () => {
       const { result } = renderHook(() => useStudentPhase(defaultProps({ session: null, soloMode: false })))
-      await waitFor(() => expect(result.current.phase).toBe('waiting'))
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
     })
 
     it('goes to solo when no session and soloMode', async () => {
@@ -74,6 +74,46 @@ describe('useStudentPhase', () => {
       const props = defaultProps({ session: null, soloMode: true, identity: null, createIdentity })
       renderHook(() => useStudentPhase(props))
       await waitFor(() => expect(createIdentity).toHaveBeenCalledWith('Solo', expect.any(Number)))
+    })
+  })
+
+  describe('choice phase transitions', () => {
+    it('transitions from choice to name-entry when a waiting session appears (fresh arrival)', async () => {
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session: null, identity: null }) }
+      )
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
+
+      rerender(defaultProps({ session: makeSession({ state: 'waiting' }), identity: null }))
+
+      await waitFor(() => expect(result.current.phase).toBe('name-entry'))
+    })
+
+    it('transitions from choice to name-entry when an active session appears with no matching identity', async () => {
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session: null, identity: null }) }
+      )
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
+
+      rerender(defaultProps({ session: makeSession({ state: 'active', createdAt: 1000 }), identity: null }))
+
+      await waitFor(() => expect(result.current.phase).toBe('name-entry'))
+    })
+
+    it('transitions from choice straight to lesson when an active session appears matching a returning identity', async () => {
+      const identity = makeIdentity({ lastSessionTimestamp: 1000 })
+      const { result, rerender } = renderHook(
+        (props) => useStudentPhase(props),
+        { initialProps: defaultProps({ session: null, identity }) }
+      )
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
+
+      rerender(defaultProps({ session: makeSession({ state: 'active', createdAt: 1000, currentTaskId: 4 }), identity }))
+
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+      expect(result.current.currentTaskId).toBe(4)
     })
   })
 
@@ -120,12 +160,12 @@ describe('useStudentPhase', () => {
       await waitFor(() => expect(updateTimestamp).toHaveBeenCalledWith(1000))
     })
 
-    it('goes to waiting from loading phase when session is ended and not soloMode', async () => {
+    it('goes to choice from loading phase when session is ended and not soloMode', async () => {
       const session = makeSession({ state: 'ended' })
       const { result } = renderHook(() =>
         useStudentPhase(defaultProps({ session, identity: null, identityLoaded: true, soloMode: false }))
       )
-      await waitFor(() => expect(result.current.phase).toBe('waiting'))
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
     })
 
     it('goes to solo from loading phase when session is ended and soloMode', async () => {
@@ -267,7 +307,7 @@ describe('useStudentPhase', () => {
       const { result } = renderHook(() =>
         useStudentPhase(defaultProps({ session: null, createIdentity }))
       )
-      await waitFor(() => expect(result.current.phase).toBe('waiting'))
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
 
       act(() => result.current.handleGoSolo())
       expect(createIdentity).toHaveBeenCalledWith('Solo', expect.any(Number))
@@ -278,7 +318,7 @@ describe('useStudentPhase', () => {
       const { result } = renderHook(() =>
         useStudentPhase(defaultProps({ session: null }))
       )
-      await waitFor(() => expect(result.current.phase).toBe('waiting'))
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
 
       // manually set to a different phase to verify the handler
       act(() => result.current.setPhase('solo'))

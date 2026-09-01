@@ -89,6 +89,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       students:              {},
       supportRevealLog:      null,
       fullscreenRequestedAt: null,
+      videoCallLink:         null,
     })
   }
 
@@ -125,10 +126,37 @@ export function useSession(lessonId, { enabled = true } = {}) {
       overrideLog:           null,
       supportRevealLog:      null,
       fullscreenRequestedAt: null,
+      videoCallLink:         null,
     })
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
     onDisconnect(ref(db, `sessions/${lessonId}`)).remove()
+  }
+
+  // Only http(s) links are accepted — this gets rendered as a clickable link/button to
+  // students, so reject javascript: and other unsafe schemes at the write boundary.
+  function isValidVideoCallLink(url) {
+    if (!url) return false
+    try {
+      const parsed = new URL(url)
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
+  async function updateVideoCallLink(url) {
+    const trimmed = (url ?? '').trim()
+    if (trimmed && !isValidVideoCallLink(trimmed)) {
+      throw new Error('Video call link must be a valid http(s) URL.')
+    }
+    await set(ref(db, `sessions/${lessonId}/videoCallLink`), trimmed || null)
+  }
+
+  async function sendVideoCallLink(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      videoCallLinkPushedAt: Date.now(),
+    })
   }
 
   async function setTaskId(taskId) {
@@ -685,7 +713,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
     setPaused, requestFullscreenForAll, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
-    sendToTopic, sendMessageToStudent,
+    sendToTopic, sendMessageToStudent, updateVideoCallLink, sendVideoCallLink,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
     pushTeacherHighlight, removeTeacherHighlight,

@@ -10,7 +10,11 @@ export default function LessonRoute() {
   const [searchParams]  = useSearchParams()
   const location        = useLocation()
   const isTeacher       = searchParams.get('teacher') === 'true'
-  const isLive          = searchParams.get('live') === 'true'
+  // `live=true` is a legacy param from before the smart join flow — bare URLs now
+  // auto-join an active/waiting session and prompt solo-vs-wait otherwise, so it's
+  // simply ignored (kept out of forceSolo) rather than removed, to avoid breaking
+  // already-shared links.
+  const forceSolo       = searchParams.get('solo') === 'true'
   const isPresent       = searchParams.get('present') === 'true'
   const { user, role, loading } = useAuth()
 
@@ -25,5 +29,5 @@ export default function LessonRoute() {
     return <TeacherView lessonId={lessonId} />
   }
 
-  return <StudentView lessonId={lessonId} soloMode={!isLive} />
+  return <StudentView lessonId={lessonId} forceSolo={forceSolo} />
 }

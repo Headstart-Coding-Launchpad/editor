@@ -4,7 +4,7 @@ Load this when a task touches Firebase, localStorage, routing, session state, id
 
 ## Firebase Data Model
 
-Do not deviate from this shape.
+Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCallLinkPushedAt` fields below were added as an explicitly user-authorized deviation for the lesson-join/video-call rework — not an ad hoc addition.)
 
 ```json
 {
@@ -21,6 +21,7 @@ Do not deviate from this shape.
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
       "fullscreenRequestedAt": "1234567890 | null",
+      "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -129,6 +130,7 @@ Do not deviate from this shape.
           "remoteResetPushedAt": 1234567890,
           "needsHelp": "true | null",
           "inPersonalSandbox": "true | null",
+          "videoCallLinkPushedAt": "number | null (stamped by sendVideoCallLink to pop VideoCallPrompt for this one student mid-lesson; independent of the session-level videoCallLink above)",
           "checkOverridePassed": "boolean | null",
           "checkOverrideHint": "string | null",
           "checkOverridePushedAt": "number | null",
@@ -174,6 +176,7 @@ Teacher writes:
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
 - `activeStudentView`, `teacherLive`
+- `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
@@ -192,6 +195,7 @@ Teacher per-student actions:
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
+- Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student. Independent of the session-level `videoCallLink`; the teacher can target one student mid-lesson even outside the waiting room.
 
 Student writes:
 
@@ -396,14 +400,19 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/login` | Email/password sign-in for teachers/admins; reads `?redirect` |
 | `/account` | Authenticated account settings; teachers/admins can change their own password |
 | `/admin` | Admin portal; admin role required |
-| `/lesson/:lessonId` | Solo student mode |
-| `/lesson/:lessonId?live=true` | Live student mode |
+| `/lesson/:lessonId` | Smart join. If a session exists (`waiting` or `active`), the student auto-joins it. If no session exists, the student sees the `choice` phase (`ChoiceScreen.jsx`) to pick Join Live Lesson or Go Solo. |
+| `/lesson/:lessonId?solo=true` | Forces solo mode unconditionally — bypasses any session even if one exists. Replaces the old "bare URL = solo" meaning. |
+| `/lesson/:lessonId?live=true` | Deprecated no-op. Silently ignored by `LessonRoute.jsx` (kept out of `forceSolo`) so previously-shared links with this param don't break. Bare URLs now handle the smart-join behaviour this param used to imply. |
 | `/lesson/:lessonId?teacher=true` | Teacher view; redirects unauthenticated users to login |
 | `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation view; auth required |
 | `/code` | Imported `.launchpad` Python code workspace |
 | `/builder` | Lesson builder |
 
 No room IDs. There is one session per lesson.
+
+A lesson-level `soloOnly: true` flag (on the lesson envelope) overrides all of the above: the lesson is hard-forced to solo mode always, regardless of URL or session state, and the `choice` phase is never shown. See `docs/authoring/lesson-schema.md` for the full field reference.
+
+`getLessonLinks(lessonId)` (`src/shared/lessonLinks.js`) returns `{ join, solo }` — `join` is the bare smart-join URL, `solo` appends `?solo=true`. Used by `TeacherSessionControls.jsx` and Admin Portal's `LessonPanel.jsx` (labelled "Lesson Link (live or solo)" and "Solo-Only Link").
 
 ## Session States
 
@@ -414,6 +423,12 @@ No room IDs. There is one session per lesson.
 | `sandbox` | Freeform mode; no task and no checks |
 | `ended` | Session finished |
 | any state plus `isPaused: true` | Freeze student navigation without changing state |
+
+## Student Phase State Machine
+
+`useStudentPhase.js` (`src/app/hooks/useStudentPhase.js`) owns the student phase state machine: `loading → choice → waiting → name-entry → lesson/sandbox → solo → ended`.
+
+`choice` is shown when no session exists yet and the student hasn't committed to solo — it renders `ChoiceScreen.jsx`, offering "Join a Live Lesson" (`handleWaitForTeacher`, → `waiting`/`name-entry`) or "Go Solo" (`handleGoSolo`, → `solo`). The choice is not persisted to localStorage — a fresh page load always re-shows `choice` when no session exists. If a session appears while a student sits at `choice` (the session transitions to `waiting` or `active`), they auto-transition to `waiting`/`name-entry` without needing to re-click. `soloOnly` lessons and `?solo=true` URLs skip `choice` entirely and go straight to `solo`.
 
 ## Identity Model
 

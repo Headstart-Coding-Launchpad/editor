@@ -25,8 +25,8 @@ vi.mock('../../shared/firebase', () => ({
 
 vi.mock('../../shared/lessonLinks', () => ({
   getLessonLinks: (id) => ({
-    live: `http://localhost/#/lesson/${id}?live=true`,
-    solo: `http://localhost/#/lesson/${id}`,
+    join: `http://localhost/#/lesson/${id}`,
+    solo: `http://localhost/#/lesson/${id}?solo=true`,
   }),
 }))
 
@@ -223,7 +223,7 @@ describe('LessonPanel', () => {
     )
   })
 
-  it('shows the live link URL in the share panel', async () => {
+  it('shows the join link URL and label in the share panel', async () => {
     const user = userEvent.setup()
     render(<LessonPanel />)
     fireAll({ lessons: [PYTHON_LESSON] })
@@ -231,10 +231,11 @@ describe('LessonPanel', () => {
     await openFirstLevel(user)
     await openLesson(user)
     await user.click(screen.getByRole('button', { name: 'Share Links' }))
-    expect(screen.getByText(/\?live=true/)).toBeInTheDocument()
+    expect(screen.getByText('Lesson Link (live or solo)')).toBeInTheDocument()
+    expect(screen.getByText('http://localhost/#/lesson/py-intro')).toBeInTheDocument()
   })
 
-  it('shows the solo link URL in the share panel', async () => {
+  it('shows the solo link URL and label in the share panel', async () => {
     const user = userEvent.setup()
     render(<LessonPanel />)
     fireAll({ lessons: [PYTHON_LESSON] })
@@ -242,7 +243,8 @@ describe('LessonPanel', () => {
     await openFirstLevel(user)
     await openLesson(user)
     await user.click(screen.getByRole('button', { name: 'Share Links' }))
-    expect(screen.getAllByText(/\/lesson\/py-intro/).length).toBeGreaterThan(0)
+    expect(screen.getByText('Solo-Only Link')).toBeInTheDocument()
+    expect(screen.getByText(/\?solo=true/)).toBeInTheDocument()
   })
 
   it('floats the share panel outside scrollable lesson containers', async () => {

@@ -88,7 +88,7 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
       <div style={s.studentWrap}>
         <StudentView
           lesson={lesson}
-          soloMode
+          forceSolo
           allowUnrestrictedTaskNavigation
           previewMode
           initialTaskId={initialTaskId}

@@ -12,6 +12,8 @@ import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
+import ChoiceScreen from '../components/ChoiceScreen'
+import VideoCallPrompt from '../components/VideoCallPrompt'
 import TaskProgressDots from '../components/TaskProgressDots'
 import LiveActivityToast from '../components/LiveActivityToast'
 import TeacherMessageToast from '../components/TeacherMessageToast'
@@ -26,10 +28,15 @@ import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 
-export default function StudentView({ lessonId: lessonIdProp, soloMode = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
+export default function StudentView({ lessonId: lessonIdProp, forceSolo = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
 
   // ─── Core hooks ───────────────────────────────────────────────────────────
+
+  // Lesson loads first so an authored soloOnly flag can be folded into soloMode before
+  // deciding whether to subscribe to the realtime session at all.
+  const { lesson: baseLesson, lessonLoading, firstTaskId: baseFirstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
+  const soloMode = forceSolo || !!baseLesson?.soloOnly
 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
@@ -42,7 +49,6 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   const { identity, loaded: identityLoaded, authError, retrySignIn, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
   const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
 
-  const { lesson: baseLesson, lessonLoading, firstTaskId: baseFirstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
   const lesson = useMemo(
     () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
     [baseLesson, session?.lessonOverrideTasks]
@@ -192,6 +198,17 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentToTopicPushedAt])
 
+  // ─── Teacher-sent video call link ──────────────────────────────────────────
+
+  const [showVideoCallPrompt, setShowVideoCallPrompt] = useState(false)
+  const videoCallLinkPushedAt = session?.students?.[identity?.anonymousId]?.videoCallLinkPushedAt
+
+  useEffect(() => {
+    if (!videoCallLinkPushedAt) return
+    setShowVideoCallPrompt(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoCallLinkPushedAt])
+
   function handleTopicOpen(topicId) {
     if (identity?.anonymousId && phase === 'lesson') setStudentTopic?.(identity.anonymousId, topicId || null)
   }
@@ -262,6 +279,17 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     return <LoadingScreen message={`Lesson "${lessonId}" not found.`} />
   }
 
+  if (phase === 'choice') {
+    return (
+      <ChoiceScreen
+        lessonTitle={lesson.title}
+        lessonDescription={lesson.description}
+        onJoinLive={handleWaitForTeacher}
+        onGoSolo={handleGoSolo}
+      />
+    )
+  }
+
   if (phase === 'name-entry') {
     return (
       <NameEntry
@@ -280,6 +308,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       <WaitingRoom
         lessonTitle={lesson.title}
         lessonDescription={lesson.description}
+        videoCallLink={session?.videoCallLink}
       />
     )
   }
@@ -611,6 +640,12 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
             </div>
           </div>
         </div>
+      )}
+      {showVideoCallPrompt && !teacherPresentation && session?.videoCallLink && (
+        <VideoCallPrompt
+          videoCallLink={session.videoCallLink}
+          onDismiss={() => setShowVideoCallPrompt(false)}
+        />
       )}
       {fullscreenPromptVisible && (
         <div style={s.consentOverlay}>
