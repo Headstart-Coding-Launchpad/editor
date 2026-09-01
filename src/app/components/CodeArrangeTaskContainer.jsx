@@ -77,11 +77,16 @@ export default function CodeArrangeTaskContainer({
     if (loadedForTaskRef.current === taskId) return
     loadedForTaskRef.current = taskId
     const raw = cs.readSavedTaskFile(taskId, CODE_ARRANGE_SLOTS_FILENAME)
+    // Routed through handleCodeArrangeSlotsChange (not a bare setSlotState) so
+    // a teacher already watching this student when the task loads — or who
+    // starts watching before the student places a new tile — sees this
+    // student's actual saved progress immediately, not a blank board.
     if (raw) {
       try {
         const parsed = JSON.parse(raw)
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           setSlotState(parsed)
+          cs.handleCodeArrangeSlotsChange?.(parsed)
           return
         }
       } catch {
@@ -89,6 +94,7 @@ export default function CodeArrangeTaskContainer({
       }
     }
     setSlotState({})
+    cs.handleCodeArrangeSlotsChange?.({})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 

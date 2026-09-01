@@ -103,6 +103,10 @@ export function useStudentCodeState({
   const pendingRuntimeCodeRef  = useRef(null)
   const idleFeedbackTimerRef   = useRef(null)
   const htmlSupportAttemptsRef = useRef(new Map())
+  // Latest code_arrange tile-placement state (owned by CodeArrangeTaskContainer,
+  // mirrored here purely so the "teacher starts watching" effect below can
+  // publish it immediately — see handleCodeArrangeSlotsChange.
+  const codeArrangeSlotStateRef = useRef({})
 
   const IDLE_FEEDBACK_DELAY_MS = 900
 
@@ -630,6 +634,16 @@ export function useStudentCodeState({
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
     } else if (lesson.type === 'filesystem') {
       writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
+    }
+    // code_arrange is a taskType flag layered on python/html, not its own
+    // lesson.type, so it needs its own branch here too — without it, a
+    // teacher opening the modal mid-arrangement sees a blank board (no
+    // currentCodeArrangeSlots has ever been written for this student/task
+    // yet) that then jumps straight to whatever the student had already
+    // placed the moment they drop their next tile, instead of reflecting
+    // their in-progress board right away.
+    if (findTaskById(lesson.tasks, currentTaskId)?.taskType === 'code_arrange') {
+      writeStudentCodeArrangeSlots?.(identity.anonymousId, codeArrangeSlotStateRef.current)
     }
     writeStudentInteraction(identity.anonymousId, {
       selection: editorSelectionRef.current,
@@ -1307,6 +1321,7 @@ export function useStudentCodeState({
   // teacherLive for a Go-Live/presentation broadcast, the student's own
   // currentCodeArrangeSlots record for a teacher passively watching them.
   function handleCodeArrangeSlotsChange(slotState) {
+    codeArrangeSlotStateRef.current = slotState
     if (!identity) return
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
     if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {

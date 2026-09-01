@@ -195,6 +195,47 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.getByText('print("done")')).toBeInTheDocument()
   })
 
+  it('publishes the loaded arrangement via cs.handleCodeArrangeSlotsChange on mount, not just on later tile placements', () => {
+    // A teacher can already be watching (or start watching a moment later)
+    // when this task loads with a partially-filled arrangement restored from
+    // local storage — without this, currentCodeArrangeSlots stays stale/empty
+    // until the student's next tile move, so the modal shows a blank board
+    // that then jumps straight to wherever the student already was.
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => JSON.stringify({ L1: 'L1' })),
+    })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({ L1: 'L1' })
+  })
+
+  it('publishes an empty arrangement via cs.handleCodeArrangeSlotsChange on mount when there is nothing saved yet', () => {
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({})
+  })
+
   it('mirrors each tile placement live via cs.handleCodeArrangeSlotsChange, not just on completion', async () => {
     const user = userEvent.setup()
     const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
