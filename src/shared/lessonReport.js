@@ -502,6 +502,31 @@ export function buildSessionReport({ session, lesson }) {
   }
 }
 
+// Merges optional teacher-submitted end-of-session feedback (star rating plus
+// what-worked-well / what-didn't-work notes) onto a built report. Returns the
+// report unchanged when the teacher left every field blank, so reports without
+// feedback never carry an empty teacherFeedback stub.
+export function attachTeacherFeedback(report, feedback) {
+  if (!report) return report
+  const rating = Number.isInteger(feedback?.rating) && feedback.rating >= 1 && feedback.rating <= 5
+    ? feedback.rating
+    : null
+  const whatWorkedWell = String(feedback?.whatWorkedWell ?? '').trim()
+  const whatDidntWork = String(feedback?.whatDidntWork ?? '').trim()
+
+  if (rating == null && !whatWorkedWell && !whatDidntWork) return report
+
+  return {
+    ...report,
+    teacherFeedback: {
+      rating,
+      whatWorkedWell,
+      whatDidntWork,
+      submittedAt: Date.now(),
+    },
+  }
+}
+
 export function reportToYamlText(report) {
   return yaml.dump(anonymizeSessionReport(report), YAML_OPTIONS)
 }

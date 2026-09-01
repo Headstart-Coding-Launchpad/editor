@@ -136,7 +136,64 @@ function StudentSection({ student }) {
   )
 }
 
-export default function TeacherReportModal({ report, onClose }) {
+const STAR_VALUES = [1, 2, 3, 4, 5]
+
+function TeacherFeedbackForm({ onSave }) {
+  const [rating, setRating] = useState(0)
+  const [whatWorkedWell, setWhatWorkedWell] = useState('')
+  const [whatDidntWork, setWhatDidntWork] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await onSave({ rating: rating > 0 ? rating : null, whatWorkedWell, whatDidntWork })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={s.feedbackBox}>
+      <p style={s.feedbackFormIntro}>Optional: rate this lesson run and leave any notes for next time.</p>
+
+      <div style={s.feedbackField}>
+        <span style={s.feedbackLabel}>How did this lesson go?</span>
+        <div style={s.feedbackStarsRow} role="radiogroup" aria-label="Lesson rating">
+          {STAR_VALUES.map(value => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={rating === value}
+              aria-label={`${value} star${value === 1 ? '' : 's'}`}
+              style={s.feedbackStarBtn}
+              onClick={() => setRating(current => (current === value ? 0 : value))}
+            >
+              {value <= rating ? '★' : '☆'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label style={s.feedbackField}>
+        <span style={s.feedbackLabel}>What worked well?</span>
+        <textarea style={s.feedbackTextarea} rows={2} value={whatWorkedWell} onChange={e => setWhatWorkedWell(e.target.value)} />
+      </label>
+
+      <label style={s.feedbackField}>
+        <span style={s.feedbackLabel}>What didn't work, or was broken?</span>
+        <textarea style={s.feedbackTextarea} rows={2} value={whatDidntWork} onChange={e => setWhatDidntWork(e.target.value)} />
+      </label>
+
+      <button className="btn-primary" style={s.feedbackSaveBtn} onClick={handleSave} disabled={saving}>
+        {saving ? 'Saving…' : 'Save Feedback'}
+      </button>
+    </div>
+  )
+}
+
+export default function TeacherReportModal({ report, onClose, onSaveFeedback }) {
   const overlayRef = useRef(null)
   const displayReport = useMemo(() => anonymizeSessionReport(report), [report])
 
@@ -175,6 +232,38 @@ export default function TeacherReportModal({ report, onClose }) {
         </div>
 
         <div style={s.body}>
+          {displayReport.teacherFeedback ? (
+            <section>
+              <h3 style={s.sectionTitle}>Teacher Feedback</h3>
+              <div style={s.feedbackBox}>
+                {displayReport.teacherFeedback.rating != null && (
+                  <div style={s.feedbackStars} aria-label={`Rated ${displayReport.teacherFeedback.rating} out of 5 stars`}>
+                    {STAR_VALUES.map(value => (
+                      <span key={value}>{value <= displayReport.teacherFeedback.rating ? '★' : '☆'}</span>
+                    ))}
+                  </div>
+                )}
+                {displayReport.teacherFeedback.whatWorkedWell && (
+                  <div style={s.feedbackField}>
+                    <span style={s.feedbackLabel}>What worked well</span>
+                    <p style={s.feedbackText}>{displayReport.teacherFeedback.whatWorkedWell}</p>
+                  </div>
+                )}
+                {displayReport.teacherFeedback.whatDidntWork && (
+                  <div style={s.feedbackField}>
+                    <span style={s.feedbackLabel}>What didn't work, or was broken</span>
+                    <p style={s.feedbackText}>{displayReport.teacherFeedback.whatDidntWork}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : onSaveFeedback ? (
+            <section>
+              <h3 style={s.sectionTitle}>Rate This Session</h3>
+              <TeacherFeedbackForm onSave={onSaveFeedback} />
+            </section>
+          ) : null}
+
           <section>
             <h3 style={s.sectionTitle}>Task Summary</h3>
             <table style={s.table}>
@@ -259,6 +348,28 @@ const s = {
     lineHeight: 1.25,
   },
   muted: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af' },
+  feedbackBox: {
+    border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px',
+    display: 'flex', flexDirection: 'column', gap: 10, background: '#f9fafb',
+  },
+  feedbackStars: { fontSize: '1.1rem', color: '#f59e0b', letterSpacing: 2 },
+  feedbackFormIntro: { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#6b7280', margin: 0 },
+  feedbackStarsRow: { display: 'flex', gap: 4 },
+  feedbackStarBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1, color: '#f59e0b', padding: 0 },
+  feedbackTextarea: {
+    fontFamily: 'var(--font-body)', fontSize: '0.85rem', border: '1px solid #d1d5db',
+    borderRadius: 8, padding: '8px 10px', resize: 'vertical', minHeight: 44,
+  },
+  feedbackSaveBtn: { alignSelf: 'flex-start', fontSize: 13, padding: '6px 14px' },
+  feedbackField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  feedbackLabel: {
+    fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.75rem',
+    color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em',
+  },
+  feedbackText: {
+    fontFamily: 'var(--font-body)', fontSize: '0.88rem', color: 'var(--colour-text)',
+    margin: 0, whiteSpace: 'pre-wrap',
+  },
   studentSection: { border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8, overflow: 'hidden' },
   studentHeader: {
     width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',

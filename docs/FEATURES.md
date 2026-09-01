@@ -70,6 +70,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Create, start, pause/resume, sandbox, end, and restart sessions
 - Share a live join link with students
 - Lesson elapsed timer and per-task countdown that flashes when time expires
+- Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
 
 ### Task Navigator
 - Task list with group collapse

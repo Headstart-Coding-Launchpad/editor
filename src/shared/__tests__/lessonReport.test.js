@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import yaml from 'js-yaml'
-import { anonymizeSessionReport, buildSessionReport, reportToYamlText } from '../lessonReport'
+import { anonymizeSessionReport, attachTeacherFeedback, buildSessionReport, reportToYamlText } from '../lessonReport'
 
 const lesson = {
   id: 'demo-lesson',
@@ -442,6 +442,41 @@ describe('buildSessionReport', () => {
     expect(report.sessionId).toBe('1000')
     expect(report.startedAt).toBe(1000)
     expect(report.endedAt).toBe(2000)
+  })
+})
+
+describe('attachTeacherFeedback', () => {
+  it('attaches a trimmed rating and feedback text with a submitted timestamp', () => {
+    const report = buildSessionReport({ session, lesson })
+    const result = attachTeacherFeedback(report, {
+      rating: 4,
+      whatWorkedWell: '  Great pace  ',
+      whatDidntWork: '  Iframe crashed once  ',
+    })
+    expect(result.teacherFeedback).toMatchObject({
+      rating: 4,
+      whatWorkedWell: 'Great pace',
+      whatDidntWork: 'Iframe crashed once',
+    })
+    expect(typeof result.teacherFeedback.submittedAt).toBe('number')
+  })
+
+  it('returns the report unchanged when the teacher left every field blank', () => {
+    const report = buildSessionReport({ session, lesson })
+    const result = attachTeacherFeedback(report, { rating: null, whatWorkedWell: '  ', whatDidntWork: '' })
+    expect(result).toBe(report)
+    expect(result.teacherFeedback).toBeUndefined()
+  })
+
+  it('returns the report unchanged when no feedback is passed', () => {
+    const report = buildSessionReport({ session, lesson })
+    expect(attachTeacherFeedback(report, undefined)).toBe(report)
+  })
+
+  it('discards an out-of-range rating', () => {
+    const report = buildSessionReport({ session, lesson })
+    const result = attachTeacherFeedback(report, { rating: 7, whatWorkedWell: 'Fine', whatDidntWork: '' })
+    expect(result.teacherFeedback.rating).toBeNull()
   })
 })
 

@@ -84,4 +84,52 @@ describe('TeacherReportModal', () => {
     const { container } = render(<TeacherReportModal report={null} onClose={vi.fn()} />)
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('renders teacher feedback when present on the report', () => {
+    const reportWithFeedback = {
+      ...report,
+      teacherFeedback: {
+        rating: 4,
+        whatWorkedWell: 'Great pace',
+        whatDidntWork: 'Iframe crashed once',
+        submittedAt: 2500,
+      },
+    }
+    render(<TeacherReportModal report={reportWithFeedback} onClose={vi.fn()} />)
+    expect(screen.getByText('Teacher Feedback')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rated 4 out of 5 stars')).toBeInTheDocument()
+    expect(screen.getByText('Great pace')).toBeInTheDocument()
+    expect(screen.getByText('Iframe crashed once')).toBeInTheDocument()
+  })
+
+  it('does not render a teacher feedback section when absent and no onSaveFeedback is given', () => {
+    render(<TeacherReportModal report={report} onClose={vi.fn()} />)
+    expect(screen.queryByText('Teacher Feedback')).not.toBeInTheDocument()
+    expect(screen.queryByText('Rate This Session')).not.toBeInTheDocument()
+  })
+
+  it('renders an editable feedback form when onSaveFeedback is given and no feedback exists yet', async () => {
+    const onSaveFeedback = vi.fn().mockResolvedValue(undefined)
+    render(<TeacherReportModal report={report} onClose={vi.fn()} onSaveFeedback={onSaveFeedback} />)
+
+    expect(screen.getByText('Rate This Session')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: '4 stars' }))
+    fireEvent.change(screen.getByLabelText('What worked well?'), { target: { value: 'Great pace' } })
+    fireEvent.change(screen.getByLabelText("What didn't work, or was broken?"), { target: { value: 'Iframe crashed once' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Feedback' }))
+
+    expect(onSaveFeedback).toHaveBeenCalledWith({
+      rating: 4,
+      whatWorkedWell: 'Great pace',
+      whatDidntWork: 'Iframe crashed once',
+    })
+  })
+
+  it('does not show the editable form once the report already has feedback', () => {
+    const onSaveFeedback = vi.fn()
+    const reportWithFeedback = { ...report, teacherFeedback: { rating: 5, whatWorkedWell: '', whatDidntWork: '', submittedAt: 2500 } }
+    render(<TeacherReportModal report={reportWithFeedback} onClose={vi.fn()} onSaveFeedback={onSaveFeedback} />)
+    expect(screen.queryByText('Rate This Session')).not.toBeInTheDocument()
+    expect(screen.getByText('Teacher Feedback')).toBeInTheDocument()
+  })
 })
