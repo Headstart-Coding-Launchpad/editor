@@ -18,6 +18,11 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "endedAt": "1234567890 | null",
       "isPaused": false,
       "activeStudentView": "{anonymousId} | null",
+      "teacherClassPaneCommand": {
+        "mode": "highlight | force",
+        "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
+        "pushedAt": 1234567890
+      },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
       "fullscreenRequestedAt": "1234567890 | null",
@@ -142,6 +147,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
           "isFullscreen": "boolean | null",
+          "visiblePanes": "string[] | null (what the student can currently see, e.g. ['instructions','blocks','stage'] — see LessonTaskContent.jsx's visiblePanes comment and PaneFocusDropdown.jsx for the pane-id vocabulary; rendered on StudentCard as '👀 Info + Blocks + Stage')",
           "teacherEditRequestedAt": "number | null",
           "teacherEditAcceptedAt": "number | null",
           "teacherLiveCode": "string | null",
@@ -159,6 +165,11 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "note": "string | null",
               "createdAt": 1234567890
             }
+          },
+          "teacherPaneCommand": {
+            "mode": "highlight | force",
+            "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
+            "pushedAt": 1234567890
           }
         }
       }
@@ -176,6 +187,7 @@ Teacher writes:
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
 - `activeStudentView`, `teacherLive`
+- `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
@@ -192,6 +204,7 @@ Teacher per-student actions:
 - Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
+- Highlight or force a tab/panel (`pushTeacherPaneCommand`/`clearTeacherPaneCommand`) writes `teacherPaneCommand: { mode, panes, pushedAt }` — `mode: 'highlight'` pulses a glow on the named tab(s)/panel(s) without moving anything; `mode: 'force'` immediately switches the student to them (a one-time jump, not a lock — the student is free to navigate away again right after). `panes` is drawn from `instructions` (every lesson type), plus `breadboard`/`code` for Electronics or `blocks`/`stage` for Scratch — see `PaneFocusDropdown.jsx`. There is no consent step (unlike `teacherStageRequestedAt`/`teacherEditRequestedAt`). Dismissal ("clears when the student looks at it") is tracked client-side in `StudentView`, not by writing back to Firebase — this matters for `teacherClassPaneCommand` above, since it's one shared node and one student looking at it must not clear it for the rest of the class. Cleared by `setTaskId`.
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
@@ -213,7 +226,7 @@ Student writes:
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
-- Presence: own `windowFocused`, `lastActivityAt`, and `isFullscreen` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on.
+- Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
