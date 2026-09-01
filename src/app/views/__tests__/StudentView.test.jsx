@@ -181,7 +181,7 @@ describe('StudentView', () => {
   })
 
   it('loads solo mode when a waiting live session exists for the lesson', async () => {
-    render(<StudentView lessonId="python-1-1" soloMode />)
+    render(<StudentView lessonId="python-1-1" forceSolo />)
 
     await waitFor(() => {
       expect(screen.getByText(/Python 1\.1 SOLO/)).toBeInTheDocument()
@@ -196,7 +196,7 @@ describe('StudentView', () => {
     render(
       <StudentView
         lessonId="python-1-1"
-        soloMode
+        forceSolo
         lesson={{
           id: 'python-1-1',
           title: 'Python 1.1',
@@ -252,7 +252,7 @@ describe('StudentView', () => {
     render(
       <StudentView
         lessonId="scratch-1-1"
-        soloMode
+        forceSolo
         lesson={{
           id: 'scratch-1-1',
           title: 'Scratch 1.1',

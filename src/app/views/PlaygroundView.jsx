@@ -43,5 +43,5 @@ export default function PlaygroundView() {
   const { type } = useParams()
   const lesson = useMemo(() => PLAYGROUND_TYPES.has(type) ? makeLesson(type) : null, [type])
   if (!lesson) return <LoadingScreen error="That playground is not available." />
-  return <StudentView lessonId={lesson.id} lesson={lesson} soloMode allowUnrestrictedTaskNavigation />
+  return <StudentView lessonId={lesson.id} lesson={lesson} forceSolo allowUnrestrictedTaskNavigation />
 }

@@ -25,6 +25,7 @@ id: python-for-loops         # required — lowercase slug, used in URLs
 type: composed               # required for new lessons; legacy types still load
 title: Python For Loops      # required
 draft: false                 # optional; true permits incomplete real tasks during authoring
+soloOnly: false               # optional; true hard-forces solo mode, hiding the live/wait choice
 version: 3                   # current successful-save version (managed by CLI/Builder)
 description: Practise loops. # required — shown on the entry screen
 level: Level 1               # optional legacy display fallback; prefer levelId/levelRef
@@ -54,6 +55,7 @@ tasks: []                     # required — ordered task list (see below)
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `draft` | No | boolean | Enables incomplete real tasks for authoring. Final publishing refuses `true`. |
+| `soloOnly` | No | boolean | Default `false`. When `true`, hard-forces solo mode always — the live/wait choice screen is never offered, regardless of URL or an existing live session. See `docs/authoring/lesson-schema.md` and `docs/agents/runtime-model.md`. |
 | `version` | No | positive integer | Current save version, managed by LaunchPad; callers must not set it. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |

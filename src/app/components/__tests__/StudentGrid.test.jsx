@@ -14,11 +14,14 @@ vi.mock('../StudentCard', () => ({
 }))
 
 vi.mock('../StudentModal', () => ({
-  default: ({ student, onClose, onPrev, onNext, hasPrev, hasNext }) => (
+  default: ({ student, onClose, onPrev, onNext, hasPrev, hasNext, onSendVideoCallLink }) => (
     <div data-testid="student-modal">
       <span data-testid="modal-name">{student.displayName}</span>
       {hasPrev && <button onClick={onPrev}>Prev student</button>}
       {hasNext && <button onClick={onNext}>Next student</button>}
+      {onSendVideoCallLink && (
+        <button onClick={() => onSendVideoCallLink(student.anonymousId)}>Send video call link</button>
+      )}
       <button onClick={onClose}>Close modal</button>
     </div>
   ),
@@ -171,6 +174,15 @@ describe('StudentGrid', () => {
       expect(screen.getByTestId('student-modal')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Close modal' }))
       expect(screen.queryByTestId('student-modal')).not.toBeInTheDocument()
+    })
+
+    it('threads onSendVideoCallLink through to the expanded StudentModal', async () => {
+      const user = userEvent.setup()
+      const onSendVideoCallLink = vi.fn()
+      render(<StudentGrid {...mkProps({ onSendVideoCallLink })} />)
+      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await user.click(screen.getByRole('button', { name: 'Send video call link' }))
+      expect(onSendVideoCallLink).toHaveBeenCalledWith('s1')
     })
   })
 })

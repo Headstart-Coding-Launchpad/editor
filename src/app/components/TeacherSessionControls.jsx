@@ -13,6 +13,7 @@ export default function TeacherSessionControls({
   onEndSession,
   onRestartSession,
   onReturnToAdmin,
+  onUpdateVideoCallLink,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -20,6 +21,12 @@ export default function TeacherSessionControls({
   const [width, setWidth] = useState(() => window.innerWidth)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+
+  const [videoLinkOpen, setVideoLinkOpen] = useState(false)
+  const [videoLinkValue, setVideoLinkValue] = useState(session?.videoCallLink ?? '')
+  const [videoLinkError, setVideoLinkError] = useState(null)
+  const [videoLinkSaving, setVideoLinkSaving] = useState(false)
+  const videoLinkRef = useRef(null)
 
   const narrow  = width < BREAKPOINT_NARROW
   const compact = width < BREAKPOINT_COMPACT
@@ -39,6 +46,35 @@ export default function TeacherSessionControls({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!videoLinkOpen) return
+    setVideoLinkValue(session?.videoCallLink ?? '')
+    setVideoLinkError(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoLinkOpen])
+
+  useEffect(() => {
+    if (!videoLinkOpen) return
+    function onDown(e) {
+      if (videoLinkRef.current && !videoLinkRef.current.contains(e.target)) setVideoLinkOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [videoLinkOpen])
+
+  async function handleSaveVideoLink() {
+    setVideoLinkSaving(true)
+    setVideoLinkError(null)
+    try {
+      await onUpdateVideoCallLink(videoLinkValue)
+      setVideoLinkOpen(false)
+    } catch (err) {
+      setVideoLinkError(err.message || 'Could not save that link.')
+    } finally {
+      setVideoLinkSaving(false)
+    }
+  }
 
   return (
     <div className="teacher-session-controls">
@@ -108,6 +144,52 @@ export default function TeacherSessionControls({
         </>
       )}
 
+      {session && onUpdateVideoCallLink && (
+        <div ref={videoLinkRef} style={sDD.wrap}>
+          <button
+            className="btn-ghost teacher-session-controls__action"
+            onClick={() => setVideoLinkOpen(v => !v)}
+            aria-expanded={videoLinkOpen}
+          >
+            📹 {session.videoCallLink ? 'Video Call' : 'Add Video Call'}
+          </button>
+          {videoLinkOpen && (
+            <div style={sDD.panel} className="ui-popover">
+              <label style={sVid.label}>
+                Video call link
+                <input
+                  style={sVid.input}
+                  type="url"
+                  autoFocus
+                  placeholder="https://zoom.us/j/…"
+                  value={videoLinkValue}
+                  onChange={e => setVideoLinkValue(e.target.value)}
+                />
+              </label>
+              {videoLinkError && <span style={sVid.error}>{videoLinkError}</span>}
+              <div style={sVid.actions}>
+                {session.videoCallLink && (
+                  <button
+                    style={{ ...sDD.item, flex: 1 }}
+                    disabled={videoLinkSaving}
+                    onClick={() => { setVideoLinkValue(''); }}
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  style={{ ...sDD.item, flex: 1, background: 'var(--colour-primary)', color: '#fff', borderColor: 'var(--colour-primary)' }}
+                  disabled={videoLinkSaving}
+                  onClick={handleSaveVideoLink}
+                >
+                  {videoLinkSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {state === 'waiting' && (
         <button className="btn-primary teacher-session-controls__action" onClick={onStartSession}>
           Start Session
@@ -168,5 +250,35 @@ const sDD = {
     fontSize: 13,
     cursor: 'pointer',
     textAlign: 'left',
+  },
+}
+
+const sVid = {
+  label: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: 12,
+    color: '#374151',
+  },
+  input: {
+    padding: '7px 9px',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+    outline: 'none',
+    minWidth: 220,
+  },
+  error: {
+    fontFamily: 'var(--font-body)',
+    fontSize: 11.5,
+    color: '#dc2626',
+  },
+  actions: {
+    display: 'flex',
+    gap: 6,
   },
 }

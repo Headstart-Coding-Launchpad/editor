@@ -51,8 +51,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CodeFileWorkspace.jsx` | Lightweight standalone Python editor/runner for one or many imported `.launchpad` code tasks |
 | `PlaygroundView.jsx` | Local-only Python, Arcade Kit, and Electronics playground route built from the existing student workspaces |
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
-| `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView |
-| `StudentView.jsx` | Main student experience: all phases (loading → waiting → name-entry → lesson/sandbox/solo → ended) |
+| `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView. `?live=true` is a deprecated no-op (bare URL now smart-joins); `?solo=true` forces solo unconditionally |
+| `StudentView.jsx` | Main student experience: all phases (loading → choice → waiting → name-entry → lesson/sandbox/solo → ended); `forceSolo` prop (from `?solo=true`) is combined with the lesson's `soloOnly` flag into the internal `soloMode` |
 | `TeacherView.jsx` | Teacher dashboard: collapsible 3-panel layout, session lifecycle controls, student grid |
 
 ---
@@ -88,18 +88,19 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CodeArrangeTask.jsx` | `taskType: code_arrange` presentational workspace: renders each authored line as either a whole-line drop slot or fixed text with small inline blanks in place (via `useTileDragAndDrop`), all fed from the one shared "Code tiles" pool below the program, Run button, Python output panel or HTML iframe preview. Reused by both the student container and the Builder preview |
 | `CodeArrangeTaskContainer.jsx` | Wires `CodeArrangeTask` to `useStudentCodeState` (`cs`): persists the tile arrangement, pushes assembled code into `cs.handleCodeChange`/`handleFileChange`, and runs via `cs.handleRun` — the real Python/HTML pipeline, unmodified |
 | `CheckFeedbackBanner.jsx` | Pass/fail banner with optional hint and "see complete code" action |
-| `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message |
-| `JoinChoiceScreen.jsx` | Choice screen: Wait for Teacher or Work Solo (shown when no active session) |
+| `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message; shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
+| `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
+| `VideoCallPrompt.jsx` | Modal shown to one student when a teacher targets them with "📹 Send Video Call Link" from the Student Grid, stamping `students/{id}/videoCallLinkPushedAt` |
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
 | `StudentCard.jsx` | Compact card: name, online/run/check/support badges, code/output/quiz snippet, expand button |
-| `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove) |
+| `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link) |
 | `LiveActivityToast.jsx` | Transient live-view notice for editor copy, paste, and click activity |
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
-| `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, and session action controls |
+| `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink` |
 | `TeacherCodeTabs.jsx` | Starter/stage/complete tab strip shown above teacher code editors; includes "Send to all" action |
 | `TeacherPreviewBanner.jsx` | Status banner shown when the teacher previews a task without moving students |
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
@@ -159,7 +160,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `useCrossTabPresence.js` | BroadcastChannel-based ping/pong presence check for the same student+lesson open in another tab; returns a boolean, informational only |
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal logging, session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`) |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
-| `useStudentPhase.js` | Student phase state machine (loading → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
+| `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers; composes the four sub-hooks below |
 | `usePyodideState.js` | Pyodide warm-up effect, `pyodideStatus` state, and `initPyodideIfNeeded()` helper |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
@@ -378,7 +379,7 @@ Each `index.js` exports a default object with:
 | `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
 | `lessonBlocksCodec.js` | Encodes/decodes Firestore-incompatible lesson fields as JSON strings: Scratch block trees for nested depth and Arcade Kit designs for nested sprite-frame arrays |
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, task summary); `reportToYamlText()` for YAML export |
-| `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder (live + solo links); used by TeacherView and LessonPanel |
+| `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo }` (bare smart-join URL + `?solo=true` link); used by TeacherView and LessonPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting |

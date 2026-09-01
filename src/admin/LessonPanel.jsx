@@ -600,11 +600,11 @@ function ShareMenu({ lessonId, open, copiedLink, onToggle, onClose, onCopy }) {
             }}
           >
             <span className="teacher-share__title">Share lesson links</span>
-            {(['live', 'solo']).map(type => (
+            {(['join', 'solo']).map(type => (
               <div key={type} className="teacher-share__row">
                 <div className="teacher-share__info">
                   <span className="teacher-share__type">
-                    {type === 'live' ? 'Live (with teacher)' : 'Solo (practice)'}
+                    {type === 'join' ? 'Lesson Link (live or solo)' : 'Solo-Only Link'}
                   </span>
                   <span className="teacher-share__url">{getLessonLinks(lessonId)[type]}</span>
                 </div>

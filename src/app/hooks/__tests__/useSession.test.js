@@ -247,6 +247,15 @@ describe('useSession', () => {
         expect.objectContaining({ lessonOverrideTasks: null }),
       )
     })
+
+    it('resets videoCallLink to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.endSession() })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ videoCallLink: null }),
+      )
+    })
   })
 
   describe('createSession', () => {
@@ -265,6 +274,67 @@ describe('useSession', () => {
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
         expect.objectContaining({ explainerShowComplete: false }),
+      )
+    })
+
+    it('initialises videoCallLink to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.createSession() })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ videoCallLink: null }),
+      )
+    })
+  })
+
+  describe('updateVideoCallLink', () => {
+    it('writes a trimmed https URL to the session videoCallLink path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.updateVideoCallLink('https://zoom.us/j/123  ') })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallLink' },
+        'https://zoom.us/j/123',
+      )
+    })
+
+    it('accepts an http URL', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.updateVideoCallLink('http://example.com/call') })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallLink' },
+        'http://example.com/call',
+      )
+    })
+
+    it('rejects a non-http(s) URL and does not write', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await expect(result.current.updateVideoCallLink('javascript:alert(1)')).rejects.toThrow()
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('rejects a value that is not a valid URL at all', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await expect(result.current.updateVideoCallLink('not a url')).rejects.toThrow()
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('clears the link by writing null when passed an empty string', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.updateVideoCallLink('') })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallLink' },
+        null,
+      )
+    })
+  })
+
+  describe('sendVideoCallLink', () => {
+    it('writes a videoCallLinkPushedAt timestamp to the student node', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.sendVideoCallLink('student-abc') })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { videoCallLinkPushedAt: expect.any(Number) },
       )
     })
   })

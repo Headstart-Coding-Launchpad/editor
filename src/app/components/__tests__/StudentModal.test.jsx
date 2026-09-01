@@ -315,6 +315,26 @@ describe('StudentModal', () => {
     })
   })
 
+  describe('video call link', () => {
+    it('does not show the Send Video Call Link item when onSendVideoCallLink is not provided', async () => {
+      const user = userEvent.setup()
+      // onSendMessage keeps the More dropdown itself present so we can assert the
+      // video-call item specifically is absent (with no handlers at all, More itself doesn't render).
+      render(<StudentModal {...mkProps({ onSendMessage: vi.fn() })} />)
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      expect(screen.queryByRole('button', { name: /Send Video Call Link/ })).not.toBeInTheDocument()
+    })
+
+    it('calls onSendVideoCallLink with the student anonymousId when clicked', async () => {
+      const user = userEvent.setup()
+      const onSendVideoCallLink = vi.fn()
+      render(<StudentModal {...mkProps({ onSendVideoCallLink })} />)
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      await user.click(screen.getByRole('button', { name: /Send Video Call Link/ }))
+      expect(onSendVideoCallLink).toHaveBeenCalledWith('student-1')
+    })
+  })
+
   describe('Scratch lessons', () => {
     it('renders the Scratch workspace when opening the modal', () => {
       render(<StudentModal {...mkProps({

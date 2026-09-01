@@ -47,4 +47,17 @@ describe('WaitingRoom', () => {
     render(<WaitingRoom lessonTitle="Lesson" />)
     expect(screen.getByText('Headstart Coding - LaunchPad')).toBeInTheDocument()
   })
+
+  describe('video call link', () => {
+    it('does not render a video call section when videoCallLink is absent', () => {
+      render(<WaitingRoom lessonTitle="Lesson" />)
+      expect(screen.queryByRole('link', { name: /Join Video Call/ })).not.toBeInTheDocument()
+    })
+
+    it('renders a Join Video Call link when videoCallLink is provided', () => {
+      render(<WaitingRoom lessonTitle="Lesson" videoCallLink="https://zoom.us/j/123" />)
+      const link = screen.getByRole('link', { name: /Join Video Call/ })
+      expect(link).toHaveAttribute('href', 'https://zoom.us/j/123')
+    })
+  })
 })
