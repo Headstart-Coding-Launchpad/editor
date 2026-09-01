@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef, useState, useEffect } from 'react'
 import ScratchWorkspace from './ScratchWorkspace'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { loadPersonalSandboxCode } from '../../app/studentStorage'
@@ -36,6 +36,21 @@ export default function StudentWorkspace({
     disabled: cs.inPersonalSandbox,
   }), [task, cs.scratchActiveStageIndex, cs.inPersonalSandbox])
 
+  // Teacher broadcast loads directly into the live Blockly workspace object
+  // (loadWorkspace mutates it in place, unlike the plain-prop code/circuit used
+  // by python/electronics), so the workspace still physically holds the
+  // teacher's blocks after the broadcast ends. Force a remount on that
+  // true->false edge so the workspace rebuilds fresh from the student's own
+  // saved state instead of saving the leftover teacher blocks on the next edit.
+  const wasForcedTeacherLiveRef = useRef(isForcedTeacherLive)
+  const [liveEndEpoch, setLiveEndEpoch] = useState(0)
+  useEffect(() => {
+    if (wasForcedTeacherLiveRef.current && !isForcedTeacherLive) {
+      setLiveEndEpoch(epoch => epoch + 1)
+    }
+    wasForcedTeacherLiveRef.current = isForcedTeacherLive
+  }, [isForcedTeacherLive])
+
   return (
     <div style={s.scratchStudentWorkspace}>
       {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && !isTeacherEditing && (
@@ -51,7 +66,7 @@ export default function StudentWorkspace({
         </div>
       )}
       <ScratchWorkspace
-        key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}`}
+        key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}-${liveEndEpoch}`}
         task={cs.inPersonalSandbox ? null : task}
         predefinedBlocks={predefinedBlocks}
         prebuiltStacks={prebuiltStacks}
