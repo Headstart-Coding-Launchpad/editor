@@ -171,6 +171,8 @@ Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `
 
 ## Code Arrange Task Fields
 
+**Authoring YAML note:** the field names below (`taskType`, etc.) are the internal/JSON form this page documents, per the header above. In authoring YAML, use `type: code_arrange` — matching how `docs/authoring/AUTHORING_GUIDE.md` already phrases `type: information`/`type: quiz` for the other two special task types — and `cli/yaml-converter.mjs` converts it to `taskType: code_arrange` on ingest. Authoring with a literal `taskType: code_arrange` key in the YAML is silently carried through as an unrecognised extra field rather than validated or converted, so the task will not actually be treated as an arrange task.
+
 `taskType: "code_arrange"` is a drag-and-drop runnable-code task, alongside
 `information` and `quiz` — not a `quiz` sub-type, since `quiz` tasks must
 never carry code/output check fields (see `docs/authoring/quiz-tasks.md`)
@@ -227,7 +229,7 @@ to a single blank, the whole-line shape, as a starting point).
 
 ```yaml
 - title: Print the first five even numbers
-  taskType: code_arrange
+  type: code_arrange
   moduleType: python
   explainer: Drag the line into place and fill in the blank to print 0 2 4 6 8, one per line.
   lines:
@@ -265,7 +267,7 @@ to a single blank, the whole-line shape, as a starting point).
 
 ```yaml
 - title: Arrange a heading and paragraph
-  taskType: code_arrange
+  type: code_arrange
   moduleType: html
   explainer: Build the page by arranging the lines.
   entryFile: index.html

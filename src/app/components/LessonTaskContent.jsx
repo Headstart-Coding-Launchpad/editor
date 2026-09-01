@@ -14,7 +14,7 @@ import SupportStagePanel from './SupportStagePanel'
 import { getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
 import { useElementSize } from '../../shared/useElementSize'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
-import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH, NARROW_BREAKPOINT_HEIGHT as SCRATCH_CODE_WIDE_HEIGHT } from '../../modules/scratch/ScratchWorkspace'
+import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
 const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
 // Lesson types whose module StudentWorkspace reports its own visiblePanes (a togglable
@@ -176,26 +176,14 @@ export default function LessonTaskContent({
     ? s.editorAreaInfo
     : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
 
-  // s.fluidTaskContent's overflow:'hidden' + minHeight:0 is right for the other
-  // fluid-workspace types (SplitPane manages its own per-pane scrolling internally), but
-  // for Scratch it would clip scratchTaskPanelWrap's height floor (see its style below)
-  // instead of letting StudentView.jsx's `s.body` (overflow:'auto') scroll around it when
-  // a sibling like the completion banner grows. `minHeight: 'auto'` (not 0, and not simply
-  // omitted — taskContentStyle already bakes in minHeight:0) is what actually re-enables a
-  // flex item's content-based automatic minimum size, which is what lets it grow to fit a
-  // child's explicit min-height when overflow is visible — CSS resolves this content-based
-  // minimum to 0 for any *other* overflow value, so minHeight:'auto' only works paired with
-  // overflow:'visible' here, not on its own.
-  const transitionStyle = isScratchLesson && useFluidWorkspace
-    ? { ...taskContentStyle, flex: 1, minHeight: 'auto' }
-    : useFluidWorkspace
-      ? { ...taskContentStyle, ...s.fluidTaskContent }
-      : taskContentStyle
-  // TaskSlideTransition.jsx's own `.task-slide-panel` CSS class also hardcodes
-  // `min-height: 0` (index.css) — same reason, needs the same override, but that's a class
-  // rule, not something `style` (which only reaches `.task-slide-viewport`) can touch —
-  // hence the separate `panelStyle` prop.
-  const taskPanelInnerStyle = isScratchLesson && useFluidWorkspace ? { minHeight: 'auto' } : undefined
+  // s.fluidTaskContent's overflow:'hidden' + minHeight:0 applies to every fluid-workspace
+  // type, Scratch included: scratchTaskPanelWrap carries no height floor of its own to
+  // protect (ScratchWorkspace scales its stage down to fit whatever height it's given —
+  // see computeStageScale there), so there's nothing here that needs to grow past its
+  // flex-allotted space or stay visible while doing so.
+  const transitionStyle = useFluidWorkspace
+    ? { ...taskContentStyle, ...s.fluidTaskContent }
+    : taskContentStyle
 
   const taskExplainer = hasTaskExplainer ? (
     <div style={useSideExplainer ? s.sideExplainerShell : undefined}>
@@ -371,7 +359,7 @@ export default function LessonTaskContent({
   )
 
   return (
-    <TaskSlideTransition transitionKey={transitionKey} style={transitionStyle} panelStyle={taskPanelInnerStyle}>
+    <TaskSlideTransition transitionKey={transitionKey} style={transitionStyle}>
       {previewMode && task && !isSandbox && (
         <Banner accent="#0ea5e9" color="#0369a1" style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}>
           {task.taskMode === 'live'
@@ -523,13 +511,13 @@ const s = {
   scratchTaskPanelWrap: {
     flex: 1,
     minWidth: 0,
-    // A real floor, not 0: without this, a growing sibling (e.g. the completion banner
-    // wrapping onto extra lines) directly shrinks this panel's available height instead
-    // of the page scrolling around it — StudentView.jsx's `s.body` already has
-    // `overflow: 'auto'` for exactly this. Below this floor, ScratchWorkspace's own
-    // measured height would drop under its NARROW_BREAKPOINT_HEIGHT and force Blocks/Stage
-    // into compact tabs for no better reason than a banner temporarily taking up space.
-    minHeight: SCRATCH_CODE_WIDE_HEIGHT,
+    // No minHeight floor here (deliberately): a growing sibling (e.g. a banner, or the
+    // completion banner wrapping onto extra lines) is free to shrink this panel however far
+    // it needs to — ScratchWorkspace scales its own stage down to fit whatever height it's
+    // given (see computeStageScale there) rather than needing a reserved floor, and its
+    // stagePane keeps its own `overflow: auto` as a last resort if it's ever squeezed
+    // tighter than that scaling can absorb.
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: 8,

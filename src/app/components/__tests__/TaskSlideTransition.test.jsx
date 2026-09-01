@@ -83,16 +83,6 @@ describe('TaskSlideTransition', () => {
     expect(container.firstChild).toHaveClass('task-slide-viewport')
   })
 
-  it('applies panelStyle to the entering panel, overriding its own min-height:0 CSS class rule', () => {
-    render(
-      <TaskSlideTransition transitionKey="task-1" panelStyle={{ minHeight: 'auto' }}>
-        <span>Content</span>
-      </TaskSlideTransition>
-    )
-    const enteringPanel = screen.getByText('Content').closest('.task-slide-panel--entering')
-    expect(enteringPanel.style.minHeight).toBe('auto')
-  })
-
   it('leaves the entering panel unstyled when panelStyle is omitted (default for every other caller)', () => {
     render(
       <TaskSlideTransition transitionKey="task-1">

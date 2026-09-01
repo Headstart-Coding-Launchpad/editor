@@ -7,6 +7,7 @@ import {
   filterCheckableSpriteWorkspaces,
   isValidNewVariableName,
   computeBlockScale,
+  computeStageScale,
 } from '../ScratchWorkspace'
 
 describe('computeBlockScale', () => {
@@ -27,6 +28,33 @@ describe('computeBlockScale', () => {
   it('never goes below the readability floor, even at zero size', () => {
     expect(computeBlockScale(0, 0)).toBeCloseTo(0.6)
     expect(computeBlockScale(0, 0)).toBeGreaterThanOrEqual(0.6)
+  })
+})
+
+describe('computeStageScale', () => {
+  it('is full size when both dimensions are roomy', () => {
+    expect(computeStageScale(1600, 900, { compact: false, flyoutCollapsed: false })).toBe(1)
+  })
+
+  it('shrinks the stage when the container is short, even though it stays wide — this is what lets the stage scale down instead of disappearing behind a Blocks/Stage tab switcher when a banner shrinks the available height', () => {
+    const scale = computeStageScale(1600, 300, { compact: false, flyoutCollapsed: false })
+    expect(scale).toBeCloseTo(0.685, 3)
+    expect(scale).toBeLessThan(1)
+  })
+
+  it('never goes below the readability floor, even when height is near zero', () => {
+    expect(computeStageScale(1600, 100, { compact: false, flyoutCollapsed: false })).toBeCloseTo(0.35)
+  })
+
+  it('ignores height entirely when it is not measured yet (0)', () => {
+    expect(computeStageScale(1600, 0, { compact: false, flyoutCollapsed: false })).toBe(1)
+  })
+
+  it('reserves less width for the editor in compact mode, since Blocks/Stage share the full width in turn instead of sitting side-by-side', () => {
+    const nonCompact = computeStageScale(500, 0, { compact: false, flyoutCollapsed: false })
+    const compact = computeStageScale(500, 0, { compact: true, flyoutCollapsed: false })
+    expect(nonCompact).toBeCloseTo(0.357, 3)
+    expect(compact).toBe(1)
   })
 })
 
