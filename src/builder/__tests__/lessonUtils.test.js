@@ -171,8 +171,22 @@ describe('validateLesson', () => {
     }]))
     expect(invalid.errors).toEqual(expect.arrayContaining([
       'Task 1 line 1 has no parts.',
-      'Task 1 line 1 has no blanks.',
+      'Task 1 is a code-arrange task but has no blanks.',
     ]))
+
+    const fixedLine = validateLesson(lesson('python', [{
+      id: 1,
+      title: 'Arrange with a given line',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [
+        { id: 'L1', parts: [{ type: 'text', text: 'x = 5' }] },
+        { id: 'L2', parts: [{ type: 'slot', id: 'S1', code: 'print(x)' }] },
+      ],
+      check: { type: 'output_contains', value: '5' },
+      _checkTested: true,
+    }]))
+    expect(fixedLine.errors).toEqual([])
 
     const blankWithNoCode = validateLesson(lesson('python', [{
       id: 1,
