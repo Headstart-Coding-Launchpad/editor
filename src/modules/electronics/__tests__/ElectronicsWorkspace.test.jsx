@@ -232,6 +232,44 @@ describe('ElectronicsWorkspace — highlightedTabs (teacher highlight)', () => {
   })
 })
 
+describe('ElectronicsWorkspace — forcedTab (teacher force-switch)', () => {
+  it('jumps to the forced tab once, then lets the student navigate away freely afterward', () => {
+    const { rerender } = render(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab forcedTab="code" forcedTabToken={1} />
+    )
+    expect(screen.getByRole('button', { name: 'MicroPython' })).toHaveClass('is-active')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Breadboard' }))
+    expect(screen.getByRole('button', { name: 'Breadboard' })).toHaveClass('is-active')
+
+    // Re-rendering with the SAME token must not snap it back to "code" — a force isn't a lock.
+    rerender(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab forcedTab="code" forcedTabToken={1} />
+    )
+    expect(screen.getByRole('button', { name: 'Breadboard' })).toHaveClass('is-active')
+
+    // A genuinely new token (different pushedAt) does jump again.
+    rerender(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab forcedTab="code" forcedTabToken={2} />
+    )
+    expect(screen.getByRole('button', { name: 'MicroPython' })).toHaveClass('is-active')
+  })
+
+  it('does not force-jump while activeTab is actively controlling the tab (teacher live view)', () => {
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        activeTab="breadboard"
+        forcedTab="code"
+        forcedTabToken={1}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Breadboard' })).toHaveClass('is-active')
+  })
+})
+
 describe('ElectronicsWorkspace — breadboard zoom', () => {
   it('starts at 100% and zooms in/out via the toolbar buttons, clamped to the 50–150% range', () => {
     render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)

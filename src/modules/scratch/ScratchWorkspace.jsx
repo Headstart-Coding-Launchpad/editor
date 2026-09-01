@@ -538,6 +538,8 @@ export default function ScratchWorkspace({
   forceCompact = false,
   onVisiblePanesChange = null,
   highlightedPanes = null,
+  forcedPane = null,
+  forcedPaneToken = null,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -724,6 +726,19 @@ export default function ScratchWorkspace({
           : ['blocks', 'stage']
     onVisiblePanesChangeRef.current?.(panes)
   }, [hideStage, compact, activePane, stagePanelCollapsed])
+
+  // Teacher "force switch tab" — a one-time jump to Blocks or Stage, applied through the
+  // same path as a manual click (so it's remembered like one) rather than a persistent
+  // controlled prop: the student stays free to switch away again immediately afterward.
+  // Guarded by forcedPaneToken (the command's pushedAt) so the same token never re-applies
+  // on an unrelated re-render.
+  const lastForcedPaneTokenRef = useRef(null)
+  useEffect(() => {
+    if (!forcedPane || forcedPaneToken == null || lastForcedPaneTokenRef.current === forcedPaneToken) return
+    lastForcedPaneTokenRef.current = forcedPaneToken
+    handleActivePaneChange(forcedPane)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcedPane, forcedPaneToken])
 
   useEffect(() => {
     const costumes = (sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []

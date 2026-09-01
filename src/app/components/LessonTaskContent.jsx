@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import SplitPane from '../../shared/SplitPane'
@@ -94,6 +94,7 @@ export default function LessonTaskContent({
   openTopicId,
   onVisiblePanesChange,
   highlightedPanes,
+  forcedPaneCommand,
 }) {
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
@@ -157,6 +158,26 @@ export default function LessonTaskContent({
   // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScratchLesson, supportsModulePanes, hasTaskExplainer, visiblePanesKey, onVisiblePanesChange])
+
+  // Teacher "force" push for the instructions/explainer pane — applied once per distinct
+  // forcedPaneCommand (guarded by its pushedAt token) via the same collapse/tab state a
+  // manual click would use, so the student is free to close it again right after. The
+  // module-specific half of a force command (e.g. Electronics' breadboard/code,
+  // Scratch's blocks/stage) is applied inside each module's own StudentWorkspace instead —
+  // see forcedPaneCommand passed to StudentWorkspace below.
+  const lastAppliedForceTokenRef = useRef(null)
+  useEffect(() => {
+    if (!forcedPaneCommand || !hasTaskExplainer || lastAppliedForceTokenRef.current === forcedPaneCommand.pushedAt) return
+    lastAppliedForceTokenRef.current = forcedPaneCommand.pushedAt
+    const wantsInstructions = forcedPaneCommand.panes.includes('instructions')
+    if (useSideExplainer) {
+      setExplainerCollapsed(!wantsInstructions)
+      if (taskPanelCompact) handleTaskPanelTabChange(wantsInstructions ? 'instructions' : 'code')
+    } else {
+      setAccordionExplainerCollapsed(!wantsInstructions)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcedPaneCommand, hasTaskExplainer, useSideExplainer, taskPanelCompact])
 
   function handleTaskPanelTabChange(id) {
     setTaskPanelTab(id)
@@ -359,6 +380,7 @@ export default function LessonTaskContent({
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined}
           highlightedPanes={highlightedPanes}
+          forcedPaneCommand={forcedPaneCommand}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>

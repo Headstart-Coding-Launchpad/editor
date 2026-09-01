@@ -11,8 +11,9 @@ export default function StudentWorkspace({
   isSandbox, isViewingPrev, isForcedTeacherLive,
   isTeacherEditing, teacherLiveCode,
   displayCode, displaySpriteState, displayCursor, displayBlockDrag,
-  onVisiblePanesChange, highlightedPanes,
+  onVisiblePanesChange, highlightedPanes, forcedPaneCommand,
 }) {
+  const forcedPane = forcedPaneCommand?.panes?.find(p => p === 'blocks' || p === 'stage') ?? null
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
     : null
@@ -72,6 +73,8 @@ export default function StudentWorkspace({
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
         onVisiblePanesChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : onVisiblePanesChange}
         highlightedPanes={highlightedPanes}
+        forcedPane={forcedPane}
+        forcedPaneToken={forcedPaneCommand?.pushedAt ?? null}
       />
     </div>
   )

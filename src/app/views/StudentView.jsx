@@ -267,6 +267,7 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
     ? studentPaneCommand
     : (classPaneCommand.pushedAt ?? 0) >= (studentPaneCommand.pushedAt ?? 0) ? classPaneCommand : studentPaneCommand
   const highlightedPanes = effectivePaneCommand?.mode === 'highlight' ? effectivePaneCommand.panes : null
+  const forcedPaneCommand = effectivePaneCommand?.mode === 'force' ? effectivePaneCommand : null
 
   // ─── Navigation handlers ───────────────────────────────────────────────────
 
@@ -780,6 +781,7 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
           openTopicId={phase === 'lesson' ? openTopicId : null}
           onVisiblePanesChange={handleVisiblePanesChange}
           highlightedPanes={highlightedPanes}
+          forcedPaneCommand={forcedPaneCommand}
         />
       </div>
     </div>

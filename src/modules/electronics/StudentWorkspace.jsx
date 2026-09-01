@@ -7,8 +7,9 @@ export default function StudentWorkspace({
   lesson, task, cs, viewingTaskId, isViewingPrev, isForcedTeacherLive,
   displayCode, displayOutput, displayRunStatus, displayCheckPassed,
   isTeacherEditing, teacherLiveCode, teacherLiveWorkspace,
-  onVisiblePanesChange, highlightedPanes,
+  onVisiblePanesChange, highlightedPanes, forcedPaneCommand,
 }) {
+  const forcedTab = forcedPaneCommand?.panes?.find(p => p === 'breadboard' || p === 'code') ?? null
   const viewedWork = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const viewedCarry = isViewingPrev && viewedWork == null
     ? resolveSavedCarrySource({
@@ -57,6 +58,8 @@ export default function StudentWorkspace({
       activeTab={isTeacherEditing ? teacherLiveWorkspace : undefined}
       onTabChange={pane => onVisiblePanesChange?.([pane])}
       highlightedTabs={highlightedPanes}
+      forcedTab={forcedTab}
+      forcedTabToken={forcedPaneCommand?.pushedAt ?? null}
       title="Electronics"
     />
   )
