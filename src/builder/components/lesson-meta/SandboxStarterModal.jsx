@@ -9,17 +9,18 @@ import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { FsTreeEditor } from '../../../modules/filesystem/filesystemEditors'
 import ElectronicsWorkspace from '../../../modules/electronics/ElectronicsWorkspace'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from '../../../modules/electronics/circuit'
+import { getEffectiveLessonForModule, getLessonModules, isComposedLesson } from '../../../shared/composedLesson'
 import Modal from './Modal'
 import { s } from './styles'
 
-export function getSandboxStarterSummary(lesson) {
+function getSandboxStarterSummaryForType(lesson) {
   const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
     ? (lesson.sandboxStarter ?? '').split('\n').length
     : 0
   const sandboxFileCount = lesson.sandboxStarterFiles?.length ?? 0
   const sandboxFsCount = lesson.sandboxStarterFs ? Object.keys(lesson.sandboxStarterFs).length - 1 : 0
 
-  if (lesson.type === 'python') {
+  if (lesson.type === 'python' || lesson.type === 'arcade') {
     return sandboxLineCount ? `${sandboxLineCount} lines configured` : 'No sandbox starter code set.'
   }
   if (lesson.type === 'scratch') {
@@ -34,14 +35,86 @@ export function getSandboxStarterSummary(lesson) {
   return sandboxFileCount ? `${sandboxFileCount} starter files configured` : 'No sandbox starter files set.'
 }
 
-export default function SandboxStarterModal({ lesson, onSetField, onClose }) {
-  const isPython = lesson.type === 'python'
+export function getSandboxStarterSummary(lesson) {
+  if (!isComposedLesson(lesson)) return getSandboxStarterSummaryForType(lesson)
+
+  const modules = getLessonModules(lesson)
+  if (modules.length === 0) return 'Add a code task to configure a sandbox.'
+  if (modules.length === 1) {
+    return getSandboxStarterSummaryForType(getEffectiveLessonForModule(lesson, modules[0].id))
+  }
+  return modules
+    .map(module => `${module.title}: ${getSandboxStarterSummaryForType(getEffectiveLessonForModule(lesson, module.id))}`)
+    .join(' ')
+}
+
+export default function SandboxStarterModal({ lesson, onSetField, onSetModuleSandboxField, onClose }) {
+  if (isComposedLesson(lesson)) {
+    return (
+      <ComposedSandboxStarterModal
+        lesson={lesson}
+        onSetModuleSandboxField={onSetModuleSandboxField}
+        onClose={onClose}
+      />
+    )
+  }
+
+  return (
+    <Modal title="Sandbox starter" onClose={onClose}>
+      <SandboxStarterEditor lesson={lesson} onSetField={onSetField} />
+    </Modal>
+  )
+}
+
+function ComposedSandboxStarterModal({ lesson, onSetModuleSandboxField, onClose }) {
+  const modules = getLessonModules(lesson)
+  const [selectedModuleId, setSelectedModuleId] = useState(modules[0]?.id ?? null)
+
+  if (modules.length === 0) {
+    return (
+      <Modal title="Sandbox starter" onClose={onClose}>
+        <p style={s.summaryText}>Add a code task to this lesson to create a module before configuring its sandbox.</p>
+      </Modal>
+    )
+  }
+
+  const activeModuleId = modules.some(module => module.id === selectedModuleId) ? selectedModuleId : modules[0].id
+  const effectiveLesson = getEffectiveLessonForModule(lesson, activeModuleId)
+
+  return (
+    <Modal title="Sandbox starter" onClose={onClose}>
+      {modules.length > 1 && (
+        <div style={s.workspaceTabs} className="ui-tabs" role="tablist" aria-label="Sandbox module">
+          {modules.map(module => (
+            <button
+              key={module.id}
+              type="button"
+              className={`ui-tab${module.id === activeModuleId ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={module.id === activeModuleId}
+              onClick={() => setSelectedModuleId(module.id)}
+            >
+              {module.title}
+            </button>
+          ))}
+        </div>
+      )}
+      <SandboxStarterEditor
+        lesson={effectiveLesson}
+        onSetField={(field, value) => onSetModuleSandboxField(activeModuleId, field, value)}
+      />
+    </Modal>
+  )
+}
+
+function SandboxStarterEditor({ lesson, onSetField }) {
+  const isPython = lesson.type === 'python' || lesson.type === 'arcade'
   const isScratch = lesson.type === 'scratch'
   const isFilesystem = lesson.type === 'filesystem'
   const isElectronics = lesson.type === 'electronics'
 
   return (
-    <Modal title="Sandbox starter" onClose={onClose}>
+    <>
       {isPython ? (
         <div style={s.modalEditor}>
           <CodeEditor
@@ -90,7 +163,7 @@ export default function SandboxStarterModal({ lesson, onSetField, onClose }) {
           onChange={files => onSetField('sandboxStarterFiles', files.length ? files : undefined)}
         />
       )}
-    </Modal>
+    </>
   )
 }
 

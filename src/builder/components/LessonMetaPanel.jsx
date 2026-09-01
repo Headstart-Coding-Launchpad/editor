@@ -7,6 +7,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useAuth } from '../../auth/useAuth'
 import { firestore } from '../../shared/firebase'
 import { getLessonLevelRef, getLessonLevelScope, levelTitleFromLesson, LEVEL_COLLECTION, normalizeLevelRecord } from '../../shared/lessonLevels'
+import { getLessonModules } from '../../shared/composedLesson'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -29,6 +30,19 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
 
   function set(field, value) {
     onUpdate(prev => ({ ...prev, [field]: value }))
+  }
+
+  function setModuleSandboxField(moduleId, field, value) {
+    onUpdate(prev => {
+      const resolvedModule = getLessonModules(prev).find(module => module.id === moduleId)
+      const baseModules = Array.isArray(prev.modules) ? prev.modules : []
+      const nextModules = baseModules.some(module => module.id === moduleId)
+        ? baseModules.map(module => module.id === moduleId
+          ? { ...module, sandbox: { ...(module.sandbox ?? {}), [field]: value } }
+          : module)
+        : [...baseModules, { id: moduleId, type: resolvedModule?.type, title: resolvedModule?.title, sandbox: { [field]: value } }]
+      return { ...prev, modules: nextModules }
+    })
   }
 
   function setLevel(levelId) {
@@ -208,6 +222,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <SandboxStarterModal
             lesson={lesson}
             onSetField={set}
+            onSetModuleSandboxField={setModuleSandboxField}
             onClose={() => setSandboxOpen(false)}
           />
         )}
