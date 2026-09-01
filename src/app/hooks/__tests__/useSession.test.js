@@ -269,6 +269,17 @@ describe('useSession', () => {
     })
   })
 
+  describe('requestFullscreenForAll', () => {
+    it('writes a fullscreenRequestedAt timestamp via firebase update', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => { await result.current.requestFullscreenForAll() })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { fullscreenRequestedAt: expect.any(Number) },
+      )
+    })
+  })
+
   describe('setTeacherLive', () => {
     it('encodes dotted file keys before writing, so HTML lessons do not break Realtime Database key rules', async () => {
       const { result } = renderHook(() => useSession('html-1-1'))

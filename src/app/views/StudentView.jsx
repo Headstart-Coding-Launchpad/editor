@@ -127,7 +127,22 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     return getSavedNonPythonTaskCount({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
   }, [phase, lesson, identity?.anonymousId, teacherPresentation])
   const [otherTabDismissed, setOtherTabDismissed] = useState(false)
+  const [fullscreenDismissedAt, setFullscreenDismissedAt] = useState(null)
   const otherTabOpen = useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) && !otherTabDismissed
+  const fullscreenRequestedAt = session?.fullscreenRequestedAt ?? null
+  const fullscreenPromptVisible = !teacherPresentation && !!fullscreenRequestedAt && fullscreenRequestedAt !== fullscreenDismissedAt
+
+  function handleGoFullscreen() {
+    document.documentElement.requestFullscreen?.().catch(() => {})
+    setFullscreenDismissedAt(fullscreenRequestedAt)
+  }
+
+  // Fullscreen only makes sense while the lesson is live — drop out automatically
+  // once the session ends rather than leaving the student stuck in fullscreen.
+  useEffect(() => {
+    if (phase !== 'ended') return
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+  }, [phase])
 
   function downloadTasks(tasks, filename) {
     if (tasks.length === 0) return
@@ -590,6 +605,35 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
                 onClick={() => { setOpenTopicId(pendingTopicId); setPendingTopicId(null) }}
               >
                 Open it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {fullscreenPromptVisible && (
+        <div style={s.consentOverlay}>
+          <div style={s.consentModal}>
+            <div style={{ ...s.consentHeader, background: '#0284c7' }}>
+              <span style={s.consentIcon}>⛶</span>
+              <span style={s.consentTitle}>Your teacher would like you to go fullscreen</span>
+            </div>
+            <div style={s.consentBody}>
+              <p style={s.consentText}>Going fullscreen hides your browser's address bar and tabs.</p>
+            </div>
+            <div style={s.consentFooter}>
+              <button
+                className="btn-ghost-outline"
+                style={{ fontSize: 13 }}
+                onClick={() => setFullscreenDismissedAt(fullscreenRequestedAt)}
+              >
+                Not now
+              </button>
+              <button
+                className="btn-primary"
+                style={{ fontSize: 13 }}
+                onClick={handleGoFullscreen}
+              >
+                Go Fullscreen
               </button>
             </div>
           </div>

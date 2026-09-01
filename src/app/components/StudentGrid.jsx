@@ -6,9 +6,16 @@ import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 
 
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage, collapsed, onToggle }) {
+export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, onSendMessage, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage, onRequestFullscreenAll, collapsed, onToggle }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
+  const [fullscreenRequested, setFullscreenRequested] = useState(false)
+
+  function handleRequestFullscreenAll() {
+    onRequestFullscreenAll?.()
+    setFullscreenRequested(true)
+    setTimeout(() => setFullscreenRequested(false), 2000)
+  }
 
   const expandedIndex = students.findIndex(s => s.anonymousId === expandedStudentId)
   const expandedStudent = expandedIndex >= 0 ? students[expandedIndex] : null
@@ -106,6 +113,15 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
             </>
           )}
           <span style={s.count}>{students.length}</span>
+          {onRequestFullscreenAll && students.length > 0 && (
+            <button
+              style={s.topicsBtn}
+              onClick={handleRequestFullscreenAll}
+              title="Ask all students to go fullscreen (each student must click a prompt to accept)"
+            >
+              {fullscreenRequested ? '✓ Requested' : '⛶ Fullscreen All'}
+            </button>
+          )}
           {topics?.length > 0 && (
             <button style={s.topicsBtn} onClick={() => setShowTopicsDialog(true)} title="Open topic library">📖</button>
           )}

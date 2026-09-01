@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../StudentView'
 
 const mocks = vi.hoisted(() => ({
@@ -348,5 +348,84 @@ describe('StudentView', () => {
 
     await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Teacher live</h1>'))
     expect(mocks.buildIframeSrc).toHaveBeenCalled()
+  })
+
+  describe('fullscreen request', () => {
+    function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(), joinSession: vi.fn(),
+        writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(), writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    afterEach(() => {
+      delete document.documentElement.requestFullscreen
+      delete document.exitFullscreen
+    })
+
+    it('shows a fullscreen modal prompt when the teacher requests it', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession({ fullscreenRequestedAt: 999 }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => {
+        expect(screen.getByText('Your teacher would like you to go fullscreen')).toBeInTheDocument()
+      })
+    })
+
+    it('calls requestFullscreen from the student\'s own click and dismisses the prompt', async () => {
+      const user = userEvent.setup()
+      const requestFullscreen = vi.fn().mockResolvedValue(undefined)
+      document.documentElement.requestFullscreen = requestFullscreen
+      mocks.useSession.mockReturnValue(mkLiveSession({ fullscreenRequestedAt: 999 }))
+      render(<StudentView lessonId="python-1-1" />)
+
+      const goFullscreenBtn = await screen.findByRole('button', { name: 'Go Fullscreen' })
+      await user.click(goFullscreenBtn)
+
+      expect(requestFullscreen).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText('Your teacher would like you to go fullscreen')).not.toBeInTheDocument()
+    })
+
+    it('dismisses the prompt without requesting fullscreen when Not now is clicked', async () => {
+      const user = userEvent.setup()
+      const requestFullscreen = vi.fn().mockResolvedValue(undefined)
+      document.documentElement.requestFullscreen = requestFullscreen
+      mocks.useSession.mockReturnValue(mkLiveSession({ fullscreenRequestedAt: 999 }))
+      render(<StudentView lessonId="python-1-1" />)
+
+      const notNowBtn = await screen.findByRole('button', { name: 'Not now' })
+      await user.click(notNowBtn)
+
+      expect(requestFullscreen).not.toHaveBeenCalled()
+      expect(screen.queryByText('Your teacher would like you to go fullscreen')).not.toBeInTheDocument()
+    })
+
+    it('exits fullscreen automatically once the session ends', async () => {
+      const exitFullscreen = vi.fn().mockResolvedValue(undefined)
+      document.exitFullscreen = exitFullscreen
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: document.body })
+
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(exitFullscreen).toHaveBeenCalledTimes(1))
+
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
+    })
   })
 })

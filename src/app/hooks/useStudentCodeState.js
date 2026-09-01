@@ -569,6 +569,19 @@ export function useStudentCodeState({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, identity?.anonymousId, teacherPresentation])
 
+  // Track fullscreen state so the teacher can see who has accepted a
+  // "Fullscreen All" request (see StudentGrid/StudentStatusBanners).
+  useEffect(() => {
+    if (teacherPresentation || !identity?.anonymousId) return
+    if (phase !== 'lesson' && phase !== 'sandbox') return
+    const id = identity.anonymousId
+    const onFullscreenChange = () => writeStudentPresence?.(id, { isFullscreen: !!document.fullscreenElement })
+    writeStudentPresence?.(id, { isFullscreen: !!document.fullscreenElement })
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, identity?.anonymousId, teacherPresentation])
+
   // Track mouse/keyboard activity so the teacher gets a WhatsApp-style
   // typing indicator. Throttled to one Firebase write per 2 seconds.
   useEffect(() => {

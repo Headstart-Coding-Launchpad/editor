@@ -95,6 +95,16 @@ describe('StudentCard', () => {
       render(<StudentCard {...mkProps({}, { inPersonalSandbox: true })} />)
       expect(screen.getByText('Sandbox')).toBeInTheDocument()
     })
+
+    it('shows the Fullscreen badge when the student is in fullscreen mode', () => {
+      render(<StudentCard {...mkProps({}, { isFullscreen: true })} />)
+      expect(screen.getByText('⛶ Fullscreen')).toBeInTheDocument()
+    })
+
+    it('shows no Fullscreen badge when the student is not in fullscreen mode', () => {
+      render(<StudentCard {...mkProps({}, { isFullscreen: false })} />)
+      expect(screen.queryByText('⛶ Fullscreen')).not.toBeInTheDocument()
+    })
   })
 
   describe('quiz answer display', () => {

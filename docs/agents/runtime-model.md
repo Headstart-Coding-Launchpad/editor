@@ -20,6 +20,7 @@ Do not deviate from this shape.
       "activeStudentView": "{anonymousId} | null",
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
+      "fullscreenRequestedAt": "1234567890 | null",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -136,6 +137,7 @@ Do not deviate from this shape.
           "teacherMessagePushedAt": "number | null",
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
+          "isFullscreen": "boolean | null",
           "teacherEditRequestedAt": "number | null",
           "teacherEditAcceptedAt": "number | null",
           "teacherLiveCode": "string | null",
@@ -174,6 +176,7 @@ Teacher writes:
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
+- `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
 - any student's `displayName`
 - student node removal
 
@@ -204,7 +207,7 @@ Student writes:
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
-- Presence: own `windowFocused` and `lastActivityAt` via `writeStudentPresence`, independent of the `online` onDisconnect key.
+- Presence: own `windowFocused`, `lastActivityAt`, and `isFullscreen` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 

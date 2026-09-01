@@ -135,6 +135,11 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
               Away
             </span>
           )}
+          {student.isFullscreen && (
+            <span style={{ ...s.checkBadge, ...s.checkBadgeFullscreen }} title="Student is in fullscreen mode">
+              ⛶ Fullscreen
+            </span>
+          )}
           {isActive && (
             <span className="activity-dots" title="Student is active">
               <span /><span /><span />
@@ -396,6 +401,10 @@ const s = {
     background: '#f3f4f6',
     color: '#6b7280',
     border: '1px solid #d1d5db',
+  },
+  checkBadgeFullscreen: {
+    background: '#0284c7',
+    color: '#fff',
   },
   checkBadgeOverridePassed: {
     background: 'rgba(34,197,94,0.12)',

@@ -48,7 +48,7 @@ export default function TeacherView({ lessonId }) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
-    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
+    setPaused, requestFullscreenForAll, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
@@ -579,6 +579,7 @@ export default function TeacherView({ lessonId }) {
             onRemoveHighlight={removeTeacherHighlight}
             onRevealSupportStage={recordSupportStageReveal}
             onTogglePaused={() => setPaused(!session?.isPaused)}
+            onRequestFullscreenAll={requestFullscreenForAll}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed(v => !v)}
           />

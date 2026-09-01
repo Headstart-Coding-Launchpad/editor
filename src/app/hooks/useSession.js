@@ -88,6 +88,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       taskStartTimes:        {},
       students:              {},
       supportRevealLog:      null,
+      fullscreenRequestedAt: null,
     })
   }
 
@@ -123,6 +124,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       students:              null,
       overrideLog:           null,
       supportRevealLog:      null,
+      fullscreenRequestedAt: null,
     })
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
@@ -291,6 +293,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function setPaused(isPaused) {
     await update(ref(db, `sessions/${lessonId}`), { isPaused })
+  }
+
+  // Browsers only allow entering fullscreen from a direct user gesture, so this can't
+  // force students into fullscreen — it just timestamps a request that each student's
+  // client shows as a one-click prompt (see StudentStatusBanners).
+  async function requestFullscreenForAll() {
+    await update(ref(db, `sessions/${lessonId}`), { fullscreenRequestedAt: Date.now() })
   }
 
   async function setExplainerShowComplete(showComplete) {
@@ -614,11 +623,12 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
-  async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt, visiblePanes } = {}) {
+  async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt, visiblePanes, isFullscreen } = {}) {
     const updates = {}
     if (windowFocused !== undefined) updates.windowFocused = windowFocused
     if (lastActivityAt !== undefined) updates.lastActivityAt = lastActivityAt
     if (visiblePanes !== undefined) updates.visiblePanes = visiblePanes
+    if (isFullscreen !== undefined) updates.isFullscreen = isFullscreen
     if (Object.keys(updates).length > 0) {
       await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
     }
@@ -674,7 +684,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     createSession, restartSession, startSession, endSession,
     setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
     pushLessonOverride, clearLessonOverride,
-    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
+    setPaused, requestFullscreenForAll, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
     sendToTopic, sendMessageToStudent,
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,

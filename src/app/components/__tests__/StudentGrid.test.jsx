@@ -92,6 +92,27 @@ describe('StudentGrid', () => {
     })
   })
 
+  describe('request fullscreen all', () => {
+    it('does not show the button when no handler is provided', () => {
+      render(<StudentGrid {...mkProps()} />)
+      expect(screen.queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
+    })
+
+    it('does not show the button when there are no students', () => {
+      render(<StudentGrid {...mkProps({ students: [], onRequestFullscreenAll: vi.fn() })} />)
+      expect(screen.queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
+    })
+
+    it('calls onRequestFullscreenAll and shows confirmation when clicked', async () => {
+      const user = userEvent.setup()
+      const onRequestFullscreenAll = vi.fn()
+      render(<StudentGrid {...mkProps({ onRequestFullscreenAll })} />)
+      await user.click(screen.getByText('⛶ Fullscreen All'))
+      expect(onRequestFullscreenAll).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('✓ Requested')).toBeInTheDocument()
+    })
+  })
+
   describe('collapsed state', () => {
     function renderCollapsed(studentOverrides = {}) {
       return render(<StudentGrid {...mkProps({ collapsed: true, lesson: LESSON_WITH_CHECK, ...studentOverrides })} />)
