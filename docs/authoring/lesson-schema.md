@@ -171,6 +171,8 @@ Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `
 
 ## Code Arrange Task Fields
 
+**Authoring YAML note:** the field names below (`taskType`, etc.) are the internal/JSON form this page documents, per the header above. In authoring YAML, use `type: code_arrange` — matching how `docs/authoring/AUTHORING_GUIDE.md` already phrases `type: information`/`type: quiz` for the other two special task types — and `cli/yaml-converter.mjs` converts it to `taskType: code_arrange` on ingest. Authoring with a literal `taskType: code_arrange` key in the YAML is silently carried through as an unrecognised extra field rather than validated or converted, so the task will not actually be treated as an arrange task.
+
 `taskType: "code_arrange"` is a drag-and-drop runnable-code task, alongside
 `information` and `quiz` — not a `quiz` sub-type, since `quiz` tasks must
 never carry code/output check fields (see `docs/authoring/quiz-tasks.md`)
@@ -189,7 +191,11 @@ content. A line that's just a single blank with no surrounding text (e.g.
 `parts: [{type: "slot", id: "L1", code: "for i in range(5):"}]`) behaves
 like a traditional whole draggable line; a line mixing text and blanks
 reads like `for i in range(___):`. There is no separate schema branch for
-either case — it's purely how many/which parts a line has.
+either case — it's purely how many/which parts a line has. A line may also
+have no blanks at all (every part `type: "text"`) — it renders as fixed,
+non-interactive context, e.g. a variable declaration the student doesn't
+need to arrange. At least one blank is still required somewhere in the
+task as a whole (across all of its lines combined).
 
 There is exactly one shared tile pool for the whole task: every blank's own
 correct code, plus the task-level `distractors` list (`{id, code}[]`). Any
@@ -211,7 +217,7 @@ to a single blank, the whole-line shape, as a starting point).
 | `moduleType` | Yes | `python` or `html` only. Selects which run pipeline executes the assembled code. |
 | `lines` | Yes | Ordered program lines: `{id, parts}[]`. At least one required. One assembled program line (`parts` joined together) is produced per entry, in order, joined by newlines. |
 | `lines[].id` | Yes | Stable string id for the line (Builder list identity/reordering only — not itself a pool tile id). |
-| `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. At least one `slot` part required. |
+| `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. A line may have zero `slot` parts (fixed context); the task as a whole needs at least one `slot` part somewhere across all lines. |
 | `lines[].parts[].id` | Slot parts | Stable string id; doubles as the id of that blank's own "correct" tile in the task's shared pool. |
 | `lines[].parts[].code` | Slot parts | The exact correct value for this blank. |
 | `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code}[]`. |
@@ -223,7 +229,7 @@ to a single blank, the whole-line shape, as a starting point).
 
 ```yaml
 - title: Print the first five even numbers
-  taskType: code_arrange
+  type: code_arrange
   moduleType: python
   explainer: Drag the line into place and fill in the blank to print 0 2 4 6 8, one per line.
   lines:
@@ -261,7 +267,7 @@ to a single blank, the whole-line shape, as a starting point).
 
 ```yaml
 - title: Arrange a heading and paragraph
-  taskType: code_arrange
+  type: code_arrange
   moduleType: html
   explainer: Build the page by arranging the lines.
   entryFile: index.html

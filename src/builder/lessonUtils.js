@@ -263,16 +263,17 @@ export function validateLesson(lesson) {
       if (lines.length === 0) errors.push(`Task ${n} is a code-arrange task but has no lines.`)
       const lineIds = []
       const poolIds = []
+      let slotCount = 0
       lines.forEach((line, li) => {
         const ln = li + 1
         if (!line?.id) errors.push(`Task ${n} line ${ln} has no id.`)
         else lineIds.push(line.id)
         const parts = Array.isArray(line?.parts) ? line.parts : []
         if (parts.length === 0) errors.push(`Task ${n} line ${ln} has no parts.`)
-        if (!parts.some(part => part?.type === 'slot')) errors.push(`Task ${n} line ${ln} has no blanks.`)
         parts.forEach((part, pi) => {
           const pn = pi + 1
           if (part?.type === 'slot') {
+            slotCount++
             if (!part.id) errors.push(`Task ${n} line ${ln} blank ${pn} has no id.`)
             else poolIds.push(part.id)
             if (!part.code?.trim()) errors.push(`Task ${n} line ${ln} blank ${pn} has no correct value.`)
@@ -281,6 +282,7 @@ export function validateLesson(lesson) {
           }
         })
       })
+      if (lines.length > 0 && slotCount === 0) errors.push(`Task ${n} is a code-arrange task but has no blanks.`)
       if (new Set(lineIds).size !== lineIds.length) errors.push(`Task ${n} is a code-arrange task but has duplicate line ids.`)
       const distractors = Array.isArray(task.distractors) ? task.distractors : []
       distractors.forEach((d, di) => {
