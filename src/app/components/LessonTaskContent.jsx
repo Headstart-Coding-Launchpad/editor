@@ -95,6 +95,11 @@ export default function LessonTaskContent({
   onVisiblePanesChange,
 }) {
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
+  // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
+  // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
+  // fallback for every type) so its open/closed state can feed visiblePanes below just
+  // like the side-rail's explainerCollapsed does.
+  const [accordionExplainerCollapsed, setAccordionExplainerCollapsed] = useState(false)
   const [taskPanelTab, setTaskPanelTab] = useState(() => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code')
   const [taskPanelSizeRef, taskPanelSize] = useElementSize()
   // Scratch's Instructions/Code (desktop-compact, below) and, inside ScratchWorkspace
@@ -118,33 +123,43 @@ export default function LessonTaskContent({
   // for no benefit.
   const taskPanelCompact = isScratchLesson && taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
+  const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
+  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
+  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
+  const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
   // `scratchCodePanes` comment above for why Scratch and the other modules compute this
-  // differently.
-  const instructionsPaneVisible = !taskPanelCompact || taskPanelTab === 'instructions'
+  // differently. `hasTaskExplainer` gates this off entirely for tasks with no explainer
+  // to show at all (quizzes, information tasks, sandbox), where compact/useSideExplainer
+  // would otherwise report a phantom always-visible instructions pane.
+  const instructionsPaneVisible = !hasTaskExplainer
+    ? false
+    : taskPanelCompact
+    ? taskPanelTab === 'instructions'
+    : useSideExplainer
+    ? !explainerCollapsed
+    : !accordionExplainerCollapsed
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
   const visiblePanes = isScratchLesson
     ? [...(instructionsPaneVisible ? ['instructions'] : []), ...(codePaneVisible ? scratchCodePanes : [])]
     : supportsModulePanes
-    ? modulePanes
+    ? [...(instructionsPaneVisible ? ['instructions'] : []), ...modulePanes]
+    : hasTaskExplainer
+    ? (instructionsPaneVisible ? ['instructions'] : [])
     : null
   const visiblePanesKey = visiblePanes?.join(',') ?? ''
 
   useEffect(() => {
-    if (isScratchLesson || supportsModulePanes) onVisiblePanesChange?.(visiblePanes)
+    if (isScratchLesson || supportsModulePanes || hasTaskExplainer) onVisiblePanesChange?.(visiblePanes)
   // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScratchLesson, supportsModulePanes, visiblePanesKey, onVisiblePanesChange])
+  }, [isScratchLesson, supportsModulePanes, hasTaskExplainer, visiblePanesKey, onVisiblePanesChange])
 
   function handleTaskPanelTabChange(id) {
     setTaskPanelTab(id)
     saveLayoutTab(TASK_PANEL_TABS_SURFACE, id)
   }
-  const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
-  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
-  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
-  const useSideExplainer = hasTaskExplainer && useFluidWorkspace
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
   const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonMod?.type ?? lesson.type)
@@ -209,6 +224,7 @@ export default function LessonTaskContent({
         fill={useSideExplainer}
         collapsible={!useSideExplainer}
         markdownTextScale={useSideExplainer ? 1.08 : 1}
+        onCollapsedChange={!useSideExplainer ? setAccordionExplainerCollapsed : undefined}
       />
     </div>
   ) : null
