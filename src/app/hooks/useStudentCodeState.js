@@ -1301,12 +1301,27 @@ export function useStudentCodeState({
   // Live tile-placement mirror for code_arrange tasks — the assembled code
   // itself only syncs once every blank is filled (see handleCodeChange /
   // handleFileChange), so without this a teacher watching a student would
-  // see stale code from a previous task until the student finishes.
+  // see stale code from a previous task until the student finishes, and a
+  // "Go Live to Students" viewer would see nothing move at all. Same two
+  // destinations as handleScratchSpriteState/handleScratchCursor above:
+  // teacherLive for a Go-Live/presentation broadcast, the student's own
+  // currentCodeArrangeSlots record for a teacher passively watching them.
   function handleCodeArrangeSlotsChange(slotState) {
     if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
     if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
       writeStudentCodeArrangeSlots?.(identity.anonymousId, slotState)
     }
+  }
+
+  // Live drag-position mirror for code_arrange tasks, broadcast-only (Go
+  // Live/presentation) — unlike slot placements there's no per-student
+  // "watch one student" destination for this, since StudentModal only needs
+  // the settled board, not the in-flight drag. Payload is null on drag end
+  // to clear the mirror immediately rather than waiting for it to go stale.
+  function handleCodeArrangeDragCursor(payload) {
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeCursor: payload })
   }
 
   function handleScratchCheck(passed, snapshot) {
@@ -1730,6 +1745,7 @@ export function useStudentCodeState({
     handleCodeChange, handleArcadeDesignChange, handleFileChange, handleFileTabChange,
     handleEditorSelection, handleEditorActivity, handleScratchActivity, handleScratchSpriteState, handleScratchCursor, handleScratchBlockDrag,
     handleCodeArrangeSlotsChange,
+    handleCodeArrangeDragCursor,
     handleScratchChange, handleScratchCheck,
     handleFsChange, handleFsInteraction,
     handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewTargetedStage, handleAcceptTargetedStage, handleAcceptGenericNextStage, handlePreviewCompleteCode, handleShowCompleteCode,

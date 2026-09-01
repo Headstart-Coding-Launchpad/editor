@@ -19,6 +19,7 @@ export function buildStudentLivePayload({ student, lesson, taskId, entryFileTask
     spriteState: student.currentSpriteState ?? null,
     cursor: student.currentCursor ?? null,
     blockDrag: student.currentBlockDrag ?? null,
+    codeArrangeSlots: student.currentCodeArrangeSlots ?? null,
     files,
     activeFile: task?.entryFile ?? Object.keys(files)[0] ?? '',
     output: student.currentOutput ?? '',

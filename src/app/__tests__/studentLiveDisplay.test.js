@@ -41,6 +41,8 @@ describe('deriveStudentLiveDisplay', () => {
     output: 'live output',
     selection: { from: 1, to: 2 },
     activity: { type: 'paste' },
+    codeArrangeSlots: { slot1: 'fragment-a' },
+    codeArrangeCursor: { tileId: 'fragment-a', x: 0.4, y: 0.6, at: 123 },
   }
 
   it('shows a teacher broadcast to students in a live lesson', () => {
@@ -64,6 +66,24 @@ describe('deriveStudentLiveDisplay', () => {
     expect(display.displayCheckPassed).toBe(false)
     expect(display.displaySelection).toEqual({ from: 1, to: 2 })
     expect(display.displayActivity).toEqual({ type: 'paste' })
+    expect(display.displayCodeArrangeSlots).toEqual({ slot1: 'fragment-a' })
+    expect(display.displayCodeArrangeCursor).toEqual({ tileId: 'fragment-a', x: 0.4, y: 0.6, at: 123 })
+  })
+
+  it('reports no live code_arrange state when not forced-teacher-live', () => {
+    const display = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'solo',
+      teacherLive: null,
+      identityId: 'student-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(display.isForcedTeacherLive).toBe(false)
+    expect(display.displayCodeArrangeSlots).toBeNull()
+    expect(display.displayCodeArrangeCursor).toBeNull()
   })
 
   it('keeps the broadcasting student on their own workspace while classmates watch', () => {

@@ -65,6 +65,8 @@ export default function LessonTaskContent({
   displaySpriteState,
   displayCursor,
   displayBlockDrag,
+  displayCodeArrangeSlots,
+  displayCodeArrangeCursor,
   displayFiles,
   displayActiveFile,
   displayOutput,
@@ -296,6 +298,8 @@ export default function LessonTaskContent({
           displayRunStatus={displayRunStatus}
           displayCheckPassed={displayCheckPassed}
           displayCheckAttempted={displayCheckAttempted}
+          displayCodeArrangeSlots={displayCodeArrangeSlots}
+          displayCodeArrangeCursor={displayCodeArrangeCursor}
           teacherLiveCode={teacherLiveCode}
           teacherLiveFiles={teacherLiveFiles}
         />

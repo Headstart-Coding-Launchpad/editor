@@ -226,7 +226,7 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
       setCurrentTaskId(taskId)
       setViewingTaskId(null)
       cs.resetForTaskChange()
-      updateTeacherLive({ taskId, output: '', runStatus: null, checkPassed: false, checkAttempted: false })
+      updateTeacherLive({ taskId, output: '', runStatus: null, checkPassed: false, checkAttempted: false, codeArrangeSlots: null, codeArrangeCursor: null })
       return
     }
     if (!identity) return
@@ -312,6 +312,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
     displaySpriteState,
     displayCursor,
     displayBlockDrag,
+    displayCodeArrangeSlots,
+    displayCodeArrangeCursor,
     displayFiles,
     displayActiveFile,
     displayOutput,
@@ -680,6 +682,8 @@ export default function StudentView({ lessonId: lessonIdProp, soloMode = false, 
           displaySpriteState={displaySpriteState}
           displayCursor={displayCursor}
           displayBlockDrag={displayBlockDrag}
+          displayCodeArrangeSlots={displayCodeArrangeSlots}
+          displayCodeArrangeCursor={displayCodeArrangeCursor}
           displayFiles={displayFiles}
           displayActiveFile={displayActiveFile}
           displayOutput={displayOutput}

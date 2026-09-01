@@ -34,6 +34,26 @@ describe('buildStudentLivePayload', () => {
     })
   })
 
+  it('carries the student\'s in-progress code_arrange tile board so "Go Live for All" starts pre-seeded', () => {
+    const payload = buildStudentLivePayload({
+      lesson: { type: 'python', tasks: [{ id: 1 }] },
+      taskId: 1,
+      entryFileTaskId: 1,
+      student: { currentCodeArrangeSlots: { L1: 'L1' } },
+    })
+    expect(payload.codeArrangeSlots).toEqual({ L1: 'L1' })
+  })
+
+  it('defaults codeArrangeSlots to null when the student has none', () => {
+    const payload = buildStudentLivePayload({
+      lesson: { type: 'python', tasks: [{ id: 1 }] },
+      taskId: 1,
+      entryFileTaskId: 1,
+      student: {},
+    })
+    expect(payload.codeArrangeSlots).toBeNull()
+  })
+
   it('uses a decoded file as the fallback active file for a task without an entry file', () => {
     const payload = buildStudentLivePayload({
       lesson: { type: 'html', tasks: [{ id: 1 }] },

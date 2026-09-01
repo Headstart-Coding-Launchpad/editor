@@ -60,7 +60,7 @@ export function removeTileFromState(state, tileId) {
  * and `publishState` passed at call time (handleTargetClick, handleTargetDrop,
  * handlePoolDrop) so they always operate on the freshest values.
  */
-export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTile }) {
+export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTile, onDragStart, onDragEnd }) {
   const [draggingTile, setDraggingTile] = useState(null)
   const [dragOverTarget, setDragOverTarget] = useState(null)
   const [touchSelectedTile, setTouchSelectedTile] = useState(null)
@@ -71,11 +71,13 @@ export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTil
     writeDraggedTileId(event, tileId)
     setLiftedDragImage(event, getLabelForTile(tileId))
     setDraggingTile(tileId)
+    onDragStart?.(event, tileId)
   }
 
   function handleDragEnd() {
     setDraggingTile(null)
     setDragOverTarget(null)
+    onDragEnd?.()
   }
 
   function handleTileClick(tileId) {

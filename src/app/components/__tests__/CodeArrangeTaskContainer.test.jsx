@@ -254,6 +254,108 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.getByPlaceholderText('Type your input and press Enter')).toBeInTheDocument()
   })
 
+  it('prefers the live displayCodeArrangeSlots stream over deriving from displayCode while forced-live ("Go Live")', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={''}
+        displayCodeArrangeSlots={{ L1: 'L1' }}
+      />
+    )
+
+    expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
+    expect(screen.getByText('Empty line')).toBeInTheDocument()
+  })
+
+  it('falls back to deriving from displayCode when displayCodeArrangeSlots has not arrived yet', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={'for i in range(5): print(i * 2)\nprint("done")'}
+        displayCodeArrangeSlots={null}
+      />
+    )
+
+    expect(screen.queryAllByText('Empty line')).toHaveLength(0)
+    expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
+    expect(screen.getByText('print("done")')).toBeInTheDocument()
+  })
+
+  it('wires onDragCursor to cs.handleCodeArrangeDragCursor for the student\'s own interactive session', async () => {
+    const user = userEvent.setup()
+    const handleCodeArrangeDragCursor = vi.fn()
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null), handleCodeArrangeDragCursor })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    await user.click(screen.getByText('print("done")'))
+    // Tap-to-place never opens a native drag session, so no drag-cursor
+    // payload is expected here — this just proves the wiring doesn't throw
+    // when cs.handleCodeArrangeDragCursor is present but unused for a tap.
+    expect(handleCodeArrangeDragCursor).not.toHaveBeenCalled()
+  })
+
+  it('renders the live drag mirror (dot + ghost tile) from displayCodeArrangeCursor for a teacher live mirror', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={''}
+        displayCodeArrangeSlots={{}}
+        displayCodeArrangeCursor={{ tileId: 'L1', x: 0.5, y: 0.5, at: Date.now() }}
+      />
+    )
+
+    expect(screen.getByTestId('code-arrange-drag-dot')).toBeInTheDocument()
+    expect(screen.getByTestId('code-arrange-drag-ghost')).toHaveTextContent('for i in range(5): print(i * 2)')
+  })
+
+  it('never shows the live drag mirror for the student\'s own interactive session', () => {
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(screen.queryByTestId('code-arrange-drag-dot')).not.toBeInTheDocument()
+  })
+
   it('never shows an input box for a teacher live mirror, even if this browser\'s own cs.inputPrompt happens to be set', () => {
     const cs = makeCs({ inputPrompt: '' })
     render(

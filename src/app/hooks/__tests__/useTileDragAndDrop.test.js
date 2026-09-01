@@ -138,6 +138,28 @@ describe('useTileDragAndDrop', () => {
     expect(publishState).toHaveBeenCalledWith({})
   })
 
+  it('calls the optional onDragStart callback with the event and tile id', () => {
+    const onDragStart = vi.fn()
+    const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, onDragStart }))
+    const event = makeEvent()
+    act(() => { result.current.handleDragStart(event, 'tile-1') })
+    expect(onDragStart).toHaveBeenCalledWith(event, 'tile-1')
+  })
+
+  it('does not call onDragStart when blocked (CodeArrangeTask\'s live-cursor mirror must not fire)', () => {
+    const onDragStart = vi.fn()
+    const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, blocked: true, onDragStart }))
+    act(() => { result.current.handleDragStart(makeEvent(), 'tile-1') })
+    expect(onDragStart).not.toHaveBeenCalled()
+  })
+
+  it('calls the optional onDragEnd callback (CodeArrangeTask\'s live-cursor mirror clear)', () => {
+    const onDragEnd = vi.fn()
+    const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, onDragEnd }))
+    act(() => { result.current.handleDragEnd() })
+    expect(onDragEnd).toHaveBeenCalledTimes(1)
+  })
+
   it('clearDragOver resets dragOverTarget', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
     const event = makeEvent()

@@ -1,8 +1,21 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, createEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CodeArrangeTask from '../CodeArrangeTask'
+
+// jsdom in this project has no DragEvent constructor, so
+// @testing-library/dom's fireEvent.dragStart falls back to a plain base
+// Event — whose constructor silently ignores unknown init fields like
+// clientX/clientY (only bubbles/cancelable/composed are part of its init
+// dict). Build the event via createEvent, then define the coordinates
+// directly on it before dispatching.
+function dragStartAt(node, clientX, clientY) {
+  const event = createEvent.dragStart(node, { dataTransfer: makeDataTransfer() })
+  Object.defineProperty(event, 'clientX', { value: clientX })
+  Object.defineProperty(event, 'clientY', { value: clientY })
+  fireEvent(node, event)
+}
 
 function makeDataTransfer() {
   return {
@@ -218,6 +231,106 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
     await user.click(screen.getByText('Tap to place'))
 
     expect(onSelectAnswer).toHaveBeenLastCalledWith({ S1: 'S1' })
+  })
+
+  it('renders the live drag mirror (dot + ghost tile) from externalDragCursor, positioned by its normalized coordinates', () => {
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{}}
+        disabled
+        externalDragCursor={{ tileId: 'L2', x: 0.25, y: 0.75, at: Date.now() }}
+      />
+    )
+
+    const dot = screen.getByTestId('code-arrange-drag-dot')
+    const ghost = screen.getByTestId('code-arrange-drag-ghost')
+    expect(dot.style.left).toBe('25%')
+    expect(dot.style.top).toBe('75%')
+    expect(ghost).toHaveTextContent('print("done")')
+  })
+
+  it('shows no live drag mirror when no external drag is in progress', () => {
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} disabled />)
+    expect(screen.queryByTestId('code-arrange-drag-dot')).not.toBeInTheDocument()
+  })
+
+  it('shows "Drop here" on empty slots for a read-only viewer while externalDragCursor reports a live drag', () => {
+    // Regression test: a live-mirror viewer is always `disabled`/`blocked`
+    // (no real interaction there), but the slots must still show the same
+    // invite text the teacher sees on their own screen while dragging — a
+    // floating ghost tile moving over inert-looking slots is what "doesn't
+    // look right" reported.
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{}}
+        disabled
+        externalDragCursor={{ tileId: 'L1', x: 0.5, y: 0.5, at: Date.now() }}
+      />
+    )
+
+    expect(screen.getAllByText('Drop here')).toHaveLength(2)
+    expect(screen.queryByText('Empty line')).not.toBeInTheDocument()
+  })
+
+  it('still shows the plain empty placeholder for a read-only viewer with no live drag', () => {
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} disabled />)
+    expect(screen.getAllByText('Empty line')).toHaveLength(2)
+    expect(screen.queryByText('Drop here')).not.toBeInTheDocument()
+  })
+
+  it('never shows "Drop here" as an invite to interact for the tile currently placed in that exact slot', () => {
+    // canReceive excludes activeId === placedFragmentId — a slot already
+    // holding the tile being "dragged" (shouldn't normally happen for a
+    // settled mirror, but guards the same rule interactive drags rely on).
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1' }}
+        disabled
+        externalDragCursor={{ tileId: 'L1', x: 0.5, y: 0.5, at: Date.now() }}
+      />
+    )
+
+    // Appears twice: once in the filled slot, once in the floating ghost
+    // clone (DragCursorMirror) — both expected while a live drag is mirrored.
+    expect(screen.getAllByText('for i in range(5): print(i * 2)')).toHaveLength(2)
+    expect(screen.getByText('Drop here')).toBeInTheDocument()
+    expect(screen.queryByText('Empty line')).not.toBeInTheDocument()
+  })
+
+  it('reports its own drag position via onDragCursor the instant a tile is picked up, normalized to the board', () => {
+    const getRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 })
+    const onDragCursor = vi.fn()
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} onDragCursor={onDragCursor} />)
+
+    const tile = screen.getByRole('button', { name: 'for i in range(5): print(i * 2)' })
+    dragStartAt(tile, 100, 50)
+
+    expect(onDragCursor).toHaveBeenCalledWith(expect.objectContaining({ tileId: 'L1', x: 0.25, y: 0.25 }))
+    getRectSpy.mockRestore()
+  })
+
+  it('clears the drag mirror via onDragCursor(null) when the drag ends', () => {
+    const getRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 })
+    const onDragCursor = vi.fn()
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} onDragCursor={onDragCursor} />)
+
+    const tile = screen.getByRole('button', { name: 'for i in range(5): print(i * 2)' })
+    dragStartAt(tile, 100, 50)
+    onDragCursor.mockClear()
+    fireEvent.dragEnd(tile)
+
+    expect(onDragCursor).toHaveBeenCalledWith(null)
+    getRectSpy.mockRestore()
   })
 
   it('lets a tile be dragged from the shared pool into a slot on a different line than it was authored under', async () => {

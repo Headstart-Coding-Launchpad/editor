@@ -34,21 +34,32 @@ function fileContent(files, name) {
 //     type mirrors in this situation (displayCode/displayFiles for a "Go
 //     Live" broadcast viewer, teacherLiveCode/teacherLiveFiles for an
 //     accepted teacher-edit session — see PythonEditor/HtmlEditor
-//     StudentWorkspace for the identical pattern).
+//     StudentWorkspace for the identical pattern) — UNLESS displayCodeArrangeSlots
+//     is available for an isForcedTeacherLive viewer, in which case that live
+//     per-tile stream is preferred (see below).
 //
-// Every non-read-only slot change is also mirrored live to
-// currentCodeArrangeSlots via cs.handleCodeArrangeSlotsChange (gated by
-// activeStudentView, same pattern as Scratch's currentCursor/currentBlockDrag
-// in useStudentCodeState.js) — separate from the assembled code/file sync
-// above, which only fires once every blank is filled. Without this, a
-// teacher passively watching a student in StudentModal (not one of the two
-// mirror modes above) would see stale code from a previous task until the
-// student finished the arrangement. See StudentWorkspaceBody.jsx, which
-// prefers currentCodeArrangeSlots over deriving from currentCode/currentFiles.
+// Every non-read-only slot change is also mirrored live via
+// cs.handleCodeArrangeSlotsChange (same pattern as Scratch's
+// currentCursor/currentBlockDrag in useStudentCodeState.js) to two
+// destinations, separate from the assembled code/file sync above which only
+// fires once every blank is filled:
+//   - currentCodeArrangeSlots (gated by activeStudentView) for a teacher
+//     passively watching a student in StudentModal — see
+//     StudentWorkspaceBody.jsx, which prefers it over deriving from
+//     currentCode/currentFiles.
+//   - teacherLive.codeArrangeSlots for an isForcedTeacherLive viewer (Go
+//     Live/presentation), read here as displayCodeArrangeSlots and preferred
+//     over deriving from liveCode. Without either destination, a watcher
+//     would see a blank/stale board until the arrangement was complete.
+// A live drag also streams its in-flight position (cs.handleCodeArrangeDragCursor
+// → teacherLive.codeArrangeCursor → displayCodeArrangeCursor), broadcast-only,
+// so a Go-Live viewer sees the tile move as it's dragged rather than only
+// snapping into place on drop — mirrors ScratchWorkspace's cursor/blockDrag.
 export default function CodeArrangeTaskContainer({
   task, cs, viewingTaskId, currentTaskId,
   isViewingPrev, isForcedTeacherLive, isTeacherEditing,
   displayCode, displayFiles, displayOutput, displayRunStatus, displayCheckPassed, displayCheckAttempted,
+  displayCodeArrangeSlots, displayCodeArrangeCursor,
   teacherLiveCode, teacherLiveFiles,
 }) {
   const isHtml = task.moduleType === 'html'
@@ -108,7 +119,18 @@ export default function CodeArrangeTaskContainer({
       ? (isHtml ? fileContent(teacherLiveFiles, entryFile) : (teacherLiveCode ?? ''))
       : null
 
-  const selectedAnswer = isLiveMirror ? deriveSlotStateFromCode(task, liveCode ?? '') : slotState
+  // A Go-Live/presentation viewer prefers the live per-tile slot stream
+  // (displayCodeArrangeSlots, mirrored on every drop — see
+  // handleCodeArrangeSlotsChange in useStudentCodeState.js) over deriving
+  // from liveCode, which only updates once every blank is filled and would
+  // otherwise leave the board blank until the teacher finishes. isTeacherEditing
+  // has no such stream (a different, lower-frequency mechanism), so it always
+  // derives from code.
+  const selectedAnswer = isForcedTeacherLive && displayCodeArrangeSlots
+    ? displayCodeArrangeSlots
+    : isLiveMirror
+      ? deriveSlotStateFromCode(task, liveCode ?? '')
+      : slotState
 
   const output = isForcedTeacherLive
     ? (displayOutput ?? '')
@@ -160,6 +182,8 @@ export default function CodeArrangeTaskContainer({
       iframeRef={cs.iframeRef}
       onRun={readOnly ? undefined : cs.handleRun}
       onStop={readOnly ? undefined : cs.handleStop}
+      onDragCursor={readOnly ? undefined : cs.handleCodeArrangeDragCursor}
+      externalDragCursor={isForcedTeacherLive ? displayCodeArrangeCursor : null}
       disabled={readOnly}
       showQuestion={false}
     />
