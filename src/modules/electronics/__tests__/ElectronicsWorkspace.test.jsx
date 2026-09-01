@@ -209,6 +209,29 @@ describe('ElectronicsWorkspace — onTabChange reporting (teacher live-status ba
   })
 })
 
+describe('ElectronicsWorkspace — highlightedTabs (teacher highlight)', () => {
+  it('pulses only the tab button named in highlightedTabs', () => {
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        highlightedTabs={['code']}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Breadboard' })).not.toHaveClass('pane-highlight-pulse')
+    expect(screen.getByRole('button', { name: 'MicroPython' })).toHaveClass('pane-highlight-pulse')
+  })
+
+  it('pulses nothing when highlightedTabs is omitted', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab />)
+
+    expect(screen.getByRole('button', { name: 'Breadboard' })).not.toHaveClass('pane-highlight-pulse')
+    expect(screen.getByRole('button', { name: 'MicroPython' })).not.toHaveClass('pane-highlight-pulse')
+  })
+})
+
 describe('ElectronicsWorkspace — breadboard zoom', () => {
   it('starts at 100% and zooms in/out via the toolbar buttons, clamped to the 50–150% range', () => {
     render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)

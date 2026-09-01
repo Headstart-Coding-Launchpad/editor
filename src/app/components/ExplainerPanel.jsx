@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, showLibrary = true, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageLayout = 'stacked', onCollapsedChange }) {
+export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, showLibrary = true, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageLayout = 'stacked', onCollapsedChange, highlighted = false }) {
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
@@ -65,6 +65,7 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
     >
       {collapsible ? (
         <button
+          className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={s.titleBar}
           onClick={() => setCollapsed(c => !c)}
           aria-expanded={!collapsed}

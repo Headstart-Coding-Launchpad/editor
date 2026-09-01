@@ -21,6 +21,20 @@ describe('PanelTabs', () => {
     await user.click(screen.getByRole('tab', { name: 'A' }))
     expect(onChange).toHaveBeenCalledTimes(1) // clicking the already-active tab is a no-op
   })
+
+  it('adds the teacher-highlight pulse class only to tabs named in highlightedIds', () => {
+    render(<PanelTabs tabs={TABS} activeId="a" onChange={() => {}} label="Example" highlightedIds={['b']} />)
+
+    expect(screen.getByRole('tab', { name: 'A' })).not.toHaveClass('pane-highlight-pulse')
+    expect(screen.getByRole('tab', { name: 'B' })).toHaveClass('pane-highlight-pulse')
+  })
+
+  it('adds no highlight class when highlightedIds is omitted', () => {
+    render(<PanelTabs tabs={TABS} activeId="a" onChange={() => {}} label="Example" />)
+
+    expect(screen.getByRole('tab', { name: 'A' })).not.toHaveClass('pane-highlight-pulse')
+    expect(screen.getByRole('tab', { name: 'B' })).not.toHaveClass('pane-highlight-pulse')
+  })
 })
 
 describe('PanelTabPanel', () => {

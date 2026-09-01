@@ -77,6 +77,7 @@ export default function ElectronicsWorkspace({
   setupMode = false,
   activeTab,
   onTabChange,
+  highlightedTabs,
   onActivity,
   isInSandbox,
 }) {
@@ -607,8 +608,8 @@ export default function ElectronicsWorkspace({
       <div style={s.header} className="ui-tabs ui-tabs--editor">
         <span style={s.title}>{title}</span>
         <div style={s.tabs}>
-          <button className={selectedTab === 'breadboard' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('breadboard')}>Breadboard</button>
-          {hasCodeTab && <button className={selectedTab === 'code' ? 'ui-tab is-active' : 'ui-tab'} onClick={() => selectTab('code')}>MicroPython</button>}
+          <button className={`ui-tab ${selectedTab === 'breadboard' ? 'is-active' : ''} ${highlightedTabs?.includes('breadboard') ? 'pane-highlight-pulse' : ''}`} onClick={() => selectTab('breadboard')}>Breadboard</button>
+          {hasCodeTab && <button className={`ui-tab ${selectedTab === 'code' ? 'is-active' : ''} ${highlightedTabs?.includes('code') ? 'pane-highlight-pulse' : ''}`} onClick={() => selectTab('code')}>MicroPython</button>}
         </div>
         <div style={s.actions}>
           {selectedTab === 'breadboard' && (

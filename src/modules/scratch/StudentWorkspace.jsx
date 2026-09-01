@@ -11,7 +11,7 @@ export default function StudentWorkspace({
   isSandbox, isViewingPrev, isForcedTeacherLive,
   isTeacherEditing, teacherLiveCode,
   displayCode, displaySpriteState, displayCursor, displayBlockDrag,
-  onVisiblePanesChange,
+  onVisiblePanesChange, highlightedPanes,
 }) {
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
@@ -71,6 +71,7 @@ export default function StudentWorkspace({
         externalBlockDrag={isForcedTeacherLive ? displayBlockDrag : null}
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
         onVisiblePanesChange={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : onVisiblePanesChange}
+        highlightedPanes={highlightedPanes}
       />
     </div>
   )

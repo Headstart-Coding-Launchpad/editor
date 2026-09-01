@@ -335,3 +335,71 @@ describe('LessonTaskContent instructions-pane reporting', () => {
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith([])
   })
 })
+
+describe('LessonTaskContent highlightedPanes', () => {
+  const baseProps = {
+    cs: { inPersonalSandbox: false },
+    currentTaskId: 1,
+    isSandbox: false,
+    isViewingPrev: false,
+    isForcedTeacherLive: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+  }
+
+  it('pulses the explainer collapse button when "instructions" is highlighted (side-rail layout)', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
+        highlightedPanes={['instructions']}
+      />,
+    )
+
+    expect(screen.getByTitle('Collapse Explainer')).toHaveClass('pane-highlight-pulse')
+  })
+
+  it('does not pulse the explainer collapse button when a different pane is highlighted', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
+        highlightedPanes={['code']}
+      />,
+    )
+
+    expect(screen.getByTitle('Collapse Explainer')).not.toHaveClass('pane-highlight-pulse')
+  })
+
+  it('forwards highlightedPanes down to the module StudentWorkspace', () => {
+    let receivedProp
+    getLessonModule.mockReturnValue({
+      type: 'electronics',
+      StudentWorkspace: ({ highlightedPanes }) => { receivedProp = highlightedPanes; return <div>Workspace</div> },
+      getLayoutStyles: () => ({}),
+    })
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'electronics' }}
+        task={{ id: 1, title: 'Wire it up' }}
+        highlightedPanes={['breadboard']}
+      />,
+    )
+
+    expect(receivedProp).toEqual(['breadboard'])
+  })
+})

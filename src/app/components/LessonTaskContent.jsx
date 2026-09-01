@@ -93,6 +93,7 @@ export default function LessonTaskContent({
   onTopicClose,
   openTopicId,
   onVisiblePanesChange,
+  highlightedPanes,
 }) {
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
@@ -149,6 +150,7 @@ export default function LessonTaskContent({
     ? (instructionsPaneVisible ? ['instructions'] : [])
     : null
   const visiblePanesKey = visiblePanes?.join(',') ?? ''
+  const instructionsHighlighted = !!highlightedPanes?.includes('instructions')
 
   useEffect(() => {
     if (isScratchLesson || supportsModulePanes || hasTaskExplainer) onVisiblePanesChange?.(visiblePanes)
@@ -211,6 +213,7 @@ export default function LessonTaskContent({
           title="Collapse Explainer"
           ariaLabel="Collapse Explainer"
           style={s.sideExplainerCollapse}
+          highlighted={instructionsHighlighted}
         />
       )}
       <ExplainerPanel
@@ -225,6 +228,7 @@ export default function LessonTaskContent({
         collapsible={!useSideExplainer}
         markdownTextScale={useSideExplainer ? 1.08 : 1}
         onCollapsedChange={!useSideExplainer ? setAccordionExplainerCollapsed : undefined}
+        highlighted={!useSideExplainer && instructionsHighlighted}
       />
     </div>
   ) : null
@@ -354,6 +358,7 @@ export default function LessonTaskContent({
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined}
+          highlightedPanes={highlightedPanes}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
@@ -408,6 +413,7 @@ export default function LessonTaskContent({
               tabs={[{ id: 'instructions', label: 'Instructions' }, { id: 'code', label: 'Code' }]}
               activeId={taskPanelTab}
               onChange={handleTaskPanelTabChange}
+              highlightedIds={highlightedPanes}
             />
           )}
           <div style={s.scratchFixedSplit}>
@@ -427,6 +433,7 @@ export default function LessonTaskContent({
                   direction="right"
                   title="Show Explainer"
                   ariaLabel="Show Explainer"
+                  highlighted={instructionsHighlighted}
                 />
               ) : taskExplainer}
             </div>
@@ -456,6 +463,7 @@ export default function LessonTaskContent({
               direction="right"
               title="Show Explainer"
               ariaLabel="Show Explainer"
+              highlighted={instructionsHighlighted}
             />
           }
           left={taskExplainer}

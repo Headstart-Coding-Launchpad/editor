@@ -537,6 +537,7 @@ export default function ScratchWorkspace({
   respectStudentEditable = false,
   forceCompact = false,
   onVisiblePanesChange = null,
+  highlightedPanes = null,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -2164,6 +2165,7 @@ export default function ScratchWorkspace({
           tabs={[{ id: 'blocks', label: 'Blocks' }, { id: 'stage', label: 'Stage' }]}
           activeId={activePane}
           onChange={handleActivePaneChange}
+          highlightedIds={highlightedPanes}
         />
       )}
 

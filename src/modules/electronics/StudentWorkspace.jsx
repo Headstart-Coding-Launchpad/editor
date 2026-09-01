@@ -7,7 +7,7 @@ export default function StudentWorkspace({
   lesson, task, cs, viewingTaskId, isViewingPrev, isForcedTeacherLive,
   displayCode, displayOutput, displayRunStatus, displayCheckPassed,
   isTeacherEditing, teacherLiveCode, teacherLiveWorkspace,
-  onVisiblePanesChange,
+  onVisiblePanesChange, highlightedPanes,
 }) {
   const viewedWork = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const viewedCarry = isViewingPrev && viewedWork == null
@@ -56,6 +56,7 @@ export default function StudentWorkspace({
       checkPassed={isForcedTeacherLive ? displayCheckPassed : cs.checkPassed}
       activeTab={isTeacherEditing ? teacherLiveWorkspace : undefined}
       onTabChange={pane => onVisiblePanesChange?.([pane])}
+      highlightedTabs={highlightedPanes}
       title="Electronics"
     />
   )
