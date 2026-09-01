@@ -402,6 +402,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                         style={sTo.toolBtn}
                         onClick={() => {
                           close()
+                          handleRevealSupportStage(completeStage.index, completeStage.stage)
                           onRemoteReset?.(student.anonymousId, `reveal_stage_${completeStage.index}`)
                         }}
                       >

@@ -315,6 +315,37 @@ describe('StudentModal', () => {
     })
   })
 
+  describe('reveal solution', () => {
+    const LESSON_WITH_COMPLETE_STAGE = {
+      type: 'python',
+      tasks: [{
+        id: 1,
+        title: 'Task 1',
+        codeStages: [
+          { role: 'support', label: 'Hint', code: 'x = 1' },
+          { role: 'complete', label: 'Complete', code: 'print("done")' },
+        ],
+      }],
+    }
+
+    it('records the support reveal and pushes the remote reset when solution is revealed', async () => {
+      const user = userEvent.setup()
+      const props = mkProps({
+        lesson: LESSON_WITH_COMPLETE_STAGE,
+        onRevealSupportStage: vi.fn(),
+      })
+      render(<StudentModal {...props} />)
+      await user.click(screen.getByRole('button', { name: /Reveal/i }))
+      await user.click(screen.getByRole('button', { name: /Reveal solution: Complete/i }))
+
+      expect(props.onRevealSupportStage).toHaveBeenCalledWith('student-1', 1, 1, {
+        source: 'teacher',
+        stageLabel: 'Complete',
+      })
+      expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'reveal_stage_1')
+    })
+  })
+
   describe('video call link', () => {
     it('does not show the Send Video Call Link item when onSendVideoCallLink is not provided', async () => {
       const user = userEvent.setup()
