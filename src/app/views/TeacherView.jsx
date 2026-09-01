@@ -32,6 +32,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getLessonModule } from '../../modules/registry'
+import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -53,6 +54,7 @@ export default function TeacherView({ lessonId }) {
     requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
     requestTeacherStage, clearTeacherStage,
     pushTeacherHighlight, removeTeacherHighlight, recordSupportStageReveal,
+    pushTeacherPaneCommand, pushClassPaneCommand,
   } = useSession(lessonId)
 
   const [baseLesson, setBaseLesson]     = useState(null)
@@ -433,18 +435,28 @@ export default function TeacherView({ lessonId }) {
         lessonLevel={lesson.level}
         isSandbox={isSandbox}
         right={
-          <TeacherSessionControls
-            session={session}
-            onOpenPresentationWindow={handleOpenPresentationWindow}
-            onOpenFeedback={() => setShowFeedbackModal(true)}
-            onOpenReports={() => setShowReportsPanel(true)}
-            onOpenEditLesson={() => setShowEditLessonModal(true)}
-            onStartSession={startSession}
-            onEndSession={() => setShowEndModal(true)}
-            onRestartSession={restartSession}
-            onReturnToAdmin={() => navigate('/admin')}
-            onUpdateVideoCallLink={updateVideoCallLink}
-          />
+          <>
+            {session && !isInformationTask && (
+              <PaneFocusDropdown
+                label="Focus Class"
+                lessonType={editorLesson?.type}
+                onHighlight={panes => pushClassPaneCommand({ mode: 'highlight', panes })}
+                onForce={panes => pushClassPaneCommand({ mode: 'force', panes })}
+              />
+            )}
+            <TeacherSessionControls
+              session={session}
+              onOpenPresentationWindow={handleOpenPresentationWindow}
+              onOpenFeedback={() => setShowFeedbackModal(true)}
+              onOpenReports={() => setShowReportsPanel(true)}
+              onOpenEditLesson={() => setShowEditLessonModal(true)}
+              onStartSession={startSession}
+              onEndSession={() => setShowEndModal(true)}
+              onRestartSession={restartSession}
+              onReturnToAdmin={() => navigate('/admin')}
+              onUpdateVideoCallLink={updateVideoCallLink}
+            />
+          </>
         }
       />
       <TeacherTimers session={session} task={currentTask} tasks={visibleTasks} />
@@ -579,6 +591,7 @@ export default function TeacherView({ lessonId }) {
             onClearTeacherStage={clearTeacherStage}
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
+            onPushTeacherPaneCommand={pushTeacherPaneCommand}
             onRevealSupportStage={recordSupportStageReveal}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             onRequestFullscreenAll={requestFullscreenForAll}

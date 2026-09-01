@@ -18,6 +18,7 @@ import DropdownMenu from './student-modal/DropdownMenu'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import StageDropdown from './student-modal/StageDropdown'
+import PaneFocusDropdown from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 
@@ -29,7 +30,7 @@ function getModuleDisplayState(module, raw) {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onSendVideoCallLink, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage }) {
+export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onSendVideoCallLink, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage, onPushTeacherPaneCommand }) {
   const overlayRef = useRef(null)
   const iframeRef  = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
@@ -433,6 +434,15 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             {/* Override dropdown */}
             {onOverrideCheck && task?.check != null && (
               <OverrideDropdown student={student} task={task} onOverrideCheck={onOverrideCheck} />
+            )}
+
+            {/* Highlight/force a tab or the Instructions pane on this student's screen */}
+            {onPushTeacherPaneCommand && !isInformation && !isQuiz && (
+              <PaneFocusDropdown
+                lessonType={taskLesson?.type}
+                onHighlight={panes => onPushTeacherPaneCommand(student.anonymousId, { mode: 'highlight', panes })}
+                onForce={panes => onPushTeacherPaneCommand(student.anonymousId, { mode: 'force', panes })}
+              />
             )}
 
 
