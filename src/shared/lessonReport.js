@@ -95,8 +95,22 @@ function normalizeConfidenceSubmission(submission) {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : submission
 }
 
+// logAttempt now always writes submission as a JSON-safe string (see useSession.js), so an
+// object-shaped submission (Scratch workspace state, a filesystem tree, an HTML file map)
+// round-trips through the attempt log as text. Parse it back to its original shape here so
+// the report reads as structured data rather than an escaped JSON blob; plain code strings
+// (Python, etc.) simply fail to parse as an object and are left as-is.
+function normalizeCodeSubmission(submission) {
+  if (typeof submission !== 'string' || !submission) return submission ?? null
+  try {
+    const parsed = JSON.parse(submission)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
+  } catch {}
+  return submission
+}
+
 function normalizeSubmission(task, submission) {
-  if (task?.taskType !== 'quiz') return submission ?? null
+  if (task?.taskType !== 'quiz') return normalizeCodeSubmission(submission)
   if (task.quizType === 'fill_blank') return normalizeFillBlankSubmission(task, submission)
   if (task.quizType === 'match') return normalizeMatchSubmission(task, submission)
   if (task.quizType === 'confidence') return normalizeConfidenceSubmission(submission)

@@ -597,8 +597,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
     const attemptNumber = (cached?.attemptNumber ?? 0) + 1
     const newRef = push(ref(db, basePath))
+    // Write the already-serialized string, not the raw submission: an object-shaped
+    // submission (Scratch workspace state, a filesystem tree, an HTML file map) can
+    // contain values the Realtime Database's set() rejects (e.g. undefined), and since
+    // callers never await/catch this, that rejection used to vanish silently — the
+    // attempt just never reached the report. A string is always writable.
     await set(newRef, {
-      submission,
+      submission: serialized,
       passed,
       suggestion: suggestion || null,
       attemptNumber,

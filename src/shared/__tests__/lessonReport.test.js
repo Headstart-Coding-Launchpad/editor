@@ -178,6 +178,45 @@ describe('buildSessionReport', () => {
     ])
   })
 
+  it('parses a JSON-stringified code-task submission back to an object, and leaves plain code strings alone', () => {
+    // logAttempt now always writes submission as a JSON string (see useSession.js), since an
+    // object-shaped submission — Scratch workspace state, a filesystem tree, an HTML file map —
+    // can contain values the Realtime Database's set() rejects outright. The report should
+    // still read as structured data for those, not an escaped JSON blob.
+    const scratchLesson = {
+      id: 'scratch-lesson',
+      title: 'Scratch Lesson',
+      tasks: [{ id: 1, title: 'Say Hello', check: { type: 'block_run', opcode: 'looks_say' } }],
+    }
+    const scratchSession = {
+      lessonId: 'scratch-lesson',
+      startedAt: 1000,
+      endedAt: 2000,
+      taskStartTimes: { 1: 1000 },
+      students: { alice: { displayName: 'Alice' } },
+      attemptLog: {
+        alice: {
+          1: {
+            k1: {
+              submission: JSON.stringify({ sprite1: { blocks: { blocks: [] } } }),
+              passed: true,
+              suggestion: null,
+              attemptNumber: 1,
+              retries: 0,
+              loggedAt: 1100,
+              passedAt: 1100,
+            },
+          },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: scratchSession, lesson: scratchLesson })
+    const aliceScratch = taskById(studentByLabel(report, 'Student 1').tasks, 1)
+    expect(aliceScratch.distinctAttempts[0].submission).toEqual({ sprite1: { blocks: { blocks: [] } } })
+    expect(aliceScratch.attempts).toBe(1)
+    expect(aliceScratch.finalResult).toBe('passed')
+  })
+
   it('records fill-blank submissions and summarizes missed blanks', () => {
     const report = buildSessionReport({ session, lesson })
     const aliceFill = taskById(studentByLabel(report, 'Student 1').tasks, 4)

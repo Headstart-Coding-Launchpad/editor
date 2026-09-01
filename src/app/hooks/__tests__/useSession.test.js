@@ -797,6 +797,24 @@ describe('useSession', () => {
       expect(firebaseMocks.update).not.toHaveBeenCalled()
       expect(firebaseMocks.set).not.toHaveBeenCalled()
     })
+
+    // Scratch/filesystem/HTML submissions are objects (workspace state, an fs tree, a
+    // files map), not strings. The Realtime Database's set() throws on values it can't
+    // serialize (e.g. undefined anywhere in the tree), so the stored submission must
+    // always be the already-JSON-stringified form, never the raw object — writing the
+    // raw object here previously caused every Scratch code-task attempt to silently
+    // fail to log, since nothing awaited/caught this call at the caller.
+    it('writes an object-shaped submission as its JSON-serialized string, not the raw object', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const submission = { sprite1: { blocks: { languageVersion: 0, blocks: [] } } }
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission, passed: true })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ submission: JSON.stringify(submission) }),
+      )
+    })
   })
 
   describe('removeTeacherHighlight', () => {
