@@ -46,26 +46,32 @@ const CURSOR_STALE_MS = 2000
 const BLOCK_PLACED_CHECK_DEBOUNCE = 500
 const IDLE_FEEDBACK_DEBOUNCE = 900
 const MIN_STAGE_SCALE = 0.35
+// Vertical space the stage toolbar (Run/Stop/Reset/+Backdrop) plus stagePane's own gap take
+// above the canvas — height-scaling must leave room for this instead of scaling the canvas
+// into the toolbar's space.
+const STAGE_TOOLBAR_HEIGHT_RESERVE = 52
 const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
 const MIN_EDITOR_WIDTH_COLLAPSED = 280
 const MIN_EDITOR_WIDTH_COLLAPSED_COMPACT = 180
-// Below this width or height, side-by-side editor+stage is too cramped — switch to an
-// explicit Blocks/Stage tab switcher instead (see the `compact` state below). Matches
-// the thresholds LessonTaskContent.jsx uses for its own Instructions/Code tab tier.
-// Exported: LessonTaskContent.jsx reuses this to decide when to tab Instructions away
-// *before* the code area would otherwise be squeezed under it (see EXPLAINER_FIXED_WIDTH
-// there) — the two thresholds must stay in lockstep, not just coincidentally match.
+// Below this width, side-by-side editor+stage is too cramped — switch to an explicit
+// Blocks/Stage tab switcher instead (see the `compact` state below). Matches the threshold
+// LessonTaskContent.jsx uses for its own Instructions/Code tab tier. Exported:
+// LessonTaskContent.jsx reuses this to decide when to tab Instructions away *before* the
+// code area would otherwise be squeezed under it (see EXPLAINER_FIXED_WIDTH there) — the
+// two thresholds must stay in lockstep, not just coincidentally match. Height has no
+// equivalent compact threshold — see computeStageScale — but NARROW_BREAKPOINT_HEIGHT below
+// still doubles as the "wide" reference point computeBlockScale interpolates from.
 export const NARROW_BREAKPOINT = 1000
 export const NARROW_BREAKPOINT_HEIGHT = 600
 // Hysteresis margin for leaving compact mode once entered. Switching compact on/off changes
 // which panes are mounted with a natural (content-driven) height — e.g. the Blocks pane's
-// Blockly canvas vs. the shorter Stage pane — so the resulting re-measurement can land back on
-// the opposite side of NARROW_BREAKPOINT/_HEIGHT from a single ResizeObserver tick, flip
+// Blockly canvas vs. the shorter Stage pane — so the resulting re-measurement of *width* can
+// land back on the opposite side of NARROW_BREAKPOINT from a single ResizeObserver tick, flip
 // `compact` straight back, and repeat forever (visible as rapid layout flicker, most
 // noticeable with the container width parked just above NARROW_BREAKPOINT). Requiring the
 // container to clear the breakpoint by this margin before *exiting* compact — entry keeps the
-// original threshold — breaks that loop without moving the documented 1000×600 entry point.
+// original threshold — breaks that loop without moving the documented 1000px entry point.
 const COMPACT_EXIT_HYSTERESIS = 48
 const SCRATCH_PANEL_TABS_SURFACE = 'scratch_panel'
 // Block canvas auto-zoom range. There's no manual zoom any more (wheel/on-canvas controls
@@ -84,6 +90,24 @@ export function computeBlockScale(width, height) {
   const hFactor = Math.min(1, height / NARROW_BREAKPOINT_HEIGHT)
   const factor = Math.min(wFactor, hFactor)
   return BLOCK_SCALE_MIN + (BLOCK_SCALE_MAX - BLOCK_SCALE_MIN) * factor
+}
+
+// Shrinks the stage canvas to fit whatever space is actually available, on both axes — a
+// container that's short (a laptop window, or the editor area shrinking when a banner takes
+// up room above it) scales the stage down exactly like a narrow one does, rather than the
+// stage getting clipped/scrolled or the layout switching modes. `height` is optional: the two
+// callers that recalculate on flyout-collapse/drag-end only have a fresh width to hand, so
+// they omit it and this falls back to width-only scaling for that call (height last set by
+// the container-resize effect stays in effect for the other axis). Exported (and pure) so
+// it's unit-testable without Blockly.
+export function computeStageScale(width, height, { compact, flyoutCollapsed }) {
+  const editorReserve = flyoutCollapsed
+    ? (width < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
+    : (width < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
+  const widthScale = compact ? (width - 8) / (STAGE_W + 2) : (width - editorReserve - 8) / (STAGE_W + 2)
+  const heightScale = height > 0 ? (height - STAGE_TOOLBAR_HEIGHT_RESERVE) / (STAGE_H + 2) : Infinity
+  const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+  return Number.isFinite(nextScale) ? nextScale : 1
 }
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 const STAGE_RUNTIME_STATE = {
@@ -1383,11 +1407,11 @@ export default function ScratchWorkspace({
   }, [status])
 
   // Responsive stage scaling — shrink canvas CSS size to keep editor visible — plus the
-  // compact-mode (Blocks/Stage tabs) decision. Stage scaling stays width-only: the stage
-  // must hold a constant size when the page's vertical content changes (explainer text,
-  // check banners, etc.) so those elements shift/scroll around it instead of squeezing the
-  // stage smaller. Compact mode additionally checks height, since a short window (a laptop
-  // with limited vertical space) is just as cramped as a narrow one.
+  // compact-mode (Blocks/Stage tabs) decision. Compact is width-only: it's a narrow-screen
+  // (mobile-like) fallback where each pane needs the full width in turn. A short-but-wide
+  // container (e.g. the editor area shrinking when a banner takes up room above it) instead
+  // scales the stage down on the height axis too — see computeStageScale — so it shrinks
+  // in place rather than switching layouts or getting clipped.
   useEffect(() => {
     const w = rootSize.width
     const h = rootSize.height
@@ -1398,21 +1422,13 @@ export default function ScratchWorkspace({
     // re-measure back across the same line and flip straight back.
     const wasCompact = compactRef.current
     const isCompact = forceCompact || (wasCompact
-      ? (w < NARROW_BREAKPOINT + COMPACT_EXIT_HYSTERESIS || h < NARROW_BREAKPOINT_HEIGHT + COMPACT_EXIT_HYSTERESIS)
-      : (w < NARROW_BREAKPOINT || h < NARROW_BREAKPOINT_HEIGHT))
+      ? w < NARROW_BREAKPOINT + COMPACT_EXIT_HYSTERESIS
+      : w < NARROW_BREAKPOINT)
     setCompact(isCompact)
     compactRef.current = isCompact
     blockScaleRef.current = computeBlockScale(w, h)
 
-    // In compact mode each pane (Blocks tab or Stage tab) gets the full width in turn,
-    // so there's no editor pane to share space with.
-    const collapsed = flyoutCollapsedRef.current
-    const editorReserve = collapsed
-      ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
-      : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-    const widthScale = isCompact ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
-    const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
-    const scale = Number.isFinite(nextScale) ? nextScale : 1
+    const scale = computeStageScale(w, h, { compact: isCompact, flyoutCollapsed: flyoutCollapsedRef.current })
     setStageScale(scale)
     cancelAnimationFrame(rootResizeFrameRef.current)
     isWindowResizeRef.current = true
@@ -1431,14 +1447,9 @@ export default function ScratchWorkspace({
     }
     const el = rootRef.current
     if (!el) return
-    const { width: w } = el.getBoundingClientRect()
+    const { width: w, height: h } = el.getBoundingClientRect()
     if (!w) return
-    const editorReserve = flyoutCollapsed
-      ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
-      : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-    const widthScale = compact ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
-    const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
-    setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
+    setStageScale(computeStageScale(w, h, { compact, flyoutCollapsed }))
     requestAnimationFrame(resizeBlocklyWorkspaces)
   }, [flyoutCollapsed, hideStage, compact, resizeBlocklyWorkspaces])
 
@@ -1453,14 +1464,9 @@ export default function ScratchWorkspace({
       if (hideStageRef.current) return
       const rootEl = rootRef.current
       if (!rootEl) return
-      const { width: w } = rootEl.getBoundingClientRect()
+      const { width: w, height: h } = rootEl.getBoundingClientRect()
       if (!w) return
-      const editorReserve = flyoutCollapsedRef.current
-        ? (w < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
-        : (w < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-      const widthScale = compactRef.current ? (w - 8) / (STAGE_W + 2) : (w - editorReserve - 8) / (STAGE_W + 2)
-      const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, widthScale))
-      setStageScale(Number.isFinite(nextScale) ? nextScale : 1)
+      setStageScale(computeStageScale(w, h, { compact: compactRef.current, flyoutCollapsed: flyoutCollapsedRef.current }))
       requestAnimationFrame(resizeBlocklyWorkspaces)
     }
 

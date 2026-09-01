@@ -181,21 +181,14 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(screen.getByTitle('Show Explainer')).toBeInTheDocument()
   })
 
-  it('gives the panel a real minimum height and avoids clipping overflow, so a growing sibling (e.g. the completion banner) scrolls the page instead of shrinking ScratchWorkspace below its own compact-height threshold', () => {
+  it('gives the Scratch panel no minimum-height floor, so a growing sibling (e.g. the completion banner) can shrink it freely — ScratchWorkspace scales its own stage down to fit rather than the page needing to scroll around a reserved floor', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
 
     render(<LessonTaskContent {...scratchProps} />)
 
-    expect(screen.getByText('Workspace').closest('[style*="min-height: 600px"]')).toBeInTheDocument()
-    expect(document.querySelector('.task-slide-viewport').style.overflow).toBe('visible')
-    // Both ancestors between s.body's scroll container and the panel bake in
-    // `min-height: 0` (one via taskContentStyle, one via TaskSlideTransition's own
-    // .task-slide-panel CSS class) — overriding only one of them still lets the other
-    // clip the 600px floor above, which is what made the completion-banner symptom
-    // survive the first fix. Both need `min-height: auto` to actually take effect.
-    expect(document.querySelector('.task-slide-viewport').style.minHeight).toBe('auto')
-    expect(document.querySelector('.task-slide-panel--entering').style.minHeight).toBe('auto')
+    expect(screen.getByText('Workspace').closest('[style*="min-height: 0px"]')).toBeInTheDocument()
+    expect(document.querySelector('.task-slide-viewport').style.overflow).toBe('hidden')
   })
 
   it('never applies the compact tab tier to non-Scratch lesson types', () => {
