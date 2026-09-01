@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTileDragAndDrop } from '../hooks/useTileDragAndDrop'
 import OutputPanel from './OutputPanel'
 import CollapsibleIframePreview from './CollapsibleIframePreview'
@@ -6,6 +6,11 @@ import { baseStyles as s, interactionStyles as sm, QuestionPanel } from './quiz/
 import {
   assembleCodeArrangement, getFragmentCodeById, getLineParts, getLines, getSlotIds, getTaskPool, isArrangementComplete,
 } from '../../shared/codeArrange'
+
+// Matches ScratchWorkspace's live-cursor mirror (see CURSOR_THROTTLE_MS /
+// CURSOR_STALE_MS there) so both task types feel the same during Go Live.
+const DRAG_CURSOR_THROTTLE_MS = 50
+const DRAG_CURSOR_STALE_MS = 2000
 
 // Student-facing (and Builder-preview-facing) workspace for the `code_arrange`
 // task type. Every authored line is a `parts` sequence (fixed text and
@@ -42,6 +47,13 @@ export default function CodeArrangeTask({
   onStop,
   disabled = false,
   showQuestion = false,
+  // Live drag mirror for a teacher's "Go Live to Students" broadcast (see
+  // CodeArrangeTaskContainer): the interactive side reports its own drag
+  // position via onDragCursor, a read-only viewer renders whatever position
+  // it's told via externalDragCursor — same split as Scratch's
+  // handleScratchCursor / externalCursor.
+  onDragCursor,
+  externalDragCursor = null,
 }) {
   const lines = getLines(task)
   const pool = getTaskPool(task)
@@ -52,6 +64,10 @@ export default function CodeArrangeTask({
   const complete = isArrangementComplete(task, state)
   const assembledRef = useRef(null)
   const stateKey = JSON.stringify(state)
+  const boardRef = useRef(null)
+  const dragCursorRafRef = useRef(null)
+  const pendingDragCursorRef = useRef(null)
+  const lastDragCursorSentRef = useRef(0)
 
   useEffect(() => {
     const assembled = assembleCodeArrangement(task, state)
@@ -66,12 +82,48 @@ export default function CodeArrangeTask({
     onSelectAnswer?.(next)
   }
 
+  // Reports this dragger's own live position to onDragCursor, rAF+time
+  // throttled to match ScratchWorkspace's cursor mirror (see top of file).
+  // dragStart bypasses the throttle so the mirror appears the instant a tile
+  // is picked up rather than waiting for the first dragover frame.
+  function emitDragCursorNow(clientX, clientY, tileId) {
+    const rect = boardRef.current?.getBoundingClientRect()
+    if (!rect || !rect.width || !rect.height) return
+    const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    const y = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height))
+    lastDragCursorSentRef.current = Date.now()
+    onDragCursor?.({ tileId, x, y, at: lastDragCursorSentRef.current })
+  }
+
+  function scheduleDragCursor(clientX, clientY, tileId) {
+    if (!onDragCursor) return
+    pendingDragCursorRef.current = { clientX, clientY, tileId }
+    if (dragCursorRafRef.current) return
+    dragCursorRafRef.current = requestAnimationFrame(() => {
+      dragCursorRafRef.current = null
+      const pending = pendingDragCursorRef.current
+      if (!pending || Date.now() - lastDragCursorSentRef.current < DRAG_CURSOR_THROTTLE_MS) return
+      emitDragCursorNow(pending.clientX, pending.clientY, pending.tileId)
+    })
+  }
+
   const dnd = useTileDragAndDrop({
     blocked,
     getLabelForTile: fragmentId => getFragmentCodeById(task, fragmentId),
+    onDragStart: (event, tileId) => onDragCursor && emitDragCursorNow(event.clientX, event.clientY, tileId),
+    onDragEnd: () => onDragCursor?.(null),
   })
   const { draggingTile, dragOverTarget, touchSelectedTile } = dnd
-  const activeId = draggingTile || touchSelectedTile
+  // A read-only viewer (teacher Go Live mirror) never has its own
+  // draggingTile/touchSelectedTile — this instance's dnd never runs a drag,
+  // it only mirrors one. Without externalDragCursor's tileId here, "canReceive"
+  // below stays false throughout the whole mirrored drag and every empty slot
+  // keeps showing its plain placeholder instead of "Drop here" — the tile
+  // visibly floats across the board but nothing on it reacts, which is what
+  // looked wrong.
+  const activeId = draggingTile || touchSelectedTile || externalDragCursor?.tileId || null
+
+  useEffect(() => () => { if (dragCursorRafRef.current) cancelAnimationFrame(dragCursorRafRef.current) }, [])
 
   const remainingCount = slotIds.filter(id => state[id] == null || state[id] === '').length
   const runLabel = running
@@ -82,7 +134,11 @@ export default function CodeArrangeTask({
 
   function renderTargetContent(placedFragment, canReceive, emptyPlaceholder) {
     if (placedFragment) return placedFragment.code
-    if (canReceive && !blocked) return touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here'
+    // A live-mirror viewer is always `blocked` (dropping there must stay
+    // impossible), but should still show the invite text while the mirrored
+    // drag is active — it's mirroring the teacher's screen, not gating real
+    // interaction here.
+    if (canReceive && (!blocked || externalDragCursor)) return touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here'
     return emptyPlaceholder
   }
 
@@ -90,7 +146,16 @@ export default function CodeArrangeTask({
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
 
-      <div style={sm.fillWrap}>
+      <div
+        ref={boardRef}
+        style={{ ...sm.fillWrap, position: 'relative' }}
+        onDragOver={event => {
+          if (!draggingTile) return
+          event.preventDefault()
+          scheduleDragCursor(event.clientX, event.clientY, draggingTile)
+        }}
+      >
+        {externalDragCursor && <DragCursorMirror task={task} cursor={externalDragCursor} />}
         <div style={ca.programStack}>
           {lines.map((line, index) => {
             const parts = getLineParts(line)
@@ -241,6 +306,35 @@ export default function CodeArrangeTask({
   )
 }
 
+// Read-only mirror of a remote drag in progress (teacher Go Live viewer):
+// a small dot at the reported position plus a floating clone of the tile
+// being dragged, so a student watching sees the same motion the teacher's
+// own screen shows — not just the slot board snapping once the drag ends.
+// Fades out if updates stop arriving (dropped connection, missed drag-end).
+function DragCursorMirror({ task, cursor }) {
+  const [stale, setStale] = useState(false)
+
+  useEffect(() => {
+    setStale(false)
+    const remaining = DRAG_CURSOR_STALE_MS - (Date.now() - (cursor?.at ?? 0))
+    if (remaining <= 0) { setStale(true); return undefined }
+    const t = setTimeout(() => setStale(true), remaining)
+    return () => clearTimeout(t)
+  }, [cursor?.at])
+
+  if (stale) return null
+  const label = getFragmentCodeById(task, cursor.tileId)
+  const left = `${cursor.x * 100}%`
+  const top = `${cursor.y * 100}%`
+
+  return (
+    <>
+      <div data-testid="code-arrange-drag-dot" style={{ ...ca.dragDot, left, top }} />
+      {label && <div data-testid="code-arrange-drag-ghost" style={{ ...ca.dragGhost, left, top }}>{label}</div>}
+    </>
+  )
+}
+
 // A single inline blank rendered in place within the fixed line text: its
 // own small drop target showing the currently placed tile (or "___" while
 // empty), drawing from the task's one shared pool like every other slot.
@@ -371,6 +465,36 @@ const ca = {
   // shifts mid-gesture. Opacity is safe: it doesn't affect layout geometry.
   tileDragging: {
     opacity: 0.35,
+  },
+  // Live drag mirror (DragCursorMirror) — colour matches ScratchWorkspace's
+  // cursor dot (#7c3aed) so both task types read as the same "teacher is
+  // live" affordance.
+  dragDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    background: '#7c3aed',
+    border: '2px solid #fff',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+    transform: 'translate(-50%, -50%)',
+    pointerEvents: 'none',
+    zIndex: 5,
+  },
+  dragGhost: {
+    position: 'absolute',
+    transform: 'translate(-50%, calc(-100% - 12px))',
+    padding: '6px 12px',
+    border: '2px solid #7c3aed',
+    borderRadius: 8,
+    background: '#fff',
+    color: 'var(--colour-text)',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '0.85rem',
+    whiteSpace: 'pre',
+    boxShadow: '0 6px 16px rgba(124, 58, 237, 0.25)',
+    pointerEvents: 'none',
+    zIndex: 5,
   },
   runRow: {
     display: 'flex',

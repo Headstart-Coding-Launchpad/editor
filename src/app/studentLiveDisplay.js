@@ -58,6 +58,8 @@ export function deriveStudentLiveDisplay({
     displaySpriteState: isForcedTeacherLive ? (teacherLive.spriteState ?? null) : null,
     displayCursor: isForcedTeacherLive ? (teacherLive.cursor ?? null) : null,
     displayBlockDrag: isForcedTeacherLive ? (teacherLive.blockDrag ?? null) : null,
+    displayCodeArrangeSlots: isForcedTeacherLive ? (teacherLive.codeArrangeSlots ?? null) : null,
+    displayCodeArrangeCursor: isForcedTeacherLive ? (teacherLive.codeArrangeCursor ?? null) : null,
     displayFiles: isForcedTeacherLive ? teacherLiveFiles : files,
     displayActiveFile: isForcedTeacherLive ? (teacherLive.activeFile ?? teacherLiveFiles[0]?.name ?? '') : activeFile,
     displayOutput: isForcedTeacherLive ? (teacherLive.output ?? '') : output,
