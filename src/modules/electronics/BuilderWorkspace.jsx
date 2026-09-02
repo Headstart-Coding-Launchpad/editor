@@ -378,43 +378,57 @@ export default function BuilderWorkspace({
   )
 }
 
+// Semantic colours from docs/UI_STYLE_GUIDE.md; the rest of this file's chrome goes
+// through the --colour-*/--ui-* tokens.
+const MUTED = '#6b7280'
+const DANGER_TEXT = '#991b1b'
+const DANGER_BORDER = '#fecaca'
+const INFO_TEXT = '#1e40af'
+const INFO_BORDER = '#93c5fd'
+const INFO_SURFACE = '#eff6ff'
+const SUCCESS_TEXT = '#166534'
+const SUCCESS_SURFACE = '#dcfce7'
+const WARNING_TEXT = '#854d0e'
+const WARNING_SURFACE = '#fef9c3'
+const WARNING_BORDER = '#d97706'
+
 const s = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 8, minHeight: 520 },
-  workspace: { height: 520, display: 'flex', minHeight: 0, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' },
-  boardSizeField: { alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: '#475569' },
-  boardSizeLabel: { fontWeight: 700, color: '#334155' },
-  boardSizeSelect: { border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 13, padding: '6px 8px' },
-  gpioPanel: { border: '1px solid #bae6fd', borderRadius: 8, padding: 10, background: '#f0f9ff', display: 'flex', flexDirection: 'column', gap: 9, fontFamily: 'var(--font-body)' },
+  workspace: { height: 520, display: 'flex', minHeight: 0, border: '1px solid var(--ui-border)', borderRadius: 'var(--ui-radius)', overflow: 'hidden' },
+  boardSizeField: { alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: MUTED },
+  boardSizeLabel: { fontWeight: 700, color: 'var(--colour-text)' },
+  boardSizeSelect: { border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: 'var(--colour-text)', fontSize: 13, padding: '6px 8px' },
+  gpioPanel: { border: '1px solid ' + INFO_BORDER, borderRadius: 'var(--ui-radius)', padding: 10, background: INFO_SURFACE, display: 'flex', flexDirection: 'column', gap: 9, fontFamily: 'var(--font-body)' },
   gpioPanelHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  gpioTitle: { margin: '0 0 6px', fontSize: 14, color: '#075985' },
+  gpioTitle: { margin: '0 0 6px', fontSize: 14, color: INFO_TEXT },
   fixedPins: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  fixedPin: { border: '1px solid #7dd3fc', borderRadius: 5, background: '#fff', color: '#0c4a6e', fontFamily: 'var(--font-code)', fontSize: 12, fontWeight: 700, padding: '3px 7px' },
+  fixedPin: { border: '1px solid ' + INFO_BORDER, borderRadius: 5, background: 'var(--ui-surface)', color: INFO_TEXT, fontFamily: 'var(--font-code)', fontSize: 12, fontWeight: 700, padding: '3px 7px' },
   addGpioButton: { whiteSpace: 'nowrap', padding: '7px 12px', fontSize: 13 },
   gpioRows: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 },
   gpioRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center' },
-  gpioInput: { minWidth: 0, border: '1px solid #7dd3fc', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 13, padding: '7px 8px', fontFamily: 'var(--font-code)' },
-  removeGpioButton: { border: '1px solid #fecaca', borderRadius: 6, background: '#fff', color: '#b91c1c', cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: '7px 8px' },
-  componentPicker: { border: '1px solid #e5e7eb', borderRadius: 8, padding: 10, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-body)' },
+  gpioInput: { minWidth: 0, border: '1px solid ' + INFO_BORDER, borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: 'var(--colour-text)', fontSize: 13, padding: '7px 8px', fontFamily: 'var(--font-code)' },
+  removeGpioButton: { border: '1px solid ' + DANGER_BORDER, borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: DANGER_TEXT, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: '7px 8px' },
+  componentPicker: { border: '1px solid var(--ui-border)', borderRadius: 'var(--ui-radius)', padding: 10, background: 'var(--ui-surface)', display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-body)' },
   componentPickerHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  componentPickerTitle: { fontWeight: 700, color: '#334155', fontSize: 13 },
+  componentPickerTitle: { fontWeight: 700, color: 'var(--colour-text)', fontSize: 13 },
   pickerActions: { display: 'flex', alignItems: 'center', gap: 6 },
   groupOptions: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 },
-  groupOption: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid #cbd5e1', borderRadius: 7, padding: '8px 9px', background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', color: '#334155', textAlign: 'left' },
-  groupOptionOn: { borderColor: '#0f766e', background: '#f0fdfa' },
-  groupOptionMixed: { borderColor: '#d97706', background: '#fffbeb' },
+  groupOption: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', padding: '8px 9px', background: 'var(--ui-surface)', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', textAlign: 'left' },
+  groupOptionOn: { borderColor: 'var(--colour-primary)', background: 'var(--ui-surface-tint)' },
+  groupOptionMixed: { borderColor: WARNING_BORDER, background: WARNING_SURFACE },
   groupOptionOff: { opacity: 0.72 },
   componentOptions: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 8 },
-  componentOption: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid #cbd5e1', borderRadius: 7, padding: '8px 9px', background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', color: '#334155', textAlign: 'left' },
-  componentOptionOn: { borderColor: '#7c3aed', background: '#f5f3ff' },
+  componentOption: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', padding: '8px 9px', background: 'var(--ui-surface)', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', textAlign: 'left' },
+  componentOptionOn: { borderColor: 'var(--colour-primary)', background: 'var(--ui-surface-tint)' },
   componentOptionOff: { opacity: 0.72 },
   optionName: { fontWeight: 650, fontSize: 13 },
   optionBadge: { borderRadius: 999, padding: '2px 7px', fontSize: 11, fontWeight: 700 },
-  optionBadgeOn: { background: '#ede9fe', color: '#5b21b6' },
-  optionBadgeMixed: { background: '#fef3c7', color: '#92400e' },
-  optionBadgeOff: { background: '#f1f5f9', color: '#64748b' },
+  optionBadgeOn: { background: SUCCESS_SURFACE, color: SUCCESS_TEXT },
+  optionBadgeMixed: { background: WARNING_SURFACE, color: WARNING_TEXT },
+  optionBadgeOff: { background: 'var(--ui-surface-soft)', color: MUTED },
   smallButton: { padding: '4px 8px', fontSize: 12 },
-  microHint: { margin: 0, fontFamily: 'var(--font-body)', fontSize: 13, color: '#475569' },
-  stageMetadataBar: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0, flexWrap: 'wrap' },
-  stageLabelText: { fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 },
+  microHint: { margin: 0, fontFamily: 'var(--font-body)', fontSize: 13, color: MUTED },
+  stageMetadataBar: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--ui-surface-tint)', border: '1px solid var(--ui-border)', borderTop: 0, borderBottom: 0, flexWrap: 'wrap' },
+  stageLabelText: { fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: MUTED, fontWeight: 600 },
   stageLabelInput: { width: 200, padding: '4px 8px', fontSize: '0.82rem' },
 }

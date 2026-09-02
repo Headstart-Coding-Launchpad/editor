@@ -48,9 +48,20 @@ const WIRE_OVERLAP_PENALTY = 5000
 const WIRE_CROSSING_PENALTY = 900
 const WIRE_BEND_PENALTY = 70
 const SENSOR_KIND_OPTIONS = ['light', 'temperature', 'distance']
-// Style-guide destructive red - the board marks a short on the wires and parts that form
-// it, so a student can see where the fault is and not just that one exists.
+// Semantic colours from docs/UI_STYLE_GUIDE.md. Everything else in this file's chrome
+// goes through the --colour-*/--ui-* tokens; these families have no token of their own,
+// and the part artwork below keeps its literal colours because a red LED has to be red.
 const SHORT_COLOUR = '#ef4444'
+const DANGER_TEXT = '#991b1b'
+const DANGER_SURFACE = '#fee2e2'
+const DANGER_BORDER = '#fecaca'
+const WARNING_TEXT = '#854d0e'
+const WARNING_SURFACE = '#fef9c3'
+const MUTED = '#6b7280'
+const PART_BORDER = '#9ca3af'
+const PART_LIVE = '#16a34a'
+// The brand purple, resolved for SVG strokes and box-shadows that cannot take a var().
+const SELECTION_COLOUR = '#6222cc'
 const HIDDEN_EDGE_HOLE_ROWS = 1
 const BOARD_SCALE_MIN = 0.5
 const BOARD_SCALE_MAX = 1.5
@@ -852,7 +863,7 @@ export default function ElectronicsWorkspace({
                           selectWire(wire.id)
                         }}
                       />
-                      <path d={path} stroke={isSelected ? '#7c3aed' : '#1f2937'} strokeWidth={isSelected ? '9' : '7'} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={isSelected ? '0.34' : '0.22'} style={{ pointerEvents: 'none' }} />
+                      <path d={path} stroke={isSelected ? SELECTION_COLOUR : '#1f2937'} strokeWidth={isSelected ? '9' : '7'} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={isSelected ? '0.34' : '0.22'} style={{ pointerEvents: 'none' }} />
                       <path d={path} stroke={wire.color ?? '#ef4444'} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" style={{ pointerEvents: 'none' }} />
                       {energized && (
                         <path d={currentPath} stroke="#fde047" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 12" fill="none" style={{ pointerEvents: 'none' }}>
@@ -888,7 +899,7 @@ export default function ElectronicsWorkspace({
                       top: point.y,
                       borderColor: shortedComponentIds.has(component.id)
                         ? SHORT_COLOUR
-                        : selectedId === component.id ? '#7c3aed' : state.on || state.powered || state.switched || state.conducting ? '#16a34a' : '#94a3b8',
+                        : selectedId === component.id ? 'var(--colour-primary)' : state.on || state.powered || state.switched || state.conducting ? PART_LIVE : PART_BORDER,
                       zIndex: selectedId === component.id ? 5 : 4,
                       cursor: readOnly || structureLocked ? 'default' : drag?.type === 'component' && drag.id === component.id ? 'grabbing' : 'grab',
                     }}
@@ -921,7 +932,7 @@ export default function ElectronicsWorkspace({
                             left: offset.x,
                             top: offset.y,
                             boxShadow: drag?.type === 'wire' && drag.from === ref
-                              ? '0 0 0 5px rgba(124,58,237,0.24)'
+                              ? '0 0 0 5px rgba(98,34,204,0.24)'
                               : drag?.type === 'wire' && drag.to === ref
                                 ? '0 0 0 6px rgba(22,163,74,0.28)'
                                 : s.pinHandle.boxShadow,
@@ -1983,66 +1994,68 @@ const s = {
   split: { flex: 1, minHeight: 0 },
   shell: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   header: { flexShrink: 0 },
-  title: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', padding: '0 10px', whiteSpace: 'nowrap' },
-  titleDivider: { alignSelf: 'center', width: 1, height: 16, background: '#e5e7eb', marginRight: 4 },
+  title: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, padding: '0 10px', whiteSpace: 'nowrap' },
+  titleDivider: { alignSelf: 'center', width: 1, height: 16, background: 'var(--ui-border)', marginRight: 4 },
   tabs: { display: 'flex', alignItems: 'center' },
   actions: { marginLeft: 'auto', display: 'flex', gap: 8, paddingRight: 8 },
   actionBtn: { fontSize: 13, padding: '7px 12px' },
   zoomControls: { display: 'flex', alignItems: 'center', gap: 4 },
   zoomBtn: { fontSize: 13, padding: '5px 10px', lineHeight: 1 },
-  zoomLabel: { minWidth: 38, textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: '#475569' },
+  zoomLabel: { minWidth: 38, textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: MUTED, fontVariantNumeric: 'tabular-nums' },
   wireColorToolbarField: { display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)' },
-  wireColorToolbarLabel: { fontSize: 12, fontWeight: 700, color: '#475569' },
-  wireColorToolbarSelect: { border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 12, padding: '5px 6px', maxWidth: 130 },
+  wireColorToolbarLabel: { fontSize: 12, fontWeight: 700, color: MUTED },
+  wireColorToolbarSelect: { border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: 'var(--colour-text)', fontSize: 12, padding: '5px 6px', maxWidth: 130 },
   workspace: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '216px minmax(0, 1fr) 230px', overflow: 'hidden' },
-  palette: { minWidth: 0, padding: 10, borderRight: '1px solid #e5e7eb', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, overflowX: 'hidden', overflowY: 'auto' },
-  paletteHint: { margin: 0, fontSize: 11.5, lineHeight: 1.4, color: '#64748b', fontFamily: 'var(--font-body)' },
-  paletteBtn: { minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 7, padding: '8px 9px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 650 },
-  paletteIcon: { flexShrink: 0, width: 30, height: 26, borderRadius: 5, background: '#e0f2fe', color: '#0369a1', display: 'grid', placeItems: 'center', fontSize: 11 },
+  palette: { minWidth: 0, padding: 10, borderRight: '1px solid var(--ui-border)', background: 'var(--ui-surface-soft)', display: 'flex', flexDirection: 'column', gap: 8, overflowX: 'hidden', overflowY: 'auto' },
+  paletteHint: { margin: 0, fontSize: 11.5, lineHeight: 1.4, color: MUTED, fontFamily: 'var(--font-body)' },
+  paletteBtn: { minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--ui-border-strong)', background: 'var(--ui-surface)', borderRadius: 'var(--ui-radius-sm)', padding: '8px 9px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 650 },
+  paletteIcon: { flexShrink: 0, width: 30, height: 26, borderRadius: 5, background: 'var(--ui-surface-tint)', color: 'var(--colour-primary)', display: 'grid', placeItems: 'center', fontSize: 11 },
   paletteLabel: { minWidth: 0, whiteSpace: 'nowrap' },
-  wireColorField: { display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #e5e7eb', paddingTop: 8, marginTop: 2, fontFamily: 'var(--font-body)' },
-  wireColorLabel: { fontSize: 12, fontWeight: 700, color: '#475569' },
-  wireColorSelect: { width: '100%', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 12, padding: '6px 7px' },
-  boardWrap: { minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', background: '#e2e8f0', cursor: 'grab' },
+  wireColorField: { display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid var(--ui-border)', paddingTop: 8, marginTop: 2, fontFamily: 'var(--font-body)' },
+  wireColorLabel: { fontSize: 12, fontWeight: 700, color: MUTED },
+  wireColorSelect: { width: '100%', border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: 'var(--colour-text)', fontSize: 12, padding: '6px 7px' },
+  boardWrap: { minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', background: 'var(--ui-surface-tint)', cursor: 'grab' },
   boardWrapPanning: { cursor: 'grabbing', userSelect: 'none' },
   boardScaleSizer: { position: 'relative', flexShrink: 0, margin: 16 },
   board: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', touchAction: 'none', outline: 'none' },
-  boardSurface: { position: 'absolute', left: 0, top: 0, borderRadius: 8, background: '#fff7ed', boxShadow: 'inset 0 0 0 2px #fed7aa', pointerEvents: 'none', zIndex: 0 },
+  // The breadboard's own material - a real board is cream with a tan edge - so these are
+  // subject colours rather than app chrome, and stay literal.
+  boardSurface: { position: 'absolute', left: 0, top: 0, borderRadius: 'var(--ui-radius)', background: '#fff7ed', boxShadow: 'inset 0 0 0 2px #fed7aa', pointerEvents: 'none', zIndex: 0 },
   wires: { position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'auto', zIndex: 3 },
   hole: { position: 'absolute', zIndex: 1, width: 7, height: 7, borderRadius: '50%', background: '#334155', opacity: 0.45, transform: 'translate(-50%, -50%)' },
-  component: { position: 'absolute', width: PART_W, height: PART_H, border: '2px solid #94a3b8', borderRadius: 7, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(15,23,42,0.16)', fontFamily: 'var(--font-body)', userSelect: 'none' },
+  component: { position: 'absolute', width: PART_W, height: PART_H, border: '2px solid ' + PART_BORDER, borderRadius: 'var(--ui-radius-sm)', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--ui-shadow-soft)', fontFamily: 'var(--font-body)', userSelect: 'none' },
   componentDrawing: { position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', transformOrigin: 'center' },
-  componentLabel: { position: 'absolute', zIndex: 4, left: 6, top: 4, fontSize: 11, color: '#0f172a', background: 'rgba(255,255,255,0.72)', borderRadius: 4, padding: '1px 4px' },
-  fixedBadge: { position: 'absolute', zIndex: 4, right: 6, top: 4, fontSize: 10, fontWeight: 700, color: '#7c2d12', background: '#fed7aa', borderRadius: 4, padding: '1px 4px' },
-  pinHandle: { position: 'absolute', zIndex: 4, width: 14, height: 14, borderRadius: '50%', border: '2px solid #fff', transform: 'translate(-50%, -50%)', cursor: 'crosshair', boxShadow: '0 1px 5px rgba(15,23,42,0.28)' },
-  shortWarning: { position: 'sticky', top: 0, zIndex: 6, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, margin: '12px 16px 0', padding: '8px 12px', border: '1px solid #fecaca', borderRadius: 7, background: '#fee2e2', color: '#991b1b', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, lineHeight: 1.4 },
-  shortWarningMark: { flexShrink: 0, display: 'grid', placeItems: 'center', width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 800 },
-  inspector: { padding: 12, borderLeft: '1px solid #e5e7eb', background: '#fff', overflowY: 'auto', fontFamily: 'var(--font-body)' },
-  inspectorTitle: { margin: '0 0 10px', fontSize: 16 },
-  componentDescription: { margin: '0 0 10px', fontSize: 12, lineHeight: 1.35, color: '#475569' },
-  wireDetails: { display: 'grid', gap: 6, margin: '10px 0', fontSize: 12, color: '#334155' },
+  componentLabel: { position: 'absolute', zIndex: 4, left: 6, top: 4, fontSize: 11, color: 'var(--colour-text)', background: 'rgba(255,255,255,0.72)', borderRadius: 4, padding: '1px 4px' },
+  fixedBadge: { position: 'absolute', zIndex: 4, right: 5, top: 4, display: 'grid', placeItems: 'center', color: WARNING_TEXT, background: WARNING_SURFACE, borderRadius: 4, padding: '2px 3px' },
+  pinHandle: { position: 'absolute', zIndex: 4, width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--ui-surface)', transform: 'translate(-50%, -50%)', cursor: 'crosshair', boxShadow: '0 1px 5px rgba(15,23,42,0.28)' },
+  shortWarning: { position: 'sticky', top: 0, zIndex: 6, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, margin: '12px 16px 0', padding: '8px 12px', border: '1px solid ' + DANGER_BORDER, borderRadius: 'var(--ui-radius-sm)', background: DANGER_SURFACE, color: DANGER_TEXT, fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, lineHeight: 1.4 },
+  shortWarningMark: { flexShrink: 0, display: 'grid', placeItems: 'center', width: 18, height: 18, borderRadius: '50%', background: SHORT_COLOUR, color: 'var(--ui-surface)', fontSize: 12, fontWeight: 800 },
+  inspector: { padding: 12, borderLeft: '1px solid var(--ui-border)', background: 'var(--ui-surface)', overflowY: 'auto', fontFamily: 'var(--font-body)' },
+  inspectorTitle: { margin: '0 0 10px', fontSize: 15, fontFamily: 'var(--font-title)', color: 'var(--colour-primary)' },
+  componentDescription: { margin: '0 0 10px', fontSize: 12, lineHeight: 1.35, color: MUTED },
+  wireDetails: { display: 'grid', gap: 6, margin: '10px 0', fontSize: 11.5, color: MUTED, fontFamily: 'var(--font-code)', wordBreak: 'break-all' },
   field: { display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 },
-  fieldLabel: { fontSize: 12, fontWeight: 700, color: '#475569' },
-  textInput: { width: '100%', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 13, padding: '7px 8px' },
-  stateList: { display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 10px', margin: '10px 0', padding: 8, border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', fontSize: 12, color: '#334155' },
-  stateTerm: { margin: 0, color: '#64748b' },
-  stateValue: { margin: 0, fontWeight: 700, color: '#0f172a' },
+  fieldLabel: { fontSize: 12, fontWeight: 700, color: MUTED },
+  textInput: { width: '100%', border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: 'var(--colour-text)', fontSize: 13, padding: '7px 8px' },
+  stateList: { display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 10px', margin: '10px 0', padding: 8, border: '1px solid var(--ui-border)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface-soft)', fontSize: 12, color: 'var(--colour-text)' },
+  stateTerm: { margin: 0, color: MUTED },
+  stateValue: { margin: 0, fontWeight: 700, color: 'var(--colour-text)', fontVariantNumeric: 'tabular-nums' },
   toggle: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 },
   range: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 },
-  gpioEditor: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10, padding: 8, border: '1px solid #e2e8f0', borderRadius: 7, background: '#f8fafc' },
+  gpioEditor: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10, padding: 8, border: '1px solid var(--ui-border)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface-soft)' },
   gpioPowerPins: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  gpioPowerPin: { display: 'inline-flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: 5, background: '#fff', color: '#334155', fontFamily: 'var(--font-code)', fontSize: 11, fontWeight: 700, padding: '3px 6px' },
+  gpioPowerPin: { display: 'inline-flex', alignItems: 'center', border: '1px solid var(--ui-border-strong)', borderRadius: 5, background: 'var(--ui-surface)', color: 'var(--colour-text)', fontFamily: 'var(--font-code)', fontSize: 11, fontWeight: 700, padding: '3px 6px' },
   gpioHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   gpioList: { display: 'flex', flexDirection: 'column', gap: 6 },
   gpioRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 28px', gap: 6, alignItems: 'center' },
-  gpioInput: { minWidth: 0, border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 12, padding: '6px 7px', fontFamily: 'var(--font-code)' },
-  gpioRemove: { width: 28, height: 28, border: '1px solid #fecaca', borderRadius: 6, background: '#fff', color: '#b91c1c', cursor: 'pointer', fontSize: 13, fontWeight: 800, lineHeight: 1 },
+  gpioInput: { minWidth: 0, border: '1px solid var(--ui-border-strong)', borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: 'var(--colour-text)', fontSize: 12, padding: '6px 7px', fontFamily: 'var(--font-code)' },
+  gpioRemove: { width: 28, height: 28, border: '1px solid ' + DANGER_BORDER, borderRadius: 'var(--ui-radius-sm)', background: 'var(--ui-surface)', color: DANGER_TEXT, cursor: 'pointer', fontSize: 13, fontWeight: 800, lineHeight: 1 },
   smallInspectorBtn: { padding: '4px 7px', fontSize: 11 },
   rotateBtn: { width: '100%', padding: '7px 10px', fontSize: 13, marginBottom: 10 },
   removeBtn: { width: '100%', padding: '7px 10px', fontSize: 13 },
-  emptySelection: { margin: 0, color: '#64748b', fontSize: 13 },
-  codePane: { flex: 1, minHeight: 0, display: 'flex', padding: 12, background: '#f8fafc' },
-  codeEditor: { minHeight: 0, borderColor: '#cbd5e1', background: '#fff' },
-  outputRail: { writingMode: 'vertical-rl', height: '100%', border: 0, background: '#f8fafc', color: '#7c3aed', fontWeight: 700, cursor: 'pointer' },
-  collapseOutput: { border: '1px solid #fff', background: '#fff', borderRadius: 5, color: '#7c3aed', fontSize: 12 },
+  emptySelection: { margin: 0, color: MUTED, fontSize: 13 },
+  codePane: { flex: 1, minHeight: 0, display: 'flex', padding: 12, background: 'var(--ui-surface-soft)' },
+  codeEditor: { minHeight: 0, borderColor: 'var(--ui-border-strong)', background: 'var(--ui-surface)' },
+  outputRail: { writingMode: 'vertical-rl', height: '100%', border: 0, background: 'var(--ui-surface-soft)', color: 'var(--colour-primary)', fontWeight: 700, cursor: 'pointer' },
+  collapseOutput: { border: '1px solid var(--ui-surface)', background: 'var(--ui-surface)', borderRadius: 5, color: 'var(--colour-primary)', fontSize: 12 },
 }
