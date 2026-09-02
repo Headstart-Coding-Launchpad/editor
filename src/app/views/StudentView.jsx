@@ -14,6 +14,7 @@ import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
 import ChoiceScreen from '../components/ChoiceScreen'
 import VideoCallPrompt from '../components/VideoCallPrompt'
+import RecordingWidget from '../components/RecordingWidget'
 import TaskProgressDots from '../components/TaskProgressDots'
 import LiveActivityToast from '../components/LiveActivityToast'
 import TeacherMessageToast from '../components/TeacherMessageToast'
@@ -765,6 +766,9 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
           videoCallLink={session.videoCallLink}
           onDismiss={() => setShowVideoCallPrompt(false)}
         />
+      )}
+      {isSolo && !teacherPresentation && lesson.recordingUrl && (
+        <RecordingWidget recordingUrl={lesson.recordingUrl} />
       )}
       {fullscreenPromptVisible && (
         <div style={s.consentOverlay}>

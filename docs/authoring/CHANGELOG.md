@@ -20,6 +20,10 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-02
 
+### New optional `recordingUrl` field for per-class recordings
+
+Lessons can now carry an optional `recordingUrl` field: an unlisted YouTube link to that class's recorded live session. It's meant to be set per-class on a class's forked lesson (`lessons fork`), not on the shared source lesson, since each class recorded a different session. When present, solo students see a small pop-out player (bottom-right, pausable/hideable) on the lesson page; it never appears during a live session or teacher presentation. The video must be set to **Unlisted** on YouTube — students are login-less and never authenticate with Google, so a Private video would just show a "request access" screen. Only `youtube.com`/`youtu.be` links validate; Google Drive links do not, because Drive's embed has no JS control API to pause/resume the widget in place. See `docs/authoring/lesson-schema.md`.
+
 ### Electronics `locked: true` components are now interactive
 
 A "Fixed" (`locked: true`) component previously had every one of its controls disabled for students, so a fully locked demo board was inert: the switch would not flip, the button would not press, and the potentiometer would not turn. `locked` now freezes only a part's *structure* — position, rotation, `props`, pins, and deletion — while its `controls` state stays live on the canvas and in the inspector. `push_button` (`pressed`), `slide_switch` (`closed`), `potentiometer`/`sensor` (`value`), `transistor` (`baseHigh`), and `servo_motor` (`angle`) all respond on a locked part. This makes the documented pre-wired demo board pattern work as its example already described: `controls: {}` leaves the switch open and the student flips it to light the LED. Existing lessons need no changes — a locked demo board gains its intended interactivity automatically. A read-only workspace (teacher live view, Support/Complete stage preview) remains fully inert. See `docs/authoring/electronics.md`.
