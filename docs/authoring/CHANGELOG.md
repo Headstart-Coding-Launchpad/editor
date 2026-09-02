@@ -20,6 +20,18 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-02
 
+### Electronics wire format corrected: `from`/`to` are `componentId.pin` strings
+
+`docs/authoring/electronics.md` previously documented a wire as `from: { component: battery1, pin: positive }`. That shape does not work. The runtime uses `wire.from`/`wire.to` directly as graph keys in `buildGraph` and string-splits them in `pinPoint`, so it accepts only the flat form `from: battery1.positive`. An object-form wire produces no error — `lessons validate` still passes — but connects nothing in the simulation and draws nothing on the board, leaving the parts placed but entirely unwired and every check involving them permanently failing. The doc's only populated wire example carried the wrong shape, so any board authored from it was dead on arrival. Wires are strings; **Checks** endpoint selectors remain `{ type, pin }` objects, which is the likely source of the confusion. Existing lessons with object-form wires need their wires rewritten. No runtime change. See `docs/authoring/electronics.md`.
+
+### Electronics `controls` documented
+
+`docs/authoring/electronics.md` now documents the `controls` map, which was previously undocumented and appeared only as `controls: {}` in examples. It holds live, student-adjustable state keyed by component id, separate from the fixed `props`: `slide_switch` uses `closed`, `push_button` uses `pressed`, `transistor` uses `baseHigh`, and `potentiometer`/`sensor` use `value`. Switches and buttons default to open/at-rest, so a demo board's LED starts dark until the student toggles it. No runtime change. See `docs/authoring/electronics.md`.
+
+### Electronics tasks should write `starterCircuit` even when a starter stage exists
+
+The student workspace reads `codeStages[0].circuit` and falls back to `starterCircuit`, and the lesson validator follows the same fallback — but the Builder's task editor checks `starterCircuit` alone, so a draft electronics task with only a starter stage shows "This draft task has no starter breadboard yet" over an otherwise working task while `lessons validate` reports it clean. `docs/authoring/electronics.md` now says to write both, and adds a complete pre-wired demo-board example showing the whole shape. No runtime change. See `docs/authoring/electronics.md`.
+
 ### Electronics pin names documented for every component type
 
 `docs/authoring/electronics.md` now lists the pin names for all 16 electronics component types, not just the seven newer parts. `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `buzzer`, and `terminal` previously had no documented pins, so authoring a `starterCircuit` meant guessing — and a wire naming a pin that does not exist silently never connects rather than failing validation. Buttons and switches use `a`/`b`, batteries `positive`/`negative`, LEDs `anode`/`cathode`, potentiometers `left`/`wiper`/`right`, and a junction has the single pin `pin`. No runtime change; `COMPONENT_PINS` in `src/modules/electronics/circuit.js` remains the source of truth. See `docs/authoring/electronics.md`.

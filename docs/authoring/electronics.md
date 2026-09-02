@@ -32,7 +32,7 @@ tasks: []
 
 | Field | Required | Notes |
 |---|:---:|---|
-| `starterCircuit` | Yes | Circuit object loaded when the task starts. |
+| `starterCircuit` | Yes | Circuit object loaded when the task starts. Always write it, even when `codeStages[0]` already carries the same board — see the note below. |
 | `completeCircuit` | No | Completed board shown by teacher tools and solo help. |
 | `codeStages` | No | Array of hints/stages; each stage can contain `{ label, circuit, role? }`. See **Stage object** for role and reveal behaviour. |
 | `availableComponents` | No | Array of component types students can add from the palette. Omitted = all components, including `battery`. New starter boards begin empty, so add a battery to the starter circuit or keep it available in the palette when students need one. |
@@ -40,6 +40,8 @@ tasks: []
 | `microcontroller` | No | Legacy compatibility for older drafts. New lessons should add a `microcontroller` component; the MicroPython tab appears automatically when one is present. |
 
 Circuit objects contain `board`, `components`, `wires`, and `controls`. Component IDs are internal save-file references for wires and controls. Checks should usually target parts by type and optional label, so students can solve the circuit flexibly.
+
+**`starterCircuit` and the starter stage:** the student workspace reads `codeStages[0].circuit` first and falls back to `starterCircuit`, so a task with only a starter stage does load and run. The Builder's task editor, however, checks `starterCircuit` alone, and a draft lesson without it shows "This draft task has no starter breadboard yet. Choose the Code format above to initialise the standard editor fields" over an otherwise working task. `lessons validate` does not catch this, because the lesson validator follows the same starter-stage fallback the student workspace does. Write `starterCircuit` with the same board as `codeStages[0].circuit` and the banner does not appear.
 
 **Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `circuit`. Every Support stage is an offerable read-only reference; electronics references currently show code only. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
@@ -49,15 +51,19 @@ Components support `label`, `position`, `rotation`, `pins`, `props`, and optiona
 
 Wires support `id`, `from`, `to`, `color`, and optional `locked: true`, mirroring the component convention. A locked wire cannot be deleted or recolored by students; the builder can still toggle its "Fixed for students" checkbox, change its color, or delete it. Students can still attach new wires to the same pins.
 
-A populated wire connects two placed components by id and pin, using the same `{ component, pin }` shape as a Checks endpoint selector below, but naming one specific placed component rather than matching flexibly by type:
+A populated wire connects two placed components. **`from` and `to` are plain `componentId.pin` strings**, not objects — this is the same `componentId.pin` reference the board itself uses internally, naming one specific placed component rather than matching flexibly by type:
 
 ```yaml
 wires:
   - id: w1
-    from: { component: battery1, pin: positive }
-    to: { component: led1, pin: anode }
-    color: red
+    from: battery1.positive
+    to: led1.anode
+    color: '#ef4444'
 ```
+
+> **Wires are strings; check endpoints are objects.** A Checks endpoint selector further down uses `{ type, pin }` to match flexibly by component type, and a wire looks superficially similar but is not the same shape. Writing a wire as `from: { component: battery1, pin: positive }` produces **no error and no warning** — `lessons validate` still reports the lesson valid. The object is used directly as a graph key in `buildGraph` and stringified by `pinPoint`, so the wire connects nothing in the simulation *and* draws nothing on the board: the parts appear correctly placed but entirely unwired, and no check involving them can ever pass. If a starter board renders with its components but no wires between them, this is almost always the cause.
+
+`color` takes one of the palette values from `WIRE_COLORS` in `src/modules/electronics/circuit.js` — `#ef4444` (positive red), `#111827` (negative black), `#f59e0b` (signal amber), `#2563eb` (signal blue), `#16a34a` (signal green), or `#7c3aed` (signal purple). Omit `color` to let the board pick one from the pin names: pins containing `positive`/`anode`/`red` get red, `negative`/`cathode`/`emitter` get black, `wiper`/`signal`/`base`/`GP*`/`blue` get blue, `green` gets green, and anything else gets amber. A CSS colour name such as `red` still strokes the wire, but it will not match any palette entry, so the builder's wire-colour dropdown shows no selection for it.
 
 Available component types are `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `servo_motor`, `buzzer`, `rgb_led`, `lcd1602`, `microcontroller`, `transistor`, `diode`, `sensor`, and `terminal`.
 
@@ -87,6 +93,27 @@ Pin names by component type. These strings are the exact values a wire's `from`/
 | `terminal` | `pin` | Shown to students as a junction. It has one shared pin, and any number of wires can attach to it. |
 
 To make a switch or button control something, put it in series between the supply and the load: wire `battery.positive` to one of the switch's pins, the switch's other pin to the load's `positive` (or an LED's `anode`), and the load's `negative` (or `cathode`) back to `battery.negative`. Because `a` and `b` are interchangeable, either pin can face the supply.
+
+## Controls
+
+`controls` holds the live, student-adjustable state of the interactive parts on the board, keyed by component id. It is separate from `props`, which holds the part's fixed configuration. Everything in `controls` is optional; an omitted entry falls back to the default in the table below, so `controls: {}` is a valid starting point for any board.
+
+```yaml
+controls:
+  switch1: { closed: true }
+  button1: { pressed: false }
+  pot1: { value: 75 }
+```
+
+| Component type | Key | Values | Default when omitted |
+|---|---|---|---|
+| `slide_switch` | `closed` | `true` / `false` | `false` — the switch starts **open**, so a circuit through it is unpowered on load |
+| `push_button` | `pressed` | `true` / `false` | `false` — at rest, so a circuit through it is unpowered on load |
+| `transistor` | `baseHigh` | `true` / `false` | `false` — collector and emitter are not joined |
+| `potentiometer` | `value` | `0`–`100` | falls back to `props.value`, then `50` |
+| `sensor` | `value` | `0`–`100` | falls back to `props.value`, then `50` |
+
+Only `closed === true` and `pressed === true` join a switch's or button's pins, so a demo board whose point is "the LED lights" starts dark until the student toggles the switch. That is usually what you want for a *Visual Fun Application* demo — the student sees the change happen. If the board should already be live the moment the task opens, set `closed: true` in the starter circuit's `controls` and say so in the explainer.
 
 ## MicroPython
 
@@ -209,3 +236,67 @@ tasks:
       - type: circuit_component_powered
         component: { type: led }
 ```
+
+The starter above is deliberately unwired: the student drags the parts together, and the `circuit_component_powered` check passes once the LED lights.
+
+## Complete Example: a pre-wired demo board
+
+A *Visual Fun Application* demo is the opposite case — the board arrives already built and the student only watches it work, so every part is `locked: true` and the wires are populated. This is the shape to copy when a task should render a finished, working circuit:
+
+```yaml
+- title: A Switch Makes Something Happen
+  moduleType: electronics
+  priority: optional
+  explainer: Flip the switch and watch the LED come on. 💡
+  availableComponents: []
+  starterCircuit: &demoBoard
+    version: 1
+    board: { type: half-breadboard, rows: 18, cols: 30 }
+    components:
+      - id: battery1
+        type: battery
+        label: Battery
+        position: { row: 2, col: 2 }
+        pins: [positive, negative]
+        props: { voltage: 5 }
+        locked: true
+      - id: switch1
+        type: slide_switch
+        label: Switch
+        position: { row: 2, col: 10 }
+        pins: [a, b]
+        props: {}
+        locked: true
+      - id: resistor1
+        type: resistor
+        label: Resistor
+        position: { row: 8, col: 10 }
+        pins: [a, b]
+        props: { resistanceOhms: 330 }
+        locked: true
+      - id: led1
+        type: led
+        label: LED
+        position: { row: 8, col: 2 }
+        pins: [anode, cathode]
+        props: { color: red }
+        locked: true
+    wires:
+      - { id: w1, from: battery1.positive, to: switch1.a, color: '#ef4444', locked: true }
+      - { id: w2, from: switch1.b, to: resistor1.a, color: '#ef4444', locked: true }
+      - { id: w3, from: resistor1.b, to: led1.anode, color: '#ef4444', locked: true }
+      - { id: w4, from: led1.cathode, to: battery1.negative, color: '#111827', locked: true }
+    controls: {}
+  codeStages:
+    - role: starter
+      label: Starter
+      circuit: *demoBoard
+```
+
+Points worth copying:
+
+- Wires are `componentId.pin` strings. This is the single most common way an electronics task silently fails.
+- `starterCircuit` **and** `codeStages[0].circuit` both carry the board, so the student workspace and the Builder agree.
+- `availableComponents: []` hides the parts palette. A locked demo board the student cannot edit should not offer parts to drag onto it.
+- `controls: {}` leaves the switch open, so the LED starts dark and lights when the student flips it — that change *is* the demo.
+- Components are spread across rows rather than all placed on `row: 1`, which otherwise crowds every part into a strip along the top edge of the board.
