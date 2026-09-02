@@ -47,7 +47,9 @@ Circuit objects contain `board`, `components`, `wires`, and `controls`. Componen
 
 The default board is `18 x 30`. The builder can switch between compact `14 x 20`, standard `18 x 30`, and large `22 x 36` boards by updating `board.rows` and `board.cols`.
 
-Components support `label`, `position`, `rotation`, `pins`, `props`, and optional `locked: true`. Locked starter components are fixed for students: they can attach wires to the pins, but cannot move, delete, or edit the component. The builder can still label and configure them.
+Components support `label`, `position`, `rotation`, `pins`, `props`, and optional `locked: true`. Locked starter components are fixed for students: they can attach wires to the pins, but cannot move, rotate, reconfigure, or delete the component. The builder can still label and configure them.
+
+Fixed components stay **interactive**. `locked: true` freezes a part's structure, not its operation, so a student can still press a fixed push button, flip a fixed slide switch, drag a fixed potentiometer, and move a fixed servo's angle or sensor reading — on the canvas or from the inspector. Those actions write `controls` state, never the board layout. This is what makes a fully locked demo board worth showing. A workspace that is genuinely read-only (teacher live view, a Support/Complete stage preview) is still inert throughout, controls included.
 
 Wires support `id`, `from`, `to`, `color`, and optional `locked: true`, mirroring the component convention. A locked wire cannot be deleted or recolored by students; the builder can still toggle its "Fixed for students" checkbox, change its color, or delete it. Students can still attach new wires to the same pins.
 
@@ -241,7 +243,7 @@ The starter above is deliberately unwired: the student drags the parts together,
 
 ## Complete Example: a pre-wired demo board
 
-A *Visual Fun Application* demo is the opposite case — the board arrives already built and the student only watches it work, so every part is `locked: true` and the wires are populated. This is the shape to copy when a task should render a finished, working circuit:
+A *Visual Fun Application* demo is the opposite case — the board arrives already built and the student operates it rather than building it, so every part is `locked: true` and the wires are populated. The student cannot take the circuit apart, but can still work its switches, buttons and dials. This is the shape to copy when a task should render a finished, working circuit:
 
 ```yaml
 - title: A Switch Makes Something Happen

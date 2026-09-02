@@ -20,6 +20,10 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-02
 
+### Electronics `locked: true` components are now interactive
+
+A "Fixed" (`locked: true`) component previously had every one of its controls disabled for students, so a fully locked demo board was inert: the switch would not flip, the button would not press, and the potentiometer would not turn. `locked` now freezes only a part's *structure* — position, rotation, `props`, pins, and deletion — while its `controls` state stays live on the canvas and in the inspector. `push_button` (`pressed`), `slide_switch` (`closed`), `potentiometer`/`sensor` (`value`), `transistor` (`baseHigh`), and `servo_motor` (`angle`) all respond on a locked part. This makes the documented pre-wired demo board pattern work as its example already described: `controls: {}` leaves the switch open and the student flips it to light the LED. Existing lessons need no changes — a locked demo board gains its intended interactivity automatically. A read-only workspace (teacher live view, Support/Complete stage preview) remains fully inert. See `docs/authoring/electronics.md`.
+
 ### Electronics wire format corrected: `from`/`to` are `componentId.pin` strings
 
 `docs/authoring/electronics.md` previously documented a wire as `from: { component: battery1, pin: positive }`. That shape does not work. The runtime uses `wire.from`/`wire.to` directly as graph keys in `buildGraph` and string-splits them in `pinPoint`, so it accepts only the flat form `from: battery1.positive`. An object-form wire produces no error — `lessons validate` still passes — but connects nothing in the simulation and draws nothing on the board, leaving the parts placed but entirely unwired and every check involving them permanently failing. The doc's only populated wire example carried the wrong shape, so any board authored from it was dead on arrival. Wires are strings; **Checks** endpoint selectors remain `{ type, pin }` objects, which is the likely source of the confusion. Existing lessons with object-form wires need their wires rewritten. No runtime change. See `docs/authoring/electronics.md`.

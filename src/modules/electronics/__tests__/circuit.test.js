@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOARD_SIZE_OPTIONS, COMPONENT_DESCRIPTIONS, COMPONENT_GROUPS, COMPONENT_LABELS, COMPONENT_TYPES, DEFAULT_CIRCUIT, DEFAULT_MICROPYTHON_CODE, MICROCONTROLLER_DEFAULT_PINS, applyI2cLcdEvent, applyMicrocontrollerGpioValues, arePinsConnected, circuitHasShort, evaluateElectronicsCheck, getCircuitMetrics, getComponentResistanceOhms, getComponentState, getI2cLcdTargets, getMicrocontrollerCode, getMicrocontrollerGpioValues, getMicrocontrollerInputValues, getWireColorForPins, getWireCurrentDirection, getWireState, makeComponent, makeNextGpioPinName, normalizeAvailableComponents, normalizeGpioPinName, normalizeMicrocontrollerPins, parseCircuit, pinRef } from '../circuit'
+import { BOARD_SIZE_OPTIONS, COMPONENT_DESCRIPTIONS, COMPONENT_GROUPS, COMPONENT_LABELS, COMPONENT_TYPES, DEFAULT_CIRCUIT, DEFAULT_MICROPYTHON_CODE, MICROCONTROLLER_DEFAULT_PINS, applyI2cLcdEvent, applyMicrocontrollerGpioValues, arePinsConnected, circuitHasShort, evaluateElectronicsCheck, getCircuitMetrics, getComponentResistanceOhms, getComponentState, getI2cLcdTargets, getMicrocontrollerCode, getMicrocontrollerGpioValues, getMicrocontrollerInputValues, getShortCircuitPath, getWireColorForPins, getWireCurrentDirection, getWireState, makeComponent, makeNextGpioPinName, normalizeAvailableComponents, normalizeGpioPinName, normalizeMicrocontrollerPins, parseCircuit, pinRef } from '../circuit'
 
 const BATTERY = makeComponent('battery', 1, { row: 1, col: 1 })
 
@@ -33,6 +33,48 @@ describe('electronics circuit helpers', () => {
     }
     expect(circuitHasShort(circuit)).toBe(true)
     expect(evaluateElectronicsCheck({ type: 'circuit_no_short' }, circuit)).toBe(false)
+  })
+
+  it('names the wires and parts that form a short, so the board can highlight them', () => {
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [BATTERY],
+      wires: [{ id: 'w1', from: 'battery1.positive', to: 'battery1.negative' }],
+    }
+    const path = getShortCircuitPath(circuit)
+    expect(path.wireIds).toEqual(['w1'])
+    expect(path.componentIds).toContain('battery1')
+  })
+
+  it('leaves the innocent wires out of a short path', () => {
+    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} }
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [BATTERY, led],
+      wires: [
+        // The short: supply straight back to itself.
+        { id: 'short', from: 'battery1.positive', to: 'battery1.negative' },
+        // A dead-end branch that plays no part in it.
+        { id: 'spur', from: 'led1.cathode', to: 'led1.anode' },
+      ],
+    }
+    const path = getShortCircuitPath(circuit)
+    expect(path.wireIds).toEqual(['short'])
+    expect(path.componentIds).not.toContain('led1')
+  })
+
+  it('reports no short path for a healthy circuit', () => {
+    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} }
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [BATTERY, led],
+      wires: [
+        { id: 'w1', from: 'battery1.positive', to: 'led1.anode' },
+        { id: 'w2', from: 'led1.cathode', to: 'battery1.negative' },
+      ],
+    }
+    expect(circuitHasShort(circuit)).toBe(false)
+    expect(getShortCircuitPath(circuit)).toEqual({ wireIds: [], componentIds: [] })
   })
 
   it('powers an output only when supply and return are connected', () => {

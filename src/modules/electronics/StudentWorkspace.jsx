@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 import { resolveSavedCarrySource } from '../../app/studentTaskContent'
@@ -31,6 +31,16 @@ export default function StudentWorkspace({
     cs.handleCodeChange(serializeCircuit(nextCircuit))
   }
 
+  // Stable identity matters here: ElectronicsWorkspace reports its visible tab from an
+  // effect that lists this callback as a dependency. An inline arrow was rebuilt on every
+  // render, so the effect re-ran every render, wrote a fresh array into the parent's pane
+  // state, and re-rendered - an unbounded loop ("Maximum update depth exceeded") on every
+  // electronics task. The other pane-reporting modules pass a plain state setter straight
+  // through, which is already stable; this wrapper has to be memoised to match.
+  const handleTabChange = useCallback(pane => {
+    onVisiblePanesChange?.([pane])
+  }, [onVisiblePanesChange])
+
   function handleLegacyCodeChange(nextCode) {
     handleCircuitChange({
       ...circuit,
@@ -56,7 +66,7 @@ export default function StudentWorkspace({
       running={cs.running}
       checkPassed={isForcedTeacherLive ? displayCheckPassed : cs.checkPassed}
       activeTab={isTeacherEditing ? teacherLiveWorkspace : undefined}
-      onTabChange={pane => onVisiblePanesChange?.([pane])}
+      onTabChange={handleTabChange}
       highlightedTabs={highlightedPanes}
       forcedTab={forcedTab}
       forcedTabToken={forcedPaneCommand?.pushedAt ?? null}

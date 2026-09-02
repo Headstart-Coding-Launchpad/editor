@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ElectronicsWorkspace from '../ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, makeComponent } from '../circuit.js'
@@ -45,7 +45,7 @@ describe('ElectronicsWorkspace — on-canvas potentiometer slider', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('does not change the value when the potentiometer is locked outside setup mode', () => {
+  it('still turns a locked ("Fixed") potentiometer outside setup mode — the lock freezes structure, not operation', () => {
     const circuit = potentiometerCircuit({ locked: true })
     const onChange = vi.fn()
     render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} setupMode={false} />)
@@ -53,7 +53,11 @@ describe('ElectronicsWorkspace — on-canvas potentiometer slider', () => {
     const handle = document.querySelector('[data-component] circle[data-control-action]')
     dragSlider(handle)
 
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalled()
+    const lastCircuit = onChange.mock.calls.at(-1)[0]
+    expect(lastCircuit.controls[circuit.components[0].id].value).toBe(75)
+    // Operating it must not have moved or otherwise restructured the part.
+    expect(lastCircuit.components[0].position).toEqual(circuit.components[0].position)
   })
 
   it('allows dragging a locked potentiometer while in setup mode (builder)', () => {
@@ -298,16 +302,284 @@ describe('ElectronicsWorkspace — breadboard zoom', () => {
     expect(screen.getByText('110%')).toBeInTheDocument()
   })
 
-  it('resets to 100% via the Reset button, which only appears when zoomed', () => {
+  it('returns to a fitted board via the always-available Fit button', () => {
     render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
 
-    expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+    // Fit replaced Reset and is always offered - the fitted scale is not necessarily
+    // 100%, so "reset to 100%" was never the useful action.
+    const fitBtn = screen.getByText('Fit')
+    expect(fitBtn).toBeInTheDocument()
 
     fireEvent.click(screen.getByLabelText('Zoom in'))
-    const resetBtn = screen.getByText('Reset')
-    fireEvent.click(resetBtn)
+    expect(screen.getByText('110%')).toBeInTheDocument()
 
-    expect(screen.getByText('100%')).toBeInTheDocument()
-    expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+    fireEvent.click(fitBtn)
+    // jsdom reports a zero-sized pane, so fitting cannot compute a scale and the manual
+    // zoom is left alone; the button must still be present and must not throw.
+    expect(screen.getByText('Fit')).toBeInTheDocument()
+  })
+})
+
+function buttonCircuit(componentOverrides = {}) {
+  const button = { ...makeComponent('push_button', 1, { row: 2, col: 2 }), ...componentOverrides }
+  return { ...DEFAULT_CIRCUIT, components: [button], controls: {} }
+}
+
+describe('ElectronicsWorkspace — locked ("Fixed") parts stay operable', () => {
+  it('presses and releases a locked push button on the canvas', () => {
+    const circuit = buttonCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const cap = document.querySelector('[data-component] rect[data-control-action]')
+    expect(cap).toBeTruthy()
+
+    fireEvent.pointerDown(cap, { button: 0 })
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].pressed).toBe(true)
+
+    fireEvent.pointerUp(cap, { button: 0 })
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].pressed).toBe(false)
+  })
+
+  it('leaves the inspector Pressed toggle enabled for a locked push button but omits Rotate/Delete', () => {
+    const circuit = buttonCircuit({ locked: true })
+    render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+
+    fireEvent.click(document.querySelector('[data-component]'))
+
+    expect(screen.getByLabelText('Pressed')).not.toBeDisabled()
+    // Structure controls a student can never use are left out rather than shown greyed.
+    expect(screen.queryByText('Rotate 90 deg')).toBeNull()
+    expect(screen.queryByText('Delete part')).toBeNull()
+  })
+
+  it('offers Rotate/Delete on an unlocked part, and in setup mode even when locked', () => {
+    render(<ElectronicsWorkspace circuit={buttonCircuit()} onChange={vi.fn()} />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(screen.getByText('Rotate 90 deg')).not.toBeDisabled()
+    expect(screen.getByText('Delete part')).not.toBeDisabled()
+    cleanup()
+
+    render(<ElectronicsWorkspace circuit={buttonCircuit({ locked: true })} onChange={vi.fn()} setupMode />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(screen.getByText('Rotate 90 deg')).not.toBeDisabled()
+    expect(screen.getByText('Delete part')).not.toBeDisabled()
+  })
+
+  it('still refuses to drag a locked part even though its controls respond', () => {
+    const circuit = buttonCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const part = document.querySelector('[data-component]')
+    const board = document.querySelector('[tabindex]')
+    fireEvent.pointerDown(part, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(board, { clientX: 260, clientY: 220 })
+    fireEvent.pointerUp(board, { clientX: 260, clientY: 220 })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps a read-only workspace fully inert — controls included', () => {
+    const circuit = buttonCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} readOnly />)
+
+    const cap = document.querySelector('[data-component] rect[data-control-action]')
+    fireEvent.pointerDown(cap, { button: 0 })
+    fireEvent.pointerUp(cap, { button: 0 })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
+function switchCircuit(componentOverrides = {}, controls = {}) {
+  const sw = { ...makeComponent('slide_switch', 1, { row: 2, col: 2 }), ...componentOverrides }
+  return { ...DEFAULT_CIRCUIT, components: [sw], controls: { [sw.id]: controls } }
+}
+
+function switchBody() {
+  return document.querySelector('[data-component] g[data-control-action]')
+}
+
+describe('ElectronicsWorkspace — slide switch hit target', () => {
+  it('toggles when the grey body is clicked, not just the small knob', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const track = switchBody().querySelector('rect')
+    expect(track).toBeTruthy()
+    fireEvent.click(track)
+
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+  })
+
+  it('still toggles when the knob itself is clicked, and does not double-toggle', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.click(switchBody().querySelector('circle'))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+  })
+
+  it('toggles back off from the body when already closed', () => {
+    const circuit = switchCircuit({}, { closed: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.click(switchBody().querySelector('rect'))
+
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(false)
+  })
+
+  it('toggles a locked ("Fixed") switch from its body', () => {
+    const circuit = switchCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.click(switchBody().querySelector('rect'))
+
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+  })
+
+  it('toggles from the keyboard via Enter and Space', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.keyDown(switchBody(), { key: 'Enter' })
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+
+    fireEvent.keyDown(switchBody(), { key: ' ' })
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not toggle in a read-only workspace', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} readOnly />)
+
+    fireEvent.click(switchBody().querySelector('rect'))
+    fireEvent.keyDown(switchBody(), { key: 'Enter' })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  // Positive control for the two "did not drag" assertions above and in the
+  // locked-parts block: proves the drag machinery does fire in this environment,
+  // so those tests cannot pass simply because dragging never works under jsdom.
+  it('does drag an unlocked part when the press lands outside any control', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const part = document.querySelector('[data-component]')
+    const board = document.querySelector('[tabindex]')
+    fireEvent.pointerDown(part, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(board, { clientX: 300, clientY: 300 })
+    fireEvent.pointerUp(board, { clientX: 300, clientY: 300 })
+
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].components[0].position)
+      .not.toEqual(circuit.components[0].position)
+  })
+
+  it('does not start a component drag when the switch body is pressed', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const track = switchBody().querySelector('rect')
+    const board = document.querySelector('[tabindex="0"][style]') ?? document.querySelector('[tabindex]')
+    fireEvent.pointerDown(track, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(board, { clientX: 300, clientY: 300 })
+    fireEvent.pointerUp(board, { clientX: 300, clientY: 300 })
+
+    // Dragging never engaged, so the part did not move.
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('ElectronicsWorkspace — board chrome declutter', () => {
+  it('drops the palette hint when the task supplies no draggable parts', () => {
+    const { rerender } = render(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={[]} />
+    )
+    expect(screen.queryByText(/Drag a part onto the board/)).toBeNull()
+
+    rerender(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={['led']} />
+    )
+    expect(screen.getByText(/Drag a part onto the board/)).toBeInTheDocument()
+  })
+
+  it('no longer renders the always-on status strip', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+    expect(screen.queryByText('0 motors on')).toBeNull()
+    expect(screen.queryByText('0 buzzers on')).toBeNull()
+    expect(screen.queryByText(/^0 parts$/)).toBeNull()
+  })
+
+  it('warns about a short circuit and marks the wire that causes it', () => {
+    const battery = makeComponent('battery', 1, { row: 2, col: 2 })
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [battery],
+      wires: [{ id: 'w1', from: `${battery.id}.positive`, to: `${battery.id}.negative`, color: '#ef4444' }],
+    }
+    render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+
+    expect(screen.getByText(/Short circuit/)).toBeInTheDocument()
+    expect(document.querySelector('[data-component]').style.borderColor).toBe('rgb(239, 68, 68)')
+  })
+
+  it('says nothing about shorts on a healthy board', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+    expect(screen.queryByText(/Short circuit/)).toBeNull()
+  })
+
+  it('shows GPIO pin names as plain labels for students and as inputs in setup mode', () => {
+    const microcontroller = makeComponent('microcontroller', 1, { row: 2, col: 2 })
+    const circuit = { ...DEFAULT_CIRCUIT, components: [microcontroller] }
+
+    const { rerender } = render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(screen.getByText('Signal pins')).toBeInTheDocument()
+    expect(document.querySelectorAll('input[type="text"], input:not([type])')).toHaveLength(0)
+
+    rerender(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} setupMode />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(document.querySelectorAll('input:not([type])').length).toBeGreaterThan(0)
+  })
+})
+
+describe('ElectronicsWorkspace — layout', () => {
+  it('drops the palette column when the task offers no parts, keeping wiring available', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={[]} />)
+
+    expect(screen.queryByText(/Drag a part onto the board/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Battery/ })).toBeNull()
+    // Wiring does not depend on the palette, so its colour control must survive.
+    expect(screen.getByText('Wire colour')).toBeInTheDocument()
+  })
+
+  it('keeps the palette when the task offers parts', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={['battery', 'led']} />)
+
+    expect(screen.getByText(/Drag a part onto the board/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Battery/ })).toBeInTheDocument()
+  })
+
+  it('keeps the board title out of the tab order so it does not read as a tab', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} title="Starter board" />)
+
+    expect(screen.getByText('Starter board')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Starter board' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Breadboard' })).toBeInTheDocument()
   })
 })
