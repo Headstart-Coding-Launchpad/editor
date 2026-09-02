@@ -336,7 +336,7 @@ Two separate validators exist and they do not enforce the same rules. `cli lesso
 - HTML code tasks should have files with unique filenames and an HTML entry file.
 - Scratch `sprite_property` and `block_used` checks need their type-specific fields (`property`/`operator`/`value`, `opcode`) filled in.
 - Filesystem checks (`fs_*`, including legacy aliases) need their type-specific fields — a `path`, an expected `value`/count where applicable, a parent `dir` for location checks.
-- Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry). Electronics checks (`circuit_*`) need a real target — a component/control selector (`type`, `label`, or `id`) and, for connection checks, an endpoint `pin`.
+- Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry — though write `starterCircuit` regardless, or the Builder shows a "no starter breadboard yet" banner the validator does not). Electronics checks (`circuit_*`) need a real target — a component/control selector (`type`, `label`, or `id`) and, for connection checks, an endpoint `pin`. Neither validator inspects wire endpoints, so a wire naming a missing pin — or written as a `{ component, pin }` object instead of a `componentId.pin` string — passes validation while connecting nothing; see `docs/authoring/electronics.md`.
 
 Both validators share the same filesystem/electronics check-field logic (`src/shared/checkAuthoringValidation.js`) so they can't drift apart the way they used to — a lesson published via the CLI alone can no longer ship a filesystem or electronics check the Builder would have flagged as broken.
 
