@@ -1738,16 +1738,30 @@ function ComponentBody({ component, state, controls, readOnly, rotation = 0, onC
       {component.type === 'slide_switch' && (
         <>
           <path d="M0 35h29M83 35h29" stroke="#475569" strokeWidth="4" strokeLinecap="round" />
-          <rect x="28" y="23" width="56" height="24" rx="12" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
-          <circle
+          {/*
+            The whole switch body toggles, not just the knob. A 10px-radius circle
+            is a fussy target for a young student on a trackpad or a zoomed-out
+            board, so the group owns the click and the track and knob inside it are
+            purely visual. The leads stay outside the group - clicking a lead is a
+            wiring gesture, not a flip.
+          */}
+          <g
             data-control-action
-            cx={closed ? 70 : 42}
-            cy="35"
-            r="10"
-            fill={closed ? '#16a34a' : '#475569'}
+            role="button"
+            tabIndex={readOnly ? -1 : 0}
+            aria-label={`${component.label} ${closed ? 'closed' : 'open'}`}
             style={{ cursor: readOnly ? 'default' : 'pointer' }}
             onClick={event => { if (!readOnly) { event.stopPropagation(); onControl('closed', !closed) } }}
-          />
+            onKeyDown={event => {
+              if (readOnly || (event.key !== 'Enter' && event.key !== ' ')) return
+              event.preventDefault()
+              event.stopPropagation()
+              onControl('closed', !closed)
+            }}
+          >
+            <rect x="28" y="23" width="56" height="24" rx="12" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
+            <circle cx={closed ? 70 : 42} cy="35" r="10" fill={closed ? '#16a34a' : '#475569'} />
+          </g>
         </>
       )}
       {component.type === 'potentiometer' && (

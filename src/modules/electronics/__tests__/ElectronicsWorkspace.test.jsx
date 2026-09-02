@@ -374,3 +374,115 @@ describe('ElectronicsWorkspace — locked ("Fixed") parts stay operable', () => 
     expect(onChange).not.toHaveBeenCalled()
   })
 })
+
+function switchCircuit(componentOverrides = {}, controls = {}) {
+  const sw = { ...makeComponent('slide_switch', 1, { row: 2, col: 2 }), ...componentOverrides }
+  return { ...DEFAULT_CIRCUIT, components: [sw], controls: { [sw.id]: controls } }
+}
+
+function switchBody() {
+  return document.querySelector('[data-component] g[data-control-action]')
+}
+
+describe('ElectronicsWorkspace — slide switch hit target', () => {
+  it('toggles when the grey body is clicked, not just the small knob', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const track = switchBody().querySelector('rect')
+    expect(track).toBeTruthy()
+    fireEvent.click(track)
+
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+  })
+
+  it('still toggles when the knob itself is clicked, and does not double-toggle', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.click(switchBody().querySelector('circle'))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+  })
+
+  it('toggles back off from the body when already closed', () => {
+    const circuit = switchCircuit({}, { closed: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.click(switchBody().querySelector('rect'))
+
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(false)
+  })
+
+  it('toggles a locked ("Fixed") switch from its body', () => {
+    const circuit = switchCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.click(switchBody().querySelector('rect'))
+
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+  })
+
+  it('toggles from the keyboard via Enter and Space', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    fireEvent.keyDown(switchBody(), { key: 'Enter' })
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].closed).toBe(true)
+
+    fireEvent.keyDown(switchBody(), { key: ' ' })
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not toggle in a read-only workspace', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} readOnly />)
+
+    fireEvent.click(switchBody().querySelector('rect'))
+    fireEvent.keyDown(switchBody(), { key: 'Enter' })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  // Positive control for the two "did not drag" assertions above and in the
+  // locked-parts block: proves the drag machinery does fire in this environment,
+  // so those tests cannot pass simply because dragging never works under jsdom.
+  it('does drag an unlocked part when the press lands outside any control', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const part = document.querySelector('[data-component]')
+    const board = document.querySelector('[tabindex]')
+    fireEvent.pointerDown(part, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(board, { clientX: 300, clientY: 300 })
+    fireEvent.pointerUp(board, { clientX: 300, clientY: 300 })
+
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)[0].components[0].position)
+      .not.toEqual(circuit.components[0].position)
+  })
+
+  it('does not start a component drag when the switch body is pressed', () => {
+    const circuit = switchCircuit()
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const track = switchBody().querySelector('rect')
+    const board = document.querySelector('[tabindex="0"][style]') ?? document.querySelector('[tabindex]')
+    fireEvent.pointerDown(track, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(board, { clientX: 300, clientY: 300 })
+    fireEvent.pointerUp(board, { clientX: 300, clientY: 300 })
+
+    // Dragging never engaged, so the part did not move.
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
