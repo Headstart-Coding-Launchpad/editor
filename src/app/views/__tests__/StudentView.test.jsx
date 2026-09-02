@@ -498,4 +498,156 @@ describe('StudentView', () => {
       Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
     })
   })
+
+  describe('explainer pseudo-task (Scratch solo)', () => {
+    const scratchLessonWithExplainers = {
+      id: 'scratch-1-1',
+      title: 'Scratch 1.1',
+      type: 'scratch',
+      tasks: [
+        { id: 1, title: 'Move the cat', starterBlocks: null, explainer: 'Drag a move block onto the stage.' },
+        { id: 2, title: 'Turn the cat', starterBlocks: null, explainer: 'Now add a turn block.' },
+      ],
+    }
+
+    it('adds a pseudo-task to solo nav (debounced) after the explainer is manually collapsed, and removes it immediately on re-expand', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      // The nav count only bumps to 3 after the debounce window fires.
+      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), { timeout: 2000 })
+
+      await user.click(screen.getByRole('button', { name: 'Show Explainer' }))
+
+      // Disappearance is not debounced.
+      await waitFor(() => expect(screen.getByText('Task 1 of 2')).toBeInTheDocument())
+    })
+
+    it('opens a read-only explainer slide via Previous, and Next returns to the task', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled(), { timeout: 2000 })
+
+      await user.click(screen.getByRole('button', { name: 'Previous' }))
+
+      await waitFor(() => expect(screen.getByText('Information')).toBeInTheDocument())
+      expect(screen.queryByText('Scratch')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      await waitFor(() => expect(screen.getByText('Scratch')).toBeInTheDocument())
+      expect(screen.queryByText('Information')).not.toBeInTheDocument()
+    })
+
+    it('does not add a pseudo-task for non-Scratch lesson types even when solo and collapsed', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="python-1-1"
+          forceSolo
+          lesson={{
+            id: 'python-1-1', title: 'Python 1.1', type: 'python',
+            tasks: [
+              { id: 1, title: 'Task one', starterCode: 'print("hi")', explainer: 'Read this first.' },
+              { id: 2, title: 'Task two', starterCode: 'print("bye")', explainer: 'Then this.' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      // Wait out the (Scratch-only) debounce window, then confirm the count never bumped.
+      await new Promise(resolve => setTimeout(resolve, 500))
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+    })
+
+    it('arriving at a new task with the explainer already collapsed auto-shows the explainer slide first', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      // Manually collapsing mid-task does not itself open the slide — still on task 1's code.
+      expect(screen.getByText('Scratch')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      // Task 2's explainer is still collapsed (the toggle carries across tasks), so arriving
+      // there shows the slide automatically instead of dropping straight into the code.
+      await waitFor(() => expect(screen.getByText('Information')).toBeInTheDocument())
+      expect(screen.queryByText('Scratch')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      await waitFor(() => expect(screen.getByText('Scratch')).toBeInTheDocument())
+      expect(screen.queryByText('Information')).not.toBeInTheDocument()
+    })
+
+    // Composed lessons carry a per-task module type (task.moduleType) rather than a
+    // single lesson.type — the gate must read the effective, per-task type, not the
+    // raw composed lesson.type (which is just 'composed').
+    it('adds a pseudo-task for a composed lesson task whose module type is scratch', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="composed-scratch-1"
+          forceSolo
+          lesson={{
+            id: 'composed-scratch-1', title: 'Composed', type: 'composed',
+            tasks: [
+              { id: 1, title: 'Move the cat', moduleType: 'scratch', starterBlocks: null, explainer: 'Drag a move block.' },
+              { id: 2, title: 'Turn the cat', moduleType: 'scratch', starterBlocks: null, explainer: 'Now turn.' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), { timeout: 2000 })
+    })
+
+    it('does not add a pseudo-task for a composed lesson task whose module type is not scratch', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="composed-python-1"
+          forceSolo
+          lesson={{
+            id: 'composed-python-1', title: 'Composed', type: 'composed',
+            tasks: [
+              { id: 1, title: 'Task one', moduleType: 'python', starterCode: 'print("hi")', explainer: 'Read this first.' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.getByText('Task 1 of 1')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+      expect(screen.getByText('Task 1 of 1')).toBeInTheDocument()
+    })
+  })
 })

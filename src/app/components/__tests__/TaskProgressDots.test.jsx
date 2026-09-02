@@ -244,6 +244,86 @@ describe('TaskProgressDots', () => {
     })
   })
 
+  describe('pseudoTask (explainer slide entry)', () => {
+    it('renders one extra dot, positioned immediately before its target task', () => {
+      activeRestore = renderWide(
+        <TaskProgressDots
+          tasks={THREE_TASKS}
+          currentTaskId={2}
+          isSolo
+          pseudoTask={{ id: '__explainer__2', title: 'Task Two', beforeTaskId: 2 }}
+          onDotClick={vi.fn()}
+        />,
+      ).restore
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(4)
+      expect(buttons[1]).toHaveTextContent('ⓘ')
+      // Counted normally: task 2's own number shifts to 3rd since the pseudo dot occupies
+      // the slot before it.
+      expect(buttons[2]).toHaveTextContent('3')
+    })
+
+    it('calls onDotClick with the pseudo id when the pseudo dot is clicked', async () => {
+      const user = userEvent.setup()
+      const onDotClick = vi.fn()
+      activeRestore = renderWide(
+        <TaskProgressDots
+          tasks={THREE_TASKS}
+          currentTaskId={2}
+          isSolo
+          pseudoTask={{ id: '__explainer__2', title: 'Task Two', beforeTaskId: 2 }}
+          onDotClick={onDotClick}
+        />,
+      ).restore
+      await user.click(screen.getAllByRole('button')[1])
+      expect(onDotClick).toHaveBeenCalledWith('__explainer__2')
+    })
+
+    it('the pseudo dot is always clickable, even when isSolo is false and canSelectTask forbids it', async () => {
+      const user = userEvent.setup()
+      const onDotClick = vi.fn()
+      activeRestore = renderWide(
+        <TaskProgressDots
+          tasks={THREE_TASKS}
+          currentTaskId={2}
+          isSolo={false}
+          canSelectTask={() => false}
+          pseudoTask={{ id: '__explainer__2', title: 'Task Two', beforeTaskId: 2 }}
+          onDotClick={onDotClick}
+        />,
+      ).restore
+      const pseudoButton = screen.getAllByRole('button')[1]
+      expect(pseudoButton).not.toBeDisabled()
+      await user.click(pseudoButton)
+      expect(onDotClick).toHaveBeenCalledWith('__explainer__2')
+    })
+
+    it('omits the pseudo dot when its target task is not found', () => {
+      activeRestore = renderWide(
+        <TaskProgressDots
+          tasks={THREE_TASKS}
+          currentTaskId={2}
+          isSolo
+          pseudoTask={{ id: '__explainer__missing', title: 'Ghost', beforeTaskId: 999 }}
+          onDotClick={vi.fn()}
+        />,
+      ).restore
+      expect(screen.getAllByRole('button')).toHaveLength(3)
+    })
+
+    it('does not render an extra dot when pseudoTask is absent', () => {
+      activeRestore = renderWide(
+        <TaskProgressDots
+          tasks={THREE_TASKS}
+          currentTaskId={2}
+          isSolo
+          onDotClick={vi.fn()}
+        />,
+      ).restore
+      expect(screen.getAllByRole('button')).toHaveLength(3)
+    })
+  })
+
   describe('compact counter view', () => {
     it('renders a text counter instead of dots when the measured width is narrower than the dots need', () => {
       // 3 dots need 3*38-6 = 108px; 60px is not enough room
