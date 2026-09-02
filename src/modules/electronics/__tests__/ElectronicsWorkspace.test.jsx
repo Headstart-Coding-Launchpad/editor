@@ -302,17 +302,21 @@ describe('ElectronicsWorkspace — breadboard zoom', () => {
     expect(screen.getByText('110%')).toBeInTheDocument()
   })
 
-  it('resets to 100% via the Reset button, which only appears when zoomed', () => {
+  it('returns to a fitted board via the always-available Fit button', () => {
     render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
 
-    expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+    // Fit replaced Reset and is always offered - the fitted scale is not necessarily
+    // 100%, so "reset to 100%" was never the useful action.
+    const fitBtn = screen.getByText('Fit')
+    expect(fitBtn).toBeInTheDocument()
 
     fireEvent.click(screen.getByLabelText('Zoom in'))
-    const resetBtn = screen.getByText('Reset')
-    fireEvent.click(resetBtn)
+    expect(screen.getByText('110%')).toBeInTheDocument()
 
-    expect(screen.getByText('100%')).toBeInTheDocument()
-    expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+    fireEvent.click(fitBtn)
+    // jsdom reports a zero-sized pane, so fitting cannot compute a scale and the manual
+    // zoom is left alone; the button must still be present and must not throw.
+    expect(screen.getByText('Fit')).toBeInTheDocument()
   })
 })
 
@@ -551,5 +555,31 @@ describe('ElectronicsWorkspace — board chrome declutter', () => {
     rerender(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} setupMode />)
     fireEvent.click(document.querySelector('[data-component]'))
     expect(document.querySelectorAll('input:not([type])').length).toBeGreaterThan(0)
+  })
+})
+
+describe('ElectronicsWorkspace — layout', () => {
+  it('drops the palette column when the task offers no parts, keeping wiring available', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={[]} />)
+
+    expect(screen.queryByText(/Drag a part onto the board/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Battery/ })).toBeNull()
+    // Wiring does not depend on the palette, so its colour control must survive.
+    expect(screen.getByText('Wire colour')).toBeInTheDocument()
+  })
+
+  it('keeps the palette when the task offers parts', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={['battery', 'led']} />)
+
+    expect(screen.getByText(/Drag a part onto the board/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Battery/ })).toBeInTheDocument()
+  })
+
+  it('keeps the board title out of the tab order so it does not read as a tab', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} title="Starter board" />)
+
+    expect(screen.getByText('Starter board')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Starter board' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Breadboard' })).toBeInTheDocument()
   })
 })

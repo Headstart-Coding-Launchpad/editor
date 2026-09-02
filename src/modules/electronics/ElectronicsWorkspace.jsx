@@ -55,6 +55,8 @@ const HIDDEN_EDGE_HOLE_ROWS = 1
 const BOARD_SCALE_MIN = 0.5
 const BOARD_SCALE_MAX = 1.5
 const BOARD_SCALE_STEP = 0.1
+// Breathing room kept around the board when auto-fitting it to the pane.
+const BOARD_FIT_MARGIN = 40
 
 function clampBoardScale(value) {
   return Math.min(BOARD_SCALE_MAX, Math.max(BOARD_SCALE_MIN, Math.round(value * 100) / 100))
@@ -89,6 +91,8 @@ export default function ElectronicsWorkspace({
   const boardRef = useRef(null)
   const boardWrapRef = useRef(null)
   const panRef = useRef(null)
+  // Auto-fit follows the board until the student takes control of the zoom themselves.
+  const userSetZoomRef = useRef(false)
   const [tab, setTab] = useState('breadboard')
   const [selectedId, setSelectedId] = useState(circuit.components[0]?.id ?? null)
   const [selectedWireId, setSelectedWireId] = useState(null)
@@ -115,6 +119,7 @@ export default function ElectronicsWorkspace({
   const selectedSupplyPins = selectedMicrocontrollerPins.filter(pin => !isMicrocontrollerSignalPin(pin))
   const selectedGpioPins = selectedMicrocontrollerPins.filter(isMicrocontrollerSignalPin)
   const paletteTypes = useMemo(() => normalizeAvailableComponents(availableComponents), [availableComponents])
+  const hasPalette = paletteTypes.length > 0
   const boardRows = Number(circuit.board?.rows ?? 14)
   const boardCols = Number(circuit.board?.cols ?? 20)
   const boardGridWidth = BOARD_PAD * 2 + (boardCols - 1) * GRID_X
@@ -143,11 +148,58 @@ export default function ElectronicsWorkspace({
     if (activeTab == null) setTab(nextTab)
   }
 
+  // Scale the board down until it fits the pane, never past 100%. A 20x14 board in a
+  // squeezed classroom pane used to open at 100% with both scrollbars, so a student had
+  // to scroll to see a circuit that would comfortably fit at 80%. Zooming in past natural
+  // size is deliberately not done - parts would read larger here than in any other task.
+  function computeFitScale() {
+    const pane = boardWrapRef.current
+    if (!pane) return null
+    const availableWidth = pane.clientWidth - BOARD_FIT_MARGIN
+    const availableHeight = pane.clientHeight - BOARD_FIT_MARGIN
+    if (availableWidth <= 0 || availableHeight <= 0) return null
+    return clampBoardScale(Math.min(1, availableWidth / boardWidth, availableHeight / boardHeight))
+  }
+
+  function fitBoardToPane() {
+    const scale = computeFitScale()
+    if (scale != null) setBoardScale(scale)
+    userSetZoomRef.current = false
+  }
+
+  function setZoomManually(next) {
+    userSetZoomRef.current = true
+    setBoardScale(next)
+  }
+
   // Reports the tab actually on screen, including its initial value and changes driven by
   // the controlled `activeTab` prop (teacher-live), not just local clicks.
   useEffect(() => {
     onTabChange?.(selectedTab)
   }, [selectedTab, onTabChange])
+
+  // Fit the board to the pane on load, and keep it fitted as the pane resizes - the
+  // explainer opening and closing changes the available width substantially. Stops as
+  // soon as the student sets a zoom themselves, until they press Fit again.
+  useEffect(() => {
+    if (selectedTab !== 'breadboard') return undefined
+    const pane = boardWrapRef.current
+    if (!pane) return undefined
+
+    function applyFit() {
+      if (userSetZoomRef.current) return
+      const availableWidth = pane.clientWidth - BOARD_FIT_MARGIN
+      const availableHeight = pane.clientHeight - BOARD_FIT_MARGIN
+      if (availableWidth <= 0 || availableHeight <= 0) return
+      setBoardScale(clampBoardScale(Math.min(1, availableWidth / boardWidth, availableHeight / boardHeight)))
+    }
+
+    applyFit()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(applyFit)
+    observer.observe(pane)
+    return () => observer.disconnect()
+  }, [selectedTab, boardWidth, boardHeight])
 
   // Teacher "force switch tab" — a one-time jump to Breadboard or MicroPython, applied via
   // the same local `tab` state a manual click would use (not the persistent `activeTab`
@@ -253,7 +305,7 @@ export default function ElectronicsWorkspace({
   function handleBoardWheel(event) {
     if (!event.ctrlKey && !event.metaKey) return
     event.preventDefault()
-    setBoardScale(prev => clampBoardScale(prev + (event.deltaY < 0 ? BOARD_SCALE_STEP : -BOARD_SCALE_STEP)))
+    setZoomManually(prev => clampBoardScale(prev + (event.deltaY < 0 ? BOARD_SCALE_STEP : -BOARD_SCALE_STEP)))
   }
 
   function positionFromPoint(point, offset = { x: PART_W / 2, y: PART_H / 2 }, component = null) {
@@ -636,21 +688,34 @@ export default function ElectronicsWorkspace({
   const breadboard = (
     <div style={s.shell}>
       <div style={s.header} className="ui-tabs ui-tabs--editor">
+        {/* A label, not a tab. Styled as a muted eyebrow with a divider so it stops
+            reading as a third selectable tab beside Breadboard/MicroPython - the Builder
+            relies on it to say which board is open ("Starter board"/"Complete board"). */}
         <span style={s.title}>{title}</span>
+        <span style={s.titleDivider} aria-hidden="true" />
         <div style={s.tabs}>
           <button className={`ui-tab ${selectedTab === 'breadboard' ? 'is-active' : ''} ${highlightedTabs?.includes('breadboard') ? 'pane-highlight-pulse' : ''}`} onClick={() => selectTab('breadboard')}>Breadboard</button>
           {hasCodeTab && <button className={`ui-tab ${selectedTab === 'code' ? 'is-active' : ''} ${highlightedTabs?.includes('code') ? 'pane-highlight-pulse' : ''}`} onClick={() => selectTab('code')}>MicroPython</button>}
         </div>
         <div style={s.actions}>
           {selectedTab === 'breadboard' && (
+            <>
             <div style={s.zoomControls}>
-              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setBoardScale(prev => clampBoardScale(prev - BOARD_SCALE_STEP))} aria-label="Zoom out">−</button>
+              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setZoomManually(prev => clampBoardScale(prev - BOARD_SCALE_STEP))} aria-label="Zoom out">−</button>
               <span style={s.zoomLabel}>{Math.round(boardScale * 100)}%</span>
-              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setBoardScale(prev => clampBoardScale(prev + BOARD_SCALE_STEP))} aria-label="Zoom in">+</button>
-              {boardScale !== 1 && (
-                <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setBoardScale(1)}>Reset</button>
-              )}
+              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={() => setZoomManually(prev => clampBoardScale(prev + BOARD_SCALE_STEP))} aria-label="Zoom in">+</button>
+              <button type="button" className="btn-ghost-outline" style={s.zoomBtn} onClick={fitBoardToPane}>Fit</button>
             </div>
+            {/* The colour new wires are drawn in - a tool setting, so it belongs with the
+                other board tools rather than at the foot of a palette that can be empty
+                while wiring is still allowed. */}
+            <label style={s.wireColorToolbarField}>
+              <span style={s.wireColorToolbarLabel}>Wire colour</span>
+              <select disabled={readOnly} value={wireColor} onChange={event => setWireColor(event.target.value)} style={s.wireColorToolbarSelect}>
+                {WIRE_COLORS.map(color => <option key={color.value} value={color.value}>{color.label}</option>)}
+              </select>
+            </label>
+            </>
           )}
           {setupMode && activeMicrocontroller && (
             <button type="button" className="btn-primary" style={s.actionBtn} onClick={addGpioPin}>
@@ -684,26 +749,20 @@ export default function ElectronicsWorkspace({
           />
         </div>
       ) : (
-        <div style={s.workspace}>
-          <div style={s.palette}>
-            {/* Only worth saying when there is something to drag - a task that supplies a
-                pre-built board and no palette used to tell students to drag parts on. */}
-            {paletteTypes.length > 0 && (
+        <div style={{ ...s.workspace, gridTemplateColumns: hasPalette ? s.workspace.gridTemplateColumns : 'minmax(0, 1fr) 230px' }}>
+          {/* A task that supplies a pre-built board and no available components used to
+              hold a 216px column open for a hint telling students to drag parts on. */}
+          {hasPalette && (
+            <div style={s.palette}>
               <p style={s.paletteHint}>Drag a part onto the board, then drag from one pin to another to wire them together.</p>
-            )}
-            {PALETTE.filter(([type]) => paletteTypes.includes(type)).map(([type, label]) => (
-              <button key={type} type="button" disabled={readOnly} draggable={!readOnly} title={COMPONENT_DESCRIPTIONS[type] ?? label} style={s.paletteBtn} onClick={() => addComponent(type)} onDragStart={event => handlePaletteDragStart(event, type)}>
-                <span style={s.paletteIcon}><PaletteGlyph type={type} /></span>
-                <span style={s.paletteLabel}>{label}</span>
-              </button>
-            ))}
-            <label style={s.wireColorField}>
-              <span style={s.wireColorLabel}>Wire colour</span>
-              <select disabled={readOnly} value={wireColor} onChange={event => setWireColor(event.target.value)} style={s.wireColorSelect}>
-                {WIRE_COLORS.map(color => <option key={color.value} value={color.value}>{color.label}</option>)}
-              </select>
-            </label>
-          </div>
+              {PALETTE.filter(([type]) => paletteTypes.includes(type)).map(([type, label]) => (
+                <button key={type} type="button" disabled={readOnly} draggable={!readOnly} title={COMPONENT_DESCRIPTIONS[type] ?? label} style={s.paletteBtn} onClick={() => addComponent(type)} onDragStart={event => handlePaletteDragStart(event, type)}>
+                  <span style={s.paletteIcon}><PaletteGlyph type={type} /></span>
+                  <span style={s.paletteLabel}>{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div
             ref={boardWrapRef}
             style={{ ...s.boardWrap, ...(isPanning ? s.boardWrapPanning : null) }}
@@ -1924,13 +1983,17 @@ const s = {
   split: { flex: 1, minHeight: 0 },
   shell: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   header: { flexShrink: 0 },
-  title: { fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--colour-primary)', padding: '0 10px' },
+  title: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', padding: '0 10px', whiteSpace: 'nowrap' },
+  titleDivider: { alignSelf: 'center', width: 1, height: 16, background: '#e5e7eb', marginRight: 4 },
   tabs: { display: 'flex', alignItems: 'center' },
   actions: { marginLeft: 'auto', display: 'flex', gap: 8, paddingRight: 8 },
   actionBtn: { fontSize: 13, padding: '7px 12px' },
   zoomControls: { display: 'flex', alignItems: 'center', gap: 4 },
   zoomBtn: { fontSize: 13, padding: '5px 10px', lineHeight: 1 },
   zoomLabel: { minWidth: 38, textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: '#475569' },
+  wireColorToolbarField: { display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)' },
+  wireColorToolbarLabel: { fontSize: 12, fontWeight: 700, color: '#475569' },
+  wireColorToolbarSelect: { border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#0f172a', fontSize: 12, padding: '5px 6px', maxWidth: 130 },
   workspace: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '216px minmax(0, 1fr) 230px', overflow: 'hidden' },
   palette: { minWidth: 0, padding: 10, borderRight: '1px solid #e5e7eb', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, overflowX: 'hidden', overflowY: 'auto' },
   paletteHint: { margin: 0, fontSize: 11.5, lineHeight: 1.4, color: '#64748b', fontFamily: 'var(--font-body)' },
