@@ -45,7 +45,7 @@ describe('ElectronicsWorkspace — on-canvas potentiometer slider', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('does not change the value when the potentiometer is locked outside setup mode', () => {
+  it('still turns a locked ("Fixed") potentiometer outside setup mode — the lock freezes structure, not operation', () => {
     const circuit = potentiometerCircuit({ locked: true })
     const onChange = vi.fn()
     render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} setupMode={false} />)
@@ -53,7 +53,11 @@ describe('ElectronicsWorkspace — on-canvas potentiometer slider', () => {
     const handle = document.querySelector('[data-component] circle[data-control-action]')
     dragSlider(handle)
 
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalled()
+    const lastCircuit = onChange.mock.calls.at(-1)[0]
+    expect(lastCircuit.controls[circuit.components[0].id].value).toBe(75)
+    // Operating it must not have moved or otherwise restructured the part.
+    expect(lastCircuit.components[0].position).toEqual(circuit.components[0].position)
   })
 
   it('allows dragging a locked potentiometer while in setup mode (builder)', () => {
@@ -309,5 +313,64 @@ describe('ElectronicsWorkspace — breadboard zoom', () => {
 
     expect(screen.getByText('100%')).toBeInTheDocument()
     expect(screen.queryByText('Reset')).not.toBeInTheDocument()
+  })
+})
+
+function buttonCircuit(componentOverrides = {}) {
+  const button = { ...makeComponent('push_button', 1, { row: 2, col: 2 }), ...componentOverrides }
+  return { ...DEFAULT_CIRCUIT, components: [button], controls: {} }
+}
+
+describe('ElectronicsWorkspace — locked ("Fixed") parts stay operable', () => {
+  it('presses and releases a locked push button on the canvas', () => {
+    const circuit = buttonCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const cap = document.querySelector('[data-component] rect[data-control-action]')
+    expect(cap).toBeTruthy()
+
+    fireEvent.pointerDown(cap, { button: 0 })
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].pressed).toBe(true)
+
+    fireEvent.pointerUp(cap, { button: 0 })
+    expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].pressed).toBe(false)
+  })
+
+  it('leaves the inspector Pressed toggle enabled for a locked push button but keeps Rotate/Delete disabled', () => {
+    const circuit = buttonCircuit({ locked: true })
+    render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+
+    fireEvent.click(document.querySelector('[data-component]'))
+
+    expect(screen.getByLabelText('Pressed')).not.toBeDisabled()
+    expect(screen.getByText('Rotate 90 deg')).toBeDisabled()
+    expect(screen.getByText('Delete part')).toBeDisabled()
+  })
+
+  it('still refuses to drag a locked part even though its controls respond', () => {
+    const circuit = buttonCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
+
+    const part = document.querySelector('[data-component]')
+    const board = document.querySelector('[tabindex]')
+    fireEvent.pointerDown(part, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(board, { clientX: 260, clientY: 220 })
+    fireEvent.pointerUp(board, { clientX: 260, clientY: 220 })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps a read-only workspace fully inert — controls included', () => {
+    const circuit = buttonCircuit({ locked: true })
+    const onChange = vi.fn()
+    render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} readOnly />)
+
+    const cap = document.querySelector('[data-component] rect[data-control-action]')
+    fireEvent.pointerDown(cap, { button: 0 })
+    fireEvent.pointerUp(cap, { button: 0 })
+
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

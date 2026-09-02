@@ -512,7 +512,7 @@ export default function ElectronicsWorkspace({
   // since pointer-down, so it stays correct regardless of the component's
   // on-board position or rotation.
   function startControlSlide(event, component) {
-    if (readOnly || (component.locked && !setupMode) || event.button !== 0) return
+    if (readOnly || event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
     selectComponent(component.id)
@@ -770,7 +770,12 @@ export default function ElectronicsWorkspace({
               {circuit.components.map(component => {
                 const state = getComponentState(circuit, component.id)
                 const point = componentPoint(component)
-                const isLockedForUser = component.locked && !setupMode
+                // "Fixed" locks a part's *structure* for students - it cannot be dragged,
+                // rotated, reconfigured or deleted. It stays operable: pressing a fixed
+                // push button, flipping a fixed switch or turning a fixed potentiometer
+                // only writes runtime control state, so a pre-built demo board is still
+                // something the student can work rather than only look at.
+                const structureLocked = component.locked && !setupMode
                 return (
                   <div
                     data-component
@@ -784,7 +789,7 @@ export default function ElectronicsWorkspace({
                       top: point.y,
                       borderColor: selectedId === component.id ? '#7c3aed' : state.on || state.powered || state.switched || state.conducting ? '#16a34a' : '#94a3b8',
                       zIndex: selectedId === component.id ? 5 : 4,
-                      cursor: readOnly || isLockedForUser ? 'default' : drag?.type === 'component' && drag.id === component.id ? 'grabbing' : 'grab',
+                      cursor: readOnly || structureLocked ? 'default' : drag?.type === 'component' && drag.id === component.id ? 'grabbing' : 'grab',
                     }}
                     onClick={() => selectComponent(component.id)}
                     onKeyDown={event => {
@@ -796,7 +801,7 @@ export default function ElectronicsWorkspace({
                       component={component}
                       state={state}
                       controls={circuit.controls[component.id] ?? {}}
-                      readOnly={readOnly || isLockedForUser}
+                      readOnly={readOnly}
                       onSlideStart={event => startControlSlide(event, component)}
                       rotation={component.rotation ?? 0}
                       onControl={(key, value) => updateControlFor(component.id, key, value)}
@@ -825,7 +830,14 @@ export default function ElectronicsWorkspace({
                       )
                     })}
                     <strong style={s.componentLabel}>{component.label}</strong>
-                    {component.locked && <span style={s.fixedBadge}>Fixed</span>}
+                    {component.locked && (
+                      <span
+                        style={s.fixedBadge}
+                        title={setupMode ? 'Fixed for students' : 'Fixed in place - you can still use its controls'}
+                      >
+                        Fixed
+                      </span>
+                    )}
                     <span style={s.componentType}>{component.type}</span>
                   </div>
                 )
@@ -959,19 +971,19 @@ export default function ElectronicsWorkspace({
                   </label>
                 )}
                 {selected.type === 'slide_switch' && (
-                  <label style={s.toggle}><input type="checkbox" disabled={readOnly || (selected.locked && !setupMode)} checked={circuit.controls[selected.id]?.closed === true} onChange={e => updateControlFor(selected.id, 'closed', e.target.checked)} /> Closed</label>
+                  <label style={s.toggle}><input type="checkbox" disabled={readOnly} checked={circuit.controls[selected.id]?.closed === true} onChange={e => updateControlFor(selected.id, 'closed', e.target.checked)} /> Closed</label>
                 )}
                 {selected.type === 'push_button' && (
-                  <label style={s.toggle}><input type="checkbox" disabled={readOnly || (selected.locked && !setupMode)} checked={circuit.controls[selected.id]?.pressed === true} onChange={e => updateControlFor(selected.id, 'pressed', e.target.checked)} /> Pressed</label>
+                  <label style={s.toggle}><input type="checkbox" disabled={readOnly} checked={circuit.controls[selected.id]?.pressed === true} onChange={e => updateControlFor(selected.id, 'pressed', e.target.checked)} /> Pressed</label>
                 )}
                 {selected.type === 'potentiometer' && (
-                  <label style={s.range}>Value <input type="range" disabled={readOnly || (selected.locked && !setupMode)} min="0" max="100" value={circuit.controls[selected.id]?.value ?? 50} onChange={e => updateControlFor(selected.id, 'value', Number(e.target.value))} /></label>
+                  <label style={s.range}>Value <input type="range" disabled={readOnly} min="0" max="100" value={circuit.controls[selected.id]?.value ?? 50} onChange={e => updateControlFor(selected.id, 'value', Number(e.target.value))} /></label>
                 )}
                 {selected.type === 'transistor' && (
-                  <label style={s.toggle}><input type="checkbox" disabled={readOnly || (selected.locked && !setupMode)} checked={circuit.controls[selected.id]?.baseHigh === true} onChange={e => updateControlFor(selected.id, 'baseHigh', e.target.checked)} /> Base signal high</label>
+                  <label style={s.toggle}><input type="checkbox" disabled={readOnly} checked={circuit.controls[selected.id]?.baseHigh === true} onChange={e => updateControlFor(selected.id, 'baseHigh', e.target.checked)} /> Base signal high</label>
                 )}
                 {selected.type === 'servo_motor' && (
-                  <label style={s.range}>Angle <input type="range" disabled={readOnly || (selected.locked && !setupMode)} min="0" max="180" value={circuit.controls[selected.id]?.angle ?? selected.props?.angle ?? 90} onChange={e => updateControlFor(selected.id, 'angle', Number(e.target.value))} /></label>
+                  <label style={s.range}>Angle <input type="range" disabled={readOnly} min="0" max="180" value={circuit.controls[selected.id]?.angle ?? selected.props?.angle ?? 90} onChange={e => updateControlFor(selected.id, 'angle', Number(e.target.value))} /></label>
                 )}
                 {selected.type === 'sensor' && (
                   <>
@@ -988,7 +1000,7 @@ export default function ElectronicsWorkspace({
                         </select>
                       </label>
                     )}
-                    <label style={s.range}>Reading <input type="range" disabled={readOnly || (selected.locked && !setupMode)} min="0" max="100" value={circuit.controls[selected.id]?.value ?? selected.props?.value ?? 50} onChange={e => updateControlFor(selected.id, 'value', Number(e.target.value))} /></label>
+                    <label style={s.range}>Reading <input type="range" disabled={readOnly} min="0" max="100" value={circuit.controls[selected.id]?.value ?? selected.props?.value ?? 50} onChange={e => updateControlFor(selected.id, 'value', Number(e.target.value))} /></label>
                   </>
                 )}
                 {selected.type === 'microcontroller' && (
