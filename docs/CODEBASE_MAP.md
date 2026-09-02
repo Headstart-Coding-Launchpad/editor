@@ -298,7 +298,13 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
 | `electronics/index.js` | Electronics module definition: breadboard state helpers, builder/student/teacher workspaces, checks, carry-through, sandbox state, and MicroPython runtime bridge |
 | `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, `circuit_*` check evaluation, and generic `code`-family check evaluation against the Micro Controller's MicroPython source |
-| `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI: drag/drop palette and board, visual parts (including an on-canvas draggable potentiometer slider), animated pin-to-pin wiring with lockable wires, component inspector with Micro Controller GPIO editing, MicroPython Code tab, and output panel |
+| `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI shell: board state, selection, drag/drop, wiring interaction, fit-to-pane zoom, tabs, MicroPython Code tab, and output panel - draws on the five modules below |
+| `electronics/Inspector.jsx` | Right-hand panel for the selected wire or part: electrical readout, part properties, runtime controls, Micro Controller GPIO editing; handlers arrive bundled as `actions` |
+| `electronics/ComponentArt.jsx` | How parts are drawn: palette glyphs, the part on the board with its live state and on-canvas controls, and the inspector's state readout. Keeps literal colours - it draws real components |
+| `electronics/wireRouting.js` | Orthogonal wire routing: obstacle-aware pathfinding over a lane graph, scored on overlap, crossings and bends |
+| `electronics/boardGeometry.js` | Board grid metrics and part geometry: part sizes, pin offsets, rotation, and the rectangles the wire router avoids |
+| `electronics/workspaceStyles.js` | Electronics chrome styles on the `--colour-*`/`--ui-*` tokens, plus the semantic colour constants the tokens do not cover |
+| `electronics/format.js` | Display formatting for resistance, voltage and current, shared by the inspector and the part drawings |
 | `electronics/StudentWorkspace.jsx` | Student electronics workspace wrapper: serialized circuit state, reset/check actions, teacher-live/read-only handling |
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs, board sizing, and available component controls |
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |
