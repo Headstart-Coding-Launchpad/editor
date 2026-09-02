@@ -600,6 +600,75 @@ export function circuitHasShort(circuit) {
   ))
 }
 
+// Which wires and parts actually form the short, so the board can colour them rather
+// than only reporting that a short exists somewhere. `circuitHasShort` stays the cheap
+// boolean for checks; this walks the shortest offending loop per supply and maps each
+// step back to the wire or the internal component link that carries it.
+export function getShortCircuitPath(circuit) {
+  const normalized = normalizeCircuit(circuit)
+  const graph = buildGraph(normalized, 'short')
+  const wireIds = new Set()
+  const componentIds = new Set()
+
+  getVoltageSources(normalized).forEach(source => {
+    const path = graphPath(graph, source.positiveRef, source.negativeRef)
+    if (!path) return
+    componentIds.add(source.componentId)
+    for (let index = 0; index < path.length - 1; index += 1) {
+      const from = path[index]
+      const to = path[index + 1]
+      const wire = normalized.wires.find(candidate => (
+        (candidate.from === from && candidate.to === to)
+        || (candidate.from === to && candidate.to === from)
+      ))
+      if (wire) {
+        wireIds.add(wire.id)
+        continue
+      }
+      // Not a wire, so the step is a component's own internal connection (a closed
+      // switch, a junction) - both refs belong to the same part.
+      const owner = componentIdForRef(normalized, from)
+      if (owner && owner === componentIdForRef(normalized, to)) componentIds.add(owner)
+    }
+  })
+
+  return { wireIds: [...wireIds], componentIds: [...componentIds] }
+}
+
+function componentIdForRef(circuit, ref) {
+  if (!ref) return null
+  const match = circuit.components.find(component => (
+    ref === component.id || ref.startsWith(`${component.id}.`)
+  ))
+  return match?.id ?? null
+}
+
+// BFS shortest path between two pin refs, or null when they are not connected.
+function graphPath(graph, a, b) {
+  if (!a || !b) return null
+  if (a === b) return [a]
+  const queue = [a]
+  const cameFrom = new Map([[a, null]])
+  while (queue.length) {
+    const current = queue.shift()
+    if (current === b) {
+      const path = []
+      let step = current
+      while (step != null) {
+        path.unshift(step)
+        step = cameFrom.get(step)
+      }
+      return path
+    }
+    graph.get(current)?.forEach(next => {
+      if (cameFrom.has(next)) return
+      cameFrom.set(next, current)
+      queue.push(next)
+    })
+  }
+  return null
+}
+
 function roundMetric(value, places = 2) {
   if (!Number.isFinite(value)) return 0
   return Number(value.toFixed(places))

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ElectronicsWorkspace from '../ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, makeComponent } from '../circuit.js'
@@ -337,15 +337,29 @@ describe('ElectronicsWorkspace — locked ("Fixed") parts stay operable', () => 
     expect(onChange.mock.calls.at(-1)[0].controls[circuit.components[0].id].pressed).toBe(false)
   })
 
-  it('leaves the inspector Pressed toggle enabled for a locked push button but keeps Rotate/Delete disabled', () => {
+  it('leaves the inspector Pressed toggle enabled for a locked push button but omits Rotate/Delete', () => {
     const circuit = buttonCircuit({ locked: true })
     render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
 
     fireEvent.click(document.querySelector('[data-component]'))
 
     expect(screen.getByLabelText('Pressed')).not.toBeDisabled()
-    expect(screen.getByText('Rotate 90 deg')).toBeDisabled()
-    expect(screen.getByText('Delete part')).toBeDisabled()
+    // Structure controls a student can never use are left out rather than shown greyed.
+    expect(screen.queryByText('Rotate 90 deg')).toBeNull()
+    expect(screen.queryByText('Delete part')).toBeNull()
+  })
+
+  it('offers Rotate/Delete on an unlocked part, and in setup mode even when locked', () => {
+    render(<ElectronicsWorkspace circuit={buttonCircuit()} onChange={vi.fn()} />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(screen.getByText('Rotate 90 deg')).not.toBeDisabled()
+    expect(screen.getByText('Delete part')).not.toBeDisabled()
+    cleanup()
+
+    render(<ElectronicsWorkspace circuit={buttonCircuit({ locked: true })} onChange={vi.fn()} setupMode />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(screen.getByText('Rotate 90 deg')).not.toBeDisabled()
+    expect(screen.getByText('Delete part')).not.toBeDisabled()
   })
 
   it('still refuses to drag a locked part even though its controls respond', () => {
@@ -484,5 +498,58 @@ describe('ElectronicsWorkspace — slide switch hit target', () => {
 
     // Dragging never engaged, so the part did not move.
     expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('ElectronicsWorkspace — board chrome declutter', () => {
+  it('drops the palette hint when the task supplies no draggable parts', () => {
+    const { rerender } = render(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={[]} />
+    )
+    expect(screen.queryByText(/Drag a part onto the board/)).toBeNull()
+
+    rerender(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={['led']} />
+    )
+    expect(screen.getByText(/Drag a part onto the board/)).toBeInTheDocument()
+  })
+
+  it('no longer renders the always-on status strip', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+    expect(screen.queryByText('0 motors on')).toBeNull()
+    expect(screen.queryByText('0 buzzers on')).toBeNull()
+    expect(screen.queryByText(/^0 parts$/)).toBeNull()
+  })
+
+  it('warns about a short circuit and marks the wire that causes it', () => {
+    const battery = makeComponent('battery', 1, { row: 2, col: 2 })
+    const circuit = {
+      ...DEFAULT_CIRCUIT,
+      components: [battery],
+      wires: [{ id: 'w1', from: `${battery.id}.positive`, to: `${battery.id}.negative`, color: '#ef4444' }],
+    }
+    render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+
+    expect(screen.getByText(/Short circuit/)).toBeInTheDocument()
+    expect(document.querySelector('[data-component]').style.borderColor).toBe('rgb(239, 68, 68)')
+  })
+
+  it('says nothing about shorts on a healthy board', () => {
+    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} />)
+    expect(screen.queryByText(/Short circuit/)).toBeNull()
+  })
+
+  it('shows GPIO pin names as plain labels for students and as inputs in setup mode', () => {
+    const microcontroller = makeComponent('microcontroller', 1, { row: 2, col: 2 })
+    const circuit = { ...DEFAULT_CIRCUIT, components: [microcontroller] }
+
+    const { rerender } = render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(screen.getByText('Signal pins')).toBeInTheDocument()
+    expect(document.querySelectorAll('input[type="text"], input:not([type])')).toHaveLength(0)
+
+    rerender(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} setupMode />)
+    fireEvent.click(document.querySelector('[data-component]'))
+    expect(document.querySelectorAll('input:not([type])').length).toBeGreaterThan(0)
   })
 })

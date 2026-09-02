@@ -13,10 +13,10 @@ import {
   WIRE_COLORS,
   circuitHasShort,
   cloneCircuit,
-  getCircuitMetrics,
   getComponentState,
   getComponentResistanceOhms,
   getMicrocontrollerCode,
+  getShortCircuitPath,
   getWireCurrentDirection,
   getWireColorForPins,
   getWireState,
@@ -48,6 +48,9 @@ const WIRE_OVERLAP_PENALTY = 5000
 const WIRE_CROSSING_PENALTY = 900
 const WIRE_BEND_PENALTY = 70
 const SENSOR_KIND_OPTIONS = ['light', 'temperature', 'distance']
+// Style-guide destructive red - the board marks a short on the wires and parts that form
+// it, so a student can see where the fault is and not just that one exists.
+const SHORT_COLOUR = '#ef4444'
 const HIDDEN_EDGE_HOLE_ROWS = 1
 const BOARD_SCALE_MIN = 0.5
 const BOARD_SCALE_MAX = 1.5
@@ -93,9 +96,16 @@ export default function ElectronicsWorkspace({
   const [isPanning, setIsPanning] = useState(false)
   const [wireColor, setWireColor] = useState('auto')
   const [boardScale, setBoardScale] = useState(1)
-  const [outputCollapsed, setOutputCollapsed] = useState(!showCodeTab)
+  // Mirrors `hasCodeTab` below, not `showCodeTab`: a task whose Micro Controller comes
+  // from the circuit rather than `task.microcontroller.enabled` still gets the MicroPython
+  // tab, so it should get the output panel open alongside it.
+  const [outputCollapsed, setOutputCollapsed] = useState(() => (
+    !(showCodeTab || circuit.components.some(component => component.type === 'microcontroller'))
+  ))
   const selectedTab = activeTab ?? tab
   const selected = circuit.components.find(c => c.id === selectedId) ?? null
+  // "Fixed" locks a part's structure for students; setup mode still edits it freely.
+  const selectedStructureLocked = Boolean(selected?.locked) && !setupMode
   const selectedWire = circuit.wires.find(wire => wire.id === selectedWireId) ?? null
   const selectedWireState = selectedWire ? getWireState(circuit, selectedWire) : null
   const activeMicrocontroller = circuit.components.find(component => component.type === 'microcontroller') ?? null
@@ -115,15 +125,19 @@ export default function ElectronicsWorkspace({
   }, { width: PART_W, height: PART_H })
   const boardWidth = boardGridWidth + largestPart.width + 24
   const boardHeight = boardGridHeight + largestPart.height + 24
-  const stats = useMemo(() => ({
-    ledsOn: circuit.components.filter(c => c.type === 'led' && getComponentState(circuit, c.id).on).length,
-    rgbLedsOn: circuit.components.filter(c => c.type === 'rgb_led' && getComponentState(circuit, c.id).on).length,
-    motorsOn: circuit.components.filter(c => c.type === 'motor' && getComponentState(circuit, c.id).on).length,
-    servosOn: circuit.components.filter(c => c.type === 'servo_motor' && getComponentState(circuit, c.id).on).length,
-    buzzersOn: circuit.components.filter(c => c.type === 'buzzer' && getComponentState(circuit, c.id).on).length,
-  }), [circuit])
+  // The other device counts existed only for the status strip; the buzzer tone is the one
+  // thing still driven by a live count.
+  const buzzersOn = useMemo(() => (
+    circuit.components.filter(c => c.type === 'buzzer' && getComponentState(circuit, c.id).on).length
+  ), [circuit])
   const hasShort = useMemo(() => circuitHasShort(circuit), [circuit])
-  const circuitMetrics = useMemo(() => getCircuitMetrics(circuit), [circuit])
+  // Only walked when there is actually a short, so the common case stays a cheap boolean.
+  const shortPath = useMemo(
+    () => (hasShort ? getShortCircuitPath(circuit) : { wireIds: [], componentIds: [] }),
+    [hasShort, circuit],
+  )
+  const shortedWireIds = useMemo(() => new Set(shortPath.wireIds), [shortPath])
+  const shortedComponentIds = useMemo(() => new Set(shortPath.componentIds), [shortPath])
 
   function selectTab(nextTab) {
     if (activeTab == null) setTab(nextTab)
@@ -150,7 +164,7 @@ export default function ElectronicsWorkspace({
   }, [activeTab, forcedTab, forcedTabToken])
 
   useEffect(() => {
-    if (stats.buzzersOn === 0 || typeof window === 'undefined') return undefined
+    if (buzzersOn === 0 || typeof window === 'undefined') return undefined
     const AudioContext = window.AudioContext ?? window.webkitAudioContext
     if (!AudioContext) return undefined
 
@@ -179,7 +193,7 @@ export default function ElectronicsWorkspace({
         window.setTimeout(() => context.close?.(), 80)
       } catch {}
     }
-  }, [stats.buzzersOn])
+  }, [buzzersOn])
 
   function update(next) {
     if (!readOnly) onChange?.(cloneCircuit(next))
@@ -672,7 +686,11 @@ export default function ElectronicsWorkspace({
       ) : (
         <div style={s.workspace}>
           <div style={s.palette}>
-            <p style={s.paletteHint}>Drag a part onto the board, then drag from one pin to another to wire them together.</p>
+            {/* Only worth saying when there is something to drag - a task that supplies a
+                pre-built board and no palette used to tell students to drag parts on. */}
+            {paletteTypes.length > 0 && (
+              <p style={s.paletteHint}>Drag a part onto the board, then drag from one pin to another to wire them together.</p>
+            )}
             {PALETTE.filter(([type]) => paletteTypes.includes(type)).map(([type, label]) => (
               <button key={type} type="button" disabled={readOnly} draggable={!readOnly} title={COMPONENT_DESCRIPTIONS[type] ?? label} style={s.paletteBtn} onClick={() => addComponent(type)} onDragStart={event => handlePaletteDragStart(event, type)}>
                 <span style={s.paletteIcon}><PaletteGlyph type={type} /></span>
@@ -695,6 +713,13 @@ export default function ElectronicsWorkspace({
             onPointerCancel={stopBoardPan}
             onWheel={handleBoardWheel}
           >
+            {hasShort && (
+              <p style={s.shortWarning} role="status">
+                <span aria-hidden="true" style={s.shortWarningMark}>!</span>
+                Short circuit - the highlighted wires connect the supply straight back to
+                itself, with no part in between.
+              </p>
+            )}
             <div style={{ ...s.boardScaleSizer, width: boardWidth * boardScale, height: boardHeight * boardScale }}>
             <div
               ref={boardRef}
@@ -732,11 +757,26 @@ export default function ElectronicsWorkspace({
                   if (!path) return null
                   const energized = isWireEnergized(wire)
                   const isSelected = selectedWireId === wire.id
+                  const isShorted = shortedWireIds.has(wire.id)
                   const currentPath = getWireCurrentDirection(circuit, wire) === 'reverse'
                     ? pathFromPoints([...points].reverse())
                     : path
                   return (
                     <g key={wire.id}>
+                      {isShorted && (
+                        <path
+                          d={path}
+                          stroke={SHORT_COLOUR}
+                          strokeWidth="14"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          fill="none"
+                          opacity="0.3"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          <animate attributeName="opacity" values="0.14;0.42;0.14" dur="1.1s" repeatCount="indefinite" />
+                        </path>
+                      )}
                       <path
                         data-wire-hit
                         d={path}
@@ -787,7 +827,9 @@ export default function ElectronicsWorkspace({
                       ...componentDimensions(component),
                       left: point.x,
                       top: point.y,
-                      borderColor: selectedId === component.id ? '#7c3aed' : state.on || state.powered || state.switched || state.conducting ? '#16a34a' : '#94a3b8',
+                      borderColor: shortedComponentIds.has(component.id)
+                        ? SHORT_COLOUR
+                        : selectedId === component.id ? '#7c3aed' : state.on || state.powered || state.switched || state.conducting ? '#16a34a' : '#94a3b8',
                       zIndex: selectedId === component.id ? 5 : 4,
                       cursor: readOnly || structureLocked ? 'default' : drag?.type === 'component' && drag.id === component.id ? 'grabbing' : 'grab',
                     }}
@@ -829,32 +871,24 @@ export default function ElectronicsWorkspace({
                         />
                       )
                     })}
+                    {/* Name only. The part is already drawn as what it is, so a type
+                        caption underneath was redundant, and spelling out "Fixed" beside
+                        the name collided with it on narrower parts - a lock mark carries
+                        the same meaning in the corner without competing for the width. */}
                     <strong style={s.componentLabel}>{component.label}</strong>
                     {component.locked && (
                       <span
                         style={s.fixedBadge}
                         title={setupMode ? 'Fixed for students' : 'Fixed in place - you can still use its controls'}
+                        aria-label={setupMode ? 'Fixed for students' : 'Fixed in place'}
                       >
-                        Fixed
+                        <LockGlyph />
                       </span>
                     )}
-                    <span style={s.componentType}>{component.type}</span>
                   </div>
                 )
               })}
             </div>
-            </div>
-            <div style={s.status}>
-              <span>{circuit.components.length} parts</span>
-              <span>{circuit.wires.length} wires</span>
-              <span>{formatVoltage(circuitMetrics.supplyVoltage)} supply</span>
-              <span>{formatCurrent(circuitMetrics.totalCurrentMa)} total</span>
-              <span>{stats.ledsOn} LEDs on</span>
-              <span>{stats.rgbLedsOn} RGB LEDs on</span>
-              <span>{stats.motorsOn} motors on</span>
-              <span>{stats.servosOn} servos on</span>
-              <span>{stats.buzzersOn} buzzers on</span>
-              {hasShort && <span style={s.shortStatus}>Short circuit</span>}
             </div>
           </div>
           <div style={s.inspector}>
@@ -923,19 +957,24 @@ export default function ElectronicsWorkspace({
                   </>
                 )}
                 <ComponentStateSummary component={selected} state={getComponentState(circuit, selected.id)} />
-                <button
-                  disabled={readOnly || (selected.locked && !setupMode)}
-                  className="btn-ghost-outline"
-                  style={s.rotateBtn}
-                  onClick={rotateSelectedComponent}
-                >
-                  Rotate 90 deg
-                </button>
+                {/* A fixed part cannot be rotated or deleted by a student, so the controls
+                    are left out rather than shown greyed. Its runtime controls stay - a
+                    fixed switch is still meant to be flipped. */}
+                {!selectedStructureLocked && (
+                  <button
+                    disabled={readOnly}
+                    className="btn-ghost-outline"
+                    style={s.rotateBtn}
+                    onClick={rotateSelectedComponent}
+                  >
+                    Rotate 90 deg
+                  </button>
+                )}
                 {selected.type === 'resistor' && (
                   <label style={s.field}>
                     <span style={s.fieldLabel}>Resistance</span>
                     <select
-                      disabled={readOnly || (selected.locked && !setupMode)}
+                      disabled={readOnly || selectedStructureLocked}
                       value={getComponentResistanceOhms(selected)}
                       onChange={event => updateSelectedComponentProps({ resistanceOhms: Number(event.target.value) })}
                       style={s.wireColorSelect}
@@ -948,7 +987,7 @@ export default function ElectronicsWorkspace({
                   <label style={s.field}>
                     <span style={s.fieldLabel}>LED colour</span>
                     <select
-                      disabled={readOnly || (selected.locked && !setupMode)}
+                      disabled={readOnly || selectedStructureLocked}
                       value={selected.props?.color ?? 'red'}
                       onChange={event => updateSelectedComponentProps({ color: event.target.value })}
                       style={s.wireColorSelect}
@@ -961,7 +1000,7 @@ export default function ElectronicsWorkspace({
                   <label style={s.field}>
                     <span style={s.fieldLabel}>Voltage</span>
                     <select
-                      disabled={readOnly || (selected.locked && !setupMode)}
+                      disabled={readOnly || selectedStructureLocked}
                       value={Number(selected.props?.voltage ?? 5)}
                       onChange={event => updateSelectedComponentProps({ voltage: Number(event.target.value) })}
                       style={s.wireColorSelect}
@@ -991,7 +1030,7 @@ export default function ElectronicsWorkspace({
                       <label style={s.field}>
                         <span style={s.fieldLabel}>Sensor type</span>
                         <select
-                          disabled={readOnly || (selected.locked && !setupMode)}
+                          disabled={readOnly || selectedStructureLocked}
                           value={selected.props?.kind ?? 'light'}
                           onChange={event => updateSelectedComponentProps({ kind: event.target.value })}
                           style={s.wireColorSelect}
@@ -1017,23 +1056,26 @@ export default function ElectronicsWorkspace({
                           type="button"
                           className="btn-ghost"
                           style={s.smallInspectorBtn}
-                          disabled={readOnly || (selected.locked && !setupMode)}
+                          disabled={readOnly || selectedStructureLocked}
                           onClick={addGpioPin}
                         >
                           Add pin
                         </button>
                       )}
                     </div>
-                    <div style={s.gpioList}>
-                      {selectedGpioPins.map(pin => (
-                        <div key={pin} style={s.gpioRow}>
-                          <input
-                            disabled={readOnly || !setupMode || (selected.locked && !setupMode)}
-                            defaultValue={pin}
-                            onBlur={event => renameGpioPin(pin, event.target.value)}
-                            style={s.gpioInput}
-                          />
-                          {setupMode && (
+                    {/* Only setup mode can rename a pin, so only setup mode gets text
+                        boxes. Students were shown disabled inputs that looked editable;
+                        they read the pin names as the labels they are. */}
+                    {setupMode ? (
+                      <div style={s.gpioList}>
+                        {selectedGpioPins.map(pin => (
+                          <div key={pin} style={s.gpioRow}>
+                            <input
+                              disabled={readOnly}
+                              defaultValue={pin}
+                              onBlur={event => renameGpioPin(pin, event.target.value)}
+                              style={s.gpioInput}
+                            />
                             <button
                               type="button"
                               style={s.gpioRemove}
@@ -1044,13 +1086,21 @@ export default function ElectronicsWorkspace({
                             >
                               x
                             </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={s.gpioPowerPins}>
+                        {selectedGpioPins.map(pin => (
+                          <span key={pin} style={s.gpioPowerPin}>{pin}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-                <button disabled={readOnly || (selected.locked && !setupMode)} className="btn-danger" style={s.removeBtn} onClick={removeSelected}>Delete part</button>
+                {!selectedStructureLocked && (
+                  <button disabled={readOnly} className="btn-danger" style={s.removeBtn} onClick={removeSelected}>Delete part</button>
+                )}
               </>
             ) : <p style={s.emptySelection}>No selection</p>}
           </div>
@@ -1617,6 +1667,15 @@ function ComponentStateSummary({ component, state }) {
   )
 }
 
+function LockGlyph() {
+  return (
+    <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">
+      <path d="M4 5V3.6a2 2 0 0 1 4 0V5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <rect x="2.6" y="5" width="6.8" height="5.4" rx="1.4" fill="currentColor" />
+    </svg>
+  )
+}
+
 function PaletteGlyph({ type }) {
   return (
     <svg viewBox="0 0 32 24" width="28" height="22" aria-hidden="true">
@@ -1892,10 +1951,9 @@ const s = {
   componentDrawing: { position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', transformOrigin: 'center' },
   componentLabel: { position: 'absolute', zIndex: 4, left: 6, top: 4, fontSize: 11, color: '#0f172a', background: 'rgba(255,255,255,0.72)', borderRadius: 4, padding: '1px 4px' },
   fixedBadge: { position: 'absolute', zIndex: 4, right: 6, top: 4, fontSize: 10, fontWeight: 700, color: '#7c2d12', background: '#fed7aa', borderRadius: 4, padding: '1px 4px' },
-  componentType: { position: 'absolute', zIndex: 4, left: 6, bottom: 4, fontSize: 10, color: '#64748b', background: 'rgba(255,255,255,0.72)', borderRadius: 4, padding: '1px 4px' },
   pinHandle: { position: 'absolute', zIndex: 4, width: 14, height: 14, borderRadius: '50%', border: '2px solid #fff', transform: 'translate(-50%, -50%)', cursor: 'crosshair', boxShadow: '0 1px 5px rgba(15,23,42,0.28)' },
-  status: { display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 12px', fontFamily: 'var(--font-body)', fontSize: 12, color: '#334155' },
-  shortStatus: { color: '#b91c1c', fontWeight: 700 },
+  shortWarning: { position: 'sticky', top: 0, zIndex: 6, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, margin: '12px 16px 0', padding: '8px 12px', border: '1px solid #fecaca', borderRadius: 7, background: '#fee2e2', color: '#991b1b', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, lineHeight: 1.4 },
+  shortWarningMark: { flexShrink: 0, display: 'grid', placeItems: 'center', width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 800 },
   inspector: { padding: 12, borderLeft: '1px solid #e5e7eb', background: '#fff', overflowY: 'auto', fontFamily: 'var(--font-body)' },
   inspectorTitle: { margin: '0 0 10px', fontSize: 16 },
   componentDescription: { margin: '0 0 10px', fontSize: 12, lineHeight: 1.35, color: '#475569' },
