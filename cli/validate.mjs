@@ -5,6 +5,7 @@ import { isValidTaskPriority, TASK_PRIORITIES, isValidStageRole, STAGE_ROLES, ge
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 import { getModuleCarrySourceIds, getTaskModuleType, validateComposedStructure } from '../src/shared/composedLesson.js'
 import { validateFilesystemChecks, validateElectronicsChecks } from '../src/shared/checkAuthoringValidation.js'
+import { isValidRecordingUrl } from '../src/shared/youtube.js'
 
 const VALID_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics', 'composed']
 
@@ -54,6 +55,9 @@ export function validateLessonForMcp(lesson) {
   if (!title || !String(title).trim()) errors.push('title is required')
   if (!description || !String(description).trim()) errors.push('description is required')
   if (lesson.fork != null) validateLessonFork(lesson, errors)
+  if (lesson.recordingUrl != null && !isValidRecordingUrl(lesson.recordingUrl)) {
+    errors.push('recordingUrl must be a YouTube link (youtube.com or youtu.be)')
+  }
 
   if (!tasks || !Array.isArray(tasks)) {
     errors.push('tasks is required and must be an array')

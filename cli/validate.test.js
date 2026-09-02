@@ -272,6 +272,30 @@ describe('CLI lesson validation', () => {
     ]))
   })
 
+  it('validates recordingUrl as a YouTube link', () => {
+    const valid = validateLessonForMcp({
+      id: 'python-basics-maple',
+      type: 'python',
+      title: 'Python basics - Maple',
+      description: 'A forked lesson',
+      recordingUrl: 'https://youtu.be/dQw4w9WgXcQ',
+      tasks: [{ id: 1, title: 'Print hello', starterCode: 'print("hello")' }],
+    })
+    expect(valid.errors).toEqual([])
+
+    const invalid = validateLessonForMcp({
+      id: 'python-basics-maple',
+      type: 'python',
+      title: 'Python basics - Maple',
+      description: 'A forked lesson',
+      recordingUrl: 'https://drive.google.com/file/d/abc123/view',
+      tasks: [{ id: 1, title: 'Print hello', starterCode: 'print("hello")' }],
+    })
+    expect(invalid.errors).toEqual(expect.arrayContaining([
+      'recordingUrl must be a YouTube link (youtube.com or youtu.be)',
+    ]))
+  })
+
   it('accepts incomplete real tasks while draft is enabled, but applies full validation after it is cleared', () => {
     const draft = {
       id: 'draft-python', type: 'python', title: 'Draft Python', description: 'In progress', draft: true,

@@ -92,6 +92,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
 | `VideoCallPrompt.jsx` | Modal shown to one student when a teacher targets them with "📹 Send Video Call Link" from the Student Grid, stamping `students/{id}/videoCallLinkPushedAt` |
+| `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (per-class YouTube recording). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
@@ -389,6 +390,7 @@ Each `index.js` exports a default object with:
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo }` (bare smart-join URL + `?solo=true` link); used by TeacherView and LessonPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
+| `youtube.js` | Pure YouTube URL parsing for the `recordingUrl` lesson field: `extractYouTubeId()`, `isValidRecordingUrl()`, `buildYouTubeEmbedSrc()`. Dependency-free (only the built-in `URL`) so it's shared between the browser widget/Builder field and the Node CLI validator |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting |
 | `composedLesson.js` | Pure composed-lesson module resolution, structural validation, sandbox adaptation, and scoped carry-source helpers |
 | `codeArrange.js` | Pure helpers for the `code_arrange` task type: the one shared task-level tile pool, slot-completeness, assembling the final runnable code string from tile placements (`assembleCodeArrangement`), and its inverse (`deriveSlotStateFromCode`, backtracking over the shared pool using each line's fixed text as anchors) — the run pipeline and check evaluator only ever see the final assembled string |
