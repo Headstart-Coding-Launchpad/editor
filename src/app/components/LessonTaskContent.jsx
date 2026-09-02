@@ -59,6 +59,7 @@ export default function LessonTaskContent({
   isQuizTask,
   isAutoEvaluatedQuiz,
   isInformationTask,
+  isViewingExplainerSlide,
   isCodeArrangeTask,
   displayCode,
   displayArcadeDesign,
@@ -126,8 +127,8 @@ export default function LessonTaskContent({
   const taskPanelCompact = isScratchLesson && taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
-  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask
-  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask
+  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide
+  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask && !isViewingExplainerSlide
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
@@ -186,16 +187,16 @@ export default function LessonTaskContent({
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
   const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonMod?.type ?? lesson.type)
-  const activeSupportStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && supportsStageReveal && cs.activeSupportStageIndex != null
+  const activeSupportStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && supportsStageReveal && cs.activeSupportStageIndex != null
     ? getRevealableStages(task).find(({ index }) => index === cs.activeSupportStageIndex) ?? null
     : null
   const authoredCompleteStage = getCompleteStage(task)?.stage
-  const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && ['python', 'html'].includes(lesson.type) && (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
+  const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && ['python', 'html'].includes(lesson.type) && (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
     ? authoredCompleteStage ?? (lesson.type === 'html'
       ? { label: 'Complete solution', files: task.completeFiles ?? [], entryFile: task.completeEntryFile ?? task.entryFile }
       : { label: 'Complete solution', code: task.completeCode })
     : null
-  const targetedReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.targetedPreviewStageIndex != null
+  const targetedReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.targetedPreviewStageIndex != null
     ? task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null
     : null
   const displayedReferenceStage = completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage
@@ -206,13 +207,13 @@ export default function LessonTaskContent({
 
   const taskContentStyle = (!isSandbox && isQuizTask)
     ? s.taskContentQuiz
-    : (!isSandbox && isInformationTask)
+    : (!isSandbox && (isInformationTask || isViewingExplainerSlide))
     ? s.taskContentInfo
     : (modStyles.taskContentStyle ?? s.taskContentFallback)
 
   const editorAreaStyle = (!isSandbox && isQuizTask)
     ? s.editorAreaQuiz
-    : (!isSandbox && isInformationTask)
+    : (!isSandbox && (isInformationTask || isViewingExplainerSlide))
     ? s.editorAreaInfo
     : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
 
@@ -311,7 +312,7 @@ export default function LessonTaskContent({
         )
       })()}
 
-      {!isSandbox && isInformationTask ? (
+      {!isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
       ) : !isSandbox && isQuizTask ? (
         <QuizTask

@@ -10,6 +10,9 @@ import {
   findTaskById,
   findGroupForTask,
   getProgressItems,
+  makeExplainerPseudoTask,
+  isExplainerPseudoTaskId,
+  insertPseudoTaskBefore,
   updateTaskInTasks,
   applyTaskUpdate,
   updateSubtaskTitles,
@@ -126,6 +129,39 @@ describe('findTaskById', () => {
 
   it('returns null for an unknown id', () => {
     expect(findTaskById([task1, group], 'zzz')).toBeNull()
+  })
+})
+
+// ─── explainer pseudo-task helpers ─────────────────────────────────────────────
+
+describe('explainer pseudo-task helpers', () => {
+  it('builds a pseudo task with a synthetic id distinct from the real task', () => {
+    const pseudo = makeExplainerPseudoTask(task1)
+    expect(pseudo.id).not.toBe(task1.id)
+    expect(pseudo.title).toBe(task1.title)
+    expect(pseudo.forTaskId).toBe(task1.id)
+    expect(pseudo.isExplainerPseudo).toBe(true)
+  })
+
+  it('recognizes a pseudo task id and rejects real/invalid ids', () => {
+    const pseudo = makeExplainerPseudoTask(task1)
+    expect(isExplainerPseudoTaskId(pseudo.id)).toBe(true)
+    expect(isExplainerPseudoTaskId(task1.id)).toBe(false)
+    expect(isExplainerPseudoTaskId(undefined)).toBe(false)
+    expect(isExplainerPseudoTaskId(null)).toBe(false)
+  })
+
+  it('inserts a pseudo task immediately before the matching task', () => {
+    const pseudo = makeExplainerPseudoTask(task2)
+    const result = insertPseudoTaskBefore([task1, task2], task2.id, pseudo)
+    expect(result.map(t => t.id)).toEqual([task1.id, pseudo.id, task2.id])
+  })
+
+  it('returns the original array unchanged when the target task is not found', () => {
+    const pseudo = makeExplainerPseudoTask(task1)
+    const input = [task1, task2]
+    const result = insertPseudoTaskBefore(input, 'missing', pseudo)
+    expect(result).toBe(input)
   })
 })
 
