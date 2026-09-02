@@ -63,23 +63,30 @@ Available component types are `battery`, `resistor`, `led`, `push_button`, `slid
 
 In the builder, available components can be toggled one at a time or by group: Power, Basics, Outputs, and Control. Lessons still save `availableComponents` as the individual component type array shown above.
 
-`terminal` is shown to students as a junction. It is a single shared connection point, useful when a circuit needs several wires to meet neatly.
+Powered components and selected wires show estimated voltage and current. Parallel branches receive the same supply voltage and add to total battery current; series devices share the supply voltage and draw less current. This is a classroom DC estimate for simple breadboard circuits, not a SPICE-grade solver.
 
-Batteries support `props.voltage`; the workspace inspector offers 1.5V, 3V, 5V, 9V, and 12V presets. Powered components and selected wires show estimated voltage and current. Parallel branches receive the same supply voltage and add to total battery current; series devices share the supply voltage and draw less current. This is a classroom DC estimate for simple breadboard circuits, not a SPICE-grade solver.
-
-New part defaults:
+Pin names by component type. These strings are the exact values a wire's `from`/`to` and a Checks endpoint selector must use; naming a pin that a component does not have produces a wire that silently never connects, not a validation error. The source of truth is `COMPONENT_PINS` in `src/modules/electronics/circuit.js`, which also drives the builder's Check Editor pin dropdowns.
 
 | Type | Pins | Notes |
 |---|---|---|
-| `transistor` | `collector`, `base`, `emitter` | An electronic switch. The simulation connects collector to emitter when the base has a high signal, either from a wire connected to battery positive or the inspector's Base signal toggle. |
-| `diode` | `anode`, `cathode` | A one-way protection part. The classroom simulation treats anode-to-cathode as a valid path and shows when it is conducting. |
-| `sensor` | `positive`, `signal`, `negative` | A readable input part. `props.kind` defaults to `light`; supported inspector choices are `light`, `temperature`, and `distance`. |
+| `battery` | `positive`, `negative` | The supply. `props.voltage` defaults to `5`; the inspector offers 1.5V, 3V, 5V, 9V, and 12V. |
+| `resistor` | `a`, `b` | Not polarised, so either pin can face the supply. `props.resistanceOhms` defaults to `330`; the inspector offers 100, 220, 330, 1k, 4.7k, and 10k ohm. |
+| `led` | `anode`, `cathode` | Wire `anode` towards positive and `cathode` towards negative. `props.color` defaults to `red`, and `green` and `blue` are also available. |
+| `push_button` | `a`, `b` | A momentary switch, not polarised. `a` and `b` are joined only while the button is held, so a circuit through it is unpowered at rest. |
+| `slide_switch` | `a`, `b` | A latching switch, not polarised. `a` and `b` stay joined while the switch is on, so a circuit through it stays powered until it is switched off. |
+| `potentiometer` | `left`, `wiper`, `right` | A variable 10k ohm resistance. The `wiper` splits that resistance between `left` and `right`; `props.value` defaults to `50`. |
+| `motor` | `positive`, `negative` | A spinning output. Reports a speed percentage from the supplied voltage. |
 | `servo_motor` | `positive`, `signal`, `negative` | A precise-angle motor. `props.angle` defaults to `90`, and the inspector can simulate angles from 0 to 180 degrees. |
+| `buzzer` | `positive`, `negative` | A sound output. Reports a volume percentage from the supplied voltage. |
 | `rgb_led` | `red`, `green`, `blue`, `cathode` | A multi-colour LED. Connect one or more colour pins to positive and the cathode to negative to mix channels. |
 | `lcd1602` | `VCC`, `GND`, `SDA`, `SCL` | A 16×2 I²C character display. Connect VCC/GND for power and wire SDA/SCL directly (or through junctions) to the Micro Controller GPIO pins named in code. |
 | `microcontroller` | `3V3`, `GND`, `GP0`, `GP1`, `GP2`, `GP3` | Runs MicroPython in the Code tab. `3V3` and `GND` act as a simulated 3.3V supply. GPIO pins can drive connected breadboard parts when MicroPython sets them high or low. The builder inspector can add, rename, or remove GPIO pins; wire references are updated when pins are renamed and removed when pins are deleted. `props.code` stores the component's MicroPython code. |
+| `transistor` | `collector`, `base`, `emitter` | An electronic switch. The simulation connects collector to emitter when the base has a high signal, either from a wire connected to battery positive or the inspector's Base signal toggle. |
+| `diode` | `anode`, `cathode` | A one-way protection part. The classroom simulation treats anode-to-cathode as a valid path and shows when it is conducting. |
+| `sensor` | `positive`, `signal`, `negative` | A readable input part. `props.kind` defaults to `light`; supported inspector choices are `light`, `temperature`, and `distance`. |
+| `terminal` | `pin` | Shown to students as a junction. It has one shared pin, and any number of wires can attach to it. |
 
-Resistors support selectable values of 100 ohm, 220 ohm, 330 ohm, 1k ohm, 4.7k ohm, and 10k ohm through `props.resistanceOhms`. LEDs support `props.color` of `red`, `green`, or `blue`. Potentiometers act as a variable 10k ohm resistance for the voltage/current estimate.
+To make a switch or button control something, put it in series between the supply and the load: wire `battery.positive` to one of the switch's pins, the switch's other pin to the load's `positive` (or an LED's `anode`), and the load's `negative` (or `cathode`) back to `battery.negative`. Because `a` and `b` are interchangeable, either pin can face the supply.
 
 ## MicroPython
 
