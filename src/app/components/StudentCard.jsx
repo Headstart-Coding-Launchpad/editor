@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { getQuizOptionText, CONFIDENCE_COLOURS } from './QuizTask'
 import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import PresenceBadge from './PresenceBadge'
 
 function formatLastRun(ts) {
@@ -56,7 +57,16 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
-  const { isPython, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, currentTask, session)
+  // Composed lessons carry `type: 'composed'`, so the module flags have to come from the
+  // task's own moduleType — deriveTaskContext reads lesson.type directly. StudentModal
+  // resolves the same way; without this every code task in a composed lesson (27 of the
+  // 28 published lessons) fell through to the HTML fallback and showed "No run yet".
+  const taskLesson = getEffectiveLessonForTask(lesson, currentTask)
+  const { isPython, isScratch, isElectronics, isArcade, isFilesystem, isQuiz, isInformation, isSessionSandbox } =
+    deriveTaskContext(taskLesson, currentTask, session)
+  // Python, Arcade and Electronics all run code that prints to a console, so the teacher
+  // wants the same first-few-lines-of-output snippet for all three.
+  const hasConsoleOutput = isPython || isArcade || isElectronics
   const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
   const isShortAnswer = quizType === 'short_answer'
   const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
@@ -233,7 +243,7 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
             <span style={{ color: '#9ca3af', fontSize: 12 }}>No answer yet</span>
           )}
         </div>
-      ) : isPython ? (
+      ) : hasConsoleOutput ? (
         isSubmitMode ? (
           <pre style={s.snippet}>
             {student.lastRunStatus === 'submitted'
@@ -243,6 +253,12 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         ) : (
           <pre style={s.snippet}>{(student.currentOutput ?? '').split('\n').slice(0, 3).join('\n') || <span style={{ color: '#9ca3af' }}>No output yet</span>}</pre>
         )
+      ) : isScratch ? (
+        <div style={s.iframeThumb}>
+          <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
+            {student.currentCode ? 'Blocks edited' : 'No blocks yet'}
+          </span>
+        </div>
       ) : isFilesystem ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>

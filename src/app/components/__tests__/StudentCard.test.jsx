@@ -215,4 +215,55 @@ describe('StudentCard', () => {
       expect(props.onRename).toHaveBeenCalledWith('student-1', 'Jamie')
     })
   })
+
+  // A composed lesson's envelope type is 'composed', so the module has to be resolved from
+  // the task's own moduleType. Before this was fixed every code task in a composed lesson
+  // (27 of the 28 published lessons) fell through to the HTML fallback.
+  describe('composed lessons', () => {
+    const composedLesson = moduleType => ({
+      type: 'composed',
+      tasks: [{ id: 1, title: 'Task 1', moduleType }],
+    })
+
+    it('shows the output snippet for a Python task rather than the HTML fallback', () => {
+      render(<StudentCard {...mkProps(
+        { lesson: composedLesson('python') },
+        { currentOutput: 'Hello from Python' },
+      )} />)
+      expect(screen.getByText(/Hello from Python/)).toBeInTheDocument()
+      expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
+    })
+
+    it('shows "No output yet" for a Python task that has not run', () => {
+      render(<StudentCard {...mkProps({ lesson: composedLesson('python') })} />)
+      expect(screen.getByText('No output yet')).toBeInTheDocument()
+      expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
+    })
+
+    it.each(['arcade', 'electronics'])('shows the output snippet for a %s task', moduleType => {
+      render(<StudentCard {...mkProps(
+        { lesson: composedLesson(moduleType) },
+        { currentOutput: 'device ready' },
+      )} />)
+      expect(screen.getByText(/device ready/)).toBeInTheDocument()
+      expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
+    })
+
+    it('shows block state for a Scratch task rather than the HTML fallback', () => {
+      render(<StudentCard {...mkProps(
+        { lesson: composedLesson('scratch') },
+        { currentCode: '{"blocks":[]}' },
+      )} />)
+      expect(screen.getByText('Blocks edited')).toBeInTheDocument()
+      expect(screen.queryByText('HTML project')).not.toBeInTheDocument()
+    })
+
+    it('still shows the HTML fallback for an HTML task', () => {
+      render(<StudentCard {...mkProps(
+        { lesson: composedLesson('html') },
+        { currentFiles: [{ name: 'index.html' }] },
+      )} />)
+      expect(screen.getByText('HTML project')).toBeInTheDocument()
+    })
+  })
 })
