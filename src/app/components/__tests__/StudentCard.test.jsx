@@ -58,9 +58,12 @@ describe('StudentCard', () => {
   })
 
   describe('presence badge', () => {
-    it('shows Online when student is connected', () => {
+    // Online is the default and is already carried by the status dot. Spending a badge
+    // on it put a green pill on every card in the column, which is the same noise the
+    // electronics status strip made by printing "0 motors on".
+    it('does not badge Online when the student is simply connected', () => {
       render(<StudentCard {...mkProps()} />)
-      expect(screen.getByText('Online')).toBeInTheDocument()
+      expect(screen.queryByText('Online')).not.toBeInTheDocument()
     })
 
     it('shows Offline when student is disconnected', () => {
@@ -264,6 +267,32 @@ describe('StudentCard', () => {
         { currentFiles: [{ name: 'index.html' }] },
       )} />)
       expect(screen.getByText('HTML project')).toBeInTheDocument()
+    })
+  })
+
+  // The wall runs in a ~283px single column at eight students. A full-width Expand
+  // button cost ~45px on every card and carried nothing about the student it belonged to.
+  describe('opening a student', () => {
+    it('opens the student when the card itself is clicked', async () => {
+      const user = userEvent.setup()
+      const props = mkProps()
+      render(<StudentCard {...props} />)
+      await user.click(screen.getByRole('button', { name: /expand jamie/i }))
+      expect(props.onExpand).toHaveBeenCalled()
+    })
+
+    it('does not open the student when the rename control is used', async () => {
+      const user = userEvent.setup()
+      const props = mkProps()
+      render(<StudentCard {...props} />)
+      await user.click(screen.getByTitle('Rename student'))
+      expect(props.onExpand).not.toHaveBeenCalled()
+    })
+
+    it('leaves an information task inert', () => {
+      const lesson = { type: 'python', tasks: [{ id: 1, title: 'Task 1', taskType: 'information' }] }
+      render(<StudentCard {...mkProps({ lesson })} />)
+      expect(screen.queryByRole('button', { name: /expand/i })).not.toBeInTheDocument()
     })
   })
 })

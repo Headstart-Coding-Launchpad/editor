@@ -77,16 +77,16 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
           </div>
         )}
 
-        {students.length > 0 && hasCheck && (
+        {students.length > 0 && hasCheck && passedCount > 0 && (
           <div style={s.collapsedStat}>
-            <span style={{ ...s.collapsedBadge, background: '#22c55e' }}>{passedCount}</span>
+            <span style={{ ...s.collapsedBadge, background: 'var(--colour-success)' }}>{passedCount}</span>
             <span style={s.collapsedStatLabel}>passed</span>
           </div>
         )}
 
-        {students.length > 0 && hasCheck && (
+        {students.length > 0 && hasCheck && failedCount > 0 && (
           <div style={s.collapsedStat}>
-            <span style={{ ...s.collapsedBadge, background: '#ef4444' }}>{failedCount}</span>
+            <span style={{ ...s.collapsedBadge, background: 'var(--colour-error)' }}>{failedCount}</span>
             <span style={s.collapsedStatLabel}>failed</span>
           </div>
         )}
@@ -100,17 +100,17 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
     <div style={s.wrap}>
       <div style={s.header}>
         <span style={s.label}>Students</span>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
           {joiningCount > 0 && (
             <span style={{ ...s.checkCountBadge, background: '#f59e0b' }} title={`${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name`}>
               {joiningCount} joining…
             </span>
           )}
-          {hasCheck && (
-            <>
-              <span style={{ ...s.checkCountBadge, background: '#22c55e' }} title="Students who passed the completion check">✓ {passedCount}</span>
-              <span style={{ ...s.checkCountBadge, background: '#ef4444' }} title="Students who failed the completion check">✕ {failedCount}</span>
-            </>
+          {hasCheck && passedCount > 0 && (
+            <span style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }} title="Students who passed the completion check">✓ {passedCount}</span>
+          )}
+          {hasCheck && failedCount > 0 && (
+            <span style={{ ...s.checkCountBadge, background: 'var(--colour-error)' }} title="Students who failed the completion check">✕ {failedCount}</span>
           )}
           <span style={s.count}>{students.length}</span>
           {onRequestFullscreenAll && students.length > 0 && (
@@ -227,6 +227,9 @@ const s = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    minWidth: 0,
     flexShrink: 0,
   },
   label: {
@@ -255,10 +258,10 @@ const s = {
   grid: {
     flex: 1,
     overflowY: 'auto',
-    padding: 10,
+    padding: 8,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: 10,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))',
+    gap: 7,
     alignContent: 'start',
   },
   empty: {

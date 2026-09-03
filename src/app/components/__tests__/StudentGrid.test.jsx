@@ -185,4 +185,26 @@ describe('StudentGrid', () => {
       expect(onSendVideoCallLink).toHaveBeenCalledWith('s1')
     })
   })
+
+  // A solid green 0 beside a solid red 0 rendered whenever the task had a check, whether
+  // or not anyone had passed or failed - the electronics status strip in the two colours
+  // the quiz fix is reclaiming.
+  describe('check counters', () => {
+    const withCheck = { type: 'python', tasks: [{ id: 1, title: 'T', check: { type: 'output_contains', value: 'hi' } }] }
+    const session = { state: 'active', currentTaskId: 1 }
+
+    it('hides both counters while nobody has passed or failed', () => {
+      const students = [{ anonymousId: 's1', displayName: 'A', online: true, lastRunStatus: null }]
+      render(<StudentGrid students={students} lesson={withCheck} session={session} />)
+      expect(screen.queryByTitle(/passed the completion check/i)).not.toBeInTheDocument()
+      expect(screen.queryByTitle(/failed the completion check/i)).not.toBeInTheDocument()
+    })
+
+    it('shows only the counter that has a value', () => {
+      const students = [{ anonymousId: 's1', displayName: 'A', online: true, lastRunStatus: 'success', checkPassed: true }]
+      render(<StudentGrid students={students} lesson={withCheck} session={session} />)
+      expect(screen.getByTitle(/passed the completion check/i)).toBeInTheDocument()
+      expect(screen.queryByTitle(/failed the completion check/i)).not.toBeInTheDocument()
+    })
+  })
 })
