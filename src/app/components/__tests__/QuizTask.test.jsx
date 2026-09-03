@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
-import { fitScratchQuizScale, shrinkToFit } from '../quiz/quizUtils'
+import { fitScratchQuizScale, OPTION_STATE_COLOURS, shrinkToFit } from '../quiz/quizUtils'
 
 const MULTIPLE_CHOICE_TASK = {
   title: 'Pick one',
@@ -327,5 +327,72 @@ describe('QuizTask short answer', () => {
     const answer = screen.getByText((_, element) => element?.tagName === 'STRONG' && element.textContent === 'first line\nsecond line')
 
     expect(answer).toHaveStyle({ whiteSpace: 'pre-wrap' })
+  })
+})
+
+// The defect this guards: answer options were coloured from a four-entry palette
+// indexed by grid position, and the same palette supplied the selected-state fill.
+// Two of its entries were the app's verdict colours, so selecting the option in
+// position 2 rendered a card identical to a wrong answer, and position 4 one
+// identical to the revealed correct answer.
+describe('QuizTask multiple choice answer colours', () => {
+  const FOUR_OPTION_TASK = {
+    title: 'Pick one',
+    taskType: 'quiz',
+    quizType: 'multiple_choice',
+    options: [
+      { id: 'a', text: 'Alpha' },
+      { id: 'b', text: 'Bravo' },
+      { id: 'c', text: 'Charlie' },
+      { id: 'd', text: 'Delta' },
+    ],
+    check: { type: 'answer_equals', value: 'a' },
+  }
+
+  const VERDICT_COLOURS = ['var(--colour-success-edge)', 'var(--colour-error-edge)']
+
+  it('gives every resting option the same neutral surface, whatever its position', () => {
+    render(<QuizTask task={FOUR_OPTION_TASK} />)
+    const backgrounds = screen.getAllByRole('radio').map(el => el.style.background || el.style.backgroundColor)
+    expect(new Set(backgrounds).size).toBe(1)
+    expect(backgrounds[0]).not.toBe('')
+    VERDICT_COLOURS.forEach(verdict => expect(backgrounds).not.toContain(verdict))
+  })
+
+  it('never renders a verdict colour before submission, at any position', async () => {
+    const user = userEvent.setup()
+    for (const position of [0, 1, 2, 3]) {
+      const { unmount } = render(<QuizTask task={FOUR_OPTION_TASK} />)
+      const options = screen.getAllByRole('radio')
+      await user.click(options[position])
+      const backgrounds = screen.getAllByRole('radio').map(el => el.style.background || el.style.backgroundColor)
+      VERDICT_COLOURS.forEach(verdict => expect(backgrounds).not.toContain(verdict))
+      unmount()
+    }
+  })
+
+  it('distinguishes the selected fill from both verdict fills', () => {
+    const { selected, correct, wrong } = OPTION_STATE_COLOURS
+    expect(selected.background).not.toBe(correct.background)
+    expect(selected.background).not.toBe(wrong.background)
+    expect(correct.background).not.toBe(wrong.background)
+  })
+
+  it('reserves the verdict colours for a revealed answer', () => {
+    render(
+      <QuizTask
+        task={FOUR_OPTION_TASK}
+        selectedAnswer="b"
+        submitted
+        disabled
+        checkPassed={false}
+        showCorrectAnswer
+      />,
+    )
+    const byLetter = Object.fromEntries(
+      screen.getAllByRole('radio').map(el => [el.textContent.trim()[0].toLowerCase(), el.style.background || el.style.backgroundColor]),
+    )
+    expect(byLetter.a).toBe('var(--colour-success-edge)')
+    expect(byLetter.b).toBe('var(--colour-error-edge)')
   })
 })

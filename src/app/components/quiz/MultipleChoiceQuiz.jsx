@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
-import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_COLOURS, QuestionPanel, shrinkToFit } from './quizUtils'
+import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_STATE_COLOURS, QuestionPanel, shrinkToFit } from './quizUtils'
 
 export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
   const options = task?.options ?? []
@@ -50,15 +50,19 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
       {showQuestion && <QuestionPanel task={task} />}
       <div ref={optionsFrameRef} style={s.optionsFrame}>
         <div ref={optionsGridRef} style={s.options} role="radiogroup" aria-label={task?.title ?? 'Quiz options'}>
-          {shuffledOptions.map((option, index) => {
+          {shuffledOptions.map(option => {
             const active = selectedAnswer === option.id
             const isCorrect = revealAnswers && option.id === correctId
             const isWrong = revealAnswers && active && option.id !== correctId
-            const colour = OPTION_COLOURS[index % OPTION_COLOURS.length]
+            // Resting, chosen, or judged - never "whichever cell you happen to be in".
+            const colour = isCorrect ? OPTION_STATE_COLOURS.correct
+              : isWrong ? OPTION_STATE_COLOURS.wrong
+              : active ? OPTION_STATE_COLOURS.selected
+              : OPTION_STATE_COLOURS.resting
 
-            const bg = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : active ? colour.active : colour.background
-            const border = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : colour.border
-            const textColour = isCorrect || isWrong || active ? '#fff' : colour.text
+            const bg = colour.background
+            const border = colour.border
+            const textColour = colour.text
             const optionText = normalizeQuizAnswerText(option.text)
             const usesBlockMarkdown = hasFencedCodeBlock(optionText)
             const usesScratchMarkdown = isScratchMarkdown(optionText)
@@ -88,7 +92,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
                   }
                 }}
               >
-                <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
+                <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : 'var(--colour-primary)', color: '#fff' }}>
                   {option.id}
                 </span>
                 <div style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}>
