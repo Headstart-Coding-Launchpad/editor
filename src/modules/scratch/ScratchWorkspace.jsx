@@ -127,7 +127,7 @@ const toCanvasY = y => STAGE_H / 2 - y
 
 export const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 
-const SPRITE_TYPE_COLOR = { cat: '#FFA500', ball: '#4C97FF', star: '#FFD700', arrow: '#9966FF', bat: '#374151', parrot: '#22c55e' }
+const SPRITE_TYPE_COLOR = { cat: '#FFA500', ball: '#4C97FF', star: '#FFD700', arrow: '#9966FF', bat: 'var(--colour-ink-strong)', parrot: '#22c55e' }
 
 export function isSpriteStudentEditable(sprite) {
   return sprite?.studentEditable !== false
@@ -210,11 +210,11 @@ function drawScratchSpriteAtOrigin(ctx, type, r) {
       break
     case 'bat':
       ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2)
-      ctx.fillStyle = '#374151'; ctx.fill()
+      ctx.fillStyle = 'var(--colour-ink-strong)'; ctx.fill()
       ctx.beginPath(); ctx.ellipse(-r * 0.9, -r * 0.1, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2)
-      ctx.fillStyle = '#374151'; ctx.fill()
+      ctx.fillStyle = 'var(--colour-ink-strong)'; ctx.fill()
       ctx.beginPath(); ctx.ellipse(r * 0.9, -r * 0.1, r * 0.55, r * 0.3, 0.3, 0, Math.PI * 2)
-      ctx.fillStyle = '#374151'; ctx.fill()
+      ctx.fillStyle = 'var(--colour-ink-strong)'; ctx.fill()
       break
     case 'parrot':
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
@@ -2245,7 +2245,7 @@ export default function ScratchWorkspace({
         </div>
       )}
       {!hideStage && (compact || !stagePanelCollapsed) && (
-        <div style={compact ? { ...s.stagePane, display: activePane === 'stage' ? 'flex' : 'none', flex: 1 } : s.stagePane}>
+        <div style={compact ? { ...s.stagePane, display: activePane === 'stage' ? 'flex' : 'none', flexGrow: 1, flexShrink: 1, flexBasis: 0 } : s.stagePane}>
           <div style={s.stageToolbar}>
             {!compact && (
               <CollapseTabButton
@@ -2275,8 +2275,8 @@ export default function ScratchWorkspace({
             >
               <span style={s.stopIcon} aria-hidden="true" />
             </button>
-            <button type="button" className="btn-secondary" style={s.resetBtn} onClick={handleResetStage} title="Reset stage">
-              Reset
+            <button type="button" className="btn-secondary" style={s.resetBtn} onClick={handleResetStage} title="Reset the stage: put sprites back where they started">
+              Reset Stage
             </button>
             {canAddBackdrop && (
               <div style={s.addPickerWrap} ref={backdropAddWrapRef}>
@@ -2391,22 +2391,25 @@ const s = {
   // Compact layout: Blocks/Stage tab bar on top, one full-width pane below (see `compact`).
   rootCompact: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minWidth: 0, minHeight: 0, height: '100%', gap: 8, position: 'relative' },
   overlay: { position: 'absolute', inset: 0, zIndex: 10, background: '#f5f5f5', borderRadius: 8 },
-  editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
-  editorPaneHeader: { display: 'flex', alignItems: 'center', height: 30, padding: '0 6px', borderBottom: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 },
+  editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid var(--ui-border-neutral)', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
+  editorPaneHeader: { display: 'flex', alignItems: 'center', height: 30, padding: '0 6px', borderBottom: '1px solid var(--ui-border-neutral)', background: '#fafafa', flexShrink: 0 },
   editorPaneBody: { flex: 1, minHeight: 0, position: 'relative' },
   flyoutToggleBtnOpen: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'var(--colour-primary)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
   flyoutToggleBtnHide: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: 'var(--colour-primary)', display: 'flex', alignItems: 'center', gap: 5 },
+  // The compact variant overrides these with flexGrow/flexShrink/flexBasis longhands
+  // rather than `flex: 1`: mixing the shorthand onto a style that already sets flexShrink
+  // made React warn about removing a style property during rerender on every transition.
   stagePane: { display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: STAGE_W * MIN_STAGE_SCALE, minHeight: 0, overflow: 'auto' },
   stageRailPane: { width: 44, minWidth: 44, display: 'flex', flexDirection: 'column', flexShrink: 0 },
-  stageToolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' },
-  canvas: { display: 'block', width: STAGE_W, height: STAGE_H, border: '1px solid #e5e7eb', borderRadius: 8 },
+  stageToolbar: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap' },
+  canvas: { display: 'block', width: STAGE_W, height: STAGE_H, border: '1px solid var(--ui-border-neutral)', borderRadius: 8 },
   stageFrame: { position: 'relative', width: STAGE_W, height: STAGE_H },
   // ── Sprite panel (full, below stage) ─────────────────────────────────────────
   spritePanel: { display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 0 2px' },
   spriteTileRow: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   spriteTile: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    padding: '6px 8px', border: '2px solid #e5e7eb', borderRadius: 8,
+    padding: '6px 8px', border: '2px solid var(--ui-border-neutral)', borderRadius: 8,
     background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
     transition: 'border-color 0.12s, background 0.12s', position: 'relative',
   },
@@ -2425,46 +2428,46 @@ const s = {
   addPickerPanel: {
     position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20,
     display: 'flex', flexWrap: 'wrap', gap: 6, width: 220, maxHeight: 220, overflowY: 'auto',
-    padding: 8, background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
+    padding: 8, background: '#fff', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
   },
-  addPickerEmpty: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: 0 },
+  addPickerEmpty: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--colour-muted-soft)', margin: 0 },
   addPickerItem: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 64,
-    padding: '4px 4px 6px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
+    padding: '4px 4px 6px', border: '1px solid var(--ui-border-neutral)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
   },
   addPickerThumbImg: { width: 32, height: 32, objectFit: 'contain' },
   addPickerThumbEmoji: { width: 32, height: 32, fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   addPickerName: { fontSize: '0.68rem', fontWeight: 600, color: 'var(--colour-text)', maxWidth: 58, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   // ── "Make a Variable" modal ──────────────────────────────────────────────────
   modalOverlay: { position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  variableModal: { display: 'grid', gap: 8, width: 260, padding: 16, background: '#fff', border: '1px solid #d1d5db', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.22)' },
+  variableModal: { display: 'grid', gap: 8, width: 260, padding: 16, background: '#fff', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.22)' },
   variableModalRow: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 },
-  spritePropBar: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '4px 2px', borderTop: '1px solid #e5e7eb' },
-  spritePanelEditor: { paddingTop: 10, borderTop: '1px solid #e5e7eb' },
+  spritePropBar: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '4px 2px', borderTop: '1px solid var(--ui-border-neutral)' },
+  spritePanelEditor: { paddingTop: 10, borderTop: '1px solid var(--ui-border-neutral)' },
   spritePanelFooter: { paddingTop: 8 },
   spritePropField: { display: 'flex', flexDirection: 'column', gap: 2 },
-  spritePropLabel: { fontSize: '0.65rem', fontWeight: 700, color: '#6b7280', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.03em' },
-  spritePropInput: { width: 58, padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--colour-text)', textAlign: 'center', background: '#fff' },
-  showHideBtn: { width: 30, height: 26, border: '1px solid #d1d5db', borderRadius: 5, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', transition: 'background 0.1s' },
+  spritePropLabel: { fontSize: '0.65rem', fontWeight: 700, color: 'var(--colour-muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.03em' },
+  spritePropInput: { width: 58, padding: '3px 5px', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--colour-text)', textAlign: 'center', background: '#fff' },
+  showHideBtn: { width: 30, height: 26, border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 5, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', transition: 'background 0.1s' },
   showHideBtnOn:  { background: '#f0fdf4', borderColor: '#86efac' },
   showHideBtnOff: { background: '#fef2f2', borderColor: '#fca5a5', opacity: 0.7 },
   rotStyleGroup: { display: 'flex', gap: 2 },
-  rotStyleBtn: { width: 26, height: 26, border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', fontFamily: 'var(--font-body)', transition: 'background 0.1s, border-color 0.1s' },
+  rotStyleBtn: { width: 26, height: 26, border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', fontFamily: 'var(--font-body)', transition: 'background 0.1s, border-color 0.1s' },
   rotStyleBtnActive: { background: '#ede9fe', borderColor: 'var(--colour-primary)', color: 'var(--colour-primary)' },
-  costumeSelect: { padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--colour-text)', background: '#fff', cursor: 'pointer' },
+  costumeSelect: { padding: '3px 5px', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--colour-text)', background: '#fff', cursor: 'pointer' },
   // ── Sprite panel compact (hideStage mode) ─────────────────────────────────────
-  spritePanelCompact: { display: 'flex', flexDirection: 'column', borderBottom: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 },
+  spritePanelCompact: { display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--ui-border-neutral)', background: '#fafafa', flexShrink: 0 },
   spriteTileRowCompact: { display: 'flex', gap: 5, flexWrap: 'wrap', padding: '5px 8px' },
   spriteTileCompact: {
     display: 'flex', alignItems: 'center', gap: 5,
-    padding: '3px 8px 3px 4px', border: '2px solid #e5e7eb', borderRadius: 16,
+    padding: '3px 8px 3px 4px', border: '2px solid var(--ui-border-neutral)', borderRadius: 16,
     background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
     transition: 'border-color 0.12s, background 0.12s',
   },
   spriteTileCompactActive: { borderColor: 'var(--colour-primary)', background: '#f3eeff' },
   spriteTileCompactThumb: { width: 24, height: 24, borderRadius: 4, overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   spriteTileCompactName: { fontSize: '0.78rem', fontWeight: 600, color: 'var(--colour-text)', maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  spritePropBarCompact: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '4px 8px 6px', borderTop: '1px solid #e5e7eb' },
+  spritePropBarCompact: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '4px 8px 6px', borderTop: '1px solid var(--ui-border-neutral)' },
   variableMonitors: { position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 3, zIndex: 5, pointerEvents: 'none' },
   variableMonitor: { display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,140,26,0.92)', borderRadius: 4, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700 },
   variableMonitorName: { padding: '2px 6px', color: '#fff', background: 'rgba(0,0,0,0.18)' },
@@ -2473,13 +2476,13 @@ const s = {
   broadcastToast: { background: 'rgba(255, 171, 25, 0.96)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.22)', whiteSpace: 'nowrap', animation: 'scratch-toast-in 0.18s ease' },
   errorToast: { background: 'rgba(220, 38, 38, 0.96)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.22)', whiteSpace: 'nowrap', animation: 'scratch-toast-in 0.18s ease' },
   broadcastToastIcon: { fontSize: '0.75rem' },
-  askBox: { position: 'absolute', left: 12, right: 12, bottom: 12, display: 'grid', gap: 8, padding: 10, background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.14)' },
+  askBox: { position: 'absolute', left: 12, right: 12, bottom: 12, display: 'grid', gap: 8, padding: 10, background: '#fff', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.14)' },
   askLabel: { fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--colour-text)' },
   askRow: { display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 },
-  askInput: { minWidth: 0, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: 14 },
+  askInput: { minWidth: 0, padding: '8px 10px', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: 14 },
   askBtn: { padding: '8px 12px', fontSize: 13, borderRadius: 6 },
   controls: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  greenFlagBtn: { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderColor: '#9ca3af' },
+  greenFlagBtn: { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderColor: 'var(--colour-muted-soft)' },
   stopFlagBtn:  { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ef4444', borderColor: '#dc2626', color: '#fff' },
   stopIcon:   { width: 14, height: 14, display: 'inline-block', background: '#fff', borderRadius: 2 },
   resetBtn:   { padding: '8px 14px', fontSize: 14 },
@@ -2487,5 +2490,5 @@ const s = {
   centre:     { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 32 },
   loadingText: { fontFamily: 'var(--font-body)', color: 'var(--colour-text)', fontSize: '1rem' },
   errorText:   { fontFamily: 'var(--font-body)', color: '#ef4444', fontSize: '1rem' },
-  checkNone:   { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af' },
+  checkNone:   { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-muted-soft)' },
 }
