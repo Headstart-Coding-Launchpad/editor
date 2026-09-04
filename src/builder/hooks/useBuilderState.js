@@ -205,7 +205,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
         ),
       }))
     } else {
-      const dup = { ...task, id: newId, title: task.title + ' (copy)' }
+      const dup = { ...task, id: newId, title: task.title ? `${task.title} (copy)` : '' }
       handleLessonUpdate(prev => ({ ...prev, tasks: [...prev.tasks, dup] }))
       selectTask(dup.id)
       return

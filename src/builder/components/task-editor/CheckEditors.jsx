@@ -1,6 +1,5 @@
 import React from 'react'
 import { MarkdownFieldEditor } from '../ExplainerEditor'
-import { Field } from './TaskEditorFields'
 import { getStageRole } from '../../../shared/taskUtils'
 import {
   formatCheckFailure,

@@ -181,34 +181,37 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
     resetPreviewRun()
 
     if (moduleType === 'python') {
-      if (!lessonMod.runtime.isReady()) {
-        setPreviewPyodideStatus('loading')
-        await lessonMod.runtime.init(msg => setPreviewPyodideStatus(msg))
-        setPreviewPyodideStatus('ready')
-      }
-      let accumulated = ''
-      const echoOutput = text => { accumulated += text; setPreviewOutput(accumulated) }
-      previewAppendOutputRef.current = echoOutput
-      const result = await lessonMod.runtime.run(assembled, task, {
-        onOutput: echoOutput,
-        onInputRequired: p => setPreviewInputPrompt(p),
-      })
-      setPreviewInputPrompt(null)
+      try {
+        if (!lessonMod.runtime.isReady()) {
+          setPreviewPyodideStatus('loading')
+          await lessonMod.runtime.init(msg => setPreviewPyodideStatus(msg))
+          setPreviewPyodideStatus('ready')
+        }
+        let accumulated = ''
+        const echoOutput = text => { accumulated += text; setPreviewOutput(accumulated) }
+        previewAppendOutputRef.current = echoOutput
+        const result = await lessonMod.runtime.run(assembled, task, {
+          onOutput: echoOutput,
+          onInputRequired: p => setPreviewInputPrompt(p),
+        })
+        setPreviewInputPrompt(null)
 
-      if (result.status === 'stopped') {
+        if (result.status === 'stopped') return
+
+        setPreviewRunStatus(result.status)
+        if (task.check) {
+          const context = { status: result.status, code: assembled, variables: result.variables ?? {} }
+          const passed = normalizeChecks(task.check).every(c => evaluateSingleCheck(c, accumulated, context))
+          setPreviewCheckPassed(passed)
+          setPreviewCheckAttempted(true)
+          set('_checkTested', true)
+        }
+      } catch {
+        lessonMod.runtime.stop()
+        setPreviewRunStatus('error')
+      } finally {
         setPreviewRunning(false)
-        return
       }
-
-      setPreviewRunStatus(result.status)
-      if (task.check) {
-        const context = { status: result.status, code: assembled, variables: result.variables ?? {} }
-        const passed = normalizeChecks(task.check).every(c => evaluateSingleCheck(c, accumulated, context))
-        setPreviewCheckPassed(passed)
-        setPreviewCheckAttempted(true)
-        set('_checkTested', true)
-      }
-      setPreviewRunning(false)
       return
     }
 
@@ -226,6 +229,10 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         setPreviewCheckAttempted(true)
         set('_checkTested', true)
       }
+      setPreviewRunning(false)
+    }).catch(err => {
+      console.error('Failed to read HTML preview output for check evaluation', err)
+      setPreviewRunStatus('error')
       setPreviewRunning(false)
     })
   }

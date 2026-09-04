@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { MarkdownRenderer } from '../../../shared/markdown'
 import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from '../../../app/components/CollapsiblePanelControls'
 

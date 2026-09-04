@@ -1,43 +1,12 @@
 import React, { useState } from 'react'
 import { flattenTasks, formatEstimatedMinutes, getTaskPriorityCounts, getTotalEstimatedMinutes, isLegacyDraftTask } from '../../shared/taskUtils'
+import { TaskFormatIcon } from './task-editor/TaskEditorFields'
 
 function taskIconType(task) {
   if (task.taskType === 'information') return 'information'
   if (task.taskType === 'quiz') return 'quiz'
   if (task.toolbox || task.starterBlocks || task.completeBlocks) return 'scratch'
   return 'code'
-}
-
-function TaskFormatIcon({ type }) {
-  const common = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }
-  if (type === 'scratch') return (
-    <svg {...common}>
-      <rect x="2" y="2" width="9" height="9" rx="1.5" />
-      <rect x="13" y="2" width="9" height="9" rx="1.5" />
-      <rect x="2" y="13" width="9" height="9" rx="1.5" />
-      <rect x="13" y="13" width="9" height="9" rx="1.5" />
-    </svg>
-  )
-  if (type === 'information') return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
-  )
-  if (type === 'quiz') return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <path d="M12 17h.01" />
-    </svg>
-  )
-  return (
-    <svg {...common}>
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-    </svg>
-  )
 }
 
 function PriorityBadge({ priority }) {
@@ -333,7 +302,7 @@ export default function TaskList({
                         >
                           <span style={s.subtaskNum}>{taskGlobalNums[subtask.id]}</span>
                           <span style={s.taskTypeIcon} title={`${taskIconType(subtask)} task`}>
-                            <TaskFormatIcon type={taskIconType(subtask)} />
+                            <TaskFormatIcon type={taskIconType(subtask)} size={15} />
                           </span>
                           <span style={s.title}>
                             {subtask.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
@@ -386,7 +355,7 @@ export default function TaskList({
             >
               <span style={s.num}>{taskGlobalNums[item.id]}</span>
               <span style={s.taskTypeIcon} title={`${taskIconType(item)} task`}>
-                <TaskFormatIcon type={taskIconType(item)} />
+                <TaskFormatIcon type={taskIconType(item)} size={15} />
               </span>
               <span style={s.title}>
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}

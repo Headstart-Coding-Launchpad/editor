@@ -1,10 +1,12 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { storage } from '../../../shared/firebase'
 import { s } from './styles'
 
 export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate, onRefresh }) {
   const [uploads, setUploads] = useState({})
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   function handleFileSelect() {
     if (!lessonId) { alert('Set a lesson ID before uploading assets.'); return }
@@ -27,26 +29,35 @@ export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate
     task.on(
       'state_changed',
       snap => {
+        if (!mountedRef.current) return
         const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
         setUploads(prev => ({ ...prev, [file.name]: { progress: pct, error: null } }))
       },
       err => {
+        if (!mountedRef.current) return
         setUploads(prev => ({ ...prev, [file.name]: { progress: 0, error: err.message } }))
       },
       async () => {
-        const url = await getDownloadURL(task.snapshot.ref)
-        setUploads(prev => {
-          const next = { ...prev }
-          delete next[file.name]
-          return next
-        })
-        onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url, showInEditor: true }])
-        onRefresh?.()
+        try {
+          const url = await getDownloadURL(task.snapshot.ref)
+          if (!mountedRef.current) return
+          setUploads(prev => {
+            const next = { ...prev }
+            delete next[file.name]
+            return next
+          })
+          onUpdate(prev => [...prev.filter(a => a.name !== file.name), { name: file.name, url, showInEditor: true }])
+          onRefresh?.()
+        } catch (err) {
+          if (!mountedRef.current) return
+          setUploads(prev => ({ ...prev, [file.name]: { progress: 100, error: err.message } }))
+        }
       }
     )
   }
 
   async function handleDelete(asset) {
+    if (!lessonId) return
     if (!confirm(`Delete "${asset.name}" from Firebase Storage?`)) return
     try {
       await deleteObject(ref(storage, `lessons/${lessonId}/assets/${asset.name}`))

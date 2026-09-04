@@ -28,6 +28,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
   const [levels, setLevels] = useState([])
+  const [levelsError, setLevelsError] = useState(null)
 
   function set(field, value) {
     onUpdate(prev => ({ ...prev, [field]: value }))
@@ -84,7 +85,11 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
   useEffect(() => {
     return onSnapshot(collection(firestore, LEVEL_COLLECTION), snap => {
       setLevels(snap.docs.map(d => normalizeLevelRecord({ id: d.id, ...d.data() })))
-    }, () => setLevels([]))
+      setLevelsError(null)
+    }, err => {
+      setLevels([])
+      setLevelsError(err.message)
+    })
   }, [])
 
   const lessonTypeLabel = getLessonTypeLabel(lesson.type)
@@ -169,7 +174,12 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           </Field>
         )}
 
-        <Field label="Level" hint={`Scoped to ${scope.scopeType}: ${scope.scopeId}. Create levels in Admin > Levels.`}>
+        <Field
+          label="Level"
+          hint={levelsError
+            ? `Couldn't load levels: ${levelsError}`
+            : `Scoped to ${scope.scopeType}: ${scope.scopeId}. Create levels in Admin > Levels.`}
+        >
           <select
             style={s.input}
             value={levelRef?.id ?? ''}

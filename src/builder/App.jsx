@@ -6,7 +6,6 @@ import { fetchLessonList } from '../shared/lessonService'
 import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
-import { DEFAULT_CIRCUIT, cloneCircuit } from '../modules/electronics/circuit'
 
 export const LS_KEY = 'headstart_builder_current'
 
@@ -63,7 +62,11 @@ export default function BuilderApp() {
   const updateLesson = useCallback((updater) => {
     setLesson(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      localStorage.setItem(LS_KEY, JSON.stringify(next))
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(next))
+      } catch (err) {
+        console.warn('Failed to save lesson draft to localStorage', err)
+      }
       setDirty(true)
       return next
     })
@@ -192,6 +195,7 @@ function LessonTypeChooser({ onChoose, onUpload }) {
               <span style={s.choiceDescription}>Start with an empty lesson, then add Python, Scratch, Arcade Kit, HTML, Filesystem, or Electronics modules.</span>
             </button>
           </div>
+          {/* Single composed-type creation flow only — kept for potential future per-type quick-create. */}
           {false && <div style={s.choiceGrid}>
             <button style={s.choiceButton} onClick={() => onChoose('python')}>
               <span style={s.choiceName}>Python</span>

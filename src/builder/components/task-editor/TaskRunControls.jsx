@@ -13,7 +13,7 @@ export default function TaskRunControls({ running, runningTests, pyodideStatus, 
       {hasTests && (
         <button
           className="btn-primary"
-          onClick={runningTests ? undefined : onRunTests}
+          onClick={onRunTests}
           disabled={running || pyodideStatus === 'loading' || runningTests}
           style={{ padding: '10px 28px', fontSize: 15 }}
         >

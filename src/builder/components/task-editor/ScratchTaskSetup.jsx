@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ExplainerEditor from '../ExplainerEditor'
 import ScratchWorkspace from '../../../modules/scratch/ScratchWorkspace'
 import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
@@ -59,6 +59,13 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const modalCompleteBlocksRef = useRef(null)
   const modalCompleteSpriteStatesRef = useRef(null)
   const modalStageSpriteStatesRef = useRef({})
+  const closeStarterBlocksFrameRef = useRef(null)
+  const tabChangeFrameRef = useRef(null)
+
+  useEffect(() => () => {
+    if (closeStarterBlocksFrameRef.current != null) cancelAnimationFrame(closeStarterBlocksFrameRef.current)
+    if (tabChangeFrameRef.current != null) cancelAnimationFrame(tabChangeFrameRef.current)
+  }, [])
 
   const codeStages = task.codeStages ?? []
 
@@ -120,7 +127,10 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
 
   function handleCloseStarterBlocks() {
     setStarterBlocksSyncKey(key => key + 1)
-    requestAnimationFrame(() => setStarterBlocksOpen(false))
+    closeStarterBlocksFrameRef.current = requestAnimationFrame(() => {
+      closeStarterBlocksFrameRef.current = null
+      setStarterBlocksOpen(false)
+    })
   }
 
   function toggleSidebarSection(name) {
@@ -133,7 +143,8 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
 
     if (tab === 'complete') {
       setStarterBlocksSyncKey(key => key + 1)
-      requestAnimationFrame(() => {
+      tabChangeFrameRef.current = requestAnimationFrame(() => {
+        tabChangeFrameRef.current = null
         const starterSnapshot = modalStarterBlocksRef.current ?? modalStarterBlocks ?? task.starterBlocks
         const initBlocks = task.completeBlocks != null
           ? cloneBlocks(task.completeBlocks)

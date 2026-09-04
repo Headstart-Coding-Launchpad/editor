@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import SplitPane from '../../../shared/SplitPane'
 import { CodeEditor } from '../../../shared/CodeEditor'
 import FileManager from '../FileManager'
@@ -13,6 +13,10 @@ import { getEffectiveLessonForModule, getLessonModules, isComposedLesson } from 
 import Modal from './Modal'
 import { s } from './styles'
 
+function isPythonLikeType(type) {
+  return type === 'python' || type === 'arcade'
+}
+
 function getSandboxStarterSummaryForType(lesson) {
   const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
     ? (lesson.sandboxStarter ?? '').split('\n').length
@@ -20,7 +24,7 @@ function getSandboxStarterSummaryForType(lesson) {
   const sandboxFileCount = lesson.sandboxStarterFiles?.length ?? 0
   const sandboxFsCount = lesson.sandboxStarterFs ? Object.keys(lesson.sandboxStarterFs).length - 1 : 0
 
-  if (lesson.type === 'python' || lesson.type === 'arcade') {
+  if (isPythonLikeType(lesson.type)) {
     return sandboxLineCount ? `${sandboxLineCount} lines configured` : 'No sandbox starter code set.'
   }
   if (lesson.type === 'scratch') {
@@ -108,7 +112,7 @@ function ComposedSandboxStarterModal({ lesson, onSetModuleSandboxField, onClose 
 }
 
 function SandboxStarterEditor({ lesson, onSetField }) {
-  const isPython = lesson.type === 'python' || lesson.type === 'arcade'
+  const isPython = isPythonLikeType(lesson.type)
   const isScratch = lesson.type === 'scratch'
   const isFilesystem = lesson.type === 'filesystem'
   const isElectronics = lesson.type === 'electronics'
@@ -187,12 +191,18 @@ function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath,
   const [testBlocks, setTestBlocks] = useState(() => cloneScratchStarter(parseScratchStarter(value)))
   const [syncNowKey, setSyncNowKey] = useState(0)
   const starterBlocksRef = useRef(parseScratchStarter(value))
+  const tabChangeFrameRef = useRef(null)
+
+  useEffect(() => () => {
+    if (tabChangeFrameRef.current != null) cancelAnimationFrame(tabChangeFrameRef.current)
+  }, [])
 
   function handleTabChange(tab) {
     if (tab === activeTab) return
     if (tab === 'test') {
       setSyncNowKey(key => key + 1)
-      requestAnimationFrame(() => {
+      tabChangeFrameRef.current = requestAnimationFrame(() => {
+        tabChangeFrameRef.current = null
         const snapshot = starterBlocksRef.current ?? parseScratchStarter(value)
         setTestBlocks(cloneScratchStarter(snapshot))
         setActiveTab('test')

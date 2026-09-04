@@ -41,6 +41,15 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     pythonMod.runtime.stop()
   }
 
+  async function ensurePyodideReady() {
+    if (pythonMod.runtime.isReady()) return
+    // No progress callback — nothing displays the raw progress text, and passing
+    // one previously clobbered pyodideStatus's enum with progress strings mid-load.
+    setPyodideStatus('loading')
+    await pythonMod.runtime.init()
+    setPyodideStatus('ready')
+  }
+
   async function handleRunTests() {
     if (runningTests) return
     const tests = task.tests ?? []
@@ -54,13 +63,7 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
 
     const results = []
     try {
-      if (!pythonMod.runtime.isReady()) {
-        // No progress callback — nothing displays the raw progress text, and passing
-        // one previously clobbered pyodideStatus's enum with progress strings mid-load.
-        setPyodideStatus('loading')
-        await pythonMod.runtime.init()
-        setPyodideStatus('ready')
-      }
+      await ensurePyodideReady()
 
       for (const test of tests) {
         const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
@@ -101,42 +104,43 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     setIframeSrc(null)
 
     if (isPython) {
-      if (!pythonMod.runtime.isReady()) {
-        // No progress callback — nothing displays the raw progress text, and passing
-        // one previously clobbered pyodideStatus's enum with progress strings mid-load.
-        setPyodideStatus('loading')
-        await pythonMod.runtime.init()
-        setPyodideStatus('ready')
-      }
+      try {
+        await ensurePyodideReady()
 
-      let accumulated = ''
-      const echoOutput = text => { accumulated += text; setOutput(accumulated) }
-      appendOutputRef.current = echoOutput
-      const result = await pythonMod.runtime.run(activePythonCode, task, {
-        onOutput: echoOutput,
-        onInputRequired: p => setInputPrompt(p),
-      })
-      setInputPrompt(null)
+        let accumulated = ''
+        const echoOutput = text => { accumulated += text; setOutput(accumulated) }
+        appendOutputRef.current = echoOutput
+        const result = await pythonMod.runtime.run(activePythonCode, task, {
+          onOutput: echoOutput,
+          onInputRequired: p => setInputPrompt(p),
+        })
+        setInputPrompt(null)
 
-      if (result.status === 'stopped') {
-        setRunning(false)
-        return
-      }
+        if (result.status === 'stopped') return
 
-      setRunStatus(result.status)
+        setRunStatus(result.status)
 
-      const checksToEval = normalizeChecks(task.check)
-      if (checksToEval.length > 0) {
-        const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
-        const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) }))
-        setCheckResults(results)
-        set('_checkTested', true)
-        const feedbackResults = evaluateFeedbackCheckResults(task, accumulated, checkContext)
-        if (feedbackResults.length > 0) {
-          setIncorrectCheckResults(feedbackResults)
+        const checksToEval = normalizeChecks(task.check)
+        if (checksToEval.length > 0) {
+          const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
+          const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) }))
+          setCheckResults(results)
+          set('_checkTested', true)
+          const feedbackResults = evaluateFeedbackCheckResults(task, accumulated, checkContext)
+          if (feedbackResults.length > 0) {
+            setIncorrectCheckResults(feedbackResults)
+          }
         }
+      } catch {
+        pythonMod.runtime.stop()
+        setRunStatus('error')
+      } finally {
+        setRunning(false)
       }
-    } else if (!isScratch) {
+      return
+    }
+
+    if (!isScratch) {
       setHtmlPreviewOpen(true)
       const src = htmlMod.runtime.buildPreviewSrc(
         { files: activeFiles, entryFile: activeEntryFile },
@@ -163,6 +167,9 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
           if (feedbackResults.length > 0) {
             setIncorrectCheckResults(feedbackResults)
           }
+        }).catch(err => {
+          console.error('Failed to read HTML preview output for check evaluation', err)
+          setRunStatus('error')
         })
       }
     }
