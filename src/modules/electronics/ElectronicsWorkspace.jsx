@@ -117,6 +117,9 @@ export default function ElectronicsWorkspace({
   const selectedGpioPins = selectedMicrocontrollerPins.filter(isMicrocontrollerSignalPin)
   const paletteTypes = useMemo(() => normalizeAvailableComponents(availableComponents), [availableComponents])
   const hasPalette = paletteTypes.length > 0
+  // The inspector is the palette column's opposite number: it was holding 230px open on
+  // every board to display the words "No selection".
+  const hasInspector = !!(selected || selectedWire)
   const boardRows = Number(circuit.board?.rows ?? 14)
   const boardCols = Number(circuit.board?.cols ?? 20)
   const boardGridWidth = BOARD_PAD * 2 + (boardCols - 1) * GRID_X
@@ -743,7 +746,7 @@ export default function ElectronicsWorkspace({
               {running ? 'Stop MicroPython' : 'Run MicroPython'}
             </button>
           )}
-          {onCheck && <button className="btn-primary" style={s.actionBtn} onClick={onCheck}>Check Circuit</button>}
+          {onCheck && <button className="btn-secondary" style={s.actionBtn} onClick={onCheck}>Check Circuit</button>}
           {onReset && <button className="btn-ghost-outline" style={s.actionBtn} onClick={onReset}>Reset</button>}
         </div>
       </div>
@@ -760,7 +763,7 @@ export default function ElectronicsWorkspace({
           />
         </div>
       ) : (
-        <div style={{ ...s.workspace, gridTemplateColumns: hasPalette ? s.workspace.gridTemplateColumns : 'minmax(0, 1fr) 230px' }}>
+        <div style={{ ...s.workspace, gridTemplateColumns: [hasPalette && '216px', 'minmax(0, 1fr)', hasInspector && '230px'].filter(Boolean).join(' ') }}>
           {/* A task that supplies a pre-built board and no available components used to
               hold a 216px column open for a hint telling students to drag parts on. */}
           {hasPalette && (
@@ -961,7 +964,7 @@ export default function ElectronicsWorkspace({
             </div>
             </div>
           </div>
-          <Inspector
+          {hasInspector && <Inspector
             circuit={circuit}
             selected={selected}
             selectedWire={selectedWire}
@@ -970,7 +973,7 @@ export default function ElectronicsWorkspace({
             setupMode={setupMode}
             readOnly={readOnly}
             actions={inspectorActions}
-          />
+          />}
         </div>
       )}
     </div>

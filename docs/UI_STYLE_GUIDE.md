@@ -40,13 +40,32 @@ The global theme lives in [src/index.css](../src/index.css). New UI should use t
 | `--ui-focus` | Accessible focus ring |
 | `--ui-motion` | Default transition timing |
 
-Use semantic status colours consistently:
+### Neutral ramp
 
-- Success: `#22c55e`, text `#166534`, background `#dcfce7`.
-- Error/destructive: `#ef4444`, text `#991b1b`, background `#fee2e2`.
-- Warning/waiting: amber/yellow families such as `#fef9c3`, `#fde047`, text `#854d0e`.
-- Info/teacher preview: blue families such as `#eff6ff`, `#93c5fd`, text `#1e40af`.
-- Muted text: `#6b7280`; secondary muted text: `#9ca3af`.
+| Token | Use |
+|---|---|
+| `--colour-muted` | Muted body/label text |
+| `--colour-muted-soft` | Secondary muted text, placeholders, empty states |
+| `--colour-ink-strong` | Emphasised dark text on light surfaces |
+| `--ui-border-neutral` | Default grey divider or border |
+| `--ui-border-neutral-strong` | Stronger grey border |
+| `--ui-surface-neutral` | Subtle grey surface |
+| `--ui-surface-neutral-sunk` | Recessed grey surface |
+
+These hold the values the app was already typing by hand, so adopting them changes nothing on screen.
+
+**Open decision:** `--ui-border` (purple-tinted `#e6e0f0`) and `--ui-border-neutral` (grey `#e5e7eb`) currently do the same job in different places, which is why panels do not always read as one product. Unifying them is a design decision rather than a refactor and has not been made.
+
+### Status families
+
+| Token | Use |
+|---|---|
+| `--colour-success` / `-edge` / `-text` / `-bg` | Pass, online, complete |
+| `--colour-error` / `-edge` / `-text` / `-bg` | Fail, offline, destructive |
+| `--colour-warning` / `-edge` / `-text` / `-bg` | Waiting, paused, attention needed |
+| `--colour-info` / `-edge` / `-text` / `-bg` | Neutral preview and information states |
+
+**Green and red are reserved for verdicts.** If an element is not reporting an outcome — pass/fail, online/offline, destructive — it must not use the success or error families. Decorative colour is fine, and should be drawn from anywhere but these two: multiple-choice quiz options are deliberately colour-coded by position, in blue, violet, cyan and pink, precisely so that a bright board can never be confused with a judged one. The palette they replaced took two of its four entries from the verdict families and used the same palette for the selected fill, which made a selected answer pixel-identical to a wrong one.
 
 ## Typography
 

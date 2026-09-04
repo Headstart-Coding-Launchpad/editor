@@ -144,11 +144,15 @@ const s = {
     background: 'transparent',
   },
   panelFill: {
-    flex: 1,
+    // Sizes to its content and shrinks only when there is not room, rather than always
+    // stretching. An information task with two bullet points used to leave roughly 85%
+    // of the viewport as empty panel below the text, and information is the second most
+    // common task type in the product. Long content still fills and scrolls internally.
+    flex: '0 1 auto',
     minHeight: 0,
+    maxHeight: '100%',
     display: 'flex',
     flexDirection: 'column',
-    maxHeight: 'none',
   },
   titleBar: {
     width: '100%',
@@ -159,6 +163,9 @@ const s = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    // Composed lessons use longer, emoji-prefixed titles than a single-type lesson does,
+    // and the title ran straight into the collapse chevron with no gap at all.
+    gap: 10,
     cursor: 'pointer',
     textAlign: 'left',
   },
@@ -169,6 +176,8 @@ const s = {
     fontSize: '1.05rem',
     color: '#fff',
     lineHeight: 1.25,
+    minWidth: 0,
+    overflowWrap: 'anywhere',
   },
   toggleIcon: {
     fontSize: '0.75rem',

@@ -476,7 +476,12 @@ export default function LessonTaskContent({
       ) : useSideExplainer && showExplainerPane && showCodePane ? (
         <SplitPane
           style={s.sideBySideLayout}
-          defaultSplit={25}
+          // 25% put the explainer - the thing a student has to read to know what to do -
+          // in a ~310px column wrapping at five or six words, while the editor beside it
+          // held ~900px for a 40-character line. Prose was in the narrow column and code
+          // had the wide one. 32% gives the explainer a readable measure and still leaves
+          // the workspace about two thirds of the width.
+          defaultSplit={32}
           leftCollapsed={explainerCollapsed}
           collapsedLeftWidth={44}
           collapsedLeft={

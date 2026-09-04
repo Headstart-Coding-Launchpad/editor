@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
-import { fitScratchQuizScale, shrinkToFit } from '../quiz/quizUtils'
+import { fitScratchQuizScale, OPTION_COLOURS, OPTION_VERDICT_COLOURS, shrinkToFit } from '../quiz/quizUtils'
 
 const MULTIPLE_CHOICE_TASK = {
   title: 'Pick one',
@@ -327,5 +327,85 @@ describe('QuizTask short answer', () => {
     const answer = screen.getByText((_, element) => element?.tagName === 'STRONG' && element.textContent === 'first line\nsecond line')
 
     expect(answer).toHaveStyle({ whiteSpace: 'pre-wrap' })
+  })
+})
+
+// The defect this guards: answer options were coloured from a four-entry palette
+// indexed by grid position, and the same palette supplied the selected-state fill.
+// Two of its entries were the app's verdict colours, so selecting the option in
+// position 2 rendered a card identical to a wrong answer, and position 4 one
+// identical to the revealed correct answer.
+describe('QuizTask multiple choice answer colours', () => {
+  const FOUR_OPTION_TASK = {
+    title: 'Pick one',
+    taskType: 'quiz',
+    quizType: 'multiple_choice',
+    options: [
+      { id: 'a', text: 'Alpha' },
+      { id: 'b', text: 'Bravo' },
+      { id: 'c', text: 'Charlie' },
+      { id: 'd', text: 'Delta' },
+    ],
+    check: { type: 'answer_equals', value: 'a' },
+  }
+
+  const VERDICT_COLOURS = ['var(--colour-success-edge)', 'var(--colour-error-edge)']
+
+  it('gives each option its own colour, and none of them a verdict colour', () => {
+    render(<QuizTask task={FOUR_OPTION_TASK} />)
+    const backgrounds = screen.getAllByRole('radio').map(el => el.style.background || el.style.backgroundColor)
+    expect(new Set(backgrounds).size).toBe(4)
+    VERDICT_COLOURS.forEach(verdict => expect(backgrounds).not.toContain(verdict))
+  })
+
+  it('renders options in the authored order rather than shuffling them', () => {
+    const letters = () => screen.getAllByRole('radio').map(el => el.textContent.trim()[0].toLowerCase())
+    const { unmount } = render(<QuizTask task={FOUR_OPTION_TASK} />)
+    expect(letters()).toEqual(['a', 'b', 'c', 'd'])
+    unmount()
+    render(<QuizTask task={FOUR_OPTION_TASK} />)
+    expect(letters()).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('never renders a verdict colour before submission, at any position', async () => {
+    const user = userEvent.setup()
+    for (const position of [0, 1, 2, 3]) {
+      const { unmount } = render(<QuizTask task={FOUR_OPTION_TASK} />)
+      const options = screen.getAllByRole('radio')
+      await user.click(options[position])
+      const backgrounds = screen.getAllByRole('radio').map(el => el.style.background || el.style.backgroundColor)
+      VERDICT_COLOURS.forEach(verdict => expect(backgrounds).not.toContain(verdict))
+      unmount()
+    }
+  })
+
+  // The original defect in one assertion: OPTION_COLOURS[1].active was the isWrong red and
+  // [3].active the isCorrect green, so a selected card was byte-identical to a judged one.
+  it('keeps every option fill, resting and selected, clear of both verdict fills', () => {
+    const verdicts = [OPTION_VERDICT_COLOURS.correct.background, OPTION_VERDICT_COLOURS.wrong.background]
+    OPTION_COLOURS.forEach(colour => {
+      expect(verdicts).not.toContain(colour.background)
+      expect(verdicts).not.toContain(colour.active)
+      expect(verdicts).not.toContain(colour.border)
+    })
+    expect(OPTION_VERDICT_COLOURS.correct.background).not.toBe(OPTION_VERDICT_COLOURS.wrong.background)
+  })
+
+  it('reserves the verdict colours for a revealed answer', () => {
+    render(
+      <QuizTask
+        task={FOUR_OPTION_TASK}
+        selectedAnswer="b"
+        submitted
+        disabled
+        checkPassed={false}
+        showCorrectAnswer
+      />,
+    )
+    const byLetter = Object.fromEntries(
+      screen.getAllByRole('radio').map(el => [el.textContent.trim()[0].toLowerCase(), el.style.background || el.style.backgroundColor]),
+    )
+    expect(byLetter.a).toBe('var(--colour-success-edge)')
+    expect(byLetter.b).toBe('var(--colour-error-edge)')
   })
 })

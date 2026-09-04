@@ -130,7 +130,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `FillBlankQuiz.jsx` | Fill-in-the-blank quiz renderer for drag and typed modes, including inline/code-block blank parsing |
 | `ShortAnswerQuiz.jsx` | Short-answer quiz renderer with submit and result feedback |
 | `ConfidenceQuiz.jsx` | Confidence-scale quiz renderer |
-| `quizUtils.js` | Shared quiz constants, styles, answer parsing, option lookup, fill-blank helpers, and question panel |
+| `quizUtils.js` | Shared quiz logic: answer parsing, option lookup, fill-blank segment parsing, option fit/shrink helpers, and the question panel |
+| `quizStyles.js` | Quiz presentation: answer-option state colours, base/interaction/confidence style objects |
 
 ### Student Modal Sub-components (`src/app/components/student-modal/`)
 
