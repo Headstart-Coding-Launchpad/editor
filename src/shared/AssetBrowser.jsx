@@ -16,7 +16,7 @@ function buildTree(assets) {
   return root
 }
 
-function DirNode({ name, children, assetsPath, copyMode, mode, onSelect, depth }) {
+function DirNode({ name, childNodes, assetsPath, copyMode, mode, onSelect, depth }) {
   const [open, setOpen] = React.useState(true)
   return (
     <div>
@@ -27,9 +27,9 @@ function DirNode({ name, children, assetsPath, copyMode, mode, onSelect, depth }
         <span style={s.arrow}>{open ? '▾' : '▸'}</span>
         <span style={s.itemLabel}>📁 {name}</span>
       </button>
-      {open && Object.entries(children).map(([n, node]) =>
+      {open && Object.entries(childNodes).map(([n, node]) =>
         node._dir
-          ? <DirNode key={n} name={n} children={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={depth + 1} />
+          ? <DirNode key={n} name={n} childNodes={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={depth + 1} />
           : <FileNode key={n} name={n} path={node._path} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={depth + 1} />
       )}
     </div>
@@ -131,7 +131,7 @@ export default function AssetBrowser({ assetsPath, assets, storageAssets, copyMo
     <div style={{ ...s.panel, ...style }}>
       {hasStatic && Object.entries(tree).map(([name, node]) =>
         node._dir
-          ? <DirNode key={name} name={name} children={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
+          ? <DirNode key={name} name={name} childNodes={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
           : <FileNode key={name} name={name} path={node._path} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
       )}
       {hasStorage && (

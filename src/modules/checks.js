@@ -124,12 +124,10 @@ export function normalizeFeedbackChecks(taskOrChecks) {
     return []
   }
   const raw = taskOrChecks?.feedbackChecks ?? taskOrChecks?.incorrectChecks ?? taskOrChecks
-  return normalizeChecks(raw).map(check => ({
-    mode: 'blocking',
-    show: 'after_attempt',
-    ...check,
-    show: normalizeFeedbackShow(check.show),
-  }))
+  return normalizeChecks(raw).map(check => {
+    const withDefaults = { mode: 'blocking', show: 'after_attempt', ...check }
+    return { ...withDefaults, show: normalizeFeedbackShow(withDefaults.show) }
+  })
 }
 
 export function normalizeFeedbackShow(show) {
