@@ -40,7 +40,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 ## Completion Checks
 
-Evaluated automatically on Run or Submit. Pass shows a green banner; fail shows a hint from the first failing check. A specific wrong-pattern hint can be shown if the student's answer matches a known incorrect pattern.
+Evaluated automatically on Run or Submit. Pass or fail shows a small floating popup (top-center, auto-dismisses after 45s or via its own close button — doesn't push the workspace around); fail shows a hint from the first failing check. A specific wrong-pattern hint can be shown if the student's answer matches a known incorrect pattern. The popup is hidden while a student is watching a teacher/peer broadcast ("Go Live to Students") — that's not their own check result.
 
 Checks can verify:
 
@@ -60,6 +60,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
 - **Pause/resume** — freezes student navigation without ending the session
 - **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students
+- **Need Help** — a persistent button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
 - **Session end** — all students see an end screen
 
 ---
@@ -116,7 +117,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Lesson UI
 - Lesson title, level badge, and mode indicator (solo / live / sandbox)
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
-- Collapsible explainer panel with Markdown formatting, inline topic definitions, and Scratch block visualisation
+- Collapsible explainer panel with Markdown formatting, inline topic definitions (not on Scratch lessons — the topic library is disabled there), and Scratch block visualisation
 - Explainer text is not selectable/copyable for students (teacher and builder previews are unaffected)
 - Retro typing animation on Python output
 
@@ -188,7 +189,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Admin Portal Features
 
 - **Account management**: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete. Signed-in users can change their own password from Account settings.
-- **Lesson management**: browse all published lessons in one library (not grouped by type); group stock lessons with class forks; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, copy student links, or create/overwrite a class fork
+- **Lesson management**: browse all published lessons in one library (not grouped by type); group stock lessons with class forks; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, preview as a student (ephemeral — nothing is saved), copy student links, or create/overwrite a class fork
 - **Level management**: its own Admin tab (`Levels`) for creating and editing the reusable levels lessons can reference
 - **Class management**: create and archive admin-only class records used for reusable lesson forks
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it

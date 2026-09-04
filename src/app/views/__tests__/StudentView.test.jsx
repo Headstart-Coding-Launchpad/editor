@@ -499,6 +499,57 @@ describe('StudentView', () => {
     })
   })
 
+  describe('persistent Need Help control', () => {
+    function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(), joinSession: vi.fn(),
+        writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(), writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+        requestHelp: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    it('is always available (not tied to a failed check) during a live lesson, and requests help for this student when clicked', async () => {
+      const user = userEvent.setup()
+      const requestHelp = vi.fn()
+      mocks.useSession.mockReturnValue(mkLiveSession({}, { requestHelp }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      const needHelpBtn = screen.getByRole('button', { name: /Need Help/i })
+      await user.click(needHelpBtn)
+
+      expect(requestHelp).toHaveBeenCalledWith('student-1')
+    })
+
+    it('shows a requested state and disables the button once the teacher has been notified', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession({ students: { 'student-1': { needsHelp: true } } }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      const needHelpBtn = screen.getByRole('button', { name: /Help requested/i })
+      expect(needHelpBtn).toBeDisabled()
+    })
+
+    it('does not appear in solo mode (no teacher on the other end to help)', async () => {
+      render(<StudentView lessonId="python-1-1" forceSolo />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      expect(screen.queryByRole('button', { name: /Need Help/i })).not.toBeInTheDocument()
+    })
+  })
+
   describe('explainer pseudo-task (Scratch solo)', () => {
     const scratchLessonWithExplainers = {
       id: 'scratch-1-1',

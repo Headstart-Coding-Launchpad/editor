@@ -93,7 +93,7 @@ The `/admin` route is available only to users with the admin Firebase role.
 
 8 tabs, defined in `src/admin/AdminPortal.jsx`'s `TABS` array:
 
-- Lessons: browse all published Firestore lessons in one library (the older type-grouped/filtered view is hardcoded off — `LessonPanel.jsx`'s type-tab UI is dead code behind `{false && ...}`); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher or copy student links; fork a lesson to a class.
+- Lessons: browse all published Firestore lessons in one library (the older type-grouped/filtered view is hardcoded off — `LessonPanel.jsx`'s type-tab UI is dead code behind `{false && ...}`); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher, preview as a student (`?preview=true` — ephemeral, nothing persists), or copy student links; fork a lesson to a class.
 - Levels: manage reusable levels (`LessonPanel.jsx` rendered with `view="levels"`, via `LevelManager`).
 - Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`).
 - Sessions: Realtime Database `sessions` list filtered to non-`ended` states — lesson, state, paused flag, student/online counts, open duration; "Close Session" removes an abandoned session node.

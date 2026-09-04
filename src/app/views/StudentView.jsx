@@ -484,6 +484,11 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'
+  // Need Help is a persistent, always-accessible control in the top bar during a real live
+  // lesson only — solo/sandbox/presentation have no teacher on the other end to help.
+  const canRequestHelp = phase === 'lesson' && !!identity?.anonymousId
+  const myNeedsHelp = !!session?.students?.[identity?.anonymousId]?.needsHelp
+  const handleNeedHelp = () => requestHelp(identity.anonymousId)
   const isQuizTask = task?.taskType === 'quiz'
   const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
@@ -628,6 +633,18 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
       </button>
     ) : !isSandbox && (
       <div style={s.topBarTaskControls}>
+        {canRequestHelp && (
+          <button
+            type="button"
+            className={myNeedsHelp ? 'btn-danger' : 'btn-ghost'}
+            style={s.needHelpBtn}
+            onClick={handleNeedHelp}
+            disabled={myNeedsHelp}
+            title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
+          >
+            {myNeedsHelp ? '✋ Help requested' : '✋ Need Help'}
+          </button>
+        )}
         {taskProgressControl}
         {!isSolo && !isForcedTeacherLive && currentPythonTask && (
           <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadCurrentCode}>
@@ -864,7 +881,6 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
           canOfferPersonalSandbox={canOfferPersonalSandbox}
           explainerShowsComplete={explainerShowsComplete}
           presenterLayout={teacherPresentation ? presenterLayout : 'both'}
-          onNeedHelp={phase === 'lesson' && identity?.anonymousId ? () => requestHelp(identity.anonymousId) : undefined}
           onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
           onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
           openTopicId={phase === 'lesson' ? openTopicId : null}
@@ -932,14 +948,19 @@ const s = {
   topBarTaskControls: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 12,
     minWidth: 0,
-    overflow: 'hidden',
     justifyContent: 'flex-end',
   },
   downloadCodeBtn: {
     fontSize: 13,
     padding: '5px 10px',
+  },
+  needHelpBtn: {
+    fontSize: 13,
+    padding: '5px 12px',
+    flexShrink: 0,
   },
   pauseOverlay: {
     position: 'fixed',

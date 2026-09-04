@@ -244,7 +244,7 @@ markdown, nothing to opt into — driven by `MarkdownRenderer`'s `imageLayout="f
 [link text](https://example.com)
 ```
 
-Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike:
+Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike — **except Scratch lessons**, where the topic library is disabled outright (see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`'s Scratch note) and these links render as plain text instead:
 ```
 [link text](#topic/topic-id)
 ```

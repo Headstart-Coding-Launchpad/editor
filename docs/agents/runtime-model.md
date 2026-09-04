@@ -418,6 +418,7 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/lesson/:lessonId?live=true` | Deprecated no-op. Silently ignored by `LessonRoute.jsx` (kept out of `forceSolo`) so previously-shared links with this param don't break. Bare URLs now handle the smart-join behaviour this param used to imply. |
 | `/lesson/:lessonId?teacher=true` | Teacher view; redirects unauthenticated users to login |
 | `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation view; auth required |
+| `/lesson/:lessonId?preview=true` | Teacher/admin-only ephemeral preview — auth required (same check as `?teacher=true`). Renders `StudentView` with `forceSolo`, `previewMode` (writes never persist — see `createStudentPersistence.js`), and `allowUnrestrictedTaskNavigation`. Linked from the Admin Portal's lesson list ("Preview"). |
 | `/code` | Imported `.launchpad` Python code workspace |
 | `/builder` | Lesson builder |
 
