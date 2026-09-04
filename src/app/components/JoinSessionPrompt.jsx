@@ -9,12 +9,8 @@ export default function JoinSessionPrompt({ lessonTitle, onJoin, onDecline }) {
           <h1 style={s.title}>{lessonTitle}</h1>
         </div>
         <div style={s.body}>
-          <p style={s.message}>
-            Your teacher has started a live session. Would you like to join?
-          </p>
-          <p style={s.sub}>
-            Your solo work has been saved and you can continue it later.
-          </p>
+          <p style={s.message}>Your teacher has started a live session. Would you like to join?</p>
+          <p style={s.sub}>Your solo work has been saved and you can continue it later.</p>
           <div style={s.buttons}>
             <button className="btn-primary" style={s.joinBtn} onClick={onJoin}>
               Join Session

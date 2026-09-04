@@ -149,7 +149,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.getByText('<h1>Hello</h1>')).toBeInTheDocument()
   })
 
-  it('mirrors displayOutput/displayCheckPassed rather than this browser\'s own cs.output while forced-live', async () => {
+  it("mirrors displayOutput/displayCheckPassed rather than this browser's own cs.output while forced-live", async () => {
     const cs = makeCs({ output: 'stale local output', checkPassed: true })
     const { container } = render(
       <CodeArrangeTaskContainer
@@ -174,7 +174,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.queryByText('stale local output')).not.toBeInTheDocument()
   })
 
-  it('still loads the arrangement from local storage for the student\'s own session (unchanged behaviour)', () => {
+  it("still loads the arrangement from local storage for the student's own session (unchanged behaviour)", () => {
     const cs = makeCs({
       readSavedTaskFile: vi.fn(() => JSON.stringify({ L1: 'L1', L2: 'L2' })),
     })
@@ -278,8 +278,12 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(cs.handleCodeArrangeSlotsChange).not.toHaveBeenCalled()
   })
 
-  it('shows an input box wired to handleInputSubmit while the student\'s own code is awaiting input()', () => {
-    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null), inputPrompt: '', output: 'What is your name?' })
+  it("shows an input box wired to handleInputSubmit while the student's own code is awaiting input()", () => {
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => null),
+      inputPrompt: '',
+      output: 'What is your name?',
+    })
     render(
       <CodeArrangeTaskContainer
         task={PYTHON_TASK}
@@ -336,7 +340,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.getByText('print("done")')).toBeInTheDocument()
   })
 
-  it('wires onDragCursor to cs.handleCodeArrangeDragCursor for the student\'s own interactive session', async () => {
+  it("wires onDragCursor to cs.handleCodeArrangeDragCursor for the student's own interactive session", async () => {
     const user = userEvent.setup()
     const handleCodeArrangeDragCursor = vi.fn()
     const cs = makeCs({ readSavedTaskFile: vi.fn(() => null), handleCodeArrangeDragCursor })
@@ -377,10 +381,12 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     )
 
     expect(screen.getByTestId('code-arrange-drag-dot')).toBeInTheDocument()
-    expect(screen.getByTestId('code-arrange-drag-ghost')).toHaveTextContent('for i in range(5): print(i * 2)')
+    expect(screen.getByTestId('code-arrange-drag-ghost')).toHaveTextContent(
+      'for i in range(5): print(i * 2)'
+    )
   })
 
-  it('never shows the live drag mirror for the student\'s own interactive session', () => {
+  it("never shows the live drag mirror for the student's own interactive session", () => {
     const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
     render(
       <CodeArrangeTaskContainer
@@ -397,7 +403,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.queryByTestId('code-arrange-drag-dot')).not.toBeInTheDocument()
   })
 
-  it('never shows an input box for a teacher live mirror, even if this browser\'s own cs.inputPrompt happens to be set', () => {
+  it("never shows an input box for a teacher live mirror, even if this browser's own cs.inputPrompt happens to be set", () => {
     const cs = makeCs({ inputPrompt: '' })
     render(
       <CodeArrangeTaskContainer

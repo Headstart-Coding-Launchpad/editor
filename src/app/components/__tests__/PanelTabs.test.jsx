@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import PanelTabs, { PanelTabPanel } from '../PanelTabs'
 
-const TABS = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }]
+const TABS = [
+  { id: 'a', label: 'A' },
+  { id: 'b', label: 'B' },
+]
 
 describe('PanelTabs', () => {
   it('marks the active tab as selected and calls onChange when another is clicked', async () => {
@@ -23,7 +26,15 @@ describe('PanelTabs', () => {
   })
 
   it('adds the teacher-highlight pulse class only to tabs named in highlightedIds', () => {
-    render(<PanelTabs tabs={TABS} activeId="a" onChange={() => {}} label="Example" highlightedIds={['b']} />)
+    render(
+      <PanelTabs
+        tabs={TABS}
+        activeId="a"
+        onChange={() => {}}
+        label="Example"
+        highlightedIds={['b']}
+      />
+    )
 
     expect(screen.getByRole('tab', { name: 'A' })).not.toHaveClass('pane-highlight-pulse')
     expect(screen.getByRole('tab', { name: 'B' })).toHaveClass('pane-highlight-pulse')
@@ -41,9 +52,13 @@ describe('PanelTabPanel', () => {
   it('hides inactive panels without unmounting their content', () => {
     render(
       <>
-        <PanelTabPanel id="a" activeId="a">first</PanelTabPanel>
-        <PanelTabPanel id="b" activeId="a">second</PanelTabPanel>
-      </>,
+        <PanelTabPanel id="a" activeId="a">
+          first
+        </PanelTabPanel>
+        <PanelTabPanel id="b" activeId="a">
+          second
+        </PanelTabPanel>
+      </>
     )
 
     expect(screen.getByText('first')).toBeVisible()

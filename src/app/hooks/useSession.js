@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { ref, onValue, set, update, remove, push, serverTimestamp, onDisconnect } from 'firebase/database'
+import {
+  ref,
+  onValue,
+  set,
+  update,
+  remove,
+  push,
+  serverTimestamp,
+  onDisconnect,
+} from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { encodeFileKey } from '../../shared/fileKeys'
 
@@ -9,14 +18,15 @@ function encodeFileKeys(files) {
 
 function encodeWorkspaceFiles(files) {
   const fileMap = Array.isArray(files)
-    ? Object.fromEntries(files.map(file => [file.name, file.content]))
+    ? Object.fromEntries(files.map((file) => [file.name, file.content]))
     : files
   return encodeFileKeys(fileMap ?? {})
 }
 
 function getAttemptEntries(session, anonymousId, taskId) {
-  return Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})
-    .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
+  return Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {}).sort(
+    (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
+  )
 }
 
 function countAttemptRuns(entries) {
@@ -40,7 +50,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       return
     }
     const connRef = ref(db, '.info/connected')
-    const unsub = onValue(connRef, snap => setConnected(snap.val() === true))
+    const unsub = onValue(connRef, (snap) => setConnected(snap.val() === true))
     return () => unsub()
   }, [enabled])
 
@@ -55,7 +65,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const r = ref(db, `sessions/${lessonId}`)
     sessionRef.current = r
 
-    const unsub = onValue(r, snap => {
+    const unsub = onValue(r, (snap) => {
       setSession(snap.exists() ? snap.val() : null)
       setLoading(false)
     })
@@ -68,28 +78,28 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function createSession() {
     await set(ref(db, `sessions/${lessonId}`), {
       lessonId,
-      state:                 'waiting',
-      currentTaskId:         1,
-      createdAt:             Date.now(),
-      startedAt:             null,
-      currentTaskStartedAt:  null,
-      endedAt:               null,
-      activeStudentView:     null,
-      teacherLive:           null,
-      isPaused:              false,
-      sandboxCode:           null,
-      sandboxCodePushedAt:   null,
-      sandboxFiles:          null,
+      state: 'waiting',
+      currentTaskId: 1,
+      createdAt: Date.now(),
+      startedAt: null,
+      currentTaskStartedAt: null,
+      endedAt: null,
+      activeStudentView: null,
+      teacherLive: null,
+      isPaused: false,
+      sandboxCode: null,
+      sandboxCodePushedAt: null,
+      sandboxFiles: null,
       sandboxFilesUpdatedAt: null,
-      sandboxExplainer:      null,
+      sandboxExplainer: null,
       sandboxPreviousTaskId: null,
-      lessonOverrideTasks:   null,
+      lessonOverrideTasks: null,
       explainerShowComplete: false,
-      taskStartTimes:        {},
-      students:              {},
-      supportRevealLog:      null,
+      taskStartTimes: {},
+      students: {},
+      supportRevealLog: null,
       fullscreenRequestedAt: null,
-      videoCallLink:         null,
+      videoCallLink: null,
     })
   }
 
@@ -100,33 +110,33 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function startSession() {
     const now = Date.now()
     await update(ref(db, `sessions/${lessonId}`), {
-      state:                'active',
-      startedAt:            now,
+      state: 'active',
+      startedAt: now,
       currentTaskStartedAt: now,
-      endedAt:              null,
+      endedAt: null,
       [`taskStartTimes/${session?.currentTaskId ?? 1}`]: now,
     })
   }
 
   async function endSession() {
     await update(ref(db, `sessions/${lessonId}`), {
-      state:                 'ended',
-      endedAt:               Date.now(),
-      activeStudentView:     null,
-      teacherLive:           null,
-      sandboxCode:           null,
-      sandboxCodePushedAt:   null,
-      sandboxFiles:          null,
+      state: 'ended',
+      endedAt: Date.now(),
+      activeStudentView: null,
+      teacherLive: null,
+      sandboxCode: null,
+      sandboxCodePushedAt: null,
+      sandboxFiles: null,
       sandboxFilesUpdatedAt: null,
-      sandboxExplainer:      null,
+      sandboxExplainer: null,
       sandboxPreviousTaskId: null,
-      lessonOverrideTasks:   null,
+      lessonOverrideTasks: null,
       explainerShowComplete: false,
-      students:              null,
-      overrideLog:           null,
-      supportRevealLog:      null,
+      students: null,
+      overrideLog: null,
+      supportRevealLog: null,
       fullscreenRequestedAt: null,
-      videoCallLink:         null,
+      videoCallLink: null,
     })
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
@@ -169,45 +179,45 @@ export function useSession(lessonId, { enabled = true } = {}) {
       [`taskStartTimes/${taskId}`]: now,
     }
     for (const anonymousId of Object.keys(session?.students ?? {})) {
-      updates[`students/${anonymousId}/checkPassed`]           = null
-      updates[`students/${anonymousId}/lastRunStatus`]         = null
-      updates[`students/${anonymousId}/currentOutput`]         = ''
-      updates[`students/${anonymousId}/currentCode`]           = ''
-      updates[`students/${anonymousId}/currentArcadeDesign`]   = null
-      updates[`students/${anonymousId}/currentSpriteState`]    = null
-      updates[`students/${anonymousId}/currentCursor`]         = null
-      updates[`students/${anonymousId}/currentBlockDrag`]      = null
+      updates[`students/${anonymousId}/checkPassed`] = null
+      updates[`students/${anonymousId}/lastRunStatus`] = null
+      updates[`students/${anonymousId}/currentOutput`] = ''
+      updates[`students/${anonymousId}/currentCode`] = ''
+      updates[`students/${anonymousId}/currentArcadeDesign`] = null
+      updates[`students/${anonymousId}/currentSpriteState`] = null
+      updates[`students/${anonymousId}/currentCursor`] = null
+      updates[`students/${anonymousId}/currentBlockDrag`] = null
       updates[`students/${anonymousId}/currentCodeArrangeSlots`] = null
-      updates[`students/${anonymousId}/currentFiles`]          = null
-      updates[`students/${anonymousId}/currentAnswer`]         = null
-      updates[`students/${anonymousId}/currentSelection`]      = null
-      updates[`students/${anonymousId}/currentActivity`]       = null
-      updates[`students/${anonymousId}/currentActiveFile`]     = null
-      updates[`students/${anonymousId}/checkOverridePassed`]    = null
-      updates[`students/${anonymousId}/checkOverrideHint`]      = null
-      updates[`students/${anonymousId}/checkOverridePushedAt`]  = null
-      updates[`students/${anonymousId}/needsHelp`]              = null
-      updates[`students/${anonymousId}/currentTopicId`]         = null
-      updates[`students/${anonymousId}/sentToTopicId`]          = null
-      updates[`students/${anonymousId}/sentToTopicPushedAt`]    = null
-      updates[`students/${anonymousId}/teacherMessage`]         = null
+      updates[`students/${anonymousId}/currentFiles`] = null
+      updates[`students/${anonymousId}/currentAnswer`] = null
+      updates[`students/${anonymousId}/currentSelection`] = null
+      updates[`students/${anonymousId}/currentActivity`] = null
+      updates[`students/${anonymousId}/currentActiveFile`] = null
+      updates[`students/${anonymousId}/checkOverridePassed`] = null
+      updates[`students/${anonymousId}/checkOverrideHint`] = null
+      updates[`students/${anonymousId}/checkOverridePushedAt`] = null
+      updates[`students/${anonymousId}/needsHelp`] = null
+      updates[`students/${anonymousId}/currentTopicId`] = null
+      updates[`students/${anonymousId}/sentToTopicId`] = null
+      updates[`students/${anonymousId}/sentToTopicPushedAt`] = null
+      updates[`students/${anonymousId}/teacherMessage`] = null
       updates[`students/${anonymousId}/teacherMessagePushedAt`] = null
-      updates[`students/${anonymousId}/teacherEditRequestedAt`]  = null
-      updates[`students/${anonymousId}/teacherEditAcceptedAt`]  = null
-      updates[`students/${anonymousId}/teacherLiveCode`]        = null
-      updates[`students/${anonymousId}/teacherLiveFiles`]       = null
-      updates[`students/${anonymousId}/teacherLiveActiveFile`]  = null
-      updates[`students/${anonymousId}/teacherLiveWorkspace`]   = null
+      updates[`students/${anonymousId}/teacherEditRequestedAt`] = null
+      updates[`students/${anonymousId}/teacherEditAcceptedAt`] = null
+      updates[`students/${anonymousId}/teacherLiveCode`] = null
+      updates[`students/${anonymousId}/teacherLiveFiles`] = null
+      updates[`students/${anonymousId}/teacherLiveActiveFile`] = null
+      updates[`students/${anonymousId}/teacherLiveWorkspace`] = null
       updates[`students/${anonymousId}/teacherLiveArcadeDesign`] = null
-      updates[`students/${anonymousId}/teacherEditApplyCode`]   = null
-      updates[`students/${anonymousId}/teacherEditApplyFiles`]  = null
+      updates[`students/${anonymousId}/teacherEditApplyCode`] = null
+      updates[`students/${anonymousId}/teacherEditApplyFiles`] = null
       updates[`students/${anonymousId}/teacherEditApplyArcadeDesign`] = null
-      updates[`students/${anonymousId}/teacherEditAppliedAt`]   = null
-      updates[`students/${anonymousId}/teacherStageRequestedAt`]  = null
+      updates[`students/${anonymousId}/teacherEditAppliedAt`] = null
+      updates[`students/${anonymousId}/teacherStageRequestedAt`] = null
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
-      updates[`students/${anonymousId}/teacherStageAcceptedAt`]   = null
-      updates[`students/${anonymousId}/teacherHighlights`]        = null
-      updates[`students/${anonymousId}/teacherPaneCommand`]       = null
+      updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
+      updates[`students/${anonymousId}/teacherHighlights`] = null
+      updates[`students/${anonymousId}/teacherPaneCommand`] = null
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
@@ -218,22 +228,27 @@ export function useSession(lessonId, { enabled = true } = {}) {
     if (session?.students?.[anonymousId]?.checkPassed === true) return null
 
     const entries = getAttemptEntries(session, anonymousId, taskId)
-    if (entries.some(entry => entry.passed)) return null
+    if (entries.some((entry) => entry.passed)) return null
 
     const attemptNumber = countAttemptRuns(entries)
     return {
       taskId,
-      overriddenAt:        serverTimestamp(),
+      overriddenAt: serverTimestamp(),
       attemptNumber,
-      previousCheckState:  attemptNumber > 0 ? 'failed' : 'unattempted',
+      previousCheckState: attemptNumber > 0 ? 'failed' : 'unattempted',
     }
   }
 
-  async function overrideStudentCheck(anonymousId, passed, hint = null, taskId = session?.currentTaskId) {
+  async function overrideStudentCheck(
+    anonymousId,
+    passed,
+    hint = null,
+    taskId = session?.currentTaskId
+  ) {
     const now = Date.now()
     const updates = {
-      [`students/${anonymousId}/checkOverridePassed`]:   passed,
-      [`students/${anonymousId}/checkOverrideHint`]:     hint || null,
+      [`students/${anonymousId}/checkOverridePassed`]: passed,
+      [`students/${anonymousId}/checkOverrideHint`]: hint || null,
       [`students/${anonymousId}/checkOverridePushedAt`]: now,
     }
     if (passed) {
@@ -243,7 +258,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
-  async function recordClassAdvanceOverrides(taskId, anonymousIds = Object.keys(session?.students ?? {})) {
+  async function recordClassAdvanceOverrides(
+    taskId,
+    anonymousIds = Object.keys(session?.students ?? {})
+  ) {
     if (taskId == null) return
     const updates = {}
     for (const anonymousId of anonymousIds) {
@@ -261,12 +279,12 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const updates = { state: 'sandbox' }
     if (previousTaskId != null) updates.sandboxPreviousTaskId = previousTaskId
     if (code != null) {
-      updates.sandboxCode        = code
+      updates.sandboxCode = code
       updates.sandboxCodePushedAt = Date.now()
     }
     if (files != null) {
-      const filesMap             = Object.fromEntries(files.map(f => [f.name, f.content]))
-      updates.sandboxFiles        = encodeFileKeys(filesMap)
+      const filesMap = Object.fromEntries(files.map((f) => [f.name, f.content]))
+      updates.sandboxFiles = encodeFileKeys(filesMap)
       updates.sandboxFilesUpdatedAt = Date.now()
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
@@ -274,19 +292,22 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function exitSandbox() {
     const updates = {
-      state:                 'active',
-      currentTaskStartedAt:  Date.now(),
-      sandboxCode:           null,
-      sandboxCodePushedAt:   null,
-      sandboxFiles:          null,
+      state: 'active',
+      currentTaskStartedAt: Date.now(),
+      sandboxCode: null,
+      sandboxCodePushedAt: null,
+      sandboxFiles: null,
       sandboxFilesUpdatedAt: null,
-      sandboxExplainer:      null,
+      sandboxExplainer: null,
       sandboxPreviousTaskId: null,
     }
     // Going live can silently move the class onto the sandbox module's first
     // task (see TeacherView.handleGoLiveSandbox) so the right editor/module
     // renders; restore whatever task was actually active before that jump.
-    if (session?.sandboxPreviousTaskId != null && session.sandboxPreviousTaskId !== session?.currentTaskId) {
+    if (
+      session?.sandboxPreviousTaskId != null &&
+      session.sandboxPreviousTaskId !== session?.currentTaskId
+    ) {
       updates.currentTaskId = session.sandboxPreviousTaskId
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
@@ -294,15 +315,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function pushSandboxCode(code) {
     await update(ref(db, `sessions/${lessonId}`), {
-      sandboxCode:        code,
+      sandboxCode: code,
       sandboxCodePushedAt: Date.now(),
     })
   }
 
   async function pushSandboxFiles(files) {
-    const filesMap = Object.fromEntries(files.map(f => [f.name, f.content]))
+    const filesMap = Object.fromEntries(files.map((f) => [f.name, f.content]))
     await update(ref(db, `sessions/${lessonId}`), {
-      sandboxFiles:          encodeFileKeys(filesMap),
+      sandboxFiles: encodeFileKeys(filesMap),
       sandboxFilesUpdatedAt: Date.now(),
     })
   }
@@ -381,7 +402,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function pushResetToStudent(anonymousId, action) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      remoteResetAction:   action,
+      remoteResetAction: action,
       remoteResetPushedAt: Date.now(),
     })
   }
@@ -392,7 +413,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function sendMessageToStudent(anonymousId, message) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      teacherMessage:         message || null,
+      teacherMessage: message || null,
       teacherMessagePushedAt: Date.now(),
     })
   }
@@ -400,16 +421,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function requestTeacherEdit(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       teacherEditRequestedAt: Date.now(),
-      teacherEditAcceptedAt:  null,
-      teacherLiveCode:        null,
-      teacherLiveFiles:       null,
-      teacherLiveActiveFile:  null,
-      teacherLiveWorkspace:   null,
+      teacherEditAcceptedAt: null,
+      teacherLiveCode: null,
+      teacherLiveFiles: null,
+      teacherLiveActiveFile: null,
+      teacherLiveWorkspace: null,
       teacherLiveArcadeDesign: null,
-      teacherEditApplyCode:   null,
-      teacherEditApplyFiles:  null,
+      teacherEditApplyCode: null,
+      teacherEditApplyFiles: null,
       teacherEditApplyArcadeDesign: null,
-      teacherEditAppliedAt:   null,
+      teacherEditAppliedAt: null,
     })
   }
 
@@ -417,7 +438,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const payload = typeof edit === 'string' ? { code: edit } : (edit ?? {})
     const updates = {}
     if ('code' in payload) updates.teacherLiveCode = payload.code ?? null
-    if ('files' in payload) updates.teacherLiveFiles = payload.files ? encodeWorkspaceFiles(payload.files) : null
+    if ('files' in payload)
+      updates.teacherLiveFiles = payload.files ? encodeWorkspaceFiles(payload.files) : null
     if ('activeFile' in payload) updates.teacherLiveActiveFile = payload.activeFile ?? null
     if ('workspace' in payload) updates.teacherLiveWorkspace = payload.workspace ?? null
     if ('arcadeDesign' in payload) updates.teacherLiveArcadeDesign = payload.arcadeDesign ?? null
@@ -430,65 +452,68 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const payload = typeof edit === 'string' ? { code: edit } : (edit ?? {})
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       teacherEditRequestedAt: null,
-      teacherEditAcceptedAt:  null,
-      teacherLiveCode:        null,
-      teacherLiveFiles:       null,
-      teacherLiveActiveFile:  null,
-      teacherLiveWorkspace:   null,
+      teacherEditAcceptedAt: null,
+      teacherLiveCode: null,
+      teacherLiveFiles: null,
+      teacherLiveActiveFile: null,
+      teacherLiveWorkspace: null,
       teacherLiveArcadeDesign: null,
-      teacherEditApplyCode:   payload.code ?? null,
-      teacherEditApplyFiles:  payload.files ? encodeWorkspaceFiles(payload.files) : null,
+      teacherEditApplyCode: payload.code ?? null,
+      teacherEditApplyFiles: payload.files ? encodeWorkspaceFiles(payload.files) : null,
       teacherEditApplyArcadeDesign: payload.arcadeDesign ?? null,
-      teacherEditAppliedAt:   Date.now(),
-      currentCode:            payload.code ?? null,
-      currentFiles:           payload.files ? encodeWorkspaceFiles(payload.files) : null,
-      currentArcadeDesign:    payload.arcadeDesign ?? null,
+      teacherEditAppliedAt: Date.now(),
+      currentCode: payload.code ?? null,
+      currentFiles: payload.files ? encodeWorkspaceFiles(payload.files) : null,
+      currentArcadeDesign: payload.arcadeDesign ?? null,
     })
   }
 
   async function cancelTeacherEdit(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       teacherEditRequestedAt: null,
-      teacherEditAcceptedAt:  null,
-      teacherLiveCode:        null,
-      teacherLiveFiles:       null,
-      teacherLiveActiveFile:  null,
-      teacherLiveWorkspace:   null,
+      teacherEditAcceptedAt: null,
+      teacherLiveCode: null,
+      teacherLiveFiles: null,
+      teacherLiveActiveFile: null,
+      teacherLiveWorkspace: null,
       teacherLiveArcadeDesign: null,
     })
   }
 
   async function requestTeacherStage(anonymousId, action) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      teacherStageRequestedAt:  Date.now(),
+      teacherStageRequestedAt: Date.now(),
       teacherStagePendingAction: action,
-      teacherStageAcceptedAt:   null,
+      teacherStageAcceptedAt: null,
     })
   }
 
   async function clearTeacherStage(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      teacherStageRequestedAt:  null,
+      teacherStageRequestedAt: null,
       teacherStagePendingAction: null,
-      teacherStageAcceptedAt:   null,
+      teacherStageAcceptedAt: null,
     })
   }
 
   async function pushTeacherHighlight(anonymousId, { file, from, to, emoji, note } = {}) {
     const newRef = push(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights`))
     await set(newRef, {
-      file:      encodeFileKey(file),
+      file: encodeFileKey(file),
       from,
       to,
       emoji,
-      note:      note || null,
+      note: note || null,
       createdAt: Date.now(),
     })
     return newRef.key
   }
 
   async function removeTeacherHighlight(anonymousId, highlightId) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`), null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`),
+      null
+    )
   }
 
   // Draws attention to (mode: 'highlight') or immediately switches (mode: 'force') one or
@@ -545,26 +570,29 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function joinSession(anonymousId, displayName) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       displayName,
-      joinedAt:      Date.now(),
-      currentCode:   '',
+      joinedAt: Date.now(),
+      currentCode: '',
       currentArcadeDesign: null,
       currentSpriteState: null,
       currentOutput: '',
       currentAnswer: null,
       lastRunStatus: null,
-      checkPassed:   null,
-      lastRunAt:     null,
+      checkPassed: null,
+      lastRunAt: null,
     })
   }
 
-  async function writeStudentRun(anonymousId, { code, files, output, answer, status, checkPassed }) {
+  async function writeStudentRun(
+    anonymousId,
+    { code, files, output, answer, status, checkPassed }
+  ) {
     const updates = {
       lastRunStatus: status,
-      lastRunAt:     Date.now(),
+      lastRunAt: Date.now(),
     }
     if (checkPassed !== undefined) updates.checkPassed = checkPassed
-    if (code  != null) updates.currentCode   = code
-    if (files != null) updates.currentFiles  = encodeFileKeys(files)
+    if (code != null) updates.currentCode = code
+    if (files != null) updates.currentFiles = encodeFileKeys(files)
     if (output != null) updates.currentOutput = output
     if (answer != null) updates.currentAnswer = answer
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
@@ -580,7 +608,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const cached = attemptCacheRef.current[cacheKey]
     if (cached?.passed) return
 
-    const serialized = typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)
+    const serialized =
+      typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)
     const basePath = `sessions/${lessonId}/attemptLog/${anonymousId}/${taskId}`
 
     if (cached && cached.serialized === serialized) {
@@ -591,7 +620,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
         updates.passedAt = serverTimestamp()
       }
       await update(ref(db, `${basePath}/${cached.key}`), updates)
-      attemptCacheRef.current[cacheKey] = { ...cached, retries: nextRetries, passed: passed || cached.passed }
+      attemptCacheRef.current[cacheKey] = {
+        ...cached,
+        retries: nextRetries,
+        passed: passed || cached.passed,
+      }
       return
     }
 
@@ -611,7 +644,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       loggedAt: serverTimestamp(),
       passedAt: passed ? serverTimestamp() : null,
     })
-    attemptCacheRef.current[cacheKey] = { serialized, key: newRef.key, attemptNumber, retries: 0, passed }
+    attemptCacheRef.current[cacheKey] = {
+      serialized,
+      key: newRef.key,
+      attemptNumber,
+      retries: 0,
+      passed,
+    }
   }
 
   async function writeStudentAnswer(anonymousId, answer) {
@@ -623,11 +662,17 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function writeStudentArcadeDesign(anonymousId, design) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentArcadeDesign`), design ?? null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentArcadeDesign`),
+      design ?? null
+    )
   }
 
   async function writeStudentSpriteState(anonymousId, spriteState) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`), spriteState ?? null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`),
+      spriteState ?? null
+    )
   }
 
   async function writeStudentCursor(anonymousId, cursor) {
@@ -635,7 +680,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function writeStudentBlockDrag(anonymousId, blockDrag) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentBlockDrag`), blockDrag ?? null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentBlockDrag`),
+      blockDrag ?? null
+    )
   }
 
   // Live tile-placement state for the code_arrange task type — mirrors
@@ -645,11 +693,17 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // a student mid-arrangement would see stale code from a previous task
   // instead of the tiles actually being placed.
   async function writeStudentCodeArrangeSlots(anonymousId, slotState) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentCodeArrangeSlots`), slotState ?? null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentCodeArrangeSlots`),
+      slotState ?? null
+    )
   }
 
   async function writeStudentFiles(anonymousId, files) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentFiles`), encodeFileKeys(files))
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentFiles`),
+      encodeFileKeys(files)
+    )
   }
 
   async function writeStudentOutput(anonymousId, output) {
@@ -676,22 +730,33 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
-  async function recordSupportStageReveal(anonymousId, taskId, stageIndex, { source = 'student', stageLabel = '', attemptNumber = null } = {}) {
+  async function recordSupportStageReveal(
+    anonymousId,
+    taskId,
+    stageIndex,
+    { source = 'student', stageLabel = '', attemptNumber = null } = {}
+  ) {
     if (!anonymousId || taskId == null || stageIndex == null) return
     if (session?.supportRevealLog?.[anonymousId]?.[taskId]?.[stageIndex]) return
     const entries = getAttemptEntries(session, anonymousId, taskId)
     const countedAttempts = countAttemptRuns(entries)
-    await set(ref(db, `sessions/${lessonId}/supportRevealLog/${anonymousId}/${taskId}/${stageIndex}`), {
-      taskId,
-      stageIndex,
-      stageLabel: stageLabel || null,
-      source: source === 'teacher' ? 'teacher' : 'student',
-      attemptNumber: attemptNumber ?? countedAttempts,
-      revealedAt: serverTimestamp(),
-    })
+    await set(
+      ref(db, `sessions/${lessonId}/supportRevealLog/${anonymousId}/${taskId}/${stageIndex}`),
+      {
+        taskId,
+        stageIndex,
+        stageLabel: stageLabel || null,
+        source: source === 'teacher' ? 'teacher' : 'student',
+        attemptNumber: attemptNumber ?? countedAttempts,
+        revealedAt: serverTimestamp(),
+      }
+    )
   }
 
-  async function writeStudentPresence(anonymousId, { windowFocused, lastActivityAt, visiblePanes, isFullscreen } = {}) {
+  async function writeStudentPresence(
+    anonymousId,
+    { windowFocused, lastActivityAt, visiblePanes, isFullscreen } = {}
+  ) {
     const updates = {}
     if (windowFocused !== undefined) updates.windowFocused = windowFocused
     if (lastActivityAt !== undefined) updates.lastActivityAt = lastActivityAt
@@ -703,7 +768,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function writeStudentPersonalSandbox(anonymousId, inPersonalSandbox) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/inPersonalSandbox`), inPersonalSandbox || null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/inPersonalSandbox`),
+      inPersonalSandbox || null
+    )
   }
 
   async function requestHelp(anonymousId) {
@@ -711,36 +779,45 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function setStudentTopic(anonymousId, topicId) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentTopicId`), topicId || null)
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentTopicId`),
+      topicId || null
+    )
   }
 
   async function sendToTopic(anonymousId, topicId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      sentToTopicId:       topicId || null,
+      sentToTopicId: topicId || null,
       sentToTopicPushedAt: Date.now(),
     })
   }
 
   async function acceptTeacherEdit(anonymousId) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherEditAcceptedAt`), Date.now())
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherEditAcceptedAt`),
+      Date.now()
+    )
   }
 
   async function declineTeacherEdit(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       teacherEditRequestedAt: null,
-      teacherEditAcceptedAt:  null,
+      teacherEditAcceptedAt: null,
     })
   }
 
   async function acceptTeacherStage(anonymousId) {
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherStageAcceptedAt`), Date.now())
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherStageAcceptedAt`),
+      Date.now()
+    )
   }
 
   async function declineTeacherStage(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
-      teacherStageRequestedAt:  null,
+      teacherStageRequestedAt: null,
       teacherStagePendingAction: null,
-      teacherStageAcceptedAt:   null,
+      teacherStageAcceptedAt: null,
     })
   }
 
@@ -749,18 +826,72 @@ export function useSession(lessonId, { enabled = true } = {}) {
     loading,
     connected,
     // teacher
-    createSession, restartSession, startSession, endSession,
-    setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    pushLessonOverride, clearLessonOverride,
-    setPaused, requestFullscreenForAll, setExplainerShowComplete, setActiveStudentView, setTeacherLive, updateTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
-    sendToTopic, sendMessageToStudent, updateVideoCallLink, sendVideoCallLink,
-    requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
-    requestTeacherStage, clearTeacherStage,
-    pushTeacherHighlight, removeTeacherHighlight,
-    pushTeacherPaneCommand, clearTeacherPaneCommand, pushClassPaneCommand, clearClassPaneCommand,
+    createSession,
+    restartSession,
+    startSession,
+    endSession,
+    setTaskId,
+    enterSandbox,
+    exitSandbox,
+    pushSandboxCode,
+    pushSandboxFiles,
+    pushSandboxExplainer,
+    pushLessonOverride,
+    clearLessonOverride,
+    setPaused,
+    requestFullscreenForAll,
+    setExplainerShowComplete,
+    setActiveStudentView,
+    setTeacherLive,
+    updateTeacherLive,
+    renameStudent,
+    removeStudent,
+    pushResetToStudent,
+    overrideStudentCheck,
+    recordClassAdvanceOverrides,
+    dismissHelp,
+    sendToTopic,
+    sendMessageToStudent,
+    updateVideoCallLink,
+    sendVideoCallLink,
+    requestTeacherEdit,
+    pushTeacherLiveCode,
+    commitTeacherEdit,
+    cancelTeacherEdit,
+    requestTeacherStage,
+    clearTeacherStage,
+    pushTeacherHighlight,
+    removeTeacherHighlight,
+    pushTeacherPaneCommand,
+    clearTeacherPaneCommand,
+    pushClassPaneCommand,
+    clearClassPaneCommand,
     // student
-    registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentCodeArrangeSlots, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence, requestHelp,
-    setStudentTopic, acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
+    registerPresence,
+    joinSession,
+    registerJoining,
+    unregisterJoining,
+    writeStudentRun,
+    logAttempt,
+    writeStudentAnswer,
+    writeStudentCode,
+    writeStudentArcadeDesign,
+    writeStudentSpriteState,
+    writeStudentCursor,
+    writeStudentBlockDrag,
+    writeStudentCodeArrangeSlots,
+    writeStudentFiles,
+    writeStudentOutput,
+    writeStudentInteraction,
+    recordStudentCarryFallback,
+    recordSupportStageReveal,
+    writeStudentPersonalSandbox,
+    writeStudentPresence,
+    requestHelp,
+    setStudentTopic,
+    acceptTeacherEdit,
+    declineTeacherEdit,
+    acceptTeacherStage,
+    declineTeacherStage,
   }
 }

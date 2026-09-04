@@ -45,7 +45,11 @@ describe('getQuizSuggestion', () => {
     })
 
     it('falls back to check hint when task has no feedback', () => {
-      const task = { quizType: 'multiple_choice', options: [{ id: 'x' }], check: { hint: 'use check hint' } }
+      const task = {
+        quizType: 'multiple_choice',
+        options: [{ id: 'x' }],
+        check: { hint: 'use check hint' },
+      }
       expect(getQuizSuggestion(task, 'x')).toBe('use check hint')
     })
 
@@ -137,6 +141,8 @@ describe('buildQuizSubmission', () => {
   })
 
   it('records short answers as text', () => {
-    expect(buildQuizSubmission({ quizType: 'short_answer' }, 'I think print shows text')).toBe('I think print shows text')
+    expect(buildQuizSubmission({ quizType: 'short_answer' }, 'I think print shows text')).toBe(
+      'I think print shows text'
+    )
   })
 })

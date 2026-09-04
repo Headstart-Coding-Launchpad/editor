@@ -30,8 +30,19 @@ export default function TeacherSandboxBanner({
   }
 
   return (
-    <div className="teacher-sandbox-banner" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+    <div
+      className="teacher-sandbox-banner"
+      style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
         <span className="teacher-sandbox-banner__text">
           {staging
             ? 'Sandbox preview — students are still on the lesson'
@@ -40,10 +51,16 @@ export default function TeacherSandboxBanner({
         <div style={{ display: 'flex', gap: 8 }}>
           {staging ? (
             <>
-              <button className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn" onClick={onCancel}>
+              <button
+                className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
+                onClick={onCancel}
+              >
                 Cancel
               </button>
-              <button className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn" onClick={onReset}>
+              <button
+                className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
+                onClick={onReset}
+              >
                 Reset to Sandbox Starter
               </button>
               <button className="btn-primary teacher-sandbox-banner__btn" onClick={handleGoLive}>
@@ -55,7 +72,10 @@ export default function TeacherSandboxBanner({
               <button className="btn-primary teacher-sandbox-banner__btn" onClick={handlePushAll}>
                 Push to All
               </button>
-              <button className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn" onClick={onReset}>
+              <button
+                className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
+                onClick={onReset}
+              >
                 Reset to Sandbox Starter
               </button>
               <button className="btn-danger teacher-sandbox-banner__btn" onClick={onDeactivate}>

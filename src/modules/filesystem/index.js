@@ -52,7 +52,9 @@ const filesystemModule = {
     const fs = sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS
     const updates = { starterFs: fs }
     if (targetTask?.codeStages?.length) {
-      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, fs: { ...fs } } : stage)
+      updates.codeStages = targetTask.codeStages.map((stage, i) =>
+        i === 0 ? { ...stage, fs: { ...fs } } : stage
+      )
     }
     return updates
   },
@@ -75,16 +77,26 @@ const filesystemModule = {
   initialState: (task) => task.starterFs ?? DEFAULT_FS,
   serializeState: (state) => JSON.stringify(state),
   deserializeState: (raw) => {
-    try { return JSON.parse(raw) } catch { return DEFAULT_FS }
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return DEFAULT_FS
+    }
   },
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => {
     if (lesson?.sandboxStarterFs != null) {
-      try { return JSON.parse(JSON.stringify(lesson.sandboxStarterFs)) } catch {}
+      try {
+        return JSON.parse(JSON.stringify(lesson.sandboxStarterFs))
+      } catch {}
     }
     const fs = task?.starterFs ?? DEFAULT_FS
-    try { return JSON.parse(JSON.stringify(fs)) } catch { return DEFAULT_FS }
+    try {
+      return JSON.parse(JSON.stringify(fs))
+    } catch {
+      return DEFAULT_FS
+    }
   },
 
   // ── Runtime ──────────────────────────────────────────────────────────────────

@@ -3,10 +3,25 @@
 // Pure check/state helpers are in scratchChecks.js; persistence helpers are in scratchPersistence.js.
 // Re-exported here for backward compatibility.
 import * as Blockly from 'blockly'
-import { SCRATCH_BLOCK_BY_OPCODE, SCRATCH_CATEGORY_COLOURS, scratchBlockBadgeIcon } from '../../shared/scratchBlockCatalog'
+import {
+  SCRATCH_BLOCK_BY_OPCODE,
+  SCRATCH_CATEGORY_COLOURS,
+  scratchBlockBadgeIcon,
+} from '../../shared/scratchBlockCatalog'
 
-export { DEFAULT_SPRITES, createSpriteState, evaluateScratchCheck, partialEvaluateScratchCheck, compare } from './checks'
-export { saveWorkspace, loadWorkspace, migrateBroadcastState, migrateVariableFields } from './scratchPersistence'
+export {
+  DEFAULT_SPRITES,
+  createSpriteState,
+  evaluateScratchCheck,
+  partialEvaluateScratchCheck,
+  compare,
+} from './checks'
+export {
+  saveWorkspace,
+  loadWorkspace,
+  migrateBroadcastState,
+  migrateVariableFields,
+} from './scratchPersistence'
 
 let _Blockly = null
 let audioContext = null
@@ -37,7 +52,8 @@ export function setCostumeContext(costumes) {
 // available, otherwise the emoji (already visual) or plain name as a fallback.
 const COSTUME_THUMB_SIZE = 20
 function costumeDropdownLabel(c) {
-  if (c.imageUrl) return { src: c.imageUrl, width: COSTUME_THUMB_SIZE, height: COSTUME_THUMB_SIZE, alt: c.name }
+  if (c.imageUrl)
+    return { src: c.imageUrl, width: COSTUME_THUMB_SIZE, height: COSTUME_THUMB_SIZE, alt: c.name }
   if (c.emoji) return `${c.emoji} ${c.name}`
   return c.name
 }
@@ -102,9 +118,7 @@ function scratchBlocklyIconField(type) {
 }
 
 function blockMessage(type, message) {
-  return SCRATCH_BLOCK_BY_OPCODE[type]?.icon
-    ? `%1 ${shiftMessagePlaceholders(message)}`
-    : message
+  return SCRATCH_BLOCK_BY_OPCODE[type]?.icon ? `%1 ${shiftMessagePlaceholders(message)}` : message
 }
 
 function blockArgs(type, args = []) {
@@ -112,7 +126,8 @@ function blockArgs(type, args = []) {
   return iconField ? [iconField, ...args] : args
 }
 
-const GREEN_FLAG_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151"/><polygon points="3,1 14,6 3,11" fill="#22c55e"/></svg>'
+const GREEN_FLAG_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151"/><polygon points="3,1 14,6 3,11" fill="#22c55e"/></svg>'
 const GREEN_FLAG_SRC = 'data:image/svg+xml,' + encodeURIComponent(GREEN_FLAG_SVG)
 
 export const SCRATCH_BLOCK_DEFINITIONS = {
@@ -121,7 +136,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'event_whenflagclicked',
         message0: blockMessage('event_whenflagclicked', 'when %1 clicked'),
-        args0: blockArgs('event_whenflagclicked', [{ type: 'field_image', src: GREEN_FLAG_SRC, width: 15, height: 15, alt: 'green flag' }]),
+        args0: blockArgs('event_whenflagclicked', [
+          { type: 'field_image', src: GREEN_FLAG_SRC, width: 15, height: 15, alt: 'green flag' },
+        ]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -132,7 +149,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'event_whenkeypressed',
         message0: blockMessage('event_whenkeypressed', 'when %1 key pressed'),
-        args0: blockArgs('event_whenkeypressed', [{ type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS }]),
+        args0: blockArgs('event_whenkeypressed', [
+          { type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS },
+        ]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -140,7 +159,13 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   },
   event_whenthisspriteclicked: {
     init() {
-      this.jsonInit({ type: 'event_whenthisspriteclicked', message0: blockMessage('event_whenthisspriteclicked', 'when this sprite clicked'), args0: blockArgs('event_whenthisspriteclicked'), nextStatement: null, colour: '#FFAB19' })
+      this.jsonInit({
+        type: 'event_whenthisspriteclicked',
+        message0: blockMessage('event_whenthisspriteclicked', 'when this sprite clicked'),
+        args0: blockArgs('event_whenthisspriteclicked'),
+        nextStatement: null,
+        colour: '#FFAB19',
+      })
     },
   },
   event_broadcast: {
@@ -148,7 +173,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'event_broadcast',
         message0: blockMessage('event_broadcast', 'broadcast %1'),
-        args0: blockArgs('event_broadcast', [{ type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' }]),
+        args0: blockArgs('event_broadcast', [
+          { type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -160,7 +187,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'event_broadcastandwait',
         message0: blockMessage('event_broadcastandwait', 'broadcast %1 and wait'),
-        args0: blockArgs('event_broadcastandwait', [{ type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' }]),
+        args0: blockArgs('event_broadcastandwait', [
+          { type: 'field_input', name: 'BROADCAST_INPUT', text: 'message1' },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -172,46 +201,54 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'event_whenbroadcastreceived',
         message0: blockMessage('event_whenbroadcastreceived', 'when I receive %1'),
-        args0: blockArgs('event_whenbroadcastreceived', [{ type: 'field_input', name: 'BROADCAST_OPTION', text: 'message1' }]),
+        args0: blockArgs('event_whenbroadcastreceived', [
+          { type: 'field_input', name: 'BROADCAST_OPTION', text: 'message1' },
+        ]),
         nextStatement: null,
         colour: '#FFAB19',
       })
     },
   },
 
-  motion_movesteps: blockStatement('motion_movesteps', 'move %1 steps', [numberInput('STEPS', 10)], '#4C97FF'),
-  motion_turnright: blockStatement('motion_turnright', 'turn right %1 degrees', [numberInput('DEGREES', 15)], '#4C97FF'),
-  motion_turnleft: blockStatement('motion_turnleft', 'turn left %1 degrees', [numberInput('DEGREES', 15)], '#4C97FF'),
-  motion_gotoxy: blockStatement('motion_gotoxy', 'go to x: %1 y: %2', [numberInput('X', 0), numberInput('Y', 0)], '#4C97FF'),
+  motion_movesteps: blockStatement(
+    'motion_movesteps',
+    'move %1 steps',
+    [numberInput('STEPS', 10)],
+    '#4C97FF'
+  ),
+  motion_turnright: blockStatement(
+    'motion_turnright',
+    'turn right %1 degrees',
+    [numberInput('DEGREES', 15)],
+    '#4C97FF'
+  ),
+  motion_turnleft: blockStatement(
+    'motion_turnleft',
+    'turn left %1 degrees',
+    [numberInput('DEGREES', 15)],
+    '#4C97FF'
+  ),
+  motion_gotoxy: blockStatement(
+    'motion_gotoxy',
+    'go to x: %1 y: %2',
+    [numberInput('X', 0), numberInput('Y', 0)],
+    '#4C97FF'
+  ),
   motion_goto: {
     init() {
       this.jsonInit({
         type: 'motion_goto',
         message0: blockMessage('motion_goto', 'go to %1'),
-        args0: blockArgs('motion_goto', [{ type: 'field_dropdown', name: 'TO', options: () => [
-          ['random position', '_random_'],
-          ['mouse pointer', '_mouse_'],
-          ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}]),
-        previousStatement: null,
-        nextStatement: null,
-        colour: '#4C97FF',
-      })
-    },
-  },
-  motion_glidesecstoxy: blockStatement('motion_glidesecstoxy', 'glide %1 secs to x: %2 y: %3', [numberInput('SECS', 1), numberInput('X', 0), numberInput('Y', 0)], '#4C97FF'),
-  motion_glideto: {
-    init() {
-      this.jsonInit({
-        type: 'motion_glideto',
-        message0: blockMessage('motion_glideto', 'glide %1 secs to %2'),
-        args0: blockArgs('motion_glideto', [
-          numberInput('SECS', 1),
-          { type: 'field_dropdown', name: 'TO', options: () => [
-            ['random position', '_random_'],
-            ['mouse pointer', '_mouse_'],
-            ..._currentSprites.map(sp => [sp.name, sp.id]),
-          ]},
+        args0: blockArgs('motion_goto', [
+          {
+            type: 'field_dropdown',
+            name: 'TO',
+            options: () => [
+              ['random position', '_random_'],
+              ['mouse pointer', '_mouse_'],
+              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+            ],
+          },
         ]),
         previousStatement: null,
         nextStatement: null,
@@ -219,12 +256,61 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       })
     },
   },
-  motion_pointindirection: blockStatement('motion_pointindirection', 'point in direction %1', [numberInput('DIRECTION', 90)], '#4C97FF'),
-  motion_ifonedge_bounce: blockStatement('motion_ifonedge_bounce', 'if on edge, bounce', [], '#4C97FF'),
+  motion_glidesecstoxy: blockStatement(
+    'motion_glidesecstoxy',
+    'glide %1 secs to x: %2 y: %3',
+    [numberInput('SECS', 1), numberInput('X', 0), numberInput('Y', 0)],
+    '#4C97FF'
+  ),
+  motion_glideto: {
+    init() {
+      this.jsonInit({
+        type: 'motion_glideto',
+        message0: blockMessage('motion_glideto', 'glide %1 secs to %2'),
+        args0: blockArgs('motion_glideto', [
+          numberInput('SECS', 1),
+          {
+            type: 'field_dropdown',
+            name: 'TO',
+            options: () => [
+              ['random position', '_random_'],
+              ['mouse pointer', '_mouse_'],
+              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+            ],
+          },
+        ]),
+        previousStatement: null,
+        nextStatement: null,
+        colour: '#4C97FF',
+      })
+    },
+  },
+  motion_pointindirection: blockStatement(
+    'motion_pointindirection',
+    'point in direction %1',
+    [numberInput('DIRECTION', 90)],
+    '#4C97FF'
+  ),
+  motion_ifonedge_bounce: blockStatement(
+    'motion_ifonedge_bounce',
+    'if on edge, bounce',
+    [],
+    '#4C97FF'
+  ),
   motion_setx: blockStatement('motion_setx', 'set x to %1', [numberInput('X', 0)], '#4C97FF'),
   motion_sety: blockStatement('motion_sety', 'set y to %1', [numberInput('Y', 0)], '#4C97FF'),
-  motion_changexby: blockStatement('motion_changexby', 'change x by %1', [numberInput('DX', 10)], '#4C97FF'),
-  motion_changeyby: blockStatement('motion_changeyby', 'change y by %1', [numberInput('DY', 10)], '#4C97FF'),
+  motion_changexby: blockStatement(
+    'motion_changexby',
+    'change x by %1',
+    [numberInput('DX', 10)],
+    '#4C97FF'
+  ),
+  motion_changeyby: blockStatement(
+    'motion_changeyby',
+    'change y by %1',
+    [numberInput('DY', 10)],
+    '#4C97FF'
+  ),
   motion_xposition: reporter('motion_xposition', 'x position', 'Number', '#4C97FF'),
   motion_yposition: reporter('motion_yposition', 'y position', 'Number', '#4C97FF'),
   motion_direction: reporter('motion_direction', 'direction', 'Number', '#4C97FF'),
@@ -233,7 +319,17 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'motion_setrotationstyle',
         message0: blockMessage('motion_setrotationstyle', 'set rotation style %1'),
-        args0: blockArgs('motion_setrotationstyle', [{ type: 'field_dropdown', name: 'STYLE', options: [['left-right', 'left-right'], ["don't rotate", "don't rotate"], ['all around', 'all around']] }]),
+        args0: blockArgs('motion_setrotationstyle', [
+          {
+            type: 'field_dropdown',
+            name: 'STYLE',
+            options: [
+              ['left-right', 'left-right'],
+              ["don't rotate", "don't rotate"],
+              ['all around', 'all around'],
+            ],
+          },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#4C97FF',
@@ -241,22 +337,54 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
     },
   },
 
-  looks_sayforsecs: blockStatement('looks_sayforsecs', 'say %1 for %2 seconds', [stringInput('MESSAGE', 'Hello!'), numberInput('SECS', 2)], '#9966FF'),
+  looks_sayforsecs: blockStatement(
+    'looks_sayforsecs',
+    'say %1 for %2 seconds',
+    [stringInput('MESSAGE', 'Hello!'), numberInput('SECS', 2)],
+    '#9966FF'
+  ),
   looks_say: blockStatement('looks_say', 'say %1', [stringInput('MESSAGE', 'Hello!')], '#9966FF'),
-  looks_think: blockStatement('looks_think', 'think %1', [stringInput('MESSAGE', 'Hmm...')], '#9966FF'),
-  looks_thinkforsecs: blockStatement('looks_thinkforsecs', 'think %1 for %2 seconds', [stringInput('MESSAGE', 'Hmm...'), numberInput('SECS', 2)], '#9966FF'),
+  looks_think: blockStatement(
+    'looks_think',
+    'think %1',
+    [stringInput('MESSAGE', 'Hmm...')],
+    '#9966FF'
+  ),
+  looks_thinkforsecs: blockStatement(
+    'looks_thinkforsecs',
+    'think %1 for %2 seconds',
+    [stringInput('MESSAGE', 'Hmm...'), numberInput('SECS', 2)],
+    '#9966FF'
+  ),
   looks_show: blockStatement('looks_show', 'show', [], '#9966FF'),
   looks_hide: blockStatement('looks_hide', 'hide', [], '#9966FF'),
-  looks_setsizeto: blockStatement('looks_setsizeto', 'set size to %1 %', [numberInput('SIZE', 100)], '#9966FF'),
-  looks_changesizeby: blockStatement('looks_changesizeby', 'change size by %1', [numberInput('CHANGE', 10)], '#9966FF'),
+  looks_setsizeto: blockStatement(
+    'looks_setsizeto',
+    'set size to %1 %',
+    [numberInput('SIZE', 100)],
+    '#9966FF'
+  ),
+  looks_changesizeby: blockStatement(
+    'looks_changesizeby',
+    'change size by %1',
+    [numberInput('CHANGE', 10)],
+    '#9966FF'
+  ),
   looks_switchcostumeto: {
     init() {
       this.jsonInit({
         type: 'looks_switchcostumeto',
         message0: blockMessage('looks_switchcostumeto', 'switch costume to %1'),
-        args0: blockArgs('looks_switchcostumeto', [{ type: 'field_dropdown', name: 'COSTUME', options: () =>
-          _currentCostumes.length ? _currentCostumes.map(c => [costumeDropdownLabel(c), c.name]) : [['costume1', 'costume1']]
-        }]),
+        args0: blockArgs('looks_switchcostumeto', [
+          {
+            type: 'field_dropdown',
+            name: 'COSTUME',
+            options: () =>
+              _currentCostumes.length
+                ? _currentCostumes.map((c) => [costumeDropdownLabel(c), c.name])
+                : [['costume1', 'costume1']],
+          },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#9966FF',
@@ -270,9 +398,16 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'looks_switchbackdropto',
         message0: blockMessage('looks_switchbackdropto', 'switch backdrop to %1'),
-        args0: blockArgs('looks_switchbackdropto', [{ type: 'field_dropdown', name: 'BACKDROP', options: () =>
-          _currentBackdrops.length ? _currentBackdrops.map(b => [b.name, b.name]) : [['Backdrop 1', 'Backdrop 1']]
-        }]),
+        args0: blockArgs('looks_switchbackdropto', [
+          {
+            type: 'field_dropdown',
+            name: 'BACKDROP',
+            options: () =>
+              _currentBackdrops.length
+                ? _currentBackdrops.map((b) => [b.name, b.name])
+                : [['Backdrop 1', 'Backdrop 1']],
+          },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#9966FF',
@@ -285,9 +420,16 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'event_whenbackdropswitchesto',
         message0: blockMessage('event_whenbackdropswitchesto', 'when backdrop switches to %1'),
-        args0: blockArgs('event_whenbackdropswitchesto', [{ type: 'field_dropdown', name: 'BACKDROP', options: () =>
-          _currentBackdrops.length ? _currentBackdrops.map(b => [b.name, b.name]) : [['Backdrop 1', 'Backdrop 1']]
-        }]),
+        args0: blockArgs('event_whenbackdropswitchesto', [
+          {
+            type: 'field_dropdown',
+            name: 'BACKDROP',
+            options: () =>
+              _currentBackdrops.length
+                ? _currentBackdrops.map((b) => [b.name, b.name])
+                : [['Backdrop 1', 'Backdrop 1']],
+          },
+        ]),
         nextStatement: null,
         colour: '#FFAB19',
       })
@@ -298,7 +440,12 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   sound_playuntildone: soundBlock('sound_playuntildone', 'play sound %1 until done'),
   sound_stopallsounds: blockStatement('sound_stopallsounds', 'stop all sounds', [], '#CF63CF'),
 
-  control_wait: blockStatement('control_wait', 'wait %1 seconds', [numberInput('DURATION', 1)], '#FFAB19'),
+  control_wait: blockStatement(
+    'control_wait',
+    'wait %1 seconds',
+    [numberInput('DURATION', 1)],
+    '#FFAB19'
+  ),
   control_repeat: {
     init() {
       this.jsonInit({
@@ -363,10 +510,16 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'control_create_clone_of',
         message0: blockMessage('control_create_clone_of', 'create a clone of %1'),
-        args0: blockArgs('control_create_clone_of', [{ type: 'field_dropdown', name: 'CLONE_OPTION', options: () => [
-          ['myself', '_myself_'],
-          ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}]),
+        args0: blockArgs('control_create_clone_of', [
+          {
+            type: 'field_dropdown',
+            name: 'CLONE_OPTION',
+            options: () => [
+              ['myself', '_myself_'],
+              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+            ],
+          },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FFAB19',
@@ -375,19 +528,32 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   },
   control_start_as_clone: {
     init() {
-      this.jsonInit({ type: 'control_start_as_clone', message0: blockMessage('control_start_as_clone', 'when I start as a clone'), args0: blockArgs('control_start_as_clone'), nextStatement: null, colour: '#FFAB19' })
+      this.jsonInit({
+        type: 'control_start_as_clone',
+        message0: blockMessage('control_start_as_clone', 'when I start as a clone'),
+        args0: blockArgs('control_start_as_clone'),
+        nextStatement: null,
+        colour: '#FFAB19',
+      })
     },
   },
   control_delete_this_clone: blockStop('control_delete_this_clone', 'delete this clone'),
 
-  sensing_askandwait: blockStatement('sensing_askandwait', 'ask %1 and wait', [stringInput('QUESTION', "What's your name?")], '#5CB1D6'),
+  sensing_askandwait: blockStatement(
+    'sensing_askandwait',
+    'ask %1 and wait',
+    [stringInput('QUESTION', "What's your name?")],
+    '#5CB1D6'
+  ),
   sensing_answer: reporter('sensing_answer', 'answer', 'String', '#5CB1D6'),
   sensing_keypressed: {
     init() {
       this.jsonInit({
         type: 'sensing_keypressed',
         message0: blockMessage('sensing_keypressed', 'key %1 pressed?'),
-        args0: blockArgs('sensing_keypressed', [{ type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS }]),
+        args0: blockArgs('sensing_keypressed', [
+          { type: 'field_dropdown', name: 'KEY_OPTION', options: KEY_OPTIONS },
+        ]),
         output: 'Boolean',
         colour: '#5CB1D6',
       })
@@ -400,43 +566,123 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'sensing_touchingobject',
         message0: blockMessage('sensing_touchingobject', 'touching %1?'),
-        args0: blockArgs('sensing_touchingobject', [{ type: 'field_dropdown', name: 'TOUCHINGOBJECTMENU', options: () => [
-          ['mouse-pointer', '_mouse_'],
-          ['edge', '_edge_'],
-          ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}]),
+        args0: blockArgs('sensing_touchingobject', [
+          {
+            type: 'field_dropdown',
+            name: 'TOUCHINGOBJECTMENU',
+            options: () => [
+              ['mouse-pointer', '_mouse_'],
+              ['edge', '_edge_'],
+              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+            ],
+          },
+        ]),
         output: 'Boolean',
         colour: '#5CB1D6',
       })
     },
   },
 
-  operator_equals: operator('operator_equals', '%1 = %2', [stringInput('OPERAND1', ''), stringInput('OPERAND2', '')], 'Boolean'),
-  operator_gt: operator('operator_gt', '%1 > %2', [numberInput('OPERAND1', 50), numberInput('OPERAND2', 0)], 'Boolean'),
-  operator_lt: operator('operator_lt', '%1 < %2', [numberInput('OPERAND1', 0), numberInput('OPERAND2', 50)], 'Boolean'),
-  operator_and: operator('operator_and', '%1 and %2', [boolInput('OPERAND1'), boolInput('OPERAND2')], 'Boolean'),
-  operator_or: operator('operator_or', '%1 or %2', [boolInput('OPERAND1'), boolInput('OPERAND2')], 'Boolean'),
+  operator_equals: operator(
+    'operator_equals',
+    '%1 = %2',
+    [stringInput('OPERAND1', ''), stringInput('OPERAND2', '')],
+    'Boolean'
+  ),
+  operator_gt: operator(
+    'operator_gt',
+    '%1 > %2',
+    [numberInput('OPERAND1', 50), numberInput('OPERAND2', 0)],
+    'Boolean'
+  ),
+  operator_lt: operator(
+    'operator_lt',
+    '%1 < %2',
+    [numberInput('OPERAND1', 0), numberInput('OPERAND2', 50)],
+    'Boolean'
+  ),
+  operator_and: operator(
+    'operator_and',
+    '%1 and %2',
+    [boolInput('OPERAND1'), boolInput('OPERAND2')],
+    'Boolean'
+  ),
+  operator_or: operator(
+    'operator_or',
+    '%1 or %2',
+    [boolInput('OPERAND1'), boolInput('OPERAND2')],
+    'Boolean'
+  ),
   operator_not: operator('operator_not', 'not %1', [boolInput('OPERAND')], 'Boolean'),
-  operator_add: operator('operator_add', '%1 + %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
-  operator_subtract: operator('operator_subtract', '%1 - %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
-  operator_join: operator('operator_join', 'join %1 %2', [stringInput('STRING1', 'apple'), stringInput('STRING2', 'banana')], 'String'),
-  operator_multiply: operator('operator_multiply', '%1 * %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
-  operator_divide: operator('operator_divide', '%1 / %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
-  operator_mod: operator('operator_mod', '%1 mod %2', [numberInput('NUM1', 1), numberInput('NUM2', 1)], 'Number'),
+  operator_add: operator(
+    'operator_add',
+    '%1 + %2',
+    [numberInput('NUM1', 1), numberInput('NUM2', 1)],
+    'Number'
+  ),
+  operator_subtract: operator(
+    'operator_subtract',
+    '%1 - %2',
+    [numberInput('NUM1', 1), numberInput('NUM2', 1)],
+    'Number'
+  ),
+  operator_join: operator(
+    'operator_join',
+    'join %1 %2',
+    [stringInput('STRING1', 'apple'), stringInput('STRING2', 'banana')],
+    'String'
+  ),
+  operator_multiply: operator(
+    'operator_multiply',
+    '%1 * %2',
+    [numberInput('NUM1', 1), numberInput('NUM2', 1)],
+    'Number'
+  ),
+  operator_divide: operator(
+    'operator_divide',
+    '%1 / %2',
+    [numberInput('NUM1', 1), numberInput('NUM2', 1)],
+    'Number'
+  ),
+  operator_mod: operator(
+    'operator_mod',
+    '%1 mod %2',
+    [numberInput('NUM1', 1), numberInput('NUM2', 1)],
+    'Number'
+  ),
   operator_round: operator('operator_round', 'round %1', [numberInput('NUM', 0)], 'Number'),
-  operator_random: operator('operator_random', 'pick random %1 to %2', [numberInput('FROM', 1), numberInput('TO', 10)], 'Number'),
+  operator_random: operator(
+    'operator_random',
+    'pick random %1 to %2',
+    [numberInput('FROM', 1), numberInput('TO', 10)],
+    'Number'
+  ),
   operator_mathop: {
     init() {
       this.jsonInit({
         type: 'operator_mathop',
         message0: blockMessage('operator_mathop', '%1 of %2'),
         args0: blockArgs('operator_mathop', [
-          { type: 'field_dropdown', name: 'OPERATOR', options: [
-            ['abs', 'abs'], ['floor', 'floor'], ['ceiling', 'ceiling'], ['sqrt', 'sqrt'],
-            ['sin', 'sin'], ['cos', 'cos'], ['tan', 'tan'],
-            ['asin', 'asin'], ['acos', 'acos'], ['atan', 'atan'],
-            ['ln', 'ln'], ['log', 'log'], ['e ^', 'e ^'], ['10 ^', '10 ^'],
-          ]},
+          {
+            type: 'field_dropdown',
+            name: 'OPERATOR',
+            options: [
+              ['abs', 'abs'],
+              ['floor', 'floor'],
+              ['ceiling', 'ceiling'],
+              ['sqrt', 'sqrt'],
+              ['sin', 'sin'],
+              ['cos', 'cos'],
+              ['tan', 'tan'],
+              ['asin', 'asin'],
+              ['acos', 'acos'],
+              ['atan', 'atan'],
+              ['ln', 'ln'],
+              ['log', 'log'],
+              ['e ^', 'e ^'],
+              ['10 ^', '10 ^'],
+            ],
+          },
           numberInput('NUM', 10),
         ]),
         output: 'Number',
@@ -445,9 +691,24 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       })
     },
   },
-  operator_letter_of: operator('operator_letter_of', 'letter %1 of %2', [numberInput('LETTER', 1), stringInput('STRING', 'world')], 'String'),
-  operator_length: operator('operator_length', 'length of %1', [stringInput('STRING', 'world')], 'Number'),
-  operator_contains: operator('operator_contains', '%1 contains %2?', [stringInput('STRING1', 'apple'), stringInput('STRING2', 'a')], 'Boolean'),
+  operator_letter_of: operator(
+    'operator_letter_of',
+    'letter %1 of %2',
+    [numberInput('LETTER', 1), stringInput('STRING', 'world')],
+    'String'
+  ),
+  operator_length: operator(
+    'operator_length',
+    'length of %1',
+    [stringInput('STRING', 'world')],
+    'Number'
+  ),
+  operator_contains: operator(
+    'operator_contains',
+    '%1 contains %2?',
+    [stringInput('STRING1', 'apple'), stringInput('STRING2', 'a')],
+    'Boolean'
+  ),
 
   control_wait_until: {
     init() {
@@ -482,10 +743,19 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         type: 'looks_seteffectto',
         message0: blockMessage('looks_seteffectto', 'set %1 effect to %2'),
         args0: blockArgs('looks_seteffectto', [
-          { type: 'field_dropdown', name: 'EFFECT', options: [
-            ['color', 'color'], ['fisheye', 'fisheye'], ['whirl', 'whirl'],
-            ['pixelate', 'pixelate'], ['mosaic', 'mosaic'], ['brightness', 'brightness'], ['ghost', 'ghost'],
-          ]},
+          {
+            type: 'field_dropdown',
+            name: 'EFFECT',
+            options: [
+              ['color', 'color'],
+              ['fisheye', 'fisheye'],
+              ['whirl', 'whirl'],
+              ['pixelate', 'pixelate'],
+              ['mosaic', 'mosaic'],
+              ['brightness', 'brightness'],
+              ['ghost', 'ghost'],
+            ],
+          },
           numberInput('VALUE', 0),
         ]),
         previousStatement: null,
@@ -500,10 +770,19 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         type: 'looks_changeeffectby',
         message0: blockMessage('looks_changeeffectby', 'change %1 effect by %2'),
         args0: blockArgs('looks_changeeffectby', [
-          { type: 'field_dropdown', name: 'EFFECT', options: [
-            ['color', 'color'], ['fisheye', 'fisheye'], ['whirl', 'whirl'],
-            ['pixelate', 'pixelate'], ['mosaic', 'mosaic'], ['brightness', 'brightness'], ['ghost', 'ghost'],
-          ]},
+          {
+            type: 'field_dropdown',
+            name: 'EFFECT',
+            options: [
+              ['color', 'color'],
+              ['fisheye', 'fisheye'],
+              ['whirl', 'whirl'],
+              ['pixelate', 'pixelate'],
+              ['mosaic', 'mosaic'],
+              ['brightness', 'brightness'],
+              ['ghost', 'ghost'],
+            ],
+          },
           numberInput('VALUE', 25),
         ]),
         previousStatement: null,
@@ -512,13 +791,27 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       })
     },
   },
-  looks_cleargraphiceffects: blockStatement('looks_cleargraphiceffects', 'clear graphic effects', [], '#9966FF'),
+  looks_cleargraphiceffects: blockStatement(
+    'looks_cleargraphiceffects',
+    'clear graphic effects',
+    [],
+    '#9966FF'
+  ),
   looks_costumenumbername: {
     init() {
       this.jsonInit({
         type: 'looks_costumenumbername',
         message0: blockMessage('looks_costumenumbername', 'costume %1'),
-        args0: blockArgs('looks_costumenumbername', [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }]),
+        args0: blockArgs('looks_costumenumbername', [
+          {
+            type: 'field_dropdown',
+            name: 'WHICH',
+            options: [
+              ['number', 'number'],
+              ['name', 'name'],
+            ],
+          },
+        ]),
         output: ['Number', 'String'],
         colour: '#9966FF',
       })
@@ -529,7 +822,16 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'looks_backdropnumbername',
         message0: blockMessage('looks_backdropnumbername', 'backdrop %1'),
-        args0: blockArgs('looks_backdropnumbername', [{ type: 'field_dropdown', name: 'WHICH', options: [['number', 'number'], ['name', 'name']] }]),
+        args0: blockArgs('looks_backdropnumbername', [
+          {
+            type: 'field_dropdown',
+            name: 'WHICH',
+            options: [
+              ['number', 'number'],
+              ['name', 'name'],
+            ],
+          },
+        ]),
         output: ['Number', 'String'],
         colour: '#9966FF',
       })
@@ -543,10 +845,16 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'sensing_distanceto',
         message0: blockMessage('sensing_distanceto', 'distance to %1'),
-        args0: blockArgs('sensing_distanceto', [{ type: 'field_dropdown', name: 'DISTANCETOMENU', options: () => [
-          ['mouse-pointer', '_mouse_'],
-          ..._currentSprites.map(sp => [sp.name, sp.id]),
-        ]}]),
+        args0: blockArgs('sensing_distanceto', [
+          {
+            type: 'field_dropdown',
+            name: 'DISTANCETOMENU',
+            options: () => [
+              ['mouse-pointer', '_mouse_'],
+              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+            ],
+          },
+        ]),
         output: 'Number',
         colour: '#5CB1D6',
       })
@@ -554,14 +862,24 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   },
 
   data_variable: variableReporter(),
-  data_setvariableto: variableStatement('data_setvariableto', 'set %1 to %2', stringInput('VALUE', 0)),
-  data_changevariableby: variableStatement('data_changevariableby', 'change %1 by %2', numberInput('VALUE', 1)),
+  data_setvariableto: variableStatement(
+    'data_setvariableto',
+    'set %1 to %2',
+    stringInput('VALUE', 0)
+  ),
+  data_changevariableby: variableStatement(
+    'data_changevariableby',
+    'change %1 by %2',
+    numberInput('VALUE', 1)
+  ),
   data_showvariable: {
     init() {
       this.jsonInit({
         type: 'data_showvariable',
         message0: blockMessage('data_showvariable', 'show variable %1'),
-        args0: blockArgs('data_showvariable', [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }]),
+        args0: blockArgs('data_showvariable', [
+          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FF8C1A',
@@ -573,7 +891,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
       this.jsonInit({
         type: 'data_hidevariable',
         message0: blockMessage('data_hidevariable', 'hide variable %1'),
-        args0: blockArgs('data_hidevariable', [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }]),
+        args0: blockArgs('data_hidevariable', [
+          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FF8C1A',
@@ -582,12 +902,26 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
   },
 }
 
-const KEY_OPTIONS = [['space', 'space'], ['up arrow', 'up arrow'], ['down arrow', 'down arrow'], ['left arrow', 'left arrow'], ['right arrow', 'right arrow'], ['any', 'any']]
+const KEY_OPTIONS = [
+  ['space', 'space'],
+  ['up arrow', 'up arrow'],
+  ['down arrow', 'down arrow'],
+  ['left arrow', 'left arrow'],
+  ['right arrow', 'right arrow'],
+  ['any', 'any'],
+]
 
 function blockStatement(type, message0, args0, colour) {
   return {
     init() {
-      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type, args0), previousStatement: null, nextStatement: null, colour })
+      this.jsonInit({
+        type,
+        message0: blockMessage(type, message0),
+        args0: blockArgs(type, args0),
+        previousStatement: null,
+        nextStatement: null,
+        colour,
+      })
     },
   }
 }
@@ -595,7 +929,13 @@ function blockStatement(type, message0, args0, colour) {
 function reporter(type, message0, output, colour) {
   return {
     init() {
-      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type), output, colour })
+      this.jsonInit({
+        type,
+        message0: blockMessage(type, message0),
+        args0: blockArgs(type),
+        output,
+        colour,
+      })
     },
   }
 }
@@ -603,7 +943,14 @@ function reporter(type, message0, output, colour) {
 function operator(type, message0, args0, output) {
   return {
     init() {
-      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type, args0), output, colour: '#59C059', inputsInline: true })
+      this.jsonInit({
+        type,
+        message0: blockMessage(type, message0),
+        args0: blockArgs(type, args0),
+        output,
+        colour: '#59C059',
+        inputsInline: true,
+      })
     },
   }
 }
@@ -614,7 +961,18 @@ function soundBlock(type, message0) {
       this.jsonInit({
         type,
         message0: blockMessage(type, message0),
-        args0: blockArgs(type, [{ type: 'field_dropdown', name: 'SOUND_MENU', options: [['pop', 'pop'], ['meow', 'meow'], ['click', 'click'], ['chime', 'chime']] }]),
+        args0: blockArgs(type, [
+          {
+            type: 'field_dropdown',
+            name: 'SOUND_MENU',
+            options: [
+              ['pop', 'pop'],
+              ['meow', 'meow'],
+              ['click', 'click'],
+              ['chime', 'chime'],
+            ],
+          },
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#CF63CF',
@@ -626,14 +984,20 @@ function soundBlock(type, message0) {
 function blockStop(type, message0) {
   return {
     init() {
-      this.jsonInit({ type, message0: blockMessage(type, message0), args0: blockArgs(type), previousStatement: null, colour: '#FFAB19' })
+      this.jsonInit({
+        type,
+        message0: blockMessage(type, message0),
+        args0: blockArgs(type),
+        previousStatement: null,
+        colour: '#FFAB19',
+      })
     },
   }
 }
 
 function variableOptions() {
   return _currentVariables.length
-    ? _currentVariables.map(v => [v.name, v.name])
+    ? _currentVariables.map((v) => [v.name, v.name])
     : [['score', 'score']]
 }
 
@@ -643,7 +1007,9 @@ function variableReporter() {
       this.jsonInit({
         type: 'data_variable',
         message0: blockMessage('data_variable', '%1'),
-        args0: blockArgs('data_variable', [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }]),
+        args0: blockArgs('data_variable', [
+          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+        ]),
         output: ['Number', 'String'],
         colour: '#FF8C1A',
       })
@@ -657,7 +1023,10 @@ function variableStatement(type, message0, valueInput) {
       this.jsonInit({
         type,
         message0: blockMessage(type, message0),
-        args0: blockArgs(type, [{ type: 'field_dropdown', name: 'VARIABLE', options: variableOptions }, valueInput]),
+        args0: blockArgs(type, [
+          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+          valueInput,
+        ]),
         previousStatement: null,
         nextStatement: null,
         colour: '#FF8C1A',
@@ -670,7 +1039,9 @@ export const DEFAULT_TOOLBOX = {
   kind: 'categoryToolbox',
   contents: [
     {
-      kind: 'category', name: 'Events', colour: '#FFAB19',
+      kind: 'category',
+      name: 'Events',
+      colour: '#FFAB19',
       contents: [
         { kind: 'block', type: 'event_whenflagclicked' },
         { kind: 'block', type: 'event_whenkeypressed' },
@@ -682,7 +1053,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Motion', colour: '#4C97FF',
+      kind: 'category',
+      name: 'Motion',
+      colour: '#4C97FF',
       contents: [
         { kind: 'block', type: 'motion_movesteps' },
         { kind: 'block', type: 'motion_turnright' },
@@ -703,7 +1076,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Looks', colour: '#9966FF',
+      kind: 'category',
+      name: 'Looks',
+      colour: '#9966FF',
       contents: [
         { kind: 'block', type: 'looks_sayforsecs' },
         { kind: 'block', type: 'looks_say' },
@@ -726,7 +1101,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Sound', colour: '#CF63CF',
+      kind: 'category',
+      name: 'Sound',
+      colour: '#CF63CF',
       contents: [
         { kind: 'block', type: 'sound_play' },
         { kind: 'block', type: 'sound_playuntildone' },
@@ -734,7 +1111,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Control', colour: '#FFAB19',
+      kind: 'category',
+      name: 'Control',
+      colour: '#FFAB19',
       contents: [
         { kind: 'block', type: 'control_wait' },
         { kind: 'block', type: 'control_wait_until' },
@@ -750,7 +1129,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Sensing', colour: '#5CB1D6',
+      kind: 'category',
+      name: 'Sensing',
+      colour: '#5CB1D6',
       contents: [
         { kind: 'block', type: 'sensing_askandwait' },
         { kind: 'block', type: 'sensing_answer' },
@@ -764,7 +1145,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Operators', colour: '#59C059',
+      kind: 'category',
+      name: 'Operators',
+      colour: '#59C059',
       contents: [
         { kind: 'block', type: 'operator_equals' },
         { kind: 'block', type: 'operator_gt' },
@@ -787,7 +1170,9 @@ export const DEFAULT_TOOLBOX = {
       ],
     },
     {
-      kind: 'category', name: 'Variables', colour: '#FF8C1A',
+      kind: 'category',
+      name: 'Variables',
+      colour: '#FF8C1A',
       contents: [
         { kind: 'block', type: 'data_variable' },
         { kind: 'block', type: 'data_setvariableto' },
@@ -799,13 +1184,23 @@ export const DEFAULT_TOOLBOX = {
   ],
 }
 
-const STAGE_EXCLUDED_CONTROL_BLOCKS = new Set(['control_start_as_clone', 'control_delete_this_clone'])
+const STAGE_EXCLUDED_CONTROL_BLOCKS = new Set([
+  'control_start_as_clone',
+  'control_delete_this_clone',
+])
 
 export const STAGE_TOOLBOX = {
   kind: 'categoryToolbox',
   contents: DEFAULT_TOOLBOX.contents
-    .filter(c => c.name !== 'Motion')
-    .map(c => c.name !== 'Control' ? c : { ...c, contents: c.contents.filter(item => !STAGE_EXCLUDED_CONTROL_BLOCKS.has(item.type)) }),
+    .filter((c) => c.name !== 'Motion')
+    .map((c) =>
+      c.name !== 'Control'
+        ? c
+        : {
+            ...c,
+            contents: c.contents.filter((item) => !STAGE_EXCLUDED_CONTROL_BLOCKS.has(item.type)),
+          }
+    ),
 }
 
 export const VALUE_INPUT_DEFAULTS = {
@@ -853,45 +1248,45 @@ export const VALUE_INPUT_DEFAULTS = {
 // Message templates for blocks with value inputs. %N maps to inputOrder[N-1].
 // Used by the builder to render inline block-like editors with embedded input fields.
 export const BLOCK_DISPLAY_TEMPLATES = {
-  motion_movesteps:        { message: 'move %1 steps',                  inputOrder: ['STEPS'] },
-  motion_turnright:        { message: 'turn right %1 degrees',           inputOrder: ['DEGREES'] },
-  motion_turnleft:         { message: 'turn left %1 degrees',            inputOrder: ['DEGREES'] },
-  motion_gotoxy:           { message: 'go to x: %1 y: %2',              inputOrder: ['X', 'Y'] },
-  motion_glidesecstoxy:    { message: 'glide %1 secs to x: %2 y: %3',  inputOrder: ['SECS', 'X', 'Y'] },
-  motion_glideto:          { message: 'glide %1 secs to',               inputOrder: ['SECS'] },
-  motion_pointindirection: { message: 'point in direction %1',           inputOrder: ['DIRECTION'] },
-  motion_setx:             { message: 'set x to %1',                    inputOrder: ['X'] },
-  motion_sety:             { message: 'set y to %1',                    inputOrder: ['Y'] },
-  motion_changexby:        { message: 'change x by %1',                 inputOrder: ['DX'] },
-  motion_changeyby:        { message: 'change y by %1',                 inputOrder: ['DY'] },
-  looks_sayforsecs:        { message: 'say %1 for %2 seconds',          inputOrder: ['MESSAGE', 'SECS'] },
-  looks_say:               { message: 'say %1',                         inputOrder: ['MESSAGE'] },
-  looks_think:             { message: 'think %1',                       inputOrder: ['MESSAGE'] },
-  looks_thinkforsecs:      { message: 'think %1 for %2 seconds',        inputOrder: ['MESSAGE', 'SECS'] },
-  looks_setsizeto:         { message: 'set size to %1 %',               inputOrder: ['SIZE'] },
-  looks_changesizeby:      { message: 'change size by %1',              inputOrder: ['CHANGE'] },
-  control_wait:            { message: 'wait %1 seconds',                inputOrder: ['DURATION'] },
-  control_repeat:          { message: 'repeat %1',                      inputOrder: ['TIMES'] },
-  sensing_askandwait:      { message: 'ask %1 and wait',                inputOrder: ['QUESTION'] },
-  operator_equals:         { message: '%1 = %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
-  operator_gt:             { message: '%1 > %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
-  operator_lt:             { message: '%1 < %2',                        inputOrder: ['OPERAND1', 'OPERAND2'] },
-  operator_add:            { message: '%1 + %2',                        inputOrder: ['NUM1', 'NUM2'] },
-  operator_subtract:       { message: '%1 - %2',                        inputOrder: ['NUM1', 'NUM2'] },
-  operator_multiply:       { message: '%1 * %2',                        inputOrder: ['NUM1', 'NUM2'] },
-  operator_divide:         { message: '%1 / %2',                        inputOrder: ['NUM1', 'NUM2'] },
-  operator_mod:            { message: '%1 mod %2',                      inputOrder: ['NUM1', 'NUM2'] },
-  operator_round:          { message: 'round %1',                       inputOrder: ['NUM'] },
-  operator_mathop:         { message: '_ of %1',                        inputOrder: ['NUM'] },
-  operator_random:         { message: 'pick random %1 to %2',           inputOrder: ['FROM', 'TO'] },
-  operator_join:           { message: 'join %1 %2',                     inputOrder: ['STRING1', 'STRING2'] },
-  operator_letter_of:      { message: 'letter %1 of %2',               inputOrder: ['LETTER', 'STRING'] },
-  operator_length:         { message: 'length of %1',                   inputOrder: ['STRING'] },
-  operator_contains:       { message: '%1 contains %2?',                inputOrder: ['STRING1', 'STRING2'] },
-  looks_seteffectto:       { message: 'set effect to %1',               inputOrder: ['VALUE'] },
-  looks_changeeffectby:    { message: 'change effect by %1',            inputOrder: ['VALUE'] },
-  data_setvariableto:      { message: 'set variable to %1',             inputOrder: ['VALUE'] },
-  data_changevariableby:   { message: 'change variable by %1',          inputOrder: ['VALUE'] },
+  motion_movesteps: { message: 'move %1 steps', inputOrder: ['STEPS'] },
+  motion_turnright: { message: 'turn right %1 degrees', inputOrder: ['DEGREES'] },
+  motion_turnleft: { message: 'turn left %1 degrees', inputOrder: ['DEGREES'] },
+  motion_gotoxy: { message: 'go to x: %1 y: %2', inputOrder: ['X', 'Y'] },
+  motion_glidesecstoxy: { message: 'glide %1 secs to x: %2 y: %3', inputOrder: ['SECS', 'X', 'Y'] },
+  motion_glideto: { message: 'glide %1 secs to', inputOrder: ['SECS'] },
+  motion_pointindirection: { message: 'point in direction %1', inputOrder: ['DIRECTION'] },
+  motion_setx: { message: 'set x to %1', inputOrder: ['X'] },
+  motion_sety: { message: 'set y to %1', inputOrder: ['Y'] },
+  motion_changexby: { message: 'change x by %1', inputOrder: ['DX'] },
+  motion_changeyby: { message: 'change y by %1', inputOrder: ['DY'] },
+  looks_sayforsecs: { message: 'say %1 for %2 seconds', inputOrder: ['MESSAGE', 'SECS'] },
+  looks_say: { message: 'say %1', inputOrder: ['MESSAGE'] },
+  looks_think: { message: 'think %1', inputOrder: ['MESSAGE'] },
+  looks_thinkforsecs: { message: 'think %1 for %2 seconds', inputOrder: ['MESSAGE', 'SECS'] },
+  looks_setsizeto: { message: 'set size to %1 %', inputOrder: ['SIZE'] },
+  looks_changesizeby: { message: 'change size by %1', inputOrder: ['CHANGE'] },
+  control_wait: { message: 'wait %1 seconds', inputOrder: ['DURATION'] },
+  control_repeat: { message: 'repeat %1', inputOrder: ['TIMES'] },
+  sensing_askandwait: { message: 'ask %1 and wait', inputOrder: ['QUESTION'] },
+  operator_equals: { message: '%1 = %2', inputOrder: ['OPERAND1', 'OPERAND2'] },
+  operator_gt: { message: '%1 > %2', inputOrder: ['OPERAND1', 'OPERAND2'] },
+  operator_lt: { message: '%1 < %2', inputOrder: ['OPERAND1', 'OPERAND2'] },
+  operator_add: { message: '%1 + %2', inputOrder: ['NUM1', 'NUM2'] },
+  operator_subtract: { message: '%1 - %2', inputOrder: ['NUM1', 'NUM2'] },
+  operator_multiply: { message: '%1 * %2', inputOrder: ['NUM1', 'NUM2'] },
+  operator_divide: { message: '%1 / %2', inputOrder: ['NUM1', 'NUM2'] },
+  operator_mod: { message: '%1 mod %2', inputOrder: ['NUM1', 'NUM2'] },
+  operator_round: { message: 'round %1', inputOrder: ['NUM'] },
+  operator_mathop: { message: '_ of %1', inputOrder: ['NUM'] },
+  operator_random: { message: 'pick random %1 to %2', inputOrder: ['FROM', 'TO'] },
+  operator_join: { message: 'join %1 %2', inputOrder: ['STRING1', 'STRING2'] },
+  operator_letter_of: { message: 'letter %1 of %2', inputOrder: ['LETTER', 'STRING'] },
+  operator_length: { message: 'length of %1', inputOrder: ['STRING'] },
+  operator_contains: { message: '%1 contains %2?', inputOrder: ['STRING1', 'STRING2'] },
+  looks_seteffectto: { message: 'set effect to %1', inputOrder: ['VALUE'] },
+  looks_changeeffectby: { message: 'change effect by %1', inputOrder: ['VALUE'] },
+  data_setvariableto: { message: 'set variable to %1', inputOrder: ['VALUE'] },
+  data_changevariableby: { message: 'change variable by %1', inputOrder: ['VALUE'] },
 }
 
 function numberShadow(value) {
@@ -914,7 +1309,7 @@ function flattenJsonToolbox(toolbox, options = {}) {
   for (const item of toolbox.contents ?? []) {
     if (item.kind === 'category') {
       contents.push({ kind: 'label', text: item.name, 'web-class': 'scratch-toolbox-label' })
-      contents.push(...(item.contents ?? []).map(item => withJsonInputDefaults(item, options)))
+      contents.push(...(item.contents ?? []).map((item) => withJsonInputDefaults(item, options)))
       contents.push({ kind: 'sep', gap: '16' })
     } else {
       contents.push(withJsonInputDefaults(item, options))
@@ -942,9 +1337,11 @@ export function createScratchBlockStack(type, inputValues = {}) {
   const inputs = {}
   const shadowDefaults = VALUE_INPUT_DEFAULTS[type] ?? {}
   for (const [name, val] of Object.entries(inputValues ?? {})) {
-    const shadow = shadowDefaults[name] ?? (typeof val === 'number'
-      ? { type: 'math_number', field: 'NUM' }
-      : { type: 'text', field: 'TEXT' })
+    const shadow =
+      shadowDefaults[name] ??
+      (typeof val === 'number'
+        ? { type: 'math_number', field: 'NUM' }
+        : { type: 'text', field: 'TEXT' })
     inputs[name] = { shadow: { type: shadow.type, fields: { [shadow.field]: String(val) } } }
   }
   return Object.keys(inputs).length ? { type, inputs } : { type }
@@ -984,7 +1381,7 @@ function stripBlockRuntimeFields(block) {
 function normalizePrebuiltStacks(prebuiltStacks = [], predefinedBlocks = []) {
   const legacyStacks = (predefinedBlocks ?? []).map(predefinedBlockToStack).filter(Boolean)
   return [...legacyStacks, ...(prebuiltStacks ?? [])]
-    .map(entry => cloneBlockForToolbox(entry?.stack))
+    .map((entry) => cloneBlockForToolbox(entry?.stack))
     .filter(Boolean)
 }
 
@@ -995,7 +1392,8 @@ function xmlBlockFromSerialized(doc, block, tagName = 'block') {
   for (const [name, value] of Object.entries(block.fields ?? {})) {
     const fieldEl = doc.createElement('field')
     fieldEl.setAttribute('name', name)
-    fieldEl.textContent = typeof value === 'object' ? String(value.name ?? value.id ?? '') : String(value)
+    fieldEl.textContent =
+      typeof value === 'object' ? String(value.name ?? value.id ?? '') : String(value)
     el.appendChild(fieldEl)
   }
 
@@ -1017,7 +1415,9 @@ function xmlBlockFromSerialized(doc, block, tagName = 'block') {
 }
 
 function findOrCreateXmlCategory(doc, name) {
-  const existing = Array.from(doc.querySelectorAll('category')).find(cat => cat.getAttribute('name') === name)
+  const existing = Array.from(doc.querySelectorAll('category')).find(
+    (cat) => cat.getAttribute('name') === name
+  )
   if (existing) return existing
   const category = doc.createElement('category')
   category.setAttribute('name', name)
@@ -1036,14 +1436,14 @@ function appendStacksToXmlToolbox(toolbox, stacks) {
   // populated — an empty toolbox (no categories, no root blocks, e.g. every
   // block deselected in the toolbox picker) should still get a category-based
   // placement so a prebuilt stack isn't stranded with nowhere to appear.
-  const hasRootBlocks = Array.from(doc.documentElement?.children ?? []).some(child =>
-    child.tagName?.toLowerCase() === 'block'
+  const hasRootBlocks = Array.from(doc.documentElement?.children ?? []).some(
+    (child) => child.tagName?.toLowerCase() === 'block'
   )
   const preserveFlatToolbox = doc.querySelectorAll('category').length === 0 && hasRootBlocks
 
   for (const stack of stacks) {
-    const category = Array.from(doc.querySelectorAll('category')).find(cat =>
-      Array.from(cat.querySelectorAll('block')).some(b => b.getAttribute('type') === stack.type)
+    const category = Array.from(doc.querySelectorAll('category')).find((cat) =>
+      Array.from(cat.querySelectorAll('block')).some((b) => b.getAttribute('type') === stack.type)
     )
     if (category) {
       category.appendChild(xmlBlockFromSerialized(doc, stack))
@@ -1059,8 +1459,9 @@ function appendStacksToXmlToolbox(toolbox, stacks) {
     }
 
     // Keep flat/minimal toolboxes usable too: append a compatible prebuilt stack at the root.
-    const hasRootBlock = Array.from(doc.documentElement?.children ?? []).some(child =>
-      child.tagName?.toLowerCase() === 'block' && child.getAttribute('type') === stack.type
+    const hasRootBlock = Array.from(doc.documentElement?.children ?? []).some(
+      (child) =>
+        child.tagName?.toLowerCase() === 'block' && child.getAttribute('type') === stack.type
     )
     if (hasRootBlock) doc.documentElement.appendChild(xmlBlockFromSerialized(doc, stack))
   }
@@ -1081,7 +1482,10 @@ function appendStacksToJsonToolbox(toolbox, stacks) {
     }
   }
 
-  const newContents = toolbox.contents.map(cat => ({ ...cat, contents: cat.contents ? [...cat.contents] : [] }))
+  const newContents = toolbox.contents.map((cat) => ({
+    ...cat,
+    contents: cat.contents ? [...cat.contents] : [],
+  }))
   for (const stack of stacks) {
     let ci = typeToCategory[stack.type]
     if (ci == null) {
@@ -1090,7 +1494,12 @@ function appendStacksToJsonToolbox(toolbox, stacks) {
         ci = nameToCategory[categoryName]
         if (ci == null) {
           ci = newContents.length
-          newContents.push({ kind: 'category', name: categoryName, colour: SCRATCH_CATEGORY_COLOURS[categoryName], contents: [] })
+          newContents.push({
+            kind: 'category',
+            name: categoryName,
+            colour: SCRATCH_CATEGORY_COLOURS[categoryName],
+            contents: [],
+          })
           nameToCategory[categoryName] = ci
         }
       }
@@ -1137,21 +1546,43 @@ export function addCreateVariableButtonToToolbox(toolbox) {
   return base
 }
 
-const CREATE_VARIABLE_BUTTON_JSON = { kind: 'button', text: 'Make a Variable', callbackKey: CREATE_VARIABLE_CALLBACK_KEY }
+const CREATE_VARIABLE_BUTTON_JSON = {
+  kind: 'button',
+  text: 'Make a Variable',
+  callbackKey: CREATE_VARIABLE_CALLBACK_KEY,
+}
 
 function addCreateVariableButtonToJsonToolbox(toolbox) {
   const contents = toolbox.contents ?? []
-  const varIndex = contents.findIndex(item => item.kind === 'category' && item.name === 'Variables')
+  const varIndex = contents.findIndex(
+    (item) => item.kind === 'category' && item.name === 'Variables'
+  )
   if (varIndex === -1) {
     return {
       ...toolbox,
-      contents: [...contents, { kind: 'category', name: 'Variables', colour: '#FF8C1A', contents: [CREATE_VARIABLE_BUTTON_JSON] }],
+      contents: [
+        ...contents,
+        {
+          kind: 'category',
+          name: 'Variables',
+          colour: '#FF8C1A',
+          contents: [CREATE_VARIABLE_BUTTON_JSON],
+        },
+      ],
     }
   }
   const category = contents[varIndex]
-  if (category.contents?.some(item => item.kind === 'button' && item.callbackKey === CREATE_VARIABLE_CALLBACK_KEY)) return toolbox
+  if (
+    category.contents?.some(
+      (item) => item.kind === 'button' && item.callbackKey === CREATE_VARIABLE_CALLBACK_KEY
+    )
+  )
+    return toolbox
   const nextContents = [...contents]
-  nextContents[varIndex] = { ...category, contents: [CREATE_VARIABLE_BUTTON_JSON, ...(category.contents ?? [])] }
+  nextContents[varIndex] = {
+    ...category,
+    contents: [CREATE_VARIABLE_BUTTON_JSON, ...(category.contents ?? [])],
+  }
   return { ...toolbox, contents: nextContents }
 }
 
@@ -1160,14 +1591,18 @@ function addCreateVariableButtonToXmlToolbox(toolbox) {
   const doc = new DOMParser().parseFromString(toolbox, 'text/xml')
   if (doc.querySelector('parsererror')) return toolbox
 
-  const hasButton = Array.from(doc.querySelectorAll('button')).some(b => b.getAttribute('callbackkey') === CREATE_VARIABLE_CALLBACK_KEY)
+  const hasButton = Array.from(doc.querySelectorAll('button')).some(
+    (b) => b.getAttribute('callbackkey') === CREATE_VARIABLE_CALLBACK_KEY
+  )
   if (hasButton) return toolbox
 
   const button = doc.createElement('button')
   button.setAttribute('text', 'Make a Variable')
   button.setAttribute('callbackkey', CREATE_VARIABLE_CALLBACK_KEY)
 
-  const category = Array.from(doc.querySelectorAll('category')).find(cat => cat.getAttribute('name') === 'Variables')
+  const category = Array.from(doc.querySelectorAll('category')).find(
+    (cat) => cat.getAttribute('name') === 'Variables'
+  )
   if (category) {
     category.insertBefore(button, category.firstChild)
     return new XMLSerializer().serializeToString(doc)
@@ -1190,7 +1625,9 @@ function flattenXmlToolbox(toolbox, options = {}) {
   const doc = document.implementation.createDocument('', '', null)
   const root = doc.createElement('xml')
   doc.appendChild(root)
-  const categories = Array.from(source.documentElement?.children ?? []).filter(el => el.tagName.toLowerCase() === 'category')
+  const categories = Array.from(source.documentElement?.children ?? []).filter(
+    (el) => el.tagName.toLowerCase() === 'category'
+  )
   if (!categories.length) {
     for (const child of Array.from(source.documentElement?.children ?? [])) {
       const imported = doc.importNode(child, true)
@@ -1222,8 +1659,8 @@ function addXmlInputDefaults(doc, blockEl, options = {}) {
   if (!defaults) return
 
   for (const [name, shadow] of Object.entries(defaults)) {
-    const existing = Array.from(blockEl.children).find(child =>
-      child.tagName?.toLowerCase() === 'value' && child.getAttribute('name') === name
+    const existing = Array.from(blockEl.children).find(
+      (child) => child.tagName?.toLowerCase() === 'value' && child.getAttribute('name') === name
     )
     if (existing) continue
 
@@ -1248,7 +1685,8 @@ function inputDefaultsForBlock(type, options = {}) {
   const x = Math.round(Number(position.x ?? 0))
   const y = Math.round(Number(position.y ?? 0))
   if (type === 'motion_gotoxy') return { X: numberShadow(x), Y: numberShadow(y) }
-  if (type === 'motion_glidesecstoxy') return { ...defaults, X: numberShadow(x), Y: numberShadow(y) }
+  if (type === 'motion_glidesecstoxy')
+    return { ...defaults, X: numberShadow(x), Y: numberShadow(y) }
   if (type === 'motion_setx') return { X: numberShadow(x) }
   if (type === 'motion_sety') return { Y: numberShadow(y) }
   return defaults
@@ -1256,9 +1694,24 @@ function inputDefaultsForBlock(type, options = {}) {
 
 export function createRunSignal() {
   return {
-    stopped: false, keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0, answer: '', ask: null,
-    backdrop: null, backdrops: [], onBackdropChange: null, executedBlocks: new Set(), timerStart: Date.now(),
-    onCloneCreated: null, onCloneUpdated: null, onCloneDeleted: null, deletedClones: new Set(), cloneCount: 0, cloneSeq: 0,
+    stopped: false,
+    keysPressed: new Set(),
+    mouseDown: false,
+    mouseX: 0,
+    mouseY: 0,
+    answer: '',
+    ask: null,
+    backdrop: null,
+    backdrops: [],
+    onBackdropChange: null,
+    executedBlocks: new Set(),
+    timerStart: Date.now(),
+    onCloneCreated: null,
+    onCloneUpdated: null,
+    onCloneDeleted: null,
+    deletedClones: new Set(),
+    cloneCount: 0,
+    cloneSeq: 0,
     clones: new Map(),
   }
 }
@@ -1266,11 +1719,19 @@ export function createRunSignal() {
 export async function runWorkspace(workspace, spriteState, onUpdate, signal) {
   const context = createRunContext(workspace, spriteState, onUpdate, signal, null, [], 'sprite')
   const hats = workspace.getBlocksByType('event_whenflagclicked', false)
-  await Promise.all(hats.map(hat => runChain(hat.getNextBlock(), context)))
+  await Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), context)))
 }
 
 export async function runSingleBlock(block, spriteState, onUpdate, signal) {
-  const context = createRunContext(block?.workspace, spriteState, onUpdate, signal, null, [], 'sprite')
+  const context = createRunContext(
+    block?.workspace,
+    spriteState,
+    onUpdate,
+    signal,
+    null,
+    [],
+    'sprite'
+  )
   await runChain(block, context)
 }
 
@@ -1278,50 +1739,96 @@ export async function runEvent(workspace, eventType, spriteState, onUpdate, sign
   const context = createRunContext(workspace, spriteState, onUpdate, signal, null, [], 'sprite')
   let hats = workspace.getBlocksByType(eventType, false)
   if (eventType === 'event_whenkeypressed') {
-    hats = hats.filter(hat => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
+    hats = hats.filter((hat) => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
   } else if (eventType === 'event_whenbroadcastreceived') {
-    hats = hats.filter(hat => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(option ?? ''))
+    hats = hats.filter(
+      (hat) => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(option ?? '')
+    )
   }
-  await Promise.all(hats.map(hat => runChain(hat.getNextBlock(), context)))
+  await Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), context)))
 }
 
 // Multi-sprite: run all green-flag hats across every sprite concurrently.
 // spriteWorkspaces: Array of { id, workspace, state, costumes, onUpdate }
 export async function runAllSprites(spriteWorkspaces, signal) {
   signal.variables ??= {}
-  await Promise.all(spriteWorkspaces.map(sp => {
-    const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, spriteWorkspaces, sp.costumes ?? [], sp.id)
-    const hats = sp.workspace.getBlocksByType('event_whenflagclicked', false)
-    return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), context)))
-  }))
+  await Promise.all(
+    spriteWorkspaces.map((sp) => {
+      const context = createRunContext(
+        sp.workspace,
+        sp.state,
+        sp.onUpdate,
+        signal,
+        spriteWorkspaces,
+        sp.costumes ?? [],
+        sp.id
+      )
+      const hats = sp.workspace.getBlocksByType('event_whenflagclicked', false)
+      return Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), context)))
+    })
+  )
 }
 
-export async function runAllSpritesEvent(spriteWorkspaces, eventType, signal, option = null, allSpritesContext = null) {
+export async function runAllSpritesEvent(
+  spriteWorkspaces,
+  eventType,
+  signal,
+  option = null,
+  allSpritesContext = null
+) {
   const broadcastSprites = allSpritesContext ?? spriteWorkspaces
   signal.variables ??= {}
-  await Promise.all(spriteWorkspaces.map(sp => {
-    const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, broadcastSprites, sp.costumes ?? [], sp.id)
-    let hats = sp.workspace.getBlocksByType(eventType, false)
-    if (eventType === 'event_whenkeypressed') {
-      hats = hats.filter(hat => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
-    } else if (eventType === 'event_whenbroadcastreceived') {
-      hats = hats.filter(hat => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(option ?? ''))
-    }
-    return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), context)))
-  }))
+  await Promise.all(
+    spriteWorkspaces.map((sp) => {
+      const context = createRunContext(
+        sp.workspace,
+        sp.state,
+        sp.onUpdate,
+        signal,
+        broadcastSprites,
+        sp.costumes ?? [],
+        sp.id
+      )
+      let hats = sp.workspace.getBlocksByType(eventType, false)
+      if (eventType === 'event_whenkeypressed') {
+        hats = hats.filter((hat) => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
+      } else if (eventType === 'event_whenbroadcastreceived') {
+        hats = hats.filter(
+          (hat) => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(option ?? '')
+        )
+      }
+      return Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), context)))
+    })
+  )
 }
 
 // Run a single clicked block within the full multi-sprite context so broadcasts propagate.
 export async function runBlockInContext(block, spriteWorkspaces, targetSpriteId, signal) {
   if (!block) return
-  const sp = spriteWorkspaces.find(s => s.id === targetSpriteId)
+  const sp = spriteWorkspaces.find((s) => s.id === targetSpriteId)
   if (!sp) return
   signal.variables ??= {}
-  const context = createRunContext(sp.workspace, sp.state, sp.onUpdate, signal, spriteWorkspaces, sp.costumes ?? [], sp.id)
+  const context = createRunContext(
+    sp.workspace,
+    sp.state,
+    sp.onUpdate,
+    signal,
+    spriteWorkspaces,
+    sp.costumes ?? [],
+    sp.id
+  )
   await runChain(block, context)
 }
 
-function createRunContext(workspace, state, onUpdate, signal, allSprites = null, costumes = [], spriteId = null) {
+function createRunContext(
+  workspace,
+  state,
+  onUpdate,
+  signal,
+  allSprites = null,
+  costumes = [],
+  spriteId = null
+) {
   signal.variables ??= {}
   return { workspace, state, onUpdate, signal, allSprites, costumes, spriteId }
 }
@@ -1330,7 +1837,10 @@ function createRunContext(workspace, state, onUpdate, signal, allSprites = null,
 // clone — while that specific clone hasn't deleted itself (delete this clone must not halt
 // other sprites'/clones' scripts, so it can't use the shared signal.stopped flag).
 function isActive(context) {
-  return !context.signal.stopped && !(context.spriteId && context.signal.deletedClones?.has(context.spriteId))
+  return (
+    !context.signal.stopped &&
+    !(context.spriteId && context.signal.deletedClones?.has(context.spriteId))
+  )
 }
 
 async function runChain(block, context) {
@@ -1359,32 +1869,52 @@ async function runBlock(block, context) {
     }
     case 'motion_turnright':
       state.direction = (state.direction + numberValue(block, 'DEGREES', context, 15)) % 360
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_turnleft':
       state.direction = (state.direction - numberValue(block, 'DEGREES', context, 15) + 360) % 360
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_gotoxy':
       state.x = numberValue(block, 'X', context, 0)
       state.y = numberValue(block, 'Y', context, 0)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_setx':
       state.x = numberValue(block, 'X', context, 0)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_sety':
       state.y = numberValue(block, 'Y', context, 0)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_changexby':
       state.x += numberValue(block, 'DX', context, 10)
-      clampSprite(state); onUpdate({ ...state }); await tick(); break
+      clampSprite(state)
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_changeyby':
       state.y += numberValue(block, 'DY', context, 10)
-      clampSprite(state); onUpdate({ ...state }); await tick(); break
+      clampSprite(state)
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_setrotationstyle':
       state.rotationStyle = block.getFieldValue('STYLE') ?? 'all around'
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_ifonedge_bounce':
       bounceIfNeeded(state)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'motion_goto': {
       const to = block.getFieldValue('TO')
       if (to === '_random_') {
@@ -1394,11 +1924,16 @@ async function runBlock(block, context) {
         state.x = signal.mouseX ?? 0
         state.y = signal.mouseY ?? 0
       } else {
-        const target = context.allSprites?.find(sp => sp.id === to)
-        if (target) { state.x = target.state.x; state.y = target.state.y }
+        const target = context.allSprites?.find((sp) => sp.id === to)
+        if (target) {
+          state.x = target.state.x
+          state.y = target.state.y
+        }
       }
       clampSprite(state)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     }
     case 'motion_glidesecstoxy': {
       const secs = numberValue(block, 'SECS', context, 1)
@@ -1418,7 +1953,7 @@ async function runBlock(block, context) {
         targetX = signal.mouseX ?? 0
         targetY = signal.mouseY ?? 0
       } else {
-        const target = context.allSprites?.find(sp => sp.id === to)
+        const target = context.allSprites?.find((sp) => sp.id === to)
         targetX = target ? target.state.x : state.x
         targetY = target ? target.state.y : state.y
       }
@@ -1427,7 +1962,9 @@ async function runBlock(block, context) {
     }
     case 'motion_pointindirection':
       state.direction = numberValue(block, 'DIRECTION', context, 90)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
 
     case 'looks_sayforsecs':
       state.bubble = stringValue(block, 'MESSAGE', context)
@@ -1440,11 +1977,15 @@ async function runBlock(block, context) {
     case 'looks_say':
       state.bubble = stringValue(block, 'MESSAGE', context)
       state.bubbleType = 'say'
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'looks_think':
       state.bubble = stringValue(block, 'MESSAGE', context)
       state.bubbleType = 'think'
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'looks_thinkforsecs':
       state.bubble = stringValue(block, 'MESSAGE', context)
       state.bubbleType = 'think'
@@ -1454,15 +1995,25 @@ async function runBlock(block, context) {
       onUpdate({ ...state })
       break
     case 'looks_show':
-      state.visible = true; onUpdate({ ...state }); await tick(); break
+      state.visible = true
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'looks_hide':
-      state.visible = false; onUpdate({ ...state }); await tick(); break
+      state.visible = false
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'looks_setsizeto':
       state.size = Math.max(0, numberValue(block, 'SIZE', context, 100))
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'looks_changesizeby':
       state.size = Math.max(0, state.size + numberValue(block, 'CHANGE', context, 10))
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     case 'looks_switchcostumeto': {
       const name = block.getFieldValue('COSTUME')
       if (name) state.costume = name
@@ -1473,7 +2024,7 @@ async function runBlock(block, context) {
     case 'looks_nextcostume': {
       const costumes = context.costumes ?? []
       if (costumes.length > 0) {
-        const idx = costumes.findIndex(c => c.name === state.costume)
+        const idx = costumes.findIndex((c) => c.name === state.costume)
         const next = costumes[(idx + 1) % costumes.length]
         if (next) state.costume = next.name
       }
@@ -1490,7 +2041,7 @@ async function runBlock(block, context) {
     case 'looks_nextbackdrop': {
       const bds = context.signal.backdrops ?? []
       if (bds.length) {
-        const idx = bds.findIndex(b => b.name === context.signal.backdrop)
+        const idx = bds.findIndex((b) => b.name === context.signal.backdrop)
         const next = bds[(idx + 1) % bds.length]
         if (next) switchBackdrop(next.name, context)
       }
@@ -1500,16 +2051,24 @@ async function runBlock(block, context) {
     case 'looks_seteffectto': {
       const effect = block.getFieldValue('EFFECT') ?? 'color'
       state[`effect_${effect}`] = numberValue(block, 'VALUE', context, 0)
-      onUpdate({ ...state }); await tick(); break
+      onUpdate({ ...state })
+      await tick()
+      break
     }
     case 'looks_changeeffectby': {
       const effect = block.getFieldValue('EFFECT') ?? 'color'
-      state[`effect_${effect}`] = (state[`effect_${effect}`] ?? 0) + numberValue(block, 'VALUE', context, 0)
-      onUpdate({ ...state }); await tick(); break
+      state[`effect_${effect}`] =
+        (state[`effect_${effect}`] ?? 0) + numberValue(block, 'VALUE', context, 0)
+      onUpdate({ ...state })
+      await tick()
+      break
     }
     case 'looks_cleargraphiceffects': {
-      for (const e of ['color', 'fisheye', 'whirl', 'pixelate', 'mosaic', 'brightness', 'ghost']) state[`effect_${e}`] = 0
-      onUpdate({ ...state }); await tick(); break
+      for (const e of ['color', 'fisheye', 'whirl', 'pixelate', 'mosaic', 'brightness', 'ghost'])
+        state[`effect_${e}`] = 0
+      onUpdate({ ...state })
+      await tick()
+      break
     }
 
     case 'sound_play':
@@ -1553,10 +2112,16 @@ async function runBlock(block, context) {
       break
     }
     case 'control_if':
-      if (booleanValue(block, 'CONDITION', context)) await runChain(block.getInputTargetBlock('SUBSTACK'), context)
+      if (booleanValue(block, 'CONDITION', context))
+        await runChain(block.getInputTargetBlock('SUBSTACK'), context)
       break
     case 'control_if_else':
-      await runChain(block.getInputTargetBlock(booleanValue(block, 'CONDITION', context) ? 'SUBSTACK' : 'SUBSTACK2'), context)
+      await runChain(
+        block.getInputTargetBlock(
+          booleanValue(block, 'CONDITION', context) ? 'SUBSTACK' : 'SUBSTACK2'
+        ),
+        context
+      )
       break
     case 'control_stop':
       signal.stopped = true
@@ -1569,7 +2134,7 @@ async function runBlock(block, context) {
       if (option === '_myself_') {
         source = { id: context.spriteId, workspace, state, costumes: context.costumes }
       } else {
-        source = context.allSprites?.find(sp => sp.id === option)
+        source = context.allSprites?.find((sp) => sp.id === option)
       }
       if (source && source.workspace) {
         signal.cloneCount = signal.cloneCount ?? 0
@@ -1577,20 +2142,40 @@ async function runBlock(block, context) {
           signal.cloneCount++
           signal.cloneSeq = (signal.cloneSeq ?? 0) + 1
           const cloneId = `${source.id}__clone${signal.cloneSeq}`
-          const rootBaseId = source.id.includes('__clone') ? source.id.split('__clone')[0] : source.id
+          const rootBaseId = source.id.includes('__clone')
+            ? source.id.split('__clone')[0]
+            : source.id
           const cloneState = { ...source.state }
-          signal.onCloneCreated?.({ id: cloneId, baseId: source.id, state: { ...cloneState }, costumes: source.costumes ?? [] })
+          signal.onCloneCreated?.({
+            id: cloneId,
+            baseId: source.id,
+            state: { ...cloneState },
+            costumes: source.costumes ?? [],
+          })
           signal.clones ??= new Map()
-          signal.clones.set(cloneId, { id: cloneId, baseId: rootBaseId, workspace: source.workspace, state: cloneState, costumes: source.costumes ?? [] })
+          signal.clones.set(cloneId, {
+            id: cloneId,
+            baseId: rootBaseId,
+            workspace: source.workspace,
+            state: cloneState,
+            costumes: source.costumes ?? [],
+          })
           const cloneContext = createRunContext(
-            source.workspace, cloneState, s => signal.onCloneUpdated?.(cloneId, s),
-            signal, context.allSprites, source.costumes ?? [], cloneId,
+            source.workspace,
+            cloneState,
+            (s) => signal.onCloneUpdated?.(cloneId, s),
+            signal,
+            context.allSprites,
+            source.costumes ?? [],
+            cloneId
           )
           const hats = source.workspace.getBlocksByType('control_start_as_clone', false)
           // fire-and-forget: the clone's scripts run concurrently, the creator continues immediately.
           // A throw here would otherwise never reach the top-level run's try/catch at all
           // (this promise chain isn't awaited by the creator), so it needs its own report.
-          Promise.all(hats.map(hat => runChain(hat.getNextBlock(), cloneContext))).catch(err => signal.onError?.(err))
+          Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), cloneContext))).catch((err) =>
+            signal.onError?.(err)
+          )
         }
       }
       break
@@ -1608,28 +2193,56 @@ async function runBlock(block, context) {
     case 'event_broadcast': {
       const msg = stringValue(block, 'BROADCAST_INPUT', context)
       context.signal.onBroadcast?.(msg)
-      const targets = context.allSprites ?? [{ workspace: context.workspace, state: context.state, onUpdate: context.onUpdate }]
+      const targets = context.allSprites ?? [
+        { workspace: context.workspace, state: context.state, onUpdate: context.onUpdate },
+      ]
       // fire-and-forget: receivers run concurrently, sender continues immediately. A throw
       // here would otherwise never reach the top-level run's try/catch (see the matching
       // comment on the control_start_as_clone case above).
-      Promise.all(targets.map(sp => {
-        const ctx = createRunContext(sp.workspace, sp.state, sp.onUpdate, context.signal, context.allSprites, sp.costumes ?? [])
-        const hats = sp.workspace.getBlocksByType('event_whenbroadcastreceived', false)
-          .filter(hat => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(msg ?? ''))
-        return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), ctx)))
-      })).catch(err => context.signal.onError?.(err))
+      Promise.all(
+        targets.map((sp) => {
+          const ctx = createRunContext(
+            sp.workspace,
+            sp.state,
+            sp.onUpdate,
+            context.signal,
+            context.allSprites,
+            sp.costumes ?? []
+          )
+          const hats = sp.workspace
+            .getBlocksByType('event_whenbroadcastreceived', false)
+            .filter(
+              (hat) => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(msg ?? '')
+            )
+          return Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), ctx)))
+        })
+      ).catch((err) => context.signal.onError?.(err))
       break
     }
     case 'event_broadcastandwait': {
       const msg = stringValue(block, 'BROADCAST_INPUT', context)
       context.signal.onBroadcast?.(msg)
-      const targets = context.allSprites ?? [{ workspace: context.workspace, state: context.state, onUpdate: context.onUpdate }]
-      await Promise.all(targets.map(sp => {
-        const ctx = createRunContext(sp.workspace, sp.state, sp.onUpdate, context.signal, context.allSprites, sp.costumes ?? [])
-        const hats = sp.workspace.getBlocksByType('event_whenbroadcastreceived', false)
-          .filter(hat => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(msg ?? ''))
-        return Promise.all(hats.map(hat => runChain(hat.getNextBlock(), ctx)))
-      }))
+      const targets = context.allSprites ?? [
+        { workspace: context.workspace, state: context.state, onUpdate: context.onUpdate },
+      ]
+      await Promise.all(
+        targets.map((sp) => {
+          const ctx = createRunContext(
+            sp.workspace,
+            sp.state,
+            sp.onUpdate,
+            context.signal,
+            context.allSprites,
+            sp.costumes ?? []
+          )
+          const hats = sp.workspace
+            .getBlocksByType('event_whenbroadcastreceived', false)
+            .filter(
+              (hat) => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(msg ?? '')
+            )
+          return Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), ctx)))
+        })
+      )
       break
     }
 
@@ -1702,7 +2315,7 @@ function evaluateReporter(block, context) {
       return state.direction
     case 'looks_costumenumber': {
       const costumes = context.costumes ?? []
-      const idx = costumes.findIndex(c => c.name === state.costume)
+      const idx = costumes.findIndex((c) => c.name === state.costume)
       return idx >= 0 ? idx + 1 : 1
     }
     case 'sensing_answer':
@@ -1715,43 +2328,76 @@ function evaluateReporter(block, context) {
       return isTouchingEdge(state)
     case 'sensing_touchingobject': {
       const target = block.getFieldValue('TOUCHINGOBJECTMENU')
-      if (target === '_mouse_') return isTouchingMouse(state, signal.mouseX ?? 0, signal.mouseY ?? 0)
+      if (target === '_mouse_')
+        return isTouchingMouse(state, signal.mouseX ?? 0, signal.mouseY ?? 0)
       if (target === '_edge_') return isTouchingEdge(state)
-      const targetSprite = allSprites?.find(sp => sp.id === target)
+      const targetSprite = allSprites?.find((sp) => sp.id === target)
       if (targetSprite && isTouchingSprite(state, targetSprite.state)) return true
       if (signal.clones) {
         for (const clone of signal.clones.values()) {
-          if (clone.baseId === target && clone.id !== context.spriteId && isTouchingSprite(state, clone.state)) return true
+          if (
+            clone.baseId === target &&
+            clone.id !== context.spriteId &&
+            isTouchingSprite(state, clone.state)
+          )
+            return true
         }
       }
       return false
     }
     case 'operator_equals':
-      return String(evaluateInput(block, 'OPERAND1', context)) === String(evaluateInput(block, 'OPERAND2', context))
+      return (
+        String(evaluateInput(block, 'OPERAND1', context)) ===
+        String(evaluateInput(block, 'OPERAND2', context))
+      )
     case 'operator_gt':
-      return Number(evaluateInput(block, 'OPERAND1', context)) > Number(evaluateInput(block, 'OPERAND2', context))
+      return (
+        Number(evaluateInput(block, 'OPERAND1', context)) >
+        Number(evaluateInput(block, 'OPERAND2', context))
+      )
     case 'operator_lt':
-      return Number(evaluateInput(block, 'OPERAND1', context)) < Number(evaluateInput(block, 'OPERAND2', context))
+      return (
+        Number(evaluateInput(block, 'OPERAND1', context)) <
+        Number(evaluateInput(block, 'OPERAND2', context))
+      )
     case 'operator_and':
-      return Boolean(evaluateInput(block, 'OPERAND1', context)) && Boolean(evaluateInput(block, 'OPERAND2', context))
+      return (
+        Boolean(evaluateInput(block, 'OPERAND1', context)) &&
+        Boolean(evaluateInput(block, 'OPERAND2', context))
+      )
     case 'operator_or':
-      return Boolean(evaluateInput(block, 'OPERAND1', context)) || Boolean(evaluateInput(block, 'OPERAND2', context))
+      return (
+        Boolean(evaluateInput(block, 'OPERAND1', context)) ||
+        Boolean(evaluateInput(block, 'OPERAND2', context))
+      )
     case 'operator_not':
-      return !Boolean(evaluateInput(block, 'OPERAND', context))
+      return !evaluateInput(block, 'OPERAND', context)
     case 'operator_add':
-      return Number(evaluateInput(block, 'NUM1', context)) + Number(evaluateInput(block, 'NUM2', context))
+      return (
+        Number(evaluateInput(block, 'NUM1', context)) +
+        Number(evaluateInput(block, 'NUM2', context))
+      )
     case 'operator_subtract':
-      return Number(evaluateInput(block, 'NUM1', context)) - Number(evaluateInput(block, 'NUM2', context))
+      return (
+        Number(evaluateInput(block, 'NUM1', context)) -
+        Number(evaluateInput(block, 'NUM2', context))
+      )
     case 'operator_join':
       return `${evaluateInput(block, 'STRING1', context)}${evaluateInput(block, 'STRING2', context)}`
     case 'operator_multiply':
-      return Number(evaluateInput(block, 'NUM1', context)) * Number(evaluateInput(block, 'NUM2', context))
+      return (
+        Number(evaluateInput(block, 'NUM1', context)) *
+        Number(evaluateInput(block, 'NUM2', context))
+      )
     case 'operator_divide': {
       const divisor = Number(evaluateInput(block, 'NUM2', context))
       return divisor === 0 ? Infinity : Number(evaluateInput(block, 'NUM1', context)) / divisor
     }
     case 'operator_mod':
-      return Number(evaluateInput(block, 'NUM1', context)) % Number(evaluateInput(block, 'NUM2', context))
+      return (
+        Number(evaluateInput(block, 'NUM1', context)) %
+        Number(evaluateInput(block, 'NUM2', context))
+      )
     case 'operator_round':
       return Math.round(Number(evaluateInput(block, 'NUM', context)))
     case 'operator_random': {
@@ -1772,16 +2418,16 @@ function evaluateReporter(block, context) {
         floor: Math.floor,
         ceiling: Math.ceil,
         sqrt: Math.sqrt,
-        sin: x => Math.sin(x * Math.PI / 180),
-        cos: x => Math.cos(x * Math.PI / 180),
-        tan: x => Math.tan(x * Math.PI / 180),
-        asin: x => Math.asin(x) * 180 / Math.PI,
-        acos: x => Math.acos(x) * 180 / Math.PI,
-        atan: x => Math.atan(x) * 180 / Math.PI,
+        sin: (x) => Math.sin((x * Math.PI) / 180),
+        cos: (x) => Math.cos((x * Math.PI) / 180),
+        tan: (x) => Math.tan((x * Math.PI) / 180),
+        asin: (x) => (Math.asin(x) * 180) / Math.PI,
+        acos: (x) => (Math.acos(x) * 180) / Math.PI,
+        atan: (x) => (Math.atan(x) * 180) / Math.PI,
         ln: Math.log,
-        log: x => Math.log10(x),
-        'e ^': x => Math.exp(x),
-        '10 ^': x => Math.pow(10, x),
+        log: (x) => Math.log10(x),
+        'e ^': (x) => Math.exp(x),
+        '10 ^': (x) => Math.pow(10, x),
       }
       return ops[op]?.(n) ?? 0
     }
@@ -1793,28 +2439,30 @@ function evaluateReporter(block, context) {
     case 'operator_length':
       return String(evaluateInput(block, 'STRING', context)).length
     case 'operator_contains':
-      return String(evaluateInput(block, 'STRING1', context)).toLowerCase()
+      return String(evaluateInput(block, 'STRING1', context))
+        .toLowerCase()
         .includes(String(evaluateInput(block, 'STRING2', context)).toLowerCase())
     case 'looks_costumenumbername': {
       const costumes = context.costumes ?? []
       const which = block.getFieldValue('WHICH') ?? 'number'
       if (which === 'name') return state.costume ?? ''
-      const idx = costumes.findIndex(c => c.name === state.costume)
+      const idx = costumes.findIndex((c) => c.name === state.costume)
       return idx >= 0 ? idx + 1 : 1
     }
     case 'looks_backdropnumbername': {
       const bds = context.signal.backdrops ?? []
       const which = block.getFieldValue('WHICH') ?? 'number'
       if (which === 'name') return context.signal.backdrop ?? ''
-      const idx = bds.findIndex(b => b.name === context.signal.backdrop)
+      const idx = bds.findIndex((b) => b.name === context.signal.backdrop)
       return idx >= 0 ? idx + 1 : 1
     }
     case 'sensing_timer':
       return (Date.now() - (context.signal.timerStart ?? Date.now())) / 1000
     case 'sensing_distanceto': {
       const target = block.getFieldValue('DISTANCETOMENU')
-      if (target === '_mouse_') return Math.hypot(state.x - (signal.mouseX ?? 0), state.y - (signal.mouseY ?? 0))
-      const sp = allSprites?.find(s => s.id === target)
+      if (target === '_mouse_')
+        return Math.hypot(state.x - (signal.mouseX ?? 0), state.y - (signal.mouseY ?? 0))
+      const sp = allSprites?.find((s) => s.id === target)
       return sp ? Math.hypot(state.x - sp.state.x, state.y - sp.state.y) : 0
     }
     default:
@@ -1880,7 +2528,8 @@ function playSound(name) {
 
   osc.type = sound.type
   osc.frequency.setValueAtTime(sound.frequency, ctx.currentTime)
-  if (name === 'meow') osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + sound.duration)
+  if (name === 'meow')
+    osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + sound.duration)
   gain.gain.setValueAtTime(0.001, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.02)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + sound.duration)
@@ -1888,9 +2537,9 @@ function playSound(name) {
   activeOscillators.push(osc)
   osc.start()
   osc.stop(ctx.currentTime + sound.duration + 0.03)
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     osc.onended = () => {
-      activeOscillators = activeOscillators.filter(item => item !== osc)
+      activeOscillators = activeOscillators.filter((item) => item !== osc)
       resolve()
     }
   })
@@ -1898,7 +2547,9 @@ function playSound(name) {
 
 function stopAllSounds() {
   for (const osc of activeOscillators) {
-    try { osc.stop() } catch {}
+    try {
+      osc.stop()
+    } catch {}
   }
   activeOscillators = []
 }
@@ -1906,11 +2557,21 @@ function stopAllSounds() {
 function switchBackdrop(name, context) {
   context.signal.backdrop = name
   context.signal.onBackdropChange?.(name)
-  const targets = context.allSprites ?? [{ workspace: context.workspace, state: context.state, onUpdate: context.onUpdate }]
+  const targets = context.allSprites ?? [
+    { workspace: context.workspace, state: context.state, onUpdate: context.onUpdate },
+  ]
   for (const sp of targets) {
-    const ctx = createRunContext(sp.workspace, sp.state, sp.onUpdate, context.signal, context.allSprites, sp.costumes ?? [])
-    const hats = sp.workspace.getBlocksByType('event_whenbackdropswitchesto', false)
-      .filter(hat => hat.getFieldValue('BACKDROP') === name)
+    const ctx = createRunContext(
+      sp.workspace,
+      sp.state,
+      sp.onUpdate,
+      context.signal,
+      context.allSprites,
+      sp.costumes ?? []
+    )
+    const hats = sp.workspace
+      .getBlocksByType('event_whenbackdropswitchesto', false)
+      .filter((hat) => hat.getFieldValue('BACKDROP') === name)
     for (const hat of hats) {
       runChain(hat.getNextBlock(), ctx).catch(() => {})
     }
@@ -1918,11 +2579,11 @@ function switchBackdrop(name, context) {
 }
 
 function tick() {
-  return new Promise(r => requestAnimationFrame(r))
+  return new Promise((r) => requestAnimationFrame(r))
 }
 
 function sleep(ms, signal) {
-  return new Promise(r => {
+  return new Promise((r) => {
     const start = Date.now()
     function check() {
       if (signal?.stopped || Date.now() - start >= ms) return r()
@@ -1970,7 +2631,12 @@ function clampSprite(state) {
 
 function isTouchingEdge(state) {
   const half = (state.size / 100) * 24
-  return state.x + half >= 240 || state.x - half <= -240 || state.y + half >= 180 || state.y - half <= -180
+  return (
+    state.x + half >= 240 ||
+    state.x - half <= -240 ||
+    state.y + half >= 180 ||
+    state.y - half <= -180
+  )
 }
 
 function isTouchingMouse(state, mouseX, mouseY) {
@@ -1996,4 +2662,3 @@ function bounceIfNeeded(state) {
     state.y = Math.max(-180 + half, Math.min(180 - half, state.y))
   }
 }
-

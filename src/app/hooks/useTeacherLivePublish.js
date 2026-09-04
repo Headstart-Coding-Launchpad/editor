@@ -70,7 +70,9 @@ export function useTeacherLivePublish({
     // or an empty string, wiping out the mirror's blocks the moment a broadcast
     // starts (or the live task changes) until the next real edit resyncs it.
     const isScratch = getTaskModuleType(lessonRef.current, currentTaskIdRef.current) === 'scratch'
-    const filesMap = isFilesystem ? {} : Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
+    const filesMap = isFilesystem
+      ? {}
+      : Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -80,7 +82,11 @@ export function useTeacherLivePublish({
       sourceStudentName,
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
-      code: isFilesystem ? JSON.stringify(fsStateRef.current) : isScratch ? scratchCodeRef.current : codeRef.current,
+      code: isFilesystem
+        ? JSON.stringify(fsStateRef.current)
+        : isScratch
+          ? scratchCodeRef.current
+          : codeRef.current,
       arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
       files: filesMap,
       activeFile: activeFileRef.current,
@@ -108,27 +114,67 @@ export function useTeacherLivePublish({
     const sourceLesson = lesson?.composedLesson ?? lesson
     const liveLesson = getEffectiveLessonForTask(sourceLesson, session?.teacherLive?.taskId)
     const mod = liveLesson ? getLessonModule(liveLesson.type) : null
-    if (teacherPresentation || !mod?.runtime?.buildPreviewSrc || !session?.teacherLive?.active || !session.teacherLive.files) {
+    if (
+      teacherPresentation ||
+      !mod?.runtime?.buildPreviewSrc ||
+      !session?.teacherLive?.active ||
+      !session.teacherLive.files
+    ) {
       setTeacherLiveIframeSrc(null)
       return
     }
     const liveFiles = toTeacherLiveFiles(session.teacherLive.files)
-    const liveTask = flattenTasks(sourceLesson?.tasks ?? []).find(t => t.id === session.teacherLive.taskId)
+    const liveTask = flattenTasks(sourceLesson?.tasks ?? []).find(
+      (t) => t.id === session.teacherLive.taskId
+    )
     setHtmlPreviewCollapsed(false)
-    setTeacherLiveIframeSrc(mod.runtime.buildPreviewSrc(
-      { files: liveFiles, entryFile: liveTask?.entryFile ?? 'index.html' },
-      liveTask,
-      { assets: liveLesson?.assets ?? [], assetsPath: resolveAssetsPath(liveLesson?.assetsPath), storageAssets: iframeStorageAssets ?? (liveLesson?.storageAssets ?? []) }
-    ))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt, JSON.stringify(iframeStorageAssets ?? [])])
+    setTeacherLiveIframeSrc(
+      mod.runtime.buildPreviewSrc(
+        { files: liveFiles, entryFile: liveTask?.entryFile ?? 'index.html' },
+        liveTask,
+        {
+          assets: liveLesson?.assets ?? [],
+          assetsPath: resolveAssetsPath(liveLesson?.assetsPath),
+          storageAssets: iframeStorageAssets ?? liveLesson?.storageAssets ?? [],
+        }
+      )
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    teacherPresentation,
+    lesson?.type,
+    session?.teacherLive?.updatedAt,
+    JSON.stringify(iframeStorageAssets ?? []),
+  ])
 
   // Publish the current payload whenever any tracked value changes
   useEffect(() => {
     if (!canPublishTeacherLive()) return
     updateTeacherLive(currentTeacherLivePayload())
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, JSON.stringify(files), activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    teacherPresentation,
+    session?.teacherLive?.active,
+    session?.teacherLive?.sourceStudentId,
+    identity?.anonymousId,
+    currentTaskId,
+    code,
+    JSON.stringify(files),
+    activeFile,
+    output,
+    runStatus,
+    checkPassed,
+    checkAttempted,
+    checkSuggestion,
+    fsState,
+  ])
 
-  return { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive }
+  return {
+    teacherLiveIframeSrc,
+    htmlPreviewCollapsed,
+    setHtmlPreviewCollapsed,
+    canPublishTeacherLive,
+    currentTeacherLivePayload,
+    publishTeacherLive,
+  }
 }

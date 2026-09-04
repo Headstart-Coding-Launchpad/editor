@@ -1,9 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { getLessonModule } from '../../modules/registry'
-import { evaluateFeedbackCheckResults, evaluateSingleCheck, normalizeChecks, resolveTestCheck } from '../../modules/checks'
+import {
+  evaluateFeedbackCheckResults,
+  evaluateSingleCheck,
+  normalizeChecks,
+  resolveTestCheck,
+} from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
-export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles, activeEntryFile, isPython, isScratch, set, iframeStorageAssets = null }) {
+export function useTaskEditorState({
+  task,
+  lesson,
+  activePythonCode,
+  activeFiles,
+  activeEntryFile,
+  isPython,
+  isScratch,
+  set,
+  iframeStorageAssets = null,
+}) {
   const pythonMod = getLessonModule('python')
   const htmlMod = getLessonModule('html')
   const [output, setOutput] = useState('')
@@ -41,6 +56,15 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     pythonMod.runtime.stop()
   }
 
+  async function ensurePyodideReady() {
+    if (pythonMod.runtime.isReady()) return
+    // No progress callback — nothing displays the raw progress text, and passing
+    // one previously clobbered pyodideStatus's enum with progress strings mid-load.
+    setPyodideStatus('loading')
+    await pythonMod.runtime.init()
+    setPyodideStatus('ready')
+  }
+
   async function handleRunTests() {
     if (runningTests) return
     const tests = task.tests ?? []
@@ -54,33 +78,50 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
 
     const results = []
     try {
-      if (!pythonMod.runtime.isReady()) {
-        // No progress callback — nothing displays the raw progress text, and passing
-        // one previously clobbered pyodideStatus's enum with progress strings mid-load.
-        setPyodideStatus('loading')
-        await pythonMod.runtime.init()
-        setPyodideStatus('ready')
-      }
+      await ensurePyodideReady()
 
       for (const test of tests) {
-        const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
+        const inputQueue = (test.inputs ?? []).map((inp) => inp.value ?? '')
         let accumulated = ''
         const result = await pythonMod.runtime.run(activePythonCode, task, {
-          onOutput: text => { accumulated += text },
-          onInputRequired: () => { pythonMod.runtime.provideInput(inputQueue.shift() ?? '') },
+          onOutput: (text) => {
+            accumulated += text
+          },
+          onInputRequired: () => {
+            pythonMod.runtime.provideInput(inputQueue.shift() ?? '')
+          },
         })
         const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
-        const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
+        const checkContext = {
+          status: result.status,
+          code: activePythonCode,
+          variables: result.variables ?? {},
+        }
         const checks = normalizeChecks(resolvedCheck)
-        const passed = checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
-        results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
+        const passed =
+          checks.length > 0 &&
+          checks.every((c) => evaluateSingleCheck(c, accumulated, checkContext))
+        results.push({
+          id: test.id,
+          name: test.name || `Test ${results.length + 1}`,
+          passed,
+          output: accumulated,
+          status: result.status,
+        })
         if (result.status === 'stopped') break
       }
 
       setTestResults(results)
-      const displayedOutput = results.find(r => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
+      const displayedOutput =
+        results.find((r) => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
       setOutput(displayedOutput)
-      setRunStatus(results.some(r => r.status === 'error') ? 'error' : results.some(r => r.status === 'stopped') ? 'stopped' : 'success')
+      setRunStatus(
+        results.some((r) => r.status === 'error')
+          ? 'error'
+          : results.some((r) => r.status === 'stopped')
+            ? 'stopped'
+            : 'success'
+      )
     } catch {
       pythonMod.runtime.stop()
       setRunStatus('error')
@@ -101,42 +142,53 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
     setIframeSrc(null)
 
     if (isPython) {
-      if (!pythonMod.runtime.isReady()) {
-        // No progress callback — nothing displays the raw progress text, and passing
-        // one previously clobbered pyodideStatus's enum with progress strings mid-load.
-        setPyodideStatus('loading')
-        await pythonMod.runtime.init()
-        setPyodideStatus('ready')
-      }
+      try {
+        await ensurePyodideReady()
 
-      let accumulated = ''
-      const echoOutput = text => { accumulated += text; setOutput(accumulated) }
-      appendOutputRef.current = echoOutput
-      const result = await pythonMod.runtime.run(activePythonCode, task, {
-        onOutput: echoOutput,
-        onInputRequired: p => setInputPrompt(p),
-      })
-      setInputPrompt(null)
-
-      if (result.status === 'stopped') {
-        setRunning(false)
-        return
-      }
-
-      setRunStatus(result.status)
-
-      const checksToEval = normalizeChecks(task.check)
-      if (checksToEval.length > 0) {
-        const checkContext = { status: result.status, code: activePythonCode, variables: result.variables ?? {} }
-        const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, accumulated, checkContext) }))
-        setCheckResults(results)
-        set('_checkTested', true)
-        const feedbackResults = evaluateFeedbackCheckResults(task, accumulated, checkContext)
-        if (feedbackResults.length > 0) {
-          setIncorrectCheckResults(feedbackResults)
+        let accumulated = ''
+        const echoOutput = (text) => {
+          accumulated += text
+          setOutput(accumulated)
         }
+        appendOutputRef.current = echoOutput
+        const result = await pythonMod.runtime.run(activePythonCode, task, {
+          onOutput: echoOutput,
+          onInputRequired: (p) => setInputPrompt(p),
+        })
+        setInputPrompt(null)
+
+        if (result.status === 'stopped') return
+
+        setRunStatus(result.status)
+
+        const checksToEval = normalizeChecks(task.check)
+        if (checksToEval.length > 0) {
+          const checkContext = {
+            status: result.status,
+            code: activePythonCode,
+            variables: result.variables ?? {},
+          }
+          const results = checksToEval.map((c) => ({
+            ...c,
+            passed: evaluateSingleCheck(c, accumulated, checkContext),
+          }))
+          setCheckResults(results)
+          set('_checkTested', true)
+          const feedbackResults = evaluateFeedbackCheckResults(task, accumulated, checkContext)
+          if (feedbackResults.length > 0) {
+            setIncorrectCheckResults(feedbackResults)
+          }
+        }
+      } catch {
+        pythonMod.runtime.stop()
+        setRunStatus('error')
+      } finally {
+        setRunning(false)
       }
-    } else if (!isScratch) {
+      return
+    }
+
+    if (!isScratch) {
       setHtmlPreviewOpen(true)
       const src = htmlMod.runtime.buildPreviewSrc(
         { files: activeFiles, entryFile: activeEntryFile },
@@ -144,7 +196,8 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
         {
           assets: lesson.assets ?? [],
           assetsPath: resolveAssetsPath(lesson.assetsPath),
-          storageAssets: iframeStorageAssets ?? (lesson.storageAssets ?? []).filter(a => a.showInEditor),
+          storageAssets:
+            iframeStorageAssets ?? (lesson.storageAssets ?? []).filter((a) => a.showInEditor),
         }
       )
       setIframeSrc(src)
@@ -152,18 +205,30 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
 
       const checksToEval = normalizeChecks(task.check)
       if (checksToEval.length > 0) {
-        const codeStr = activeFiles.map(f => f.content).join('\n')
-        htmlMod.runtime.waitForPreviewText().then(text => {
-          setOutput(text)
-          const iframeDoc = iframeRef.current?.contentDocument ?? null
-          const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }) }))
-          setCheckResults(results)
-          set('_checkTested', true)
-          const feedbackResults = evaluateFeedbackCheckResults(task, text, { code: codeStr, iframeDoc })
-          if (feedbackResults.length > 0) {
-            setIncorrectCheckResults(feedbackResults)
-          }
-        })
+        const codeStr = activeFiles.map((f) => f.content).join('\n')
+        htmlMod.runtime
+          .waitForPreviewText()
+          .then((text) => {
+            setOutput(text)
+            const iframeDoc = iframeRef.current?.contentDocument ?? null
+            const results = checksToEval.map((c) => ({
+              ...c,
+              passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }),
+            }))
+            setCheckResults(results)
+            set('_checkTested', true)
+            const feedbackResults = evaluateFeedbackCheckResults(task, text, {
+              code: codeStr,
+              iframeDoc,
+            })
+            if (feedbackResults.length > 0) {
+              setIncorrectCheckResults(feedbackResults)
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to read HTML preview output for check evaluation', err)
+            setRunStatus('error')
+          })
       }
     }
     setRunning(false)
@@ -172,8 +237,11 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
   function handleTestChecks() {
     const checksToEval = normalizeChecks(task.check)
     if (checksToEval.length === 0) return
-    const codeStr = isPython ? activePythonCode : activeFiles.map(f => f.content).join('\n')
-    const results = checksToEval.map(c => ({ ...c, passed: evaluateSingleCheck(c, '', { code: codeStr }) }))
+    const codeStr = isPython ? activePythonCode : activeFiles.map((f) => f.content).join('\n')
+    const results = checksToEval.map((c) => ({
+      ...c,
+      passed: evaluateSingleCheck(c, '', { code: codeStr }),
+    }))
     setCheckResults(results)
     setIncorrectCheckResults(null)
     set('_checkTested', true)
@@ -192,7 +260,9 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
       typeof passedOverride === 'boolean'
         ? passedOverride
         : task.check
-          ? evaluateSingleCheck(task.check, answer, { answer: typeof answer === 'string' ? answer : '' })
+          ? evaluateSingleCheck(task.check, answer, {
+              answer: typeof answer === 'string' ? answer : '',
+            })
           : false
     setQuizSelectedAnswer(answer)
     setRunStatus('submitted')
@@ -207,11 +277,32 @@ export function useTaskEditorState({ task, lesson, activePythonCode, activeFiles
   }
 
   return {
-    output, runStatus, running, runningTests, pyodideStatus, inputPrompt, iframeSrc,
-    checkResult, checkResults, incorrectCheckResults, testResults, htmlPreviewOpen, quizSelectedAnswer,
+    output,
+    runStatus,
+    running,
+    runningTests,
+    pyodideStatus,
+    inputPrompt,
+    iframeSrc,
+    checkResult,
+    checkResults,
+    incorrectCheckResults,
+    testResults,
+    htmlPreviewOpen,
+    quizSelectedAnswer,
     iframeRef,
-    setCheckResults, setRunStatus, setCheckResult, setIframeSrc, setHtmlPreviewOpen, setQuizSelectedAnswer,
-    handleRun, handleRunTests, handleStop, handleTestChecks, handleQuizPreviewSelect, handleInputSubmit,
+    setCheckResults,
+    setRunStatus,
+    setCheckResult,
+    setIframeSrc,
+    setHtmlPreviewOpen,
+    setQuizSelectedAnswer,
+    handleRun,
+    handleRunTests,
+    handleStop,
+    handleTestChecks,
+    handleQuizPreviewSelect,
+    handleInputSubmit,
     resetRunState,
   }
 }

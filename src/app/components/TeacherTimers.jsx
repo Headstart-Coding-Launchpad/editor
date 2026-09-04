@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { formatEstimatedMinutes, getEstimatedMinutes, getTotalEstimatedMinutes } from '../../shared/taskUtils'
+import {
+  formatEstimatedMinutes,
+  getEstimatedMinutes,
+  getTotalEstimatedMinutes,
+} from '../../shared/taskUtils'
 
 export function formatClock(totalSeconds) {
   const seconds = Math.max(0, Math.floor(totalSeconds))
@@ -29,9 +33,7 @@ export default function TeacherTimers({ session, task, tasks }) {
   const estimatedMinutes = getEstimatedMinutes(task)
   const totalEstimatedMinutes = getTotalEstimatedMinutes(tasks)
   const showTaskCountdown =
-    session.state === 'active' &&
-    estimatedMinutes != null &&
-    session.currentTaskStartedAt != null
+    session.state === 'active' && estimatedMinutes != null && session.currentTaskStartedAt != null
   const remainingSeconds = showTaskCountdown
     ? Math.ceil((session.currentTaskStartedAt + estimatedMinutes * 60 * 1000 - now) / 1000)
     : null
@@ -43,11 +45,15 @@ export default function TeacherTimers({ session, task, tasks }) {
         <span className="teacher-timer-label">Lesson elapsed</span>
         <strong>{formatClock(elapsedSeconds)}</strong>
         {totalEstimatedMinutes > 0 && (
-          <span className="teacher-timer-plan">planned {formatEstimatedMinutes(totalEstimatedMinutes)}</span>
+          <span className="teacher-timer-plan">
+            planned {formatEstimatedMinutes(totalEstimatedMinutes)}
+          </span>
         )}
       </div>
       {showTaskCountdown && (
-        <div className={`teacher-timer-card teacher-timer-card--task${taskExpired ? ' teacher-timer-card--expired' : ''}`}>
+        <div
+          className={`teacher-timer-card teacher-timer-card--task${taskExpired ? ' teacher-timer-card--expired' : ''}`}
+        >
           <span className="teacher-timer-label">Task time</span>
           <strong>{taskExpired ? 'Time up' : formatClock(remainingSeconds)}</strong>
           {!taskExpired && <span className="teacher-timer-plan">remaining</span>}

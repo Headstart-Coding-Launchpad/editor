@@ -5,31 +5,46 @@ import TeacherCodeTabs from '../../components/TeacherCodeTabs'
 import { getLessonModule } from '../../../modules/registry'
 
 export default function TeacherEditorPanel({
-  lesson, task, displayTaskId,
-  isInSandbox, isInformationTask,
-  activeTeacherStage, taskCodeStages,
-  teacherCodeTab, setTeacherCodeTab,
-  hasStudents, onSendStageToAll,
-  liveState, onChange, onActivity,
+  lesson,
+  task,
+  displayTaskId,
+  isInSandbox,
+  isInformationTask,
+  activeTeacherStage,
+  taskCodeStages,
+  teacherCodeTab,
+  setTeacherCodeTab,
+  hasStudents,
+  onSendStageToAll,
+  liveState,
+  onChange,
+  onActivity,
 }) {
   const mod = getLessonModule(lesson?.type)
   const usesUnifiedStages = mod?.type === 'python' || mod?.type === 'html'
 
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
-  if (!isInSandbox && task?.taskType === 'quiz') return <QuizTask task={task} showQuestion disabled />
+  if (!isInSandbox && task?.taskType === 'quiz')
+    return <QuizTask task={task} showQuestion disabled />
   if (!mod?.TeacherLiveView) return null
 
   const displayState = mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
   const readOnly = !isInSandbox
   const LiveView = mod.TeacherLiveView
-  const showCompleteTab = !usesUnifiedStages && (mod.type === 'python' || mod.type === 'html'
-    || (mod.type === 'scratch' && task?.completeBlocks != null)
-    || (mod.type === 'filesystem' && !!task?.completeFs)
-    || (mod.type === 'electronics' && !!task?.completeCircuit))
+  const showCompleteTab =
+    !usesUnifiedStages &&
+    (mod.type === 'python' ||
+      mod.type === 'html' ||
+      (mod.type === 'scratch' && task?.completeBlocks != null) ||
+      (mod.type === 'filesystem' && !!task?.completeFs) ||
+      (mod.type === 'electronics' && !!task?.completeCircuit))
 
-  const wrapStyle = mod.type === 'scratch' || mod.type === 'html'
-    ? (isInSandbox ? styles.scratchWrap : styles.codeWorkspaceStack)
-    : styles.codeWorkspaceStack
+  const wrapStyle =
+    mod.type === 'scratch' || mod.type === 'html'
+      ? isInSandbox
+        ? styles.scratchWrap
+        : styles.codeWorkspaceStack
+      : styles.codeWorkspaceStack
 
   return (
     <div style={wrapStyle}>
@@ -38,7 +53,7 @@ export default function TeacherEditorPanel({
           activeTab={teacherCodeTab}
           stages={taskCodeStages}
           onStarter={() => setTeacherCodeTab('starter')}
-          onStage={i => setTeacherCodeTab(`stage_${i}`)}
+          onStage={(i) => setTeacherCodeTab(`stage_${i}`)}
           onComplete={showCompleteTab ? () => setTeacherCodeTab('complete') : undefined}
           onSendToAll={onSendStageToAll}
           hasStudents={hasStudents}

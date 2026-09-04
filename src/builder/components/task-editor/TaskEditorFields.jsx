@@ -9,7 +9,17 @@ import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUti
 import { getLessonModule } from '../../../modules/registry'
 import { getModuleCarrySourceIds } from '../../../shared/composedLesson'
 
-function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code', testLabel = 'Complete code', rightAction = null, stages = [], onAddStage = null, onRemoveStage = null, unifiedStages = false }) {
+function CodeWorkspaceTabs({
+  activeTab,
+  onChange,
+  starterLabel = 'Starter code',
+  testLabel = 'Complete code',
+  rightAction = null,
+  stages = [],
+  onAddStage = null,
+  onRemoveStage = null,
+  unifiedStages = false,
+}) {
   return (
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Code workspace">
       {!unifiedStages && (
@@ -25,29 +35,33 @@ function CodeWorkspaceTabs({ activeTab, onChange, starterLabel = 'Starter code',
       )}
       {stages.map((stage, i) => {
         const role = getStageRole(stage)
-        const rolePrefix = unifiedStages ? `${role}: ` : (role === 'support' ? '' : `${role}: `)
+        const rolePrefix = unifiedStages ? `${role}: ` : role === 'support' ? '' : `${role}: `
         return (
-        <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-          <button
-            type="button"
-            className="ui-tab"
-            role="tab"
-            aria-selected={activeTab === `stage_${i}`}
-            onClick={() => onChange(`stage_${i}`)}
-          >
-            {rolePrefix}{stage.label || `Stage ${i + 1}`}
-          </button>
-          {onRemoveStage && (
+          <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
             <button
               type="button"
-              className="te-stage-remove-btn"
-              title="Remove this stage"
-              onClick={e => { e.stopPropagation(); onRemoveStage(i) }}
+              className="ui-tab"
+              role="tab"
+              aria-selected={activeTab === `stage_${i}`}
+              onClick={() => onChange(`stage_${i}`)}
             >
-              ✕
+              {rolePrefix}
+              {stage.label || `Stage ${i + 1}`}
             </button>
-          )}
-        </div>
+            {onRemoveStage && (
+              <button
+                type="button"
+                className="te-stage-remove-btn"
+                title="Remove this stage"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRemoveStage(i)
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         )
       })}
       {onAddStage && (
@@ -82,11 +96,11 @@ function Modal({ title, children, onClose }) {
       <div className="te-modal">
         <div className="te-modal__header">
           <span className="te-modal__title">{title}</span>
-          <button className="te-modal__close" onClick={onClose} title="Close">x</button>
+          <button className="te-modal__close" onClick={onClose} title="Close">
+            x
+          </button>
         </div>
-        <div className="te-modal__body">
-          {children}
-        </div>
+        <div className="te-modal__body">{children}</div>
       </div>
     </div>
   )
@@ -96,21 +110,23 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   const resolvedLessonMod = lessonMod ?? getLessonModule(lesson.type)
   const flatTasks = flattenTasks(lesson.tasks)
   const allowedCarrySourceIds = getModuleCarrySourceIds(lesson, task)
-  const eligibleTasks = allowedCarrySourceIds == null
-    ? flatTasks.filter(t => t.id !== task.id)
-    : flatTasks.filter(t => allowedCarrySourceIds.includes(t.id))
+  const eligibleTasks =
+    allowedCarrySourceIds == null
+      ? flatTasks.filter((t) => t.id !== task.id)
+      : flatTasks.filter((t) => allowedCarrySourceIds.includes(t.id))
   const prevTask = eligibleTasks.at(-1) ?? null
   const otherTasks = eligibleTasks
 
   const carryField = resolvedLessonMod?.carryThroughField ?? 'carryCodeFrom'
   const carryFrom = task[carryField]
 
-  const mode = carryFrom == null
-    ? 'new'
-    : (prevTask && carryFrom === prevTask.id ? 'last' : 'other')
+  const mode = carryFrom == null ? 'new' : prevTask && carryFrom === prevTask.id ? 'last' : 'other'
 
   function copyCompleteCode(sourceTask) {
-    const updates = { [carryField]: sourceTask.id, ...resolvedLessonMod?.getCarryThroughUpdates?.(sourceTask, task) }
+    const updates = {
+      [carryField]: sourceTask.id,
+      ...resolvedLessonMod?.getCarryThroughUpdates?.(sourceTask, task),
+    }
     onUpdate({ ...task, ...updates })
   }
 
@@ -120,7 +136,7 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   }
 
   function handleOther() {
-    const defaultTask = otherTasks.find(t => t.id !== prevTask?.id) ?? otherTasks[0]
+    const defaultTask = otherTasks.find((t) => t.id !== prevTask?.id) ?? otherTasks[0]
     if (defaultTask) copyCompleteCode(defaultTask)
   }
 
@@ -129,7 +145,9 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   return (
     <Field label={resolvedLessonMod?.carryThroughLabel ?? 'Carry code from task'}>
       <div className="te-carry-radio-group">
-        <label className={`te-option-choice-card${mode === 'last' ? ' te-option-choice-card--active' : ''}${!prevTask ? ' te-option-choice-card--disabled' : ''}`}>
+        <label
+          className={`te-option-choice-card${mode === 'last' ? ' te-option-choice-card--active' : ''}${!prevTask ? ' te-option-choice-card--disabled' : ''}`}
+        >
           <input
             type="radio"
             name={radioName}
@@ -139,12 +157,20 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
             className="te-option-choice-input"
           />
           <span className="te-option-choice-title">Carry from last task</span>
-          <span className={mode === 'last' ? 'te-option-choice-text te-option-choice-text--active' : 'te-option-choice-text'}>
+          <span
+            className={
+              mode === 'last'
+                ? 'te-option-choice-text te-option-choice-text--active'
+                : 'te-option-choice-text'
+            }
+          >
             {prevTask ? `${prevTask.id}. ${prevTask.title || 'Untitled'}` : 'No previous task'}
           </span>
         </label>
 
-        <label className={`te-option-choice-card${mode === 'new' ? ' te-option-choice-card--active' : ''}`}>
+        <label
+          className={`te-option-choice-card${mode === 'new' ? ' te-option-choice-card--active' : ''}`}
+        >
           <input
             type="radio"
             name={radioName}
@@ -153,12 +179,20 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
             className="te-option-choice-input"
           />
           <span className="te-option-choice-title">New starter code</span>
-          <span className={mode === 'new' ? 'te-option-choice-text te-option-choice-text--active' : 'te-option-choice-text'}>
+          <span
+            className={
+              mode === 'new'
+                ? 'te-option-choice-text te-option-choice-text--active'
+                : 'te-option-choice-text'
+            }
+          >
             Start this task from its own starter content.
           </span>
         </label>
 
-        <label className={`te-option-choice-card${mode === 'other' ? ' te-option-choice-card--active' : ''}${otherTasks.length === 0 ? ' te-option-choice-card--disabled' : ''}`}>
+        <label
+          className={`te-option-choice-card${mode === 'other' ? ' te-option-choice-card--active' : ''}${otherTasks.length === 0 ? ' te-option-choice-card--disabled' : ''}`}
+        >
           <input
             type="radio"
             name={radioName}
@@ -168,7 +202,13 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
             className="te-option-choice-input"
           />
           <span className="te-option-choice-title">From other task</span>
-          <span className={mode === 'other' ? 'te-option-choice-text te-option-choice-text--active' : 'te-option-choice-text'}>
+          <span
+            className={
+              mode === 'other'
+                ? 'te-option-choice-text te-option-choice-text--active'
+                : 'te-option-choice-text'
+            }
+          >
             Copy complete code from a chosen task.
           </span>
         </label>
@@ -177,13 +217,15 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
           <select
             className="te-select"
             value={carryFrom ?? ''}
-            onChange={e => {
-              const sourceTask = flatTasks.find(t => t.id === parseInt(e.target.value, 10))
+            onChange={(e) => {
+              const sourceTask = flatTasks.find((t) => t.id === parseInt(e.target.value, 10))
               if (sourceTask) copyCompleteCode(sourceTask)
             }}
           >
-            {otherTasks.map(t => (
-              <option key={t.id} value={t.id}>{t.id}. {t.title || 'Untitled'}</option>
+            {otherTasks.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.id}. {t.title || 'Untitled'}
+              </option>
             ))}
           </select>
         )}
@@ -192,30 +234,42 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   )
 }
 
-function TaskFormatIcon({ type }) {
-  const common = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }
-  if (type === 'scratch') return (
-    <svg {...common}>
-      <rect x="2" y="2" width="9" height="9" rx="1.5" />
-      <rect x="13" y="2" width="9" height="9" rx="1.5" />
-      <rect x="2" y="13" width="9" height="9" rx="1.5" />
-      <rect x="13" y="13" width="9" height="9" rx="1.5" />
-    </svg>
-  )
-  if (type === 'information') return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
-  )
-  if (type === 'quiz') return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <path d="M12 17h.01" />
-    </svg>
-  )
+function TaskFormatIcon({ type, size = 24 }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '2',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  }
+  if (type === 'scratch')
+    return (
+      <svg {...common}>
+        <rect x="2" y="2" width="9" height="9" rx="1.5" />
+        <rect x="13" y="2" width="9" height="9" rx="1.5" />
+        <rect x="2" y="13" width="9" height="9" rx="1.5" />
+        <rect x="13" y="13" width="9" height="9" rx="1.5" />
+      </svg>
+    )
+  if (type === 'information')
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 16v-4" />
+        <path d="M12 8h.01" />
+      </svg>
+    )
+  if (type === 'quiz')
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <path d="M12 17h.01" />
+      </svg>
+    )
   return (
     <svg {...common}>
       <polyline points="16 18 22 12 16 6" />
@@ -227,8 +281,20 @@ function TaskFormatIcon({ type }) {
 function Field({ label, hint, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)' }}>
-        {label}{hint && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.82rem', marginLeft: 4 }}>({hint})</span>}
+      <span
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontWeight: 600,
+          fontSize: '0.88rem',
+          color: 'var(--colour-text)',
+        }}
+      >
+        {label}
+        {hint && (
+          <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.82rem', marginLeft: 4 }}>
+            ({hint})
+          </span>
+        )}
       </span>
       {children}
     </div>
@@ -257,11 +323,13 @@ function StageMetadataEditor({ stage, onChange }) {
           className="te-select"
           style={stageMetadataStyles.select}
           value={getStageRole(stage)}
-          onChange={e => update({ role: e.target.value })}
+          onChange={(e) => update({ role: e.target.value })}
           title={STAGE_ROLE_HINTS[getStageRole(stage)]}
         >
-          {STAGE_ROLES.map(role => (
-            <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+          {STAGE_ROLES.map((role) => (
+            <option key={role} value={role}>
+              {role.charAt(0).toUpperCase() + role.slice(1)}
+            </option>
           ))}
         </select>
       </label>
@@ -270,41 +338,54 @@ function StageMetadataEditor({ stage, onChange }) {
 }
 
 function QuizTypeIcon({ type }) {
-  const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }
-  if (type === 'match') return (
-    <svg {...common}>
-      <path d="M7 7h.01" />
-      <path d="M7 17h.01" />
-      <path d="M17 7h.01" />
-      <path d="M17 17h.01" />
-      <path d="M8 7h8" />
-      <path d="M8 17h8" />
-    </svg>
-  )
-  if (type === 'blank') return (
-    <svg {...common}>
-      <path d="M4 7h16" />
-      <path d="M4 12h6" />
-      <path d="M14 12h6" />
-      <path d="M4 17h16" />
-    </svg>
-  )
-  if (type === 'answer') return (
-    <svg {...common}>
-      <path d="M4 5h16" />
-      <path d="M4 12h10" />
-      <path d="M4 19h7" />
-      <path d="M15 18l2 2 4-5" />
-    </svg>
-  )
-  if (type === 'confidence') return (
-    <svg {...common}>
-      <rect x="3" y="14" width="3" height="6" rx="1" />
-      <rect x="8" y="10" width="3" height="10" rx="1" />
-      <rect x="13" y="6" width="3" height="14" rx="1" />
-      <rect x="18" y="2" width="3" height="18" rx="1" />
-    </svg>
-  )
+  const common = {
+    width: 22,
+    height: 22,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '2',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  }
+  if (type === 'match')
+    return (
+      <svg {...common}>
+        <path d="M7 7h.01" />
+        <path d="M7 17h.01" />
+        <path d="M17 7h.01" />
+        <path d="M17 17h.01" />
+        <path d="M8 7h8" />
+        <path d="M8 17h8" />
+      </svg>
+    )
+  if (type === 'blank')
+    return (
+      <svg {...common}>
+        <path d="M4 7h16" />
+        <path d="M4 12h6" />
+        <path d="M14 12h6" />
+        <path d="M4 17h16" />
+      </svg>
+    )
+  if (type === 'answer')
+    return (
+      <svg {...common}>
+        <path d="M4 5h16" />
+        <path d="M4 12h10" />
+        <path d="M4 19h7" />
+        <path d="M15 18l2 2 4-5" />
+      </svg>
+    )
+  if (type === 'confidence')
+    return (
+      <svg {...common}>
+        <rect x="3" y="14" width="3" height="6" rx="1" />
+        <rect x="8" y="10" width="3" height="10" rx="1" />
+        <rect x="13" y="6" width="3" height="14" rx="1" />
+        <rect x="18" y="2" width="3" height="18" rx="1" />
+      </svg>
+    )
   return (
     <svg {...common}>
       <circle cx="7" cy="7" r="2" />
@@ -315,20 +396,25 @@ function QuizTypeIcon({ type }) {
   )
 }
 
-const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))
+const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map((t) => ({
+  value: t,
+  label: t.charAt(0).toUpperCase() + t.slice(1),
+}))
 
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
 
 function spriteVisualMode(sp) {
-  if (sp.costumes?.some(c => c.image !== undefined)) return 'costume'
-  if (sp.emoji || sp.costumes?.some(c => c.emoji !== undefined)) return 'emoji'
+  if (sp.costumes?.some((c) => c.image !== undefined)) return 'costume'
+  if (sp.emoji || sp.costumes?.some((c) => c.emoji !== undefined)) return 'emoji'
   return 'preset'
 }
 
 export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const pickerWrapRef = React.useRef(null)
-  const { defaultSprites: typeDefaultSprites, loading: typesLoading } = useTypeAssets(lessonType === 'scratch' ? 'scratch' : null)
+  const { defaultSprites: typeDefaultSprites, loading: typesLoading } = useTypeAssets(
+    lessonType === 'scratch' ? 'scratch' : null
+  )
   const hasLibrarySprites = !typesLoading && typeDefaultSprites.length > 0
 
   React.useEffect(() => {
@@ -355,23 +441,51 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
 
   return (
     <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
-      <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => setPickerOpen(p => !p)} aria-expanded={pickerOpen}>
+      <button
+        type="button"
+        className="btn-ghost te-add-sprite-btn"
+        onClick={() => setPickerOpen((p) => !p)}
+        aria-expanded={pickerOpen}
+      >
         + Add sprite {pickerOpen ? '▴' : '▾'}
       </button>
       {pickerOpen && (
         <div className="te-sprite-picker" role="listbox" aria-label="Choose a sprite to add">
-          <button type="button" className="te-sprite-card" role="option" onClick={() => addSprite(null)}>
+          <button
+            type="button"
+            className="te-sprite-card"
+            role="option"
+            onClick={() => addSprite(null)}
+          >
             <span className="te-sprite-card__shape">{SHAPE_ICONS.cat}</span>
             <span className="te-sprite-card__name">Blank</span>
           </button>
-          {typeDefaultSprites.map(sp => {
+          {typeDefaultSprites.map((sp) => {
             const imageUrl = sp.costumes?.[0]?.image || null
             return (
-              <button key={sp.id} type="button" className="te-sprite-card" role="option" onClick={() => addSprite(sp)}>
-                {imageUrl
-                  ? <img src={imageUrl} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-                  : <span className="te-sprite-card__shape">{sp.costumes?.[0]?.emoji || sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
-                }
+              <button
+                key={sp.id}
+                type="button"
+                className="te-sprite-card"
+                role="option"
+                onClick={() => addSprite(sp)}
+              >
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="te-sprite-card__thumb"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <span className="te-sprite-card__shape">
+                    {sp.costumes?.[0]?.emoji ||
+                      sp.emoji ||
+                      (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}
+                  </span>
+                )}
                 <span className="te-sprite-card__name">{sp.name}</span>
               </button>
             )
@@ -382,97 +496,154 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   )
 }
 
-export function SpriteManager({ sprites, onChange, assetsPath = '', storageAssets, lessonId, lessonType, focusedSpriteId = null, hideAdd = false, hidePosRow = false, bare = false }) {
+export function SpriteManager({
+  sprites,
+  onChange,
+  assetsPath = '',
+  storageAssets,
+  lessonId,
+  lessonType,
+  focusedSpriteId = null,
+  hideAdd = false,
+  hidePosRow = false,
+  bare = false,
+}) {
   const [spriteModes, setSpriteModes] = React.useState(() =>
-    Object.fromEntries(sprites.map(sp => [sp.id, spriteVisualMode(sp)]))
+    Object.fromEntries(sprites.map((sp) => [sp.id, spriteVisualMode(sp)]))
   )
 
   React.useEffect(() => {
-    setSpriteModes(prev => {
+    setSpriteModes((prev) => {
       const next = { ...prev }
       for (const sp of sprites) {
         if (!(sp.id in next)) next[sp.id] = spriteVisualMode(sp)
       }
       for (const id of Object.keys(next)) {
-        if (!sprites.some(sp => sp.id === id)) delete next[id]
+        if (!sprites.some((sp) => sp.id === id)) delete next[id]
       }
       return next
     })
   }, [sprites])
 
-  const displayedSprites = focusedSpriteId ? sprites.filter(sp => sp.id === focusedSpriteId) : sprites
+  const displayedSprites = focusedSpriteId
+    ? sprites.filter((sp) => sp.id === focusedSpriteId)
+    : sprites
 
   function removeSprite(id) {
     if (sprites.length <= 1) return
-    onChange(sprites.filter(sp => sp.id !== id))
+    onChange(sprites.filter((sp) => sp.id !== id))
   }
 
   function update(id, field, value) {
-    onChange(sprites.map(sp => {
-      if (sp.id !== id) return sp
-      const next = { ...sp }
-      if (value === undefined) delete next[field]
-      else next[field] = value
-      return next
-    }))
+    onChange(
+      sprites.map((sp) => {
+        if (sp.id !== id) return sp
+        const next = { ...sp }
+        if (value === undefined) delete next[field]
+        else next[field] = value
+        return next
+      })
+    )
   }
 
   function updateMany(id, changes) {
-    onChange(sprites.map(sp => sp.id === id ? { ...sp, ...changes } : sp))
+    onChange(sprites.map((sp) => (sp.id === id ? { ...sp, ...changes } : sp)))
   }
 
   function setVisualMode(id, mode) {
-    setSpriteModes(prev => ({ ...prev, [id]: mode }))
-    const sp = sprites.find(s => s.id === id)
-    const costumeKind = sp?.costumes?.[0]?.image !== undefined ? 'image' : sp?.costumes?.[0]?.emoji !== undefined ? 'emoji' : null
+    setSpriteModes((prev) => ({ ...prev, [id]: mode }))
+    const sp = sprites.find((s) => s.id === id)
+    const costumeKind =
+      sp?.costumes?.[0]?.image !== undefined
+        ? 'image'
+        : sp?.costumes?.[0]?.emoji !== undefined
+          ? 'emoji'
+          : null
     if (mode === 'preset') updateMany(id, { emoji: '', costumes: [] })
     else if (mode === 'emoji') updateMany(id, costumeKind === 'image' ? { costumes: [] } : {})
     else updateMany(id, costumeKind === 'emoji' ? { emoji: '', costumes: [] } : { emoji: '' })
   }
 
   function addCostume(spriteId) {
-    const sp = sprites.find(s => s.id === spriteId)
+    const sp = sprites.find((s) => s.id === spriteId)
     const mode = spriteModes[spriteId] ?? spriteVisualMode(sp)
     if (mode === 'emoji' && (sp?.costumes ?? []).length === 0) {
-      onChange(sprites.map(s => s.id === spriteId
-        ? { ...s, costumes: [{ name: 'costume1', emoji: s.emoji || '' }, { name: 'costume2', emoji: '' }] }
-        : s
-      ))
+      onChange(
+        sprites.map((s) =>
+          s.id === spriteId
+            ? {
+                ...s,
+                costumes: [
+                  { name: 'costume1', emoji: s.emoji || '' },
+                  { name: 'costume2', emoji: '' },
+                ],
+              }
+            : s
+        )
+      )
       return
     }
     const next = (sp?.costumes ?? []).length + 1
-    const newCostume = mode === 'emoji' ? { name: `costume${next}`, emoji: '' } : { name: `costume${next}`, image: '' }
-    onChange(sprites.map(s => s.id === spriteId ? { ...s, costumes: [...(s.costumes ?? []), newCostume] } : s))
+    const newCostume =
+      mode === 'emoji'
+        ? { name: `costume${next}`, emoji: '' }
+        : { name: `costume${next}`, image: '' }
+    onChange(
+      sprites.map((s) =>
+        s.id === spriteId ? { ...s, costumes: [...(s.costumes ?? []), newCostume] } : s
+      )
+    )
   }
 
   function removeCostume(spriteId, idx) {
-    onChange(sprites.map(s => s.id === spriteId ? { ...s, costumes: (s.costumes ?? []).filter((_, i) => i !== idx) } : s))
+    onChange(
+      sprites.map((s) =>
+        s.id === spriteId ? { ...s, costumes: (s.costumes ?? []).filter((_, i) => i !== idx) } : s
+      )
+    )
   }
 
   function updateCostume(spriteId, idx, field, value) {
-    onChange(sprites.map(s => {
-      if (s.id !== spriteId) return s
-      return { ...s, costumes: (s.costumes ?? []).map((c, i) => i === idx ? { ...c, [field]: value } : c) }
-    }))
+    onChange(
+      sprites.map((s) => {
+        if (s.id !== spriteId) return s
+        return {
+          ...s,
+          costumes: (s.costumes ?? []).map((c, i) => (i === idx ? { ...c, [field]: value } : c)),
+        }
+      })
+    )
   }
 
-  const entries = displayedSprites.map(sp => {
+  const entries = displayedSprites.map((sp) => {
     const mode = spriteModes[sp.id] ?? spriteVisualMode(sp)
     return (
       <div key={sp.id} className={bare ? null : 'te-sprite-entry'}>
         {!bare && (
           <div className="te-sprite-entry__thumb">
-            {sp.costumes?.[0]?.image
-              ? <img src={sp.costumes[0].image} alt="" className="te-sprite-card__thumb" onError={e => { e.target.style.display = 'none' }} />
-              : <span className="te-sprite-card__shape">{sp.costumes?.[0]?.emoji || sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}</span>
-            }
+            {sp.costumes?.[0]?.image ? (
+              <img
+                src={sp.costumes[0].image}
+                alt=""
+                className="te-sprite-card__thumb"
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                }}
+              />
+            ) : (
+              <span className="te-sprite-card__shape">
+                {sp.costumes?.[0]?.emoji || sp.emoji || (SHAPE_ICONS[sp.type] ?? SHAPE_ICONS.cat)}
+              </span>
+            )}
             <button
               type="button"
               className="te-sprite-remove-circle"
               onClick={() => removeSprite(sp.id)}
               disabled={sprites.length <= 1}
               title="Remove sprite"
-            >✕</button>
+            >
+              ✕
+            </button>
           </div>
         )}
         <div className="te-sprite-entry__fields">
@@ -481,27 +652,55 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
               className="te-input"
               style={{ flex: '1 1 80px', minWidth: 0 }}
               value={sp.name}
-              onChange={e => update(sp.id, 'name', e.target.value)}
+              onChange={(e) => update(sp.id, 'name', e.target.value)}
               placeholder="Name"
             />
             <div className="te-sprite-mode-sel">
-              <button type="button" className={`te-sprite-mode-btn${mode === 'preset' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'preset')}>Shape</button>
-              <button type="button" className={`te-sprite-mode-btn${mode === 'emoji' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'emoji')}>Emoji</button>
-              <button type="button" className={`te-sprite-mode-btn${mode === 'costume' ? ' te-sprite-mode-btn--active' : ''}`} onClick={() => setVisualMode(sp.id, 'costume')}>Costume</button>
+              <button
+                type="button"
+                className={`te-sprite-mode-btn${mode === 'preset' ? ' te-sprite-mode-btn--active' : ''}`}
+                onClick={() => setVisualMode(sp.id, 'preset')}
+              >
+                Shape
+              </button>
+              <button
+                type="button"
+                className={`te-sprite-mode-btn${mode === 'emoji' ? ' te-sprite-mode-btn--active' : ''}`}
+                onClick={() => setVisualMode(sp.id, 'emoji')}
+              >
+                Emoji
+              </button>
+              <button
+                type="button"
+                className={`te-sprite-mode-btn${mode === 'costume' ? ' te-sprite-mode-btn--active' : ''}`}
+                onClick={() => setVisualMode(sp.id, 'costume')}
+              >
+                Costume
+              </button>
             </div>
           </div>
           <label className="te-sprite-editable-toggle">
             <input
               type="checkbox"
               checked={sp.studentEditable !== false}
-              onChange={e => update(sp.id, 'studentEditable', e.target.checked ? undefined : false)}
+              onChange={(e) =>
+                update(sp.id, 'studentEditable', e.target.checked ? undefined : false)
+              }
             />
             <span>Student editable</span>
           </label>
           {mode === 'preset' && (
             <div className="te-sprite-row">
-              <select className="te-select" value={sp.type ?? 'cat'} onChange={e => update(sp.id, 'type', e.target.value)}>
-                {SPRITE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <select
+                className="te-select"
+                value={sp.type ?? 'cat'}
+                onChange={(e) => update(sp.id, 'type', e.target.value)}
+              >
+                {SPRITE_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -509,12 +708,21 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
             <div className="te-sprite-row">
               <input
                 className="te-input"
-                style={{ width: 56, textAlign: 'center', fontSize: '20px', fontFamily: "'Noto Color Emoji', serif" }}
+                style={{
+                  width: 56,
+                  textAlign: 'center',
+                  fontSize: '20px',
+                  fontFamily: "'Noto Color Emoji', serif",
+                }}
                 value={sp.emoji ?? ''}
-                onChange={e => update(sp.id, 'emoji', e.target.value)}
+                onChange={(e) => update(sp.id, 'emoji', e.target.value)}
                 placeholder="🐱"
               />
-              <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addCostume(sp.id)}>
+              <button
+                type="button"
+                className="btn-ghost te-add-sprite-btn"
+                onClick={() => addCostume(sp.id)}
+              >
                 + Add costumes
               </button>
             </div>
@@ -524,7 +732,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
               kind="emoji"
               costumes={sp.costumes ?? []}
               onAdd={() => addCostume(sp.id)}
-              onRemove={idx => removeCostume(sp.id, idx)}
+              onRemove={(idx) => removeCostume(sp.id, idx)}
               onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
             />
           )}
@@ -532,19 +740,45 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
             <div className="te-sprite-row">
               <label className="te-sprite-field">
                 <span className="te-sprite-field__label">X</span>
-                <input className="te-input" style={{ width: 52 }} type="number" value={sp.x ?? 0} onChange={e => update(sp.id, 'x', Number(e.target.value))} />
+                <input
+                  className="te-input"
+                  style={{ width: 52 }}
+                  type="number"
+                  value={sp.x ?? 0}
+                  onChange={(e) => update(sp.id, 'x', Number(e.target.value))}
+                />
               </label>
               <label className="te-sprite-field">
                 <span className="te-sprite-field__label">Y</span>
-                <input className="te-input" style={{ width: 52 }} type="number" value={sp.y ?? 0} onChange={e => update(sp.id, 'y', Number(e.target.value))} />
+                <input
+                  className="te-input"
+                  style={{ width: 52 }}
+                  type="number"
+                  value={sp.y ?? 0}
+                  onChange={(e) => update(sp.id, 'y', Number(e.target.value))}
+                />
               </label>
               <label className="te-sprite-field">
                 <span className="te-sprite-field__label">Size</span>
-                <input className="te-input" style={{ width: 52 }} type="number" min="10" max="500" value={sp.size ?? 100} onChange={e => update(sp.id, 'size', Number(e.target.value))} />
+                <input
+                  className="te-input"
+                  style={{ width: 52 }}
+                  type="number"
+                  min="10"
+                  max="500"
+                  value={sp.size ?? 100}
+                  onChange={(e) => update(sp.id, 'size', Number(e.target.value))}
+                />
               </label>
               <label className="te-sprite-field">
                 <span className="te-sprite-field__label">Dir</span>
-                <input className="te-input" style={{ width: 52 }} type="number" value={sp.direction ?? 90} onChange={e => update(sp.id, 'direction', Number(e.target.value))} />
+                <input
+                  className="te-input"
+                  style={{ width: 52 }}
+                  type="number"
+                  value={sp.direction ?? 90}
+                  onChange={(e) => update(sp.id, 'direction', Number(e.target.value))}
+                />
               </label>
             </div>
           )}
@@ -556,7 +790,7 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
               lessonId={lessonId}
               lessonType={lessonType}
               onAdd={() => addCostume(sp.id)}
-              onRemove={idx => removeCostume(sp.id, idx)}
+              onRemove={(idx) => removeCostume(sp.id, idx)}
               onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
             />
           )}
@@ -567,21 +801,36 @@ export function SpriteManager({ sprites, onChange, assetsPath = '', storageAsset
 
   return (
     <>
-      {bare
-        ? entries
-        : <div className="te-sprite-manager">{entries}</div>
-      }
-      {!hideAdd && <SpriteAddPicker sprites={sprites} onChange={onChange} lessonType={lessonType} />}
+      {bare ? entries : <div className="te-sprite-manager">{entries}</div>}
+      {!hideAdd && (
+        <SpriteAddPicker sprites={sprites} onChange={onChange} lessonType={lessonType} />
+      )}
     </>
   )
 }
 
-function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, lessonId, lessonType, onAdd, onRemove, onUpdate }) {
+function CostumeManager({
+  kind = 'image',
+  costumes,
+  assetsPath,
+  storageAssets,
+  lessonId,
+  lessonType,
+  onAdd,
+  onRemove,
+  onUpdate,
+}) {
   const [browsingIdx, setBrowsingIdx] = React.useState(null)
   const { lessonAssets } = useAssets()
   const { typeStorageAssets } = useTypeAssets(lessonType)
   const assets = kind === 'emoji' ? [] : lessonAssets(lessonId, lessonType)
-  const mergedStorageAssets = kind === 'emoji' ? [] : [...(storageAssets ?? []), ...typeStorageAssets.filter(a => !(storageAssets ?? []).some(b => b.name === a.name))]
+  const mergedStorageAssets =
+    kind === 'emoji'
+      ? []
+      : [
+          ...(storageAssets ?? []),
+          ...typeStorageAssets.filter((a) => !(storageAssets ?? []).some((b) => b.name === a.name)),
+        ]
   const hasAnyAssets = assets.length > 0 || mergedStorageAssets.length > 0
 
   return (
@@ -604,30 +853,44 @@ function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, l
                 className="te-input"
                 style={{ flex: '1 1 100px', minWidth: 0 }}
                 value={c.name}
-                onChange={e => onUpdate(idx, 'name', e.target.value)}
+                onChange={(e) => onUpdate(idx, 'name', e.target.value)}
                 placeholder="Costume name"
               />
               {kind === 'emoji' ? (
                 <input
                   className="te-input"
-                  style={{ width: 56, textAlign: 'center', fontSize: '20px', fontFamily: "'Noto Color Emoji', serif" }}
+                  style={{
+                    width: 56,
+                    textAlign: 'center',
+                    fontSize: '20px',
+                    fontFamily: "'Noto Color Emoji', serif",
+                  }}
                   value={c.emoji ?? ''}
-                  onChange={e => onUpdate(idx, 'emoji', e.target.value)}
+                  onChange={(e) => onUpdate(idx, 'emoji', e.target.value)}
                   placeholder="🐱"
                 />
               ) : (
                 <input
                   className="te-input"
-                  style={{ flex: '2 1 120px', minWidth: 0, fontFamily: 'var(--font-code)', fontSize: '0.8rem' }}
+                  style={{
+                    flex: '2 1 120px',
+                    minWidth: 0,
+                    fontFamily: 'var(--font-code)',
+                    fontSize: '0.8rem',
+                  }}
                   value={c.image ?? ''}
-                  onChange={e => onUpdate(idx, 'image', e.target.value)}
+                  onChange={(e) => onUpdate(idx, 'image', e.target.value)}
                   placeholder="e.g. sprites/cat1.png"
                 />
               )}
               {hasAnyAssets && (
                 <button
                   type="button"
-                  className={isBrowsing ? 'te-browse-toggle-btn te-browse-toggle-btn--active' : 'te-browse-toggle-btn'}
+                  className={
+                    isBrowsing
+                      ? 'te-browse-toggle-btn te-browse-toggle-btn--active'
+                      : 'te-browse-toggle-btn'
+                  }
                   onClick={() => setBrowsingIdx(isBrowsing ? null : idx)}
                   title="Browse assets"
                 >
@@ -639,8 +902,12 @@ function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, l
                   src={resolvedUrl}
                   alt=""
                   className="te-costume-thumb"
-                  onError={e => { e.target.style.display = 'none' }}
-                  onLoad={e => { e.target.style.display = 'block' }}
+                  onError={(e) => {
+                    e.target.style.display = 'none'
+                  }}
+                  onLoad={(e) => {
+                    e.target.style.display = 'block'
+                  }}
                 />
               )}
               <button
@@ -648,7 +915,9 @@ function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, l
                 className="te-remove-btn"
                 onClick={() => onRemove(idx)}
                 title="Remove costume"
-              >✕</button>
+              >
+                ✕
+              </button>
             </div>
             {isBrowsing && hasAnyAssets && (
               <div className="te-inline-browser">
@@ -657,7 +926,10 @@ function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, l
                   assets={assets}
                   storageAssets={mergedStorageAssets}
                   mode="select"
-                  onSelect={path => { onUpdate(idx, 'image', path); setBrowsingIdx(null) }}
+                  onSelect={(path) => {
+                    onUpdate(idx, 'image', path)
+                    setBrowsingIdx(null)
+                  }}
                 />
               </div>
             )}
@@ -671,12 +943,22 @@ function CostumeManager({ kind = 'image', costumes, assetsPath, storageAssets, l
   )
 }
 
-export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets, lessonId, lessonType }) {
+export function BackdropManager({
+  backdrops,
+  onChange,
+  assetsPath,
+  storageAssets,
+  lessonId,
+  lessonType,
+}) {
   const [browsingId, setBrowsingId] = React.useState(null)
   const { lessonAssets } = useAssets()
   const { typeStorageAssets } = useTypeAssets(lessonType)
   const assets = lessonAssets(lessonId, lessonType)
-  const mergedStorageAssets = [...(storageAssets ?? []), ...typeStorageAssets.filter(a => !(storageAssets ?? []).some(b => b.name === a.name))]
+  const mergedStorageAssets = [
+    ...(storageAssets ?? []),
+    ...typeStorageAssets.filter((a) => !(storageAssets ?? []).some((b) => b.name === a.name)),
+  ]
   const hasAnyAssets = assets.length > 0 || mergedStorageAssets.length > 0
 
   function add() {
@@ -685,10 +967,10 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
   }
   function remove(id) {
     if (backdrops.length <= 1) return
-    onChange(backdrops.filter(b => b.id !== id))
+    onChange(backdrops.filter((b) => b.id !== id))
   }
   function update(id, updates) {
-    onChange(backdrops.map(b => b.id === id ? { ...b, ...updates } : b))
+    onChange(backdrops.map((b) => (b.id === id ? { ...b, ...updates } : b)))
   }
 
   return (
@@ -706,14 +988,14 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                 className="te-input"
                 style={{ flex: '1 1 110px', minWidth: 0 }}
                 value={b.name}
-                onChange={e => update(b.id, { name: e.target.value })}
+                onChange={(e) => update(b.id, { name: e.target.value })}
                 placeholder="Name"
               />
               <select
                 className="te-select"
                 style={{ flex: '0 0 auto' }}
                 value={isImage ? 'image' : 'colour'}
-                onChange={e => {
+                onChange={(e) => {
                   if (e.target.value === 'image') update(b.id, { image: '', colour: undefined })
                   else update(b.id, { colour: b.colour ?? '#ffffff', image: undefined })
                 }}
@@ -727,7 +1009,9 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                 onClick={() => remove(b.id)}
                 disabled={backdrops.length <= 1}
                 title="Remove backdrop"
-              >✕</button>
+              >
+                ✕
+              </button>
             </div>
             {/* Row 2: colour picker or image path */}
             <div className="te-backdrop-row" style={{ paddingTop: 4 }}>
@@ -735,15 +1019,24 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                 <>
                   <input
                     className="te-input"
-                    style={{ flex: '2 1 120px', minWidth: 0, fontFamily: 'var(--font-code)', fontSize: '0.8rem' }}
+                    style={{
+                      flex: '2 1 120px',
+                      minWidth: 0,
+                      fontFamily: 'var(--font-code)',
+                      fontSize: '0.8rem',
+                    }}
                     value={b.image ?? ''}
-                    onChange={e => update(b.id, { image: e.target.value })}
+                    onChange={(e) => update(b.id, { image: e.target.value })}
                     placeholder="e.g. backdrops/sky.png"
                   />
                   {hasAnyAssets && (
                     <button
                       type="button"
-                      className={isBrowsing ? 'te-browse-toggle-btn te-browse-toggle-btn--active' : 'te-browse-toggle-btn'}
+                      className={
+                        isBrowsing
+                          ? 'te-browse-toggle-btn te-browse-toggle-btn--active'
+                          : 'te-browse-toggle-btn'
+                      }
                       onClick={() => setBrowsingId(isBrowsing ? null : b.id)}
                       title="Browse assets"
                     >
@@ -755,8 +1048,12 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                       src={resolvedUrl}
                       alt=""
                       className="te-backdrop-thumb"
-                      onError={e => { e.target.style.display = 'none' }}
-                      onLoad={e => { e.target.style.display = 'block' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                      onLoad={(e) => {
+                        e.target.style.display = 'block'
+                      }}
                     />
                   )}
                 </>
@@ -765,12 +1062,29 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                   <input
                     type="color"
                     value={b.colour ?? '#ffffff'}
-                    onChange={e => update(b.id, { colour: e.target.value })}
+                    onChange={(e) => update(b.id, { colour: e.target.value })}
                     className="te-color-input"
                     style={{ width: 48, height: 32, padding: 2, cursor: 'pointer' }}
                   />
-                  <div className="te-backdrop-swatch" style={{ background: b.colour ?? '#ffffff', width: 32, height: 32, borderRadius: 4, border: '1px solid #e5e7eb' }} />
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#6b7280' }}>{b.colour ?? '#ffffff'}</span>
+                  <div
+                    className="te-backdrop-swatch"
+                    style={{
+                      background: b.colour ?? '#ffffff',
+                      width: 32,
+                      height: 32,
+                      borderRadius: 4,
+                      border: '1px solid #e5e7eb',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.82rem',
+                      color: '#6b7280',
+                    }}
+                  >
+                    {b.colour ?? '#ffffff'}
+                  </span>
                 </div>
               )}
             </div>
@@ -781,7 +1095,10 @@ export function BackdropManager({ backdrops, onChange, assetsPath, storageAssets
                   assets={assets}
                   storageAssets={mergedStorageAssets}
                   mode="select"
-                  onSelect={path => { update(b.id, { image: path }); setBrowsingId(null) }}
+                  onSelect={(path) => {
+                    update(b.id, { image: path })
+                    setBrowsingId(null)
+                  }}
                 />
               </div>
             )}
@@ -827,4 +1144,12 @@ const stageMetadataStyles = {
   },
 }
 
-export { Field, TaskFormatIcon, QuizTypeIcon, CodeWorkspaceTabs, Modal, CarryThroughPicker, StageMetadataEditor }
+export {
+  Field,
+  TaskFormatIcon,
+  QuizTypeIcon,
+  CodeWorkspaceTabs,
+  Modal,
+  CarryThroughPicker,
+  StageMetadataEditor,
+}

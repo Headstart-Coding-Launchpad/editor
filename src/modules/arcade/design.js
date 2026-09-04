@@ -24,7 +24,9 @@ export const ARCADE_PALETTE = Object.freeze([
   { name: 'peach', hex: '#ffccaa' },
 ])
 
-export const ARCADE_COLOURS = Object.freeze(Object.fromEntries(ARCADE_PALETTE.map(({ name, hex }) => [name, hex])))
+export const ARCADE_COLOURS = Object.freeze(
+  Object.fromEntries(ARCADE_PALETTE.map(({ name, hex }) => [name, hex]))
+)
 
 function copy(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value))
@@ -36,7 +38,9 @@ function clampSize(value, fallback) {
 }
 
 function safeName(value, fallback) {
-  const text = String(value ?? '').trim().replace(/[^a-zA-Z0-9_./-]+/g, '-')
+  const text = String(value ?? '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_./-]+/g, '-')
   return text || fallback
 }
 
@@ -59,7 +63,7 @@ export function normaliseArcadeColour(value) {
   if (typeof value !== 'string') return EMPTY_PIXEL
   const colour = value.trim().toLowerCase()
   if (ARCADE_COLOURS[colour]) return ARCADE_COLOURS[colour]
-  if (ARCADE_PALETTE.some(item => item.hex === colour)) return colour
+  if (ARCADE_PALETTE.some((item) => item.hex === colour)) return colour
   return EMPTY_PIXEL
 }
 
@@ -68,13 +72,19 @@ export function resizeArcadeSprite(sprite, width, height) {
   const nextHeight = clampSize(height, DEFAULT_HEIGHT)
   const source = createArcadeDesign({ sprites: [sprite] }).sprites[0]
   if (source.width === nextWidth && source.height === nextHeight) return source
-  const frames = source.frames.map(frame => createPixelFrame(nextWidth, nextHeight,
-    Array.from({ length: nextWidth * nextHeight }, (_, index) => {
-      const column = index % nextWidth
-      const row = Math.floor(index / nextWidth)
-      return column < source.width && row < source.height ? frame[row * source.width + column] : null
-    }),
-  ))
+  const frames = source.frames.map((frame) =>
+    createPixelFrame(
+      nextWidth,
+      nextHeight,
+      Array.from({ length: nextWidth * nextHeight }, (_, index) => {
+        const column = index % nextWidth
+        const row = Math.floor(index / nextWidth)
+        return column < source.width && row < source.height
+          ? frame[row * source.width + column]
+          : null
+      })
+    )
+  )
   return { ...source, width: nextWidth, height: nextHeight, frames }
 }
 
@@ -94,10 +104,11 @@ export function createArcadeSprite(existing = [], overrides = {}) {
 
 export function createArcadeMap(existing = [], overrides = {}) {
   const sourceRows = Array.isArray(overrides.rows) ? overrides.rows : null
-  const inferredColumns = Math.max(...(sourceRows?.map(row => String(row).length) ?? [0]))
+  const inferredColumns = Math.max(...(sourceRows?.map((row) => String(row).length) ?? [0]))
   // Maps made during the first visual-editor draft did not record a width and
   // defaulted to a single column. Treat that shape as the old default.
-  const requestedColumns = overrides.columns ?? (inferredColumns === 1 && sourceRows?.length >= 4 ? 16 : inferredColumns)
+  const requestedColumns =
+    overrides.columns ?? (inferredColumns === 1 && sourceRows?.length >= 4 ? 16 : inferredColumns)
   const columns = clampSize(requestedColumns > 0 ? requestedColumns : 16, 16)
   const rowCount = clampSize(overrides.rowCount ?? sourceRows?.length ?? overrides.rows, 12)
   return {
@@ -105,7 +116,11 @@ export function createArcadeMap(existing = [], overrides = {}) {
     name: safeName(overrides.name, `world_${existing.length + 1}`),
     columns,
     tileSize: clampSize(overrides.tileSize, 16),
-    rows: Array.from({ length: rowCount }, (_, row) => String(sourceRows?.[row] ?? '.').padEnd(columns, '.').slice(0, columns)),
+    rows: Array.from({ length: rowCount }, (_, row) =>
+      String(sourceRows?.[row] ?? '.')
+        .padEnd(columns, '.')
+        .slice(0, columns)
+    ),
     tiles: copy(overrides.tiles ?? {}),
     objects: copy(overrides.objects ?? []),
   }
@@ -113,13 +128,23 @@ export function createArcadeMap(existing = [], overrides = {}) {
 
 export function resizeArcadeMap(map, columns, rowCount) {
   const source = createArcadeMap([], map)
-  const nextColumns = clampSize(String(columns ?? '').trim() === '' ? source.columns : columns, source.columns)
-  const nextRowCount = clampSize(String(rowCount ?? '').trim() === '' ? source.rows.length : rowCount, source.rows.length)
+  const nextColumns = clampSize(
+    String(columns ?? '').trim() === '' ? source.columns : columns,
+    source.columns
+  )
+  const nextRowCount = clampSize(
+    String(rowCount ?? '').trim() === '' ? source.rows.length : rowCount,
+    source.rows.length
+  )
   if (source.columns === nextColumns && source.rows.length === nextRowCount) return source
   return {
     ...source,
     columns: nextColumns,
-    rows: Array.from({ length: nextRowCount }, (_, row) => String(source.rows[row] ?? '.').padEnd(nextColumns, '.').slice(0, nextColumns)),
+    rows: Array.from({ length: nextRowCount }, (_, row) =>
+      String(source.rows[row] ?? '.')
+        .padEnd(nextColumns, '.')
+        .slice(0, nextColumns)
+    ),
   }
 }
 
@@ -127,8 +152,9 @@ export function createArcadeDesign(value = null) {
   const raw = value && typeof value === 'object' ? value : {}
   return {
     version: 1,
-    sprites: (raw.sprites ?? []).map(sprite => {
-      const sourceFrames = Array.isArray(sprite.frames) && sprite.frames.length ? sprite.frames : [null]
+    sprites: (raw.sprites ?? []).map((sprite) => {
+      const sourceFrames =
+        Array.isArray(sprite.frames) && sprite.frames.length ? sprite.frames : [null]
       const width = clampSize(sprite.width, DEFAULT_WIDTH)
       const height = clampSize(sprite.height, DEFAULT_HEIGHT)
       const frames = sourceFrames
@@ -137,7 +163,7 @@ export function createArcadeDesign(value = null) {
         name: spriteFileName(sprite.name),
         width,
         height,
-        frames: frames.map(frame => createPixelFrame(width, height, frame)),
+        frames: frames.map((frame) => createPixelFrame(width, height, frame)),
       }
     }),
     maps: (raw.maps ?? []).map((map, index) => createArcadeMap(raw.maps.slice(0, index), map)),
@@ -152,7 +178,7 @@ export function designForCodeTab(task, codeTab = 'starter') {
   if (codeTab === 'complete') return cloneArcadeDesign(task?.completeArcadeDesign)
   const stageMatch = String(codeTab).match(/^stage_(\d+)$/)
   if (stageMatch) return cloneArcadeDesign(task?.codeStages?.[Number(stageMatch[1])]?.arcadeDesign)
-  const starterStage = task?.codeStages?.find(stage => stage?.role === 'starter')
+  const starterStage = task?.codeStages?.find((stage) => stage?.role === 'starter')
   return cloneArcadeDesign(starterStage?.arcadeDesign ?? task?.arcadeDesign)
 }
 
@@ -162,41 +188,72 @@ export function updateDesignForCodeTab(task, codeTab = 'starter', design) {
   const stageMatch = String(codeTab).match(/^stage_(\d+)$/)
   if (stageMatch) {
     const index = Number(stageMatch[1])
-    return { ...task, codeStages: (task.codeStages ?? []).map((stage, stageIndex) => stageIndex === index ? { ...stage, arcadeDesign: next } : stage) }
+    return {
+      ...task,
+      codeStages: (task.codeStages ?? []).map((stage, stageIndex) =>
+        stageIndex === index ? { ...stage, arcadeDesign: next } : stage
+      ),
+    }
   }
   return { ...task, arcadeDesign: next }
 }
 
 export function generatedArcadeAssets(design) {
-  return createArcadeDesign(design).sprites.map(sprite => ({ name: sprite.name, url: spriteToDataUrl(sprite), generated: true }))
+  return createArcadeDesign(design).sprites.map((sprite) => ({
+    name: sprite.name,
+    url: spriteToDataUrl(sprite),
+    generated: true,
+  }))
 }
 
 export function generatedArcadeTilemaps(design) {
-  return createArcadeDesign(design).maps.map(map => {
+  return createArcadeDesign(design).maps.map((map) => {
     const normal = createArcadeMap([], map)
-    const tiles = Object.fromEntries(Object.entries(normal.tiles).map(([symbol, tile]) => [symbol, tile.asset ?? '']))
-    const properties = Object.fromEntries(Object.entries(normal.tiles).map(([symbol, tile]) => [symbol, tile.properties ?? {}]))
-    const solid = Object.entries(normal.tiles).filter(([, tile]) => tile.properties?.solid).map(([symbol]) => symbol).join('')
-    return { name: tilemapFileName(normal), generated: true, data: { rows: normal.rows, tileSize: normal.tileSize, tiles, properties, objects: normal.objects, solid } }
+    const tiles = Object.fromEntries(
+      Object.entries(normal.tiles).map(([symbol, tile]) => [symbol, tile.asset ?? ''])
+    )
+    const properties = Object.fromEntries(
+      Object.entries(normal.tiles).map(([symbol, tile]) => [symbol, tile.properties ?? {}])
+    )
+    const solid = Object.entries(normal.tiles)
+      .filter(([, tile]) => tile.properties?.solid)
+      .map(([symbol]) => symbol)
+      .join('')
+    return {
+      name: tilemapFileName(normal),
+      generated: true,
+      data: {
+        rows: normal.rows,
+        tileSize: normal.tileSize,
+        tiles,
+        properties,
+        objects: normal.objects,
+        solid,
+      },
+    }
   })
 }
 
 export function spriteToDataUrl(sprite) {
   const { width, height, frames } = createArcadeDesign({ sprites: [sprite] }).sprites[0]
   const rects = []
-  frames.forEach((frame, frameIndex) => frame.forEach((colour, index) => {
-    if (!colour) return
-    const x = (index % width) + frameIndex * width
-    const y = Math.floor(index / width)
-    rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${String(colour).replace(/["<&]/g, '')}"/>`)
-  }))
+  frames.forEach((frame, frameIndex) =>
+    frame.forEach((colour, index) => {
+      if (!colour) return
+      const x = (index % width) + frameIndex * width
+      const y = Math.floor(index / width)
+      rects.push(
+        `<rect x="${x}" y="${y}" width="1" height="1" fill="${String(colour).replace(/["<&]/g, '')}"/>`
+      )
+    })
+  )
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * frames.length}" height="${height}" viewBox="0 0 ${width * frames.length} ${height}" shape-rendering="crispEdges">${rects.join('')}</svg>`
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
 export function nextTileSymbol(map) {
   const used = new Set(Object.keys(map?.tiles ?? {}))
-  return [...TILE_SYMBOLS].find(symbol => !used.has(symbol)) ?? '?'
+  return [...TILE_SYMBOLS].find((symbol) => !used.has(symbol)) ?? '?'
 }
 
 export function updateMapCell(map, column, row, symbol) {
@@ -212,7 +269,9 @@ function python(value) {
   if (typeof value === 'number') return String(value)
   if (typeof value === 'string') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(python).join(', ')}]`
-  return `{${Object.entries(value).map(([key, item]) => `${python(key)}: ${python(item)}`).join(', ')}}`
+  return `{${Object.entries(value)
+    .map(([key, item]) => `${python(key)}: ${python(item)}`)
+    .join(', ')}}`
 }
 
 export function mapToPythonSnippet(map) {

@@ -53,7 +53,9 @@ describe('TaskSlideTransition', () => {
     expect(screen.getByText('Task one content')).toBeInTheDocument()
     expect(screen.getByText('Task two content')).toBeInTheDocument()
 
-    act(() => { vi.runAllTimers() })
+    act(() => {
+      vi.runAllTimers()
+    })
 
     expect(screen.queryByText('Task one content')).not.toBeInTheDocument()
     expect(screen.getByText('Task two content')).toBeInTheDocument()

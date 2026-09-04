@@ -31,7 +31,7 @@ describe('removeTileFromState', () => {
 describe('useTileDragAndDrop', () => {
   const baseConfig = {
     blocked: false,
-    getLabelForTile: id => `Label for ${id}`,
+    getLabelForTile: (id) => `Label for ${id}`,
   }
 
   it('initialises with empty state', () => {
@@ -63,24 +63,36 @@ describe('useTileDragAndDrop', () => {
   it('handleDragEnd clears draggingTile and dragOverTarget', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
     const event = makeEvent()
-    act(() => { result.current.handleDragStart(event, 'tile-1') })
-    act(() => { result.current.handleTargetDragOver(event, 'slot-a') })
-    act(() => { result.current.handleDragEnd() })
+    act(() => {
+      result.current.handleDragStart(event, 'tile-1')
+    })
+    act(() => {
+      result.current.handleTargetDragOver(event, 'slot-a')
+    })
+    act(() => {
+      result.current.handleDragEnd()
+    })
     expect(result.current.draggingTile).toBeNull()
     expect(result.current.dragOverTarget).toBeNull()
   })
 
   it('handleTileClick toggles touchSelectedTile', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
-    act(() => { result.current.handleTileClick('tile-1') })
+    act(() => {
+      result.current.handleTileClick('tile-1')
+    })
     expect(result.current.touchSelectedTile).toBe('tile-1')
-    act(() => { result.current.handleTileClick('tile-1') })
+    act(() => {
+      result.current.handleTileClick('tile-1')
+    })
     expect(result.current.touchSelectedTile).toBeNull()
   })
 
   it('handleTileClick does nothing when dragEnabled is false', () => {
     const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, dragEnabled: false }))
-    act(() => { result.current.handleTileClick('tile-1') })
+    act(() => {
+      result.current.handleTileClick('tile-1')
+    })
     expect(result.current.touchSelectedTile).toBeNull()
   })
 
@@ -88,8 +100,12 @@ describe('useTileDragAndDrop', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
     const publishState = vi.fn()
     const state = {}
-    act(() => { result.current.handleTileClick('tile-1') })
-    act(() => { result.current.handleTargetClick('slot-a', state, publishState) })
+    act(() => {
+      result.current.handleTileClick('tile-1')
+    })
+    act(() => {
+      result.current.handleTargetClick('slot-a', state, publishState)
+    })
     expect(publishState).toHaveBeenCalledWith({ 'slot-a': 'tile-1' })
     expect(result.current.touchSelectedTile).toBeNull()
   })
@@ -98,7 +114,9 @@ describe('useTileDragAndDrop', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
     const publishState = vi.fn()
     const state = { 'slot-a': 'tile-1' }
-    act(() => { result.current.handleTargetClick('slot-a', state, publishState) })
+    act(() => {
+      result.current.handleTargetClick('slot-a', state, publishState)
+    })
     expect(result.current.touchSelectedTile).toBe('tile-1')
     expect(publishState).toHaveBeenCalledWith({})
   })
@@ -106,7 +124,9 @@ describe('useTileDragAndDrop', () => {
   it('handleTargetDragOver sets dragOverTarget', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
     const event = makeEvent()
-    act(() => { result.current.handleTargetDragOver(event, 'slot-a') })
+    act(() => {
+      result.current.handleTargetDragOver(event, 'slot-a')
+    })
     expect(result.current.dragOverTarget).toBe('slot-a')
     expect(event.preventDefault).toHaveBeenCalled()
   })
@@ -116,11 +136,15 @@ describe('useTileDragAndDrop', () => {
     const publishState = vi.fn()
     const state = {}
     const event = makeEvent()
-    event.dataTransfer.getData = vi.fn(mime =>
+    event.dataTransfer.getData = vi.fn((mime) =>
       mime === 'application/x-headstart-quiz-tile' ? 'tile-1' : ''
     )
-    act(() => { result.current.handleDragStart(event, 'tile-1') })
-    act(() => { result.current.handleTargetDrop(event, 'slot-a', state, publishState) })
+    act(() => {
+      result.current.handleDragStart(event, 'tile-1')
+    })
+    act(() => {
+      result.current.handleTargetDrop(event, 'slot-a', state, publishState)
+    })
     expect(publishState).toHaveBeenCalledWith({ 'slot-a': 'tile-1' })
     expect(result.current.draggingTile).toBeNull()
     expect(result.current.dragOverTarget).toBeNull()
@@ -131,10 +155,12 @@ describe('useTileDragAndDrop', () => {
     const publishState = vi.fn()
     const state = { 'slot-a': 'tile-1' }
     const event = makeEvent()
-    event.dataTransfer.getData = vi.fn(mime =>
+    event.dataTransfer.getData = vi.fn((mime) =>
       mime === 'application/x-headstart-quiz-tile' ? 'tile-1' : ''
     )
-    act(() => { result.current.handlePoolDrop(event, state, publishState) })
+    act(() => {
+      result.current.handlePoolDrop(event, state, publishState)
+    })
     expect(publishState).toHaveBeenCalledWith({})
   })
 
@@ -142,29 +168,41 @@ describe('useTileDragAndDrop', () => {
     const onDragStart = vi.fn()
     const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, onDragStart }))
     const event = makeEvent()
-    act(() => { result.current.handleDragStart(event, 'tile-1') })
+    act(() => {
+      result.current.handleDragStart(event, 'tile-1')
+    })
     expect(onDragStart).toHaveBeenCalledWith(event, 'tile-1')
   })
 
-  it('does not call onDragStart when blocked (CodeArrangeTask\'s live-cursor mirror must not fire)', () => {
+  it("does not call onDragStart when blocked (CodeArrangeTask's live-cursor mirror must not fire)", () => {
     const onDragStart = vi.fn()
-    const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, blocked: true, onDragStart }))
-    act(() => { result.current.handleDragStart(makeEvent(), 'tile-1') })
+    const { result } = renderHook(() =>
+      useTileDragAndDrop({ ...baseConfig, blocked: true, onDragStart })
+    )
+    act(() => {
+      result.current.handleDragStart(makeEvent(), 'tile-1')
+    })
     expect(onDragStart).not.toHaveBeenCalled()
   })
 
-  it('calls the optional onDragEnd callback (CodeArrangeTask\'s live-cursor mirror clear)', () => {
+  it("calls the optional onDragEnd callback (CodeArrangeTask's live-cursor mirror clear)", () => {
     const onDragEnd = vi.fn()
     const { result } = renderHook(() => useTileDragAndDrop({ ...baseConfig, onDragEnd }))
-    act(() => { result.current.handleDragEnd() })
+    act(() => {
+      result.current.handleDragEnd()
+    })
     expect(onDragEnd).toHaveBeenCalledTimes(1)
   })
 
   it('clearDragOver resets dragOverTarget', () => {
     const { result } = renderHook(() => useTileDragAndDrop(baseConfig))
     const event = makeEvent()
-    act(() => { result.current.handleTargetDragOver(event, 'slot-a') })
-    act(() => { result.current.clearDragOver() })
+    act(() => {
+      result.current.handleTargetDragOver(event, 'slot-a')
+    })
+    act(() => {
+      result.current.clearDragOver()
+    })
     expect(result.current.dragOverTarget).toBeNull()
   })
 })

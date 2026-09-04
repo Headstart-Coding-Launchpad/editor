@@ -17,7 +17,9 @@ test.describe('Landing page', () => {
     await expect(page.getByText('Headstart Coding - LaunchPad')).toBeVisible({ timeout: 10000 })
 
     // The page heading — "Join a lesson" for non-teacher mode
-    await expect(page.getByRole('heading', { name: 'Join a lesson' })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Join a lesson' })).toBeVisible({
+      timeout: 5000,
+    })
 
     // The lesson-code input (labelled "Enter your lesson code")
     const input = page.getByLabel('Enter your lesson code')

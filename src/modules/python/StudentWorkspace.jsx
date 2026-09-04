@@ -2,60 +2,87 @@ import React, { useEffect, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
 import SplitPane from '../../shared/SplitPane'
-import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
+import {
+  CollapsedPanelRail,
+  CollapseTabButton,
+} from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 
 export default function StudentWorkspace({
-  task, cs, lessonId, identityId, viewingTaskId, isSandbox,
-  isViewingPrev, isForcedTeacherLive, isMobile,
-  displayCode, displayOutput, displayRunStatus,
-  displayCheckPassed, displayCheckAttempted, displaySelection,
-  isTeacherEditing, teacherLiveCode,
+  task,
+  cs,
+  lessonId,
+  identityId,
+  viewingTaskId,
+  isSandbox,
+  isViewingPrev,
+  isForcedTeacherLive,
+  isMobile,
+  displayCode,
+  displayOutput,
+  displayRunStatus,
+  displayCheckPassed,
+  displayCheckAttempted,
+  displaySelection,
+  isTeacherEditing,
+  teacherLiveCode,
   onVisiblePanesChange,
 }) {
-  const [outputCollapsed, setOutputCollapsed] = useState(() => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev)
+  const [outputCollapsed, setOutputCollapsed] = useState(
+    () => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev
+  )
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const code = isForcedTeacherLive
     ? displayCode
     : isTeacherEditing
-    ? (teacherLiveCode ?? '')
-    : isViewingPrev
-    ? (savedCode?.code ?? '')
-    : cs.code
+      ? (teacherLiveCode ?? '')
+      : isViewingPrev
+        ? (savedCode?.code ?? '')
+        : cs.code
   const showEditableHeader = !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing
-  const showSubmitBanner = showEditableHeader && task?.interactionMode === 'submit' && cs.runStatus === 'submitted' && !task?.check
-  const shouldShowOutput = task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
+  const showSubmitBanner =
+    showEditableHeader &&
+    task?.interactionMode === 'submit' &&
+    cs.runStatus === 'submitted' &&
+    !task?.check
+  const shouldShowOutput =
+    task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
   useEffect(() => {
     onVisiblePanesChange?.(shouldShowOutput && !outputCollapsed ? ['code', 'console'] : ['code'])
   }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
-  const showCopyCode = !isSandbox && !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
-  const outputProps = isForcedTeacherLive || isTeacherEditing
-    ? {
-      output: isTeacherEditing ? '' : displayOutput,
-      runStatus: isTeacherEditing ? null : displayRunStatus,
-      checkPassed: isTeacherEditing ? false : displayCheckPassed,
-      hasCheck: !!task?.check,
-      checkAttempted: isTeacherEditing ? false : displayCheckAttempted,
-    }
-    : isViewingPrev
-    ? {
-      output: savedCode?.output ?? '',
-      runStatus: savedCode?.runStatus ?? null,
-      checkPassed: false,
-      hasCheck: false,
-      checkAttempted: false,
-    }
-    : {
-      output: cs.output,
-      runStatus: cs.runStatus,
-      inputPrompt: cs.inputPrompt,
-      onInputSubmit: cs.handleInputSubmit,
-      checkPassed: cs.checkPassed,
-      hasCheck: !!task?.check || task?.tests?.length > 0,
-      running: cs.running || cs.runningTests,
-    }
+  const showCopyCode =
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    typeof task?.copyCode === 'string' &&
+    !!task.copyCode.trim()
+  const outputProps =
+    isForcedTeacherLive || isTeacherEditing
+      ? {
+          output: isTeacherEditing ? '' : displayOutput,
+          runStatus: isTeacherEditing ? null : displayRunStatus,
+          checkPassed: isTeacherEditing ? false : displayCheckPassed,
+          hasCheck: !!task?.check,
+          checkAttempted: isTeacherEditing ? false : displayCheckAttempted,
+        }
+      : isViewingPrev
+        ? {
+            output: savedCode?.output ?? '',
+            runStatus: savedCode?.runStatus ?? null,
+            checkPassed: false,
+            hasCheck: false,
+            checkAttempted: false,
+          }
+        : {
+            output: cs.output,
+            runStatus: cs.runStatus,
+            inputPrompt: cs.inputPrompt,
+            onInputSubmit: cs.handleInputSubmit,
+            checkPassed: cs.checkPassed,
+            hasCheck: !!task?.check || task?.tests?.length > 0,
+            running: cs.running || cs.runningTests,
+          }
 
   function handleRunClick() {
     if (cs.running || cs.runningTests) {
@@ -91,7 +118,11 @@ export default function StudentWorkspace({
                   onClick={handleRunClick}
                   disabled={!cs.running && !cs.runningTests && cs.pyodideStatus === 'loading'}
                 >
-                  {cs.running || cs.runningTests ? 'Stop' : cs.pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}
+                  {cs.running || cs.runningTests
+                    ? 'Stop'
+                    : cs.pyodideStatus === 'loading'
+                      ? 'Getting Python ready...'
+                      : 'Run'}
                 </button>
                 {task?.tests?.length > 0 && (
                   <button
@@ -124,15 +155,17 @@ export default function StudentWorkspace({
         onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
         onActivity={readOnly ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}
-        teacherHighlights={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? [] : cs.teacherHighlights}
-        onHighlightDismiss={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight}
+        teacherHighlights={
+          isViewingPrev || isForcedTeacherLive || isTeacherEditing ? [] : cs.teacherHighlights
+        }
+        onHighlightDismiss={
+          isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight
+        }
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
       />
-      {showSubmitBanner && (
-        <div style={s.submitBanner}>Code submitted</div>
-      )}
+      {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
     </div>
   )
 
@@ -155,7 +188,14 @@ export default function StudentWorkspace({
       {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.testResults !== null && (
         <div style={s.testResultsPanel}>
           {cs.testResults.map((r, i) => (
-            <span key={r.id ?? i} style={{ ...s.testResultBadge, background: r.passed ? '#dcfce7' : '#fef3c7', color: r.passed ? '#15803d' : '#b45309' }}>
+            <span
+              key={r.id ?? i}
+              style={{
+                ...s.testResultBadge,
+                background: r.passed ? '#dcfce7' : '#fef3c7',
+                color: r.passed ? '#15803d' : '#b45309',
+              }}
+            >
               {r.passed ? 'Pass' : 'Check'} {r.name || `Test ${i + 1}`}
             </span>
           ))}

@@ -15,12 +15,14 @@ const localWorkspace = {
 
 describe('toTeacherLiveFiles', () => {
   it('converts live file maps to editor files using the existing type rules', () => {
-    expect(toTeacherLiveFiles({
-      'index.html': '<main />',
-      'styles.css': 'body {}',
-      'app.js': 'run()',
-      'data.json': '{}',
-    })).toEqual([
+    expect(
+      toTeacherLiveFiles({
+        'index.html': '<main />',
+        'styles.css': 'body {}',
+        'app.js': 'run()',
+        'data.json': '{}',
+      })
+    ).toEqual([
       { name: 'index.html', content: '<main />', type: 'html' },
       { name: 'styles.css', content: 'body {}', type: 'css' },
       { name: 'app.js', content: 'run()', type: 'javascript' },
@@ -61,13 +63,20 @@ describe('deriveStudentLiveDisplay', () => {
     expect(display.displayedTaskId).toBe(2)
     expect(display.displayCode).toBe('live code')
     expect(display.displayArcadeDesign).toEqual({ sprites: [{ name: 'hero.png' }], maps: [] })
-    expect(display.displayFiles).toEqual([{ name: 'index.html', content: 'live html', type: 'html' }])
+    expect(display.displayFiles).toEqual([
+      { name: 'index.html', content: 'live html', type: 'html' },
+    ])
     expect(display.displayOutput).toBe('live output')
     expect(display.displayCheckPassed).toBe(false)
     expect(display.displaySelection).toEqual({ from: 1, to: 2 })
     expect(display.displayActivity).toEqual({ type: 'paste' })
     expect(display.displayCodeArrangeSlots).toEqual({ slot1: 'fragment-a' })
-    expect(display.displayCodeArrangeCursor).toEqual({ tileId: 'fragment-a', x: 0.4, y: 0.6, at: 123 })
+    expect(display.displayCodeArrangeCursor).toEqual({
+      tileId: 'fragment-a',
+      x: 0.4,
+      y: 0.6,
+      at: 123,
+    })
   })
 
   it('reports no live code_arrange state when not forced-teacher-live', () => {

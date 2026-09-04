@@ -1,8 +1,20 @@
 import React from 'react'
 import IframePreview from './IframePreview'
-import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
+import {
+  AnimatedPanelShell,
+  CollapsedPanelRail,
+  CollapseTabButton,
+} from './CollapsiblePanelControls'
 
-export default function CollapsibleIframePreview({ src, iframeRef, fill = true, collapsed, onToggle, animate = false, onConsoleError }) {
+export default function CollapsibleIframePreview({
+  src,
+  iframeRef,
+  fill = true,
+  collapsed,
+  onToggle,
+  animate = false,
+  onConsoleError,
+}) {
   if (collapsed) {
     return (
       <CollapsedPanelRail
@@ -32,9 +44,5 @@ export default function CollapsibleIframePreview({ src, iframeRef, fill = true, 
     />
   )
 
-  return (
-    <AnimatedPanelShell animate={animate}>
-      {preview}
-    </AnimatedPanelShell>
-  )
+  return <AnimatedPanelShell animate={animate}>{preview}</AnimatedPanelShell>
 }

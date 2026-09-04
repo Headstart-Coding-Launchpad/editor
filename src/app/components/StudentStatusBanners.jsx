@@ -20,7 +20,8 @@ export default function StudentStatusBanners({
     <>
       {authError && (
         <Banner accent="#ef4444" color="#b91c1c">
-          Couldn&apos;t connect to save your progress — your work may not be saved. Check your connection.
+          Couldn&apos;t connect to save your progress — your work may not be saved. Check your
+          connection.
           <button
             className="btn-secondary"
             style={{ marginLeft: 16, padding: '4px 12px', fontSize: 13 }}

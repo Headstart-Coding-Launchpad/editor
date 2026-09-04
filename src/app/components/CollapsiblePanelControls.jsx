@@ -32,7 +32,8 @@ export function CollapsedPanelRail({
   style,
   highlighted = false,
 }) {
-  const chevron = direction === 'left' ? '<' : direction === 'up' ? '^' : direction === 'down' ? 'v' : '>'
+  const chevron =
+    direction === 'left' ? '<' : direction === 'up' ? '^' : direction === 'down' ? 'v' : '>'
   return (
     <button
       type="button"
@@ -43,7 +44,9 @@ export function CollapsedPanelRail({
       aria-label={ariaLabel}
     >
       <span style={s.railChevron}>{chevron}</span>
-      <span style={orientation === 'horizontal' ? s.railLabelHorizontal : s.railLabel}>{label}</span>
+      <span style={orientation === 'horizontal' ? s.railLabelHorizontal : s.railLabel}>
+        {label}
+      </span>
     </button>
   )
 }

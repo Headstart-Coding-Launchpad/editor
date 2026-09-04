@@ -6,6 +6,9 @@ function lessonTypeLabel(type) {
   if (type === 'python') return 'Python'
   if (type === 'scratch') return 'Scratch'
   if (type === 'html') return 'Web Dev'
+  if (type === 'filesystem') return 'Filesystem'
+  if (type === 'electronics') return 'Electronics'
+  if (type === 'arcade') return 'Arcade Kit'
   return type || 'Lesson'
 }
 
@@ -32,10 +35,22 @@ export default function InformationTask({ task, lesson, fill = true, disableCopy
     return (
       <section className="information-task information-task--recap">
         <div className="information-recap__left">
-          <MarkdownRenderer content={task?.leftContent ?? ''} textScale={markdownTextScale} inheritColor topicType={lesson?.type} disableCopy={disableCopy} />
+          <MarkdownRenderer
+            content={task?.leftContent ?? ''}
+            textScale={markdownTextScale}
+            inheritColor
+            topicType={lesson?.type}
+            disableCopy={disableCopy}
+          />
         </div>
         <div className="information-recap__content">
-          <MarkdownRenderer content={task?.explainer ?? ''} textScale={markdownTextScale} topicType={lesson?.type} disableCopy={disableCopy} imageLayout="float" />
+          <MarkdownRenderer
+            content={task?.explainer ?? ''}
+            textScale={markdownTextScale}
+            topicType={lesson?.type}
+            disableCopy={disableCopy}
+            imageLayout="float"
+          />
         </div>
       </section>
     )

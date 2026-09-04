@@ -22,7 +22,9 @@ export default function ChoiceScreen({ lessonTitle, lessonDescription, onJoinLiv
 
           <div style={s.soloCard} className="card">
             <span style={s.soloBadge}>💻 Go Solo</span>
-            <p style={s.soloText}>Practice on your own, or follow along with a pre-recorded lesson.</p>
+            <p style={s.soloText}>
+              Practice on your own, or follow along with a pre-recorded lesson.
+            </p>
             <button className="btn-primary" style={s.soloBtn} onClick={onGoSolo}>
               Start Solo
             </button>

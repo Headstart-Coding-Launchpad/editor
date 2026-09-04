@@ -6,7 +6,13 @@ import SessionEndedScreen from '../SessionEndedScreen'
 describe('SessionEndedScreen', () => {
   it('offers an explicit all-code backup when Python tasks were saved', () => {
     const onDownloadAllCode = vi.fn()
-    render(<SessionEndedScreen savedCodeTaskCount={2} onDownloadAllCode={onDownloadAllCode} onContinueSolo={vi.fn()} />)
+    render(
+      <SessionEndedScreen
+        savedCodeTaskCount={2}
+        onDownloadAllCode={onDownloadAllCode}
+        onContinueSolo={vi.fn()}
+      />
+    )
 
     expect(screen.getByText(/saved only on this device/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /download all my code/i }))
@@ -22,7 +28,9 @@ describe('SessionEndedScreen', () => {
     render(<SessionEndedScreen savedOtherTaskCount={3} onContinueSolo={vi.fn()} />)
 
     expect(screen.getByText(/saved only on this device/i)).toBeInTheDocument()
-    expect(screen.getByText(/3 other tasks are saved locally too, but isn't downloadable yet/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/3 other tasks are saved locally too, but isn't downloadable yet/i)
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /download all my code/i })).not.toBeInTheDocument()
   })
 

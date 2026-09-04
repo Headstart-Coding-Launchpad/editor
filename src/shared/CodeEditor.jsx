@@ -40,13 +40,20 @@ const remoteSelectionField = StateField.define({
       const from = Math.min(Math.max(selection.from ?? 0, 0), max)
       const to = Math.min(Math.max(selection.to ?? from, 0), max)
       if (from === to) {
-        return Decoration.set([Decoration.widget({ widget: new RemoteCursorWidget(), side: 1 }).range(from)])
+        return Decoration.set([
+          Decoration.widget({ widget: new RemoteCursorWidget(), side: 1 }).range(from),
+        ])
       }
-      return Decoration.set([Decoration.mark({ class: 'cm-remoteSelection' }).range(Math.min(from, to), Math.max(from, to))])
+      return Decoration.set([
+        Decoration.mark({ class: 'cm-remoteSelection' }).range(
+          Math.min(from, to),
+          Math.max(from, to)
+        ),
+      ])
     }
     return markers
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 })
 
 // Teacher-authored markup highlights: unlike remoteSelection, this holds
@@ -102,13 +109,18 @@ const teacherHighlightsField = StateField.define({
         const to = Math.min(Math.max(h.to ?? from, 0), max)
         if (from >= to) continue
         ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(from, to))
-        ranges.push(Decoration.widget({ widget: new TeacherHighlightWidget(h.id, h.emoji, h.note), side: 1 }).range(to))
+        ranges.push(
+          Decoration.widget({
+            widget: new TeacherHighlightWidget(h.id, h.emoji, h.note),
+            side: 1,
+          }).range(to)
+        )
       }
       marks = Decoration.set(ranges, true)
     }
     return marks
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 })
 
 // Runtime error-line highlight: a single whole-line marker showing where the
@@ -133,7 +145,7 @@ export const errorLineField = StateField.define({
     if (transaction.docChanged) return Decoration.none
     return deco
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 })
 
 export function CodeEditor({
@@ -151,8 +163,8 @@ export function CodeEditor({
   style,
 }) {
   const containerRef = useRef(null)
-  const viewRef      = useRef(null)
-  const onChangeRef  = useRef(onChange)
+  const viewRef = useRef(null)
+  const onChangeRef = useRef(onChange)
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onActivityRef = useRef(onActivity)
   const onHighlightDismissRef = useRef(onHighlightDismiss)
@@ -175,15 +187,17 @@ export function CodeEditor({
           remoteSelectionField,
           teacherHighlightsField,
           errorLineField,
-          keymap.of([{
-            key: 'Mod-Enter',
-            run: () => {
-              if (!onRunShortcutRef.current) return false
-              onRunShortcutRef.current()
-              return true
+          keymap.of([
+            {
+              key: 'Mod-Enter',
+              run: () => {
+                if (!onRunShortcutRef.current) return false
+                onRunShortcutRef.current()
+                return true
+              },
             },
-          }]),
-          EditorView.updateListener.of(update => {
+          ]),
+          EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
             }
@@ -193,9 +207,15 @@ export function CodeEditor({
             }
           }),
           EditorView.domEventHandlers({
-            copy: () => { onActivityRef.current?.({ type: 'copy', at: Date.now() }); return false },
-            paste: () => { onActivityRef.current?.({ type: 'paste', at: Date.now() }); return false },
-            mousedown: event => {
+            copy: () => {
+              onActivityRef.current?.({ type: 'copy', at: Date.now() })
+              return false
+            },
+            paste: () => {
+              onActivityRef.current?.({ type: 'paste', at: Date.now() })
+              return false
+            },
+            mousedown: (event) => {
               const badge = event.target.closest?.('.cm-teacherHighlightBadge')
               if (badge) {
                 onHighlightDismissRef.current?.(badge.dataset.highlightId)
@@ -215,7 +235,7 @@ export function CodeEditor({
       view.destroy()
       viewRef.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Keep readOnly compartment in sync

@@ -4,17 +4,37 @@ import { describe, expect, it, vi } from 'vitest'
 import TeacherReportModal from '../TeacherReportModal'
 
 const report = {
-  lessonId: 'demo', lessonTitle: 'Demo Lesson', sessionId: '1000', startedAt: 1000, endedAt: 2000,
+  lessonId: 'demo',
+  lessonTitle: 'Demo Lesson',
+  sessionId: '1000',
+  startedAt: 1000,
+  endedAt: 2000,
   students: [
     {
       anonymousId: 'alice',
       displayName: 'Alice',
       tasks: [
         {
-          taskId: 1, title: 'Task One', completed: true, attempts: 2, finalResult: 'passed',
+          taskId: 1,
+          title: 'Task One',
+          completed: true,
+          attempts: 2,
+          finalResult: 'passed',
           distinctAttempts: [
-            { attemptNumber: 1, passed: false, retries: 0, suggestion: 'missing hello', submission: 'print("hi")' },
-            { attemptNumber: 2, passed: true, retries: 0, suggestion: null, submission: 'print("hello")' },
+            {
+              attemptNumber: 1,
+              passed: false,
+              retries: 0,
+              suggestion: 'missing hello',
+              submission: 'print("hi")',
+            },
+            {
+              attemptNumber: 2,
+              passed: true,
+              retries: 0,
+              suggestion: null,
+              submission: 'print("hello")',
+            },
           ],
         },
       ],
@@ -22,8 +42,15 @@ const report = {
   ],
   taskSummary: [
     {
-      taskId: 1, title: 'Task One', priority: 'optional', totalStudents: 1, completedCount: 1, completionRate: 1,
-      avgAttempts: 2, avgTimeOnTaskMs: 90000, commonFailures: [{ suggestion: 'missing hello', count: 1 }],
+      taskId: 1,
+      title: 'Task One',
+      priority: 'optional',
+      totalStudents: 1,
+      completedCount: 1,
+      completionRate: 1,
+      avgAttempts: 2,
+      avgTimeOnTaskMs: 90000,
+      commonFailures: [{ suggestion: 'missing hello', count: 1 }],
     },
   ],
 }
@@ -41,21 +68,32 @@ describe('TeacherReportModal', () => {
   it('renders override counts and per-student override detail', () => {
     const overriddenReport = {
       ...report,
-      students: [{
-        ...report.students[0],
-        tasks: [{
-          ...report.students[0].tasks[0],
-          completed: true,
-          finalResult: 'overridden_failed',
-          override: { taskId: 1, overriddenAt: 1900, attemptNumber: 2, previousCheckState: 'failed' },
-        }],
-      }],
-      taskSummary: [{
-        ...report.taskSummary[0],
-        overrideCount: 1,
-        overriddenFailedCount: 1,
-        overriddenUnattemptedCount: 0,
-      }],
+      students: [
+        {
+          ...report.students[0],
+          tasks: [
+            {
+              ...report.students[0].tasks[0],
+              completed: true,
+              finalResult: 'overridden_failed',
+              override: {
+                taskId: 1,
+                overriddenAt: 1900,
+                attemptNumber: 2,
+                previousCheckState: 'failed',
+              },
+            },
+          ],
+        },
+      ],
+      taskSummary: [
+        {
+          ...report.taskSummary[0],
+          overrideCount: 1,
+          overriddenFailedCount: 1,
+          overriddenUnattemptedCount: 0,
+        },
+      ],
     }
 
     render(<TeacherReportModal report={overriddenReport} onClose={vi.fn()} />)
@@ -114,8 +152,12 @@ describe('TeacherReportModal', () => {
 
     expect(screen.getByText('Rate This Session')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: '4 stars' }))
-    fireEvent.change(screen.getByLabelText('What worked well?'), { target: { value: 'Great pace' } })
-    fireEvent.change(screen.getByLabelText("What didn't work, or was broken?"), { target: { value: 'Iframe crashed once' } })
+    fireEvent.change(screen.getByLabelText('What worked well?'), {
+      target: { value: 'Great pace' },
+    })
+    fireEvent.change(screen.getByLabelText("What didn't work, or was broken?"), {
+      target: { value: 'Iframe crashed once' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Save Feedback' }))
 
     expect(onSaveFeedback).toHaveBeenCalledWith({
@@ -127,8 +169,17 @@ describe('TeacherReportModal', () => {
 
   it('does not show the editable form once the report already has feedback', () => {
     const onSaveFeedback = vi.fn()
-    const reportWithFeedback = { ...report, teacherFeedback: { rating: 5, whatWorkedWell: '', whatDidntWork: '', submittedAt: 2500 } }
-    render(<TeacherReportModal report={reportWithFeedback} onClose={vi.fn()} onSaveFeedback={onSaveFeedback} />)
+    const reportWithFeedback = {
+      ...report,
+      teacherFeedback: { rating: 5, whatWorkedWell: '', whatDidntWork: '', submittedAt: 2500 },
+    }
+    render(
+      <TeacherReportModal
+        report={reportWithFeedback}
+        onClose={vi.fn()}
+        onSaveFeedback={onSaveFeedback}
+      />
+    )
     expect(screen.queryByText('Rate This Session')).not.toBeInTheDocument()
     expect(screen.getByText('Teacher Feedback')).toBeInTheDocument()
   })

@@ -24,7 +24,9 @@ describe('TeacherReportsPanel', () => {
   it('lists past reports and opens one on View', async () => {
     fetchSessionReports.mockResolvedValue([
       {
-        id: '1000', startedAt: 1000, endedAt: 2000,
+        id: '1000',
+        startedAt: 1000,
+        endedAt: 2000,
         students: [{ anonymousId: 'alice', displayName: 'Alice', tasks: [] }],
         taskSummary: [],
         lessonTitle: 'Demo Lesson',
@@ -50,7 +52,11 @@ describe('TeacherReportsPanel', () => {
   it('shows a live report as an "In progress" row above past reports, and can open it', async () => {
     fetchSessionReports.mockResolvedValue([])
     const liveReport = {
-      lessonId: 'demo', lessonTitle: 'Demo Lesson (live)', sessionId: '3000', startedAt: 3000, endedAt: null,
+      lessonId: 'demo',
+      lessonTitle: 'Demo Lesson (live)',
+      sessionId: '3000',
+      startedAt: 3000,
+      endedAt: null,
       students: [{ anonymousId: 'sam', displayName: 'Sam', tasks: [] }],
       taskSummary: [],
     }

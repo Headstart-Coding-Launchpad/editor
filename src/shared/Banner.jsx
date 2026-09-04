@@ -9,18 +9,20 @@ function hexToRgb(hex) {
 export default function Banner({ accent, color, style, children }) {
   const rgb = hexToRgb(accent)
   return (
-    <div style={{
-      background: `rgba(${rgb},0.08)`,
-      borderBottom: `1px solid rgba(${rgb},0.2)`,
-      padding: '8px 16px',
-      fontSize: 13,
-      color,
-      display: 'flex',
-      alignItems: 'center',
-      fontFamily: 'var(--font-body)',
-      flexShrink: 0,
-      ...style,
-    }}>
+    <div
+      style={{
+        background: `rgba(${rgb},0.08)`,
+        borderBottom: `1px solid rgba(${rgb},0.2)`,
+        padding: '8px 16px',
+        fontSize: 13,
+        color,
+        display: 'flex',
+        alignItems: 'center',
+        fontFamily: 'var(--font-body)',
+        flexShrink: 0,
+        ...style,
+      }}
+    >
       {children}
     </div>
   )

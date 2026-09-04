@@ -2,7 +2,13 @@ import React from 'react'
 import FilesystemTask from './FilesystemTask.jsx'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 
-export default function FilesystemTeacherLiveView({ task, lesson, displayState, readOnly, onChange }) {
+export default function FilesystemTeacherLiveView({
+  task,
+  lesson,
+  displayState,
+  readOnly,
+  onChange,
+}) {
   return (
     <FilesystemTask
       fs={displayState}

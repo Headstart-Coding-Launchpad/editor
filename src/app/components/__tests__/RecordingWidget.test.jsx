@@ -30,7 +30,9 @@ describe('RecordingWidget', () => {
     const { container: a } = render(<RecordingWidget recordingUrl={null} />)
     expect(a).toBeEmptyDOMElement()
 
-    const { container: b } = render(<RecordingWidget recordingUrl="https://drive.google.com/file/d/abc/view" />)
+    const { container: b } = render(
+      <RecordingWidget recordingUrl="https://drive.google.com/file/d/abc/view" />
+    )
     expect(b).toBeEmptyDOMElement()
   })
 

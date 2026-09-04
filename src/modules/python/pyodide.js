@@ -17,10 +17,10 @@
 // ─── Module state ─────────────────────────────────────────────────────────────
 
 let _worker = null
-let _loadingPromise = null  // resolves when Pyodide is ready inside the worker
+let _loadingPromise = null // resolves when Pyodide is ready inside the worker
 let _loadResolve = null
 let _loadReject = null
-let _runResolve = null      // resolves when the current run finishes
+let _runResolve = null // resolves when the current run finishes
 let _onOutput = null
 let _onInputRequired = null
 let _onGpioWrite = null
@@ -68,7 +68,7 @@ function handleWorkerMessage({ data }) {
       _loadResolve = null
       _loadReject = null
       _loadingPromise = null
-      _worker = null  // worker is unusable; force re-creation on next initPyodide
+      _worker = null // worker is unusable; force re-creation on next initPyodide
       break
 
     case 'output':
@@ -131,7 +131,18 @@ export async function initPyodide(onProgress) {
  * Run a Python code string in the worker.
  * Waits for Pyodide to finish loading if a pre-warm is in progress.
  */
-export async function runPython(code, { onOutput, onInputRequired, onGpioWrite, onGpioConfigure, gpioInputs, getGpioInputs, asyncNames } = {}) {
+export async function runPython(
+  code,
+  {
+    onOutput,
+    onInputRequired,
+    onGpioWrite,
+    onGpioConfigure,
+    gpioInputs,
+    getGpioInputs,
+    asyncNames,
+  } = {}
+) {
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
 
   _stopped = false

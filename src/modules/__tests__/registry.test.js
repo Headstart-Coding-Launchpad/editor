@@ -27,7 +27,7 @@ describe('getLessonModule', () => {
   })
 
   it('exposes ordered module labels for admin and authoring UI', () => {
-    expect(getLessonModules().map(module => [module.type, module.label])).toEqual([
+    expect(getLessonModules().map((module) => [module.type, module.label])).toEqual([
       ['python', 'Python'],
       ['arcade', 'Arcade Kit'],
       ['scratch', 'Scratch'],

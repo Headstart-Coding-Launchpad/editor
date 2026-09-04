@@ -30,11 +30,17 @@ describe('WaitingRoom', () => {
   it('advances the dot animation after each interval', () => {
     vi.useFakeTimers()
     render(<WaitingRoom lessonTitle="Lesson" />)
-    act(() => { vi.advanceTimersByTime(600) })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     expect(screen.getByText('Your teacher is getting ready..')).toBeInTheDocument()
-    act(() => { vi.advanceTimersByTime(600) })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     expect(screen.getByText('Your teacher is getting ready...')).toBeInTheDocument()
-    act(() => { vi.advanceTimersByTime(600) })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     expect(screen.getByText('Your teacher is getting ready.')).toBeInTheDocument()
   })
 

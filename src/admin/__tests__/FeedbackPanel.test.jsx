@@ -18,7 +18,15 @@ vi.mock('firebase/firestore', () => ({
     } else {
       next({
         docs: [
-          { id: 'fb1', data: () => ({ teacherEmail: 't@example.com', submittedAt: Date.now(), text: 'Great platform!', archived: false }) },
+          {
+            id: 'fb1',
+            data: () => ({
+              teacherEmail: 't@example.com',
+              submittedAt: Date.now(),
+              text: 'Great platform!',
+              archived: false,
+            }),
+          },
         ],
       })
     }

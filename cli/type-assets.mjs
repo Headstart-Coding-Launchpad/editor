@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { db, storage } from './firebase.mjs'
 import { mergeStorageAssets } from '../src/shared/storageAssets.js'
-import { buildDownloadUrl, validateFilename, validateSlug, listBucketAssets } from './storage-utils.mjs'
+import {
+  buildDownloadUrl,
+  validateFilename,
+  validateSlug,
+  listBucketAssets,
+} from './storage-utils.mjs'
 import {
   normalizeSpritePresets,
   normalizeBackdropPresets,
@@ -26,7 +31,8 @@ function normalizeListInput(input, key) {
 }
 
 function assertScratchType(type, feature) {
-  if (type !== 'scratch') throw new Error(`${feature} is only supported for the 'scratch' lesson type`)
+  if (type !== 'scratch')
+    throw new Error(`${feature} is only supported for the 'scratch' lesson type`)
 }
 
 export async function listTypeAssets(type) {
@@ -42,7 +48,12 @@ export async function listTypeAssets(type) {
   }
 }
 
-export async function uploadTypeAsset(type, filename, base64Content, mimeType = 'application/octet-stream') {
+export async function uploadTypeAsset(
+  type,
+  filename,
+  base64Content,
+  mimeType = 'application/octet-stream'
+) {
   validateSlug(type, 'type')
   const filenameError = validateFilename(filename)
   if (filenameError) throw new Error(filenameError)
@@ -64,7 +75,10 @@ export async function uploadTypeAsset(type, filename, base64Content, mimeType = 
   const ref = typeAssetsRef(type)
   const snap = await ref.get()
   const current = snap.exists ? (snap.data().storageAssets ?? []) : []
-  const updated = [...current.filter(a => a.name !== filename), { name: filename, url, showInEditor: false }]
+  const updated = [
+    ...current.filter((a) => a.name !== filename),
+    { name: filename, url, showInEditor: false },
+  ]
   await ref.set({ storageAssets: updated }, { merge: true })
 
   return { success: true, type, filename, url, bytes: buffer.length }
@@ -80,7 +94,13 @@ export async function setDefaultSprites(type, input) {
 
 // Uploads a local image to the type's shared assets and, in the same call, appends it as a
 // new default backdrop entry — the admin panel requires two separate steps for this.
-export async function uploadDefaultBackdrop(type, filename, base64Content, mimeType, { id, name, colour } = {}) {
+export async function uploadDefaultBackdrop(
+  type,
+  filename,
+  base64Content,
+  mimeType,
+  { id, name, colour } = {}
+) {
   validateSlug(type, 'type')
   assertScratchType(type, 'Default backdrops')
 
@@ -88,15 +108,23 @@ export async function uploadDefaultBackdrop(type, filename, base64Content, mimeT
 
   const ref = typeAssetsRef(type)
   const snap = await ref.get()
-  const existingBackdrops = normalizeBackdropPresets(snap.exists ? snap.data().defaultBackdrops : [])
+  const existingBackdrops = normalizeBackdropPresets(
+    snap.exists ? snap.data().defaultBackdrops : []
+  )
 
   let backdrop
   if (id) {
-    if (existingBackdrops.some(b => b.id === id)) throw new Error(`Backdrop id '${id}' already exists`)
+    if (existingBackdrops.some((b) => b.id === id))
+      throw new Error(`Backdrop id '${id}' already exists`)
     backdrop = { id, name: name ?? id, colour: colour ?? '#ffffff', image: uploadResult.url }
   } else {
     const generated = createBackdropFromPreset(existingBackdrops, null)
-    backdrop = { ...generated, ...(name ? { name } : {}), ...(colour ? { colour } : {}), image: uploadResult.url }
+    backdrop = {
+      ...generated,
+      ...(name ? { name } : {}),
+      ...(colour ? { colour } : {}),
+      image: uploadResult.url,
+    }
   }
 
   await ref.set({ defaultBackdrops: [...existingBackdrops, backdrop] }, { merge: true })

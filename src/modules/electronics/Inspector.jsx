@@ -29,10 +29,9 @@ export default function Inspector({
   readOnly,
   actions,
 }) {
-  const microcontrollerPins = selected?.type === 'microcontroller'
-    ? normalizeMicrocontrollerPins(selected.pins)
-    : []
-  const selectedSupplyPins = microcontrollerPins.filter(pin => !isMicrocontrollerSignalPin(pin))
+  const microcontrollerPins =
+    selected?.type === 'microcontroller' ? normalizeMicrocontrollerPins(selected.pins) : []
+  const selectedSupplyPins = microcontrollerPins.filter((pin) => !isMicrocontrollerSignalPin(pin))
   const selectedGpioPins = microcontrollerPins.filter(isMicrocontrollerSignalPin)
 
   return (
@@ -53,7 +52,9 @@ export default function Inspector({
               <dt style={s.stateTerm}>Drop</dt>
               <dd style={s.stateValue}>{formatVoltage(selectedWireState.voltageDrop)}</dd>
               <dt style={s.stateTerm}>Direction</dt>
-              <dd style={s.stateValue}>{selectedWireState.direction === 'reverse' ? 'reverse' : 'forward'}</dd>
+              <dd style={s.stateValue}>
+                {selectedWireState.direction === 'reverse' ? 'reverse' : 'forward'}
+              </dd>
             </dl>
           )}
           {setupMode && (
@@ -62,23 +63,41 @@ export default function Inspector({
                 type="checkbox"
                 disabled={readOnly}
                 checked={selectedWire.locked === true}
-                onChange={event => actions.updateSelectedWireLocked(event.target.checked)}
+                onChange={(event) => actions.updateSelectedWireLocked(event.target.checked)}
               />
               Fixed for students
             </label>
           )}
           <label style={s.wireColorField}>
             <span style={s.wireColorLabel}>Wire colour</span>
-            <select disabled={readOnly || (selectedWire.locked && !setupMode)} value={selectedWire.color ?? '#ef4444'} onChange={event => actions.updateSelectedWireColor(event.target.value)} style={s.wireColorSelect}>
-              {WIRE_COLORS.filter(color => color.value !== 'auto').map(color => <option key={color.value} value={color.value}>{color.label}</option>)}
+            <select
+              disabled={readOnly || (selectedWire.locked && !setupMode)}
+              value={selectedWire.color ?? '#ef4444'}
+              onChange={(event) => actions.updateSelectedWireColor(event.target.value)}
+              style={s.wireColorSelect}
+            >
+              {WIRE_COLORS.filter((color) => color.value !== 'auto').map((color) => (
+                <option key={color.value} value={color.value}>
+                  {color.label}
+                </option>
+              ))}
             </select>
           </label>
-          <button disabled={readOnly || (selectedWire.locked && !setupMode)} className="btn-danger" style={s.removeBtn} onClick={actions.removeSelected}>Delete wire</button>
+          <button
+            disabled={readOnly || (selectedWire.locked && !setupMode)}
+            className="btn-danger"
+            style={s.removeBtn}
+            onClick={actions.removeSelected}
+          >
+            Delete wire
+          </button>
         </>
       ) : selected ? (
         <>
           <h3 style={s.inspectorTitle}>{selected.label}</h3>
-          {COMPONENT_DESCRIPTIONS[selected.type] && <p style={s.componentDescription}>{COMPONENT_DESCRIPTIONS[selected.type]}</p>}
+          {COMPONENT_DESCRIPTIONS[selected.type] && (
+            <p style={s.componentDescription}>{COMPONENT_DESCRIPTIONS[selected.type]}</p>
+          )}
           {setupMode && (
             <>
               <label style={s.field}>
@@ -86,7 +105,9 @@ export default function Inspector({
                 <input
                   disabled={readOnly}
                   value={selected.label ?? ''}
-                  onChange={event => actions.updateSelectedComponent({ label: event.target.value })}
+                  onChange={(event) =>
+                    actions.updateSelectedComponent({ label: event.target.value })
+                  }
                   style={s.textInput}
                 />
               </label>
@@ -95,13 +116,18 @@ export default function Inspector({
                   type="checkbox"
                   disabled={readOnly}
                   checked={selected.locked === true}
-                  onChange={event => actions.updateSelectedComponent({ locked: event.target.checked })}
+                  onChange={(event) =>
+                    actions.updateSelectedComponent({ locked: event.target.checked })
+                  }
                 />
                 Fixed for students
               </label>
             </>
           )}
-          <ComponentStateSummary component={selected} state={getComponentState(circuit, selected.id)} />
+          <ComponentStateSummary
+            component={selected}
+            state={getComponentState(circuit, selected.id)}
+          />
           {/* A fixed part cannot be rotated or deleted by a student, so the controls
               are left out rather than shown greyed. Its runtime controls stay - a
               fixed switch is still meant to be flipped. */}
@@ -121,10 +147,18 @@ export default function Inspector({
               <select
                 disabled={readOnly || selectedStructureLocked}
                 value={getComponentResistanceOhms(selected)}
-                onChange={event => actions.updateSelectedComponentProps({ resistanceOhms: Number(event.target.value) })}
+                onChange={(event) =>
+                  actions.updateSelectedComponentProps({
+                    resistanceOhms: Number(event.target.value),
+                  })
+                }
                 style={s.wireColorSelect}
               >
-                {RESISTOR_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {RESISTOR_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -134,10 +168,16 @@ export default function Inspector({
               <select
                 disabled={readOnly || selectedStructureLocked}
                 value={selected.props?.color ?? 'red'}
-                onChange={event => actions.updateSelectedComponentProps({ color: event.target.value })}
+                onChange={(event) =>
+                  actions.updateSelectedComponentProps({ color: event.target.value })
+                }
                 style={s.wireColorSelect}
               >
-                {LED_COLOR_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {LED_COLOR_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -147,27 +187,83 @@ export default function Inspector({
               <select
                 disabled={readOnly || selectedStructureLocked}
                 value={Number(selected.props?.voltage ?? 5)}
-                onChange={event => actions.updateSelectedComponentProps({ voltage: Number(event.target.value) })}
+                onChange={(event) =>
+                  actions.updateSelectedComponentProps({ voltage: Number(event.target.value) })
+                }
                 style={s.wireColorSelect}
               >
-                {BATTERY_VOLTAGE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {BATTERY_VOLTAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           )}
           {selected.type === 'slide_switch' && (
-            <label style={s.toggle}><input type="checkbox" disabled={readOnly} checked={circuit.controls[selected.id]?.closed === true} onChange={e => actions.updateControlFor(selected.id, 'closed', e.target.checked)} /> Closed</label>
+            <label style={s.toggle}>
+              <input
+                type="checkbox"
+                disabled={readOnly}
+                checked={circuit.controls[selected.id]?.closed === true}
+                onChange={(e) => actions.updateControlFor(selected.id, 'closed', e.target.checked)}
+              />{' '}
+              Closed
+            </label>
           )}
           {selected.type === 'push_button' && (
-            <label style={s.toggle}><input type="checkbox" disabled={readOnly} checked={circuit.controls[selected.id]?.pressed === true} onChange={e => actions.updateControlFor(selected.id, 'pressed', e.target.checked)} /> Pressed</label>
+            <label style={s.toggle}>
+              <input
+                type="checkbox"
+                disabled={readOnly}
+                checked={circuit.controls[selected.id]?.pressed === true}
+                onChange={(e) => actions.updateControlFor(selected.id, 'pressed', e.target.checked)}
+              />{' '}
+              Pressed
+            </label>
           )}
           {selected.type === 'potentiometer' && (
-            <label style={s.range}>Value <input type="range" disabled={readOnly} min="0" max="100" value={circuit.controls[selected.id]?.value ?? 50} onChange={e => actions.updateControlFor(selected.id, 'value', Number(e.target.value))} /></label>
+            <label style={s.range}>
+              Value{' '}
+              <input
+                type="range"
+                disabled={readOnly}
+                min="0"
+                max="100"
+                value={circuit.controls[selected.id]?.value ?? 50}
+                onChange={(e) =>
+                  actions.updateControlFor(selected.id, 'value', Number(e.target.value))
+                }
+              />
+            </label>
           )}
           {selected.type === 'transistor' && (
-            <label style={s.toggle}><input type="checkbox" disabled={readOnly} checked={circuit.controls[selected.id]?.baseHigh === true} onChange={e => actions.updateControlFor(selected.id, 'baseHigh', e.target.checked)} /> Base signal high</label>
+            <label style={s.toggle}>
+              <input
+                type="checkbox"
+                disabled={readOnly}
+                checked={circuit.controls[selected.id]?.baseHigh === true}
+                onChange={(e) =>
+                  actions.updateControlFor(selected.id, 'baseHigh', e.target.checked)
+                }
+              />{' '}
+              Base signal high
+            </label>
           )}
           {selected.type === 'servo_motor' && (
-            <label style={s.range}>Angle <input type="range" disabled={readOnly} min="0" max="180" value={circuit.controls[selected.id]?.angle ?? selected.props?.angle ?? 90} onChange={e => actions.updateControlFor(selected.id, 'angle', Number(e.target.value))} /></label>
+            <label style={s.range}>
+              Angle{' '}
+              <input
+                type="range"
+                disabled={readOnly}
+                min="0"
+                max="180"
+                value={circuit.controls[selected.id]?.angle ?? selected.props?.angle ?? 90}
+                onChange={(e) =>
+                  actions.updateControlFor(selected.id, 'angle', Number(e.target.value))
+                }
+              />
+            </label>
           )}
           {selected.type === 'sensor' && (
             <>
@@ -177,21 +273,41 @@ export default function Inspector({
                   <select
                     disabled={readOnly || selectedStructureLocked}
                     value={selected.props?.kind ?? 'light'}
-                    onChange={event => actions.updateSelectedComponentProps({ kind: event.target.value })}
+                    onChange={(event) =>
+                      actions.updateSelectedComponentProps({ kind: event.target.value })
+                    }
                     style={s.wireColorSelect}
                   >
-                    {SENSOR_KIND_OPTIONS.map(kind => <option key={kind} value={kind}>{kind}</option>)}
+                    {SENSOR_KIND_OPTIONS.map((kind) => (
+                      <option key={kind} value={kind}>
+                        {kind}
+                      </option>
+                    ))}
                   </select>
                 </label>
               )}
-              <label style={s.range}>Reading <input type="range" disabled={readOnly} min="0" max="100" value={circuit.controls[selected.id]?.value ?? selected.props?.value ?? 50} onChange={e => actions.updateControlFor(selected.id, 'value', Number(e.target.value))} /></label>
+              <label style={s.range}>
+                Reading{' '}
+                <input
+                  type="range"
+                  disabled={readOnly}
+                  min="0"
+                  max="100"
+                  value={circuit.controls[selected.id]?.value ?? selected.props?.value ?? 50}
+                  onChange={(e) =>
+                    actions.updateControlFor(selected.id, 'value', Number(e.target.value))
+                  }
+                />
+              </label>
             </>
           )}
           {selected.type === 'microcontroller' && (
             <div style={s.gpioEditor}>
               <div style={s.gpioPowerPins}>
-                {selectedSupplyPins.map(pin => (
-                  <span key={pin} style={s.gpioPowerPin}>{pin}</span>
+                {selectedSupplyPins.map((pin) => (
+                  <span key={pin} style={s.gpioPowerPin}>
+                    {pin}
+                  </span>
                 ))}
               </div>
               <div style={s.gpioHeader}>
@@ -213,12 +329,12 @@ export default function Inspector({
                   they read the pin names as the labels they are. */}
               {setupMode ? (
                 <div style={s.gpioList}>
-                  {selectedGpioPins.map(pin => (
+                  {selectedGpioPins.map((pin) => (
                     <div key={pin} style={s.gpioRow}>
                       <input
                         disabled={readOnly}
                         defaultValue={pin}
-                        onBlur={event => actions.renameGpioPin(pin, event.target.value)}
+                        onBlur={(event) => actions.renameGpioPin(pin, event.target.value)}
                         style={s.gpioInput}
                       />
                       <button
@@ -236,18 +352,29 @@ export default function Inspector({
                 </div>
               ) : (
                 <div style={s.gpioPowerPins}>
-                  {selectedGpioPins.map(pin => (
-                    <span key={pin} style={s.gpioPowerPin}>{pin}</span>
+                  {selectedGpioPins.map((pin) => (
+                    <span key={pin} style={s.gpioPowerPin}>
+                      {pin}
+                    </span>
                   ))}
                 </div>
               )}
             </div>
           )}
           {!selectedStructureLocked && (
-            <button disabled={readOnly} className="btn-danger" style={s.removeBtn} onClick={actions.removeSelected}>Delete part</button>
+            <button
+              disabled={readOnly}
+              className="btn-danger"
+              style={s.removeBtn}
+              onClick={actions.removeSelected}
+            >
+              Delete part
+            </button>
           )}
         </>
-      ) : <p style={s.emptySelection}>No selection</p>}
+      ) : (
+        <p style={s.emptySelection}>No selection</p>
+      )}
     </div>
   )
 }

@@ -24,7 +24,14 @@ vi.mock('../firebase', () => ({
   firestore: {},
 }))
 
-const { fetchLessonById, fetchLessonList, applyLessonOverride, publishLesson, publishLessonTasks, deletePublishedLesson } = await import('../lessonService')
+const {
+  fetchLessonById,
+  fetchLessonList,
+  applyLessonOverride,
+  publishLesson,
+  publishLessonTasks,
+  deletePublishedLesson,
+} = await import('../lessonService')
 
 describe('lessonService', () => {
   beforeEach(() => {
@@ -86,13 +93,15 @@ describe('publishLesson', () => {
 
     expect(mockSetDoc).toHaveBeenCalledWith(
       { firestore: {}, collectionName: 'lessons', id: 'scratch-1' },
-      expect.objectContaining({ id: 'scratch-1', type: 'scratch', tasks: expect.any(Array) }),
+      expect.objectContaining({ id: 'scratch-1', type: 'scratch', tasks: expect.any(Array) })
     )
   })
 
   it('rejects lessons without an id', async () => {
     mockSetDoc.mockClear()
-    await expect(publishLesson({ type: 'python', tasks: [] })).rejects.toThrow('Lesson id is required')
+    await expect(publishLesson({ type: 'python', tasks: [] })).rejects.toThrow(
+      'Lesson id is required'
+    )
     expect(mockSetDoc).not.toHaveBeenCalled()
   })
 })
@@ -122,9 +131,11 @@ describe('deletePublishedLesson', () => {
 
     await deletePublishedLesson('python-1-1')
 
-    expect(mockDeleteDoc).toHaveBeenCalledWith(
-      { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
-    )
+    expect(mockDeleteDoc).toHaveBeenCalledWith({
+      firestore: {},
+      collectionName: 'lessons',
+      id: 'python-1-1',
+    })
   })
 
   it('purges the sessionReports and feedback subcollections before deleting the lesson doc', async () => {
@@ -144,9 +155,11 @@ describe('deletePublishedLesson', () => {
     expect(mockBatchDelete).toHaveBeenCalledWith(reportRef)
     expect(mockBatchDelete).toHaveBeenCalledWith(feedbackRef)
     expect(mockBatchCommit).toHaveBeenCalled()
-    expect(mockDeleteDoc).toHaveBeenCalledWith(
-      { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
-    )
+    expect(mockDeleteDoc).toHaveBeenCalledWith({
+      firestore: {},
+      collectionName: 'lessons',
+      id: 'python-1-1',
+    })
   })
 
   it('rejects empty lesson ids', async () => {
@@ -166,7 +179,7 @@ describe('publishLessonTasks', () => {
     expect(mockSetDoc).toHaveBeenCalledWith(
       { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
       { tasks },
-      { merge: true },
+      { merge: true }
     )
   })
 })

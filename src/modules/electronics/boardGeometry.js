@@ -48,13 +48,22 @@ export function basePinOffset(component, pin, pinIndex) {
     const xs = [28, PART_W / 2, PART_W - 28]
     return { x: xs[pinIndex] ?? PART_W / 2, y: PART_H - 4 }
   }
-  if (component.type === 'transistor' || component.type === 'sensor' || component.type === 'servo_motor') {
+  if (
+    component.type === 'transistor' ||
+    component.type === 'sensor' ||
+    component.type === 'servo_motor'
+  ) {
     const xs = [28, PART_W / 2, PART_W - 28]
     return { x: xs[pinIndex] ?? PART_W / 2, y: PART_H - 4 }
   }
   if (component.type === 'lcd1602') {
     const { width, height } = componentDimensions(component)
-    const xs = [Math.round(width * 0.14), Math.round(width * 0.39), Math.round(width * 0.61), Math.round(width * 0.86)]
+    const xs = [
+      Math.round(width * 0.14),
+      Math.round(width * 0.39),
+      Math.round(width * 0.61),
+      Math.round(width * 0.86),
+    ]
     return { x: xs[pinIndex] ?? width / 2, y: height - 6 }
   }
   if (component.type === 'rgb_led') {
@@ -66,15 +75,17 @@ export function basePinOffset(component, pin, pinIndex) {
     if (pin === 'positive') return { x: PART_W, y: PART_H / 2 }
     if (pin === 'negative') return { x: 0, y: PART_H / 2 }
   }
-  if (pin === 'positive' || pin === 'anode' || pin === 'a' || pin === 'left') return { x: 0, y: PART_H / 2 }
-  if (pin === 'negative' || pin === 'cathode' || pin === 'b' || pin === 'right') return { x: PART_W, y: PART_H / 2 }
+  if (pin === 'positive' || pin === 'anode' || pin === 'a' || pin === 'left')
+    return { x: 0, y: PART_H / 2 }
+  if (pin === 'negative' || pin === 'cathode' || pin === 'b' || pin === 'right')
+    return { x: PART_W, y: PART_H / 2 }
   return { x: pinIndex % 2 === 0 ? 0 : PART_W, y: PART_H / 2 }
 }
 
 export function normalizeRotation(rotation = 0) {
   const numeric = Number(rotation)
   if (!Number.isFinite(numeric)) return 0
-  return ((Math.round(numeric / 90) * 90) % 360 + 360) % 360
+  return (((Math.round(numeric / 90) * 90) % 360) + 360) % 360
 }
 
 export function rotatedComponentRect(point, component) {
@@ -114,9 +125,25 @@ export function rotateOffset(offset, rotation = 0, component = null) {
 
 export function pinHandleStyle(pin) {
   const normalizedPin = String(pin).toLowerCase()
-  if (pin === 'positive' || pin === 'anode' || pin === 'red' || normalizedPin === '3v3' || normalizedPin === 'vcc') return { background: '#ef4444', borderColor: '#fecaca' }
+  if (
+    pin === 'positive' ||
+    pin === 'anode' ||
+    pin === 'red' ||
+    normalizedPin === '3v3' ||
+    normalizedPin === 'vcc'
+  )
+    return { background: '#ef4444', borderColor: '#fecaca' }
   if (pin === 'green') return { background: '#16a34a', borderColor: '#bbf7d0' }
-  if (pin === 'negative' || pin === 'cathode' || pin === 'emitter' || normalizedPin === 'gnd') return { background: '#111827', borderColor: '#94a3b8' }
-  if (pin === 'blue' || pin === 'signal' || pin === 'base' || normalizedPin === 'sda' || normalizedPin === 'scl' || normalizedPin.startsWith('gp')) return { background: '#2563eb', borderColor: '#bfdbfe' }
+  if (pin === 'negative' || pin === 'cathode' || pin === 'emitter' || normalizedPin === 'gnd')
+    return { background: '#111827', borderColor: '#94a3b8' }
+  if (
+    pin === 'blue' ||
+    pin === 'signal' ||
+    pin === 'base' ||
+    normalizedPin === 'sda' ||
+    normalizedPin === 'scl' ||
+    normalizedPin.startsWith('gp')
+  )
+    return { background: '#2563eb', borderColor: '#bfdbfe' }
   return { background: '#f59e0b', borderColor: '#fde68a' }
 }

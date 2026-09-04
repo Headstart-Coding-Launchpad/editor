@@ -43,7 +43,7 @@ export function setLiftedDragImage(event, label) {
 
 export function removeTileFromState(state, tileId) {
   const next = { ...state }
-  const existingSlot = Object.keys(next).find(k => next[k] === tileId)
+  const existingSlot = Object.keys(next).find((k) => next[k] === tileId)
   if (existingSlot) delete next[existingSlot]
   return next
 }
@@ -60,7 +60,13 @@ export function removeTileFromState(state, tileId) {
  * and `publishState` passed at call time (handleTargetClick, handleTargetDrop,
  * handlePoolDrop) so they always operate on the freshest values.
  */
-export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTile, onDragStart, onDragEnd }) {
+export function useTileDragAndDrop({
+  blocked,
+  dragEnabled = true,
+  getLabelForTile,
+  onDragStart,
+  onDragEnd,
+}) {
   const [draggingTile, setDraggingTile] = useState(null)
   const [dragOverTarget, setDragOverTarget] = useState(null)
   const [touchSelectedTile, setTouchSelectedTile] = useState(null)
@@ -82,7 +88,7 @@ export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTil
 
   function handleTileClick(tileId) {
     if (!dragEnabled || blocked) return
-    setTouchSelectedTile(prev => (prev === tileId ? null : tileId))
+    setTouchSelectedTile((prev) => (prev === tileId ? null : tileId))
   }
 
   function handleTargetClick(targetId, state, publishState) {

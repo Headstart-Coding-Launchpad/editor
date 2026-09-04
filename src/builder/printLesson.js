@@ -12,7 +12,22 @@ function esc(str) {
     .replace(/"/g, '&quot;')
 }
 
-const VOID_TAGS = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'])
+const VOID_TAGS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+])
 const HAST_PROP_ATTR = { className: 'class', htmlFor: 'for', httpEquiv: 'http-equiv' }
 
 function hastToHtml(node) {
@@ -25,7 +40,10 @@ function hastToHtml(node) {
       const attr = HAST_PROP_ATTR[key] ?? key
       if (val === false || val == null) return []
       if (val === true) return [attr]
-      if (Array.isArray(val)) { const s = val.join(' '); return s ? [`${attr}="${esc(s)}"`] : [] }
+      if (Array.isArray(val)) {
+        const s = val.join(' ')
+        return s ? [`${attr}="${esc(s)}"`] : []
+      }
       return [`${attr}="${esc(String(val))}"`]
     })
     const attrStr = attrParts.length ? ' ' + attrParts.join(' ') : ''
@@ -41,8 +59,11 @@ const _mdProc = unified().use(remarkParse).use(remarkBreaks).use(remarkRehype)
 
 function mdToHtml(text) {
   if (!text) return ''
-  try { return hastToHtml(_mdProc.runSync(_mdProc.parse(text))) }
-  catch { return esc(text) }
+  try {
+    return hastToHtml(_mdProc.runSync(_mdProc.parse(text)))
+  } catch {
+    return esc(text)
+  }
 }
 
 const COMPONENT_LABELS = {
@@ -95,7 +116,11 @@ function snippet(value, max = 140) {
 
 function formatSummary(value) {
   if (value == null || value === '') return ''
-  if (Array.isArray(value)) return value.map(item => formatSummary(item)).filter(Boolean).join(', ')
+  if (Array.isArray(value))
+    return value
+      .map((item) => formatSummary(item))
+      .filter(Boolean)
+      .join(', ')
   if (typeof value === 'object') {
     return Object.entries(value)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -117,15 +142,26 @@ function renderFilesystemField(label, fsValue) {
     return `<div class="field"><div class="field-label">${esc(label)}</div><div class="field-value">No files or folders.</div></div>`
   }
 
-  const rows = entries.map(([path, entry]) => {
-    const type = entry.type === 'dir' ? 'Folder' : 'File'
-    const detail = entry.type === 'dir'
-      ? ''
-      : snippet(entry.content ?? entry.src ?? formatSummary(Object.fromEntries(Object.entries(entry).filter(([key]) => key !== 'type'))))
-    const depth = Math.max(0, path.split('/').filter(Boolean).length - 1)
-    const detailHtml = detail ? esc(detail) : `<span class="muted">${entry.type === 'dir' ? 'Folder' : 'Empty'}</span>`
-    return `<tr><td class="path-cell" style="padding-left:${8 + depth * 14}px"><code>${esc(path)}</code></td><td>${type}</td><td class="snippet-cell">${detailHtml}</td></tr>`
-  }).join('')
+  const rows = entries
+    .map(([path, entry]) => {
+      const type = entry.type === 'dir' ? 'Folder' : 'File'
+      const detail =
+        entry.type === 'dir'
+          ? ''
+          : snippet(
+              entry.content ??
+                entry.src ??
+                formatSummary(
+                  Object.fromEntries(Object.entries(entry).filter(([key]) => key !== 'type'))
+                )
+            )
+      const depth = Math.max(0, path.split('/').filter(Boolean).length - 1)
+      const detailHtml = detail
+        ? esc(detail)
+        : `<span class="muted">${entry.type === 'dir' ? 'Folder' : 'Empty'}</span>`
+      return `<tr><td class="path-cell" style="padding-left:${8 + depth * 14}px"><code>${esc(path)}</code></td><td>${type}</td><td class="snippet-cell">${detailHtml}</td></tr>`
+    })
+    .join('')
 
   return `<div class="field"><div class="field-label">${esc(label)}</div><table class="data-table fs-table"><tr><th>Path</th><th>Type</th><th>Content snippet</th></tr>${rows}</table></div>`
 }
@@ -138,7 +174,10 @@ function renderAvailableParts(parts) {
   if (!Array.isArray(parts) || parts.length === 0) return ''
   const rows = [...parts]
     .sort((a, b) => String(a).localeCompare(String(b)))
-    .map(type => `<tr><td><code>${esc(type)}</code></td><td>${esc(componentTypeLabel(type))}</td></tr>`)
+    .map(
+      (type) =>
+        `<tr><td><code>${esc(type)}</code></td><td>${esc(componentTypeLabel(type))}</td></tr>`
+    )
     .join('')
   return `<div class="field"><div class="field-label">Available Parts</div><table class="data-table parts-table"><tr><th>Type</th><th>Label</th></tr>${rows}</table></div>`
 }
@@ -149,13 +188,18 @@ function renderComponentTable(components) {
   }
   const rows = [...components]
     .sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))
-    .map(component => {
+    .map((component) => {
       const position = component.position
         ? `row ${component.position.row ?? ''}, col ${component.position.col ?? ''}`
         : ''
-      const props = component.props && typeof component.props === 'object'
-        ? Object.fromEntries(Object.entries(component.props).filter(([key]) => key !== 'code' && key !== 'starterCode'))
-        : component.props
+      const props =
+        component.props && typeof component.props === 'object'
+          ? Object.fromEntries(
+              Object.entries(component.props).filter(
+                ([key]) => key !== 'code' && key !== 'starterCode'
+              )
+            )
+          : component.props
       return `<tr><td><code>${esc(component.id ?? '')}</code></td><td>${esc(componentTypeLabel(component.type))}</td><td>${esc(component.label ?? '')}</td><td>${esc((component.pins ?? []).join(', '))}</td><td>${esc(position)}</td><td>${esc(formatSummary(props))}</td></tr>`
     })
     .join('')
@@ -168,7 +212,10 @@ function renderWireTable(wires) {
   }
   const rows = [...wires]
     .sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))
-    .map(wire => `<tr><td><code>${esc(wire.id ?? '')}</code></td><td><code>${esc(wire.from ?? '')}</code></td><td><code>${esc(wire.to ?? '')}</code></td><td>${esc(wire.color ?? '')}</td></tr>`)
+    .map(
+      (wire) =>
+        `<tr><td><code>${esc(wire.id ?? '')}</code></td><td><code>${esc(wire.from ?? '')}</code></td><td><code>${esc(wire.to ?? '')}</code></td><td>${esc(wire.color ?? '')}</td></tr>`
+    )
     .join('')
   return `<table class="data-table circuit-table"><tr><th>ID</th><th>From</th><th>To</th><th>Colour</th></tr>${rows}</table>`
 }
@@ -176,15 +223,21 @@ function renderWireTable(wires) {
 function renderMicroPythonBlocks(label, circuit) {
   const blocks = []
   const components = Array.isArray(circuit.components) ? circuit.components : []
-  for (const component of components.filter(item => item?.type === 'microcontroller').sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))) {
+  for (const component of components
+    .filter((item) => item?.type === 'microcontroller')
+    .sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? '')))) {
     const code = component.props?.code ?? component.props?.starterCode
     if (code) {
-      blocks.push(`<div class="file-block"><div class="file-name">${esc(label)} - ${esc(component.id ?? 'microcontroller')}</div><pre class="code-block">${esc(code)}</pre></div>`)
+      blocks.push(
+        `<div class="file-block"><div class="file-name">${esc(label)} - ${esc(component.id ?? 'microcontroller')}</div><pre class="code-block">${esc(code)}</pre></div>`
+      )
     }
   }
   const legacyCode = circuit.microcontroller?.starterCode ?? circuit.microcontroller?.code
   if (legacyCode) {
-    blocks.push(`<div class="file-block"><div class="file-name">${esc(label)} - microcontroller</div><pre class="code-block">${esc(legacyCode)}</pre></div>`)
+    blocks.push(
+      `<div class="file-block"><div class="file-name">${esc(label)} - microcontroller</div><pre class="code-block">${esc(legacyCode)}</pre></div>`
+    )
   }
   return blocks.join('')
 }
@@ -196,7 +249,9 @@ function renderCircuitField(label, circuitValue) {
   const boardSummary = [
     board.type,
     board.rows && board.cols ? `${board.rows} rows x ${board.cols} cols` : '',
-  ].filter(Boolean).join(', ')
+  ]
+    .filter(Boolean)
+    .join(', ')
   const microPython = renderMicroPythonBlocks(label, circuit)
 
   return [
@@ -214,53 +269,70 @@ function renderCircuitField(label, circuitValue) {
 function renderCheckHtml(check) {
   if (!check) return '<em>None</em>'
   const checks = Array.isArray(check) ? check : [check]
-  return checks.map(c => {
-    const parts = [`<strong>${esc(c.type)}</strong>`]
-    if (c.value !== undefined) parts.push(`value: <code>${esc(String(c.value))}</code>`)
-    if (c.selector) parts.push(`selector: <code>${esc(c.selector)}</code>`)
-    if (c.evaluation) parts.push(`evaluation: ${esc(c.evaluation)}`)
-    if (c.spriteName) parts.push(`sprite: ${esc(c.spriteName)}`)
-    if (c.property) parts.push(`property: ${esc(c.property)}`)
-    if (c.operator) parts.push(`operator: ${esc(c.operator)}`)
-    if (c.opcode) parts.push(`opcode: <code>${esc(c.opcode)}</code>`)
-    if (c.variableName) parts.push(`variable: ${esc(c.variableName)}`)
-    return `<div class="check-item">${parts.join(' — ')}</div>`
-  }).join('')
+  return checks
+    .map((c) => {
+      const parts = [`<strong>${esc(c.type)}</strong>`]
+      if (c.value !== undefined) parts.push(`value: <code>${esc(String(c.value))}</code>`)
+      if (c.selector) parts.push(`selector: <code>${esc(c.selector)}</code>`)
+      if (c.evaluation) parts.push(`evaluation: ${esc(c.evaluation)}`)
+      if (c.spriteName) parts.push(`sprite: ${esc(c.spriteName)}`)
+      if (c.property) parts.push(`property: ${esc(c.property)}`)
+      if (c.operator) parts.push(`operator: ${esc(c.operator)}`)
+      if (c.opcode) parts.push(`opcode: <code>${esc(c.opcode)}</code>`)
+      if (c.variableName) parts.push(`variable: ${esc(c.variableName)}`)
+      return `<div class="check-item">${parts.join(' — ')}</div>`
+    })
+    .join('')
 }
 
 export function buildPrintHtml(lesson) {
   function renderTask(task, taskNumber) {
     const parts = []
     parts.push(`<section class="task">`)
-    parts.push(`<h3 class="task-title"><span class="task-num">${taskNumber}</span> ${esc(task.title || '(untitled)')}</h3>`)
+    parts.push(
+      `<h3 class="task-title"><span class="task-num">${taskNumber}</span> ${esc(task.title || '(untitled)')}</h3>`
+    )
 
     const badges = []
     if (task.taskType) badges.push(`<span class="badge badge-type">${esc(task.taskType)}</span>`)
     if (task.quizType) badges.push(`<span class="badge">${esc(task.quizType)}</span>`)
     if (task.informationType) badges.push(`<span class="badge">${esc(task.informationType)}</span>`)
     if (!task.taskType) {
-      badges.push(`<span class="badge badge-mode">${task.interactionMode === 'submit' ? 'Submit' : 'Run'}</span>`)
+      badges.push(
+        `<span class="badge badge-mode">${task.interactionMode === 'submit' ? 'Submit' : 'Run'}</span>`
+      )
     }
-    if (task.estimatedMinutes) badges.push(`<span class="badge">${esc(String(task.estimatedMinutes))} min</span>`)
+    if (task.estimatedMinutes)
+      badges.push(`<span class="badge">${esc(String(task.estimatedMinutes))} min</span>`)
     if (badges.length) parts.push(`<div class="badges">${badges.join('')}</div>`)
 
     if (task.explainer) {
-      parts.push(`<div class="field"><div class="field-label">Explainer</div><div class="field-value markdown">${mdToHtml(task.explainer)}</div></div>`)
+      parts.push(
+        `<div class="field"><div class="field-label">Explainer</div><div class="field-value markdown">${mdToHtml(task.explainer)}</div></div>`
+      )
     }
     if (task.leftContent) {
-      parts.push(`<div class="field"><div class="field-label">Left Content (Recap)</div><div class="field-value markdown">${mdToHtml(task.leftContent)}</div></div>`)
+      parts.push(
+        `<div class="field"><div class="field-label">Left Content (Recap)</div><div class="field-value markdown">${mdToHtml(task.leftContent)}</div></div>`
+      )
     }
 
     if (task.taskType === 'quiz') {
       if (task.quizType === 'multiple_choice' && task.options?.length) {
-        parts.push(`<div class="field"><div class="field-label">Options</div><table class="data-table"><tr><th>ID</th><th>Text</th><th>Feedback</th></tr>`)
+        parts.push(
+          `<div class="field"><div class="field-label">Options</div><table class="data-table"><tr><th>ID</th><th>Text</th><th>Feedback</th></tr>`
+        )
         for (const opt of task.options) {
-          parts.push(`<tr><td>${esc(opt.id)}</td><td>${esc(opt.text)}</td><td>${esc(opt.feedback || '')}</td></tr>`)
+          parts.push(
+            `<tr><td>${esc(opt.id)}</td><td>${esc(opt.text)}</td><td>${esc(opt.feedback || '')}</td></tr>`
+          )
         }
         parts.push(`</table></div>`)
       }
       if (task.quizType === 'match' && task.pairs?.length) {
-        parts.push(`<div class="field"><div class="field-label">Pairs</div><table class="data-table"><tr><th>Prompt</th><th>Answer</th></tr>`)
+        parts.push(
+          `<div class="field"><div class="field-label">Pairs</div><table class="data-table"><tr><th>Prompt</th><th>Answer</th></tr>`
+        )
         for (const p of task.pairs) {
           parts.push(`<tr><td>${esc(p.prompt)}</td><td>${esc(p.answer)}</td></tr>`)
         }
@@ -268,17 +340,23 @@ export function buildPrintHtml(lesson) {
       }
       if (task.quizType === 'fill_blank') {
         if (task.text) {
-          parts.push(`<div class="field"><div class="field-label">Text</div><div class="field-value">${esc(task.text)}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Text</div><div class="field-value">${esc(task.text)}</div></div>`
+          )
         }
         if (task.blanks?.length) {
-          parts.push(`<div class="field"><div class="field-label">Blanks</div><table class="data-table"><tr><th>ID</th><th>Answer</th></tr>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Blanks</div><table class="data-table"><tr><th>ID</th><th>Answer</th></tr>`
+          )
           for (const b of task.blanks) {
             parts.push(`<tr><td>${esc(b.id)}</td><td>${esc(b.answer)}</td></tr>`)
           }
           parts.push(`</table></div>`)
         }
         if (task.distractors?.length) {
-          parts.push(`<div class="field"><div class="field-label">Distractors</div><table class="data-table"><tr><th>ID</th><th>Text</th></tr>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Distractors</div><table class="data-table"><tr><th>ID</th><th>Text</th></tr>`
+          )
           for (const d of task.distractors) {
             parts.push(`<tr><td>${esc(d.id)}</td><td>${esc(d.text)}</td></tr>`)
           }
@@ -290,21 +368,33 @@ export function buildPrintHtml(lesson) {
     if (!task.taskType) {
       if (lesson.type === 'python') {
         if (task.carryCodeFrom != null) {
-          parts.push(`<div class="field"><div class="field-label">Carry Code From</div><div class="field-value">Task ${esc(String(task.carryCodeFrom))}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Carry Code From</div><div class="field-value">Task ${esc(String(task.carryCodeFrom))}</div></div>`
+          )
         }
         if (task.starterCode != null) {
-          parts.push(`<div class="field"><div class="field-label">Starter Code</div><pre class="code-block">${esc(task.starterCode)}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Starter Code</div><pre class="code-block">${esc(task.starterCode)}</pre></div>`
+          )
         }
         if (task.completeCode != null) {
-          parts.push(`<div class="field"><div class="field-label">Complete Code</div><pre class="code-block">${esc(task.completeCode)}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Complete Code</div><pre class="code-block">${esc(task.completeCode)}</pre></div>`
+          )
         }
         if (task.copyCode?.trim?.()) {
-          parts.push(`<div class="field"><div class="field-label">Copy Code Panel</div><pre class="code-block">${esc(task.copyCode)}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Copy Code Panel</div><pre class="code-block">${esc(task.copyCode)}</pre></div>`
+          )
         }
         if (task.codeStages?.length) {
-          parts.push(`<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`
+          )
           for (const stage of task.codeStages) {
-            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div><pre class="code-block">${esc(stage.code || '')}</pre></div>`)
+            parts.push(
+              `<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div><pre class="code-block">${esc(stage.code || '')}</pre></div>`
+            )
           }
           parts.push(`</div>`)
         }
@@ -312,34 +402,50 @@ export function buildPrintHtml(lesson) {
 
       if (lesson.type === 'html') {
         if (task.carryCodeFrom != null) {
-          parts.push(`<div class="field"><div class="field-label">Carry Code From</div><div class="field-value">Task ${esc(String(task.carryCodeFrom))}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Carry Code From</div><div class="field-value">Task ${esc(String(task.carryCodeFrom))}</div></div>`
+          )
         }
         if (task.entryFile) {
-          parts.push(`<div class="field"><div class="field-label">Entry File</div><div class="field-value">${esc(task.entryFile)}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Entry File</div><div class="field-value">${esc(task.entryFile)}</div></div>`
+          )
         }
         if (task.starterFiles?.length) {
           parts.push(`<div class="field"><div class="field-label">Starter Files</div>`)
           for (const f of task.starterFiles) {
-            parts.push(`<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`)
+            parts.push(
+              `<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`
+            )
           }
           parts.push(`</div>`)
         }
         if (task.completeFiles?.length) {
           parts.push(`<div class="field"><div class="field-label">Complete Files</div>`)
           for (const f of task.completeFiles) {
-            parts.push(`<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`)
+            parts.push(
+              `<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`
+            )
           }
           parts.push(`</div>`)
         }
         if (task.copyCode?.trim?.()) {
-          parts.push(`<div class="field"><div class="field-label">Copy Code Panel</div><pre class="code-block">${esc(task.copyCode)}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Copy Code Panel</div><pre class="code-block">${esc(task.copyCode)}</pre></div>`
+          )
         }
         if (task.codeStages?.length) {
-          parts.push(`<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`
+          )
           for (const stage of task.codeStages) {
-            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>`)
-            for (const f of (stage.files || [])) {
-              parts.push(`<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`)
+            parts.push(
+              `<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>`
+            )
+            for (const f of stage.files || []) {
+              parts.push(
+                `<div class="file-block"><div class="file-name">${esc(f.name)}</div><pre class="code-block">${esc(f.content || '')}</pre></div>`
+              )
             }
             parts.push(`</div>`)
           }
@@ -349,47 +455,73 @@ export function buildPrintHtml(lesson) {
 
       if (lesson.type === 'scratch') {
         if (task.carryBlocksFrom != null) {
-          parts.push(`<div class="field"><div class="field-label">Carry Blocks From</div><div class="field-value">Task ${esc(String(task.carryBlocksFrom))}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Carry Blocks From</div><div class="field-value">Task ${esc(String(task.carryBlocksFrom))}</div></div>`
+          )
         }
         if (task.sprites?.length) {
-          parts.push(`<div class="field"><div class="field-label">Sprites</div><table class="data-table"><tr><th>Name</th><th>Type</th><th>X</th><th>Y</th><th>Size</th><th>Direction</th><th>Student Editable</th></tr>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Sprites</div><table class="data-table"><tr><th>Name</th><th>Type</th><th>X</th><th>Y</th><th>Size</th><th>Direction</th><th>Student Editable</th></tr>`
+          )
           for (const sp of task.sprites) {
-            parts.push(`<tr><td>${esc(sp.name)}</td><td>${esc(sp.type || '')}</td><td>${esc(String(sp.x ?? ''))}</td><td>${esc(String(sp.y ?? ''))}</td><td>${esc(String(sp.size ?? ''))}</td><td>${esc(String(sp.direction ?? ''))}</td><td>${sp.studentEditable === false ? 'No' : 'Yes'}</td></tr>`)
+            parts.push(
+              `<tr><td>${esc(sp.name)}</td><td>${esc(sp.type || '')}</td><td>${esc(String(sp.x ?? ''))}</td><td>${esc(String(sp.y ?? ''))}</td><td>${esc(String(sp.size ?? ''))}</td><td>${esc(String(sp.direction ?? ''))}</td><td>${sp.studentEditable === false ? 'No' : 'Yes'}</td></tr>`
+            )
           }
           parts.push(`</table></div>`)
         }
         if (task.backdrops?.length) {
-          parts.push(`<div class="field"><div class="field-label">Backdrops</div><table class="data-table"><tr><th>Name</th><th>Colour / Image</th></tr>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Backdrops</div><table class="data-table"><tr><th>Name</th><th>Colour / Image</th></tr>`
+          )
           for (const bd of task.backdrops) {
-            parts.push(`<tr><td>${esc(bd.name)}</td><td>${esc(bd.colour || bd.image || '')}</td></tr>`)
+            parts.push(
+              `<tr><td>${esc(bd.name)}</td><td>${esc(bd.colour || bd.image || '')}</td></tr>`
+            )
           }
           parts.push(`</table></div>`)
         }
         if (task.variables?.length) {
-          parts.push(`<div class="field"><div class="field-label">Variables</div><table class="data-table"><tr><th>Name</th><th>Show on Stage</th></tr>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Variables</div><table class="data-table"><tr><th>Name</th><th>Show on Stage</th></tr>`
+          )
           for (const v of task.variables) {
             parts.push(`<tr><td>${esc(v.name)}</td><td>${v.showOnStage ? 'Yes' : 'No'}</td></tr>`)
           }
           parts.push(`</table></div>`)
         }
         if (task.toolbox) {
-          parts.push(`<div class="field"><div class="field-label">Toolbox XML</div><pre class="code-block">${esc(task.toolbox)}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Toolbox XML</div><pre class="code-block">${esc(task.toolbox)}</pre></div>`
+          )
         }
         if (task.prebuiltStacks?.length) {
-          parts.push(`<div class="field"><div class="field-label">Prebuilt Stacks</div><pre class="code-block">${esc(JSON.stringify(task.prebuiltStacks, null, 2))}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Prebuilt Stacks</div><pre class="code-block">${esc(JSON.stringify(task.prebuiltStacks, null, 2))}</pre></div>`
+          )
         }
         if (task.starterBlocks != null) {
-          parts.push(`<div class="field"><div class="field-label">Starter Blocks</div><pre class="code-block">${esc(JSON.stringify(task.starterBlocks, null, 2))}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Starter Blocks</div><pre class="code-block">${esc(JSON.stringify(task.starterBlocks, null, 2))}</pre></div>`
+          )
         }
         if (task.completeBlocks != null) {
-          parts.push(`<div class="field"><div class="field-label">Complete Blocks</div><pre class="code-block">${esc(JSON.stringify(task.completeBlocks, null, 2))}</pre></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Complete Blocks</div><pre class="code-block">${esc(JSON.stringify(task.completeBlocks, null, 2))}</pre></div>`
+          )
         }
         if (task.codeStages?.length) {
-          parts.push(`<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Code Stages (${task.codeStages.length})</div>`
+          )
           for (const stage of task.codeStages) {
-            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div><pre class="code-block">${esc(JSON.stringify(stage.blocks, null, 2))}</pre></div>`)
+            parts.push(
+              `<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div><pre class="code-block">${esc(JSON.stringify(stage.blocks, null, 2))}</pre></div>`
+            )
             if (stage.prebuiltStacks?.length) {
-              parts.push(`<pre class="code-block">${esc(JSON.stringify(stage.prebuiltStacks, null, 2))}</pre>`)
+              parts.push(
+                `<pre class="code-block">${esc(JSON.stringify(stage.prebuiltStacks, null, 2))}</pre>`
+              )
             }
           }
           parts.push(`</div>`)
@@ -398,14 +530,20 @@ export function buildPrintHtml(lesson) {
 
       if (lesson.type === 'filesystem') {
         if (task.carryFsFrom != null) {
-          parts.push(`<div class="field"><div class="field-label">Carry Filesystem From</div><div class="field-value">Task ${esc(String(task.carryFsFrom))}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Carry Filesystem From</div><div class="field-value">Task ${esc(String(task.carryFsFrom))}</div></div>`
+          )
         }
         parts.push(renderFilesystemField('Starter Filesystem', task.starterFs))
         parts.push(renderFilesystemField('Complete Filesystem', task.completeFs))
         if (task.codeStages?.length) {
-          parts.push(`<div class="field"><div class="field-label">Filesystem Stages (${task.codeStages.length})</div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Filesystem Stages (${task.codeStages.length})</div>`
+          )
           for (const stage of task.codeStages) {
-            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>${renderFilesystemField('Stage Filesystem', stage.fs ?? {})}</div>`)
+            parts.push(
+              `<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>${renderFilesystemField('Stage Filesystem', stage.fs ?? {})}</div>`
+            )
           }
           parts.push(`</div>`)
         }
@@ -413,21 +551,35 @@ export function buildPrintHtml(lesson) {
 
       if (lesson.type === 'electronics') {
         if (task.carryCircuitFrom != null) {
-          parts.push(`<div class="field"><div class="field-label">Carry Circuit From</div><div class="field-value">Task ${esc(String(task.carryCircuitFrom))}</div></div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Carry Circuit From</div><div class="field-value">Task ${esc(String(task.carryCircuitFrom))}</div></div>`
+          )
         }
         parts.push(renderAvailableParts(task.availableComponents))
-        if (task.microcontroller?.enabled || task.microcontroller?.boardType || task.microcontroller?.starterCode) {
-          parts.push(`<div class="field"><div class="field-label">Microcontroller</div><div class="field-value">${esc(task.microcontroller.boardType || 'Enabled')}</div></div>`)
+        if (
+          task.microcontroller?.enabled ||
+          task.microcontroller?.boardType ||
+          task.microcontroller?.starterCode
+        ) {
+          parts.push(
+            `<div class="field"><div class="field-label">Microcontroller</div><div class="field-value">${esc(task.microcontroller.boardType || 'Enabled')}</div></div>`
+          )
           if (task.microcontroller.starterCode) {
-            parts.push(`<div class="field"><div class="field-label">MicroPython Starter Code</div><pre class="code-block">${esc(task.microcontroller.starterCode)}</pre></div>`)
+            parts.push(
+              `<div class="field"><div class="field-label">MicroPython Starter Code</div><pre class="code-block">${esc(task.microcontroller.starterCode)}</pre></div>`
+            )
           }
         }
         parts.push(renderCircuitField('Starter Circuit', task.starterCircuit))
         parts.push(renderCircuitField('Complete Circuit', task.completeCircuit))
         if (task.codeStages?.length) {
-          parts.push(`<div class="field"><div class="field-label">Circuit Stages (${task.codeStages.length})</div>`)
+          parts.push(
+            `<div class="field"><div class="field-label">Circuit Stages (${task.codeStages.length})</div>`
+          )
           for (const stage of task.codeStages) {
-            parts.push(`<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>${renderCircuitField('Stage Circuit', stage.circuit ?? {})}</div>`)
+            parts.push(
+              `<div class="stage"><div class="stage-label">${esc(stage.label || '')}</div>${renderCircuitField('Stage Circuit', stage.circuit ?? {})}</div>`
+            )
           }
           parts.push(`</div>`)
         }
@@ -442,28 +594,33 @@ export function buildPrintHtml(lesson) {
     }
 
     if (task.check) {
-      parts.push(`<div class="field"><div class="field-label">Check</div>${renderCheckHtml(task.check)}</div>`)
+      parts.push(
+        `<div class="field"><div class="field-label">Check</div>${renderCheckHtml(task.check)}</div>`
+      )
     }
 
     parts.push(`</section>`)
     return parts.join('')
   }
 
-  const typeLabel = {
-    python: 'Python',
-    html: 'Web (HTML/CSS/JS)',
-    scratch: 'Scratch',
-    filesystem: 'Filesystem',
-    electronics: 'Electronics',
-  }[lesson.type] || lesson.type
+  const typeLabel =
+    {
+      python: 'Python',
+      html: 'Web (HTML/CSS/JS)',
+      scratch: 'Scratch',
+      filesystem: 'Filesystem',
+      electronics: 'Electronics',
+    }[lesson.type] || lesson.type
   let taskNumber = 1
   const taskSections = []
 
   for (const item of lesson.tasks) {
     if (item.type === 'group') {
       taskSections.push(`<section class="group">`)
-      taskSections.push(`<h2 class="group-title">Group: ${esc(item.title || '(untitled group)')}</h2>`)
-      for (const sub of (item.subtasks || [])) {
+      taskSections.push(
+        `<h2 class="group-title">Group: ${esc(item.title || '(untitled group)')}</h2>`
+      )
+      for (const sub of item.subtasks || []) {
         taskSections.push(renderTask(sub, taskNumber++))
       }
       taskSections.push(`</section>`)

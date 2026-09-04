@@ -61,7 +61,19 @@ const TEMPLATES = [
   },
 ]
 
-export default function FileManager({ files = [], entryFile, onAddFile, onDeleteFile, onRenameFile, onChangeType, onChangeEntryFile, onSetFiles, selectedFile, onSelectFile, attachedTop = false }) {
+export default function FileManager({
+  files = [],
+  entryFile,
+  onAddFile,
+  onDeleteFile,
+  onRenameFile,
+  onChangeType,
+  onChangeEntryFile,
+  onSetFiles,
+  selectedFile,
+  onSelectFile,
+  attachedTop = false,
+}) {
   const [generateOpen, setGenerateOpen] = useState(false)
   const generateRef = useRef(null)
 
@@ -80,13 +92,11 @@ export default function FileManager({ files = [], entryFile, onAddFile, onDelete
     const name = prompt('Filename (e.g. about.html, style.css, script.js):')
     if (!name || !name.trim()) return
     const trimmed = name.trim()
-    if (files.some(f => f.name === trimmed)) {
+    if (files.some((f) => f.name === trimmed)) {
       alert(`A file named "${trimmed}" already exists.`)
       return
     }
-    const type = trimmed.endsWith('.css') ? 'css'
-      : trimmed.endsWith('.js') ? 'javascript'
-      : 'html'
+    const type = trimmed.endsWith('.css') ? 'css' : trimmed.endsWith('.js') ? 'javascript' : 'html'
     onAddFile({ name: trimmed, type, content: '' })
   }
 
@@ -101,12 +111,12 @@ export default function FileManager({ files = [], entryFile, onAddFile, onDelete
         <span style={s.label}>Files</span>
         <div style={s.headerBtns}>
           <div ref={generateRef} style={s.generateWrap}>
-            <button style={s.generateBtn} onClick={() => setGenerateOpen(o => !o)}>
+            <button style={s.generateBtn} onClick={() => setGenerateOpen((o) => !o)}>
               Generate ▾
             </button>
             {generateOpen && (
               <div style={s.generateDropdown} className="ui-popover">
-                {TEMPLATES.map(t => (
+                {TEMPLATES.map((t) => (
                   <button key={t.label} style={s.generateOption} onClick={() => handleGenerate(t)}>
                     {t.label}
                   </button>
@@ -114,11 +124,13 @@ export default function FileManager({ files = [], entryFile, onAddFile, onDelete
               </div>
             )}
           </div>
-          <button className="btn-primary" style={s.addBtn} onClick={handleAdd}>+ File</button>
+          <button className="btn-primary" style={s.addBtn} onClick={handleAdd}>
+            + File
+          </button>
         </div>
       </div>
 
-      {files.map(f => (
+      {files.map((f) => (
         <div
           key={f.name}
           style={{
@@ -131,8 +143,8 @@ export default function FileManager({ files = [], entryFile, onAddFile, onDelete
           <select
             style={s.typeSelect}
             value={f.type}
-            onClick={e => e.stopPropagation()}
-            onChange={e => onChangeType?.(f.name, e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => onChangeType?.(f.name, e.target.value)}
           >
             <option value="html">HTML</option>
             <option value="css">CSS</option>
@@ -140,7 +152,10 @@ export default function FileManager({ files = [], entryFile, onAddFile, onDelete
           </select>
           <button
             style={s.deleteBtn}
-            onClick={e => { e.stopPropagation(); onDeleteFile?.(f.name) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteFile?.(f.name)
+            }}
             title="Delete file"
           >
             ✕
@@ -155,11 +170,15 @@ export default function FileManager({ files = [], entryFile, onAddFile, onDelete
             <select
               style={s.typeSelect}
               value={entryFile ?? files[0]?.name ?? ''}
-              onChange={e => onChangeEntryFile?.(e.target.value)}
+              onChange={(e) => onChangeEntryFile?.(e.target.value)}
             >
-              {files.filter(f => f.type === 'html' || f.name.endsWith('.html')).map(f => (
-                <option key={f.name} value={f.name}>{f.name}</option>
-              ))}
+              {files
+                .filter((f) => f.type === 'html' || f.name.endsWith('.html'))
+                .map((f) => (
+                  <option key={f.name} value={f.name}>
+                    {f.name}
+                  </option>
+                ))}
             </select>
           </label>
         </div>

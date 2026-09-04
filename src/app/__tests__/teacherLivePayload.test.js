@@ -14,7 +14,7 @@ describe('buildStudentLivePayload', () => {
         anonymousId: 'student-1',
         displayName: 'Jamie',
         currentArcadeDesign: { sprites: [{ name: 'hero.png' }] },
-        currentFiles: { 'index__dot__html': '<h1>Hello</h1>' },
+        currentFiles: { index__dot__html: '<h1>Hello</h1>' },
         currentOutput: 'done',
         lastRunStatus: 'success',
         checkPassed: true,

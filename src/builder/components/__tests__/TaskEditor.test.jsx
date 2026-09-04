@@ -8,7 +8,11 @@ import TaskEditor from '../TaskEditor'
 // stubbed at the module boundary the same way EditLessonModal.test.jsx stubs TaskEditor itself.
 vi.mock('../ExplainerEditor', () => ({
   default: ({ value, onChange }) => (
-    <textarea aria-label="Authoring intent editor" value={value ?? ''} onChange={e => onChange(e.target.value)} />
+    <textarea
+      aria-label="Authoring intent editor"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+    />
   ),
 }))
 
@@ -43,19 +47,42 @@ vi.mock('../task-editor/TaskOptionsSection', () => ({
 
 vi.mock('../../hooks/useTaskEditorState', () => ({
   useTaskEditorState: () => ({
-    output: '', runStatus: null, running: false, runningTests: false, pyodideStatus: 'idle',
-    inputPrompt: null, iframeSrc: null, checkResult: null, checkResults: null,
-    incorrectCheckResults: null, testResults: null, htmlPreviewOpen: false, quizSelectedAnswer: '',
+    output: '',
+    runStatus: null,
+    running: false,
+    runningTests: false,
+    pyodideStatus: 'idle',
+    inputPrompt: null,
+    iframeSrc: null,
+    checkResult: null,
+    checkResults: null,
+    incorrectCheckResults: null,
+    testResults: null,
+    htmlPreviewOpen: false,
+    quizSelectedAnswer: '',
     iframeRef: { current: null },
-    setCheckResults: vi.fn(), setRunStatus: vi.fn(), setCheckResult: vi.fn(), setIframeSrc: vi.fn(),
-    setHtmlPreviewOpen: vi.fn(), setQuizSelectedAnswer: vi.fn(),
-    handleRun: vi.fn(), handleRunTests: vi.fn(), handleStop: vi.fn(), handleTestChecks: vi.fn(),
-    handleQuizPreviewSelect: vi.fn(), handleInputSubmit: vi.fn(), resetRunState: vi.fn(),
+    setCheckResults: vi.fn(),
+    setRunStatus: vi.fn(),
+    setCheckResult: vi.fn(),
+    setIframeSrc: vi.fn(),
+    setHtmlPreviewOpen: vi.fn(),
+    setQuizSelectedAnswer: vi.fn(),
+    handleRun: vi.fn(),
+    handleRunTests: vi.fn(),
+    handleStop: vi.fn(),
+    handleTestChecks: vi.fn(),
+    handleQuizPreviewSelect: vi.fn(),
+    handleInputSubmit: vi.fn(),
+    resetRunState: vi.fn(),
   }),
 }))
 
 vi.mock('../../../modules/registry', () => ({
-  getLessonModule: () => ({ type: 'python', supportsCopyCode: false, explainerInlineCodeLanguages: [] }),
+  getLessonModule: () => ({
+    type: 'python',
+    supportsCopyCode: false,
+    explainerInlineCodeLanguages: [],
+  }),
 }))
 
 vi.mock('../../../shared/useLessonStorageAssets', () => ({

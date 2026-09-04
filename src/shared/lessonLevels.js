@@ -4,14 +4,20 @@ export const DEFAULT_LEVEL_COLOUR = '#7c3aed'
 export const DEFAULT_LEVEL_ICON = '⭐'
 
 export function getLessonLevelScope(lesson = {}) {
-  const scopeType = lesson.type === 'composed' ? 'collection'
-    : lesson.courseId ? 'course'
-    : lesson.module ? 'module'
-      : lesson.collectionId ? 'collection'
-        : 'type'
-  const scopeId = lesson.type === 'composed'
-    ? (lesson.collectionId ?? 'lessons')
-    : lesson.courseId ?? lesson.module ?? lesson.collectionId ?? lesson.type ?? 'general'
+  const scopeType =
+    lesson.type === 'composed'
+      ? 'collection'
+      : lesson.courseId
+        ? 'course'
+        : lesson.module
+          ? 'module'
+          : lesson.collectionId
+            ? 'collection'
+            : 'type'
+  const scopeId =
+    lesson.type === 'composed'
+      ? (lesson.collectionId ?? 'lessons')
+      : (lesson.courseId ?? lesson.module ?? lesson.collectionId ?? lesson.type ?? 'general')
   return { scopeType, scopeId: String(scopeId || 'general') }
 }
 
@@ -49,10 +55,11 @@ export function normalizeLevelRecord(record = {}) {
 export function levelTitleFromLesson(lesson = {}, levels = []) {
   const ref = getLessonLevelRef(lesson)
   if (ref?.id) {
-    const level = levels.find(candidate => candidate.id === ref.id)
+    const level = levels.find((candidate) => candidate.id === ref.id)
     if (level?.title) return level.title
   }
-  if (lesson.level && typeof lesson.level === 'object') return lesson.level.title ?? lesson.level.id ?? ''
+  if (lesson.level && typeof lesson.level === 'object')
+    return lesson.level.title ?? lesson.level.id ?? ''
   return lesson.level ?? ''
 }
 

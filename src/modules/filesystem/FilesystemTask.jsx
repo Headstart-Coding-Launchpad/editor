@@ -21,13 +21,13 @@ const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp']
 
 function isImage(path) {
   const lower = path.toLowerCase()
-  return IMAGE_EXTS.some(ext => lower.endsWith(ext))
+  return IMAGE_EXTS.some((ext) => lower.endsWith(ext))
 }
 
 function imagePreviewSrc(path, entry, assetsPath, assets) {
   if (entry?.src) return resolveAssetFileUrl(assetsPath, entry.src)
   const name = entryName(path)
-  const asset = assets.find(assetPath => assetPath === name || assetPath.endsWith('/' + name))
+  const asset = assets.find((assetPath) => assetPath === name || assetPath.endsWith('/' + name))
   return asset ? resolveAssetFileUrl(assetsPath, asset) : ''
 }
 
@@ -36,7 +36,7 @@ function imagePreviewSrc(path, entry, assetsPath, assets) {
 function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMenu, depth = 0 }) {
   const [expanded, setExpanded] = useState(depth === 0)
   const [dragOver, setDragOver] = useState(false)
-  const children = listChildren(fs, path).filter(p => p.endsWith('/'))
+  const children = listChildren(fs, path).filter((p) => p.endsWith('/'))
 
   const isActive = currentDir === path
   const hasChildren = children.length > 0
@@ -69,7 +69,11 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMen
           paddingLeft: 8 + depth * 16,
           cursor: 'pointer',
           borderRadius: 4,
-          background: dragOver ? 'rgba(98,34,204,0.18)' : isActive ? 'var(--colour-primary)' : 'transparent',
+          background: dragOver
+            ? 'rgba(98,34,204,0.18)'
+            : isActive
+              ? 'var(--colour-primary)'
+              : 'transparent',
           color: isActive && !dragOver ? '#fff' : 'var(--colour-text)',
           fontFamily: 'var(--font-body)',
           fontSize: '0.82rem',
@@ -77,41 +81,67 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMen
           outline: dragOver ? '2px dashed var(--colour-primary)' : 'none',
         }}
         onClick={() => onNavigate(path)}
-        onContextMenu={onContextMenu ? e => onContextMenu(e, path) : undefined}
+        onContextMenu={onContextMenu ? (e) => onContextMenu(e, path) : undefined}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         <span
-          style={{ width: 14, textAlign: 'center', opacity: hasChildren ? 1 : 0.25, fontSize: '0.7rem' }}
-          onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
+          style={{
+            width: 14,
+            textAlign: 'center',
+            opacity: hasChildren ? 1 : 0.25,
+            fontSize: '0.7rem',
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setExpanded((v) => !v)
+          }}
         >
           {expanded ? '▾' : '▸'}
         </span>
         <span>{ICON_DIR}</span>
-        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span
+          style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        >
           {path === '/' ? '/ (root)' : entryName(path)}
         </span>
       </div>
-      {expanded && children.map(child => (
-        <FolderTreeNode
-          key={child}
-          fs={fs}
-          path={child}
-          currentDir={currentDir}
-          onNavigate={onNavigate}
-          onDrop={onDrop}
-          onContextMenu={onContextMenu}
-          depth={depth + 1}
-        />
-      ))}
+      {expanded &&
+        children.map((child) => (
+          <FolderTreeNode
+            key={child}
+            fs={fs}
+            path={child}
+            currentDir={currentDir}
+            onNavigate={onNavigate}
+            onDrop={onDrop}
+            onContextMenu={onContextMenu}
+            depth={depth + 1}
+          />
+        ))}
     </div>
   )
 }
 
 // ── File Grid ─────────────────────────────────────────────────────────────────
 
-function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, renamingPath, onRenameCommit, onRenameKeyDown, onContextMenu, cutPath, creating, onCreateCommit, onCreateCancel }) {
+function FileGrid({
+  fs,
+  currentDir,
+  selected,
+  onSelect,
+  onNavigate,
+  onDrop,
+  renamingPath,
+  onRenameCommit,
+  onRenameKeyDown,
+  onContextMenu,
+  cutPath,
+  creating,
+  onCreateCommit,
+  onCreateCancel,
+}) {
   const children = listChildren(fs, currentDir)
   const renameRef = useRef(null)
   const [dragOverPath, setDragOverPath] = useState(null)
@@ -142,7 +172,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
   function handleDropOnGrid(e) {
     e.preventDefault()
     const src = e.dataTransfer.getData('text/plain')
-    if (src) onDrop(src, currentDir)
+    if (src && onDrop) onDrop(src, currentDir)
   }
 
   function handleDirDragOver(e, path) {
@@ -166,10 +196,18 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
   if (children.length === 0 && !creating) {
     return (
       <div
-        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.85rem', fontFamily: 'var(--font-body)' }}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#9ca3af',
+          fontSize: '0.85rem',
+          fontFamily: 'var(--font-body)',
+        }}
         onDragOver={handleDragOver}
         onDrop={handleDropOnGrid}
-        onContextMenu={onContextMenu ? e => onContextMenu(e, null) : undefined}
+        onContextMenu={onContextMenu ? (e) => onContextMenu(e, null) : undefined}
       >
         Folder is empty
       </div>
@@ -178,35 +216,67 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
 
   return (
     <div
-      style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start', gap: 8, padding: 12, overflowY: 'auto', flex: 1 }}
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignContent: 'flex-start',
+        gap: 8,
+        padding: 12,
+        overflowY: 'auto',
+        flex: 1,
+      }}
       onDragOver={handleDragOver}
       onDrop={handleDropOnGrid}
-      onContextMenu={onContextMenu ? e => { if (e.target === e.currentTarget) onContextMenu(e, null) } : undefined}
+      onContextMenu={
+        onContextMenu
+          ? (e) => {
+              if (e.target === e.currentTarget) onContextMenu(e, null)
+            }
+          : undefined
+      }
     >
       {creating && (
         <div
           style={{
-            width: 80, display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 4, padding: '8px 4px', borderRadius: 6,
+            width: 80,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            padding: '8px 4px',
+            borderRadius: 6,
             border: '1.5px solid var(--colour-primary)',
             background: 'rgba(98,34,204,0.06)',
           }}
         >
-          <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>{creating === 'folder' ? ICON_DIR : ICON_FILE}</span>
+          <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>
+            {creating === 'folder' ? ICON_DIR : ICON_FILE}
+          </span>
           <input
             autoFocus
             placeholder={creating === 'folder' ? 'Folder name…' : 'File name…'}
-            style={{ width: 72, fontSize: '0.72rem', textAlign: 'center', border: '1px solid var(--colour-primary)', borderRadius: 3, padding: '1px 3px', fontFamily: 'var(--font-body)' }}
-            onClick={e => e.stopPropagation()}
-            onBlur={e => { if (e.target.value.trim()) onCreateCommit(e.target.value.trim()); else onCreateCancel() }}
-            onKeyDown={e => {
+            style={{
+              width: 72,
+              fontSize: '0.72rem',
+              textAlign: 'center',
+              border: '1px solid var(--colour-primary)',
+              borderRadius: 3,
+              padding: '1px 3px',
+              fontFamily: 'var(--font-body)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={(e) => {
+              if (e.target.value.trim()) onCreateCommit(e.target.value.trim())
+              else onCreateCancel()
+            }}
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.value.trim()) onCreateCommit(e.target.value.trim())
               if (e.key === 'Escape') onCreateCancel()
             }}
           />
         </div>
       )}
-      {children.map(path => {
+      {children.map((path) => {
         const isDirectory = path.endsWith('/')
         const name = entryName(path)
         const img = !isDirectory && isImage(path)
@@ -220,13 +290,13 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
           <div
             key={path}
             draggable
-            onDragStart={e => handleDragStart(e, path)}
-            onDragOver={isDirectory ? e => handleDirDragOver(e, path) : undefined}
+            onDragStart={(e) => handleDragStart(e, path)}
+            onDragOver={isDirectory ? (e) => handleDirDragOver(e, path) : undefined}
             onDragLeave={isDirectory ? handleDirDragLeave : undefined}
-            onDrop={isDirectory ? e => handleDirDrop(e, path) : undefined}
+            onDrop={isDirectory ? (e) => handleDirDrop(e, path) : undefined}
             onClick={() => onSelect(path)}
-            onDoubleClick={() => isDirectory ? onNavigate(path) : onSelect(path)}
-            onContextMenu={onContextMenu ? e => onContextMenu(e, path) : undefined}
+            onDoubleClick={() => (isDirectory ? onNavigate(path) : onSelect(path))}
+            onContextMenu={onContextMenu ? (e) => onContextMenu(e, path) : undefined}
             style={{
               width: 80,
               display: 'flex',
@@ -235,8 +305,16 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
               gap: 4,
               padding: '8px 4px',
               borderRadius: 6,
-              background: isDragTarget ? 'rgba(98,34,204,0.18)' : isSelected ? 'rgba(98,34,204,0.12)' : 'transparent',
-              border: isDragTarget ? '1.5px dashed var(--colour-primary)' : isSelected ? '1.5px solid var(--colour-primary)' : '1.5px solid transparent',
+              background: isDragTarget
+                ? 'rgba(98,34,204,0.18)'
+                : isSelected
+                  ? 'rgba(98,34,204,0.12)'
+                  : 'transparent',
+              border: isDragTarget
+                ? '1.5px dashed var(--colour-primary)'
+                : isSelected
+                  ? '1.5px solid var(--colour-primary)'
+                  : '1.5px solid transparent',
               cursor: 'pointer',
               userSelect: 'none',
               opacity: isCut ? 0.45 : 1,
@@ -247,13 +325,30 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
               <input
                 ref={renameRef}
                 defaultValue={name}
-                style={{ width: 72, fontSize: '0.72rem', textAlign: 'center', border: '1px solid var(--colour-primary)', borderRadius: 3, padding: '1px 3px', fontFamily: 'var(--font-body)' }}
-                onBlur={e => onRenameCommit(path, e.target.value)}
-                onKeyDown={e => onRenameKeyDown(e, path, e.target.value)}
-                onClick={e => e.stopPropagation()}
+                style={{
+                  width: 72,
+                  fontSize: '0.72rem',
+                  textAlign: 'center',
+                  border: '1px solid var(--colour-primary)',
+                  borderRadius: 3,
+                  padding: '1px 3px',
+                  fontFamily: 'var(--font-body)',
+                }}
+                onBlur={(e) => onRenameCommit(path, e.target.value)}
+                onKeyDown={(e) => onRenameKeyDown(e, path, e.target.value)}
+                onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span style={{ fontSize: '0.72rem', textAlign: 'center', wordBreak: 'break-word', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', maxWidth: 72 }}>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  textAlign: 'center',
+                  wordBreak: 'break-word',
+                  fontFamily: 'var(--font-body)',
+                  color: 'var(--colour-text)',
+                  maxWidth: 72,
+                }}
+              >
                 {name}
               </span>
             )}
@@ -268,14 +363,26 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
 
 function InlineNameInput({ placeholder, onCommit, onCancel }) {
   const ref = useRef(null)
-  useEffect(() => { ref.current?.focus() }, [])
+  useEffect(() => {
+    ref.current?.focus()
+  }, [])
   return (
     <input
       ref={ref}
       placeholder={placeholder}
-      style={{ fontSize: '0.82rem', border: '1px solid var(--colour-primary)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--font-body)', width: 140 }}
-      onBlur={e => { if (e.target.value.trim()) onCommit(e.target.value.trim()); else onCancel() }}
-      onKeyDown={e => {
+      style={{
+        fontSize: '0.82rem',
+        border: '1px solid var(--colour-primary)',
+        borderRadius: 4,
+        padding: '2px 8px',
+        fontFamily: 'var(--font-body)',
+        width: 140,
+      }}
+      onBlur={(e) => {
+        if (e.target.value.trim()) onCommit(e.target.value.trim())
+        else onCancel()
+      }}
+      onKeyDown={(e) => {
         if (e.key === 'Enter' && e.target.value.trim()) onCommit(e.target.value.trim())
         if (e.key === 'Escape') onCancel()
       }}
@@ -288,20 +395,34 @@ function InlineNameInput({ placeholder, onCommit, onCancel }) {
 function ContextMenu({ x, y, items, onClose }) {
   const ref = useRef(null)
   useEffect(() => {
-    function handle(e) { if (ref.current && !ref.current.contains(e.target)) onClose() }
-    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    function handle(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose()
+    }
+    function handleKey(e) {
+      if (e.key === 'Escape') onClose()
+    }
     document.addEventListener('mousedown', handle)
     document.addEventListener('keydown', handleKey)
-    return () => { document.removeEventListener('mousedown', handle); document.removeEventListener('keydown', handleKey) }
+    return () => {
+      document.removeEventListener('mousedown', handle)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [onClose])
   return (
     <div
       ref={ref}
       style={{
-        position: 'fixed', left: x, top: y, zIndex: 1000,
-        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 160,
-        padding: '4px 0', fontFamily: 'var(--font-body)',
+        position: 'fixed',
+        left: x,
+        top: y,
+        zIndex: 1000,
+        background: '#fff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 6,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        minWidth: 160,
+        padding: '4px 0',
+        fontFamily: 'var(--font-body)',
       }}
     >
       {items.map((item, i) =>
@@ -310,13 +431,21 @@ function ContextMenu({ x, y, items, onClose }) {
         ) : (
           <button
             key={i}
-            onClick={() => { item.onClick(); onClose() }}
+            onClick={() => {
+              item.onClick()
+              onClose()
+            }}
             disabled={item.disabled}
             style={{
-              display: 'block', width: '100%', textAlign: 'left',
-              padding: '6px 14px', background: 'none', border: 'none',
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '6px 14px',
+              background: 'none',
+              border: 'none',
               cursor: item.disabled ? 'default' : 'pointer',
-              fontSize: '0.82rem', fontFamily: 'var(--font-body)',
+              fontSize: '0.82rem',
+              fontFamily: 'var(--font-body)',
               color: item.danger ? '#dc2626' : item.disabled ? '#9ca3af' : 'var(--colour-text)',
             }}
           >
@@ -339,12 +468,26 @@ function AddressBar({ currentDir, onNavigate }) {
     return { label: part === '/' ? 'root' : part, target }
   })
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: '0.8rem', fontFamily: 'var(--font-body)', color: 'var(--colour-text)', flex: 1 }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        fontSize: '0.8rem',
+        fontFamily: 'var(--font-body)',
+        color: 'var(--colour-text)',
+        flex: 1,
+      }}
+    >
       {crumbs.map((c, i) => (
         <span key={c.target} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {i > 0 && <span style={{ color: '#9ca3af' }}>/</span>}
           <span
-            style={{ cursor: 'pointer', color: i === crumbs.length - 1 ? 'var(--colour-text)' : 'var(--colour-primary)', fontWeight: i === crumbs.length - 1 ? 600 : 400 }}
+            style={{
+              cursor: 'pointer',
+              color: i === crumbs.length - 1 ? 'var(--colour-text)' : 'var(--colour-primary)',
+              fontWeight: i === crumbs.length - 1 ? 600 : 400,
+            }}
             onClick={() => onNavigate(c.target)}
           >
             {c.label}
@@ -357,7 +500,15 @@ function AddressBar({ currentDir, onNavigate }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteraction, assetsPath = '', assets = [], disabled = false, initialDir = '/' }) {
+export default function FilesystemTask({
+  fs = DEFAULT_FS,
+  onFsChange,
+  onInteraction,
+  assetsPath = '',
+  assets = [],
+  disabled = false,
+  initialDir = '/',
+}) {
   const [currentDir, setCurrentDir] = useState(initialDir)
   const [selected, setSelected] = useState(null)
   const [openFile, setOpenFile] = useState(null)
@@ -406,15 +557,18 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
     if (openFile && !fs[openFile]) setOpenFile(null)
   }, [fs, openFile])
 
-  const navigate = useCallback(path => {
-    userNavigatedRef.current = true
-    setCurrentDir(path)
-    setSelected(null)
-    setOpenFile(null)
-    setCreating(null)
-    setRenamingPath(null)
-    onInteraction?.({ currentDir: path, openFile: null })
-  }, [onInteraction])
+  const navigate = useCallback(
+    (path) => {
+      userNavigatedRef.current = true
+      setCurrentDir(path)
+      setSelected(null)
+      setOpenFile(null)
+      setCreating(null)
+      setRenamingPath(null)
+      onInteraction?.({ currentDir: path, openFile: null })
+    },
+    [onInteraction]
+  )
 
   function handleGoUp() {
     navigate(parentPath(currentDir))
@@ -444,7 +598,8 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   function handleNewFile(name) {
     const newPath = currentDir === '/' ? '/' + name : currentDir + name
     setCreating(null)
-    if (!applyFsChange(createEntry(fs, newPath, 'file', ''), `"${name}" already exists here.`)) return
+    if (!applyFsChange(createEntry(fs, newPath, 'file', ''), `"${name}" already exists here.`))
+      return
     setOpenFile(newPath)
     setSelected(newPath)
     onInteraction?.({ currentDir, openFile: newPath })
@@ -452,8 +607,11 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
 
   function handleDeletePath(path) {
     if (!window.confirm(`Delete "${entryName(path)}"?`)) return
-    onFsChange(deleteEntry(fs, path))
-    if (selected === path) { setSelected(null); setOpenFile(null) }
+    if (!applyFsChange(deleteEntry(fs, path), `Could not delete "${entryName(path)}".`)) return
+    if (selected === path) {
+      setSelected(null)
+      setOpenFile(null)
+    }
     if (clipboard?.path === path) setClipboard(null)
   }
 
@@ -508,11 +666,17 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
       const items = [
         {
           label: '📄 New File here',
-          onClick: () => { navigate(targetPath); setCreating('file') },
+          onClick: () => {
+            navigate(targetPath)
+            setCreating('file')
+          },
         },
         {
           label: '📁 New Folder here',
-          onClick: () => { navigate(targetPath); setCreating('folder') },
+          onClick: () => {
+            navigate(targetPath)
+            setCreating('folder')
+          },
         },
       ]
       if (clipboard) {
@@ -546,12 +710,22 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   function handleRenameCommit(path, newName) {
     setRenamingPath(null)
     if (newName.trim() && newName.trim() !== entryName(path)) {
-      if (!applyFsChange(renameEntry(fs, path, newName.trim()), `"${newName.trim()}" already exists here.`)) return
+      if (
+        !applyFsChange(
+          renameEntry(fs, path, newName.trim()),
+          `"${newName.trim()}" already exists here.`
+        )
+      )
+        return
       // update open file if it was renamed
       if (openFile === path) {
         const isDirectory = path.endsWith('/')
         const parent = parentPath(path)
-        const np = isDirectory ? normaliseDirPath(parent + newName.trim()) : (parent === '/' ? '/' + newName.trim() : parent + newName.trim())
+        const np = isDirectory
+          ? normaliseDirPath(parent + newName.trim())
+          : parent === '/'
+            ? '/' + newName.trim()
+            : parent + newName.trim()
         setOpenFile(np)
         setSelected(np)
         onInteraction?.({ currentDir, openFile: np })
@@ -560,12 +734,21 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
   }
 
   function handleRenameKeyDown(e, path, value) {
-    if (e.key === 'Escape') { setRenamingPath(null); return }
+    if (e.key === 'Escape') {
+      setRenamingPath(null)
+      return
+    }
     if (e.key === 'Enter') handleRenameCommit(path, value)
   }
 
   function handleDrop(srcPath, destDir) {
-    if (!applyFsChange(moveEntry(fs, srcPath, destDir), `"${entryName(srcPath)}" already exists there.`)) return
+    if (
+      !applyFsChange(
+        moveEntry(fs, srcPath, destDir),
+        `"${entryName(srcPath)}" already exists there.`
+      )
+    )
+      return
     if (openFile === srcPath) {
       const name = entryName(srcPath)
       const destDirNorm = normaliseDirPath(destDir)
@@ -614,12 +797,28 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', outline: 'none', fontFamily: 'var(--font-body)' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        outline: 'none',
+        fontFamily: 'var(--font-body)',
+      }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#f8f5ff', borderBottom: '1px solid var(--ui-border)', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 10px',
+          background: '#f8f5ff',
+          borderBottom: '1px solid var(--ui-border)',
+          flexWrap: 'wrap',
+        }}
+      >
         <button
           className="btn-ghost-outline"
           style={{ fontSize: '0.78rem', padding: '3px 10px' }}
@@ -657,13 +856,25 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
             </button>
             <button
               className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px', color: '#dc2626', borderColor: '#fca5a5' }}
+              style={{
+                fontSize: '0.78rem',
+                padding: '3px 10px',
+                color: '#dc2626',
+                borderColor: '#fca5a5',
+              }}
               disabled={!selected || selected === '/'}
               onClick={handleDelete}
             >
               🗑 Delete
             </button>
-            <div style={{ width: 1, background: 'var(--ui-border)', alignSelf: 'stretch', margin: '0 2px' }} />
+            <div
+              style={{
+                width: 1,
+                background: 'var(--ui-border)',
+                alignSelf: 'stretch',
+                margin: '0 2px',
+              }}
+            />
             <button
               className="btn-ghost-outline"
               style={{ fontSize: '0.78rem', padding: '3px 10px' }}
@@ -694,10 +905,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
       </div>
 
       {statusMessage && (
-        <div style={{
-          padding: '4px 12px', fontSize: '0.75rem', color: '#991b1b',
-          background: '#fef2f2', borderBottom: '1px solid #fecaca',
-        }}>
+        <div
+          style={{
+            padding: '4px 12px',
+            fontSize: '0.75rem',
+            color: '#991b1b',
+            background: '#fef2f2',
+            borderBottom: '1px solid #fecaca',
+          }}
+        >
           {statusMessage}
         </div>
       )}
@@ -705,7 +921,16 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
       {/* Main area: tree + grid */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Folder tree */}
-        <div style={{ width: 180, minWidth: 140, borderRight: '1px solid var(--ui-border)', overflowY: 'auto', padding: '8px 4px', background: '#fbf9ff' }}>
+        <div
+          style={{
+            width: 180,
+            minWidth: 140,
+            borderRight: '1px solid var(--ui-border)',
+            overflowY: 'auto',
+            padding: '8px 4px',
+            background: '#fbf9ff',
+          }}
+        >
           <FolderTreeNode
             fs={fs}
             path="/"
@@ -732,20 +957,56 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
             onContextMenu={disabled ? undefined : openContextMenu}
             cutPath={clipboard?.mode === 'cut' ? clipboard.path : null}
             creating={disabled ? null : creating}
-            onCreateCommit={name => creating === 'folder' ? handleNewFolder(name) : handleNewFile(name)}
+            onCreateCommit={(name) =>
+              creating === 'folder' ? handleNewFolder(name) : handleNewFile(name)
+            }
             onCreateCancel={() => setCreating(null)}
           />
 
           {/* File viewer */}
           {(showEditor || showImage) && (
-            <div style={{ height: 220, borderTop: '1px solid var(--ui-border)', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', background: '#f3eeff', borderBottom: '1px solid var(--ui-border)', gap: 8 }}>
-                <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-code)', color: 'var(--colour-text)', fontWeight: 600 }}>
+            <div
+              style={{
+                height: 220,
+                borderTop: '1px solid var(--ui-border)',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '4px 10px',
+                  background: '#f3eeff',
+                  borderBottom: '1px solid var(--ui-border)',
+                  gap: 8,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    fontFamily: 'var(--font-code)',
+                    color: 'var(--colour-text)',
+                    fontWeight: 600,
+                  }}
+                >
                   {entryName(openFile)}
                 </span>
                 <button
-                  onClick={() => { setOpenFile(null); onInteraction?.({ currentDir, openFile: null }) }}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1rem', lineHeight: 1 }}
+                  onClick={() => {
+                    setOpenFile(null)
+                    onInteraction?.({ currentDir, openFile: null })
+                  }}
+                  style={{
+                    marginLeft: 'auto',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#9ca3af',
+                    fontSize: '1rem',
+                    lineHeight: 1,
+                  }}
                   aria-label="Close file"
                 >
                   ×
@@ -754,7 +1015,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
               {showEditor ? (
                 <textarea
                   value={openEntry.content ?? ''}
-                  onChange={e => handleFileContentChange(e.target.value)}
+                  onChange={(e) => handleFileContentChange(e.target.value)}
                   readOnly={disabled}
                   spellCheck={false}
                   style={{
@@ -773,7 +1034,15 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
                   }}
                 />
               ) : (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
                   {previewSrc ? (
                     <img
                       src={previewSrc}
@@ -781,7 +1050,9 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
                       style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                     />
                   ) : (
-                    <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>No preview source configured for this image</span>
+                    <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>
+                      No preview source configured for this image
+                    </span>
                   )}
                 </div>
               )}

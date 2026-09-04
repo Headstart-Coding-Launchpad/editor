@@ -17,13 +17,13 @@ export function useElementSize() {
   const [size, setSize] = useState({ width: 0, height: 0 })
   const observerRef = useRef(null)
 
-  const ref = useCallback(node => {
+  const ref = useCallback((node) => {
     observerRef.current?.disconnect()
     observerRef.current = null
     if (!node) return
     const obs = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
-      setSize(prev => (prev.width === width && prev.height === height) ? prev : { width, height })
+      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }))
     })
     obs.observe(node)
     observerRef.current = obs

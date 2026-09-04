@@ -70,7 +70,13 @@ describe('StudentEditorHeader', () => {
 
   it('applies the sv-editor-header and ui-tabs classes to the wrapper', () => {
     const { container } = render(
-      <StudentEditorHeader task={{ interactionMode: 'run' }} running={false} onRun={vi.fn()} onSubmit={vi.fn()} onReset={vi.fn()} />
+      <StudentEditorHeader
+        task={{ interactionMode: 'run' }}
+        running={false}
+        onRun={vi.fn()}
+        onSubmit={vi.fn()}
+        onReset={vi.fn()}
+      />
     )
     expect(container.firstChild).toHaveClass('sv-editor-header')
     expect(container.firstChild).toHaveClass('ui-tabs')

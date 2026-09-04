@@ -72,14 +72,16 @@ describe('TaskEditor code_arrange format', () => {
       title: 'Arrange a loop',
       taskType: 'code_arrange',
       moduleType: 'python',
-      lines: [{
-        id: 'L1',
-        parts: [
-          { type: 'text', text: 'for i in range(' },
-          { type: 'slot', id: 'S1', code: '5' },
-          { type: 'text', text: '):' },
-        ],
-      }],
+      lines: [
+        {
+          id: 'L1',
+          parts: [
+            { type: 'text', text: 'for i in range(' },
+            { type: 'slot', id: 'S1', code: '5' },
+            { type: 'text', text: '):' },
+          ],
+        },
+      ],
       distractors: [{ id: 'S1d1', code: '10' }],
       check: { type: 'output_contains', value: '0' },
     }

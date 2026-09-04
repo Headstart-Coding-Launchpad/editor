@@ -32,7 +32,9 @@ export default function SoloNav({
         <span style={labelStyle}>{isMobile ? 'Sandbox' : 'Personal Sandbox'}</span>
       ) : (
         <span style={labelStyle}>
-          {isMobile ? `${currentIndex + 1}/${flatTasks.length}` : `Task ${currentIndex + 1} of ${flatTasks.length}`}
+          {isMobile
+            ? `${currentIndex + 1}/${flatTasks.length}`
+            : `Task ${currentIndex + 1} of ${flatTasks.length}`}
         </span>
       )}
       {!cs.inPersonalSandbox && (

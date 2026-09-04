@@ -12,7 +12,7 @@ vi.mock('../TeacherView', () => ({
 }))
 
 vi.mock('../StudentView', () => ({
-  default: props => <div>StudentView {JSON.stringify(props)}</div>,
+  default: (props) => <div>StudentView {JSON.stringify(props)}</div>,
 }))
 
 function renderRoute(search) {

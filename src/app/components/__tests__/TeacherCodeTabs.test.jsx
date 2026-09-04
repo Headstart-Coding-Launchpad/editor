@@ -3,10 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import TeacherCodeTabs from '../TeacherCodeTabs'
 
-const stages = [
-  { label: 'Stage 1' },
-  { label: 'Stage 2' },
-]
+const stages = [{ label: 'Stage 1' }, { label: 'Stage 2' }]
 
 function renderTabs(overrides = {}) {
   const props = {

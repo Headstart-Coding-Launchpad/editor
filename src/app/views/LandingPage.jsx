@@ -42,9 +42,7 @@ export default function LandingPage() {
           <span style={s.logo}>Headstart Coding - LaunchPad</span>
         </div>
 
-        <h1 style={s.heading}>
-          {isTeacher ? 'Teacher Dashboard' : 'Join a lesson'}
-        </h1>
+        <h1 style={s.heading}>{isTeacher ? 'Teacher Dashboard' : 'Join a lesson'}</h1>
 
         <form onSubmit={handleGo} style={s.form}>
           <label style={s.label} htmlFor="lesson-code">
@@ -56,7 +54,7 @@ export default function LandingPage() {
               style={s.input}
               type="text"
               value={lessonCode}
-              onChange={e => setLessonCode(e.target.value)}
+              onChange={(e) => setLessonCode(e.target.value)}
               placeholder="e.g. python-intro"
               autoFocus
               autoComplete="off"
@@ -77,34 +75,68 @@ export default function LandingPage() {
               style={s.fileInput}
               aria-label="Choose a LaunchPad code file"
             />
-            <button className="btn-ghost-outline" type="button" onClick={() => fileInputRef.current?.click()}>
+            <button
+              className="btn-ghost-outline"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+            >
               Open saved code
             </button>
             <p style={s.openCodeText}>Open a LaunchPad file to continue your Python code.</p>
-            <button className="btn-ghost-outline" type="button" onClick={() => setPlaygroundPickerOpen(true)}>
+            <button
+              className="btn-ghost-outline"
+              type="button"
+              onClick={() => setPlaygroundPickerOpen(true)}
+            >
               Open playgrounds
             </button>
             <p style={s.openCodeText}>Start a fresh coding space and choose its type.</p>
-            {openCodeError && <p style={s.error} role="alert">{openCodeError}</p>}
+            {openCodeError && (
+              <p style={s.error} role="alert">
+                {openCodeError}
+              </p>
+            )}
           </div>
         )}
-
       </div>
       {playgroundPickerOpen && (
-        <div style={s.dialogBackdrop} role="dialog" aria-modal="true" aria-labelledby="playground-picker-title">
+        <div
+          style={s.dialogBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="playground-picker-title"
+        >
           <div style={s.dialog}>
-            <h2 id="playground-picker-title" style={s.dialogTitle}>Choose a playground</h2>
+            <h2 id="playground-picker-title" style={s.dialogTitle}>
+              Choose a playground
+            </h2>
             <p style={s.dialogText}>Pick the type of code you want to work on.</p>
-            <button className="btn-primary" type="button" onClick={() => handleOpenPlayground('python')}>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => handleOpenPlayground('python')}
+            >
               Python
             </button>
-            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenPlayground('arcade')}>
+            <button
+              className="btn-ghost-outline"
+              type="button"
+              onClick={() => handleOpenPlayground('arcade')}
+            >
               Arcade Kit
             </button>
-            <button className="btn-ghost-outline" type="button" onClick={() => handleOpenPlayground('electronics')}>
+            <button
+              className="btn-ghost-outline"
+              type="button"
+              onClick={() => handleOpenPlayground('electronics')}
+            >
               Electronics
             </button>
-            <button className="btn-ghost-outline" type="button" onClick={() => setPlaygroundPickerOpen(false)}>
+            <button
+              className="btn-ghost-outline"
+              type="button"
+              onClick={() => setPlaygroundPickerOpen(false)}
+            >
               Cancel
             </button>
           </div>
@@ -224,6 +256,11 @@ const s = {
     background: 'var(--ui-surface)',
     boxShadow: 'var(--ui-shadow)',
   },
-  dialogTitle: { margin: 0, color: 'var(--colour-primary)', fontFamily: 'var(--font-title)', fontSize: '1.2rem' },
+  dialogTitle: {
+    margin: 0,
+    color: 'var(--colour-primary)',
+    fontFamily: 'var(--font-title)',
+    fontSize: '1.2rem',
+  },
   dialogText: { margin: 0, color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem' },
 }

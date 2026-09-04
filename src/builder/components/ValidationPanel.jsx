@@ -5,11 +5,12 @@ export default function ValidationPanel({ errors, warnings }) {
   const [activeTab, setActiveTab] = useState(errors.length ? 'errors' : 'warnings')
   const [ignoredWarnings, setIgnoredWarnings] = useState(() => new Set())
 
-  const visibleWarnings = warnings.filter(w => !ignoredWarnings.has(w))
+  const visibleWarnings = warnings.filter((w) => !ignoredWarnings.has(w))
 
   const summaryParts = []
   if (errors.length) summaryParts.push(`${errors.length} error${errors.length !== 1 ? 's' : ''}`)
-  if (visibleWarnings.length) summaryParts.push(`${visibleWarnings.length} warning${visibleWarnings.length !== 1 ? 's' : ''}`)
+  if (visibleWarnings.length)
+    summaryParts.push(`${visibleWarnings.length} warning${visibleWarnings.length !== 1 ? 's' : ''}`)
   const summary = summaryParts.join(', ') || 'No issues'
 
   const items = activeTab === 'errors' ? errors : visibleWarnings
@@ -21,11 +22,16 @@ export default function ValidationPanel({ errors, warnings }) {
         type="button"
         style={s.header}
         className="ui-collapsible__header"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
         <span style={s.headerTitle}>Validation</span>
-        <span style={{ ...s.summary, color: errors.length ? '#fecaca' : visibleWarnings.length ? '#fde68a' : '#bbf7d0' }}>
+        <span
+          style={{
+            ...s.summary,
+            color: errors.length ? '#fecaca' : visibleWarnings.length ? '#fde68a' : '#bbf7d0',
+          }}
+        >
           {summary}
         </span>
         <span style={{ ...s.chevron, transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
@@ -56,18 +62,19 @@ export default function ValidationPanel({ errors, warnings }) {
 
           <div style={s.body}>
             {count === 0 ? (
-              <p style={s.empty}>
-                No {activeTab === 'errors' ? 'errors' : 'warnings'} found.
-              </p>
+              <p style={s.empty}>No {activeTab === 'errors' ? 'errors' : 'warnings'} found.</p>
             ) : (
               items.map((item, i) => (
-                <div key={`${activeTab}-${i}`} style={activeTab === 'errors' ? s.errorItem : s.warningItem}>
+                <div
+                  key={`${activeTab}-${i}`}
+                  style={activeTab === 'errors' ? s.errorItem : s.warningItem}
+                >
                   <span style={{ flex: 1 }}>{item}</span>
                   {activeTab === 'warnings' && (
                     <button
                       type="button"
                       style={s.ignoreBtn}
-                      onClick={() => setIgnoredWarnings(prev => new Set([...prev, item]))}
+                      onClick={() => setIgnoredWarnings((prev) => new Set([...prev, item]))}
                       title="Ignore this warning until you change task"
                     >
                       Ignore

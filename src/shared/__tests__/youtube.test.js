@@ -7,7 +7,9 @@ describe('extractYouTubeId', () => {
   })
 
   it('parses a standard watch link with extra query params', () => {
-    expect(extractYouTubeId('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s')).toBe('dQw4w9WgXcQ')
+    expect(extractYouTubeId('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s')).toBe(
+      'dQw4w9WgXcQ'
+    )
   })
 
   it('parses an embed link', () => {
@@ -15,7 +17,9 @@ describe('extractYouTubeId', () => {
   })
 
   it('parses a youtube-nocookie embed link', () => {
-    expect(extractYouTubeId('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+    expect(extractYouTubeId('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')).toBe(
+      'dQw4w9WgXcQ'
+    )
   })
 
   it('parses a shorts link', () => {
@@ -52,6 +56,8 @@ describe('isValidRecordingUrl', () => {
 describe('buildYouTubeEmbedSrc', () => {
   it('builds a youtube-nocookie embed URL with the JS API enabled', () => {
     const src = buildYouTubeEmbedSrc('dQw4w9WgXcQ')
-    expect(src).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?enablejsapi=1&rel=0&modestbranding=1')
+    expect(src).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?enablejsapi=1&rel=0&modestbranding=1'
+    )
   })
 })

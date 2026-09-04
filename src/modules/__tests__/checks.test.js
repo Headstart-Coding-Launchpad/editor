@@ -188,25 +188,50 @@ describe('evaluateSingleCheck — output_line_count_at_least', () => {
 
 describe('evaluateSingleCheck — canonical subject/operator checks', () => {
   it('supports canonical output contains checks', () => {
-    expect(evaluateSingleCheck({ type: 'output', operator: 'contains', value: 'hello' }, 'Hello world')).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'output', operator: 'contains', value: 'hello' }, 'Hello world')
+    ).toBe(true)
   })
 
   it('supports canonical output line count comparisons', () => {
-    expect(evaluateSingleCheck({ type: 'output_line_count', operator: 'less_than', value: '4' }, 'a\nb\nc')).toBe(true)
-    expect(evaluateSingleCheck({ type: 'output_line_count', operator: 'greater_than', value: '4' }, 'a\nb\nc')).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'output_line_count', operator: 'less_than', value: '4' },
+        'a\nb\nc'
+      )
+    ).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'output_line_count', operator: 'greater_than', value: '4' },
+        'a\nb\nc'
+      )
+    ).toBe(false)
   })
 
   it('supports JavaScript regex flags on canonical output checks', () => {
-    expect(evaluateSingleCheck({ type: 'output', operator: 'matches_regex', value: '^hello', flags: 'i' }, 'Hello')).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'output', operator: 'matches_regex', value: '^hello', flags: 'i' },
+        'Hello'
+      )
+    ).toBe(true)
   })
 
   it('supports canonical code checks with whitespace normalization', () => {
     const code = 'for\titem  in\nrange(3):\n  print(item)'
-    expect(evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'for item in range(3):' }, '', { code })).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'code', operator: 'contains', value: 'for item in range(3):' },
+        '',
+        { code }
+      )
+    ).toBe(true)
   })
 
   it('does not treat unknown check types as output contains checks', () => {
-    expect(evaluateSingleCheck({ type: 'output_contians', value: 'hello' }, 'hello world')).toBe(false)
+    expect(evaluateSingleCheck({ type: 'output_contians', value: 'hello' }, 'hello world')).toBe(
+      false
+    )
   })
 })
 
@@ -264,11 +289,17 @@ describe('evaluateSingleCheck — code_does_not_contain', () => {
 
 describe('evaluateSingleCheck — code_not_contains', () => {
   it('returns true when code does not contain the value', () => {
-    expect(evaluateSingleCheck({ type: 'code_not_contains', value: 'eval' }, '', { code: 'x = 1' })).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'code_not_contains', value: 'eval' }, '', { code: 'x = 1' })
+    ).toBe(true)
   })
 
   it('returns false when code contains the value', () => {
-    expect(evaluateSingleCheck({ type: 'code_not_contains', value: 'print("hi")' }, '', { code: 'print( "hi" )' })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'code_not_contains', value: 'print("hi")' }, '', {
+        code: 'print( "hi" )',
+      })
+    ).toBe(false)
   })
 
   it('is listed in SUBMIT_ALLOWED', () => {
@@ -505,9 +536,7 @@ describe('filterChecksForInteraction', () => {
 
 describe('getFirstFailedCheckHint', () => {
   it('returns hint from first failed check that has one', () => {
-    const checks = [
-      { type: 'output_contains', value: 'missing', hint: 'Use print' },
-    ]
+    const checks = [{ type: 'output_contains', value: 'missing', hint: 'Use print' }]
     expect(getFirstFailedCheckHint(checks, 'hello')).toBe('Use print')
   })
 
@@ -522,9 +551,15 @@ describe('getFirstFailedCheckHint', () => {
 describe('getIncorrectCheckHint', () => {
   it('returns hint from the first incorrect check that passes', () => {
     const checks = [
-      { type: 'output_contains', value: 'hello', hint: 'You used print — good start but wrong output' },
+      {
+        type: 'output_contains',
+        value: 'hello',
+        hint: 'You used print — good start but wrong output',
+      },
     ]
-    expect(getIncorrectCheckHint(checks, 'hello')).toBe('You used print — good start but wrong output')
+    expect(getIncorrectCheckHint(checks, 'hello')).toBe(
+      'You used print — good start but wrong output'
+    )
   })
 
   it('returns empty string when no incorrect check matches', () => {
@@ -538,8 +573,20 @@ describe('evaluateCheckWithFeedback', () => {
     const task = {
       check: { type: 'output_contains', value: 'done' },
       feedbackChecks: [
-        { type: 'output_contains', value: 'wrong', hint: 'Generic hint', priority: 3, stageOffer: { stageIndex: 0, action: 'preview' } },
-        { type: 'output_contains', value: 'wrong', hint: 'Targeted hint', priority: 1, stageOffer: { stageIndex: 1, action: 'replace' } },
+        {
+          type: 'output_contains',
+          value: 'wrong',
+          hint: 'Generic hint',
+          priority: 3,
+          stageOffer: { stageIndex: 0, action: 'preview' },
+        },
+        {
+          type: 'output_contains',
+          value: 'wrong',
+          hint: 'Targeted hint',
+          priority: 1,
+          stageOffer: { stageIndex: 1, action: 'replace' },
+        },
       ],
     }
 
@@ -550,13 +597,23 @@ describe('evaluateCheckWithFeedback', () => {
   })
 
   it('keeps completion failed while returning targeted feedback for a runtime error', () => {
-    const result = evaluateCheckWithFeedback({
-      check: { type: 'output_contains', value: 'hello' },
-      feedbackChecks: [{
-        type: 'code', operator: 'contains', value: 'print(hello)', hint: 'Put hello in quotes.',
-        stageOffer: { stageIndex: 0, action: 'preview' },
-      }],
-    }, 'NameError: hello', { code: 'print(hello)', status: 'error' }, { completionPassed: false })
+    const result = evaluateCheckWithFeedback(
+      {
+        check: { type: 'output_contains', value: 'hello' },
+        feedbackChecks: [
+          {
+            type: 'code',
+            operator: 'contains',
+            value: 'print(hello)',
+            hint: 'Put hello in quotes.',
+            stageOffer: { stageIndex: 0, action: 'preview' },
+          },
+        ],
+      },
+      'NameError: hello',
+      { code: 'print(hello)', status: 'error' },
+      { completionPassed: false }
+    )
 
     expect(result.passed).toBe(false)
     expect(result.suggestion).toBe('Put hello in quotes.')
@@ -582,7 +639,13 @@ describe('evaluateCheckWithFeedback', () => {
     const task = {
       check: { type: 'output', operator: 'contains', value: 'hello' },
       feedbackChecks: [
-        { type: 'output', operator: 'contains', value: 'hello wrong', mode: 'blocking', hint: 'Remove the extra word.' },
+        {
+          type: 'output',
+          operator: 'contains',
+          value: 'hello wrong',
+          mode: 'blocking',
+          hint: 'Remove the extra word.',
+        },
       ],
     }
 
@@ -640,11 +703,21 @@ describe('evaluateCheckWithFeedback', () => {
       ],
     }
 
-    const afterAttempt = evaluateCheckWithFeedback(task, '', { code: 'print("bad")' }, { completionPassed: true })
-    const onIdle = evaluateCheckWithFeedback(task, '', { code: 'print("bad")' }, {
-      completionPassed: true,
-      feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
-    })
+    const afterAttempt = evaluateCheckWithFeedback(
+      task,
+      '',
+      { code: 'print("bad")' },
+      { completionPassed: true }
+    )
+    const onIdle = evaluateCheckWithFeedback(
+      task,
+      '',
+      { code: 'print("bad")' },
+      {
+        completionPassed: true,
+        feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
+      }
+    )
 
     expect(afterAttempt.suggestion).toBe('Attempt hint')
     expect(onIdle.suggestion).toBe('Idle hint')
@@ -658,18 +731,26 @@ describe('evaluateCheckWithFeedback', () => {
       ],
     }
 
-    const result = evaluateCheckWithFeedback(task, '', { code: 'print("bad")' }, {
-      completionPassed: true,
-      feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
-    })
+    const result = evaluateCheckWithFeedback(
+      task,
+      '',
+      { code: 'print("bad")' },
+      {
+        completionPassed: true,
+        feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
+      }
+    )
 
     expect(result.suggestion).toBe('Pause hint')
   })
 
   it('returns no feedback results for a task without feedback checks', () => {
-    const result = evaluateCheckWithFeedback({
-      check: { type: 'output_contains', value: 'hello' },
-    }, 'hello')
+    const result = evaluateCheckWithFeedback(
+      {
+        check: { type: 'output_contains', value: 'hello' },
+      },
+      'hello'
+    )
 
     expect(result.feedbackResults).toEqual([])
     expect(result.passed).toBe(true)
@@ -679,7 +760,14 @@ describe('evaluateCheckWithFeedback', () => {
     const task = {
       check: { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/done.txt' },
       feedbackChecks: [
-        { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/tmp.txt', show: 'on_idle', hint: 'Use the final filename.' },
+        {
+          type: 'fs_path',
+          operator: 'exists',
+          itemType: 'file',
+          path: '/tmp.txt',
+          show: 'on_idle',
+          hint: 'Use the final filename.',
+        },
       ],
     }
     const fs = {
@@ -687,7 +775,12 @@ describe('evaluateCheckWithFeedback', () => {
       '/tmp.txt': { type: 'file', content: '' },
     }
 
-    const result = evaluateCheckWithFeedback(task, '', { fs }, { feedbackTiming: FEEDBACK_TIMING.ON_IDLE })
+    const result = evaluateCheckWithFeedback(
+      task,
+      '',
+      { fs },
+      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE }
+    )
 
     expect(result.feedbackResults[0].passed).toBe(true)
     expect(result.passed).toBe(false)
@@ -698,7 +791,12 @@ describe('evaluateCheckWithFeedback', () => {
     const task = {
       check: { type: 'circuit_has_component', component: { type: 'battery' } },
       feedbackChecks: [
-        { type: 'circuit_has_component', component: { type: 'led' }, show: 'on_idle', hint: 'Add power before the LED.' },
+        {
+          type: 'circuit_has_component',
+          component: { type: 'led' },
+          show: 'on_idle',
+          hint: 'Add power before the LED.',
+        },
       ],
     }
     const circuit = {
@@ -707,7 +805,12 @@ describe('evaluateCheckWithFeedback', () => {
       controls: {},
     }
 
-    const result = evaluateCheckWithFeedback(task, '', { circuit }, { feedbackTiming: FEEDBACK_TIMING.ON_IDLE })
+    const result = evaluateCheckWithFeedback(
+      task,
+      '',
+      { circuit },
+      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE }
+    )
 
     expect(result.feedbackResults[0].passed).toBe(true)
     expect(result.passed).toBe(false)
@@ -716,25 +819,37 @@ describe('evaluateCheckWithFeedback', () => {
 
   it('evaluates generic code checks against an electronics circuit via context.circuit', () => {
     const circuit = {
-      components: [{
-        id: 'microcontroller1',
-        type: 'microcontroller',
-        pins: ['3V3', 'GND', 'GP0'],
-        props: { code: 'led = Pin("GP0", Pin.OUT)\nled.on()' },
-      }],
+      components: [
+        {
+          id: 'microcontroller1',
+          type: 'microcontroller',
+          pins: ['3V3', 'GND', 'GP0'],
+          props: { code: 'led = Pin("GP0", Pin.OUT)\nled.on()' },
+        },
+      ],
       wires: [],
       controls: {},
     }
 
-    expect(evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'led.on()' }, '', { circuit })).toBe(true)
-    expect(evaluateSingleCheck({ type: 'code_contains', value: 'led.off()' }, '', { circuit })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'led.on()' }, '', {
+        circuit,
+      })
+    ).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'code_contains', value: 'led.off()' }, '', { circuit })
+    ).toBe(false)
 
     const task = { check: { type: 'code_contains', value: 'led.on()' } }
     expect(evaluateCheckWithFeedback(task, '', { circuit }).passed).toBe(true)
 
     // Python/HTML/Arcade lessons never set context.circuit, so their generic
     // `code` checks keep evaluating against context.code directly (unaffected).
-    expect(evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'print(' }, '', { code: 'print("hi")' })).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'code', operator: 'contains', value: 'print(' }, '', {
+        code: 'print("hi")',
+      })
+    ).toBe(true)
   })
 
   it('supports custom feedback evaluators for Scratch checks', () => {
@@ -748,10 +863,10 @@ describe('evaluateCheckWithFeedback', () => {
     const result = evaluateCheckWithCustomFeedback(
       task,
       false,
-      check => check.opcode === 'looks_say',
+      (check) => check.opcode === 'looks_say',
       '',
       {},
-      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE },
+      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE }
     )
 
     expect(result.feedbackResults[0].passed).toBe(true)
@@ -764,19 +879,33 @@ describe('evaluateCheckWithFeedback', () => {
 
 describe('evaluateSingleCheck — DOM checks with null iframeDoc', () => {
   it('element_exists returns false when iframeDoc is null', () => {
-    expect(evaluateSingleCheck({ type: 'element_exists', selector: 'h1' }, '', { iframeDoc: null })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'element_exists', selector: 'h1' }, '', { iframeDoc: null })
+    ).toBe(false)
   })
 
   it('element_count returns false when iframeDoc is null', () => {
-    expect(evaluateSingleCheck({ type: 'element_count', selector: 'p', value: '2' }, '', { iframeDoc: null })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'element_count', selector: 'p', value: '2' }, '', {
+        iframeDoc: null,
+      })
+    ).toBe(false)
   })
 
   it('element_value returns false when iframeDoc is null', () => {
-    expect(evaluateSingleCheck({ type: 'element_value', selector: '#out', value: 'hi' }, '', { iframeDoc: null })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'element_value', selector: '#out', value: 'hi' }, '', {
+        iframeDoc: null,
+      })
+    ).toBe(false)
   })
 
   it('element_value_contains returns false when iframeDoc is null', () => {
-    expect(evaluateSingleCheck({ type: 'element_value_contains', selector: '#out', value: 'hi' }, '', { iframeDoc: null })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'element_value_contains', selector: '#out', value: 'hi' }, '', {
+        iframeDoc: null,
+      })
+    ).toBe(false)
   })
 })
 
@@ -784,31 +913,33 @@ describe('evaluateSingleCheck — DOM checks with null iframeDoc', () => {
 
 describe('evaluateSingleCheck — variable checks', () => {
   it('variable_exists returns false when variables is empty', () => {
-    expect(evaluateSingleCheck({ type: 'variable_exists', name: 'x' }, '', { variables: {} })).toBe(false)
+    expect(evaluateSingleCheck({ type: 'variable_exists', name: 'x' }, '', { variables: {} })).toBe(
+      false
+    )
   })
 
   it('variable_exists returns true when variable is present', () => {
-    expect(evaluateSingleCheck(
-      { type: 'variable_exists', name: 'x' },
-      '',
-      { variables: { x: { json: '"hello"', type: 'str' } } },
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'variable_exists', name: 'x' }, '', {
+        variables: { x: { json: '"hello"', type: 'str' } },
+      })
+    ).toBe(true)
   })
 
   it('variable_equals returns true for matching value', () => {
-    expect(evaluateSingleCheck(
-      { type: 'variable_equals', name: 'x', value: '42' },
-      '',
-      { variables: { x: { json: '42', type: 'int' } } },
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: '42' }, '', {
+        variables: { x: { json: '42', type: 'int' } },
+      })
+    ).toBe(true)
   })
 
   it('variable_equals returns false for mismatched value', () => {
-    expect(evaluateSingleCheck(
-      { type: 'variable_equals', name: 'x', value: '99' },
-      '',
-      { variables: { x: { json: '42', type: 'int' } } },
-    )).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: '99' }, '', {
+        variables: { x: { json: '42', type: 'int' } },
+      })
+    ).toBe(false)
   })
 })
 
@@ -820,51 +951,121 @@ describe('evaluateSingleCheck — variable_type', () => {
   }
 
   it('matches str with alias "string"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'string' }, '', makeVars('x', 'str', '"hi"'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'string' },
+        '',
+        makeVars('x', 'str', '"hi"')
+      )
+    ).toBe(true)
   })
 
   it('matches str with alias "str"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'str' }, '', makeVars('x', 'str', '"hi"'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'str' },
+        '',
+        makeVars('x', 'str', '"hi"')
+      )
+    ).toBe(true)
   })
 
   it('matches int with alias "number"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', makeVars('x', 'int', '5'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'number' },
+        '',
+        makeVars('x', 'int', '5')
+      )
+    ).toBe(true)
   })
 
   it('matches float with alias "number"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', makeVars('x', 'float', '3.14'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'number' },
+        '',
+        makeVars('x', 'float', '3.14')
+      )
+    ).toBe(true)
   })
 
   it('matches int with alias "int"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'int' }, '', makeVars('x', 'int', '5'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'int' },
+        '',
+        makeVars('x', 'int', '5')
+      )
+    ).toBe(true)
   })
 
   it('matches bool with alias "boolean"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'boolean' }, '', makeVars('x', 'bool', 'true'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'boolean' },
+        '',
+        makeVars('x', 'bool', 'true')
+      )
+    ).toBe(true)
   })
 
   it('matches bool with alias "bool"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'bool' }, '', makeVars('x', 'bool', 'true'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'bool' },
+        '',
+        makeVars('x', 'bool', 'true')
+      )
+    ).toBe(true)
   })
 
   it('matches list with alias "array"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'array' }, '', makeVars('x', 'list', '[1,2,3]'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'array' },
+        '',
+        makeVars('x', 'list', '[1,2,3]')
+      )
+    ).toBe(true)
   })
 
   it('matches tuple with alias "array"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'array' }, '', makeVars('x', 'tuple', '[1,2]'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'array' },
+        '',
+        makeVars('x', 'tuple', '[1,2]')
+      )
+    ).toBe(true)
   })
 
   it('matches dict with alias "dictionary"', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'dictionary' }, '', makeVars('x', 'dict', '{"a":1}'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'dictionary' },
+        '',
+        makeVars('x', 'dict', '{"a":1}')
+      )
+    ).toBe(true)
   })
 
   it('returns false when type does not match', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', makeVars('x', 'str', '"5"'))).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_type', name: 'x', value: 'number' },
+        '',
+        makeVars('x', 'str', '"5"')
+      )
+    ).toBe(false)
   })
 
   it('returns false when variable is missing', () => {
-    expect(evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', { variables: {} })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_type', name: 'x', value: 'number' }, '', {
+        variables: {},
+      })
+    ).toBe(false)
   })
 })
 
@@ -876,39 +1077,89 @@ describe('evaluateSingleCheck — variable_equals', () => {
   }
 
   it('matches an integer value', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'score', value: '10' }, '', makeVar('score', 'int', '10'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'score', value: '10' },
+        '',
+        makeVar('score', 'int', '10')
+      )
+    ).toBe(true)
   })
 
   it('does not match a different integer', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'score', value: '10' }, '', makeVar('score', 'int', '99'))).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'score', value: '10' },
+        '',
+        makeVar('score', 'int', '99')
+      )
+    ).toBe(false)
   })
 
   it('matches a float value', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'pi', value: '3.14' }, '', makeVar('pi', 'float', '3.14'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'pi', value: '3.14' },
+        '',
+        makeVar('pi', 'float', '3.14')
+      )
+    ).toBe(true)
   })
 
   it('matches a string value', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'name', value: 'Alice' }, '', makeVar('name', 'str', '"Alice"'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'name', value: 'Alice' },
+        '',
+        makeVar('name', 'str', '"Alice"')
+      )
+    ).toBe(true)
   })
 
   it('matches Python True via literal', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'flag', value: 'True' }, '', makeVar('flag', 'bool', 'true'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'flag', value: 'True' },
+        '',
+        makeVar('flag', 'bool', 'true')
+      )
+    ).toBe(true)
   })
 
   it('matches Python False via literal', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'flag', value: 'False' }, '', makeVar('flag', 'bool', 'false'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'flag', value: 'False' },
+        '',
+        makeVar('flag', 'bool', 'false')
+      )
+    ).toBe(true)
   })
 
   it('matches Python None via literal', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: 'None' }, '', makeVar('x', 'NoneType', 'null'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'x', value: 'None' },
+        '',
+        makeVar('x', 'NoneType', 'null')
+      )
+    ).toBe(true)
   })
 
   it('matches a JSON-encoded list', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'nums', value: '[1, 2, 3]' }, '', makeVar('nums', 'list', '[1,2,3]'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_equals', name: 'nums', value: '[1, 2, 3]' },
+        '',
+        makeVar('nums', 'list', '[1,2,3]')
+      )
+    ).toBe(true)
   })
 
   it('returns false when variable is missing', () => {
-    expect(evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: '5' }, '', { variables: {} })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_equals', name: 'x', value: '5' }, '', { variables: {} })
+    ).toBe(false)
   })
 })
 
@@ -918,15 +1169,31 @@ describe('evaluateSingleCheck — variable_not_equals', () => {
   const makeVar = (name, type, json) => ({ variables: { [name]: { type, json } } })
 
   it('returns true when variable value does not match', () => {
-    expect(evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '0' }, '', makeVar('score', 'int', '10'))).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_not_equals', name: 'score', value: '0' },
+        '',
+        makeVar('score', 'int', '10')
+      )
+    ).toBe(true)
   })
 
   it('returns false when variable value does match', () => {
-    expect(evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '10' }, '', makeVar('score', 'int', '10'))).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_not_equals', name: 'score', value: '10' },
+        '',
+        makeVar('score', 'int', '10')
+      )
+    ).toBe(false)
   })
 
   it('returns false when variable is missing', () => {
-    expect(evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '0' }, '', { variables: {} })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_not_equals', name: 'score', value: '0' }, '', {
+        variables: {},
+      })
+    ).toBe(false)
   })
 })
 
@@ -936,36 +1203,76 @@ describe('evaluateSingleCheck — variable_array_*', () => {
   const ctx = { variables: { items: { type: 'list', json: '[10, 20, 30]' } } }
 
   it('variable_array_contains passes when item is in list', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '20' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '20' }, '', ctx)
+    ).toBe(true)
   })
 
   it('variable_array_contains fails when item is not in list', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '99' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '99' }, '', ctx)
+    ).toBe(false)
   })
 
   it('variable_array_equals passes for exact match', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_equals', name: 'items', value: '[10, 20, 30]' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_array_equals', name: 'items', value: '[10, 20, 30]' },
+        '',
+        ctx
+      )
+    ).toBe(true)
   })
 
   it('variable_array_equals fails when order differs', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_equals', name: 'items', value: '[30, 20, 10]' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_array_equals', name: 'items', value: '[30, 20, 10]' },
+        '',
+        ctx
+      )
+    ).toBe(false)
   })
 
   it('variable_array_nth_item passes for correct index', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_nth_item', name: 'items', index: 1, value: '20' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_array_nth_item', name: 'items', index: 1, value: '20' },
+        '',
+        ctx
+      )
+    ).toBe(true)
   })
 
   it('variable_array_nth_item fails for wrong value at index', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_nth_item', name: 'items', index: 1, value: '99' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_array_nth_item', name: 'items', index: 1, value: '99' },
+        '',
+        ctx
+      )
+    ).toBe(false)
   })
 
   it('variable_array_nth_item fails for out-of-bounds index', () => {
-    expect(evaluateSingleCheck({ type: 'variable_array_nth_item', name: 'items', index: 10, value: '20' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_array_nth_item', name: 'items', index: 10, value: '20' },
+        '',
+        ctx
+      )
+    ).toBe(false)
   })
 
   it('returns false when variable is not a list', () => {
     const nonList = { variables: { items: { type: 'int', json: '5' } } }
-    expect(evaluateSingleCheck({ type: 'variable_array_contains', name: 'items', value: '5' }, '', nonList)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_array_contains', name: 'items', value: '5' },
+        '',
+        nonList
+      )
+    ).toBe(false)
   })
 })
 
@@ -975,40 +1282,78 @@ describe('evaluateSingleCheck — variable_dict_*', () => {
   const ctx = { variables: { data: { type: 'dict', json: '{"name":"Alice","age":30}' } } }
 
   it('variable_dict_contains passes when value exists in dict', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: 'Alice' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: 'Alice' }, '', ctx)
+    ).toBe(true)
   })
 
   it('variable_dict_contains passes when numeric value exists in dict', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: '30' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: '30' }, '', ctx)
+    ).toBe(true)
   })
 
   it('variable_dict_contains fails when value is not in dict', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: 'Bob' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: 'Bob' }, '', ctx)
+    ).toBe(false)
   })
 
   it('variable_dict_equals passes for exact match', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_equals', name: 'data', value: '{"name":"Alice","age":30}' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_dict_equals', name: 'data', value: '{"name":"Alice","age":30}' },
+        '',
+        ctx
+      )
+    ).toBe(true)
   })
 
   it('variable_dict_equals fails when dict differs', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_equals', name: 'data', value: '{"name":"Bob"}' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_dict_equals', name: 'data', value: '{"name":"Bob"}' },
+        '',
+        ctx
+      )
+    ).toBe(false)
   })
 
   it('variable_dict_key_value passes when key has correct value', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_key_value', name: 'data', key: 'name', value: 'Alice' }, '', ctx)).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_dict_key_value', name: 'data', key: 'name', value: 'Alice' },
+        '',
+        ctx
+      )
+    ).toBe(true)
   })
 
   it('variable_dict_key_value fails when key has wrong value', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_key_value', name: 'data', key: 'name', value: 'Bob' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_dict_key_value', name: 'data', key: 'name', value: 'Bob' },
+        '',
+        ctx
+      )
+    ).toBe(false)
   })
 
   it('variable_dict_key_value fails when key is missing', () => {
-    expect(evaluateSingleCheck({ type: 'variable_dict_key_value', name: 'data', key: 'missing', value: 'Alice' }, '', ctx)).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        { type: 'variable_dict_key_value', name: 'data', key: 'missing', value: 'Alice' },
+        '',
+        ctx
+      )
+    ).toBe(false)
   })
 
   it('returns false when variable is not a dict', () => {
     const nonDict = { variables: { data: { type: 'list', json: '[1,2,3]' } } }
-    expect(evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: '1' }, '', nonDict)).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_dict_contains', name: 'data', value: '1' }, '', nonDict)
+    ).toBe(false)
   })
 })
 
@@ -1020,15 +1365,19 @@ describe('evaluateSingleCheck — variable_exists edge cases', () => {
   })
 
   it('returns false when variable name is undefined', () => {
-    expect(evaluateSingleCheck({ type: 'variable_exists' }, '', { variables: { x: { json: '1', type: 'int' } } })).toBe(false)
+    expect(
+      evaluateSingleCheck({ type: 'variable_exists' }, '', {
+        variables: { x: { json: '1', type: 'int' } },
+      })
+    ).toBe(false)
   })
 
   it('returns true for a variable with null json but valid repr', () => {
-    expect(evaluateSingleCheck(
-      { type: 'variable_exists', name: 'x' },
-      '',
-      { variables: { x: { type: 'function', json: null, repr: '<function foo>' } } },
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'variable_exists', name: 'x' }, '', {
+        variables: { x: { type: 'function', json: null, repr: '<function foo>' } },
+      })
+    ).toBe(true)
   })
 })
 
@@ -1047,42 +1396,77 @@ describe('evaluateSingleCheck — element_style_property url() normalisation', (
 
   it('matches when computed url() has CDN prefix but check value uses relative filename', () => {
     const context = makeStyleContext('url("https://cdn.example.com/skiing.jpg")')
-    expect(evaluateSingleCheck(
-      { type: 'element_style_property', selector: '.poster', property: 'background-image', value: "url('skiing.jpg')" },
-      '', context,
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        {
+          type: 'element_style_property',
+          selector: '.poster',
+          property: 'background-image',
+          value: "url('skiing.jpg')",
+        },
+        '',
+        context
+      )
+    ).toBe(true)
   })
 
   it('matches when both sides use the same relative filename', () => {
     const context = makeStyleContext("url('skiing.jpg')")
-    expect(evaluateSingleCheck(
-      { type: 'element_style_property', selector: '.poster', property: 'background-image', value: "url('skiing.jpg')" },
-      '', context,
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        {
+          type: 'element_style_property',
+          selector: '.poster',
+          property: 'background-image',
+          value: "url('skiing.jpg')",
+        },
+        '',
+        context
+      )
+    ).toBe(true)
   })
 
   it('does not match when filenames differ', () => {
     const context = makeStyleContext('url("https://cdn.example.com/skiing.jpg")')
-    expect(evaluateSingleCheck(
-      { type: 'element_style_property', selector: '.poster', property: 'background-image', value: "url('hiking.jpg')" },
-      '', context,
-    )).toBe(false)
+    expect(
+      evaluateSingleCheck(
+        {
+          type: 'element_style_property',
+          selector: '.poster',
+          property: 'background-image',
+          value: "url('hiking.jpg')",
+        },
+        '',
+        context
+      )
+    ).toBe(false)
   })
 
   it('matches url() without quotes', () => {
     const context = makeStyleContext('url(https://cdn.example.com/skiing.jpg)')
-    expect(evaluateSingleCheck(
-      { type: 'element_style_property', selector: '.poster', property: 'background-image', value: 'url(skiing.jpg)' },
-      '', context,
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        {
+          type: 'element_style_property',
+          selector: '.poster',
+          property: 'background-image',
+          value: 'url(skiing.jpg)',
+        },
+        '',
+        context
+      )
+    ).toBe(true)
   })
 
   it('passes presence-only check (no value) when url() property is set', () => {
     const context = makeStyleContext('url("https://cdn.example.com/skiing.jpg")')
-    expect(evaluateSingleCheck(
-      { type: 'element_style_property', selector: '.poster', property: 'background-image' },
-      '', context,
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'element_style_property', selector: '.poster', property: 'background-image' },
+        '',
+        context
+      )
+    ).toBe(true)
   })
 })
 
@@ -1139,15 +1523,27 @@ describe('substituteTestInputs', () => {
   })
 
   it('skips inputs with no name', () => {
-    expect(substituteTestInputs('Hello {username}', [{ name: '', value: 'X' }, { name: 'username', value: 'Bob' }])).toBe('Hello Bob')
+    expect(
+      substituteTestInputs('Hello {username}', [
+        { name: '', value: 'X' },
+        { name: 'username', value: 'Bob' },
+      ])
+    ).toBe('Hello Bob')
   })
 
   it('treats regex metacharacters in input names literally', () => {
-    expect(substituteTestInputs('{user[0]} {a.b}', [{ name: 'user[0]', value: 'Alice' }, { name: 'a.b', value: 'exact' }])).toBe('Alice exact')
+    expect(
+      substituteTestInputs('{user[0]} {a.b}', [
+        { name: 'user[0]', value: 'Alice' },
+        { name: 'a.b', value: 'exact' },
+      ])
+    ).toBe('Alice exact')
   })
 
   it('treats replacement patterns in input values literally', () => {
-    expect(substituteTestInputs('Hello {username}', [{ name: 'username', value: '$& dollars' }])).toBe('Hello $& dollars')
+    expect(
+      substituteTestInputs('Hello {username}', [{ name: 'username', value: '$& dollars' }])
+    ).toBe('Hello $& dollars')
   })
 })
 

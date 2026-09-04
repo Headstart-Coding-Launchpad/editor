@@ -1,6 +1,11 @@
 import React from 'react'
 
-export default function SessionEndedScreen({ savedCodeTaskCount = 0, savedOtherTaskCount = 0, onDownloadAllCode, onContinueSolo }) {
+export default function SessionEndedScreen({
+  savedCodeTaskCount = 0,
+  savedOtherTaskCount = 0,
+  onDownloadAllCode,
+  onContinueSolo,
+}) {
   return (
     <div style={s.centreScreen}>
       <h2 style={s.title}>Session ended</h2>
@@ -9,7 +14,10 @@ export default function SessionEndedScreen({ savedCodeTaskCount = 0, savedOtherT
       </p>
       {savedCodeTaskCount > 0 && (
         <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong> Browser data can be cleared or lost when you change device. Download your {savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`} to keep a copy.
+          <strong>Saved only on this device.</strong> Browser data can be cleared or lost when you
+          change device. Download your{' '}
+          {savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`} to
+          keep a copy.
           <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
             Download all my code
           </button>
@@ -17,10 +25,17 @@ export default function SessionEndedScreen({ savedCodeTaskCount = 0, savedOtherT
       )}
       {savedOtherTaskCount > 0 && (
         <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong> Work in {savedOtherTaskCount === 1 ? 'one other task is' : `${savedOtherTaskCount} other tasks are`} saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost when you change device.
+          <strong>Saved only on this device.</strong> Work in{' '}
+          {savedOtherTaskCount === 1
+            ? 'one other task is'
+            : `${savedOtherTaskCount} other tasks are`}{' '}
+          saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost
+          when you change device.
         </div>
       )}
-      <p style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}>
+      <p
+        style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}
+      >
         Want to keep practising on your own?
       </p>
       <button

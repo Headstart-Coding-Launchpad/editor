@@ -1,7 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, showLibrary = true, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageLayout = 'stacked', onCollapsedChange, highlighted = false }) {
+export default function ExplainerPanel({
+  title,
+  content,
+  collapsible = true,
+  fill = false,
+  markdownTextScale = 1,
+  topicType = null,
+  showLibrary = true,
+  onTopicOpen,
+  onTopicClose,
+  openTopicId,
+  disableCopy = false,
+  imageLayout = 'stacked',
+  onCollapsedChange,
+  highlighted = false,
+}) {
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
@@ -67,14 +82,18 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
         <button
           className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={s.titleBar}
-          onClick={() => setCollapsed(c => !c)}
+          onClick={() => setCollapsed((c) => !c)}
           aria-expanded={!collapsed}
         >
           <h2 style={s.titleText}>{title}</h2>
           <span style={s.toggleIcon}>{collapsed ? '▼' : '▲'}</span>
         </button>
       ) : (
-        title && <div style={s.titleBar}><h2 style={s.titleText}>{title}</h2></div>
+        title && (
+          <div style={s.titleBar}>
+            <h2 style={s.titleText}>{title}</h2>
+          </div>
+        )
       )}
 
       {!isCollapsed && (
@@ -92,11 +111,26 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
             }}
             onScroll={updateScrollState}
           >
-            <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary={showLibrary} onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} imageLayout={imageLayout} />
+            <MarkdownRenderer
+              content={content}
+              textScale={markdownTextScale}
+              topicType={topicType}
+              showLibrary={showLibrary}
+              onTopicOpen={onTopicOpen}
+              onTopicClose={onTopicClose}
+              openTopicId={openTopicId}
+              disableCopy={disableCopy}
+              imageLayout={imageLayout}
+            />
           </div>
           {!expanded && canExpandOverlay && canScroll && !atBottom && (
             <div style={s.showMoreBar}>
-              <button type="button" className="btn-primary" style={s.showMoreBtn} onClick={handleShowMore}>
+              <button
+                type="button"
+                className="btn-primary"
+                style={s.showMoreBtn}
+                onClick={handleShowMore}
+              >
                 show more
               </button>
             </div>
@@ -109,12 +143,27 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
           <div style={s.expandedShell}>
             <div style={s.expandedTitleBar}>
               <h2 style={s.titleText}>{title}</h2>
-              <button type="button" className="btn-primary" style={s.expandedHideBtn} onClick={() => setExpanded(false)}>
+              <button
+                type="button"
+                className="btn-primary"
+                style={s.expandedHideBtn}
+                onClick={() => setExpanded(false)}
+              >
                 hide
               </button>
             </div>
             <div style={s.contentExpanded}>
-              <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary={showLibrary} onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} imageLayout={imageLayout} />
+              <MarkdownRenderer
+                content={content}
+                textScale={markdownTextScale}
+                topicType={topicType}
+                showLibrary={showLibrary}
+                onTopicOpen={onTopicOpen}
+                onTopicClose={onTopicClose}
+                openTopicId={openTopicId}
+                disableCopy={disableCopy}
+                imageLayout={imageLayout}
+              />
             </div>
           </div>
         </>

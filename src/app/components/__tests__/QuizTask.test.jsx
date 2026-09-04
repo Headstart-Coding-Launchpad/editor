@@ -3,7 +3,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
-import { fitScratchQuizScale, OPTION_COLOURS, OPTION_VERDICT_COLOURS, shrinkToFit } from '../quiz/quizUtils'
+import {
+  fitScratchQuizScale,
+  OPTION_COLOURS,
+  OPTION_VERDICT_COLOURS,
+  shrinkToFit,
+} from '../quiz/quizUtils'
 
 const MULTIPLE_CHOICE_TASK = {
   title: 'Pick one',
@@ -30,7 +35,10 @@ const SCRATCH_STACK_MULTIPLE_CHOICE_TASK = {
   taskType: 'quiz',
   quizType: 'multiple_choice',
   options: [
-    { id: 'a', text: '```scratch\nsay [Hello!] for (2) seconds\nsay [Goodbye!] for (2) seconds\n```' },
+    {
+      id: 'a',
+      text: '```scratch\nsay [Hello!] for (2) seconds\nsay [Goodbye!] for (2) seconds\n```',
+    },
     { id: 'b', text: '`scratch:say [Hello!] for (2) seconds`' },
   ],
 }
@@ -41,7 +49,7 @@ const FENCED_CODE_MULTIPLE_CHOICE_TASK = {
   quizType: 'multiple_choice',
   options: [
     { id: 'a', text: '```python\nprint("hi")\n```' },
-    { id: 'b', text: '```python\nprint(\'bye\')\n```' },
+    { id: 'b', text: "```python\nprint('bye')\n```" },
   ],
 }
 
@@ -67,12 +75,8 @@ const FILL_DRAG_TASK = {
   quizType: 'fill_blank',
   mode: 'drag',
   text: 'A ___ repeats code.',
-  blanks: [
-    { id: 'loop', answer: 'loop' },
-  ],
-  distractors: [
-    { id: 'd1', text: 'variable' },
-  ],
+  blanks: [{ id: 'loop', answer: 'loop' }],
+  distractors: [{ id: 'd1', text: 'variable' }],
 }
 
 const FILL_TYPE_TASK = {
@@ -81,9 +85,7 @@ const FILL_TYPE_TASK = {
   quizType: 'fill_blank',
   mode: 'type',
   text: 'Use ___ to print text.',
-  blanks: [
-    { id: 'print', answer: 'print' },
-  ],
+  blanks: [{ id: 'print', answer: 'print' }],
 }
 
 const SHORT_ANSWER_TASK = {
@@ -154,16 +156,26 @@ describe('QuizTask multiple choice', () => {
     const { container } = render(<QuizTask task={MULTILINE_MULTIPLE_CHOICE_TASK} />)
     const codeElements = Array.from(container.querySelectorAll('code'))
 
-    expect(codeElements.map(code => code.textContent)).toEqual(expect.arrayContaining(['sunny\nall week', 'sunny\n all week']))
-    expect(codeElements.map(code => code.style.whiteSpace)).toEqual(expect.arrayContaining(['pre-wrap']))
+    expect(codeElements.map((code) => code.textContent)).toEqual(
+      expect.arrayContaining(['sunny\nall week', 'sunny\n all week'])
+    )
+    expect(codeElements.map((code) => code.style.whiteSpace)).toEqual(
+      expect.arrayContaining(['pre-wrap'])
+    )
   })
 
   it('renders fenced Scratch stacks as block content inside an answer option', () => {
     const { container } = render(<QuizTask task={SCRATCH_STACK_MULTIPLE_CHOICE_TASK} />)
 
     expect(container.querySelector('[data-scratch-stack="true"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-stack="true"] [data-scratch-opcode="looks_sayforsecs"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-quiz-scale="stack"]')).toHaveStyle({ transform: 'scale(1.5)' })
+    expect(
+      container.querySelector(
+        '[data-scratch-stack="true"] [data-scratch-opcode="looks_sayforsecs"]'
+      )
+    ).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-quiz-scale="stack"]')).toHaveStyle({
+      transform: 'scale(1.5)',
+    })
   })
 
   it('enlarges inline Scratch answer blocks without changing ordinary options', () => {
@@ -183,13 +195,15 @@ describe('QuizTask multiple choice', () => {
   })
 
   it('reduces the Scratch quiz scale to fit narrower answer cards', () => {
-    expect(fitScratchQuizScale({
-      preferredScale: 1.5,
-      availableWidth: 300,
-      availableHeight: 200,
-      contentWidth: 400,
-      contentHeight: 100,
-    })).toBeCloseTo(0.73, 2)
+    expect(
+      fitScratchQuizScale({
+        preferredScale: 1.5,
+        availableWidth: 300,
+        availableHeight: 200,
+        contentWidth: 400,
+        contentHeight: 100,
+      })
+    ).toBeCloseTo(0.73, 2)
   })
 
   it('leaves the options scale at 1 when everything already fits', () => {
@@ -207,7 +221,7 @@ describe('QuizTask multiple choice', () => {
     const isOverflowing = vi.fn(() => stillOverflowing)
 
     const scale = shrinkToFit({
-      setScale: value => {
+      setScale: (value) => {
         setScale(value)
         if (value <= 0.9) stillOverflowing = false
       },
@@ -235,8 +249,14 @@ describe('QuizTask multiple choice', () => {
   })
 
   it('shrinks fenced code-block answers along with the rest of the option when answers overflow', () => {
-    const clientHeightDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight')
-    const scrollHeightDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight')
+    const clientHeightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'clientHeight'
+    )
+    const scrollHeightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'scrollHeight'
+    )
     Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 100 })
     Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, value: 400 })
 
@@ -246,9 +266,11 @@ describe('QuizTask multiple choice', () => {
 
       expect(parseFloat(codeBlock.style.fontSize)).toBeLessThan(14 * 1.2)
     } finally {
-      if (clientHeightDescriptor) Object.defineProperty(HTMLElement.prototype, 'clientHeight', clientHeightDescriptor)
+      if (clientHeightDescriptor)
+        Object.defineProperty(HTMLElement.prototype, 'clientHeight', clientHeightDescriptor)
       else delete HTMLElement.prototype.clientHeight
-      if (scrollHeightDescriptor) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollHeightDescriptor)
+      if (scrollHeightDescriptor)
+        Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollHeightDescriptor)
       else delete HTMLElement.prototype.scrollHeight
     }
   })
@@ -257,7 +279,9 @@ describe('QuizTask multiple choice', () => {
     const observed = []
     const originalResizeObserver = globalThis.ResizeObserver
     globalThis.ResizeObserver = class {
-      observe(el) { observed.push(el) }
+      observe(el) {
+        observed.push(el)
+      }
       disconnect() {}
     }
 
@@ -310,7 +334,9 @@ describe('QuizTask drag-and-drop feedback', () => {
   })
 
   it('shows red and green outlines immediately for typed fill-blank answers', () => {
-    const { rerender } = render(<QuizTask task={FILL_TYPE_TASK} selectedAnswer={{ print: 'prin' }} />)
+    const { rerender } = render(
+      <QuizTask task={FILL_TYPE_TASK} selectedAnswer={{ print: 'prin' }} />
+    )
 
     expect(screen.getByPlaceholderText('...')).toHaveStyle({ borderColor: '#dc2626' })
 
@@ -322,9 +348,14 @@ describe('QuizTask drag-and-drop feedback', () => {
 
 describe('QuizTask short answer', () => {
   it('preserves submitted answer line breaks in the rendered answer', () => {
-    render(<QuizTask task={SHORT_ANSWER_TASK} selectedAnswer={'first line\nsecond line'} submitted />)
+    render(
+      <QuizTask task={SHORT_ANSWER_TASK} selectedAnswer={'first line\nsecond line'} submitted />
+    )
 
-    const answer = screen.getByText((_, element) => element?.tagName === 'STRONG' && element.textContent === 'first line\nsecond line')
+    const answer = screen.getByText(
+      (_, element) =>
+        element?.tagName === 'STRONG' && element.textContent === 'first line\nsecond line'
+    )
 
     expect(answer).toHaveStyle({ whiteSpace: 'pre-wrap' })
   })
@@ -353,13 +384,16 @@ describe('QuizTask multiple choice answer colours', () => {
 
   it('gives each option its own colour, and none of them a verdict colour', () => {
     render(<QuizTask task={FOUR_OPTION_TASK} />)
-    const backgrounds = screen.getAllByRole('radio').map(el => el.style.background || el.style.backgroundColor)
+    const backgrounds = screen
+      .getAllByRole('radio')
+      .map((el) => el.style.background || el.style.backgroundColor)
     expect(new Set(backgrounds).size).toBe(4)
-    VERDICT_COLOURS.forEach(verdict => expect(backgrounds).not.toContain(verdict))
+    VERDICT_COLOURS.forEach((verdict) => expect(backgrounds).not.toContain(verdict))
   })
 
   it('renders options in the authored order rather than shuffling them', () => {
-    const letters = () => screen.getAllByRole('radio').map(el => el.textContent.trim()[0].toLowerCase())
+    const letters = () =>
+      screen.getAllByRole('radio').map((el) => el.textContent.trim()[0].toLowerCase())
     const { unmount } = render(<QuizTask task={FOUR_OPTION_TASK} />)
     expect(letters()).toEqual(['a', 'b', 'c', 'd'])
     unmount()
@@ -373,8 +407,10 @@ describe('QuizTask multiple choice answer colours', () => {
       const { unmount } = render(<QuizTask task={FOUR_OPTION_TASK} />)
       const options = screen.getAllByRole('radio')
       await user.click(options[position])
-      const backgrounds = screen.getAllByRole('radio').map(el => el.style.background || el.style.backgroundColor)
-      VERDICT_COLOURS.forEach(verdict => expect(backgrounds).not.toContain(verdict))
+      const backgrounds = screen
+        .getAllByRole('radio')
+        .map((el) => el.style.background || el.style.backgroundColor)
+      VERDICT_COLOURS.forEach((verdict) => expect(backgrounds).not.toContain(verdict))
       unmount()
     }
   })
@@ -382,13 +418,18 @@ describe('QuizTask multiple choice answer colours', () => {
   // The original defect in one assertion: OPTION_COLOURS[1].active was the isWrong red and
   // [3].active the isCorrect green, so a selected card was byte-identical to a judged one.
   it('keeps every option fill, resting and selected, clear of both verdict fills', () => {
-    const verdicts = [OPTION_VERDICT_COLOURS.correct.background, OPTION_VERDICT_COLOURS.wrong.background]
-    OPTION_COLOURS.forEach(colour => {
+    const verdicts = [
+      OPTION_VERDICT_COLOURS.correct.background,
+      OPTION_VERDICT_COLOURS.wrong.background,
+    ]
+    OPTION_COLOURS.forEach((colour) => {
       expect(verdicts).not.toContain(colour.background)
       expect(verdicts).not.toContain(colour.active)
       expect(verdicts).not.toContain(colour.border)
     })
-    expect(OPTION_VERDICT_COLOURS.correct.background).not.toBe(OPTION_VERDICT_COLOURS.wrong.background)
+    expect(OPTION_VERDICT_COLOURS.correct.background).not.toBe(
+      OPTION_VERDICT_COLOURS.wrong.background
+    )
   })
 
   it('reserves the verdict colours for a revealed answer', () => {
@@ -400,10 +441,15 @@ describe('QuizTask multiple choice answer colours', () => {
         disabled
         checkPassed={false}
         showCorrectAnswer
-      />,
+      />
     )
     const byLetter = Object.fromEntries(
-      screen.getAllByRole('radio').map(el => [el.textContent.trim()[0].toLowerCase(), el.style.background || el.style.backgroundColor]),
+      screen
+        .getAllByRole('radio')
+        .map((el) => [
+          el.textContent.trim()[0].toLowerCase(),
+          el.style.background || el.style.backgroundColor,
+        ])
     )
     expect(byLetter.a).toBe('var(--colour-success-edge)')
     expect(byLetter.b).toBe('var(--colour-error-edge)')

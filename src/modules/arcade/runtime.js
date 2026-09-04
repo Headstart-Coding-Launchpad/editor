@@ -9,9 +9,23 @@ function safeJson(value) {
 // This is intentionally a small, browser-native learning API. The game code is
 // isolated in a sandboxed iframe; `game.run()` yields every animation frame, so
 // a Stop action is always just an iframe reset.
-export function buildArcadeIframeSrc({ code = '', assets = [], tilemaps = [], width = 160, height = 120 } = {}) {
-  const assetMap = Object.fromEntries((assets ?? []).filter(asset => asset?.name && asset?.url).map(asset => [asset.name, asset.url]))
-  const tilemapData = Object.fromEntries((tilemaps ?? []).filter(tilemap => tilemap?.name && tilemap?.data).map(tilemap => [tilemap.name, tilemap.data]))
+export function buildArcadeIframeSrc({
+  code = '',
+  assets = [],
+  tilemaps = [],
+  width = 160,
+  height = 120,
+} = {}) {
+  const assetMap = Object.fromEntries(
+    (assets ?? [])
+      .filter((asset) => asset?.name && asset?.url)
+      .map((asset) => [asset.name, asset.url])
+  )
+  const tilemapData = Object.fromEntries(
+    (tilemaps ?? [])
+      .filter((tilemap) => tilemap?.name && tilemap?.data)
+      .map((tilemap) => [tilemap.name, tilemap.data])
+  )
   return `<!doctype html>
 <html><head><meta charset="utf-8"><style>
   html,body{margin:0;width:100%;height:100%;background:#0f172a;display:grid;place-items:center;overflow:hidden}

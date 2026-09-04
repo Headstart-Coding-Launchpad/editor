@@ -8,7 +8,9 @@ vi.mock('../HtmlEditor', () => ({
 }))
 vi.mock('../../../app/components/CollapsibleIframePreview', () => ({
   default: ({ collapsed, onToggle, src }) => (
-    <button onClick={onToggle} data-src={src}>{collapsed ? 'show-preview' : 'hide-preview'}</button>
+    <button onClick={onToggle} data-src={src}>
+      {collapsed ? 'show-preview' : 'hide-preview'}
+    </button>
   ),
 }))
 vi.mock('../iframe', () => ({
@@ -31,16 +33,31 @@ vi.mock('../../../shared/useTypeAssets', () => ({
 }))
 
 const lesson = { id: 'lesson-1', tasks: [], storageAssets: [] }
-const files = [{ name: 'index.html', content: '' }, { name: 'style.css', content: '' }]
+const files = [
+  { name: 'index.html', content: '' },
+  { name: 'style.css', content: '' },
+]
 
 function makeCs(overrides = {}) {
   return {
-    iframeSrc: '', iframeRef: { current: null }, teacherLiveIframeSrc: '',
-    htmlPreviewCollapsed: false, setHtmlPreviewCollapsed: vi.fn(),
-    running: false, handleRun: vi.fn(), handleSubmit: vi.fn(), handleResetCode: vi.fn(),
-    handleFileTabChange: vi.fn(), handleFileChange: vi.fn(), handleEditorSelection: vi.fn(),
-    handleEditorActivity: vi.fn(), teacherHighlights: [], dismissHighlight: vi.fn(),
-    htmlErrorLocation: null, inPersonalSandbox: false, handleHtmlRuntimeError: vi.fn(),
+    iframeSrc: '',
+    iframeRef: { current: null },
+    teacherLiveIframeSrc: '',
+    htmlPreviewCollapsed: false,
+    setHtmlPreviewCollapsed: vi.fn(),
+    running: false,
+    handleRun: vi.fn(),
+    handleSubmit: vi.fn(),
+    handleResetCode: vi.fn(),
+    handleFileTabChange: vi.fn(),
+    handleFileChange: vi.fn(),
+    handleEditorSelection: vi.fn(),
+    handleEditorActivity: vi.fn(),
+    teacherHighlights: [],
+    dismissHighlight: vi.fn(),
+    htmlErrorLocation: null,
+    inPersonalSandbox: false,
+    handleHtmlRuntimeError: vi.fn(),
     readSavedTaskFile: vi.fn(),
     ...overrides,
   }
@@ -121,7 +138,7 @@ describe('HTML StudentWorkspace onVisiblePanesChange reporting (teacher live-sta
 })
 
 describe('HTML StudentWorkspace collapsed preview source (desktop)', () => {
-  it('shows the previous task\'s content, not the current task\'s, while collapsed and viewing a previous task', () => {
+  it("shows the previous task's content, not the current task's, while collapsed and viewing a previous task", () => {
     const cs = makeCs({ htmlPreviewCollapsed: true, iframeSrc: 'CURRENT_TASK_SRC' })
     render(
       <StudentWorkspace
@@ -145,7 +162,7 @@ describe('HTML StudentWorkspace collapsed preview source (desktop)', () => {
     expect(collapsedButton).not.toHaveAttribute('data-src', 'CURRENT_TASK_SRC')
   })
 
-  it('shows the current task\'s content while collapsed and not viewing a previous task', () => {
+  it("shows the current task's content while collapsed and not viewing a previous task", () => {
     const cs = makeCs({ htmlPreviewCollapsed: true, iframeSrc: 'CURRENT_TASK_SRC' })
     render(
       <StudentWorkspace

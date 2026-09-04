@@ -19,7 +19,7 @@ export function useCrossTabPresence(lessonId, anonymousId) {
     if (!lessonId || !anonymousId || typeof BroadcastChannel === 'undefined') return
 
     const channel = new BroadcastChannel(`headstart_presence_${lessonId}_${anonymousId}`)
-    channel.onmessage = event => {
+    channel.onmessage = (event) => {
       if (event.data?.type === 'ping') channel.postMessage({ type: 'pong' })
       if (event.data?.type === 'ping' || event.data?.type === 'pong') setOtherTabOpen(true)
     }

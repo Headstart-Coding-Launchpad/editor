@@ -1,9 +1,19 @@
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, orderBy, query,
-  setDoc, writeBatch,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  setDoc,
+  writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
-import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from './lessonBlocksCodec'
+import {
+  encodeLessonBlocksForFirestore,
+  decodeLessonBlocksFromFirestore,
+} from './lessonBlocksCodec'
 import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
 import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
 
@@ -16,7 +26,7 @@ export async function fetchLessonById(lessonId) {
 
 export async function fetchLessonList() {
   const snap = await getDocs(collection(firestore, 'lessons'))
-  const items = snap.docs.map(d => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
+  const items = snap.docs.map((d) => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
   items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
   return items
 }
@@ -27,9 +37,14 @@ export async function publishLesson(lesson) {
   if (!lesson?.id) throw new Error('Lesson id is required')
   const migrated = migrateLessonLevel(lesson)
   if (migrated.level) {
-    await setDoc(doc(firestore, LEVEL_COLLECTION, migrated.level.id), migrated.level, { merge: true })
+    await setDoc(doc(firestore, LEVEL_COLLECTION, migrated.level.id), migrated.level, {
+      merge: true,
+    })
   }
-  await setDoc(doc(firestore, 'lessons', migrated.lesson.id), encodeLessonBlocksForFirestore(migrated.lesson))
+  await setDoc(
+    doc(firestore, 'lessons', migrated.lesson.id),
+    encodeLessonBlocksForFirestore(migrated.lesson)
+  )
 }
 
 // Permanently persists an edited task list to a published lesson (admin-only,
@@ -52,7 +67,7 @@ export async function deletePublishedLesson(lessonId) {
 export async function fetchClassList() {
   const snap = await getDocs(collection(firestore, CLASS_COLLECTION))
   return snap.docs
-    .map(d => makeClassRecord({ id: d.id, ...d.data() }))
+    .map((d) => makeClassRecord({ id: d.id, ...d.data() }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
@@ -109,8 +124,8 @@ export async function saveSessionReport(lessonId, sessionId, report) {
 export async function fetchSessionReports(lessonId) {
   const q = query(
     collection(firestore, 'lessons', lessonId, 'sessionReports'),
-    orderBy('startedAt', 'desc'),
+    orderBy('startedAt', 'desc')
   )
   const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }

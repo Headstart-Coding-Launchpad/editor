@@ -4,7 +4,13 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
-import { findTaskById, deriveTaskContext, buildStageOptions, getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
+import {
+  findTaskById,
+  deriveTaskContext,
+  buildStageOptions,
+  getCompleteStage,
+  getRevealableStages,
+} from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import HtmlTeacherLiveView from '../../modules/html/TeacherLiveView.jsx'
@@ -30,9 +36,41 @@ function getModuleDisplayState(module, raw) {
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
 
-export default function StudentModal({ student, lesson, session, topics, isLive, isLiveForAll, onGoLive, onGoLiveForAll, onStopLive, onClose, hasPrev, hasNext, onPrev, onNext, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onSendMessage, onSendVideoCallLink, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage, onPushTeacherPaneCommand }) {
+export default function StudentModal({
+  student,
+  lesson,
+  session,
+  topics,
+  isLive,
+  isLiveForAll,
+  onGoLive,
+  onGoLiveForAll,
+  onStopLive,
+  onClose,
+  hasPrev,
+  hasNext,
+  onPrev,
+  onNext,
+  onRemoteReset,
+  onOverrideCheck,
+  onDismissHelp,
+  onSendToTopic,
+  onSendTopicToAll,
+  onSendMessage,
+  onSendVideoCallLink,
+  onRequestTeacherEdit,
+  onPushTeacherLiveCode,
+  onCommitTeacherEdit,
+  onCancelTeacherEdit,
+  onRequestTeacherStage,
+  onClearTeacherStage,
+  onAddHighlight,
+  onRemoveHighlight,
+  onRevealSupportStage,
+  onPushTeacherPaneCommand,
+}) {
   const overlayRef = useRef(null)
-  const iframeRef  = useRef(null)
+  const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
 
@@ -50,6 +88,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const [teacherScratchState, setTeacherScratchState] = useState(null)
   const [declinedNotice, setDeclinedNotice] = useState(false)
   const pushDebounceRef = useRef(null)
+  useEffect(() => () => clearTimeout(pushDebounceRef.current), [])
 
   // Teacher stage-change state machine
   const [stageRequestState, setStageRequestState] = useState('idle') // 'idle' | 'requesting'
@@ -70,23 +109,34 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
         }
         setTeacherEditState('editing')
         setDeclinedNotice(false)
-        onPushTeacherLiveCode?.(student.anonymousId, isHtml
-          ? { files, activeFile: files[0]?.name ?? null }
-          : isArcade
-            ? { code: initialCode, arcadeDesign: student.currentArcadeDesign ?? null, workspace: 'code' }
-            : isElectronics
-              ? { code: initialCode, workspace: 'breadboard' }
-              : { code: initialCode })
+        onPushTeacherLiveCode?.(
+          student.anonymousId,
+          isHtml
+            ? { files, activeFile: files[0]?.name ?? null }
+            : isArcade
+              ? {
+                  code: initialCode,
+                  arcadeDesign: student.currentArcadeDesign ?? null,
+                  workspace: 'code',
+                }
+              : isElectronics
+                ? { code: initialCode, workspace: 'breadboard' }
+                : { code: initialCode }
+        )
       } else if (!student.teacherEditRequestedAt) {
         setTeacherEditState('idle')
         setDeclinedNotice(true)
         setTimeout(() => setDeclinedNotice(false), 4000)
       }
     }
-    if (teacherEditState === 'editing' && !student.teacherEditAcceptedAt && !student.teacherEditRequestedAt) {
+    if (
+      teacherEditState === 'editing' &&
+      !student.teacherEditAcceptedAt &&
+      !student.teacherEditRequestedAt
+    ) {
       setTeacherEditState('idle')
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.teacherEditRequestedAt, student.teacherEditAcceptedAt])
 
   // React to student accepting or declining stage change
@@ -104,7 +154,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
         setTimeout(() => setStageDeclinedNotice(false), 4000)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.teacherStageRequestedAt, student.teacherStageAcceptedAt])
 
   // Clean up edit state when navigating to a different student
@@ -122,7 +172,6 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setShowMessageModal(false)
     setPendingHighlight(null)
     setHighlightNote('')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.anonymousId])
 
   function handleTeacherCodeChange(newCode) {
@@ -142,7 +191,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   }
 
   function handleTeacherFileChange(filename, content) {
-    const nextFiles = teacherFiles.map(file => file.name === filename ? { ...file, content } : file)
+    const nextFiles = teacherFiles.map((file) =>
+      file.name === filename ? { ...file, content } : file
+    )
     setTeacherFiles(nextFiles)
     clearTimeout(pushDebounceRef.current)
     pushDebounceRef.current = setTimeout(() => {
@@ -182,7 +233,10 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
       onCommitTeacherEdit?.(student.anonymousId, { files: teacherFiles })
       setTeacherFiles([])
     } else if (isArcade) {
-      onCommitTeacherEdit?.(student.anonymousId, { code: teacherCode, arcadeDesign: teacherArcadeDesign })
+      onCommitTeacherEdit?.(student.anonymousId, {
+        code: teacherCode,
+        arcadeDesign: teacherArcadeDesign,
+      })
       setTeacherArcadeDesign(null)
     } else {
       onCommitTeacherEdit?.(student.anonymousId, { code: teacherCode })
@@ -239,9 +293,9 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     onAddHighlight?.(student.anonymousId, {
       file: activeFile,
       from: pendingHighlight.from,
-      to:   pendingHighlight.to,
+      to: pendingHighlight.to,
       emoji: highlightEmoji,
-      note:  highlightNote.trim() || null,
+      note: highlightNote.trim() || null,
     })
     setPendingHighlight(null)
     setHighlightNote('')
@@ -259,11 +313,22 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const taskLesson = getEffectiveLessonForTask(lesson, task)
-  const { isPython, isScratch, isFilesystem, isElectronics, isArcade, isHtml, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(taskLesson, task, session)
+  const {
+    isPython,
+    isScratch,
+    isFilesystem,
+    isElectronics,
+    isArcade,
+    isHtml,
+    isQuiz,
+    isInformation,
+    isSessionSandbox,
+  } = deriveTaskContext(taskLesson, task, session)
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
   const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
   const lessonModule = getLessonModule(taskLesson?.type)
-  const ModuleTeacherLiveView = !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
+  const ModuleTeacherLiveView =
+    !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
   // Memoized on the raw code string: `student` is a live RTDB-fed object that
   // updates on every throttled cursor/block-drag tick while a Scratch student is
   // being watched, far more often than currentCode itself changes. Without this,
@@ -272,7 +337,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   // live block-drag mirror's in-progress moveTo() with a stale reload.
   const scratchState = useMemo(
     () => (isScratch ? parseScratchState(student.currentCode) : null),
-    [isScratch, student.currentCode],
+    [isScratch, student.currentCode]
   )
   const spriteState = isScratch ? (student.currentSpriteState ?? null) : null
   const cursorState = isScratch ? (student.currentCursor ?? null) : null
@@ -280,19 +345,32 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const moduleDisplayState = ModuleTeacherLiveView
     ? getModuleDisplayState(lessonModule, student.currentCode)
     : null
-  const iframeSrc = isHtml && !isQuiz && files.length
-    ? getLessonModule('html').runtime.buildPreviewSrc({ files, entryFile: task?.entryFile ?? 'index.html' }, task)
-    : null
+  const iframeSrc =
+    isHtml && !isQuiz && files.length
+      ? getLessonModule('html').runtime.buildPreviewSrc(
+          { files, entryFile: task?.entryFile ?? 'index.html' },
+          task
+        )
+      : null
 
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
-  const activeFileObj = files.find(f => f.name === activeFile) ?? files[0]
+  const activeFileObj = files.find((f) => f.name === activeFile) ?? files[0]
 
   const hasOverride = !!student.checkOverridePushedAt
-  const remoteSelection = !isLive || (!isPython && student.currentSelection?.file !== activeFile)
-    ? null
-    : student.currentSelection
+  const remoteSelection =
+    !isLive || (!isPython && student.currentSelection?.file !== activeFile)
+      ? null
+      : student.currentSelection
 
-  const canHighlight = isLive && !isInformation && !isQuiz && !isCodeArrangeTask && (isPython || isHtml) && !isScratch && !isFilesystem && teacherEditState === 'idle'
+  const canHighlight =
+    isLive &&
+    !isInformation &&
+    !isQuiz &&
+    !isCodeArrangeTask &&
+    (isPython || isHtml) &&
+    !isScratch &&
+    !isFilesystem &&
+    teacherEditState === 'idle'
   const highlightsForActiveFile = useMemo(() => {
     const raw = student.teacherHighlights
     if (!raw) return []
@@ -302,29 +380,46 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   }, [student.teacherHighlights, isPython, activeFile])
 
   useEffect(() => {
-    const liveFile = student.currentActiveFile ?? student.currentSelection?.file ?? student.currentActivity?.file
-    if (!isLive || !liveFile || !files.some(file => file.name === liveFile)) return
+    const liveFile =
+      student.currentActiveFile ?? student.currentSelection?.file ?? student.currentActivity?.file
+    if (!isLive || !liveFile || !files.some((file) => file.name === liveFile)) return
     setActiveFile(liveFile)
-  }, [isLive, student.currentActiveFile, student.currentSelection?.file, student.currentActivity?.file])
+  }, [
+    isLive,
+    student.currentActiveFile,
+    student.currentSelection?.file,
+    student.currentActivity?.file,
+  ])
 
   const stageOptions = buildStageOptions(task, taskLesson?.type)
-  const supportsStageReveal = isPython || isHtml || taskLesson?.type === 'arcade' || taskLesson?.type === 'electronics' || taskLesson?.type === 'scratch'
-  const revealableStages = !isInformation && !isQuiz && supportsStageReveal ? getRevealableStages(task) : []
-  const completeStage = !isInformation && !isQuiz && supportsStageReveal ? getCompleteStage(task) : null
+  const supportsStageReveal =
+    isPython ||
+    isHtml ||
+    taskLesson?.type === 'arcade' ||
+    taskLesson?.type === 'electronics' ||
+    taskLesson?.type === 'scratch'
+  const revealableStages =
+    !isInformation && !isQuiz && supportsStageReveal ? getRevealableStages(task) : []
+  const completeStage =
+    !isInformation && !isQuiz && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
 
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') handleClose() }
+    function onKey(e) {
+      if (e.key === 'Escape') handleClose()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherEditState])
 
   return (
     <div
       ref={overlayRef}
       style={s.overlay}
-      onClick={e => { if (e.target === overlayRef.current) handleClose() }}
+      onClick={(e) => {
+        if (e.target === overlayRef.current) handleClose()
+      }}
       role="dialog"
       aria-modal="true"
     >
@@ -356,14 +451,18 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 Reference opened
               </span>
             )}
-            {student.currentTopicId && (() => {
-              const topic = topics?.find(t => t.id === student.currentTopicId)
-              return (
-                <span style={s.topicBadge} title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}>
-                  📖 {topic?.title ?? student.currentTopicId}
-                </span>
-              )
-            })()}
+            {student.currentTopicId &&
+              (() => {
+                const topic = topics?.find((t) => t.id === student.currentTopicId)
+                return (
+                  <span
+                    style={s.topicBadge}
+                    title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}
+                  >
+                    📖 {topic?.title ?? student.currentTopicId}
+                  </span>
+                )
+              })()}
           </div>
           <div style={s.headerRight}>
             <div style={s.navButtons}>
@@ -388,7 +487,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             {/* Stage reference reveal dropdown */}
             {onRevealSupportStage && revealableStages.length > 0 && (
               <DropdownMenu label="Reveal" buttonClassName="btn-ghost">
-                {close => (
+                {(close) => (
                   <>
                     {revealableStages.map(({ stage, index }) => {
                       const alreadyRevealed = !!revealedSupportStages[index]
@@ -402,7 +501,8 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                             handleRevealSupportStage(index, stage)
                           }}
                         >
-                          {alreadyRevealed ? 'Opened: ' : 'Reveal: '}{stage.label || `Stage ${index + 1}`}
+                          {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
+                          {stage.label || `Stage ${index + 1}`}
                         </button>
                       )
                     })}
@@ -412,7 +512,10 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                         onClick={() => {
                           close()
                           handleRevealSupportStage(completeStage.index, completeStage.stage)
-                          onRemoteReset?.(student.anonymousId, `reveal_stage_${completeStage.index}`)
+                          onRemoteReset?.(
+                            student.anonymousId,
+                            `reveal_stage_${completeStage.index}`
+                          )
                         }}
                       >
                         Reveal solution: {completeStage.stage.label || 'Complete'}
@@ -424,11 +527,18 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             )}
 
             {/* Stage dropdown */}
-            {onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0 && (
-              stageRequestState === 'requesting' ? (
+            {onRemoteReset &&
+              !isInformation &&
+              !isQuiz &&
+              stageOptions.length > 0 &&
+              (stageRequestState === 'requesting' ? (
                 <>
                   <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
-                  <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 10px' }} onClick={handleCancelStage}>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: 13, padding: '5px 10px' }}
+                    onClick={handleCancelStage}
+                  >
                     Cancel
                   </button>
                 </>
@@ -438,8 +548,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                   onRequest={handleRequestStage}
                   declinedNotice={stageDeclinedNotice}
                 />
-              )
-            )}
+              ))}
 
             {/* Override dropdown */}
             {onOverrideCheck && task?.check != null && (
@@ -450,85 +559,139 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
             {onPushTeacherPaneCommand && !isInformation && !isQuiz && (
               <PaneFocusDropdown
                 lessonType={taskLesson?.type}
-                onHighlight={panes => onPushTeacherPaneCommand(student.anonymousId, { mode: 'highlight', panes })}
-                onForce={panes => onPushTeacherPaneCommand(student.anonymousId, { mode: 'force', panes })}
+                onHighlight={(panes) =>
+                  onPushTeacherPaneCommand(student.anonymousId, { mode: 'highlight', panes })
+                }
+                onForce={(panes) =>
+                  onPushTeacherPaneCommand(student.anonymousId, { mode: 'force', panes })
+                }
               />
             )}
 
-
             {/* Active edit states (shown outside More dropdown while in progress) */}
-            {onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz && teacherEditState === 'editing' && (
-              <>
-                <button
-                  className="btn-primary"
-                  style={{ fontSize: 13, padding: '5px 12px', background: '#0f766e', borderColor: '#0f766e' }}
-                  onClick={handleCommitEdit}
-                >
-                  Done Editing
-                </button>
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 13, padding: '5px 10px' }}
-                  onClick={handleCancelEdit}
-                >
-                  Cancel
-                </button>
-              </>
-            )}
-            {onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz && teacherEditState === 'requesting' && (
-              <>
-                <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
-                <button className="btn-ghost" style={{ fontSize: 13, padding: '5px 10px' }} onClick={handleCancelEdit}>
-                  Cancel
-                </button>
-              </>
-            )}
+            {onRequestTeacherEdit &&
+              supportsTeacherEdit &&
+              !isInformation &&
+              !isQuiz &&
+              teacherEditState === 'editing' && (
+                <>
+                  <button
+                    className="btn-primary"
+                    style={{
+                      fontSize: 13,
+                      padding: '5px 12px',
+                      background: '#0f766e',
+                      borderColor: '#0f766e',
+                    }}
+                    onClick={handleCommitEdit}
+                  >
+                    Done Editing
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: 13, padding: '5px 10px' }}
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            {onRequestTeacherEdit &&
+              supportsTeacherEdit &&
+              !isInformation &&
+              !isQuiz &&
+              teacherEditState === 'requesting' && (
+                <>
+                  <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: 13, padding: '5px 10px' }}
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
 
             {/* Declined notice */}
-            {onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz && declinedNotice && (
-              <span style={sEd.declinedNotice}>Student declined</span>
-            )}
+            {onRequestTeacherEdit &&
+              supportsTeacherEdit &&
+              !isInformation &&
+              !isQuiz &&
+              declinedNotice && <span style={sEd.declinedNotice}>Student declined</span>}
 
             {/* More dropdown: topic, message, edit code — grouped when idle */}
-            {teacherEditState === 'idle' && (() => {
-              const hasEdit = !!(onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz)
-              const hasTopic = !!(onSendToTopic && topics?.length > 0)
-              const hasMessage = !!onSendMessage
-              const hasVideoCall = !!onSendVideoCallLink
-              if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall) return null
-              return (
-                <DropdownMenu label="More" buttonClassName="btn-ghost">
-                  {close => (
-                    <>
-                      {hasEdit && (
-                        <button style={sTo.toolBtn} onClick={() => { close(); handleStartEdit() }}>
-                          {isScratch ? '✏ Edit Blocks' : '✏ Edit Code'}
-                        </button>
-                      )}
-                      {hasTopic && (
-                        <button style={sTo.toolBtn} onClick={() => { close(); setShowTopicLibrary(true) }}>
-                          📖 Send Topic
-                        </button>
-                      )}
-                      {hasMessage && (
-                        <button style={sTo.toolBtn} onClick={() => { close(); setShowMessageModal(true) }}>
-                          ✉ Message
-                        </button>
-                      )}
-                      {hasVideoCall && (
-                        <button style={sTo.toolBtn} onClick={() => { close(); onSendVideoCallLink(student.anonymousId) }}>
-                          📹 Send Video Call Link
-                        </button>
-                      )}
-                    </>
-                  )}
-                </DropdownMenu>
-              )
-            })()}
+            {teacherEditState === 'idle' &&
+              (() => {
+                const hasEdit = !!(
+                  onRequestTeacherEdit &&
+                  supportsTeacherEdit &&
+                  !isInformation &&
+                  !isQuiz
+                )
+                const hasTopic = !!(onSendToTopic && topics?.length > 0)
+                const hasMessage = !!onSendMessage
+                const hasVideoCall = !!onSendVideoCallLink
+                if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall) return null
+                return (
+                  <DropdownMenu label="More" buttonClassName="btn-ghost">
+                    {(close) => (
+                      <>
+                        {hasEdit && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              handleStartEdit()
+                            }}
+                          >
+                            {isScratch ? '✏ Edit Blocks' : '✏ Edit Code'}
+                          </button>
+                        )}
+                        {hasTopic && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              setShowTopicLibrary(true)
+                            }}
+                          >
+                            📖 Send Topic
+                          </button>
+                        )}
+                        {hasMessage && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              setShowMessageModal(true)
+                            }}
+                          >
+                            ✉ Message
+                          </button>
+                        )}
+                        {hasVideoCall && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onSendVideoCallLink(student.anonymousId)
+                            }}
+                          >
+                            📹 Send Video Call Link
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </DropdownMenu>
+                )
+              })()}
 
             {/* Go Live for All / Stop Live */}
-            {!isInformation && !isQuiz && teacherEditState === 'idle' && (
-              isLiveForAll ? (
+            {!isInformation &&
+              !isQuiz &&
+              teacherEditState === 'idle' &&
+              (isLiveForAll ? (
                 <button
                   className="btn-danger"
                   style={{ fontSize: 13, padding: '5px 14px' }}
@@ -544,8 +707,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
                 >
                   Go Live for All
                 </button>
-              )
-            )}
+              ))}
           </div>
           <button
             className="btn-ghost"
@@ -558,7 +720,23 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
         </div>
 
         {/* Content */}
-        <div style={isInformation ? s.bodyInformation : (isQuiz && !isSessionSandbox) ? s.bodyQuiz : isCodeArrangeTask ? s.bodyCodeArrange : isPython ? s.bodyPython : isScratch ? s.bodyScratch : ModuleTeacherLiveView ? s.bodyFilesystem : s.bodyHtml}>
+        <div
+          style={
+            isInformation
+              ? s.bodyInformation
+              : isQuiz && !isSessionSandbox
+                ? s.bodyQuiz
+                : isCodeArrangeTask
+                  ? s.bodyCodeArrange
+                  : isPython
+                    ? s.bodyPython
+                    : isScratch
+                      ? s.bodyScratch
+                      : ModuleTeacherLiveView
+                        ? s.bodyFilesystem
+                        : s.bodyHtml
+          }
+        >
           {teacherEditState === 'editing' && isScratch ? (
             <ScratchWorkspace
               key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
@@ -658,14 +836,18 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
           )}
           onClose={() => setShowTopicLibrary(false)}
           studentName={student.displayName}
-          onSendToStudent={topicId => {
+          onSendToStudent={(topicId) => {
             onSendToTopic?.(student.anonymousId, topicId)
             setShowTopicLibrary(false)
           }}
-          onSendToAll={onSendTopicToAll ? topicId => {
-            onSendTopicToAll(topicId)
-            setShowTopicLibrary(false)
-          } : undefined}
+          onSendToAll={
+            onSendTopicToAll
+              ? (topicId) => {
+                  onSendTopicToAll(topicId)
+                  setShowTopicLibrary(false)
+                }
+              : undefined
+          }
         />
       )}
 
@@ -712,7 +894,14 @@ const s = {
     flexShrink: 0,
     gap: 8,
   },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 0', flexWrap: 'wrap' },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+    flex: '1 1 0',
+    flexWrap: 'wrap',
+  },
   headerRight: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap' },
   closeBtnHeader: { flexShrink: 0, fontSize: 13, padding: '5px 10px' },
   navButtons: {

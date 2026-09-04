@@ -2,7 +2,14 @@ import React, { useEffect, useRef, useState } from 'react'
 import { addDoc, collection } from 'firebase/firestore'
 import { firestore } from '../../shared/firebase'
 
-export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTaskId, currentTaskTitle, teacherEmail, onClose }) {
+export default function TeacherFeedbackModal({
+  lessonId,
+  lessonTitle,
+  currentTaskId,
+  currentTaskTitle,
+  teacherEmail,
+  onClose,
+}) {
   const overlayRef = useRef(null)
   const [activeTab, setActiveTab] = useState('lesson')
   const [lessonText, setLessonText] = useState('')
@@ -10,9 +17,12 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   const [platformText, setPlatformText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(null) // null | 'lesson' | 'task' | 'platform'
+  const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose?.() }
+    function onKey(e) {
+      if (e.key === 'Escape') onClose?.()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
@@ -20,19 +30,22 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   async function handleSubmitLesson() {
     if (!lessonText.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), {
         lessonId,
-        lessonTitle:  lessonTitle ?? '',
-        taskId:       null,
-        taskTitle:    null,
-        text:         lessonText.trim(),
+        lessonTitle: lessonTitle ?? '',
+        taskId: null,
+        taskTitle: null,
+        text: lessonText.trim(),
         teacherEmail: teacherEmail ?? '',
-        submittedAt:  Date.now(),
+        submittedAt: Date.now(),
       })
       setLessonText('')
       setSubmitted('lesson')
       setTimeout(() => setSubmitted(null), 2500)
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit feedback.')
     } finally {
       setSubmitting(false)
     }
@@ -41,19 +54,22 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   async function handleSubmitTask() {
     if (!taskText.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), {
         lessonId,
-        lessonTitle:  lessonTitle ?? '',
-        taskId:       currentTaskId ?? null,
-        taskTitle:    currentTaskTitle ?? null,
-        text:         taskText.trim(),
+        lessonTitle: lessonTitle ?? '',
+        taskId: currentTaskId ?? null,
+        taskTitle: currentTaskTitle ?? null,
+        text: taskText.trim(),
         teacherEmail: teacherEmail ?? '',
-        submittedAt:  Date.now(),
+        submittedAt: Date.now(),
       })
       setTaskText('')
       setSubmitted('task')
       setTimeout(() => setSubmitted(null), 2500)
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit feedback.')
     } finally {
       setSubmitting(false)
     }
@@ -62,19 +78,22 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   async function handleSubmitPlatform() {
     if (!platformText.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await addDoc(collection(firestore, 'platformFeedback'), {
-        lessonId:     lessonId ?? null,
-        lessonTitle:  lessonTitle ?? null,
-        taskId:       currentTaskId ?? null,
-        taskTitle:    currentTaskTitle ?? null,
-        text:         platformText.trim(),
+        lessonId: lessonId ?? null,
+        lessonTitle: lessonTitle ?? null,
+        taskId: currentTaskId ?? null,
+        taskTitle: currentTaskTitle ?? null,
+        text: platformText.trim(),
         teacherEmail: teacherEmail ?? '',
-        submittedAt:  Date.now(),
+        submittedAt: Date.now(),
       })
       setPlatformText('')
       setSubmitted('platform')
       setTimeout(() => setSubmitted(null), 2500)
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit feedback.')
     } finally {
       setSubmitting(false)
     }
@@ -84,7 +103,9 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
     <div
       ref={overlayRef}
       style={s.overlay}
-      onClick={e => { if (e.target === overlayRef.current) onClose?.() }}
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onClose?.()
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Submit feedback"
@@ -92,42 +113,67 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
       <div style={s.modal}>
         <div style={s.header}>
           <span style={s.title}>Feedback</span>
-          <button className="btn-ghost" style={s.closeBtn} onClick={onClose} aria-label="Close">✕</button>
+          <button className="btn-ghost" style={s.closeBtn} onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </div>
 
         <div style={s.tabs}>
           <button
             style={{ ...s.tab, ...(activeTab === 'lesson' ? s.tabActive : {}) }}
-            onClick={() => setActiveTab('lesson')}
-          >Lesson Feedback</button>
+            onClick={() => {
+              setActiveTab('lesson')
+              setSubmitError(null)
+            }}
+          >
+            Lesson Feedback
+          </button>
           {currentTaskTitle && (
             <button
               style={{ ...s.tab, ...(activeTab === 'task' ? s.tabActive : {}) }}
-              onClick={() => setActiveTab('task')}
-            >Task Feedback</button>
+              onClick={() => {
+                setActiveTab('task')
+                setSubmitError(null)
+              }}
+            >
+              Task Feedback
+            </button>
           )}
           <button
             style={{ ...s.tab, ...(activeTab === 'platform' ? s.tabActive : {}) }}
-            onClick={() => setActiveTab('platform')}
-          >Platform Feedback</button>
+            onClick={() => {
+              setActiveTab('platform')
+              setSubmitError(null)
+            }}
+          >
+            Platform Feedback
+          </button>
         </div>
 
         <div style={s.body}>
           {activeTab === 'lesson' ? (
             <>
-              <p style={s.context}><strong>{lessonTitle}</strong></p>
-              <p style={s.hint}>Feedback about the lesson as a whole — saved with the lesson and visible in the builder.</p>
+              <p style={s.context}>
+                <strong>{lessonTitle}</strong>
+              </p>
+              <p style={s.hint}>
+                Feedback about the lesson as a whole — saved with the lesson and visible in the
+                builder.
+              </p>
               <textarea
                 style={s.textarea}
                 placeholder="What worked well? What could be improved? Any general issues with the lesson?"
                 value={lessonText}
-                onChange={e => setLessonText(e.target.value)}
+                onChange={(e) => setLessonText(e.target.value)}
                 rows={6}
                 autoFocus
               />
               {submitted === 'lesson' && <p style={s.successMsg}>Submitted!</p>}
+              {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
-                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
+                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>
+                  Cancel
+                </button>
                 <button
                   className="btn-primary"
                   style={s.submitBtn}
@@ -141,20 +187,26 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
           ) : activeTab === 'task' ? (
             <>
               <p style={s.context}>
-                <strong>{lessonTitle}</strong>{currentTaskTitle ? ` — Task: ${currentTaskTitle}` : ''}
+                <strong>{lessonTitle}</strong>
+                {currentTaskTitle ? ` — Task: ${currentTaskTitle}` : ''}
               </p>
-              <p style={s.hint}>Feedback specific to this task — saved with the task and visible in the builder.</p>
+              <p style={s.hint}>
+                Feedback specific to this task — saved with the task and visible in the builder.
+              </p>
               <textarea
                 style={s.textarea}
                 placeholder="What worked well? What could be improved? Any issues with this task?"
                 value={taskText}
-                onChange={e => setTaskText(e.target.value)}
+                onChange={(e) => setTaskText(e.target.value)}
                 rows={6}
                 autoFocus={activeTab === 'task'}
               />
               {submitted === 'task' && <p style={s.successMsg}>Submitted!</p>}
+              {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
-                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
+                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>
+                  Cancel
+                </button>
                 <button
                   className="btn-primary"
                   style={s.submitBtn}
@@ -169,19 +221,25 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
             <>
               <p style={s.hint}>Feedback about the platform itself — visible only to admins.</p>
               {currentTaskTitle && (
-                <p style={s.context}>Context: <strong>{lessonTitle}</strong> — Task: <strong>{currentTaskTitle}</strong></p>
+                <p style={s.context}>
+                  Context: <strong>{lessonTitle}</strong> — Task:{' '}
+                  <strong>{currentTaskTitle}</strong>
+                </p>
               )}
               <textarea
                 style={s.textarea}
                 placeholder="Report a bug, suggest a feature, or share any other platform feedback…"
                 value={platformText}
-                onChange={e => setPlatformText(e.target.value)}
+                onChange={(e) => setPlatformText(e.target.value)}
                 rows={6}
                 autoFocus={activeTab === 'platform'}
               />
               {submitted === 'platform' && <p style={s.successMsg}>Submitted!</p>}
+              {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
-                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
+                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>
+                  Cancel
+                </button>
                 <button
                   className="btn-primary"
                   style={s.submitBtn}
@@ -305,6 +363,13 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.85rem',
     color: '#16a34a',
+    fontWeight: 600,
+    margin: 0,
+  },
+  errorMsg: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    color: '#dc2626',
     fontWeight: 600,
     margin: 0,
   },

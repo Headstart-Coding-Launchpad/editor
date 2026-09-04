@@ -2,7 +2,13 @@
 // (only the built-in URL parser) so it can be imported from both Vite/browser code and
 // the plain-Node CLI validator.
 
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com'])
+const YOUTUBE_HOSTS = new Set([
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+  'youtube-nocookie.com',
+  'www.youtube-nocookie.com',
+])
 const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/
 
 export function extractYouTubeId(url) {

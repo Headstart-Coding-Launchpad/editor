@@ -56,7 +56,7 @@ export default function OutputPanel({
     if (displayedOutput === output) return
 
     const timer = setTimeout(() => {
-      setDisplayedOutput(prev => {
+      setDisplayedOutput((prev) => {
         if (prev === output) return prev
 
         let current = prev
@@ -103,8 +103,10 @@ export default function OutputPanel({
     setInputValue('')
   }
 
-  const statusColour = runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
-  const statusLabel = runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
+  const statusColour =
+    runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
+  const statusLabel =
+    runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
   const showCursor = running || (output && displayedOutput !== output)
   return (
     <div
@@ -123,18 +125,17 @@ export default function OutputPanel({
           cursor: collapsible ? 'pointer' : 'default',
           userSelect: 'none',
         }}
-        onClick={collapsible ? () => setIsCollapsed(prev => !prev) : undefined}
+        onClick={collapsible ? () => setIsCollapsed((prev) => !prev) : undefined}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
           {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
           <span style={s.headerLabel}>{title}</span>
-          {collapsible && (
-            <span style={s.toggleIcon}>
-              {isCollapsed ? 'Show' : 'Hide'}
-            </span>
-          )}
+          {collapsible && <span style={s.toggleIcon}>{isCollapsed ? 'Show' : 'Hide'}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <span style={{ ...s.statusDot, background: statusColour }} />
           <span style={s.statusLabel}>{statusLabel}</span>
           {rightActions && <div style={s.trailingActions}>{rightActions}</div>}
@@ -143,7 +144,9 @@ export default function OutputPanel({
 
       {!contentCollapsed && (
         <pre ref={preRef} style={s.pre}>
-          {displayedOutput || <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>}
+          {displayedOutput || (
+            <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>
+          )}
           {showCursor && <span className="terminal-cursor" />}
 
           {inputPrompt !== null && (
@@ -153,7 +156,7 @@ export default function OutputPanel({
                 ref={inputRef}
                 style={s.input}
                 value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
+                onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Type your input and press Enter"
                 autoFocus
               />

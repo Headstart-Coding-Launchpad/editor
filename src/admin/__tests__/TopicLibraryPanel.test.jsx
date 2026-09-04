@@ -8,11 +8,11 @@ import { setDoc, deleteDoc } from 'firebase/firestore'
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, name) => ({ __collection: name })),
   onSnapshot: vi.fn(() => vi.fn()),
-  setDoc:     vi.fn(() => Promise.resolve()),
-  deleteDoc:  vi.fn(() => Promise.resolve()),
-  doc:        vi.fn((_db, col, id) => ({ __collection: col, __id: id })),
+  setDoc: vi.fn(() => Promise.resolve()),
+  deleteDoc: vi.fn(() => Promise.resolve()),
+  doc: vi.fn((_db, col, id) => ({ __collection: col, __id: id })),
   writeBatch: vi.fn(() => ({
-    set:    vi.fn(),
+    set: vi.fn(),
     delete: vi.fn(),
     commit: vi.fn(() => Promise.resolve()),
   })),
@@ -25,13 +25,14 @@ vi.mock('../../shared/firebase', () => ({
 }))
 
 vi.mock('../../shared/topicLibrary', () => ({
-  normalizeTopicLibrary: (raw) => (Array.isArray(raw) ? raw.filter(t => t.id && t.title) : []),
+  normalizeTopicLibrary: (raw) => (Array.isArray(raw) ? raw.filter((t) => t.id && t.title) : []),
   searchTopics: (topics, query) => {
     if (!query) return topics
     const q = query.toLowerCase()
-    return topics.filter(t =>
-      t.title?.toLowerCase().includes(q) ||
-      (t.aliases ?? []).some(a => a?.toLowerCase().includes(q)),
+    return topics.filter(
+      (t) =>
+        t.title?.toLowerCase().includes(q) ||
+        (t.aliases ?? []).some((a) => a?.toLowerCase().includes(q))
     )
   },
   clearTopicCache: vi.fn(),
@@ -43,7 +44,7 @@ vi.mock('../../shared/MarkdownFieldEditor', () => ({
       data-testid="md-editor"
       value={value ?? ''}
       placeholder={placeholder}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
     />
   ),
 }))
@@ -55,13 +56,33 @@ let snapshotCallback = null
 function fireTopics(topics) {
   act(() => {
     snapshotCallback?.({
-      docs: topics.map(t => ({ id: t.id, data: () => t })),
+      docs: topics.map((t) => ({ id: t.id, data: () => t })),
     })
   })
 }
 
-const TOPIC_A = { id: 'for-loop', title: 'For loops', category: 'Loop', types: [], aliases: ['for loop'], related: [], summary: '', description: '', syntax: '' }
-const TOPIC_B = { id: 'variable', title: 'Variables', category: 'Concept', types: [], aliases: [], related: [], summary: '', description: '', syntax: '' }
+const TOPIC_A = {
+  id: 'for-loop',
+  title: 'For loops',
+  category: 'Loop',
+  types: [],
+  aliases: ['for loop'],
+  related: [],
+  summary: '',
+  description: '',
+  syntax: '',
+}
+const TOPIC_B = {
+  id: 'variable',
+  title: 'Variables',
+  category: 'Concept',
+  types: [],
+  aliases: [],
+  related: [],
+  summary: '',
+  description: '',
+  syntax: '',
+}
 
 describe('TopicLibraryPanel', () => {
   beforeEach(() => {
@@ -130,7 +151,7 @@ describe('TopicLibraryPanel', () => {
 
     expect(setDoc).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ id: 'test-topic', title: 'Test Topic' }),
+      expect.objectContaining({ id: 'test-topic', title: 'Test Topic' })
     )
   })
 

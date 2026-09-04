@@ -9,10 +9,25 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../../../shared/useIsMobile', () => ({ useIsMobile: () => false }))
-vi.mock('../../components/TopBar', () => ({ default: ({ lessonTitle, right }) => <div>{lessonTitle}{right}</div> }))
-vi.mock('../../components/OutputPanel', () => ({ default: ({ output, runStatus }) => <div>{output} {runStatus}</div> }))
+vi.mock('../../components/TopBar', () => ({
+  default: ({ lessonTitle, right }) => (
+    <div>
+      {lessonTitle}
+      {right}
+    </div>
+  ),
+}))
+vi.mock('../../components/OutputPanel', () => ({
+  default: ({ output, runStatus }) => (
+    <div>
+      {output} {runStatus}
+    </div>
+  ),
+}))
 vi.mock('../../../modules/python/PythonEditor', () => ({
-  default: ({ code, onChange }) => <textarea aria-label="Python code" value={code} onChange={e => onChange(e.target.value)} />,
+  default: ({ code, onChange }) => (
+    <textarea aria-label="Python code" value={code} onChange={(e) => onChange(e.target.value)} />
+  ),
 }))
 vi.mock('../../../modules/python/pyodide', () => ({
   initPyodide: vi.fn(() => Promise.resolve()),
@@ -35,7 +50,9 @@ const codeFile = {
 function renderWorkspace() {
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/code', state: { codeFile } }]}>
-      <Routes><Route path="/code" element={<CodeFileWorkspace />} /></Routes>
+      <Routes>
+        <Route path="/code" element={<CodeFileWorkspace />} />
+      </Routes>
     </MemoryRouter>
   )
 }

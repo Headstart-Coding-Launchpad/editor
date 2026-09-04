@@ -14,14 +14,14 @@ test.describe('Builder — initial load', () => {
     await page.goto('builder/', { timeout: 30000 })
 
     // The builder brand text is rendered in the card header
-    await expect(
-      page.getByText('Headstart Coding - LaunchPad | Lesson Builder')
-    ).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Headstart Coding - LaunchPad | Lesson Builder')).toBeVisible({
+      timeout: 10000,
+    })
 
     // The "Choose a lesson type" heading appears in LessonTypeChooser
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({
+      timeout: 5000,
+    })
 
     // All three lesson-type buttons should be visible
     // NOTE: button text comes from the <span style={s.choiceName}> children.
@@ -30,10 +30,14 @@ test.describe('Builder — initial load', () => {
     await expect(page.getByText('Scratch')).toBeVisible({ timeout: 5000 })
 
     // Upload existing JSON button
-    await expect(page.getByRole('button', { name: 'Upload existing JSON' })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: 'Upload existing JSON' })).toBeVisible({
+      timeout: 5000,
+    })
   })
 
-  test('restore prompt appears when in-progress lesson exists in localStorage', async ({ page }) => {
+  test('restore prompt appears when in-progress lesson exists in localStorage', async ({
+    page,
+  }) => {
     // Seed localStorage with a plausible in-progress lesson before navigating
     await page.goto('builder/', { timeout: 30000 })
     await page.evaluate(() => {
@@ -45,7 +49,9 @@ test.describe('Builder — initial load', () => {
     await page.reload({ timeout: 30000 })
 
     // The restore-prompt card should appear
-    await expect(page.getByText(/You have an unsaved lesson in progress/)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/You have an unsaved lesson in progress/)).toBeVisible({
+      timeout: 10000,
+    })
     await expect(page.getByRole('button', { name: 'Restore' })).toBeVisible({ timeout: 5000 })
     await expect(page.getByRole('button', { name: 'Start fresh' })).toBeVisible({ timeout: 5000 })
   })
@@ -64,9 +70,9 @@ test.describe('Builder — initial load', () => {
     await page.getByRole('button', { name: 'Start fresh' }).click()
 
     // After dismissing the restore prompt the type-chooser should appear
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('clicking Restore from restore prompt opens the builder view', async ({ page }) => {
@@ -83,9 +89,9 @@ test.describe('Builder — initial load', () => {
     await page.getByRole('button', { name: 'Restore' }).click()
 
     // BuilderView should now be visible — the type-chooser heading should be gone.
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).not.toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).not.toBeVisible({
+      timeout: 5000,
+    })
 
     // The metadata panel "Lesson Details" header should be visible.
     // NOTE: update the selector if LessonMetaPanel markup changes.
@@ -101,11 +107,16 @@ test.describe('Builder — creating a new lesson', () => {
   test('choosing Python opens the builder view', async ({ page }) => {
     await page.goto('builder/', { timeout: 30000 })
 
-    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({
+      timeout: 10000,
+    })
 
     // Click the Python button
     // The button text contains "Python" in a child span — use the button that contains "Python"
-    await page.getByRole('button', { name: /Python/ }).first().click()
+    await page
+      .getByRole('button', { name: /Python/ })
+      .first()
+      .click()
 
     // BuilderView renders with a "New Lesson" or "New Task" button, or a metadata panel.
     // The brand bar or a task-list panel should appear.
@@ -113,33 +124,40 @@ test.describe('Builder — creating a new lesson', () => {
     // NOTE: if the BuilderView initial state changes (e.g. it auto-adds a blank task), update assertions.
     //
     // The simplest stable signal: the lesson-type chooser heading is GONE.
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).not.toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).not.toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('choosing Web opens the builder view', async ({ page }) => {
     await page.goto('builder/', { timeout: 30000 })
 
-    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({
+      timeout: 10000,
+    })
 
     await page.getByRole('button', { name: /Web/ }).first().click()
 
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).not.toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).not.toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('choosing Scratch opens the builder view', async ({ page }) => {
     await page.goto('builder/', { timeout: 30000 })
 
-    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({
+      timeout: 10000,
+    })
 
-    await page.getByRole('button', { name: /Scratch/ }).first().click()
+    await page
+      .getByRole('button', { name: /Scratch/ })
+      .first()
+      .click()
 
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).not.toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).not.toBeVisible({
+      timeout: 5000,
+    })
   })
 })
 
@@ -148,12 +166,17 @@ test.describe('Builder — Python lesson metadata', () => {
     await page.evaluate(() => localStorage.clear())
     await page.goto('builder/', { timeout: 30000 })
     // Choose Python to enter the builder
-    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({ timeout: 10000 })
-    await page.getByRole('button', { name: /Python/ }).first().click()
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).toBeVisible({
+      timeout: 10000,
+    })
+    await page
+      .getByRole('button', { name: /Python/ })
+      .first()
+      .click()
     // Wait for builder to render
-    await expect(
-      page.getByRole('heading', { name: 'Choose a lesson type' })
-    ).not.toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Choose a lesson type' })).not.toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('builder view contains a lesson-ID input field', async ({ page }) => {

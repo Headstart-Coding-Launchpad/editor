@@ -45,12 +45,18 @@ const SUBJECT_OPTIONS = [
 ]
 
 function uiFromCheck(check) {
-  if (check.type === 'circuit_has_component') return { subject: 'part', aspect: 'presence', operator: 'exists' }
-  if (check.type === 'circuit_component_powered') return { subject: 'part', aspect: 'power', operator: 'powered' }
-  if (check.type === 'circuit_component_unpowered') return { subject: 'part', aspect: 'power', operator: 'unpowered' }
-  if (check.type === 'circuit_control_affects_power') return { subject: 'control', aspect: 'effect', operator: 'affects_power' }
-  if (check.type === 'circuit_path_exists') return { subject: 'connection', aspect: 'path', operator: 'exists' }
-  if (check.type === 'circuit_path_includes') return { subject: 'connection', aspect: 'path', operator: 'includes' }
+  if (check.type === 'circuit_has_component')
+    return { subject: 'part', aspect: 'presence', operator: 'exists' }
+  if (check.type === 'circuit_component_powered')
+    return { subject: 'part', aspect: 'power', operator: 'powered' }
+  if (check.type === 'circuit_component_unpowered')
+    return { subject: 'part', aspect: 'power', operator: 'unpowered' }
+  if (check.type === 'circuit_control_affects_power')
+    return { subject: 'control', aspect: 'effect', operator: 'affects_power' }
+  if (check.type === 'circuit_path_exists')
+    return { subject: 'connection', aspect: 'path', operator: 'exists' }
+  if (check.type === 'circuit_path_includes')
+    return { subject: 'connection', aspect: 'path', operator: 'includes' }
   if (CODE_CHECK_TYPES.includes(check.type)) {
     const { operator } = subjectOpFromCheck(check)
     return { subject: 'code', aspect: 'source', operator }
@@ -59,10 +65,11 @@ function uiFromCheck(check) {
 }
 
 function aspectOptions(subject) {
-  if (subject === 'part') return [
-    { value: 'presence', label: 'Presence' },
-    { value: 'power', label: 'Power' },
-  ]
+  if (subject === 'part')
+    return [
+      { value: 'presence', label: 'Presence' },
+      { value: 'power', label: 'Power' },
+    ]
   if (subject === 'control') return [{ value: 'effect', label: 'Effect' }]
   if (subject === 'connection') return [{ value: 'path', label: 'Path' }]
   if (subject === 'code') return getAspectOptions('code')
@@ -83,16 +90,18 @@ function defaultOperator(subject, aspect) {
 }
 
 function operatorOptions(subject, aspect) {
-  if (subject === 'part' && aspect === 'power') return [
-    { value: 'powered', label: 'is powered' },
-    { value: 'unpowered', label: 'is not powered' },
-  ]
+  if (subject === 'part' && aspect === 'power')
+    return [
+      { value: 'powered', label: 'is powered' },
+      { value: 'unpowered', label: 'is not powered' },
+    ]
   if (subject === 'part') return [{ value: 'exists', label: 'exists' }]
   if (subject === 'control') return [{ value: 'affects_power', label: 'turns part on/off' }]
-  if (subject === 'connection') return [
-    { value: 'exists', label: 'path exists' },
-    { value: 'includes', label: 'path includes part' },
-  ]
+  if (subject === 'connection')
+    return [
+      { value: 'exists', label: 'path exists' },
+      { value: 'includes', label: 'path includes part' },
+    ]
   if (subject === 'code') return getOperatorOptions('code', null, aspect)
   return [{ value: 'no_short', label: 'has no short' }]
 }
@@ -138,7 +147,8 @@ function preserveFeedbackMeta(prev = {}) {
 function skeleton(type, prev = {}) {
   const meta = preserveFeedbackMeta(prev)
   if (type === 'circuit_no_short') return { type, ...meta }
-  if (type === 'circuit_has_component') return { type, component: part('led'), minCount: '1', ...meta }
+  if (type === 'circuit_has_component')
+    return { type, component: part('led'), minCount: '1', ...meta }
   if (type === 'circuit_component_powered') return { type, component: part('motor'), ...meta }
   if (type === 'circuit_component_unpowered') return { type, component: part('motor'), ...meta }
   if (type === 'circuit_control_affects_power') {
@@ -157,8 +167,10 @@ function skeleton(type, prev = {}) {
 }
 
 function componentTypeOptions(types = COMPONENT_TYPES) {
-  return types.map(type => (
-    <option key={type} value={type}>{COMPONENT_LABELS[type] ?? type}</option>
+  return types.map((type) => (
+    <option key={type} value={type}>
+      {COMPONENT_LABELS[type] ?? type}
+    </option>
   ))
 }
 
@@ -175,14 +187,14 @@ function ComponentSelector({ title, value = {}, onChange, types = COMPONENT_TYPE
       <select
         className="te-select"
         value={selectedType}
-        onChange={e => onChange({ ...value, type: e.target.value })}
+        onChange={(e) => onChange({ ...value, type: e.target.value })}
       >
         {componentTypeOptions(types)}
       </select>
       <input
         className="te-input"
         value={value.label ?? ''}
-        onChange={e => onChange({ ...value, label: e.target.value })}
+        onChange={(e) => onChange({ ...value, label: e.target.value })}
         placeholder="Optional label"
       />
     </div>
@@ -199,7 +211,7 @@ function EndpointSelector({ title, value = {}, onChange }) {
       <select
         className="te-select"
         value={selectedType}
-        onChange={e => {
+        onChange={(e) => {
           const nextType = e.target.value
           onChange({ ...value, type: nextType, pin: PIN_OPTIONS[nextType]?.[0] ?? 'a' })
         }}
@@ -209,14 +221,18 @@ function EndpointSelector({ title, value = {}, onChange }) {
       <select
         className="te-select"
         value={selectedPin}
-        onChange={e => onChange({ ...value, pin: e.target.value })}
+        onChange={(e) => onChange({ ...value, pin: e.target.value })}
       >
-        {pins.map(pin => <option key={pin} value={pin}>{pin}</option>)}
+        {pins.map((pin) => (
+          <option key={pin} value={pin}>
+            {pin}
+          </option>
+        ))}
       </select>
       <input
         className="te-input"
         value={value.label ?? ''}
-        onChange={e => onChange({ ...value, label: e.target.value })}
+        onChange={(e) => onChange({ ...value, label: e.target.value })}
         placeholder="Optional label"
       />
     </div>
@@ -225,13 +241,21 @@ function EndpointSelector({ title, value = {}, onChange }) {
 
 function CheckFields({ check, onChange }) {
   if (check.type === 'circuit_no_short') {
-    return <div style={s.help}>Passes when no battery has its positive and negative sides directly connected.</div>
+    return (
+      <div style={s.help}>
+        Passes when no battery has its positive and negative sides directly connected.
+      </div>
+    )
   }
 
   if (check.type === 'circuit_has_component') {
     return (
       <>
-        <ComponentSelector title="Part" value={check.component} onChange={component => onChange({ ...check, component })} />
+        <ComponentSelector
+          title="Part"
+          value={check.component}
+          onChange={(component) => onChange({ ...check, component })}
+        />
         <div style={s.fieldGroup}>
           <label style={s.label}>Minimum</label>
           <input
@@ -239,7 +263,7 @@ function CheckFields({ check, onChange }) {
             type="number"
             min="1"
             value={check.minCount ?? '1'}
-            onChange={e => onChange({ ...check, minCount: e.target.value })}
+            onChange={(e) => onChange({ ...check, minCount: e.target.value })}
           />
         </div>
       </>
@@ -247,14 +271,29 @@ function CheckFields({ check, onChange }) {
   }
 
   if (check.type === 'circuit_component_powered' || check.type === 'circuit_component_unpowered') {
-    return <ComponentSelector title="Part" value={check.component} onChange={component => onChange({ ...check, component })} />
+    return (
+      <ComponentSelector
+        title="Part"
+        value={check.component}
+        onChange={(component) => onChange({ ...check, component })}
+      />
+    )
   }
 
   if (check.type === 'circuit_control_affects_power') {
     return (
       <>
-        <ComponentSelector title="Control" value={check.control} onChange={control => onChange({ ...check, control })} types={CONTROL_TYPES} />
-        <ComponentSelector title="Controlled part" value={check.component} onChange={component => onChange({ ...check, component })} />
+        <ComponentSelector
+          title="Control"
+          value={check.control}
+          onChange={(control) => onChange({ ...check, control })}
+          types={CONTROL_TYPES}
+        />
+        <ComponentSelector
+          title="Controlled part"
+          value={check.component}
+          onChange={(component) => onChange({ ...check, component })}
+        />
       </>
     )
   }
@@ -262,8 +301,16 @@ function CheckFields({ check, onChange }) {
   if (check.type === 'circuit_path_exists') {
     return (
       <>
-        <EndpointSelector title="From" value={check.from} onChange={from => onChange({ ...check, from })} />
-        <EndpointSelector title="To" value={check.to} onChange={to => onChange({ ...check, to })} />
+        <EndpointSelector
+          title="From"
+          value={check.from}
+          onChange={(from) => onChange({ ...check, from })}
+        />
+        <EndpointSelector
+          title="To"
+          value={check.to}
+          onChange={(to) => onChange({ ...check, to })}
+        />
       </>
     )
   }
@@ -271,9 +318,21 @@ function CheckFields({ check, onChange }) {
   if (check.type === 'circuit_path_includes') {
     return (
       <>
-        <EndpointSelector title="From" value={check.from} onChange={from => onChange({ ...check, from })} />
-        <EndpointSelector title="To" value={check.to} onChange={to => onChange({ ...check, to })} />
-        <ComponentSelector title="Must include" value={check.includes} onChange={includes => onChange({ ...check, includes })} />
+        <EndpointSelector
+          title="From"
+          value={check.from}
+          onChange={(from) => onChange({ ...check, from })}
+        />
+        <EndpointSelector
+          title="To"
+          value={check.to}
+          onChange={(to) => onChange({ ...check, to })}
+        />
+        <ComponentSelector
+          title="Must include"
+          value={check.includes}
+          onChange={(includes) => onChange({ ...check, includes })}
+        />
       </>
     )
   }
@@ -292,7 +351,7 @@ function FeedbackControls({ check, onChange }) {
       <select
         className="te-select"
         value={check.mode ?? 'blocking'}
-        onChange={e => onChange({ ...check, mode: e.target.value })}
+        onChange={(e) => onChange({ ...check, mode: e.target.value })}
         title="Feedback behaviour"
       >
         <option value="blocking">Blocking</option>
@@ -301,7 +360,7 @@ function FeedbackControls({ check, onChange }) {
       <select
         className="te-select"
         value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
-        onChange={e => onChange({ ...check, show: e.target.value })}
+        onChange={(e) => onChange({ ...check, show: e.target.value })}
         title="When to show feedback"
       >
         <option value="after_attempt">After attempt</option>
@@ -311,7 +370,13 @@ function FeedbackControls({ check, onChange }) {
   )
 }
 
-export default function CheckEditor({ task, onUpdate, checks: checksProp, onChange, feedbackEditor = false }) {
+export default function CheckEditor({
+  task,
+  onUpdate,
+  checks: checksProp,
+  onChange,
+  feedbackEditor = false,
+}) {
   const checks = normalize(checksProp ?? task.check)
 
   function setChecks(next) {
@@ -320,7 +385,7 @@ export default function CheckEditor({ task, onUpdate, checks: checksProp, onChan
   }
 
   function updateCheck(index, updated) {
-    setChecks(checks.map((check, i) => i === index ? updated : check))
+    setChecks(checks.map((check, i) => (i === index ? updated : check)))
   }
 
   function updateFromUi(index, subject, aspect, operator, prev) {
@@ -334,7 +399,9 @@ export default function CheckEditor({ task, onUpdate, checks: checksProp, onChan
   return (
     <div style={s.wrap}>
       {checks.map((check, index) => {
-        const knownType = CHECK_OPTIONS.some(([value]) => value === check.type) || CODE_CHECK_TYPES.includes(check.type)
+        const knownType =
+          CHECK_OPTIONS.some(([value]) => value === check.type) ||
+          CODE_CHECK_TYPES.includes(check.type)
         const activeCheck = knownType ? check : skeleton('circuit_no_short')
         const ui = uiFromCheck(activeCheck)
         const aspects = aspectOptions(ui.subject)
@@ -345,48 +412,94 @@ export default function CheckEditor({ task, onUpdate, checks: checksProp, onChan
             <select
               className="te-select"
               value={ui.subject}
-              onChange={e => {
+              onChange={(e) => {
                 const nextSubject = e.target.value
                 const nextAspect = defaultAspect(nextSubject)
-                updateFromUi(index, nextSubject, nextAspect, defaultOperator(nextSubject, nextAspect), activeCheck)
+                updateFromUi(
+                  index,
+                  nextSubject,
+                  nextAspect,
+                  defaultOperator(nextSubject, nextAspect),
+                  activeCheck
+                )
               }}
             >
-              {SUBJECT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {SUBJECT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <select
               className="te-select"
               value={ui.aspect}
-              onChange={e => {
+              onChange={(e) => {
                 const nextAspect = e.target.value
-                updateFromUi(index, ui.subject, nextAspect, defaultOperator(ui.subject, nextAspect), activeCheck)
+                updateFromUi(
+                  index,
+                  ui.subject,
+                  nextAspect,
+                  defaultOperator(ui.subject, nextAspect),
+                  activeCheck
+                )
               }}
             >
-              {aspects.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {aspects.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <select
               className="te-select"
               value={ui.operator}
-              onChange={e => updateFromUi(index, ui.subject, ui.aspect, e.target.value, activeCheck)}
+              onChange={(e) =>
+                updateFromUi(index, ui.subject, ui.aspect, e.target.value, activeCheck)
+              }
             >
-              {operators.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {operators.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
-            <CheckFields check={activeCheck} onChange={updated => updateCheck(index, updated)} />
-            {feedbackEditor && <FeedbackControls check={activeCheck} onChange={updated => updateCheck(index, updated)} />}
+            <CheckFields check={activeCheck} onChange={(updated) => updateCheck(index, updated)} />
+            {feedbackEditor && (
+              <FeedbackControls
+                check={activeCheck}
+                onChange={(updated) => updateCheck(index, updated)}
+              />
+            )}
             <input
               className="te-input"
               style={s.hint}
               placeholder="Hint"
               value={activeCheck.hint ?? ''}
-              onChange={e => updateCheck(index, { ...activeCheck, hint: e.target.value })}
+              onChange={(e) => updateCheck(index, { ...activeCheck, hint: e.target.value })}
             />
-            <button type="button" className="te-check-remove-btn" onClick={() => setChecks(checks.filter((_, i) => i !== index))} title="Remove check">×</button>
+            <button
+              type="button"
+              className="te-check-remove-btn"
+              onClick={() => setChecks(checks.filter((_, i) => i !== index))}
+              title="Remove check"
+            >
+              ×
+            </button>
           </div>
         )
       })}
       <button
         type="button"
         className="btn-ghost te-add-check-btn"
-        onClick={() => setChecks([...checks, skeleton('circuit_no_short', feedbackEditor ? { mode: 'blocking', show: 'after_attempt' } : {})])}
+        onClick={() =>
+          setChecks([
+            ...checks,
+            skeleton(
+              'circuit_no_short',
+              feedbackEditor ? { mode: 'blocking', show: 'after_attempt' } : {}
+            ),
+          ])
+        }
       >
         + Add electronics check
       </button>
@@ -396,8 +509,23 @@ export default function CheckEditor({ task, onUpdate, checks: checksProp, onChan
 
 const s = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 8 },
-  card: { display: 'grid', gridTemplateColumns: 'auto repeat(auto-fit, minmax(160px, 1fr)) auto', gap: 8, padding: 10, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f8fafc', alignItems: 'start' },
-  index: { alignSelf: 'center', fontFamily: 'var(--font-body)', fontSize: 12, color: '#64748b', fontWeight: 700 },
+  card: {
+    display: 'grid',
+    gridTemplateColumns: 'auto repeat(auto-fit, minmax(160px, 1fr)) auto',
+    gap: 8,
+    padding: 10,
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    background: '#f8fafc',
+    alignItems: 'start',
+  },
+  index: {
+    alignSelf: 'center',
+    fontFamily: 'var(--font-body)',
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: 700,
+  },
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 },
   label: { fontFamily: 'var(--font-body)', fontSize: 12, color: '#475569', fontWeight: 700 },
   help: { fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.4, color: '#475569' },

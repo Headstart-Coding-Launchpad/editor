@@ -15,17 +15,17 @@ export default function BuilderOutputPanel({
   runStatus = null,
   inputPrompt = null,
   onInputSubmit,
-  checkResults = null,          // null | [{type, value?, passed}]
+  checkResults = null, // null | [{type, value?, passed}]
   incorrectCheckResults = null, // null | [{type, value?, passed, hint?}]
-  testResults = null,           // null | [{id, name, passed, output}]
+  testResults = null, // null | [{id, name, passed, output}]
   running = false,
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [displayedOutput, setDisplayedOutput] = useState('')
 
-  const bottomRef  = useRef(null)
-  const inputRef   = useRef(null)
+  const bottomRef = useRef(null)
+  const inputRef = useRef(null)
   const prevRunningRef = useRef(running)
 
   // Auto-expand when code starts running
@@ -46,7 +46,7 @@ export default function BuilderOutputPanel({
     if (displayedOutput === output) return
 
     const timer = setTimeout(() => {
-      setDisplayedOutput(prev => {
+      setDisplayedOutput((prev) => {
         if (prev === output) return prev
 
         let current = prev
@@ -96,27 +96,42 @@ export default function BuilderOutputPanel({
     setInputValue('')
   }
 
-  const statusColour = runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
-  const statusLabel  = runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
-  const showCursor   = running || (output && displayedOutput !== output)
+  const statusColour =
+    runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
+  const statusLabel =
+    runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
+  const showCursor = running || (output && displayedOutput !== output)
 
-  const allPassed = checkResults !== null && checkResults.every(r => r.passed)
+  const allPassed = checkResults !== null && checkResults.every((r) => r.passed)
 
   return (
     <div style={s.wrap}>
       {/* Output */}
-      <div style={{ ...s.panel, minHeight: isCollapsed ? 'auto' : 100, maxHeight: isCollapsed ? 'auto' : 240 }} className="card">
+      <div
+        style={{
+          ...s.panel,
+          minHeight: isCollapsed ? 'auto' : 100,
+          maxHeight: isCollapsed ? 'auto' : 240,
+        }}
+        className="card"
+      >
         <div
-          style={{ ...s.header, borderRadius: isCollapsed ? '10px' : '10px 10px 0 0', cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setIsCollapsed(prev => !prev)}
+          style={{
+            ...s.header,
+            borderRadius: isCollapsed ? '10px' : '10px 10px 0 0',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+          onClick={() => setIsCollapsed((prev) => !prev)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={s.headerLabel}>Output</span>
-            <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-              {isCollapsed ? '▶' : '▼'}
-            </span>
+            <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isCollapsed ? '▶' : '▼'}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <span style={{ ...s.statusDot, background: statusColour }} />
             <span style={s.statusLabel}>{statusLabel}</span>
           </div>
@@ -128,10 +143,14 @@ export default function BuilderOutputPanel({
             {inputPrompt !== null && (
               <form onSubmit={handleInputSubmit} style={s.inputRow}>
                 <span style={s.prompt}>&gt;</span>
-                <input ref={inputRef} style={s.input} value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
+                <input
+                  ref={inputRef}
+                  style={s.input}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
                   autoFocus
-                  placeholder="Type input and press Enter" />
+                  placeholder="Type input and press Enter"
+                />
               </form>
             )}
             <span ref={bottomRef} />
@@ -141,21 +160,47 @@ export default function BuilderOutputPanel({
 
       {/* Completion check verification */}
       {!isCollapsed && checkResults !== null && (
-        <div style={{ ...s.checkResult, background: allPassed ? '#f0fdf4' : '#fffbeb', borderColor: allPassed ? '#bbf7d0' : '#fde68a' }}>
+        <div
+          style={{
+            ...s.checkResult,
+            background: allPassed ? '#f0fdf4' : '#fffbeb',
+            borderColor: allPassed ? '#bbf7d0' : '#fde68a',
+          }}
+        >
           {checkResults.length === 1 ? (
-            checkResults[0].passed
-              ? <span>✅ <strong>Check passes</strong> — students will see the completion banner.</span>
-              : <span>⚠️ <strong>Check does not pass</strong> {checkHint(checkResults[0])}</span>
+            checkResults[0].passed ? (
+              <span>
+                ✅ <strong>Check passes</strong> — students will see the completion banner.
+              </span>
+            ) : (
+              <span>
+                ⚠️ <strong>Check does not pass</strong> {checkHint(checkResults[0])}
+              </span>
+            )
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {checkResults.map((r, i) => (
                 <div key={i}>
-                  {r.passed
-                    ? <span>✅ <strong>Check {i + 1}</strong> passes.</span>
-                    : <span>⚠️ <strong>Check {i + 1}</strong> does not pass {checkHint(r)}</span>}
+                  {r.passed ? (
+                    <span>
+                      ✅ <strong>Check {i + 1}</strong> passes.
+                    </span>
+                  ) : (
+                    <span>
+                      ⚠️ <strong>Check {i + 1}</strong> does not pass {checkHint(r)}
+                    </span>
+                  )}
                 </div>
               ))}
-              <div style={{ marginTop: 4, borderTop: '1px solid', borderColor: allPassed ? '#bbf7d0' : '#fde68a', paddingTop: 6, fontWeight: 700 }}>
+              <div
+                style={{
+                  marginTop: 4,
+                  borderTop: '1px solid',
+                  borderColor: allPassed ? '#bbf7d0' : '#fde68a',
+                  paddingTop: 6,
+                  fontWeight: 700,
+                }}
+              >
                 {allPassed
                   ? '✅ All checks pass — students will see the completion banner.'
                   : '⚠️ Not all checks pass — students will not see the completion banner.'}
@@ -167,21 +212,43 @@ export default function BuilderOutputPanel({
 
       {/* Test results */}
       {!isCollapsed && testResults !== null && (
-        <div style={{ ...s.checkResult, background: testResults.every(r => r.passed) ? '#f0fdf4' : '#fffbeb', borderColor: testResults.every(r => r.passed) ? '#bbf7d0' : '#fde68a' }}>
-          <div style={{ fontWeight: 700, marginBottom: testResults.length > 0 ? 6 : 0 }}>Test results:</div>
+        <div
+          style={{
+            ...s.checkResult,
+            background: testResults.every((r) => r.passed) ? '#f0fdf4' : '#fffbeb',
+            borderColor: testResults.every((r) => r.passed) ? '#bbf7d0' : '#fde68a',
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: testResults.length > 0 ? 6 : 0 }}>
+            Test results:
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {testResults.map((r, i) => (
               <div key={r.id ?? i}>
-                {r.passed
-                  ? <span>✅ <strong>{r.name || `Test ${i + 1}`}</strong> passed.</span>
-                  : <span>⚠️ <strong>{r.name || `Test ${i + 1}`}</strong> did not pass.</span>}
+                {r.passed ? (
+                  <span>
+                    ✅ <strong>{r.name || `Test ${i + 1}`}</strong> passed.
+                  </span>
+                ) : (
+                  <span>
+                    ⚠️ <strong>{r.name || `Test ${i + 1}`}</strong> did not pass.
+                  </span>
+                )}
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 6, borderTop: '1px solid', borderColor: testResults.every(r => r.passed) ? '#bbf7d0' : '#fde68a', paddingTop: 6, fontWeight: 700 }}>
-            {testResults.every(r => r.passed)
+          <div
+            style={{
+              marginTop: 6,
+              borderTop: '1px solid',
+              borderColor: testResults.every((r) => r.passed) ? '#bbf7d0' : '#fde68a',
+              paddingTop: 6,
+              fontWeight: 700,
+            }}
+          >
+            {testResults.every((r) => r.passed)
               ? `✅ All ${testResults.length} test${testResults.length !== 1 ? 's' : ''} pass — students will be able to complete the task.`
-              : `⚠️ ${testResults.filter(r => !r.passed).length}/${testResults.length} test${testResults.length !== 1 ? 's' : ''} did not pass.`}
+              : `⚠️ ${testResults.filter((r) => !r.passed).length}/${testResults.length} test${testResults.length !== 1 ? 's' : ''} did not pass.`}
           </div>
         </div>
       )}
@@ -198,14 +265,29 @@ export default function BuilderOutputPanel({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {incorrectCheckResults.map((r, i) => (
                 <div key={i}>
-                  {r.passed
-                    ? <span>🎯 <strong>Incorrect check {i + 1} matched</strong>{r.hint ? <> — hint: <em>"{r.hint}"</em></> : ' — no hint set'}</span>
-                    : <span style={{ color: '#6b7280' }}>— Incorrect check {i + 1} did not match {checkHint(r)}</span>}
+                  {r.passed ? (
+                    <span>
+                      🎯 <strong>Incorrect check {i + 1} matched</strong>
+                      {r.hint ? (
+                        <>
+                          {' '}
+                          — hint: <em>"{r.hint}"</em>
+                        </>
+                      ) : (
+                        ' — no hint set'
+                      )}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#6b7280' }}>
+                      — Incorrect check {i + 1} did not match {checkHint(r)}
+                    </span>
+                  )}
                 </div>
               ))}
-              {!incorrectCheckResults.some(r => r.passed) && (
+              {!incorrectCheckResults.some((r) => r.passed) && (
                 <div style={{ marginTop: 4, color: '#6b7280', fontSize: '0.85em' }}>
-                  No incorrect check matched — the completion check hint (if any) will be shown instead.
+                  No incorrect check matched — the completion check hint (if any) will be shown
+                  instead.
                 </div>
               )}
             </div>
@@ -220,13 +302,44 @@ function checkHint(result) {
   if (result.type === 'code_no_error') return 'because the code errored.'
   if (result.type === 'output_not_empty') return 'because the output is empty.'
   if (result.type === 'output_empty') return 'because the output is not empty.'
-  if (result.type === 'code_contains') return <>— the code does not contain (<code style={s.code}>{result.value}</code>).</>
-  if (result.type === 'code_does_not_contain') return <>— the code contains (<code style={s.code}>{result.value}</code>) but shouldn't.</>
-  if (result.type === 'code_equals') return <>— the code does not exactly match the expected value.</>
-  if (result.type === 'element_exists') return <>— no element matches selector (<code style={s.code}>{result.selector}</code>).</>
-  if (result.type === 'element_count') return <>— the matching element count is not <code style={s.code}>{result.value}</code> for selector (<code style={s.code}>{result.selector}</code>).</>
-  if (result.type === 'element_value') return <>— the first matching element does not contain (<code style={s.code}>{result.value}</code>).</>
-  return <>with this output — review your check value (<code style={s.code}>{result.value}</code>).</>
+  if (result.type === 'code_contains')
+    return (
+      <>
+        — the code does not contain (<code style={s.code}>{result.value}</code>).
+      </>
+    )
+  if (result.type === 'code_does_not_contain')
+    return (
+      <>
+        — the code contains (<code style={s.code}>{result.value}</code>) but shouldn't.
+      </>
+    )
+  if (result.type === 'code_equals')
+    return <>— the code does not exactly match the expected value.</>
+  if (result.type === 'element_exists')
+    return (
+      <>
+        — no element matches selector (<code style={s.code}>{result.selector}</code>).
+      </>
+    )
+  if (result.type === 'element_count')
+    return (
+      <>
+        — the matching element count is not <code style={s.code}>{result.value}</code> for selector
+        (<code style={s.code}>{result.selector}</code>).
+      </>
+    )
+  if (result.type === 'element_value')
+    return (
+      <>
+        — the first matching element does not contain (<code style={s.code}>{result.value}</code>).
+      </>
+    )
+  return (
+    <>
+      with this output — review your check value (<code style={s.code}>{result.value}</code>).
+    </>
+  )
 }
 
 const s = {
@@ -241,7 +354,12 @@ const s = {
     alignItems: 'center',
     borderRadius: '10px 10px 0 0',
   },
-  headerLabel: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.04em' },
+  headerLabel: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    letterSpacing: '0.04em',
+  },
   statusDot: { width: 8, height: 8, borderRadius: '50%' },
   statusLabel: { fontFamily: 'var(--font-body)', fontSize: '0.8rem', opacity: 0.85 },
   pre: {

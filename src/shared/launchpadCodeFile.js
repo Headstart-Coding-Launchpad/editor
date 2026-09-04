@@ -6,9 +6,10 @@ function normaliseTask(task, index) {
   if (!task || typeof task !== 'object' || typeof task.code !== 'string') return null
   return {
     id: task.id ?? `task-${index + 1}`,
-    title: typeof task.title === 'string' && task.title.trim()
-      ? task.title.trim()
-      : `Python code ${index + 1}`,
+    title:
+      typeof task.title === 'string' && task.title.trim()
+        ? task.title.trim()
+        : `Python code ${index + 1}`,
     code: task.code,
   }
 }
@@ -34,7 +35,12 @@ export function parseLaunchpadCodeFile(text) {
     throw new Error('That file is not a valid LaunchPad code file.')
   }
 
-  if (!parsed || parsed.format !== LAUNCHPAD_CODE_FILE_FORMAT || parsed.version !== LAUNCHPAD_CODE_FILE_VERSION || parsed.language !== 'python') {
+  if (
+    !parsed ||
+    parsed.format !== LAUNCHPAD_CODE_FILE_FORMAT ||
+    parsed.version !== LAUNCHPAD_CODE_FILE_VERSION ||
+    parsed.language !== 'python'
+  ) {
     throw new Error('That file is not a supported LaunchPad Python code file.')
   }
 
@@ -65,5 +71,7 @@ export function downloadLaunchpadCodeFile(codeFile, name) {
   anchor.href = url
   anchor.download = makeLaunchpadFilename(name)
   anchor.click()
-  URL.revokeObjectURL(url)
+  // Deferred: revoking synchronously can abort the download in some browsers
+  // before they've started reading the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

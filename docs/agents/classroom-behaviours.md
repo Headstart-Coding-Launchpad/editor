@@ -105,8 +105,11 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 ## Remote Reset
 
 - Teacher writes `remoteResetAction` and `remoteResetPushedAt` to one student node.
-- Actions are `starter`, `complete`, or `stage_N`.
+- Actions are `starter`, `complete`, `stage_N`, or `reveal_stage_N`.
 - Student detects timestamp changes and applies reset silently.
+- `reveal_stage_N` opens the read-only Support-stage reference for that stage (see
+  Code Stage Reveal below) instead of resetting the student's editor/files — it
+  never writes over their work.
 - `stage_N` resolves against `task.codeStages[N]`:
   - Python and Arcade Kit use `.code`; Arcade Kit also restores `.arcadeDesign`.
   - HTML uses `.files` and `.entryFile`.

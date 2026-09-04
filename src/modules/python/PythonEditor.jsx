@@ -1,12 +1,23 @@
 import React from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 
-export default function PythonEditor({ code, onChange, onSelectionChange, onActivity, remoteSelection, teacherHighlights, onHighlightDismiss, readOnly = false, pyodideStatus, editorStyle, errorLine = null, onRunShortcut }) {
+export default function PythonEditor({
+  code,
+  onChange,
+  onSelectionChange,
+  onActivity,
+  remoteSelection,
+  teacherHighlights,
+  onHighlightDismiss,
+  readOnly = false,
+  pyodideStatus,
+  editorStyle,
+  errorLine = null,
+  onRunShortcut,
+}) {
   return (
     <div style={s.wrap}>
-      {pyodideStatus === 'loading' && (
-        <div style={s.pyBanner}>⏳ Getting Python ready…</div>
-      )}
+      {pyodideStatus === 'loading' && <div style={s.pyBanner}>⏳ Getting Python ready…</div>}
       {pyodideStatus === 'error' && (
         <div style={{ ...s.pyBanner, background: '#fef2f2', color: '#b91c1c' }}>
           ⚠️ Python failed to load. Please refresh the page.

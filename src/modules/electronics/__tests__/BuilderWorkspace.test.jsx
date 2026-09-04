@@ -36,7 +36,7 @@ describe('electronics BuilderWorkspace — Test checks', () => {
     expect(screen.getByText(/No checks configured/)).toBeInTheDocument()
   })
 
-  it('evaluates the check against the active tab\'s circuit and marks the task as tested', () => {
+  it("evaluates the check against the active tab's circuit and marks the task as tested", () => {
     const task = baseTask({ check: [{ type: 'circuit_no_short' }] })
     const onUpdate = renderWorkspace(task)
 

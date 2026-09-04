@@ -23,7 +23,9 @@ function renderBanner(overrides = {}) {
 describe('TeacherSandboxBanner — staging mode', () => {
   it('shows staging message', () => {
     renderBanner({ staging: true })
-    expect(screen.getByText(/Sandbox preview — students are still on the lesson/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Sandbox preview — students are still on the lesson/)
+    ).toBeInTheDocument()
   })
 
   it('renders Cancel, Reset and Go Live buttons', () => {

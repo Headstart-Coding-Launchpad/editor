@@ -10,24 +10,53 @@ import QuizTask from '../QuizTask'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 
 export default function StudentWorkspaceBody({
-  lesson, task, student, session,
-  isInformation, isQuiz, isSessionSandbox, isPython, isScratch, isHtml, isCodeArrangeTask,
-  ModuleTeacherLiveView, moduleDisplayState,
-  files, activeFile, setActiveFile, activeFileObj,
-  remoteSelection, scratchState, spriteState, cursorState, blockDragState,
-  iframeSrc, iframeRef,
-  canHighlight, pendingHighlight, highlights, onMirrorSelectionChange, onDismissHighlight,
-  highlightEmoji, onHighlightEmojiChange, highlightNote, onHighlightNoteChange,
-  onSendHighlight, onCancelHighlight,
+  lesson,
+  task,
+  student,
+  session,
+  isInformation,
+  isQuiz,
+  isSessionSandbox,
+  isPython,
+  isScratch,
+  isHtml,
+  isCodeArrangeTask,
+  ModuleTeacherLiveView,
+  moduleDisplayState,
+  files,
+  activeFile,
+  setActiveFile,
+  activeFileObj,
+  remoteSelection,
+  scratchState,
+  spriteState,
+  cursorState,
+  blockDragState,
+  iframeSrc,
+  iframeRef,
+  canHighlight,
+  pendingHighlight,
+  highlights,
+  onMirrorSelectionChange,
+  onDismissHighlight,
+  highlightEmoji,
+  onHighlightEmojiChange,
+  highlightNote,
+  onHighlightNoteChange,
+  onSendHighlight,
+  onCancelHighlight,
 }) {
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
       <div style={s.highlightEmojiRow}>
-        {HIGHLIGHT_EMOJI_OPTIONS.map(emoji => (
+        {HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
           <button
             key={emoji}
             type="button"
-            style={{ ...s.highlightEmojiBtn, ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}) }}
+            style={{
+              ...s.highlightEmojiBtn,
+              ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
+            }}
             onClick={() => onHighlightEmojiChange(emoji)}
           >
             {emoji}
@@ -39,8 +68,10 @@ export default function StudentWorkspaceBody({
         style={s.highlightNoteInput}
         placeholder={pendingHighlight ? 'Optional note…' : 'Select code above to highlight it…'}
         value={highlightNote}
-        onChange={e => onHighlightNoteChange(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && pendingHighlight) onSendHighlight() }}
+        onChange={(e) => onHighlightNoteChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && pendingHighlight) onSendHighlight()
+        }}
       />
       <button
         className="btn-primary"
@@ -51,28 +82,40 @@ export default function StudentWorkspaceBody({
         Send Highlight
       </button>
       {(pendingHighlight || highlightNote) && (
-        <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={onCancelHighlight}>
+        <button
+          className="btn-ghost"
+          style={{ fontSize: 12, padding: '4px 10px' }}
+          onClick={onCancelHighlight}
+        >
           Clear
         </button>
       )}
     </div>
   )
 
-  if (isInformation) return (
-    <ExplainerPanel title={task?.title} content={task?.explainer ?? ''} collapsible={false} fill topicType={lesson?.type} />
-  )
+  if (isInformation)
+    return (
+      <ExplainerPanel
+        title={task?.title}
+        content={task?.explainer ?? ''}
+        collapsible={false}
+        fill
+        topicType={lesson?.type}
+      />
+    )
 
-  if (isQuiz && !isSessionSandbox) return (
-    <QuizTask
-      task={task}
-      showQuestion
-      selectedAnswer={student.currentAnswer ?? ''}
-      submitted={student.lastRunStatus === 'submitted'}
-      checkPassed={student.checkPassed}
-      disabled
-      showCorrectAnswer
-    />
-  )
+  if (isQuiz && !isSessionSandbox)
+    return (
+      <QuizTask
+        task={task}
+        showQuestion
+        selectedAnswer={student.currentAnswer ?? ''}
+        submitted={student.lastRunStatus === 'submitted'}
+        checkPassed={student.checkPassed}
+        disabled
+        showCorrectAnswer
+      />
+    )
 
   if (isCodeArrangeTask) {
     // currentCodeArrangeSlots mirrors every tile placement live (see
@@ -82,10 +125,13 @@ export default function StudentWorkspaceBody({
     // otherwise show stale code from a previous task while the student is
     // still mid-arrangement.
     const entryFile = getCodeArrangeEntryFile(task)
-    const code = isHtml ? (files.find(f => f.name === entryFile)?.content ?? '') : (student.currentCode ?? '')
-    const selectedAnswer = student.currentCodeArrangeSlots && typeof student.currentCodeArrangeSlots === 'object'
-      ? student.currentCodeArrangeSlots
-      : deriveSlotStateFromCode(task, code)
+    const code = isHtml
+      ? (files.find((f) => f.name === entryFile)?.content ?? '')
+      : (student.currentCode ?? '')
+    const selectedAnswer =
+      student.currentCodeArrangeSlots && typeof student.currentCodeArrangeSlots === 'object'
+        ? student.currentCodeArrangeSlots
+        : deriveSlotStateFromCode(task, code)
     return (
       <CodeArrangeTask
         task={task}
@@ -102,35 +148,36 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (isPython) return (
-    <>
-      {highlightComposer}
-      <div style={s.editorWrap}>
-        <CodeEditor
-          value={student.currentCode ?? ''}
-          language="python"
-          readOnly
-          remoteSelection={remoteSelection}
-          teacherHighlights={highlights}
-          onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
-          onHighlightDismiss={onDismissHighlight}
-          style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
-        />
-      </div>
-      {task?.interactionMode === 'submit' ? (
-        <div style={s.submitNotice}>
-          {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
+  if (isPython)
+    return (
+      <>
+        {highlightComposer}
+        <div style={s.editorWrap}>
+          <CodeEditor
+            value={student.currentCode ?? ''}
+            language="python"
+            readOnly
+            remoteSelection={remoteSelection}
+            teacherHighlights={highlights}
+            onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+            onHighlightDismiss={onDismissHighlight}
+            style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
+          />
         </div>
-      ) : (
-        <OutputPanel
-          output={student.currentOutput ?? ''}
-          runStatus={student.lastRunStatus}
-          hasCheck={!!task?.check}
-          checkPassed={student.checkPassed}
-        />
-      )}
-    </>
-  )
+        {task?.interactionMode === 'submit' ? (
+          <div style={s.submitNotice}>
+            {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
+          </div>
+        ) : (
+          <OutputPanel
+            output={student.currentOutput ?? ''}
+            runStatus={student.lastRunStatus}
+            hasCheck={!!task?.check}
+            checkPassed={student.checkPassed}
+          />
+        )}
+      </>
+    )
 
   if (isScratch) {
     return (
@@ -151,59 +198,66 @@ export default function StudentWorkspaceBody({
   if (ModuleTeacherLiveView) {
     return (
       <ModuleTeacherLiveView
-        task={task} lesson={lesson}
+        task={task}
+        lesson={lesson}
         student={student}
-        displayState={moduleDisplayState} liveState={moduleDisplayState}
-        readOnly onChange={undefined} onActivity={undefined}
-        isInSandbox={false} activeStage={null}
+        displayState={moduleDisplayState}
+        liveState={moduleDisplayState}
+        readOnly
+        onChange={undefined}
+        onActivity={undefined}
+        isInSandbox={false}
+        activeStage={null}
       />
     )
   }
 
-  if (isHtml) return (
-    <>
-      <div style={s.htmlEditorPane}>
-        {files.length > 1 && (
-          <div style={s.tabBar} className="ui-tabs">
-            {files.map(f => (
-              <button
-                key={f.name}
-                className={`ui-tab ui-tab--code${f.name === activeFile ? ' is-active' : ''}`}
-                style={{ ...s.tab, ...(f.name === activeFile ? s.tabActive : {}) }}
-                onClick={() => { onCancelHighlight?.(); setActiveFile(f.name) }}
-              >
-                {f.name}
-              </button>
-            ))}
+  if (isHtml)
+    return (
+      <>
+        <div style={s.htmlEditorPane}>
+          {files.length > 1 && (
+            <div style={s.tabBar} className="ui-tabs">
+              {files.map((f) => (
+                <button
+                  key={f.name}
+                  className={`ui-tab ui-tab--code${f.name === activeFile ? ' is-active' : ''}`}
+                  style={{ ...s.tab, ...(f.name === activeFile ? s.tabActive : {}) }}
+                  onClick={() => {
+                    onCancelHighlight?.()
+                    setActiveFile(f.name)
+                  }}
+                >
+                  {f.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {files.length === 1 && <div style={s.singleFileLabel}>{files[0]?.name}</div>}
+          {highlightComposer}
+          <div style={s.editorWrap}>
+            {activeFileObj && (
+              <CodeEditor
+                key={activeFileObj.name}
+                value={activeFileObj.content}
+                language={activeFileObj.type}
+                readOnly
+                remoteSelection={remoteSelection}
+                teacherHighlights={highlights}
+                onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+                onHighlightDismiss={onDismissHighlight}
+                style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
+              />
+            )}
+          </div>
+        </div>
+        {task?.interactionMode !== 'submit' && (
+          <div style={s.iframePane}>
+            <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
           </div>
         )}
-        {files.length === 1 && (
-          <div style={s.singleFileLabel}>{files[0]?.name}</div>
-        )}
-        {highlightComposer}
-        <div style={s.editorWrap}>
-          {activeFileObj && (
-            <CodeEditor
-              key={activeFileObj.name}
-              value={activeFileObj.content}
-              language={activeFileObj.type}
-              readOnly
-              remoteSelection={remoteSelection}
-              teacherHighlights={highlights}
-              onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
-              onHighlightDismiss={onDismissHighlight}
-              style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
-            />
-          )}
-        </div>
-      </div>
-      {task?.interactionMode !== 'submit' && (
-        <div style={s.iframePane}>
-          <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
-        </div>
-      )}
-    </>
-  )
+      </>
+    )
 
   return null
 }

@@ -8,8 +8,8 @@ import { getStorage } from 'firebase-admin/storage'
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   process.stderr.write(
     'ERROR: GOOGLE_APPLICATION_CREDENTIALS is not set.\n' +
-    'Add it to cli/.env or set it in your shell environment.\n' +
-    'Download the service account JSON from: Firebase Console → Project Settings → Service Accounts\n'
+      'Add it to cli/.env or set it in your shell environment.\n' +
+      'Download the service account JSON from: Firebase Console → Project Settings → Service Accounts\n'
   )
   process.exit(1)
 }
@@ -18,7 +18,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // Resolve a relative path against the cli/ directory so cli/.env can use bare filenames.
 if (!isAbsolute(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = join(__dirname, process.env.GOOGLE_APPLICATION_CREDENTIALS)
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = join(
+    __dirname,
+    process.env.GOOGLE_APPLICATION_CREDENTIALS
+  )
 }
 const firebaseRcPath = join(__dirname, '..', '.firebaserc')
 
@@ -46,7 +49,10 @@ const storageBucket =
 try {
   getApp()
 } catch {
-  initializeApp({ ...(projectId ? { projectId } : {}), ...(storageBucket ? { storageBucket } : {}) })
+  initializeApp({
+    ...(projectId ? { projectId } : {}),
+    ...(storageBucket ? { storageBucket } : {}),
+  })
 }
 
 export const db = getFirestore()

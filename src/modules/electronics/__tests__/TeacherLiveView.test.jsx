@@ -6,11 +6,14 @@ import ElectronicsTeacherLiveView from '../TeacherLiveView.jsx'
 const workspaceProps = vi.hoisted(() => ({ current: null }))
 
 vi.mock('../ElectronicsWorkspace.jsx', () => ({
-  default: (props) => { workspaceProps.current = props; return null },
+  default: (props) => {
+    workspaceProps.current = props
+    return null
+  },
 }))
 
 describe('ElectronicsTeacherLiveView', () => {
-  it('forwards onActivity and isInSandbox to ElectronicsWorkspace, matching every other module\'s TeacherLiveView', () => {
+  it("forwards onActivity and isInSandbox to ElectronicsWorkspace, matching every other module's TeacherLiveView", () => {
     const onActivity = vi.fn()
     render(
       <ElectronicsTeacherLiveView

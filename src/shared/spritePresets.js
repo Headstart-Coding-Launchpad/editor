@@ -17,21 +17,21 @@ function cloneDefinition(def) {
 }
 
 function nextSpriteId(sprites) {
-  const usedIds = new Set(sprites.map(sprite => sprite.id))
+  const usedIds = new Set(sprites.map((sprite) => sprite.id))
   let number = 1
   while (usedIds.has(`sprite${number}`)) number += 1
   return `sprite${number}`
 }
 
 function nextBackdropId(backdrops) {
-  const usedIds = new Set(backdrops.map(backdrop => backdrop.id))
+  const usedIds = new Set(backdrops.map((backdrop) => backdrop.id))
   let number = 1
   while (usedIds.has(`backdrop${number}`)) number += 1
   return `backdrop${number}`
 }
 
 function uniqueName(name, items) {
-  const usedNames = new Set(items.map(item => item.name))
+  const usedNames = new Set(items.map((item) => item.name))
   if (!usedNames.has(name)) return name
   let number = 2
   while (usedNames.has(`${name} ${number}`)) number += 1
@@ -40,12 +40,13 @@ function uniqueName(name, items) {
 
 export function normalizeSpritePresets(data) {
   if (!Array.isArray(data)) return []
-  return data.filter(preset => (
-    preset
-    && typeof preset.id === 'string'
-    && typeof preset.name === 'string'
-    && preset.name.trim() !== ''
-  ))
+  return data.filter(
+    (preset) =>
+      preset &&
+      typeof preset.id === 'string' &&
+      typeof preset.name === 'string' &&
+      preset.name.trim() !== ''
+  )
 }
 
 export function createSpriteFromPreset(sprites, preset = null) {
@@ -63,12 +64,13 @@ export function createSpriteFromPreset(sprites, preset = null) {
 
 export function normalizeBackdropPresets(data) {
   if (!Array.isArray(data)) return []
-  return data.filter(preset => (
-    preset
-    && typeof preset.id === 'string'
-    && typeof preset.name === 'string'
-    && preset.name.trim() !== ''
-  ))
+  return data.filter(
+    (preset) =>
+      preset &&
+      typeof preset.id === 'string' &&
+      typeof preset.name === 'string' &&
+      preset.name.trim() !== ''
+  )
 }
 
 export function createBackdropFromPreset(backdrops, preset = null) {
@@ -91,5 +93,5 @@ export function resolvePresetLibrary(libraryPresets, restrictToIds) {
   const presets = Array.isArray(libraryPresets) ? libraryPresets : []
   if (!Array.isArray(restrictToIds) || restrictToIds.length === 0) return presets
   const allowed = new Set(restrictToIds)
-  return presets.filter(preset => allowed.has(preset.id))
+  return presets.filter((preset) => allowed.has(preset.id))
 }

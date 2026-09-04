@@ -4,8 +4,8 @@ const state = vi.hoisted(() => ({ records: new Map(), files: new Map() }))
 
 vi.mock('./firebase.mjs', () => ({
   db: {
-    collection: name => ({
-      doc: id => ({
+    collection: (name) => ({
+      doc: (id) => ({
         get: async () => {
           const data = state.records.get(`${name}/${id}`)
           return { exists: data != null, id, data: () => data }
@@ -23,13 +23,13 @@ vi.mock('./firebase.mjs', () => ({
       name: 'test-bucket',
       getFiles: async ({ prefix }) => [
         [...state.files.keys()]
-          .filter(path => path.startsWith(prefix))
-          .map(path => ({
+          .filter((path) => path.startsWith(prefix))
+          .map((path) => ({
             name: path,
             getMetadata: async () => [{ metadata: state.files.get(path).metadata }],
           })),
       ],
-      file: path => ({
+      file: (path) => ({
         save: async (buffer, opts) => {
           state.files.set(path, { buffer, metadata: opts?.metadata?.metadata ?? {} })
         },
@@ -38,7 +38,12 @@ vi.mock('./firebase.mjs', () => ({
   },
 }))
 
-import { listTypeAssets, uploadTypeAsset, setDefaultSprites, uploadDefaultBackdrop } from './type-assets.mjs'
+import {
+  listTypeAssets,
+  uploadTypeAsset,
+  setDefaultSprites,
+  uploadDefaultBackdrop,
+} from './type-assets.mjs'
 
 describe('CLI lesson-type shared assets', () => {
   beforeEach(() => {
@@ -51,7 +56,12 @@ describe('CLI lesson-type shared assets', () => {
   })
 
   it('uploads a shared file for a lesson type and lists it back', async () => {
-    const result = await uploadTypeAsset('scratch', 'cat.png', Buffer.from('hi').toString('base64'), 'image/png')
+    const result = await uploadTypeAsset(
+      'scratch',
+      'cat.png',
+      Buffer.from('hi').toString('base64'),
+      'image/png'
+    )
     expect(result).toMatchObject({ success: true, type: 'scratch', filename: 'cat.png' })
 
     const listed = await listTypeAssets('scratch')
@@ -66,16 +76,26 @@ describe('CLI lesson-type shared assets', () => {
     expect(result).toMatchObject({ success: true, count: 1 })
     expect((await listTypeAssets('scratch')).defaultSprites).toEqual(sprites)
 
-    await expect(setDefaultSprites('python', sprites)).rejects.toThrow(/only supported for the 'scratch'/)
+    await expect(setDefaultSprites('python', sprites)).rejects.toThrow(
+      /only supported for the 'scratch'/
+    )
   })
 
   it('accepts a { sprites: [...] } wrapper and drops invalid entries', async () => {
-    const result = await setDefaultSprites('scratch', { sprites: [{ id: 'sprite1', name: 'Cat' }, { id: 'bad' }] })
+    const result = await setDefaultSprites('scratch', {
+      sprites: [{ id: 'sprite1', name: 'Cat' }, { id: 'bad' }],
+    })
     expect(result.count).toBe(1)
   })
 
   it('uploads an image and adds it as a default backdrop in one step', async () => {
-    const result = await uploadDefaultBackdrop('scratch', 'sky.png', Buffer.from('hi').toString('base64'), 'image/png', { name: 'Sky' })
+    const result = await uploadDefaultBackdrop(
+      'scratch',
+      'sky.png',
+      Buffer.from('hi').toString('base64'),
+      'image/png',
+      { name: 'Sky' }
+    )
     expect(result.success).toBe(true)
     expect(result.backdrop).toMatchObject({ id: 'backdrop1', name: 'Sky', colour: '#ffffff' })
     expect(result.backdrop.image).toContain('sky.png')
@@ -92,9 +112,17 @@ describe('CLI lesson-type shared assets', () => {
   })
 
   it('rejects a duplicate explicit backdrop id', async () => {
-    await uploadDefaultBackdrop('scratch', 'a.png', Buffer.from('a').toString('base64'), 'image/png', { id: 'bg1' })
+    await uploadDefaultBackdrop(
+      'scratch',
+      'a.png',
+      Buffer.from('a').toString('base64'),
+      'image/png',
+      { id: 'bg1' }
+    )
     await expect(
-      uploadDefaultBackdrop('scratch', 'b.png', Buffer.from('b').toString('base64'), 'image/png', { id: 'bg1' })
+      uploadDefaultBackdrop('scratch', 'b.png', Buffer.from('b').toString('base64'), 'image/png', {
+        id: 'bg1',
+      })
     ).rejects.toThrow(/already exists/)
   })
 })

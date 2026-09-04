@@ -92,27 +92,29 @@ describe('line/slot introspection', () => {
     expect(getDistractors({})).toEqual([])
   })
 
-  it('returns a single-slot line\'s one slot', () => {
-    expect(getLineSlots(WHOLE_TASK.lines[0])).toEqual([{ type: 'slot', id: 'L1', code: 'for i in range(5):' }])
+  it("returns a single-slot line's one slot", () => {
+    expect(getLineSlots(WHOLE_TASK.lines[0])).toEqual([
+      { type: 'slot', id: 'L1', code: 'for i in range(5):' },
+    ])
   })
 
   it('returns only the slot parts of a line mixing text and blanks', () => {
     expect(getLineParts(INLINE_TASK.lines[0])).toHaveLength(4)
-    expect(getLineSlots(INLINE_TASK.lines[0]).map(slot => slot.id)).toEqual(['S1', 'S2'])
+    expect(getLineSlots(INLINE_TASK.lines[0]).map((slot) => slot.id)).toEqual(['S1', 'S2'])
   })
 
   it('flattens every slot across the task in authoring order', () => {
-    expect(getAllSlots(MIXED_TASK).map(slot => slot.id)).toEqual(['L1', 'S1'])
+    expect(getAllSlots(MIXED_TASK).map((slot) => slot.id)).toEqual(['L1', 'S1'])
     expect(getSlotIds(MIXED_TASK)).toEqual(['L1', 'S1'])
   })
 
-  it('builds one shared task pool from every slot\'s own correct code plus the task-level distractors', () => {
+  it("builds one shared task pool from every slot's own correct code plus the task-level distractors", () => {
     const pool = getTaskPool(WHOLE_TASK)
-    expect(pool.map(f => f.id).sort()).toEqual(['D1', 'D2', 'L1', 'L2'])
+    expect(pool.map((f) => f.id).sort()).toEqual(['D1', 'D2', 'L1', 'L2'])
     expect(getTaskPool(WHOLE_TASK)).toEqual(pool)
   })
 
-  it('looks up a fragment\'s code by id across the shared pool', () => {
+  it("looks up a fragment's code by id across the shared pool", () => {
     expect(getFragmentCodeById(WHOLE_TASK, 'D2')).toBe('for i in range(10):')
     expect(getFragmentCodeById(INLINE_TASK, 'S2d1')).toBe('30')
     expect(getFragmentCodeById(WHOLE_TASK, 'nope')).toBe('')
@@ -154,7 +156,7 @@ describe('assembleCodeArrangement — single-slot ("whole line") lines', () => {
     expect(code).toBe('for i in range(10):\n    print(i + 2)')
   })
 
-  it('lets any tile in the shared pool be dropped into any slot, including another line\'s own correct tile', () => {
+  it("lets any tile in the shared pool be dropped into any slot, including another line's own correct tile", () => {
     // L2's own correct tile placed into L1's slot: still assembles for real.
     const code = assembleCodeArrangement(WHOLE_TASK, { L1: 'L2', L2: 'L1' })
     expect(code).toBe('    print(i * 2)\nfor i in range(5):')
@@ -172,7 +174,7 @@ describe('assembleCodeArrangement — single-slot ("whole line") lines', () => {
 })
 
 describe('assembleCodeArrangement — lines with inline blanks', () => {
-  it('splices the currently selected tile into each blank\'s exact position', () => {
+  it("splices the currently selected tile into each blank's exact position", () => {
     const code = assembleCodeArrangement(INLINE_TASK, { S1: 'S1', S2: 'S2', L2: 'L2' })
     expect(code).toBe('x = 2 + 3\nprint(x)')
   })
@@ -182,7 +184,7 @@ describe('assembleCodeArrangement — lines with inline blanks', () => {
     expect(code).toBe('x = 20 + 30\nprint(x)')
   })
 
-  it('builds the authored solution from every blank\'s own correct id', () => {
+  it("builds the authored solution from every blank's own correct id", () => {
     expect(buildSolutionSlotState(INLINE_TASK)).toEqual({ S1: 'S1', S2: 'S2', L2: 'L2' })
   })
 })
@@ -214,7 +216,9 @@ describe('codeArrange + checks integration', () => {
     const code = assembleCodeArrangement(WHOLE_TASK, { L1: 'D2', L2: 'D1' })
     const simulatedOutput = '2\n4\n6\n8\n10\n12\n14\n16\n18\n20'
     expect(code).not.toBe(assembleCodeArrangement(WHOLE_TASK, { L1: 'L1', L2: 'L2' }))
-    expect(evaluateCheck(WHOLE_TASK.check, simulatedOutput, { code, status: 'success' })).toBe(false)
+    expect(evaluateCheck(WHOLE_TASK.check, simulatedOutput, { code, status: 'success' })).toBe(
+      false
+    )
   })
 
   it('a `code` check is a pure function of the assembled string with no execution needed', () => {
@@ -225,7 +229,7 @@ describe('codeArrange + checks integration', () => {
     expect(evaluateSingleCheck(codeCheck, '', { code: badCode })).toBe(false)
   })
 
-  it('an inline distractor that produces wrong output fails the task\'s output check', () => {
+  it("an inline distractor that produces wrong output fails the task's output check", () => {
     const code = assembleCodeArrangement(INLINE_TASK, { S1: 'S1d1', S2: 'S2d1', L2: 'L2' })
     expect(evaluateCheck(INLINE_TASK.check, '50', { code, status: 'success' })).toBe(false)
     const goodCode = assembleCodeArrangement(INLINE_TASK, { S1: 'S1', S2: 'S2', L2: 'L2' })
@@ -265,12 +269,16 @@ describe('deriveSlotStateFromCode — single-slot ("whole line") lines', () => {
   })
 
   it('returns an empty (not-derivable) arrangement when a line does not match any known fragment', () => {
-    expect(deriveSlotStateFromCode(WHOLE_TASK, 'for i in range(5):\nsomething nobody authored')).toEqual({})
+    expect(
+      deriveSlotStateFromCode(WHOLE_TASK, 'for i in range(5):\nsomething nobody authored')
+    ).toEqual({})
   })
 
   it('returns an empty arrangement when the line count does not match the authored line count', () => {
     expect(deriveSlotStateFromCode(WHOLE_TASK, 'for i in range(5):')).toEqual({})
-    expect(deriveSlotStateFromCode(WHOLE_TASK, 'for i in range(5):\n    print(i * 2)\nprint("extra")')).toEqual({})
+    expect(
+      deriveSlotStateFromCode(WHOLE_TASK, 'for i in range(5):\n    print(i * 2)\nprint("extra")')
+    ).toEqual({})
   })
 
   it('handles empty, null, and non-string code without throwing', () => {
@@ -304,13 +312,15 @@ describe('deriveSlotStateFromCode — lines with inline blanks', () => {
     const adjacentTask = {
       taskType: 'code_arrange',
       moduleType: 'python',
-      lines: [{
-        id: 'L1',
-        parts: [
-          { type: 'slot', id: 'A', code: '1' },
-          { type: 'slot', id: 'B', code: '23' },
-        ],
-      }],
+      lines: [
+        {
+          id: 'L1',
+          parts: [
+            { type: 'slot', id: 'A', code: '1' },
+            { type: 'slot', id: 'B', code: '23' },
+          ],
+        },
+      ],
       distractors: [
         { id: 'Ad1', code: '12' },
         { id: 'Bd1', code: '3' },

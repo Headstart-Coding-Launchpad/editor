@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { copyScratchSpriteStateToStarters, copyStarterToComplete, normalizeTasksForExport, quizHasCheckValue, quizHasStarter, renumberTasks, validateLesson } from '../lessonUtils'
+import {
+  copyScratchSpriteStateToStarters,
+  copyStarterToComplete,
+  normalizeTasksForExport,
+  quizHasCheckValue,
+  quizHasStarter,
+  renumberTasks,
+  validateLesson,
+} from '../lessonUtils'
 
 function lesson(type, tasks) {
   return { id: 'test-lesson', title: 'Test lesson', type, tasks }
@@ -7,301 +15,474 @@ function lesson(type, tasks) {
 
 describe('validateLesson', () => {
   it('captures Python starter, check, carry-through and timing issues', () => {
-    const result = validateLesson(lesson('python', [{
-      id: 3,
-      title: 'Python',
-      estimatedMinutes: 0,
-      starterCode: '',
-      carryCodeFrom: 99,
-      interactionMode: 'submit',
-      check: { type: 'output_contains', value: '' },
-    }]))
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 3,
+          title: 'Python',
+          estimatedMinutes: 0,
+          starterCode: '',
+          carryCodeFrom: 99,
+          interactionMode: 'submit',
+          check: { type: 'output_contains', value: '' },
+        },
+      ])
+    )
 
-    expect(result.errors).toEqual(expect.arrayContaining([
-      'Task 1 estimated time must be a positive number of minutes',
-      'Task 1 uses submit mode but has a check that requires running the code',
-      'Task 1 has a check enabled but no check value',
-      'Task 1 references task 99 for carry-through but that task does not exist',
-    ]))
-    expect(result.warnings).toContain('Task 1 has no starter code — students will start with an empty editor')
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 estimated time must be a positive number of minutes',
+        'Task 1 uses submit mode but has a check that requires running the code',
+        'Task 1 has a check enabled but no check value',
+        'Task 1 references task 99 for carry-through but that task does not exist',
+      ])
+    )
+    expect(result.warnings).toContain(
+      'Task 1 has no starter code — students will start with an empty editor'
+    )
   })
 
   it('validates HTML, Scratch and information task-specific fields', () => {
-    expect(validateLesson(lesson('html', [{ id: 1, title: 'Web', starterFiles: [{ name: 'style.css', type: 'css', content: '' }] }])).errors)
-      .toContain('Task 1 has no HTML file to use as entry point')
-    expect(validateLesson(lesson('scratch', [{ id: 1, title: 'Blocks', toolbox: '<category>', check: { type: 'block_used' } }])).errors)
-      .toEqual(expect.arrayContaining(['Task 1 has invalid toolbox XML', 'Task 1 has a Scratch check but no block opcode']))
-    expect(validateLesson(lesson('python', [{ id: 1, title: 'Read', taskType: 'information', informationType: 'standard', explainer: '' }])).errors)
-      .toContain('Task 1 is an information task but has no explainer')
+    expect(
+      validateLesson(
+        lesson('html', [
+          { id: 1, title: 'Web', starterFiles: [{ name: 'style.css', type: 'css', content: '' }] },
+        ])
+      ).errors
+    ).toContain('Task 1 has no HTML file to use as entry point')
+    expect(
+      validateLesson(
+        lesson('scratch', [
+          { id: 1, title: 'Blocks', toolbox: '<category>', check: { type: 'block_used' } },
+        ])
+      ).errors
+    ).toEqual(
+      expect.arrayContaining([
+        'Task 1 has invalid toolbox XML',
+        'Task 1 has a Scratch check but no block opcode',
+      ])
+    )
+    expect(
+      validateLesson(
+        lesson('python', [
+          {
+            id: 1,
+            title: 'Read',
+            taskType: 'information',
+            informationType: 'standard',
+            explainer: '',
+          },
+        ])
+      ).errors
+    ).toContain('Task 1 is an information task but has no explainer')
   })
 
   it('validates grouped and quiz tasks without editor warnings for complete content', () => {
-    const result = validateLesson(lesson('python', [{
-      id: 'group-a',
-      type: 'group',
-      title: 'Quiz',
-      subtasks: [{
-        id: 8,
-        title: 'Match',
-        taskType: 'quiz',
-        quizType: 'match',
-        pairs: [{ prompt: 'a', answer: 'b' }, { prompt: 'c', answer: 'd' }],
-        _checkTested: true,
-      }],
-    }]))
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 'group-a',
+          type: 'group',
+          title: 'Quiz',
+          subtasks: [
+            {
+              id: 8,
+              title: 'Match',
+              taskType: 'quiz',
+              quizType: 'match',
+              pairs: [
+                { prompt: 'a', answer: 'b' },
+                { prompt: 'c', answer: 'd' },
+              ],
+              _checkTested: true,
+            },
+          ],
+        },
+      ])
+    )
     expect(result).toEqual({ errors: [], warnings: [] })
   })
 
   it('validates task priority values', () => {
-    const valid = validateLesson(lesson('python', [
-      { id: 1, title: 'Core by omission', starterCode: 'print("core")' },
-      { id: 2, title: 'Core explicit', priority: 'core', starterCode: 'print("core")' },
-      { id: 3, title: 'Optional', priority: 'optional', starterCode: 'print("optional")' },
-    ]))
+    const valid = validateLesson(
+      lesson('python', [
+        { id: 1, title: 'Core by omission', starterCode: 'print("core")' },
+        { id: 2, title: 'Core explicit', priority: 'core', starterCode: 'print("core")' },
+        { id: 3, title: 'Optional', priority: 'optional', starterCode: 'print("optional")' },
+      ])
+    )
     expect(valid.errors).toEqual([])
 
-    const invalid = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Stretch',
-      priority: 'stretch',
-      starterCode: 'print("stretch")',
-    }]))
+    const invalid = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Stretch',
+          priority: 'stretch',
+          starterCode: 'print("stretch")',
+        },
+      ])
+    )
     expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
   })
 
   it('validates unified code stage roles while accepting legacy stage roles', () => {
-    const valid = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Use a variable',
-      starterCode: 'name = ""',
-      codeStages: [
-        { label: 'With name started', code: 'name = "Ada"' },
-        { label: 'Starter', role: 'starter', code: 'name = "Ada"' },
-        { label: 'Solution', role: 'complete', code: 'print(name)' },
-        { label: 'Legacy extension', role: 'extension', code: 'first = "Ada"' },
-      ],
-    }]))
+    const valid = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Use a variable',
+          starterCode: 'name = ""',
+          codeStages: [
+            { label: 'With name started', code: 'name = "Ada"' },
+            { label: 'Starter', role: 'starter', code: 'name = "Ada"' },
+            { label: 'Solution', role: 'complete', code: 'print(name)' },
+            { label: 'Legacy extension', role: 'extension', code: 'first = "Ada"' },
+          ],
+        },
+      ])
+    )
     expect(valid.errors).toEqual([])
 
-    const invalid = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Use a variable',
-      starterCode: 'name = ""',
-      codeStages: [
-        { label: 'Wrong role', role: 'stretch', code: '' },
-      ],
-    }]))
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 stage 1 role must be one of: starter, support, complete',
-    ]))
+    const invalid = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Use a variable',
+          starterCode: 'name = ""',
+          codeStages: [{ label: 'Wrong role', role: 'stretch', code: '' }],
+        },
+      ])
+    )
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining(['Task 1 stage 1 role must be one of: starter, support, complete'])
+    )
   })
 
   it('validates code_arrange tasks (single-slot lines, shared task-level distractors)', () => {
-    const valid = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Arrange a loop',
-      taskType: 'code_arrange',
-      moduleType: 'python',
-      lines: [
-        { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'for i in range(3):' }] },
-        { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: '    print(i)' }] },
-      ],
-      distractors: [{ id: 'D1', code: '    print(i * 2)' }],
-      check: { type: 'output_contains', value: '0' },
-      _checkTested: true,
-    }]))
+    const valid = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Arrange a loop',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [
+            { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'for i in range(3):' }] },
+            { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: '    print(i)' }] },
+          ],
+          distractors: [{ id: 'D1', code: '    print(i * 2)' }],
+          check: { type: 'output_contains', value: '0' },
+          _checkTested: true,
+        },
+      ])
+    )
     expect(valid.errors).toEqual([])
 
-    const invalid = validateLesson(lesson('scratch', [{
-      id: 1,
-      title: 'Arrange',
-      taskType: 'code_arrange',
-      moduleType: 'scratch',
-      lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: '' }] }],
-      distractors: [{ id: 'L1', code: 'dup id' }],
-    }]))
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 is a code-arrange task but must use the Python or HTML module',
-      'Task 1 line 1 blank 1 has no correct value.',
-      'Task 1 is a code-arrange task but has duplicate blank/distractor ids.',
-      'Task 1 is a code-arrange task but has no completion check.',
-    ]))
+    const invalid = validateLesson(
+      lesson('scratch', [
+        {
+          id: 1,
+          title: 'Arrange',
+          taskType: 'code_arrange',
+          moduleType: 'scratch',
+          lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: '' }] }],
+          distractors: [{ id: 'L1', code: 'dup id' }],
+        },
+      ])
+    )
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 is a code-arrange task but must use the Python or HTML module',
+        'Task 1 line 1 blank 1 has no correct value.',
+        'Task 1 is a code-arrange task but has duplicate blank/distractor ids.',
+        'Task 1 is a code-arrange task but has no completion check.',
+      ])
+    )
 
-    const noLines = validateLesson(lesson('html', [{
-      id: 1,
-      title: 'Arrange HTML',
-      taskType: 'code_arrange',
-      moduleType: 'html',
-      lines: [],
-      check: { type: 'html_element', operator: 'exists', selector: 'h1' },
-    }]))
-    expect(noLines.errors).toEqual(expect.arrayContaining([
-      'Task 1 is a code-arrange task but has no lines.',
-      'Task 1 has no files',
-    ]))
+    const noLines = validateLesson(
+      lesson('html', [
+        {
+          id: 1,
+          title: 'Arrange HTML',
+          taskType: 'code_arrange',
+          moduleType: 'html',
+          lines: [],
+          check: { type: 'html_element', operator: 'exists', selector: 'h1' },
+        },
+      ])
+    )
+    expect(noLines.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 is a code-arrange task but has no lines.',
+        'Task 1 has no files',
+      ])
+    )
   })
 
   it('validates code_arrange tasks (lines with inline blanks)', () => {
-    const valid = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Arrange a loop',
-      taskType: 'code_arrange',
-      moduleType: 'python',
-      lines: [{
-        id: 'L1',
-        parts: [
-          { type: 'text', text: 'for i in range(' },
-          { type: 'slot', id: 'S1', code: '5' },
-          { type: 'text', text: '):' },
-        ],
-      }],
-      distractors: [{ id: 'S1d1', code: '10' }],
-      check: { type: 'output_contains', value: '0' },
-      _checkTested: true,
-    }]))
+    const valid = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Arrange a loop',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [
+            {
+              id: 'L1',
+              parts: [
+                { type: 'text', text: 'for i in range(' },
+                { type: 'slot', id: 'S1', code: '5' },
+                { type: 'text', text: '):' },
+              ],
+            },
+          ],
+          distractors: [{ id: 'S1d1', code: '10' }],
+          check: { type: 'output_contains', value: '0' },
+          _checkTested: true,
+        },
+      ])
+    )
     expect(valid.errors).toEqual([])
 
-    const invalid = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Arrange',
-      taskType: 'code_arrange',
-      moduleType: 'python',
-      lines: [{ id: 'L1', parts: [] }],
-      check: { type: 'output_contains', value: '0' },
-    }]))
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 line 1 has no parts.',
-      'Task 1 is a code-arrange task but has no blanks.',
-    ]))
+    const invalid = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Arrange',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [{ id: 'L1', parts: [] }],
+          check: { type: 'output_contains', value: '0' },
+        },
+      ])
+    )
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 line 1 has no parts.',
+        'Task 1 is a code-arrange task but has no blanks.',
+      ])
+    )
 
-    const fixedLine = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Arrange with a given line',
-      taskType: 'code_arrange',
-      moduleType: 'python',
-      lines: [
-        { id: 'L1', parts: [{ type: 'text', text: 'x = 5' }] },
-        { id: 'L2', parts: [{ type: 'slot', id: 'S1', code: 'print(x)' }] },
-      ],
-      check: { type: 'output_contains', value: '5' },
-      _checkTested: true,
-    }]))
+    const fixedLine = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Arrange with a given line',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [
+            { id: 'L1', parts: [{ type: 'text', text: 'x = 5' }] },
+            { id: 'L2', parts: [{ type: 'slot', id: 'S1', code: 'print(x)' }] },
+          ],
+          check: { type: 'output_contains', value: '5' },
+          _checkTested: true,
+        },
+      ])
+    )
     expect(fixedLine.errors).toEqual([])
 
-    const blankWithNoCode = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Arrange',
-      taskType: 'code_arrange',
-      moduleType: 'python',
-      lines: [{ id: 'L1', parts: [{ type: 'slot', id: '', code: '' }] }],
-      check: { type: 'output_contains', value: '0' },
-    }]))
-    expect(blankWithNoCode.errors).toEqual(expect.arrayContaining([
-      'Task 1 line 1 blank 1 has no id.',
-      'Task 1 line 1 blank 1 has no correct value.',
-    ]))
+    const blankWithNoCode = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Arrange',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [{ id: 'L1', parts: [{ type: 'slot', id: '', code: '' }] }],
+          check: { type: 'output_contains', value: '0' },
+        },
+      ])
+    )
+    expect(blankWithNoCode.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 line 1 blank 1 has no id.',
+        'Task 1 line 1 blank 1 has no correct value.',
+      ])
+    )
   })
 
   it('does not warn about missing starter code for a code_arrange task with lines', () => {
-    const result = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Arrange a loop',
-      taskType: 'code_arrange',
-      moduleType: 'python',
-      lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] }],
-      check: { type: 'output_contains', value: '1' },
-      _checkTested: true,
-    }]))
-    expect(result.warnings).not.toContain('Task 1 has no starter code — students will start with an empty editor')
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Arrange a loop',
+          taskType: 'code_arrange',
+          moduleType: 'python',
+          lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] }],
+          check: { type: 'output_contains', value: '1' },
+          _checkTested: true,
+        },
+      ])
+    )
+    expect(result.warnings).not.toContain(
+      'Task 1 has no starter code — students will start with an empty editor'
+    )
   })
 
   it('validates feedback check fields using the same lesson-type rules', () => {
-    const fsResult = validateLesson(lesson('filesystem', [{
-      id: 1,
-      title: 'FS',
-      starterFs: { '/': { type: 'dir' } },
-      check: { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/done.txt' },
-      feedbackChecks: [{ type: 'fs_file_content', operator: 'contains', path: '/tmp.txt', value: '', hint: 'Add content.' }],
-    }]))
-    expect(fsResult.errors).toContain('Task 1 has a file-content feedback check but no expected value')
+    const fsResult = validateLesson(
+      lesson('filesystem', [
+        {
+          id: 1,
+          title: 'FS',
+          starterFs: { '/': { type: 'dir' } },
+          check: { type: 'fs_path', operator: 'exists', itemType: 'file', path: '/done.txt' },
+          feedbackChecks: [
+            {
+              type: 'fs_file_content',
+              operator: 'contains',
+              path: '/tmp.txt',
+              value: '',
+              hint: 'Add content.',
+            },
+          ],
+        },
+      ])
+    )
+    expect(fsResult.errors).toContain(
+      'Task 1 has a file-content feedback check but no expected value'
+    )
 
-    const electronicsResult = validateLesson(lesson('electronics', [{
-      id: 1,
-      title: 'Circuit',
-      starterCircuit: { components: [], wires: [], controls: {} },
-      check: { type: 'circuit_no_short' },
-      feedbackChecks: [{ type: 'circuit_path_exists', from: { type: 'battery' }, to: { type: 'led', pin: 'anode' }, hint: 'Wire both endpoints.' }],
-    }]))
-    expect(electronicsResult.errors).toContain('Task 1 has a circuit connection feedback check but no source or destination part/pin')
+    const electronicsResult = validateLesson(
+      lesson('electronics', [
+        {
+          id: 1,
+          title: 'Circuit',
+          starterCircuit: { components: [], wires: [], controls: {} },
+          check: { type: 'circuit_no_short' },
+          feedbackChecks: [
+            {
+              type: 'circuit_path_exists',
+              from: { type: 'battery' },
+              to: { type: 'led', pin: 'anode' },
+              hint: 'Wire both endpoints.',
+            },
+          ],
+        },
+      ])
+    )
+    expect(electronicsResult.errors).toContain(
+      'Task 1 has a circuit connection feedback check but no source or destination part/pin'
+    )
 
-    const stageStarterResult = validateLesson(lesson('electronics', [{
-      id: 1,
-      title: 'Circuit via stage',
-      codeStages: [{ label: 'Starter', role: 'starter', circuit: { components: [], wires: [], controls: {} } }],
-    }]))
+    const stageStarterResult = validateLesson(
+      lesson('electronics', [
+        {
+          id: 1,
+          title: 'Circuit via stage',
+          codeStages: [
+            {
+              label: 'Starter',
+              role: 'starter',
+              circuit: { components: [], wires: [], controls: {} },
+            },
+          ],
+        },
+      ])
+    )
     expect(stageStarterResult.errors).not.toContain('Task 1 has no starter breadboard')
 
-    const htmlResult = validateLesson(lesson('html', [{
-      id: 1,
-      title: 'Web',
-      starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Hi</h1>' }],
-      check: { type: 'html_element', selector: 'h1' },
-      feedbackChecks: [{ type: 'html_element_value', operator: 'equals', selector: '', value: 'Hi', hint: 'Target the heading.' }],
-    }]))
+    const htmlResult = validateLesson(
+      lesson('html', [
+        {
+          id: 1,
+          title: 'Web',
+          starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Hi</h1>' }],
+          check: { type: 'html_element', selector: 'h1' },
+          feedbackChecks: [
+            {
+              type: 'html_element_value',
+              operator: 'equals',
+              selector: '',
+              value: 'Hi',
+              hint: 'Target the heading.',
+            },
+          ],
+        },
+      ])
+    )
     expect(htmlResult.errors).toContain('Task 1 has an element feedback check but no CSS selector')
   })
 
   it('validates feedback priorities and linked stage offers', () => {
-    const result = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Feedback target',
-      starterCode: 'print("hi")',
-      check: { type: 'output_contains', value: 'hi' },
-      codeStages: [{ label: 'Guided', code: 'print("hi")' }],
-      feedbackChecks: [
-        { type: 'code', operator: 'contains', value: 'bad', priority: 0, stageOffer: { stageIndex: 3, action: 'load', afterMatches: 0 } },
-      ],
-    }]))
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Feedback target',
+          starterCode: 'print("hi")',
+          check: { type: 'output_contains', value: 'hi' },
+          codeStages: [{ label: 'Guided', code: 'print("hi")' }],
+          feedbackChecks: [
+            {
+              type: 'code',
+              operator: 'contains',
+              value: 'bad',
+              priority: 0,
+              stageOffer: { stageIndex: 3, action: 'load', afterMatches: 0 },
+            },
+          ],
+        },
+      ])
+    )
 
-    expect(result.errors).toEqual(expect.arrayContaining([
-      'Task 1 feedback check 1 priority must be a positive whole number',
-      'Task 1 feedback check 1 references a code stage that does not exist',
-      'Task 1 feedback check 1 stage offer action must be preview or replace',
-      'Task 1 feedback check 1 stage offer threshold must be a positive whole number',
-    ]))
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 feedback check 1 priority must be a positive whole number',
+        'Task 1 feedback check 1 references a code stage that does not exist',
+        'Task 1 feedback check 1 stage offer action must be preview or replace',
+        'Task 1 feedback check 1 stage offer threshold must be a positive whole number',
+      ])
+    )
   })
 
   it('warns for blocking feedback checks without hints and requires a completion check', () => {
-    const result = validateLesson(lesson('python', [{
-      id: 1,
-      title: 'Python',
-      starterCode: 'print("hi")',
-      feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(' }],
-    }]))
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Python',
+          starterCode: 'print("hi")',
+          feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(' }],
+        },
+      ])
+    )
 
     expect(result.errors).toContain('Task 1 has feedback checks but no completion check')
     expect(result.warnings).toContain('Task 1 has a blocking feedback check with no hint')
   })
 
   it('warns when two flat tasks use the same ID', () => {
-    const result = validateLesson(lesson('python', [{
-      id: 2,
-      title: 'Intro',
-      taskType: 'information',
-      informationType: 'introduction',
-      explainer: 'Welcome',
-    }, {
-      id: 'group-a',
-      type: 'group',
-      title: 'Group',
-      subtasks: [{
-        id: 2,
-        title: 'Code',
-        starterCode: 'print("hi")',
-      }],
-    }]))
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 2,
+          title: 'Intro',
+          taskType: 'information',
+          informationType: 'introduction',
+          explainer: 'Welcome',
+        },
+        {
+          id: 'group-a',
+          type: 'group',
+          title: 'Group',
+          subtasks: [
+            {
+              id: 2,
+              title: 'Code',
+              starterCode: 'print("hi")',
+            },
+          ],
+        },
+      ])
+    )
 
-    expect(result.warnings).toContain('Task ID 2 is used by task 1 "Intro" and task 2 "Code" - renumber task IDs before publishing')
+    expect(result.warnings).toContain(
+      'Task ID 2 is used by task 1 "Intro" and task 2 "Code" - renumber task IDs before publishing'
+    )
   })
 
   it('validates class fork metadata', () => {
@@ -321,10 +502,12 @@ describe('validateLesson', () => {
       fork: { sourceLessonId: 'test-lesson', classId: 'maple', taskLinks: {} },
       tasks: [{ id: 1, title: 'Code', starterCode: 'print("hi")' }],
     })
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Forked lesson ID must be test-lesson-maple',
-      'Fork task links must be an array',
-    ]))
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining([
+        'Forked lesson ID must be test-lesson-maple',
+        'Fork task links must be an array',
+      ])
+    )
   })
 })
 
@@ -337,7 +520,9 @@ describe('draft lesson metadata', () => {
   })
 
   it('allows incomplete real tasks in drafts and preserves task ids and intent during export', () => {
-    const draft = lesson('python', [{ id: 31, title: 'Plan a loop', intent: 'Explain loops in **Markdown**.' }])
+    const draft = lesson('python', [
+      { id: 31, title: 'Plan a loop', intent: 'Explain loops in **Markdown**.' },
+    ])
     draft.draft = true
     expect(validateLesson(draft).errors).toEqual([])
 
@@ -346,10 +531,14 @@ describe('draft lesson metadata', () => {
   })
 
   it('requires normal task fields when draft is cleared', () => {
-    const draft = lesson('python', [{ id: 31, title: 'Read', taskType: 'information', intent: 'Brief' }])
+    const draft = lesson('python', [
+      { id: 31, title: 'Read', taskType: 'information', intent: 'Brief' },
+    ])
     draft.draft = true
     expect(validateLesson(draft).errors).toEqual([])
-    expect(validateLesson({ ...draft, draft: false }).errors).toContain('Task 1 is an information task but has no explainer')
+    expect(validateLesson({ ...draft, draft: false }).errors).toContain(
+      'Task 1 is an information task but has no explainer'
+    )
   })
 })
 
@@ -359,81 +548,127 @@ describe('complete solution validation', () => {
   }
 
   it('warns when Python complete code fails a code_contains check', () => {
-    const { warnings } = validateLesson(lesson('python', [pythonTask({
-      check: { type: 'code_contains', value: 'for' },
-      completeCode: 'print("done")',
-    })]))
-    expect(warnings).toContain('Task 1 complete solution fails a code check — review the complete code')
+    const { warnings } = validateLesson(
+      lesson('python', [
+        pythonTask({
+          check: { type: 'code_contains', value: 'for' },
+          completeCode: 'print("done")',
+        }),
+      ])
+    )
+    expect(warnings).toContain(
+      'Task 1 complete solution fails a code check — review the complete code'
+    )
   })
 
   it('does not warn when Python complete code passes a code_contains check', () => {
-    const { warnings } = validateLesson(lesson('python', [pythonTask({
-      check: { type: 'code_contains', value: 'for' },
-      completeCode: 'for i in range(3): print(i)',
-    })]))
-    expect(warnings.some(w => w.includes('complete solution fails'))).toBe(false)
+    const { warnings } = validateLesson(
+      lesson('python', [
+        pythonTask({
+          check: { type: 'code_contains', value: 'for' },
+          completeCode: 'for i in range(3): print(i)',
+        }),
+      ])
+    )
+    expect(warnings.some((w) => w.includes('complete solution fails'))).toBe(false)
   })
 
   it('warns when Python has output checks, complete code set, and _checkTested is false', () => {
-    const { warnings } = validateLesson(lesson('python', [pythonTask({
-      check: { type: 'output_contains', value: 'Hello' },
-      completeCode: 'print("Hello")',
-      _checkTested: false,
-    })]))
-    expect(warnings).toContain('Task 1 has output checks — open the Complete tab and run to verify the complete solution')
+    const { warnings } = validateLesson(
+      lesson('python', [
+        pythonTask({
+          check: { type: 'output_contains', value: 'Hello' },
+          completeCode: 'print("Hello")',
+          _checkTested: false,
+        }),
+      ])
+    )
+    expect(warnings).toContain(
+      'Task 1 has output checks — open the Complete tab and run to verify the complete solution'
+    )
   })
 
   it('does not warn about output checks when _checkTested is true', () => {
-    const { warnings } = validateLesson(lesson('python', [pythonTask({
-      check: { type: 'output_contains', value: 'Hello' },
-      completeCode: 'print("Hello")',
-      _checkTested: true,
-    })]))
-    expect(warnings.some(w => w.includes('output checks'))).toBe(false)
+    const { warnings } = validateLesson(
+      lesson('python', [
+        pythonTask({
+          check: { type: 'output_contains', value: 'Hello' },
+          completeCode: 'print("Hello")',
+          _checkTested: true,
+        }),
+      ])
+    )
+    expect(warnings.some((w) => w.includes('output checks'))).toBe(false)
   })
 
   it('does not warn when Python task has no completeCode', () => {
-    const { warnings } = validateLesson(lesson('python', [pythonTask({
-      check: { type: 'code_contains', value: 'for' },
-    })]))
-    expect(warnings.some(w => w.includes('complete solution'))).toBe(false)
+    const { warnings } = validateLesson(
+      lesson('python', [
+        pythonTask({
+          check: { type: 'code_contains', value: 'for' },
+        }),
+      ])
+    )
+    expect(warnings.some((w) => w.includes('complete solution'))).toBe(false)
   })
 
   it('warns when HTML complete files fail a code_contains check', () => {
-    const { warnings } = validateLesson(lesson('html', [pythonTask({
-      starterCode: undefined,
-      starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }],
-      check: { type: 'code_contains', value: '<table>' },
-      completeFiles: [{ name: 'index.html', type: 'html', content: '<p>Done</p>' }],
-    })]))
-    expect(warnings).toContain('Task 1 complete solution fails a code check — review the complete files')
+    const { warnings } = validateLesson(
+      lesson('html', [
+        pythonTask({
+          starterCode: undefined,
+          starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }],
+          check: { type: 'code_contains', value: '<table>' },
+          completeFiles: [{ name: 'index.html', type: 'html', content: '<p>Done</p>' }],
+        }),
+      ])
+    )
+    expect(warnings).toContain(
+      'Task 1 complete solution fails a code check — review the complete files'
+    )
   })
 
   it('warns when filesystem complete solution fails an fs_file_exists check', () => {
-    const { warnings } = validateLesson(lesson('filesystem', [{
-      id: 1, title: 'FS', _checkTested: true,
-      starterFs: { '/': { type: 'dir' } },
-      check: { type: 'fs_file_exists', path: '/readme.txt' },
-      completeFs: { '/': { type: 'dir' } },
-    }]))
-    expect(warnings).toContain('Task 1 complete filesystem does not satisfy a check — review the complete filesystem')
+    const { warnings } = validateLesson(
+      lesson('filesystem', [
+        {
+          id: 1,
+          title: 'FS',
+          _checkTested: true,
+          starterFs: { '/': { type: 'dir' } },
+          check: { type: 'fs_file_exists', path: '/readme.txt' },
+          completeFs: { '/': { type: 'dir' } },
+        },
+      ])
+    )
+    expect(warnings).toContain(
+      'Task 1 complete filesystem does not satisfy a check — review the complete filesystem'
+    )
   })
 
   it('does not warn when filesystem complete solution passes the fs_file_exists check', () => {
-    const { warnings } = validateLesson(lesson('filesystem', [{
-      id: 1, title: 'FS', _checkTested: true,
-      starterFs: { '/': { type: 'dir' } },
-      check: { type: 'fs_file_exists', path: '/readme.txt' },
-      completeFs: { '/': { type: 'dir' }, '/readme.txt': { type: 'file', content: 'hi' } },
-    }]))
-    expect(warnings.some(w => w.includes('complete filesystem'))).toBe(false)
+    const { warnings } = validateLesson(
+      lesson('filesystem', [
+        {
+          id: 1,
+          title: 'FS',
+          _checkTested: true,
+          starterFs: { '/': { type: 'dir' } },
+          check: { type: 'fs_file_exists', path: '/readme.txt' },
+          completeFs: { '/': { type: 'dir' }, '/readme.txt': { type: 'file', content: 'hi' } },
+        },
+      ])
+    )
+    expect(warnings.some((w) => w.includes('complete filesystem'))).toBe(false)
   })
 })
 
 describe('quiz helpers', () => {
   it('detect starter and check values for quiz variants', () => {
     expect(quizHasStarter({ quizType: 'fill_blank', text: 'Hi ___', blanks: [] })).toBe(true)
-    expect(quizHasCheckValue({ quizType: 'match', pairs: [{ prompt: 'a', answer: 'b' }] })).toBe(true)
+    expect(quizHasCheckValue({ quizType: 'match', pairs: [{ prompt: 'a', answer: 'b' }] })).toBe(
+      true
+    )
     expect(quizHasCheckValue({ quizType: 'short_answer', check: { value: '' } })).toBe(false)
   })
 })
@@ -441,13 +676,30 @@ describe('quiz helpers', () => {
 describe('copyScratchSpriteStateToStarters', () => {
   it('copies stage presentation state while preserving sprite identity and artwork', () => {
     const sprites = [
-      { id: 'rocket', name: 'Rocket', type: 'cat', costumes: [{ name: 'idle', image: 'idle.png' }], x: 0 },
+      {
+        id: 'rocket',
+        name: 'Rocket',
+        type: 'cat',
+        costumes: [{ name: 'idle', image: 'idle.png' }],
+        x: 0,
+      },
       { id: 'star', name: 'Star', type: 'star', x: 5 },
     ]
 
-    expect(copyScratchSpriteStateToStarters(sprites, {
-      rocket: { x: 80, y: -20, size: 130, direction: -90, visible: false, rotationStyle: 'left-right', costume: 'boost', bubble: 'skip me' },
-    })).toEqual([
+    expect(
+      copyScratchSpriteStateToStarters(sprites, {
+        rocket: {
+          x: 80,
+          y: -20,
+          size: 130,
+          direction: -90,
+          visible: false,
+          rotationStyle: 'left-right',
+          costume: 'boost',
+          bubble: 'skip me',
+        },
+      })
+    ).toEqual([
       {
         id: 'rocket',
         name: 'Rocket',
@@ -490,170 +742,232 @@ describe('copyStarterToComplete', () => {
 
 describe('renumberTasks', () => {
   it('renumbers flat task order and updates carry-through references', () => {
-    const result = renumberTasks([{
-      id: 70,
-      type: 'group',
-      title: 'Group',
-      subtasks: [{
-        id: 40,
-        title: 'First',
-      }, {
-        id: 90,
-        title: 'Second',
-        carryCodeFrom: 40,
-        carryBlocksFrom: 40,
-        carryFsFrom: 40,
-        carryCircuitFrom: 40,
-      }],
-    }, {
-      id: 100,
-      title: 'Third',
-      carryCodeFrom: 90,
-    }])
+    const result = renumberTasks([
+      {
+        id: 70,
+        type: 'group',
+        title: 'Group',
+        subtasks: [
+          {
+            id: 40,
+            title: 'First',
+          },
+          {
+            id: 90,
+            title: 'Second',
+            carryCodeFrom: 40,
+            carryBlocksFrom: 40,
+            carryFsFrom: 40,
+            carryCircuitFrom: 40,
+          },
+        ],
+      },
+      {
+        id: 100,
+        title: 'Third',
+        carryCodeFrom: 90,
+      },
+    ])
 
-    expect(result).toEqual([{
-      id: 70,
-      type: 'group',
-      title: 'Group',
-      subtasks: [{
-        id: 1,
-        title: 'First',
-      }, {
-        id: 2,
-        title: 'Second',
-        carryCodeFrom: 1,
-        carryBlocksFrom: 1,
-        carryFsFrom: 1,
-        carryCircuitFrom: 1,
-      }],
-    }, {
-      id: 3,
-      title: 'Third',
-      carryCodeFrom: 2,
-    }])
+    expect(result).toEqual([
+      {
+        id: 70,
+        type: 'group',
+        title: 'Group',
+        subtasks: [
+          {
+            id: 1,
+            title: 'First',
+          },
+          {
+            id: 2,
+            title: 'Second',
+            carryCodeFrom: 1,
+            carryBlocksFrom: 1,
+            carryFsFrom: 1,
+            carryCircuitFrom: 1,
+          },
+        ],
+      },
+      {
+        id: 3,
+        title: 'Third',
+        carryCodeFrom: 2,
+      },
+    ])
   })
 })
 
 describe('normalizeTasksForExport', () => {
   it('remaps grouped task IDs and trims transient option/check data', () => {
-    const exported = normalizeTasksForExport([{
-      id: 70,
-      type: 'group',
-      title: 'Group',
-      subtasks: [{
-        id: 40,
-        title: 'First',
-        starterCode: 'print(1)',
-        copyCode: 'print("copy me")',
-        _checkTested: true,
-        check: { type: 'output_equals', value: '1', hint: '  keep  ' },
-        feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(', hint: '  avoid input  ' }],
-        incorrectChecks: [{ type: 'code_contains', value: 'legacy', hint: 'drop me' }],
-        options: [{ text: 'A', feedback: '   ' }],
-      }, {
-        id: 90,
-        title: 'Second',
-        starterCode: '',
-        copyCode: '   ',
-        carryCodeFrom: 40,
-        check: [{ type: 'code_no_error', hint: ' ' }],
-      }],
-    }])
+    const exported = normalizeTasksForExport([
+      {
+        id: 70,
+        type: 'group',
+        title: 'Group',
+        subtasks: [
+          {
+            id: 40,
+            title: 'First',
+            starterCode: 'print(1)',
+            copyCode: 'print("copy me")',
+            _checkTested: true,
+            check: { type: 'output_equals', value: '1', hint: '  keep  ' },
+            feedbackChecks: [
+              { type: 'code', operator: 'contains', value: 'input(', hint: '  avoid input  ' },
+            ],
+            incorrectChecks: [{ type: 'code_contains', value: 'legacy', hint: 'drop me' }],
+            options: [{ text: 'A', feedback: '   ' }],
+          },
+          {
+            id: 90,
+            title: 'Second',
+            starterCode: '',
+            copyCode: '   ',
+            carryCodeFrom: 40,
+            check: [{ type: 'code_no_error', hint: ' ' }],
+          },
+        ],
+      },
+    ])
 
     expect(exported[0].subtasks[0]).toMatchObject({
       id: 1,
       copyCode: 'print("copy me")',
       check: { hint: 'keep' },
-      feedbackChecks: [{ type: 'code', operator: 'contains', value: 'input(', hint: 'avoid input' }],
+      feedbackChecks: [
+        { type: 'code', operator: 'contains', value: 'input(', hint: 'avoid input' },
+      ],
       options: [{ text: 'A' }],
     })
     expect(exported[0].subtasks[0].incorrectChecks).toBeUndefined()
-    expect(exported[0].subtasks[1]).toMatchObject({ id: 2, carryCodeFrom: 1, check: [{ type: 'code_no_error' }] })
+    expect(exported[0].subtasks[1]).toMatchObject({
+      id: 2,
+      carryCodeFrom: 1,
+      check: [{ type: 'code_no_error' }],
+    })
     expect(exported[0].subtasks[1].copyCode).toBeUndefined()
   })
 
   it('exports information tasks with only public fields', () => {
-    expect(normalizeTasksForExport([{
-      id: 4,
-      taskType: 'information',
-      informationType: 'introduction',
-      title: 'Welcome',
-      explainer: 'Hello',
-      estimatedMinutes: 2,
-      priority: 'optional',
-      starterCode: 'ignored',
-    }])).toEqual([{
-      id: 1,
-      taskType: 'information',
-      informationType: 'introduction',
-      title: 'Welcome',
-      explainer: 'Hello',
-      estimatedMinutes: 2,
-      priority: 'optional',
-    }])
+    expect(
+      normalizeTasksForExport([
+        {
+          id: 4,
+          taskType: 'information',
+          informationType: 'introduction',
+          title: 'Welcome',
+          explainer: 'Hello',
+          estimatedMinutes: 2,
+          priority: 'optional',
+          starterCode: 'ignored',
+        },
+      ])
+    ).toEqual([
+      {
+        id: 1,
+        taskType: 'information',
+        informationType: 'introduction',
+        title: 'Welcome',
+        explainer: 'Hello',
+        estimatedMinutes: 2,
+        priority: 'optional',
+      },
+    ])
   })
 
   it('retains taskActivity for information tasks alongside intent', () => {
-    expect(normalizeTasksForExport([{
-      id: 4,
-      taskType: 'information',
-      informationType: 'introduction',
-      title: 'Welcome',
-      explainer: 'Hello',
-      intent: 'Warm the class up.',
-      taskActivity: 'Pair-share discussion',
-    }])).toEqual([{
-      id: 1,
-      taskType: 'information',
-      informationType: 'introduction',
-      title: 'Welcome',
-      explainer: 'Hello',
-      intent: 'Warm the class up.',
-      taskActivity: 'Pair-share discussion',
-    }])
+    expect(
+      normalizeTasksForExport([
+        {
+          id: 4,
+          taskType: 'information',
+          informationType: 'introduction',
+          title: 'Welcome',
+          explainer: 'Hello',
+          intent: 'Warm the class up.',
+          taskActivity: 'Pair-share discussion',
+        },
+      ])
+    ).toEqual([
+      {
+        id: 1,
+        taskType: 'information',
+        informationType: 'introduction',
+        title: 'Welcome',
+        explainer: 'Hello',
+        intent: 'Warm the class up.',
+        taskActivity: 'Pair-share discussion',
+      },
+    ])
   })
 
   it('omits taskActivity from information task export when not set', () => {
-    const exported = normalizeTasksForExport([{
-      id: 4, taskType: 'information', informationType: 'introduction', title: 'Welcome', explainer: 'Hello',
-    }])
+    const exported = normalizeTasksForExport([
+      {
+        id: 4,
+        taskType: 'information',
+        informationType: 'introduction',
+        title: 'Welcome',
+        explainer: 'Hello',
+      },
+    ])
     expect(exported[0].taskActivity).toBeUndefined()
   })
 
   it('passes taskActivity through for non-information task types via the generic export path', () => {
-    const exported = normalizeTasksForExport([{
-      id: 5, title: 'Loop practice', starterCode: 'print(1)', taskActivity: 'Whiteboard demo',
-    }])
+    const exported = normalizeTasksForExport([
+      {
+        id: 5,
+        title: 'Loop practice',
+        starterCode: 'print(1)',
+        taskActivity: 'Whiteboard demo',
+      },
+    ])
     expect(exported[0].taskActivity).toBe('Whiteboard demo')
   })
 
   it('preserves original task IDs when preserveIds is true', () => {
-    const exported = normalizeTasksForExport([{
-      id: 70,
-      type: 'group',
-      title: 'Group',
-      subtasks: [{ id: 40, title: 'First', starterCode: '' }, { id: 90, title: 'Second', starterCode: '', carryCodeFrom: 40 }],
-    }], { preserveIds: true })
+    const exported = normalizeTasksForExport(
+      [
+        {
+          id: 70,
+          type: 'group',
+          title: 'Group',
+          subtasks: [
+            { id: 40, title: 'First', starterCode: '' },
+            { id: 90, title: 'Second', starterCode: '', carryCodeFrom: 40 },
+          ],
+        },
+      ],
+      { preserveIds: true }
+    )
 
     expect(exported[0].subtasks[0].id).toBe(40)
     expect(exported[0].subtasks[1]).toMatchObject({ id: 90, carryCodeFrom: 40 })
   })
 
   it('exports recap (two-pane) information tasks including leftContent', () => {
-    expect(normalizeTasksForExport([{
-      id: 4,
-      taskType: 'information',
-      informationType: 'recap',
-      title: 'Recap',
-      leftContent: 'Can you explain X?',
-      explainer: 'Here is the answer.',
-    }])).toEqual([{
-      id: 1,
-      taskType: 'information',
-      informationType: 'recap',
-      title: 'Recap',
-      leftContent: 'Can you explain X?',
-      explainer: 'Here is the answer.',
-    }])
+    expect(
+      normalizeTasksForExport([
+        {
+          id: 4,
+          taskType: 'information',
+          informationType: 'recap',
+          title: 'Recap',
+          leftContent: 'Can you explain X?',
+          explainer: 'Here is the answer.',
+        },
+      ])
+    ).toEqual([
+      {
+        id: 1,
+        taskType: 'information',
+        informationType: 'recap',
+        title: 'Recap',
+        leftContent: 'Can you explain X?',
+        explainer: 'Here is the answer.',
+      },
+    ])
   })
 })

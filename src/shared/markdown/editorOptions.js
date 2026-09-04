@@ -46,22 +46,23 @@ export function getInlineCodeOptions(lessonType, inlineCodeLanguages) {
     lessonType === 'python'
       ? ['python']
       : lessonType === 'html'
-      ? ['html', 'javascript', 'css']
-      : lessonType === 'scratch'
-      ? ['scratch']
-      : []
+        ? ['html', 'javascript', 'css']
+        : lessonType === 'scratch'
+          ? ['scratch']
+          : []
 
-  const languages = Array.isArray(inlineCodeLanguages) && inlineCodeLanguages.length
-    ? inlineCodeLanguages
-    : fallback
+  const languages =
+    Array.isArray(inlineCodeLanguages) && inlineCodeLanguages.length
+      ? inlineCodeLanguages
+      : fallback
 
   const seen = new Set()
   return languages
-    .map(lang => lang === 'js' ? 'javascript' : lang)
-    .filter(lang => {
+    .map((lang) => (lang === 'js' ? 'javascript' : lang))
+    .filter((lang) => {
       if (!labels[lang] || seen.has(lang)) return false
       seen.add(lang)
       return true
     })
-    .map(lang => ({ label: labels[lang], action: `inline-code:${lang}` }))
+    .map((lang) => ({ label: labels[lang], action: `inline-code:${lang}` }))
 }

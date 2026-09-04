@@ -7,6 +7,7 @@
  * Main → Worker : { type: 'init' }
  *                 { type: 'run',   code: string }
  *                 { type: 'input', value: string }
+ *                 { type: 'gpio_inputs', values: object, requestId?: number }
  *
  * Worker → Main : { type: 'progress',      msg: string }
  *                 { type: 'ready' }
@@ -14,6 +15,14 @@
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
  *                 { type: 'done',          status: 'success'|'error' }
+ *                 { type: 'gpio_write',     pin: string, value: 0|1 }
+ *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
+ *                 { type: 'gpio_poll',      requestId: number }
+ *
+ * GPIO messages carry MicroPython-style pin I/O for Electronics-module tasks:
+ * the worker emits 'gpio_write'/'gpio_configure' as Python calls the GPIO API,
+ * and emits 'gpio_poll' (awaiting the matching 'gpio_inputs' reply) whenever
+ * Python sleeps, so the main thread can push updated input pin state.
  *
  * `line` is only meaningful on a 'stderr' output produced from a caught Python
  * exception (see formatPythonError): it is the innermost `<student>` frame's
@@ -132,16 +141,22 @@ globalThis.__hsInput = async (prompt) => {
 }
 
 globalThis.__hsSetVariables = (variables) => {
-  _lastVariables = variables?.toJs ? variables.toJs({ dict_converter: Object.fromEntries }) : (variables ?? {})
+  _lastVariables = variables?.toJs
+    ? variables.toJs({ dict_converter: Object.fromEntries })
+    : (variables ?? {})
 }
 
 function normalizeGpioInputs(values = {}) {
   const source = values?.toJs ? values.toJs({ dict_converter: Object.fromEntries }) : values
-  return Object.fromEntries(Object.entries(source ?? {}).map(([pin, value]) => {
-    const key = String(pin ?? '').trim()
-    if (!key) return null
-    return [key, value == null ? null : (value ? 1 : 0)]
-  }).filter(Boolean))
+  return Object.fromEntries(
+    Object.entries(source ?? {})
+      .map(([pin, value]) => {
+        const key = String(pin ?? '').trim()
+        if (!key) return null
+        return [key, value == null ? null : value ? 1 : 0]
+      })
+      .filter(Boolean)
+  )
 }
 
 globalThis.__hsGpioWrite = (pin, value) => {
@@ -172,10 +187,10 @@ globalThis.__hsGpioRead = (pin) => {
 
 globalThis.__hsGpioSleep = async (seconds) => {
   const delayMs = Math.max(0, Number(seconds) || 0) * 1000
-  await new Promise(resolve => setTimeout(resolve, delayMs))
+  await new Promise((resolve) => setTimeout(resolve, delayMs))
   const requestId = ++_gpioPollId
   self.postMessage({ type: 'gpio_poll', requestId })
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     _gpioPollResolvers.set(requestId, resolve)
   })
 }
@@ -256,7 +271,10 @@ self.onmessage = async ({ data }) => {
     })
 
     pyodide.globals.set('_hs_user_code', data.code)
-    pyodide.globals.set('_hs_async_names_json', JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : []))
+    pyodide.globals.set(
+      '_hs_async_names_json',
+      JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : [])
+    )
 
     try {
       await pyodide.runPythonAsync(WRAPPER)
@@ -294,19 +312,27 @@ self.onmessage = async ({ data }) => {
 // (or null when no clean line number could be determined, e.g. a raw
 // SyntaxError before the student's <student> frame exists).
 export function formatPythonError(traceback) {
-  const lines = traceback.split('\n').map(l => l.trimEnd()).filter(Boolean)
+  const lines = traceback
+    .split('\n')
+    .map((l) => l.trimEnd())
+    .filter(Boolean)
   if (lines.length === 0) return { text: traceback, line: null }
 
   // Find the innermost <student> frame to get the student's line number
   let lineNum = null
   for (let i = lines.length - 1; i >= 0; i--) {
     const m = lines[i].match(/File "<student>", line (\d+)/)
-    if (m) { lineNum = parseInt(m[1], 10); break }
+    if (m) {
+      lineNum = parseInt(m[1], 10)
+      break
+    }
   }
 
   // The last line is the actual error type and message
   const errorLine = lines[lines.length - 1]
-  return lineNum != null ? { text: `Line ${lineNum}: ${errorLine}`, line: lineNum } : { text: errorLine, line: null }
+  return lineNum != null
+    ? { text: `Line ${lineNum}: ${errorLine}`, line: lineNum }
+    : { text: errorLine, line: null }
 }
 
 async function loadPyodide_() {

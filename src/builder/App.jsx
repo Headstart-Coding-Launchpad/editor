@@ -6,7 +6,6 @@ import { fetchLessonList } from '../shared/lessonService'
 import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
-import { DEFAULT_CIRCUIT, cloneCircuit } from '../modules/electronics/circuit'
 
 export const LS_KEY = 'headstart_builder_current'
 
@@ -20,7 +19,11 @@ const blankLesson = () => ({
   tasks: [],
 })
 
-const normalizeLoadedLesson = lesson => ({ ...lesson, draft: lesson.draft === true, version: lesson.version ?? 0 })
+const normalizeLoadedLesson = (lesson) => ({
+  ...lesson,
+  draft: lesson.draft === true,
+  version: lesson.version ?? 0,
+})
 
 export default function BuilderApp() {
   const [searchParams] = useSearchParams()
@@ -35,14 +38,14 @@ export default function BuilderApp() {
     const loadId = loadIdOnMount.current
     if (loadId) {
       getDoc(doc(firestore, 'lessons', loadId))
-        .then(snap => {
+        .then((snap) => {
           if (snap.exists()) {
             setLesson(normalizeLoadedLesson(decodeLessonBlocksFromFirestore(snap.data())))
           } else {
             alert(`Lesson "${loadId}" not found in Firestore.`)
           }
         })
-        .catch(err => alert('Could not load lesson: ' + err.message))
+        .catch((err) => alert('Could not load lesson: ' + err.message))
         .finally(() => setReady(true))
       return
     }
@@ -54,16 +57,22 @@ export default function BuilderApp() {
           setRestorePrompt(true)
           return
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     setReady(true)
   }, [])
 
   // Auto-save on every change.
   const updateLesson = useCallback((updater) => {
-    setLesson(prev => {
+    setLesson((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      localStorage.setItem(LS_KEY, JSON.stringify(next))
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(next))
+      } catch (err) {
+        console.warn('Failed to save lesson draft to localStorage', err)
+      }
       setDirty(true)
       return next
     })
@@ -89,16 +98,27 @@ export default function BuilderApp() {
           </div>
           <div style={s.cardBody}>
             <p style={s.message}>
-              You have an unsaved lesson in progress: <strong>{saved.title || saved.id || 'Untitled'}</strong>.
-              Do you want to restore it?
+              You have an unsaved lesson in progress:{' '}
+              <strong>{saved.title || saved.id || 'Untitled'}</strong>. Do you want to restore it?
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn-primary" onClick={() => { setLesson(normalizeLoadedLesson(saved)); setDirty(true); setRestorePrompt(false); setReady(true) }}>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  setLesson(normalizeLoadedLesson(saved))
+                  setDirty(true)
+                  setRestorePrompt(false)
+                  setReady(true)
+                }}
+              >
                 Restore
               </button>
               <button
                 className="btn-ghost"
-                style={{ color: 'var(--colour-primary)', border: '1px solid var(--colour-primary)' }}
+                style={{
+                  color: 'var(--colour-primary)',
+                  border: '1px solid var(--colour-primary)',
+                }}
                 onClick={() => {
                   localStorage.removeItem(LS_KEY)
                   setLesson(null)
@@ -125,7 +145,7 @@ export default function BuilderApp() {
           setLesson(blankLesson())
           setDirty(false)
         }}
-        onUpload={uploaded => {
+        onUpload={(uploaded) => {
           setLesson(uploaded)
           setDirty(false)
         }}
@@ -139,7 +159,13 @@ export default function BuilderApp() {
       dirty={dirty}
       onUpdate={updateLesson}
       onNew={() => {
-        if (dirty && !confirm('You have unsaved changes - download your lesson first.\n\nAre you sure you want to start a new lesson?')) return
+        if (
+          dirty &&
+          !confirm(
+            'You have unsaved changes - download your lesson first.\n\nAre you sure you want to start a new lesson?'
+          )
+        )
+          return
         localStorage.removeItem(LS_KEY)
         setLesson(null)
         setDirty(false)
@@ -157,11 +183,11 @@ function LessonTypeChooser({ onChoose, onUpload }) {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.json'
-    input.onchange = e => {
+    input.onchange = (e) => {
       const file = e.target.files[0]
       if (!file) return
       const reader = new FileReader()
-      reader.onload = ev => {
+      reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result)
           if (!parsed.id || !parsed.tasks || !parsed.type) throw new Error('Unrecognised format')
@@ -184,46 +210,73 @@ function LessonTypeChooser({ onChoose, onUpload }) {
         <div style={s.cardBody}>
           <div>
             <h1 style={s.choiceTitle}>Create a lesson</h1>
-            <p style={s.choiceText}>Add the coding environments you need as lesson modules, in any order.</p>
+            <p style={s.choiceText}>
+              Add the coding environments you need as lesson modules, in any order.
+            </p>
           </div>
           <div style={s.choiceGrid}>
             <button style={s.choiceButton} onClick={onChoose}>
               <span style={s.choiceName}>Create composed lesson</span>
-              <span style={s.choiceDescription}>Start with an empty lesson, then add Python, Scratch, Arcade Kit, HTML, Filesystem, or Electronics modules.</span>
+              <span style={s.choiceDescription}>
+                Start with an empty lesson, then add Python, Scratch, Arcade Kit, HTML, Filesystem,
+                or Electronics modules.
+              </span>
             </button>
           </div>
-          {false && <div style={s.choiceGrid}>
-            <button style={s.choiceButton} onClick={() => onChoose('python')}>
-              <span style={s.choiceName}>Python</span>
-              <span style={s.choiceDescription}>Single-file Python tasks with output checks and Pyodide execution.</span>
-            </button>
-            <button style={s.choiceButton} onClick={() => onChoose('arcade')}>
-              <span style={s.choiceName}>Arcade Kit</span>
-              <span style={s.choiceDescription}>Single-file Python pixel games with a browser canvas, keyboard controls, and assets.</span>
-            </button>
-            <button style={s.choiceButton} onClick={() => onChoose('html')}>
-              <span style={s.choiceName}>Web</span>
-              <span style={s.choiceDescription}>HTML, CSS, and JavaScript tasks with files, assets, and iframe preview.</span>
-            </button>
-            <button style={s.choiceButton} onClick={() => onChoose('scratch')}>
-              <span style={s.choiceName}>Scratch</span>
-              <span style={s.choiceDescription}>Block-based tasks with a Scratch workspace, stage, toolbox limits, and block checks.</span>
-            </button>
-            <button style={s.choiceButton} onClick={() => onChoose('filesystem')}>
-              <span style={s.choiceName}>Files/Folders</span>
-              <span style={s.choiceDescription}>Virtual filesystem tasks — create, rename, move, and organise files and folders.</span>
-            </button>
-            <button style={s.choiceButton} onClick={() => onChoose('electronics')}>
-              <span style={s.choiceName}>Electronics</span>
-              <span style={s.choiceDescription}>Editable breadboard tasks with LEDs, motors, switches, pots, and future MicroPython support.</span>
-            </button>
-          </div>}
+          {/* Single composed-type creation flow only — kept for potential future per-type quick-create. */}
+          {false && (
+            <div style={s.choiceGrid}>
+              <button style={s.choiceButton} onClick={() => onChoose('python')}>
+                <span style={s.choiceName}>Python</span>
+                <span style={s.choiceDescription}>
+                  Single-file Python tasks with output checks and Pyodide execution.
+                </span>
+              </button>
+              <button style={s.choiceButton} onClick={() => onChoose('arcade')}>
+                <span style={s.choiceName}>Arcade Kit</span>
+                <span style={s.choiceDescription}>
+                  Single-file Python pixel games with a browser canvas, keyboard controls, and
+                  assets.
+                </span>
+              </button>
+              <button style={s.choiceButton} onClick={() => onChoose('html')}>
+                <span style={s.choiceName}>Web</span>
+                <span style={s.choiceDescription}>
+                  HTML, CSS, and JavaScript tasks with files, assets, and iframe preview.
+                </span>
+              </button>
+              <button style={s.choiceButton} onClick={() => onChoose('scratch')}>
+                <span style={s.choiceName}>Scratch</span>
+                <span style={s.choiceDescription}>
+                  Block-based tasks with a Scratch workspace, stage, toolbox limits, and block
+                  checks.
+                </span>
+              </button>
+              <button style={s.choiceButton} onClick={() => onChoose('filesystem')}>
+                <span style={s.choiceName}>Files/Folders</span>
+                <span style={s.choiceDescription}>
+                  Virtual filesystem tasks — create, rename, move, and organise files and folders.
+                </span>
+              </button>
+              <button style={s.choiceButton} onClick={() => onChoose('electronics')}>
+                <span style={s.choiceName}>Electronics</span>
+                <span style={s.choiceDescription}>
+                  Editable breadboard tasks with LEDs, motors, switches, pots, and future
+                  MicroPython support.
+                </span>
+              </button>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
               Upload existing JSON
             </button>
             {role === 'admin' && (
-              <button className="btn-ghost" style={s.uploadBtn} onClick={() => setFirestoreOpen(true)}>
+              <button
+                className="btn-ghost"
+                style={s.uploadBtn}
+                onClick={() => setFirestoreOpen(true)}
+              >
                 Open from Firestore
               </button>
             )}
@@ -245,8 +298,8 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
 
   useEffect(() => {
     fetchLessonList()
-      .then(items => setLessons(items))
-      .catch(err => setError(err.message))
+      .then((items) => setLessons(items))
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -254,7 +307,10 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
     setLoadingId(lessonId)
     try {
       const snap = await getDoc(doc(firestore, 'lessons', lessonId))
-      if (!snap.exists()) { alert('Lesson not found.'); return }
+      if (!snap.exists()) {
+        alert('Lesson not found.')
+        return
+      }
       onLoad(normalizeLoadedLesson(decodeLessonBlocksFromFirestore(snap.data())))
     } catch (err) {
       alert('Could not load lesson: ' + err.message)
@@ -264,28 +320,38 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
   }
 
   return (
-    <div style={fp.backdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div
+      style={fp.backdrop}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
       <div style={fp.modal} className="card">
         <div style={fp.header}>
           <span style={fp.title}>Open from Firestore</span>
-          <button style={fp.closeBtn} onClick={onClose}>×</button>
+          <button style={fp.closeBtn} onClick={onClose}>
+            ×
+          </button>
         </div>
         <div style={fp.body}>
           {loading && <p style={fp.hint}>Loading lessons…</p>}
           {error && <p style={{ ...fp.hint, color: '#ef4444' }}>Error: {error}</p>}
           {lessons && lessons.length === 0 && <p style={fp.hint}>No lessons found in Firestore.</p>}
-          {lessons && lessons.map(lesson => (
-            <button
-              key={lesson.id}
-              style={fp.row}
-              onClick={() => handleSelect(lesson.id)}
-              disabled={loadingId === lesson.id}
-            >
-              <span style={fp.rowTitle}>{lesson.title || lesson.id}</span>
-              <span style={fp.rowMeta}>{lesson.id} · {lesson.type}</span>
-              {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
-            </button>
-          ))}
+          {lessons &&
+            lessons.map((lesson) => (
+              <button
+                key={lesson.id}
+                style={fp.row}
+                onClick={() => handleSelect(lesson.id)}
+                disabled={loadingId === lesson.id}
+              >
+                <span style={fp.rowTitle}>{lesson.title || lesson.id}</span>
+                <span style={fp.rowMeta}>
+                  {lesson.id} · {lesson.type}
+                </span>
+                {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
+              </button>
+            ))}
         </div>
       </div>
     </div>
@@ -294,9 +360,13 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
 
 const fp = {
   backdrop: {
-    position: 'fixed', inset: 0, zIndex: 50,
+    position: 'fixed',
+    inset: 0,
+    zIndex: 50,
     background: 'rgba(17, 24, 39, 0.5)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modal: {
     width: 'min(560px, 92vw)',
@@ -323,8 +393,13 @@ const fp = {
     fontSize: '0.95rem',
   },
   closeBtn: {
-    background: 'none', border: 'none', color: '#fff',
-    fontSize: '1.3rem', cursor: 'pointer', lineHeight: 1, padding: '0 2px',
+    background: 'none',
+    border: 'none',
+    color: '#fff',
+    fontSize: '1.3rem',
+    cursor: 'pointer',
+    lineHeight: 1,
+    padding: '0 2px',
   },
   body: {
     overflowY: 'auto',

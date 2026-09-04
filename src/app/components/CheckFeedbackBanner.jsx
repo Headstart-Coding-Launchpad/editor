@@ -32,28 +32,46 @@ export default function CheckFeedbackBanner({
 
   return (
     <div style={{ ...s.banner, ...(passed ? s.pass : s.fail) }} role="status">
-      <button type="button" style={s.closeBtn} onClick={() => setDismissed(true)} aria-label="Dismiss">×</button>
+      <button
+        type="button"
+        style={s.closeBtn}
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
       <div style={s.row}>
-        <span style={{ ...s.icon, background: passed ? '#166534' : '#92400e' }}>{passed ? '✓' : '!'}</span>
+        <span style={{ ...s.icon, background: passed ? '#166534' : '#92400e' }}>
+          {passed ? '✓' : '!'}
+        </span>
         <div style={s.text}>
           {passed ? (
             <>
               <div>{successMessage}</div>
-              {hint && <MarkdownRenderer content={hint} style={{ color: 'inherit', fontSize: '0.9em', fontWeight: 600 }} />}
+              {hint && (
+                <MarkdownRenderer
+                  content={hint}
+                  style={{ color: 'inherit', fontSize: '0.9em', fontWeight: 600 }}
+                />
+              )}
             </>
+          ) : hint ? (
+            <MarkdownRenderer content={hint} style={{ color: 'inherit', fontSize: 'inherit' }} />
           ) : (
-            hint
-              ? <MarkdownRenderer content={hint} style={{ color: 'inherit', fontSize: 'inherit' }} />
-              : <div>{failureMessage}</div>
+            <div>{failureMessage}</div>
           )}
         </div>
       </div>
       {!passed && onShowCodeStage && (
         <div style={s.actionRow}>
           <span style={s.completePrompt}>Want a hint?</span>
-          <button type="button" style={s.actionLink} onClick={() => {
-            if (!stageActionConfirm || window.confirm(stageActionConfirm)) onShowCodeStage()
-          }}>
+          <button
+            type="button"
+            style={s.actionLink}
+            onClick={() => {
+              if (!stageActionConfirm || window.confirm(stageActionConfirm)) onShowCodeStage()
+            }}
+          >
             {stageActionLabel}
           </button>
         </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 
-const BREAKPOINT_NARROW  = 1300  // collapse secondary buttons into Menu dropdown
-const BREAKPOINT_COMPACT = 950   // also hide status text from bar (shown inside dropdown instead)
+const BREAKPOINT_NARROW = 1300 // collapse secondary buttons into Menu dropdown
+const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside dropdown instead)
 
 export default function TeacherSessionControls({
   session,
@@ -28,12 +28,16 @@ export default function TeacherSessionControls({
   const [videoLinkSaving, setVideoLinkSaving] = useState(false)
   const videoLinkRef = useRef(null)
 
-  const narrow  = width < BREAKPOINT_NARROW
+  const narrow = width < BREAKPOINT_NARROW
   const compact = width < BREAKPOINT_COMPACT
-  const openAccount = () => { window.location.hash = '#/account' }
+  const openAccount = () => {
+    window.location.hash = '#/account'
+  }
 
   useEffect(() => {
-    function onResize() { setWidth(window.innerWidth) }
+    function onResize() {
+      setWidth(window.innerWidth)
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
@@ -51,7 +55,7 @@ export default function TeacherSessionControls({
     if (!videoLinkOpen) return
     setVideoLinkValue(session?.videoCallLink ?? '')
     setVideoLinkError(null)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoLinkOpen])
 
   useEffect(() => {
@@ -88,7 +92,7 @@ export default function TeacherSessionControls({
         <div ref={menuRef} style={sDD.wrap}>
           <button
             className="btn-ghost teacher-session-controls__action"
-            onClick={() => setMenuOpen(v => !v)}
+            onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
           >
             Menu ▾
@@ -96,26 +100,60 @@ export default function TeacherSessionControls({
           {menuOpen && (
             <div style={sDD.panel} className="ui-popover">
               {compact && (
-                <span style={sDD.statusLabel}>
-                  {session ? `Session: ${state}` : 'No session'}
-                </span>
+                <span style={sDD.statusLabel}>{session ? `Session: ${state}` : 'No session'}</span>
               )}
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenPresentationWindow() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenPresentationWindow()
+                }}
+              >
                 Presentation Window
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenFeedback() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenFeedback()
+                }}
+              >
                 Feedback
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenReports() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenReports()
+                }}
+              >
                 Reports
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenEditLesson() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenEditLesson()
+                }}
+              >
                 Edit Lesson
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onReturnToAdmin() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onReturnToAdmin()
+                }}
+              >
                 Admin
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); openAccount() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  openAccount()
+                }}
+              >
                 Account
               </button>
             </div>
@@ -123,7 +161,10 @@ export default function TeacherSessionControls({
         </div>
       ) : (
         <>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenPresentationWindow}>
+          <button
+            className="btn-ghost teacher-session-controls__action"
+            onClick={onOpenPresentationWindow}
+          >
             Presentation Window
           </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
@@ -148,7 +189,7 @@ export default function TeacherSessionControls({
         <div ref={videoLinkRef} style={sDD.wrap}>
           <button
             className="btn-ghost teacher-session-controls__action"
-            onClick={() => setVideoLinkOpen(v => !v)}
+            onClick={() => setVideoLinkOpen((v) => !v)}
             aria-expanded={videoLinkOpen}
           >
             📹 {session.videoCallLink ? 'Video Call' : 'Add Video Call'}
@@ -163,7 +204,7 @@ export default function TeacherSessionControls({
                   autoFocus
                   placeholder="https://zoom.us/j/…"
                   value={videoLinkValue}
-                  onChange={e => setVideoLinkValue(e.target.value)}
+                  onChange={(e) => setVideoLinkValue(e.target.value)}
                 />
               </label>
               {videoLinkError && <span style={sVid.error}>{videoLinkError}</span>}
@@ -172,13 +213,21 @@ export default function TeacherSessionControls({
                   <button
                     style={{ ...sDD.item, flex: 1 }}
                     disabled={videoLinkSaving}
-                    onClick={() => { setVideoLinkValue(''); }}
+                    onClick={() => {
+                      setVideoLinkValue('')
+                    }}
                   >
                     Clear
                   </button>
                 )}
                 <button
-                  style={{ ...sDD.item, flex: 1, background: 'var(--colour-primary)', color: '#fff', borderColor: 'var(--colour-primary)' }}
+                  style={{
+                    ...sDD.item,
+                    flex: 1,
+                    background: 'var(--colour-primary)',
+                    color: '#fff',
+                    borderColor: 'var(--colour-primary)',
+                  }}
                   disabled={videoLinkSaving}
                   onClick={handleSaveVideoLink}
                 >

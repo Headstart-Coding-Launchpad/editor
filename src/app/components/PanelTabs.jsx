@@ -7,7 +7,7 @@ import React from 'react'
 export default function PanelTabs({ tabs, activeId, onChange, label, style, highlightedIds }) {
   return (
     <div className="ui-tabs" role="tablist" aria-label={label} style={style}>
-      {tabs.map(tab => (
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
@@ -37,7 +37,14 @@ export function PanelTabPanel({ id, activeId, children, style }) {
       id={`panel-tabpanel-${id}`}
       aria-labelledby={`panel-tab-${id}`}
       hidden={!active}
-      style={{ flex: 1, minHeight: 0, minWidth: 0, flexDirection: 'column', ...style, display: active ? (style?.display ?? 'flex') : 'none' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        flexDirection: 'column',
+        ...style,
+        display: active ? (style?.display ?? 'flex') : 'none',
+      }}
     >
       {children}
     </div>

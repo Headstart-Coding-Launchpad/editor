@@ -9,11 +9,11 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [email, setEmail]       = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState(null)
-  const [loading, setLoading]   = useState(false)
-  const pendingRedirect         = useRef(null)
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const pendingRedirect = useRef(null)
 
   // Navigate only after onAuthStateChanged has confirmed the sign-in.
   // Navigating immediately after signInWithEmailAndPassword races the auth
@@ -64,13 +64,15 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} style={s.form}>
           <div style={s.field}>
-            <label style={s.label} htmlFor="email">Email</label>
+            <label style={s.label} htmlFor="email">
+              Email
+            </label>
             <input
               id="email"
               style={s.input}
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
               autoComplete="email"
@@ -78,13 +80,15 @@ export default function LoginPage() {
           </div>
 
           <div style={s.field}>
-            <label style={s.label} htmlFor="password">Password</label>
+            <label style={s.label} htmlFor="password">
+              Password
+            </label>
             <input
               id="password"
               style={s.input}
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
             />
@@ -92,12 +96,7 @@ export default function LoginPage() {
 
           {error && <p style={s.error}>{error}</p>}
 
-          <button
-            className="btn-primary"
-            style={s.submitBtn}
-            type="submit"
-            disabled={loading}
-          >
+          <button className="btn-primary" style={s.submitBtn} type="submit" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

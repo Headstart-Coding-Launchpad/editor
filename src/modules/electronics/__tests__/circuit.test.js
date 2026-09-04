@@ -1,5 +1,37 @@
 import { describe, expect, it } from 'vitest'
-import { BOARD_SIZE_OPTIONS, COMPONENT_DESCRIPTIONS, COMPONENT_GROUPS, COMPONENT_LABELS, COMPONENT_TYPES, DEFAULT_CIRCUIT, DEFAULT_MICROPYTHON_CODE, MICROCONTROLLER_DEFAULT_PINS, applyI2cLcdEvent, applyMicrocontrollerGpioValues, arePinsConnected, circuitHasShort, evaluateElectronicsCheck, getCircuitMetrics, getComponentResistanceOhms, getComponentState, getI2cLcdTargets, getMicrocontrollerCode, getMicrocontrollerGpioValues, getMicrocontrollerInputValues, getShortCircuitPath, getWireColorForPins, getWireCurrentDirection, getWireState, makeComponent, makeNextGpioPinName, normalizeAvailableComponents, normalizeGpioPinName, normalizeMicrocontrollerPins, parseCircuit, pinRef } from '../circuit'
+import {
+  BOARD_SIZE_OPTIONS,
+  COMPONENT_DESCRIPTIONS,
+  COMPONENT_GROUPS,
+  COMPONENT_LABELS,
+  COMPONENT_TYPES,
+  DEFAULT_CIRCUIT,
+  DEFAULT_MICROPYTHON_CODE,
+  MICROCONTROLLER_DEFAULT_PINS,
+  applyI2cLcdEvent,
+  applyMicrocontrollerGpioValues,
+  arePinsConnected,
+  circuitHasShort,
+  evaluateElectronicsCheck,
+  getCircuitMetrics,
+  getComponentResistanceOhms,
+  getComponentState,
+  getI2cLcdTargets,
+  getMicrocontrollerCode,
+  getMicrocontrollerGpioValues,
+  getMicrocontrollerInputValues,
+  getShortCircuitPath,
+  getWireColorForPins,
+  getWireCurrentDirection,
+  getWireState,
+  makeComponent,
+  makeNextGpioPinName,
+  normalizeAvailableComponents,
+  normalizeGpioPinName,
+  normalizeMicrocontrollerPins,
+  parseCircuit,
+  pinRef,
+} from '../circuit'
 
 const BATTERY = makeComponent('battery', 1, { row: 1, col: 1 })
 
@@ -13,16 +45,28 @@ describe('electronics circuit helpers', () => {
       ...DEFAULT_CIRCUIT,
       components: [
         BATTERY,
-        { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} },
+        {
+          id: 'led1',
+          type: 'led',
+          label: 'LED',
+          position: { row: 2, col: 4 },
+          pins: ['anode', 'cathode'],
+          props: {},
+        },
       ],
       wires: [{ id: 'w1', from: pinRef('battery1', 'positive'), to: pinRef('led1', 'anode') }],
     }
     expect(arePinsConnected(circuit, 'battery1.positive', 'led1.anode')).toBe(true)
-    expect(evaluateElectronicsCheck({
-      type: 'circuit_path_exists',
-      from: { type: 'battery', pin: 'positive' },
-      to: { type: 'led', pin: 'anode' },
-    }, circuit)).toBe(true)
+    expect(
+      evaluateElectronicsCheck(
+        {
+          type: 'circuit_path_exists',
+          from: { type: 'battery', pin: 'positive' },
+          to: { type: 'led', pin: 'anode' },
+        },
+        circuit
+      )
+    ).toBe(true)
   })
 
   it('detects battery shorts', () => {
@@ -47,7 +91,14 @@ describe('electronics circuit helpers', () => {
   })
 
   it('leaves the innocent wires out of a short path', () => {
-    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} }
+    const led = {
+      id: 'led1',
+      type: 'led',
+      label: 'LED',
+      position: { row: 2, col: 4 },
+      pins: ['anode', 'cathode'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, led],
@@ -64,7 +115,14 @@ describe('electronics circuit helpers', () => {
   })
 
   it('reports no short path for a healthy circuit', () => {
-    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} }
+    const led = {
+      id: 'led1',
+      type: 'led',
+      label: 'LED',
+      position: { row: 2, col: 4 },
+      pins: ['anode', 'cathode'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, led],
@@ -78,13 +136,18 @@ describe('electronics circuit helpers', () => {
   })
 
   it('powers an output only when supply and return are connected', () => {
-    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} }
+    const led = {
+      id: 'led1',
+      type: 'led',
+      label: 'LED',
+      position: { row: 2, col: 4 },
+      pins: ['anode', 'cathode'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, led],
-      wires: [
-        { id: 'w1', from: 'battery1.positive', to: 'led1.anode' },
-      ],
+      wires: [{ id: 'w1', from: 'battery1.positive', to: 'led1.anode' }],
     }
 
     expect(getComponentState(circuit, 'led1').on).toBe(false)
@@ -97,8 +160,22 @@ describe('electronics circuit helpers', () => {
   })
 
   it('uses a pressed push button as a conductor', () => {
-    const button = { id: 'push_button1', type: 'push_button', label: 'Button', position: { row: 2, col: 4 }, pins: ['a', 'b'], props: {} }
-    const motor = { id: 'motor1', type: 'motor', label: 'Motor', position: { row: 2, col: 8 }, pins: ['positive', 'negative'], props: {} }
+    const button = {
+      id: 'push_button1',
+      type: 'push_button',
+      label: 'Button',
+      position: { row: 2, col: 4 },
+      pins: ['a', 'b'],
+      props: {},
+    }
+    const motor = {
+      id: 'motor1',
+      type: 'motor',
+      label: 'Motor',
+      position: { row: 2, col: 8 },
+      pins: ['positive', 'negative'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, button, motor],
@@ -119,8 +196,22 @@ describe('electronics circuit helpers', () => {
   })
 
   it('checks that a control affects power to a target part', () => {
-    const switchPart = { id: 'slide_switch1', type: 'slide_switch', label: 'Switch', position: { row: 2, col: 4 }, pins: ['a', 'b'], props: {} }
-    const motor = { id: 'motor1', type: 'motor', label: 'Motor', position: { row: 2, col: 8 }, pins: ['positive', 'negative'], props: {} }
+    const switchPart = {
+      id: 'slide_switch1',
+      type: 'slide_switch',
+      label: 'Switch',
+      position: { row: 2, col: 4 },
+      pins: ['a', 'b'],
+      props: {},
+    }
+    const motor = {
+      id: 'motor1',
+      type: 'motor',
+      label: 'Motor',
+      position: { row: 2, col: 8 },
+      pins: ['positive', 'negative'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, switchPart, motor],
@@ -132,22 +223,46 @@ describe('electronics circuit helpers', () => {
       controls: { slide_switch1: { closed: false } },
     }
 
-    expect(evaluateElectronicsCheck({
-      type: 'circuit_control_affects_power',
-      control: { type: 'slide_switch' },
-      component: { type: 'motor' },
-    }, circuit)).toBe(true)
-    expect(evaluateElectronicsCheck({
-      type: 'circuit_path_includes',
-      from: { type: 'battery', pin: 'positive' },
-      to: { type: 'motor', pin: 'positive' },
-      includes: { type: 'slide_switch' },
-    }, { ...circuit, controls: { slide_switch1: { closed: true } } })).toBe(true)
+    expect(
+      evaluateElectronicsCheck(
+        {
+          type: 'circuit_control_affects_power',
+          control: { type: 'slide_switch' },
+          component: { type: 'motor' },
+        },
+        circuit
+      )
+    ).toBe(true)
+    expect(
+      evaluateElectronicsCheck(
+        {
+          type: 'circuit_path_includes',
+          from: { type: 'battery', pin: 'positive' },
+          to: { type: 'motor', pin: 'positive' },
+          includes: { type: 'slide_switch' },
+        },
+        { ...circuit, controls: { slide_switch1: { closed: true } } }
+      )
+    ).toBe(true)
   })
 
   it('rejects control checks when the target is powered through a bypass', () => {
-    const switchPart = { id: 'slide_switch1', type: 'slide_switch', label: 'Switch', position: { row: 2, col: 4 }, pins: ['a', 'b'], props: {} }
-    const motor = { id: 'motor1', type: 'motor', label: 'Motor', position: { row: 2, col: 8 }, pins: ['positive', 'negative'], props: {} }
+    const switchPart = {
+      id: 'slide_switch1',
+      type: 'slide_switch',
+      label: 'Switch',
+      position: { row: 2, col: 4 },
+      pins: ['a', 'b'],
+      props: {},
+    }
+    const motor = {
+      id: 'motor1',
+      type: 'motor',
+      label: 'Motor',
+      position: { row: 2, col: 8 },
+      pins: ['positive', 'negative'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, switchPart, motor],
@@ -160,50 +275,94 @@ describe('electronics circuit helpers', () => {
       controls: { slide_switch1: { closed: false } },
     }
 
-    expect(evaluateElectronicsCheck({
-      type: 'circuit_component_powered',
-      component: { type: 'motor' },
-    }, circuit)).toBe(true)
-    expect(evaluateElectronicsCheck({
-      type: 'circuit_control_affects_power',
-      control: { type: 'slide_switch' },
-      component: { type: 'motor' },
-    }, circuit)).toBe(false)
-    expect(evaluateElectronicsCheck({
-      type: 'circuit_path_includes',
-      from: { type: 'battery', pin: 'positive' },
-      to: { type: 'motor', pin: 'positive' },
-      includes: { type: 'slide_switch' },
-    }, { ...circuit, controls: { slide_switch1: { closed: true } } })).toBe(false)
+    expect(
+      evaluateElectronicsCheck(
+        {
+          type: 'circuit_component_powered',
+          component: { type: 'motor' },
+        },
+        circuit
+      )
+    ).toBe(true)
+    expect(
+      evaluateElectronicsCheck(
+        {
+          type: 'circuit_control_affects_power',
+          control: { type: 'slide_switch' },
+          component: { type: 'motor' },
+        },
+        circuit
+      )
+    ).toBe(false)
+    expect(
+      evaluateElectronicsCheck(
+        {
+          type: 'circuit_path_includes',
+          from: { type: 'battery', pin: 'positive' },
+          to: { type: 'motor', pin: 'positive' },
+          includes: { type: 'slide_switch' },
+        },
+        { ...circuit, controls: { slide_switch1: { closed: true } } }
+      )
+    ).toBe(false)
   })
 
   it('normalizes available component lists without duplicates or unknown parts', () => {
     expect(normalizeAvailableComponents(null)).toContain('battery')
-    expect(normalizeAvailableComponents(['led', 'unknown', 'battery', 'led'])).toEqual(['led', 'battery'])
+    expect(normalizeAvailableComponents(['led', 'unknown', 'battery', 'led'])).toEqual([
+      'led',
+      'battery',
+    ])
     expect(normalizeAvailableComponents([])).toEqual([])
   })
 
   it('defaults new boards to the standard larger breadboard size', () => {
-    expect(BOARD_SIZE_OPTIONS).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'standard', rows: 18, cols: 30 }),
-    ]))
+    expect(BOARD_SIZE_OPTIONS).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'standard', rows: 18, cols: 30 })])
+    )
     expect(DEFAULT_CIRCUIT.board).toMatchObject({ rows: 18, cols: 30 })
-    expect(parseCircuit({ components: [], wires: [], controls: {} }).board).toMatchObject({ rows: 18, cols: 30 })
+    expect(parseCircuit({ components: [], wires: [], controls: {} }).board).toMatchObject({
+      rows: 18,
+      cols: 30,
+    })
   })
 
   it('groups available components into palette categories', () => {
-    const groupedTypes = new Set(COMPONENT_GROUPS.flatMap(group => group.types))
-    expect(COMPONENT_GROUPS.map(group => group.id)).toEqual(['power', 'basics', 'outputs', 'control'])
+    const groupedTypes = new Set(COMPONENT_GROUPS.flatMap((group) => group.types))
+    expect(COMPONENT_GROUPS.map((group) => group.id)).toEqual([
+      'power',
+      'basics',
+      'outputs',
+      'control',
+    ])
     expect([...groupedTypes].sort()).toEqual([...COMPONENT_TYPES].sort())
   })
 
   it('includes the expanded electronics parts in the component registry', () => {
-    expect(COMPONENT_TYPES).toEqual(expect.arrayContaining(['transistor', 'diode', 'sensor', 'servo_motor', 'rgb_led', 'microcontroller']))
+    expect(COMPONENT_TYPES).toEqual(
+      expect.arrayContaining([
+        'transistor',
+        'diode',
+        'sensor',
+        'servo_motor',
+        'rgb_led',
+        'microcontroller',
+      ])
+    )
     expect(COMPONENT_LABELS.rgb_led).toBe('RGB LED')
     expect(COMPONENT_LABELS.microcontroller).toBe('Micro Controller')
     expect(COMPONENT_DESCRIPTIONS.transistor).toContain('electronic switch')
     expect(COMPONENT_DESCRIPTIONS.microcontroller).toContain('MicroPython')
-    expect(normalizeAvailableComponents(['transistor', 'diode', 'sensor', 'servo_motor', 'rgb_led', 'microcontroller'])).toEqual(['transistor', 'diode', 'sensor', 'servo_motor', 'rgb_led', 'microcontroller'])
+    expect(
+      normalizeAvailableComponents([
+        'transistor',
+        'diode',
+        'sensor',
+        'servo_motor',
+        'rgb_led',
+        'microcontroller',
+      ])
+    ).toEqual(['transistor', 'diode', 'sensor', 'servo_motor', 'rgb_led', 'microcontroller'])
   })
 
   it('chooses semantic automatic wire colors from pin names', () => {
@@ -218,7 +377,12 @@ describe('electronics circuit helpers', () => {
 
   it('gives new resistors a default selectable resistance value', () => {
     expect(getComponentResistanceOhms(makeComponent('resistor', 1))).toBe(330)
-    expect(getComponentState({ ...DEFAULT_CIRCUIT, components: [makeComponent('resistor', 1)] }, 'resistor1').resistanceOhms).toBe(330)
+    expect(
+      getComponentState(
+        { ...DEFAULT_CIRCUIT, components: [makeComponent('resistor', 1)] },
+        'resistor1'
+      ).resistanceOhms
+    ).toBe(330)
   })
 
   it('gives new LEDs a selectable red default color', () => {
@@ -237,22 +401,40 @@ describe('electronics circuit helpers', () => {
 
   it('normalizes Micro Controller GPIO pins and code', () => {
     expect(normalizeGpioPinName(' GP 0.1 ')).toBe('GP_0_1')
-    expect(normalizeMicrocontrollerPins(['GP0', 'GP0', 'A.1', '', 'GND'])).toEqual(['GP0', 'A_1', 'GND'])
+    expect(normalizeMicrocontrollerPins(['GP0', 'GP0', 'A.1', '', 'GND'])).toEqual([
+      'GP0',
+      'A_1',
+      'GND',
+    ])
     expect(makeNextGpioPinName(['GP0', 'GP1', 'GND'])).toBe('GP2')
 
     const legacyCircuit = parseCircuit({
       ...DEFAULT_CIRCUIT,
       microcontroller: { enabled: true, code: 'print("legacy")' },
-      components: [{ ...makeComponent('microcontroller', 1), pins: ['GP0', 'GP0', 'A.1'], props: {} }],
+      components: [
+        { ...makeComponent('microcontroller', 1), pins: ['GP0', 'GP0', 'A.1'], props: {} },
+      ],
     })
 
     expect(legacyCircuit.components[0].pins).toEqual(['GP0', 'A_1'])
     expect(getMicrocontrollerCode(legacyCircuit)).toBe('print("legacy")')
-    expect(evaluateElectronicsCheck({ type: 'circuit_has_component', component: { type: 'microcontroller' } }, legacyCircuit)).toBe(true)
+    expect(
+      evaluateElectronicsCheck(
+        { type: 'circuit_has_component', component: { type: 'microcontroller' } },
+        legacyCircuit
+      )
+    ).toBe(true)
   })
 
   it('reports current direction from polarity rather than wire creation direction', () => {
-    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 4 }, pins: ['anode', 'cathode'], props: {} }
+    const led = {
+      id: 'led1',
+      type: 'led',
+      label: 'LED',
+      position: { row: 2, col: 4 },
+      pins: ['anode', 'cathode'],
+      props: {},
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, led],
@@ -267,8 +449,22 @@ describe('electronics circuit helpers', () => {
   })
 
   it('reduces output voltage and speed when a resistor is in series', () => {
-    const motor = { id: 'motor1', type: 'motor', label: 'Motor', position: { row: 2, col: 8 }, pins: ['positive', 'negative'], props: {} }
-    const resistor = { id: 'resistor1', type: 'resistor', label: 'Resistor', position: { row: 2, col: 5 }, pins: ['a', 'b'], props: { resistanceOhms: 1000 } }
+    const motor = {
+      id: 'motor1',
+      type: 'motor',
+      label: 'Motor',
+      position: { row: 2, col: 8 },
+      pins: ['positive', 'negative'],
+      props: {},
+    }
+    const resistor = {
+      id: 'resistor1',
+      type: 'resistor',
+      label: 'Resistor',
+      position: { row: 2, col: 5 },
+      pins: ['a', 'b'],
+      props: { resistanceOhms: 1000 },
+    }
     const directCircuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, motor],
@@ -298,9 +494,30 @@ describe('electronics circuit helpers', () => {
   })
 
   it('adds multiple resistor values on a series path', () => {
-    const led = { id: 'led1', type: 'led', label: 'LED', position: { row: 2, col: 10 }, pins: ['anode', 'cathode'], props: {} }
-    const resistor1 = { id: 'resistor1', type: 'resistor', label: 'Resistor', position: { row: 2, col: 5 }, pins: ['a', 'b'], props: { resistanceOhms: 220 } }
-    const resistor2 = { id: 'resistor2', type: 'resistor', label: 'Resistor', position: { row: 2, col: 7 }, pins: ['a', 'b'], props: { resistanceOhms: 330 } }
+    const led = {
+      id: 'led1',
+      type: 'led',
+      label: 'LED',
+      position: { row: 2, col: 10 },
+      pins: ['anode', 'cathode'],
+      props: {},
+    }
+    const resistor1 = {
+      id: 'resistor1',
+      type: 'resistor',
+      label: 'Resistor',
+      position: { row: 2, col: 5 },
+      pins: ['a', 'b'],
+      props: { resistanceOhms: 220 },
+    }
+    const resistor2 = {
+      id: 'resistor2',
+      type: 'resistor',
+      label: 'Resistor',
+      position: { row: 2, col: 7 },
+      pins: ['a', 'b'],
+      props: { resistanceOhms: 330 },
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [BATTERY, resistor1, resistor2, led],
@@ -328,7 +545,11 @@ describe('electronics circuit helpers', () => {
     }
 
     expect(getComponentState(circuit, 'battery1')).toMatchObject({ voltage: 9, totalCurrentMa: 75 })
-    expect(getComponentState(circuit, 'motor1')).toMatchObject({ voltage: 9, currentMa: 75, speed: 100 })
+    expect(getComponentState(circuit, 'motor1')).toMatchObject({
+      voltage: 9,
+      currentMa: 75,
+      speed: 100,
+    })
     expect(getCircuitMetrics(circuit)).toMatchObject({ supplyVoltage: 9, totalCurrentMa: 75 })
   })
 
@@ -365,8 +586,16 @@ describe('electronics circuit helpers', () => {
       ],
     }
 
-    expect(getComponentState(circuit, 'motor1')).toMatchObject({ voltage: 2.5, currentMa: 20.83, speed: 50 })
-    expect(getComponentState(circuit, 'motor2')).toMatchObject({ voltage: 2.5, currentMa: 20.83, speed: 50 })
+    expect(getComponentState(circuit, 'motor1')).toMatchObject({
+      voltage: 2.5,
+      currentMa: 20.83,
+      speed: 50,
+    })
+    expect(getComponentState(circuit, 'motor2')).toMatchObject({
+      voltage: 2.5,
+      currentMa: 20.83,
+      speed: 50,
+    })
     expect(getCircuitMetrics(circuit).totalCurrentMa).toBe(20.83)
     expect(getWireState(circuit, 'middle')).toMatchObject({ currentMa: 20.83 })
   })
@@ -421,10 +650,22 @@ describe('electronics circuit helpers', () => {
     }
 
     expect(getComponentState(circuit, 'diode1').conducting).toBe(true)
-    expect(getComponentState(circuit, 'sensor1')).toMatchObject({ powered: true, kind: 'light', value: 72 })
+    expect(getComponentState(circuit, 'sensor1')).toMatchObject({
+      powered: true,
+      kind: 'light',
+      value: 72,
+    })
     expect(getComponentState(circuit, 'servo_motor1')).toMatchObject({ on: true, angle: 45 })
-    expect(getComponentState(circuit, 'rgb_led1')).toMatchObject({ on: true, channels: ['red', 'blue'] })
-    expect(evaluateElectronicsCheck({ type: 'circuit_component_powered', component: { type: 'rgb_led' } }, circuit)).toBe(true)
+    expect(getComponentState(circuit, 'rgb_led1')).toMatchObject({
+      on: true,
+      channels: ['red', 'blue'],
+    })
+    expect(
+      evaluateElectronicsCheck(
+        { type: 'circuit_component_powered', component: { type: 'rgb_led' } },
+        circuit
+      )
+    ).toBe(true)
   })
 
   it('powers breadboard components from microcontroller 3V3 and GND pins', () => {
@@ -440,12 +681,19 @@ describe('electronics circuit helpers', () => {
     }
 
     expect(getCircuitMetrics(circuit)).toMatchObject({ supplyVoltage: 3.3, hasPowerSource: true })
-    expect(getComponentState(circuit, 'led1')).toMatchObject({ on: true, voltage: 3.3, currentMa: 10 })
+    expect(getComponentState(circuit, 'led1')).toMatchObject({
+      on: true,
+      voltage: 3.3,
+      currentMa: 10,
+    })
     expect(getComponentState(circuit, 'microcontroller1').totalCurrentMa).toBe(10)
   })
 
   it('models a wired I²C LCD and applies its text commands to its two display rows', () => {
-    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP0', 'GP1'] }
+    const microcontroller = {
+      ...makeComponent('microcontroller', 1, { row: 2, col: 2 }),
+      pins: ['3V3', 'GND', 'GP0', 'GP1'],
+    }
     const lcd = makeComponent('lcd1602', 1, { row: 2, col: 9 })
     const circuit = {
       ...DEFAULT_CIRCUIT,
@@ -462,11 +710,30 @@ describe('electronics circuit helpers', () => {
     expect(getI2cLcdTargets(circuit, 'GP0', 'GP1')).toHaveLength(1)
 
     const initialized = applyI2cLcdEvent(circuit, { sda: 'GP0', scl: 'GP1', action: 'init' })
-    const firstRow = applyI2cLcdEvent(initialized, { sda: 'GP0', scl: 'GP1', action: 'print', text: 'Hello' })
-    const secondRow = applyI2cLcdEvent(firstRow, { sda: 'GP0', scl: 'GP1', action: 'cursor', col: 0, row: 1 })
-    const displayed = applyI2cLcdEvent(secondRow, { sda: 'GP0', scl: 'GP1', action: 'print', text: 'World' })
+    const firstRow = applyI2cLcdEvent(initialized, {
+      sda: 'GP0',
+      scl: 'GP1',
+      action: 'print',
+      text: 'Hello',
+    })
+    const secondRow = applyI2cLcdEvent(firstRow, {
+      sda: 'GP0',
+      scl: 'GP1',
+      action: 'cursor',
+      col: 0,
+      row: 1,
+    })
+    const displayed = applyI2cLcdEvent(secondRow, {
+      sda: 'GP0',
+      scl: 'GP1',
+      action: 'print',
+      text: 'World',
+    })
 
-    expect(getComponentState(displayed, 'lcd16021').lines).toEqual(['Hello           ', 'World           '])
+    expect(getComponentState(displayed, 'lcd16021').lines).toEqual([
+      'Hello           ',
+      'World           ',
+    ])
   })
 
   it('uses MicroPython GPIO output values to drive breadboard components', () => {
@@ -485,7 +752,11 @@ describe('electronics circuit helpers', () => {
 
     const gpioHigh = applyMicrocontrollerGpioValues(circuit, { GP0: 1 })
     expect(getMicrocontrollerGpioValues(gpioHigh)).toMatchObject({ GP0: 1 })
-    expect(getComponentState(gpioHigh, 'led1')).toMatchObject({ on: true, voltage: 3.3, currentMa: 10 })
+    expect(getComponentState(gpioHigh, 'led1')).toMatchObject({
+      on: true,
+      voltage: 3.3,
+      currentMa: 10,
+    })
 
     const gpioLow = applyMicrocontrollerGpioValues(gpioHigh, { GP0: 0 })
     expect(getMicrocontrollerGpioValues(gpioLow)).toMatchObject({ GP0: 0 })
@@ -493,7 +764,10 @@ describe('electronics circuit helpers', () => {
   })
 
   it('reads GPIO input values from connected breadboard controls', () => {
-    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP14'] }
+    const microcontroller = {
+      ...makeComponent('microcontroller', 1, { row: 2, col: 2 }),
+      pins: ['3V3', 'GND', 'GP14'],
+    }
     const button = makeComponent('push_button', 1, { row: 2, col: 8 })
     const circuit = {
       ...DEFAULT_CIRCUIT,
@@ -506,11 +780,16 @@ describe('electronics circuit helpers', () => {
     }
 
     expect(getMicrocontrollerInputValues(circuit).GP14).toBeNull()
-    expect(getMicrocontrollerInputValues({ ...circuit, controls: { push_button1: { pressed: true } } }).GP14).toBe(1)
-    expect(getMicrocontrollerInputValues({
-      ...circuit,
-      wires: [{ id: 'ground', from: 'microcontroller1.GND', to: 'microcontroller1.GP14' }],
-    }).GP14).toBe(0)
+    expect(
+      getMicrocontrollerInputValues({ ...circuit, controls: { push_button1: { pressed: true } } })
+        .GP14
+    ).toBe(1)
+    expect(
+      getMicrocontrollerInputValues({
+        ...circuit,
+        wires: [{ id: 'ground', from: 'microcontroller1.GND', to: 'microcontroller1.GP14' }],
+      }).GP14
+    ).toBe(0)
   })
 
   it('lets a GPIO high signal switch a transistor base', () => {
@@ -539,16 +818,36 @@ describe('electronics circuit helpers', () => {
     microcontroller.props.code = 'from machine import Pin\n\nled = Pin("GP0", Pin.OUT)\nled.on()'
     const circuit = { ...DEFAULT_CIRCUIT, components: [microcontroller] }
 
-    expect(evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led.on()' }, circuit)).toBe(true)
-    expect(evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led.off()' }, circuit)).toBe(false)
-    expect(evaluateElectronicsCheck({ type: 'code_contains', value: 'Pin("GP0"' }, circuit)).toBe(true)
-    expect(evaluateElectronicsCheck({ type: 'code_not_contains', value: 'Pin("GP0"' }, circuit)).toBe(false)
-    expect(evaluateElectronicsCheck({ type: 'code_matches_regex', value: 'Pin\\("GP0",\\s*Pin\\.OUT\\)' }, circuit)).toBe(true)
-    expect(evaluateElectronicsCheck({ type: 'code_equals', value: microcontroller.props.code }, circuit)).toBe(true)
+    expect(
+      evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led.on()' }, circuit)
+    ).toBe(true)
+    expect(
+      evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led.off()' }, circuit)
+    ).toBe(false)
+    expect(evaluateElectronicsCheck({ type: 'code_contains', value: 'Pin("GP0"' }, circuit)).toBe(
+      true
+    )
+    expect(
+      evaluateElectronicsCheck({ type: 'code_not_contains', value: 'Pin("GP0"' }, circuit)
+    ).toBe(false)
+    expect(
+      evaluateElectronicsCheck(
+        { type: 'code_matches_regex', value: 'Pin\\("GP0",\\s*Pin\\.OUT\\)' },
+        circuit
+      )
+    ).toBe(true)
+    expect(
+      evaluateElectronicsCheck({ type: 'code_equals', value: microcontroller.props.code }, circuit)
+    ).toBe(true)
 
     // Falls back to false for unknown check types, same as before.
     expect(evaluateElectronicsCheck({ type: 'not_a_real_check' }, circuit)).toBe(false)
     // With no Micro Controller on the board, code checks evaluate against empty source.
-    expect(evaluateElectronicsCheck({ type: 'code', operator: 'contains', value: 'led' }, { ...DEFAULT_CIRCUIT, components: [] })).toBe(false)
+    expect(
+      evaluateElectronicsCheck(
+        { type: 'code', operator: 'contains', value: 'led' },
+        { ...DEFAULT_CIRCUIT, components: [] }
+      )
+    ).toBe(false)
   })
 })

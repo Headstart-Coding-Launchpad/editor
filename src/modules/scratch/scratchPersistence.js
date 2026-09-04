@@ -6,7 +6,10 @@ export function saveWorkspace(Blockly, workspace) {
 }
 
 export function loadWorkspace(Blockly, workspace, state) {
-  Blockly.serialization.workspaces.load(migrateVariableFields(migrateBroadcastState(state)), workspace)
+  Blockly.serialization.workspaces.load(
+    migrateVariableFields(migrateBroadcastState(state)),
+    workspace
+  )
 }
 
 // Converts old input_value+shadow format for broadcast blocks to the new field_input format.
@@ -49,7 +52,11 @@ export function migrateVariableFields(state) {
 
 function migrateVariableBlock(block, varMap) {
   if (!block) return
-  if (block.type === 'data_variable' || block.type === 'data_setvariableto' || block.type === 'data_changevariableby') {
+  if (
+    block.type === 'data_variable' ||
+    block.type === 'data_setvariableto' ||
+    block.type === 'data_changevariableby'
+  ) {
     const field = block.fields?.VARIABLE
     if (field && typeof field === 'object') {
       block.fields.VARIABLE = field.name ?? varMap[field.id] ?? 'score'

@@ -14,7 +14,7 @@ function renderCheckEditor(initialChecks) {
     return (
       <CheckEditor
         checks={checks}
-        onChange={next => {
+        onChange={(next) => {
           calls.push(next)
           setChecks(next ?? [])
         }}
@@ -52,7 +52,9 @@ describe('electronics CheckEditor — generic code checks', () => {
     const flagsField = screen.getByPlaceholderText(/Regex flags/)
     fireEvent.change(flagsField, { target: { value: 'i' } })
 
-    expect(calls.at(-1)).toEqual([{ type: 'code', operator: 'matches_regex', value: 'Pin(', flags: 'i' }])
+    expect(calls.at(-1)).toEqual([
+      { type: 'code', operator: 'matches_regex', value: 'Pin(', flags: 'i' },
+    ])
   })
 
   it('recognizes the legacy code_contains alias type and shows it as the Code subject with the right value prefilled', () => {
@@ -70,46 +72,56 @@ describe('electronics CheckEditor — generic code checks', () => {
     const [subjectSelect] = screen.getAllByRole('combobox')
     fireEvent.change(subjectSelect, { target: { value: 'code' } })
 
-    expect(calls.at(-1)).toEqual([{ type: 'code', operator: 'contains', value: '', hint: 'Keep it safe.' }])
+    expect(calls.at(-1)).toEqual([
+      { type: 'code', operator: 'contains', value: '', hint: 'Keep it safe.' },
+    ])
   })
 })
 
 describe('electronics CheckEditor — pin options for newer component types', () => {
-  it('offers a sensor\'s real pins (positive/signal/negative) instead of falling back to a/b', () => {
-    renderCheckEditor([{
-      type: 'circuit_path_exists',
-      from: { type: 'sensor', pin: 'signal' },
-      to: { type: 'motor', pin: 'positive' },
-    }])
+  it("offers a sensor's real pins (positive/signal/negative) instead of falling back to a/b", () => {
+    renderCheckEditor([
+      {
+        type: 'circuit_path_exists',
+        from: { type: 'sensor', pin: 'signal' },
+        to: { type: 'motor', pin: 'positive' },
+      },
+    ])
 
     const pinSelect = screen.getByDisplayValue('signal')
-    const optionValues = Array.from(pinSelect.querySelectorAll('option')).map(o => o.value)
+    const optionValues = Array.from(pinSelect.querySelectorAll('option')).map((o) => o.value)
     expect(optionValues).toEqual(['positive', 'signal', 'negative'])
   })
 
   it('defaults to the real first pin (not "a") when switching an endpoint to a newer component type', () => {
-    const calls = renderCheckEditor([{
-      type: 'circuit_path_exists',
-      from: { type: 'battery', pin: 'positive' },
-      to: { type: 'motor', pin: 'positive' },
-    }])
+    const calls = renderCheckEditor([
+      {
+        type: 'circuit_path_exists',
+        from: { type: 'battery', pin: 'positive' },
+        to: { type: 'motor', pin: 'positive' },
+      },
+    ])
 
-    const typeSelects = screen.getAllByRole('combobox').filter(el =>
-      Array.from(el.options).some(o => o.value === 'sensor'))
+    const typeSelects = screen
+      .getAllByRole('combobox')
+      .filter((el) => Array.from(el.options).some((o) => o.value === 'sensor'))
     fireEvent.change(typeSelects[0], { target: { value: 'sensor' } })
 
     expect(calls.at(-1)[0].from).toEqual({ type: 'sensor', pin: 'positive' })
   })
 
   it('includes transistor as a selectable control type, matching controlAffectsComponentPower in circuit.js', () => {
-    renderCheckEditor([{
-      type: 'circuit_control_affects_power',
-      control: { type: 'slide_switch' },
-      component: { type: 'motor' },
-    }])
+    renderCheckEditor([
+      {
+        type: 'circuit_control_affects_power',
+        control: { type: 'slide_switch' },
+        component: { type: 'motor' },
+      },
+    ])
 
-    const controlTypeSelect = screen.getAllByRole('combobox').find(el =>
-      Array.from(el.options).some(o => o.value === 'transistor'))
+    const controlTypeSelect = screen
+      .getAllByRole('combobox')
+      .find((el) => Array.from(el.options).some((o) => o.value === 'transistor'))
     expect(controlTypeSelect).toBeDefined()
   })
 })

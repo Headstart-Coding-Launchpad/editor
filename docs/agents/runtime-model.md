@@ -420,6 +420,7 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation view; auth required |
 | `/lesson/:lessonId?preview=true` | Teacher/admin-only ephemeral preview — auth required (same check as `?teacher=true`). Renders `StudentView` with `forceSolo`, `previewMode` (writes never persist — see `createStudentPersistence.js`), and `allowUnrestrictedTaskNavigation`. Linked from the Admin Portal's lesson list ("Preview"). |
 | `/code` | Imported `.launchpad` Python code workspace |
+| `/playground/:type` | No-login, no-persistence solo sandbox for `python`/`arcade`/`electronics`; builds an ephemeral in-memory lesson (`__playground__<type>` id) and renders it forced-solo — never shares storage with a real lesson |
 | `/builder` | Lesson builder |
 
 No room IDs. There is one session per lesson.

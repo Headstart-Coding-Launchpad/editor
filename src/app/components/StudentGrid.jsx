@@ -5,8 +5,41 @@ import { findTaskById } from '../../shared/taskUtils'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-
-export default function StudentGrid({ students = [], joiningCount = 0, lesson, lessonId, session, topics, onRename, onRemove, onGoLive, onGoLiveForAll, onStopLive, onRemoteReset, onOverrideCheck, onDismissHelp, onSendToTopic, onSendTopicToAll, onTogglePaused, onSendToIndividual, onSendMessage, onSendVideoCallLink, onRequestTeacherEdit, onPushTeacherLiveCode, onCommitTeacherEdit, onCancelTeacherEdit, onRequestTeacherStage, onClearTeacherStage, onAddHighlight, onRemoveHighlight, onRevealSupportStage, onPushTeacherPaneCommand, onRequestFullscreenAll, collapsed, onToggle }) {
+export default function StudentGrid({
+  students = [],
+  joiningCount = 0,
+  lesson,
+  lessonId,
+  session,
+  topics,
+  onRename,
+  onRemove,
+  onGoLive,
+  onGoLiveForAll,
+  onStopLive,
+  onRemoteReset,
+  onOverrideCheck,
+  onDismissHelp,
+  onSendToTopic,
+  onSendTopicToAll,
+  onTogglePaused,
+  onSendToIndividual,
+  onSendMessage,
+  onSendVideoCallLink,
+  onRequestTeacherEdit,
+  onPushTeacherLiveCode,
+  onCommitTeacherEdit,
+  onCancelTeacherEdit,
+  onRequestTeacherStage,
+  onClearTeacherStage,
+  onAddHighlight,
+  onRemoveHighlight,
+  onRevealSupportStage,
+  onPushTeacherPaneCommand,
+  onRequestFullscreenAll,
+  collapsed,
+  onToggle,
+}) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
@@ -17,7 +50,7 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
     setTimeout(() => setFullscreenRequested(false), 2000)
   }
 
-  const expandedIndex = students.findIndex(s => s.anonymousId === expandedStudentId)
+  const expandedIndex = students.findIndex((s) => s.anonymousId === expandedStudentId)
   const expandedStudent = expandedIndex >= 0 ? students[expandedIndex] : null
 
   function handleExpand(student) {
@@ -48,18 +81,24 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const hasCheck = currentTask?.check != null
-  const passedCount = hasCheck ? students.filter(student => student.checkPassed).length : 0
-  const failedCount = hasCheck ? students.filter(student => student.lastRunStatus != null && !student.checkPassed).length : 0
+  const passedCount = hasCheck ? students.filter((student) => student.checkPassed).length : 0
+  const failedCount = hasCheck
+    ? students.filter((student) => student.lastRunStatus != null && !student.checkPassed).length
+    : 0
 
   if (collapsed) {
-    const runCount    = students.filter(s => s.lastRunStatus != null).length
+    const runCount = students.filter((s) => s.lastRunStatus != null).length
 
     return (
       <div style={s.collapsedWrap}>
-        <button style={s.collapseBtn} onClick={onToggle} title="Show Students">‹</button>
+        <button style={s.collapseBtn} onClick={onToggle} title="Show Students">
+          ‹
+        </button>
 
         <div style={s.collapsedStat}>
-          <span style={{ ...s.collapsedBadge, background: 'var(--colour-primary)' }}>{students.length}</span>
+          <span style={{ ...s.collapsedBadge, background: 'var(--colour-primary)' }}>
+            {students.length}
+          </span>
           <span style={s.collapsedStatLabel}>joined</span>
         </div>
 
@@ -79,14 +118,18 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
 
         {students.length > 0 && hasCheck && passedCount > 0 && (
           <div style={s.collapsedStat}>
-            <span style={{ ...s.collapsedBadge, background: 'var(--colour-success)' }}>{passedCount}</span>
+            <span style={{ ...s.collapsedBadge, background: 'var(--colour-success)' }}>
+              {passedCount}
+            </span>
             <span style={s.collapsedStatLabel}>passed</span>
           </div>
         )}
 
         {students.length > 0 && hasCheck && failedCount > 0 && (
           <div style={s.collapsedStat}>
-            <span style={{ ...s.collapsedBadge, background: 'var(--colour-error)' }}>{failedCount}</span>
+            <span style={{ ...s.collapsedBadge, background: 'var(--colour-error)' }}>
+              {failedCount}
+            </span>
             <span style={s.collapsedStatLabel}>failed</span>
           </div>
         )}
@@ -100,17 +143,39 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
     <div style={s.wrap}>
       <div style={s.header}>
         <span style={s.label}>Students</span>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+            minWidth: 0,
+          }}
+        >
           {joiningCount > 0 && (
-            <span style={{ ...s.checkCountBadge, background: '#f59e0b' }} title={`${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name`}>
+            <span
+              style={{ ...s.checkCountBadge, background: '#f59e0b' }}
+              title={`${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name`}
+            >
               {joiningCount} joining…
             </span>
           )}
           {hasCheck && passedCount > 0 && (
-            <span style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }} title="Students who passed the completion check">✓ {passedCount}</span>
+            <span
+              style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }}
+              title="Students who passed the completion check"
+            >
+              ✓ {passedCount}
+            </span>
           )}
           {hasCheck && failedCount > 0 && (
-            <span style={{ ...s.checkCountBadge, background: 'var(--colour-error)' }} title="Students who failed the completion check">✕ {failedCount}</span>
+            <span
+              style={{ ...s.checkCountBadge, background: 'var(--colour-error)' }}
+              title="Students who failed the completion check"
+            >
+              ✕ {failedCount}
+            </span>
           )}
           <span style={s.count}>{students.length}</span>
           {onRequestFullscreenAll && students.length > 0 && (
@@ -123,20 +188,36 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
             </button>
           )}
           {topics?.length > 0 && (
-            <button style={s.topicsBtn} onClick={() => setShowTopicsDialog(true)} title="Open topic library">📖</button>
+            <button
+              style={s.topicsBtn}
+              onClick={() => setShowTopicsDialog(true)}
+              title="Open topic library"
+            >
+              📖
+            </button>
           )}
-          <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">›</button>
+          <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">
+            ›
+          </button>
         </div>
       </div>
 
       {students.length === 0 ? (
         <div style={s.empty}>
-          <p>{joiningCount > 0 ? `${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name…` : 'No students yet.'}</p>
-          {joiningCount === 0 && <p style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: 6 }}>Share the lesson link to invite students.</p>}
+          <p>
+            {joiningCount > 0
+              ? `${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name…`
+              : 'No students yet.'}
+          </p>
+          {joiningCount === 0 && (
+            <p style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: 6 }}>
+              Share the lesson link to invite students.
+            </p>
+          )}
         </div>
       ) : (
         <div style={s.grid}>
-          {students.map(student => (
+          {students.map((student) => (
             <StudentCard
               key={student.anonymousId}
               student={student}
@@ -168,7 +249,9 @@ export default function StudentGrid({ students = [], joiningCount = 0, lesson, l
         <TopicLibraryDialog
           topics={topics}
           onClose={() => setShowTopicsDialog(false)}
-          renderMarkdown={({ content, textScale, topicType }) => <MarkdownRenderer content={content} textScale={textScale} topicType={topicType} />}
+          renderMarkdown={({ content, textScale, topicType }) => (
+            <MarkdownRenderer content={content} textScale={textScale} topicType={topicType} />
+          )}
           students={students}
           onSendToAll={onSendTopicToAll}
           onSendToIndividual={onSendToIndividual}

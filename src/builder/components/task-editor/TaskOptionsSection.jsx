@@ -6,9 +6,15 @@ import TestsEditor from './TestsEditor'
 import { getLessonModule } from '../../../modules/registry'
 
 export default function TaskOptionsSection({
-  task, lesson, onUpdate,
-  activePythonCode, activeFiles, output,
-  setCheckResults, setRunStatus, handleInteractionModeChange,
+  task,
+  lesson,
+  onUpdate,
+  activePythonCode,
+  activeFiles,
+  output,
+  setCheckResults,
+  setRunStatus,
+  handleInteractionModeChange,
 }) {
   const lessonMod = getLessonModule(lesson.type)
   const CheckEditor = lessonMod?.CheckEditor ?? null
@@ -29,19 +35,27 @@ export default function TaskOptionsSection({
       <button
         type="button"
         className="te-options-section__toggle"
-        onClick={() => setOptionsOpen(o => !o)}
+        onClick={() => setOptionsOpen((o) => !o)}
         aria-expanded={optionsOpen}
       >
         <span className="te-options-section__title">Task options</span>
-        {!optionsOpen && summary && (
-          <span className="te-options-section__summary">{summary}</span>
-        )}
-        <span className="te-options-section__chevron" style={{ transform: optionsOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+        {!optionsOpen && summary && <span className="te-options-section__summary">{summary}</span>}
+        <span
+          className="te-options-section__chevron"
+          style={{ transform: optionsOpen ? 'rotate(180deg)' : 'none' }}
+        >
+          ▾
+        </span>
       </button>
 
       {optionsOpen && (
         <div className="te-options-section__body">
-          <CarryThroughPicker task={task} lesson={lesson} onUpdate={onUpdate} lessonMod={lessonMod} />
+          <CarryThroughPicker
+            task={task}
+            lesson={lesson}
+            onUpdate={onUpdate}
+            lessonMod={lessonMod}
+          />
 
           {lessonMod?.supportsInteractionMode && (
             <Field label="Student interaction">
@@ -49,13 +63,21 @@ export default function TaskOptionsSection({
                 <div className="te-option-choice-grid">
                   {[
                     { value: 'run', label: 'Run', text: 'Students run code and see output.' },
-                    { value: 'submit', label: 'Submit', text: 'Students submit code without running it.' },
-                  ].map(choice => {
+                    {
+                      value: 'submit',
+                      label: 'Submit',
+                      text: 'Students submit code without running it.',
+                    },
+                  ].map((choice) => {
                     const active = choice.value === (task.interactionMode ?? 'run')
                     return (
                       <label
                         key={choice.value}
-                        className={active ? 'te-option-choice-card te-option-choice-card--active' : 'te-option-choice-card'}
+                        className={
+                          active
+                            ? 'te-option-choice-card te-option-choice-card--active'
+                            : 'te-option-choice-card'
+                        }
                       >
                         <input
                           type="radio"
@@ -65,14 +87,23 @@ export default function TaskOptionsSection({
                           className="te-option-choice-input"
                         />
                         <span className="te-option-choice-title">{choice.label}</span>
-                        <span className={active ? 'te-option-choice-text te-option-choice-text--active' : 'te-option-choice-text'}>{choice.text}</span>
+                        <span
+                          className={
+                            active
+                              ? 'te-option-choice-text te-option-choice-text--active'
+                              : 'te-option-choice-text'
+                          }
+                        >
+                          {choice.text}
+                        </span>
                       </label>
                     )
                   })}
                 </div>
                 {task.interactionMode === 'submit' && (
                   <p className="te-option-note">
-                    Submit mode hides the Run button. Only code-based checks can be evaluated on submit.
+                    Submit mode hides the Run button. Only code-based checks can be evaluated on
+                    submit.
                   </p>
                 )}
               </div>
@@ -80,17 +111,34 @@ export default function TaskOptionsSection({
           )}
 
           <Field label="Completion check">
-            <label className={task.check ? 'te-option-toggle-card te-option-toggle-card--active' : 'te-option-toggle-card'}>
+            <label
+              className={
+                task.check
+                  ? 'te-option-toggle-card te-option-toggle-card--active'
+                  : 'te-option-toggle-card'
+              }
+            >
               <input
                 type="checkbox"
                 checked={!!task.check}
-                onChange={e => set('check', e.target.checked
-                  ? (lessonMod?.defaultCheck?.(task.interactionMode ?? 'run') ?? null)
-                  : null)}
+                onChange={(e) =>
+                  set(
+                    'check',
+                    e.target.checked
+                      ? (lessonMod?.defaultCheck?.(task.interactionMode ?? 'run') ?? null)
+                      : null
+                  )
+                }
                 className="te-option-choice-input"
               />
               <span className="te-option-choice-title">Enable check</span>
-              <span className={task.check ? 'te-option-choice-text te-option-choice-text--active' : 'te-option-choice-text'}>
+              <span
+                className={
+                  task.check
+                    ? 'te-option-choice-text te-option-choice-text--active'
+                    : 'te-option-choice-text'
+                }
+              >
                 Add completion criteria students can pass.
               </span>
             </label>
@@ -110,39 +158,50 @@ export default function TaskOptionsSection({
           {task.check && lessonMod?.supportsIncorrectChecks && (
             <Field label="Feedback checks">
               <p className="te-option-note">
-                Detect wrong patterns after an attempt or once the student pauses. Blocking feedback fails the task when it matches; nudges can guide without blocking.
+                Detect wrong patterns after an attempt or once the student pauses. Blocking feedback
+                fails the task when it matches; nudges can guide without blocking.
               </p>
               {FeedbackCheckEditor ? (
                 <FeedbackCheckEditor
                   task={task}
                   lesson={lesson}
                   checks={normalizeChecks(task.feedbackChecks ?? task.incorrectChecks ?? [])}
-                  onChange={checks => onUpdate({
-                    ...task,
-                    feedbackChecks: checks?.length > 0 ? checks : null,
-                    incorrectChecks: undefined,
-                  })}
+                  onChange={(checks) =>
+                    onUpdate({
+                      ...task,
+                      feedbackChecks: checks?.length > 0 ? checks : null,
+                      incorrectChecks: undefined,
+                    })
+                  }
                   feedbackEditor
                 />
               ) : (
                 <CheckListEditor
                   checks={normalizeChecks(task.feedbackChecks ?? task.incorrectChecks ?? [])}
-                  onChange={checks => onUpdate({
-                    ...task,
-                    feedbackChecks: checks.length > 0 ? checks : null,
-                    incorrectChecks: undefined,
-                  })}
+                  onChange={(checks) =>
+                    onUpdate({
+                      ...task,
+                      feedbackChecks: checks.length > 0 ? checks : null,
+                      incorrectChecks: undefined,
+                    })
+                  }
                   interactionMode={task.interactionMode ?? 'run'}
                   allowCodeNoError={false}
-                  allowVariableChecks={lessonMod?.supportsVariableChecks && task.interactionMode !== 'submit'}
+                  allowVariableChecks={
+                    lessonMod?.supportsVariableChecks && task.interactionMode !== 'submit'
+                  }
                   allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
                   lessonType={lesson.type}
                   feedbackEditor
                   stages={task.codeStages ?? []}
                   output={output}
-                  code={lessonMod?.supportsTests
-                    ? activePythonCode
-                    : (activeFiles ?? []).map(file => `--- ${file.name} ---\n${file.content ?? ''}`).join('\n\n')}
+                  code={
+                    lessonMod?.supportsTests
+                      ? activePythonCode
+                      : (activeFiles ?? [])
+                          .map((file) => `--- ${file.name} ---\n${file.content ?? ''}`)
+                          .join('\n\n')
+                  }
                 />
               )}
             </Field>
@@ -151,7 +210,7 @@ export default function TaskOptionsSection({
           {lessonMod?.supportsTests && (task.interactionMode ?? 'run') !== 'submit' && (
             <TestsEditor
               tests={task.tests ?? []}
-              onChange={tests => set('tests', tests.length > 0 ? tests : undefined)}
+              onChange={(tests) => set('tests', tests.length > 0 ? tests : undefined)}
               lessonType={lesson.type}
             />
           )}

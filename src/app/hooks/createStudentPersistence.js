@@ -1,7 +1,13 @@
 import {
-  saveCode, saveFile, saveFsState,
-  loadSavedCode, loadSavedFile, loadSavedFs,
-  savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs,
+  saveCode,
+  saveFile,
+  saveFsState,
+  loadSavedCode,
+  loadSavedFile,
+  loadSavedFs,
+  savePersonalSandboxCode,
+  savePersonalSandboxFile,
+  savePersonalSandboxFs,
   ephemeralStorage,
 } from '../studentStorage'
 
@@ -16,16 +22,25 @@ import {
  * Personal sandbox saves are skipped entirely in those modes (sandbox reads
  * elsewhere go straight to localStorage, so writing ephemerally would desync).
  */
-export function createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef, sandboxModuleId = null }) {
-  const saveSandboxCode = (actorId, data) => sandboxModuleId
-    ? savePersonalSandboxCode(lessonId, actorId, data, sandboxModuleId)
-    : savePersonalSandboxCode(lessonId, actorId, data)
-  const saveSandboxFile = (filename, actorId, content) => sandboxModuleId
-    ? savePersonalSandboxFile(lessonId, filename, actorId, content, sandboxModuleId)
-    : savePersonalSandboxFile(lessonId, filename, actorId, content)
-  const saveSandboxFs = (actorId, fs) => sandboxModuleId
-    ? savePersonalSandboxFs(lessonId, actorId, fs, sandboxModuleId)
-    : savePersonalSandboxFs(lessonId, actorId, fs)
+export function createStudentPersistence({
+  lessonId,
+  teacherPresentation,
+  previewMode,
+  inPersonalSandboxRef,
+  sandboxModuleId = null,
+}) {
+  const saveSandboxCode = (actorId, data) =>
+    sandboxModuleId
+      ? savePersonalSandboxCode(lessonId, actorId, data, sandboxModuleId)
+      : savePersonalSandboxCode(lessonId, actorId, data)
+  const saveSandboxFile = (filename, actorId, content) =>
+    sandboxModuleId
+      ? savePersonalSandboxFile(lessonId, filename, actorId, content, sandboxModuleId)
+      : savePersonalSandboxFile(lessonId, filename, actorId, content)
+  const saveSandboxFs = (actorId, fs) =>
+    sandboxModuleId
+      ? savePersonalSandboxFs(lessonId, actorId, fs, sandboxModuleId)
+      : savePersonalSandboxFs(lessonId, actorId, fs)
   const ephemeral = teacherPresentation || previewMode
 
   function savePythonCode(actorId, taskId, data) {
@@ -51,7 +66,7 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
   }
 
   function saveHtmlFiles(actorId, taskId, files) {
-    files.forEach(f => saveHtmlFile(actorId, taskId, f.name, f.content))
+    files.forEach((f) => saveHtmlFile(actorId, taskId, f.name, f.content))
   }
 
   function saveScratch(actorId, taskId, workspaceStates) {
@@ -97,7 +112,13 @@ export function createStudentPersistence({ lessonId, teacherPresentation, previe
   }
 
   return {
-    savePythonCode, saveHtmlFile, saveHtmlFiles, saveScratch, saveFs,
-    readSavedCode, readSavedFile, readSavedFs,
+    savePythonCode,
+    saveHtmlFile,
+    saveHtmlFiles,
+    saveScratch,
+    saveFs,
+    readSavedCode,
+    readSavedFile,
+    readSavedFs,
   }
 }

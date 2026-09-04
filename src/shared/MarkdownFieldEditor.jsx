@@ -32,7 +32,8 @@ export function MarkdownFieldEditor({
   const content = value ?? ''
   const { topics } = useTopicLibrary(lessonType)
   const allTopicSuggestions = findAllTopicSuggestions(content, topics)
-  const topicSuggestion = allTopicSuggestions.find(s => !dismissedTopicIds.has(s.topic.id)) ?? null
+  const topicSuggestion =
+    allTopicSuggestions.find((s) => !dismissedTopicIds.has(s.topic.id)) ?? null
   const SUGGESTION_BANNER_HEIGHT = 34
   const effectiveHeight = topicSuggestion ? height + SUGGESTION_BANNER_HEIGHT : height
   const effectiveMinHeight = topicSuggestion ? minHeight + SUGGESTION_BANNER_HEIGHT : minHeight
@@ -114,7 +115,8 @@ export function MarkdownFieldEditor({
       cursorEnd = end + 2
     } else if (action === 'table') {
       const needNewline = start > 0 && val[start - 1] !== '\n'
-      const tableText = (needNewline ? '\n' : '') + '| Header | Header |\n| --- | --- |\n| Cell | Cell |\n'
+      const tableText =
+        (needNewline ? '\n' : '') + '| Header | Header |\n| --- | --- |\n| Cell | Cell |\n'
       newVal = before + tableText + after
       cursorStart = start + tableText.length
       cursorEnd = cursorStart
@@ -124,7 +126,7 @@ export function MarkdownFieldEditor({
       const regionEnd = lastNlIdx === -1 ? val.length : lastNlIdx
       const region = val.slice(firstLineStart, regionEnd)
       const lines = region.split('\n')
-      const indented = lines.map(line => '  ' + line).join('\n')
+      const indented = lines.map((line) => '  ' + line).join('\n')
       newVal = val.slice(0, firstLineStart) + indented + val.slice(regionEnd)
       cursorStart = start + 2
       cursorEnd = end + 2 * lines.length
@@ -184,7 +186,7 @@ export function MarkdownFieldEditor({
 
   function dismissTopicSuggestion() {
     if (!topicSuggestion) return
-    setDismissedTopicIds(prev => new Set([...prev, topicSuggestion.topic.id]))
+    setDismissedTopicIds((prev) => new Set([...prev, topicSuggestion.topic.id]))
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
@@ -218,11 +220,11 @@ export function MarkdownFieldEditor({
           onAction={applyFormat}
           imageAssets={[
             ...(assets ?? [])
-              .filter(p => IMAGE_EXTENSIONS.has(p.split('.').pop().toLowerCase()))
-              .map(p => ({ name: p.split('/').pop(), path: p })),
+              .filter((p) => IMAGE_EXTENSIONS.has(p.split('.').pop().toLowerCase()))
+              .map((p) => ({ name: p.split('/').pop(), path: p })),
             ...(storageAssets ?? [])
-              .filter(a => IMAGE_EXTENSIONS.has(a.name.split('.').pop().toLowerCase()))
-              .map(a => ({ name: a.name, path: a.url })),
+              .filter((a) => IMAGE_EXTENSIONS.has(a.name.split('.').pop().toLowerCase()))
+              .map((a) => ({ name: a.name, path: a.url })),
           ]}
           topics={topics}
         />
@@ -237,7 +239,12 @@ export function MarkdownFieldEditor({
             <button type="button" style={s.topicSuggestionButton} onClick={applyTopicSuggestion}>
               Link to {topicSuggestion.topic.title}
             </button>
-            <button type="button" style={s.topicSuggestionDismiss} onClick={dismissTopicSuggestion} aria-label="Dismiss suggestion">
+            <button
+              type="button"
+              style={s.topicSuggestionDismiss}
+              onClick={dismissTopicSuggestion}
+              aria-label="Dismiss suggestion"
+            >
               ×
             </button>
           </div>
@@ -250,15 +257,22 @@ export function MarkdownFieldEditor({
             ref={textareaRef}
             style={s.textarea}
             value={content}
-            onChange={e => onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             spellCheck
           />
         ) : (
           <div style={s.preview}>
-            {content || (showTitle && title)
-              ? <MarkdownRenderer title={showTitle ? title : undefined} content={content} topicType={lessonType} showLibrary />
-              : <span style={s.empty}>Preview will appear here...</span>}
+            {content || (showTitle && title) ? (
+              <MarkdownRenderer
+                title={showTitle ? title : undefined}
+                content={content}
+                topicType={lessonType}
+                showLibrary
+              />
+            ) : (
+              <span style={s.empty}>Preview will appear here...</span>
+            )}
           </div>
         )}
       </div>
@@ -266,7 +280,13 @@ export function MarkdownFieldEditor({
   )
 }
 
-export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, imageAssets = [], topics = [] }) {
+export function MarkdownToolbar({
+  lessonType,
+  inlineCodeLanguages,
+  onAction,
+  imageAssets = [],
+  topics = [],
+}) {
   const [openDropdown, setOpenDropdown] = useState(null)
   const [topicQuery, setTopicQuery] = useState('')
   const toolbarRef = useRef(null)
@@ -288,16 +308,15 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
 
   return (
     <div style={s.toolbar} ref={toolbarRef}>
-
       {/* Headings */}
       <div style={s.toolbarGroup}>
         <button
           type="button"
           title="Heading"
           style={s.toolbarBtn}
-          onMouseDown={e => {
+          onMouseDown={(e) => {
             e.preventDefault()
-            setOpenDropdown(d => d === 'heading' ? null : 'heading')
+            setOpenDropdown((d) => (d === 'heading' ? null : 'heading'))
           }}
         >
           H ▾
@@ -313,7 +332,7 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
                 key={action}
                 type="button"
                 style={s.dropdownItem}
-                onMouseDown={e => {
+                onMouseDown={(e) => {
                   e.preventDefault()
                   onAction(action)
                   setOpenDropdown(null)
@@ -333,7 +352,10 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
         type="button"
         title="Bold"
         style={{ ...s.toolbarBtn, fontWeight: 700 }}
-        onMouseDown={e => { e.preventDefault(); onAction('bold') }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          onAction('bold')
+        }}
       >
         B
       </button>
@@ -343,7 +365,10 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
         type="button"
         title="Italic"
         style={{ ...s.toolbarBtn, fontStyle: 'italic' }}
-        onMouseDown={e => { e.preventDefault(); onAction('italic') }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          onAction('italic')
+        }}
       >
         I
       </button>
@@ -357,7 +382,10 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
           type="button"
           title={`Inline ${label} code`}
           style={{ ...s.toolbarBtn, fontFamily: "'JetBrains Mono', monospace" }}
-          onMouseDown={e => { e.preventDefault(); onAction(action) }}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            onAction(action)
+          }}
         >
           `{label}`
         </button>
@@ -369,12 +397,12 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
           type="button"
           title="Code block"
           style={s.toolbarBtn}
-          onMouseDown={e => {
+          onMouseDown={(e) => {
             e.preventDefault()
             if (singleCodeBlock) {
               onAction(codeBlockOptions[0].action)
             } else {
-              setOpenDropdown(d => d === 'codeblock' ? null : 'codeblock')
+              setOpenDropdown((d) => (d === 'codeblock' ? null : 'codeblock'))
             }
           }}
         >
@@ -387,7 +415,7 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
                 key={action}
                 type="button"
                 style={s.dropdownItem}
-                onMouseDown={e => {
+                onMouseDown={(e) => {
                   e.preventDefault()
                   onAction(action)
                   setOpenDropdown(null)
@@ -407,9 +435,9 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
           type="button"
           title="Insert topic library link"
           style={s.toolbarBtn}
-          onMouseDown={event => {
+          onMouseDown={(event) => {
             event.preventDefault()
-            setOpenDropdown(value => value === 'topic' ? null : 'topic')
+            setOpenDropdown((value) => (value === 'topic' ? null : 'topic'))
           }}
         >
           Topic ▾
@@ -421,15 +449,15 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
               value={topicQuery}
               placeholder="Search topics..."
               style={s.topicSearch}
-              onChange={event => setTopicQuery(event.target.value)}
-              onMouseDown={event => event.stopPropagation()}
+              onChange={(event) => setTopicQuery(event.target.value)}
+              onMouseDown={(event) => event.stopPropagation()}
             />
-            {matchingTopics.map(topic => (
+            {matchingTopics.map((topic) => (
               <button
                 key={topic.id}
                 type="button"
                 style={s.dropdownItem}
-                onMouseDown={event => {
+                onMouseDown={(event) => {
                   event.preventDefault()
                   onAction(`topic:${topic.id}`)
                   setOpenDropdown(null)
@@ -451,7 +479,10 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
         type="button"
         title="Blockquote"
         style={s.toolbarBtn}
-        onMouseDown={e => { e.preventDefault(); onAction('quote') }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          onAction('quote')
+        }}
       >
         "
       </button>
@@ -461,7 +492,10 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
         type="button"
         title="Insert table"
         style={s.toolbarBtn}
-        onMouseDown={e => { e.preventDefault(); onAction('table') }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          onAction('table')
+        }}
       >
         ⊞
       </button>
@@ -471,7 +505,10 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
         type="button"
         title="Indent lines"
         style={s.toolbarBtn}
-        onMouseDown={e => { e.preventDefault(); onAction('indent') }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          onAction('indent')
+        }}
       >
         ⇥
       </button>
@@ -485,26 +522,24 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
               type="button"
               title="Insert Scratch block reference"
               style={{ ...s.toolbarBtn, color: '#b45309' }}
-              onMouseDown={e => {
+              onMouseDown={(e) => {
                 e.preventDefault()
-                setOpenDropdown(d => d === 'scratch' ? null : 'scratch')
+                setOpenDropdown((d) => (d === 'scratch' ? null : 'scratch'))
               }}
             >
               Blocks ▾
             </button>
             {openDropdown === 'scratch' && (
               <div style={{ ...s.dropdown, width: 230, maxHeight: 280, overflowY: 'auto' }}>
-                {SCRATCH_BLOCK_CATEGORIES.map(cat => (
+                {SCRATCH_BLOCK_CATEGORIES.map((cat) => (
                   <div key={cat.label}>
-                    <div style={{ ...s.dropdownCategory, color: cat.color }}>
-                      {cat.label}
-                    </div>
-                    {cat.blocks.map(block => (
+                    <div style={{ ...s.dropdownCategory, color: cat.color }}>{cat.label}</div>
+                    {cat.blocks.map((block) => (
                       <button
                         key={block}
                         type="button"
                         style={s.dropdownItem}
-                        onMouseDown={e => {
+                        onMouseDown={(e) => {
                           e.preventDefault()
                           onAction('scratch:' + block)
                           setOpenDropdown(null)
@@ -530,21 +565,21 @@ export function MarkdownToolbar({ lessonType, inlineCodeLanguages, onAction, ima
               type="button"
               title="Insert image"
               style={s.toolbarBtn}
-              onMouseDown={e => {
+              onMouseDown={(e) => {
                 e.preventDefault()
-                setOpenDropdown(d => d === 'image' ? null : 'image')
+                setOpenDropdown((d) => (d === 'image' ? null : 'image'))
               }}
             >
               Image ▾
             </button>
             {openDropdown === 'image' && (
               <div style={{ ...s.dropdown, width: 220, maxHeight: 260, overflowY: 'auto' }}>
-                {imageAssets.map(asset => (
+                {imageAssets.map((asset) => (
                   <button
                     key={asset.path}
                     type="button"
                     style={s.dropdownItem}
-                    onMouseDown={e => {
+                    onMouseDown={(e) => {
                       e.preventDefault()
                       onAction('image:' + asset.path)
                       setOpenDropdown(null)

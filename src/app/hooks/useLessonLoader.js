@@ -17,12 +17,14 @@ export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = nul
       setLesson(lessonProp)
       setFirstTaskId(initialTaskId ?? flattenTasks(lessonProp.tasks)[0]?.id ?? 1)
       setLessonLoading(false)
-      return () => { cancelled = true }
+      return () => {
+        cancelled = true
+      }
     }
     setLesson(null)
     setLessonLoading(true)
     fetchLessonById(lessonId)
-      .then(loadedLesson => {
+      .then((loadedLesson) => {
         if (cancelled) return
         if (loadedLesson) setLesson(loadedLesson)
         setLessonLoading(false)
@@ -30,7 +32,9 @@ export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = nul
       .catch(() => {
         if (!cancelled) setLessonLoading(false)
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [lessonId, lessonProp, initialTaskId])
 
   return { lesson, lessonLoading, firstTaskId }

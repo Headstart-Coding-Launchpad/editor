@@ -36,25 +36,55 @@ export const HTML_CHECK_DEFINITIONS = {
   },
   html_element_count: {
     subject: 'HTML element count',
-    operators: ['equals', 'not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal'],
+    operators: [
+      'equals',
+      'not_equals',
+      'greater_than',
+      'greater_than_or_equal',
+      'less_than',
+      'less_than_or_equal',
+    ],
     fields: ['selector', 'operator', 'value'],
     evaluate: 'on_run',
   },
   html_element_value: {
     subject: 'HTML element value',
-    operators: ['contains', 'not_contains', 'equals', 'not_equals', 'matches_regex', 'not_matches_regex'],
+    operators: [
+      'contains',
+      'not_contains',
+      'equals',
+      'not_equals',
+      'matches_regex',
+      'not_matches_regex',
+    ],
     fields: ['selector', 'operator', 'value', 'flags'],
     evaluate: 'on_run',
   },
   html_element_attribute: {
     subject: 'HTML element attribute',
-    operators: ['exists', 'equals', 'not_equals', 'contains', 'not_contains', 'matches_regex', 'not_matches_regex'],
+    operators: [
+      'exists',
+      'equals',
+      'not_equals',
+      'contains',
+      'not_contains',
+      'matches_regex',
+      'not_matches_regex',
+    ],
     fields: ['selector', 'attribute', 'operator', 'value', 'flags'],
     evaluate: 'on_run',
   },
   html_element_style_property: {
     subject: 'HTML element style property',
-    operators: ['exists', 'equals', 'not_equals', 'contains', 'not_contains', 'matches_regex', 'not_matches_regex'],
+    operators: [
+      'exists',
+      'equals',
+      'not_equals',
+      'contains',
+      'not_contains',
+      'matches_regex',
+      'not_matches_regex',
+    ],
     fields: ['selector', 'property', 'operator', 'value', 'flags'],
     evaluate: 'on_run',
   },
@@ -89,7 +119,11 @@ export function evaluateHtmlCheck(check, output, context = {}) {
 
   if (check.type === 'html_element') {
     if (!context.iframeDoc || !check.selector) return false
-    try { return context.iframeDoc.querySelectorAll(check.selector).length > 0 } catch { return false }
+    try {
+      return context.iframeDoc.querySelectorAll(check.selector).length > 0
+    } catch {
+      return false
+    }
   }
 
   if (check.type === 'html_element_attribute') {
@@ -99,14 +133,21 @@ export function evaluateHtmlCheck(check, output, context = {}) {
       if (!el || !el.hasAttribute(check.attribute)) return false
       const raw = el.getAttribute(check.attribute) ?? ''
       if (check.operator === 'exists' || check.value == null || check.value === '') return true
-      if (check.operator === 'contains') return matchesContainValue(raw, check.value, normalizeOutput)
-      if (check.operator === 'not_contains') return !wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'equals') return wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'not_equals') return !wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
+      if (check.operator === 'contains')
+        return matchesContainValue(raw, check.value, normalizeOutput)
+      if (check.operator === 'not_contains')
+        return !wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
+      if (check.operator === 'equals')
+        return wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
+      if (check.operator === 'not_equals')
+        return !wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
       if (check.operator === 'matches_regex') return matchesRegex(raw, check.value, check.flags)
-      if (check.operator === 'not_matches_regex') return !matchesRegex(raw, check.value, check.flags)
+      if (check.operator === 'not_matches_regex')
+        return !matchesRegex(raw, check.value, check.flags)
       return false
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
   if (check.type === 'html_element_style_property') {
@@ -115,23 +156,41 @@ export function evaluateHtmlCheck(check, output, context = {}) {
       const el = context.iframeDoc.querySelector(check.selector)
       if (!el) return false
       const style = context.iframeDoc.defaultView?.getComputedStyle(el)
-      const raw = style?.getPropertyValue(check.property) || el.style?.getPropertyValue(check.property) || ''
-      if (check.operator === 'exists' || check.value == null || check.value === '') return String(raw).trim().length > 0
-      if (check.operator === 'contains') return matchesContainValue(raw, check.value, normalizeStyleValue)
-      if (check.operator === 'not_contains') return !wildcardContains(normalizeStyleValue(raw), normalizeStyleValue(check.value))
-      if (check.operator === 'equals') return wildcardEquals(normalizeStyleValue(raw), normalizeStyleValue(check.value))
-      if (check.operator === 'not_equals') return !wildcardEquals(normalizeStyleValue(raw), normalizeStyleValue(check.value))
-      if (check.operator === 'matches_regex') return matchesRegex(normalizeStyleValue(raw), check.value, check.flags)
-      if (check.operator === 'not_matches_regex') return !matchesRegex(normalizeStyleValue(raw), check.value, check.flags)
+      const raw =
+        style?.getPropertyValue(check.property) || el.style?.getPropertyValue(check.property) || ''
+      if (check.operator === 'exists' || check.value == null || check.value === '')
+        return String(raw).trim().length > 0
+      if (check.operator === 'contains')
+        return matchesContainValue(raw, check.value, normalizeStyleValue)
+      if (check.operator === 'not_contains')
+        return !wildcardContains(normalizeStyleValue(raw), normalizeStyleValue(check.value))
+      if (check.operator === 'equals')
+        return wildcardEquals(normalizeStyleValue(raw), normalizeStyleValue(check.value))
+      if (check.operator === 'not_equals')
+        return !wildcardEquals(normalizeStyleValue(raw), normalizeStyleValue(check.value))
+      if (check.operator === 'matches_regex')
+        return matchesRegex(normalizeStyleValue(raw), check.value, check.flags)
+      if (check.operator === 'not_matches_regex')
+        return !matchesRegex(normalizeStyleValue(raw), check.value, check.flags)
       return false
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
   if (check.value == null) return false
 
   if (check.type === 'html_element_count') {
     if (!context.iframeDoc || !check.selector) return false
-    try { return compareValues(context.iframeDoc.querySelectorAll(check.selector).length, check.operator ?? 'equals', check.value) } catch { return false }
+    try {
+      return compareValues(
+        context.iframeDoc.querySelectorAll(check.selector).length,
+        check.operator ?? 'equals',
+        check.value
+      )
+    } catch {
+      return false
+    }
   }
 
   if (check.type === 'html_element_value') {
@@ -140,14 +199,22 @@ export function evaluateHtmlCheck(check, output, context = {}) {
       const el = context.iframeDoc.querySelector(check.selector)
       if (!el) return false
       const raw = getElementText(el)
-      if (check.operator === 'contains') return matchesContainValue(raw, check.value, normalizeOutput)
-      if (check.operator === 'not_contains') return !wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'equals') return wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'not_equals') return !wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'matches_regex') return matchesRegex(normalizeOutput(raw, true), check.value, check.flags)
-      if (check.operator === 'not_matches_regex') return !matchesRegex(normalizeOutput(raw, true), check.value, check.flags)
+      if (check.operator === 'contains')
+        return matchesContainValue(raw, check.value, normalizeOutput)
+      if (check.operator === 'not_contains')
+        return !wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
+      if (check.operator === 'equals')
+        return wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
+      if (check.operator === 'not_equals')
+        return !wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
+      if (check.operator === 'matches_regex')
+        return matchesRegex(normalizeOutput(raw, true), check.value, check.flags)
+      if (check.operator === 'not_matches_regex')
+        return !matchesRegex(normalizeOutput(raw, true), check.value, check.flags)
       return false
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
   return false

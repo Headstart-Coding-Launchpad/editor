@@ -5,31 +5,41 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { resolveSavedCarrySource } from '../../app/studentTaskContent'
 
 export default function StudentWorkspace({
-  lesson, task, cs,
-  viewingTaskId, currentTaskId,
-  isViewingPrev, isForcedTeacherLive,
+  lesson,
+  task,
+  cs,
+  viewingTaskId,
+  currentTaskId,
+  isViewingPrev,
+  isForcedTeacherLive,
   displayFs,
 }) {
   const viewedFs = isViewingPrev ? cs.readSavedTaskFs(viewingTaskId) : null
-  const viewedCarry = isViewingPrev && viewedFs == null
-    ? resolveSavedCarrySource({
-      tasks: lesson.tasks,
-      taskId: viewingTaskId,
-      carryFromId: task?.carryFsFrom,
-      carryField: 'carryFsFrom',
-      readSavedState: cs.readSavedTaskFs,
-      hasSavedState: saved => saved != null,
-    })
-    : null
-  const fs = isViewingPrev ? (viewedFs ?? viewedCarry?.saved ?? task?.starterFs ?? DEFAULT_FS) : displayFs
+  const viewedCarry =
+    isViewingPrev && viewedFs == null
+      ? resolveSavedCarrySource({
+          tasks: lesson.tasks,
+          taskId: viewingTaskId,
+          carryFromId: task?.carryFsFrom,
+          carryField: 'carryFsFrom',
+          readSavedState: cs.readSavedTaskFs,
+          hasSavedState: (saved) => saved != null,
+        })
+      : null
+  const fs = isViewingPrev
+    ? (viewedFs ?? viewedCarry?.saved ?? task?.starterFs ?? DEFAULT_FS)
+    : displayFs
   return (
     <div style={s.filesystemStudentWorkspace}>
       <FilesystemTask
         key={`filesystem-${viewingTaskId ?? currentTaskId}`}
         initialDir={
           task?.carryFsFrom
-            ? (cs.fsInteraction?.currentDir ?? (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/'))
-            : (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/')
+            ? (cs.fsInteraction?.currentDir ??
+              (task?.startsInDir ? normaliseDirPath(task.startsInDir) : '/'))
+            : task?.startsInDir
+              ? normaliseDirPath(task.startsInDir)
+              : '/'
         }
         fs={fs}
         onFsChange={isViewingPrev || isForcedTeacherLive ? undefined : cs.handleFsChange}

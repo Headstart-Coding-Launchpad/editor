@@ -17,7 +17,7 @@ export default function TaskSlideTransition({ transitionKey, children, style }) 
     }, TASK_TRANSITION_MS)
 
     return () => window.clearTimeout(timeoutId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transitionKey])
 
   useEffect(() => {
@@ -27,7 +27,10 @@ export default function TaskSlideTransition({ transitionKey, children, style }) 
   }, [transitionKey, children, leavingRender])
 
   return (
-    <div className="task-slide-viewport" style={{ ...style, overflow: leavingRender ? 'hidden' : style?.overflow }}>
+    <div
+      className="task-slide-viewport"
+      style={{ ...style, overflow: leavingRender ? 'hidden' : style?.overflow }}
+    >
       {leavingRender && (
         <div
           key={`leaving-${leavingRender.key}`}

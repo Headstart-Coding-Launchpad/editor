@@ -25,7 +25,7 @@ export function isDir(entry) {
 // pure case-only rename of an entry succeed against its own prior path.
 function findCaseInsensitiveMatch(fs, targetPath, excludePath = null) {
   const target = targetPath.toLowerCase()
-  return Object.keys(fs).find(key => key !== excludePath && key.toLowerCase() === target) ?? null
+  return Object.keys(fs).find((key) => key !== excludePath && key.toLowerCase() === target) ?? null
 }
 
 export function parentPath(path) {
@@ -45,7 +45,7 @@ export function entryName(path) {
 
 export function listChildren(fs, dirPath) {
   const dir = normaliseDirPath(dirPath)
-  return Object.keys(fs).filter(p => {
+  return Object.keys(fs).filter((p) => {
     if (p === dir) return false
     const parent = parentPath(p)
     return parent === dir
@@ -100,9 +100,7 @@ export function moveEntry(fs, srcPath, destDirPath) {
 
   const name = entryName(srcPath)
   const isDirectory = srcPath.endsWith('/')
-  const newPath = isDirectory
-    ? normaliseDirPath(destDir + name)
-    : normaliseFilePath(destDir + name)
+  const newPath = isDirectory ? normaliseDirPath(destDir + name) : normaliseFilePath(destDir + name)
   if (fs[newPath] || findCaseInsensitiveMatch(fs, newPath, srcPath)) return fs
 
   const next = {}
@@ -110,7 +108,7 @@ export function moveEntry(fs, srcPath, destDirPath) {
     if (key === srcPath) {
       next[newPath] = value
     } else if (isDirectory && key.startsWith(srcPath)) {
-      next[newPath + (key.endsWith('/') ? '' : '') + key.slice(srcPath.length)] = value
+      next[newPath + key.slice(srcPath.length)] = value
     } else {
       next[key] = value
     }
@@ -125,9 +123,7 @@ export function copyEntry(fs, srcPath, destDirPath) {
 
   const name = entryName(srcPath)
   const isDirectory = srcPath.endsWith('/')
-  const newPath = isDirectory
-    ? normaliseDirPath(destDir + name)
-    : normaliseFilePath(destDir + name)
+  const newPath = isDirectory ? normaliseDirPath(destDir + name) : normaliseFilePath(destDir + name)
   if (fs[newPath] || findCaseInsensitiveMatch(fs, newPath, srcPath)) return fs
 
   const additions = {}

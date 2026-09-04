@@ -20,7 +20,9 @@ vi.mock('../StudentModal', () => ({
       {hasPrev && <button onClick={onPrev}>Prev student</button>}
       {hasNext && <button onClick={onNext}>Next student</button>}
       {onSendVideoCallLink && (
-        <button onClick={() => onSendVideoCallLink(student.anonymousId)}>Send video call link</button>
+        <button onClick={() => onSendVideoCallLink(student.anonymousId)}>
+          Send video call link
+        </button>
       )}
       <button onClick={onClose}>Close modal</button>
     </div>
@@ -40,9 +42,21 @@ const PYTHON_LESSON = {
 const ACTIVE_SESSION = { state: 'active', currentTaskId: 1 }
 
 const STUDENTS = [
-  { anonymousId: 's1', displayName: 'Alice', online: true,  lastRunStatus: 'success', checkPassed: true  },
-  { anonymousId: 's2', displayName: 'Bob',   online: false, lastRunStatus: 'error',   checkPassed: false },
-  { anonymousId: 's3', displayName: 'Carol', online: true,  lastRunStatus: null,      checkPassed: null  },
+  {
+    anonymousId: 's1',
+    displayName: 'Alice',
+    online: true,
+    lastRunStatus: 'success',
+    checkPassed: true,
+  },
+  {
+    anonymousId: 's2',
+    displayName: 'Bob',
+    online: false,
+    lastRunStatus: 'error',
+    checkPassed: false,
+  },
+  { anonymousId: 's3', displayName: 'Carol', online: true, lastRunStatus: null, checkPassed: null },
 ]
 
 function mkProps(overrides = {}) {
@@ -91,7 +105,9 @@ describe('StudentGrid', () => {
 
     it('does not show check count badges when the task has no check', () => {
       render(<StudentGrid {...mkProps()} />)
-      expect(screen.queryByTitle('Students who passed the completion check')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTitle('Students who passed the completion check')
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -118,7 +134,11 @@ describe('StudentGrid', () => {
 
   describe('collapsed state', () => {
     function renderCollapsed(studentOverrides = {}) {
-      return render(<StudentGrid {...mkProps({ collapsed: true, lesson: LESSON_WITH_CHECK, ...studentOverrides })} />)
+      return render(
+        <StudentGrid
+          {...mkProps({ collapsed: true, lesson: LESSON_WITH_CHECK, ...studentOverrides })}
+        />
+      )
     }
 
     it('shows the total student count badge', () => {
@@ -190,7 +210,10 @@ describe('StudentGrid', () => {
   // or not anyone had passed or failed - the electronics status strip in the two colours
   // the quiz fix is reclaiming.
   describe('check counters', () => {
-    const withCheck = { type: 'python', tasks: [{ id: 1, title: 'T', check: { type: 'output_contains', value: 'hi' } }] }
+    const withCheck = {
+      type: 'python',
+      tasks: [{ id: 1, title: 'T', check: { type: 'output_contains', value: 'hi' } }],
+    }
     const session = { state: 'active', currentTaskId: 1 }
 
     it('hides both counters while nobody has passed or failed', () => {
@@ -201,7 +224,15 @@ describe('StudentGrid', () => {
     })
 
     it('shows only the counter that has a value', () => {
-      const students = [{ anonymousId: 's1', displayName: 'A', online: true, lastRunStatus: 'success', checkPassed: true }]
+      const students = [
+        {
+          anonymousId: 's1',
+          displayName: 'A',
+          online: true,
+          lastRunStatus: 'success',
+          checkPassed: true,
+        },
+      ]
       render(<StudentGrid students={students} lesson={withCheck} session={session} />)
       expect(screen.getByTitle(/passed the completion check/i)).toBeInTheDocument()
       expect(screen.queryByTitle(/failed the completion check/i)).not.toBeInTheDocument()
