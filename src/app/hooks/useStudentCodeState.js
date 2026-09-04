@@ -121,6 +121,11 @@ export function useStudentCodeState({
   phaseRef.current           = phase
   const codeRef              = useRef(code)
   codeRef.current            = code
+  // Scratch never routes through the generic `code` state (see loadTaskContent's
+  // scratch branch) — handleScratchChange stashes the latest Blockly JSON here
+  // instead, so the teacher-live payload publishes real block state rather than
+  // whatever `code` happens to be left over from a previous non-Scratch task.
+  const scratchCodeRef       = useRef('')
   const arcadeDesignRef      = useRef(arcadeDesign)
   arcadeDesignRef.current    = arcadeDesign
   const arcadeDesignWriteTimerRef = useRef(null)
@@ -234,7 +239,7 @@ export function useStudentCodeState({
   const { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
     teacherPresentation,
     identityRef, sessionRef, lessonRef, currentTaskIdRef,
-    codeRef, arcadeDesignRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
+    codeRef, scratchCodeRef, arcadeDesignRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
     editorSelectionRef, editorActivityRef,
     lesson, session, identity, currentTaskId,
     code, files, activeFile, output, runStatus,
@@ -401,6 +406,7 @@ export function useStudentCodeState({
       setFiles([])
       setActiveFile('')
       setScratchActiveStageIndex(null)
+      scratchCodeRef.current = ''
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = persistence.readSavedFs(activeIdentity.anonymousId, taskId)
@@ -1263,11 +1269,13 @@ export function useStudentCodeState({
   }
 
   function handleScratchChange(workspaceStates) {
-    if (canPublishTeacherLive()) publishTeacherLive({ code: JSON.stringify(workspaceStates) })
+    const serialized = JSON.stringify(workspaceStates)
+    scratchCodeRef.current = serialized
+    if (canPublishTeacherLive()) publishTeacherLive({ code: serialized })
     if (!effectiveIdentity) return
     persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, workspaceStates)
     if (identity && activeStudentViewRef.current === identity.anonymousId) {
-      writeStudentCode(identity.anonymousId, JSON.stringify(workspaceStates))
+      writeStudentCode(identity.anonymousId, serialized)
     }
   }
 

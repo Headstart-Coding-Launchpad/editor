@@ -51,6 +51,21 @@ export default function StudentWorkspace({
     wasForcedTeacherLiveRef.current = isForcedTeacherLive
   }, [isForcedTeacherLive])
 
+  // Memoized on the raw code string, not recomputed on every render: a live cursor
+  // or block-drag update (throttled ~50ms) re-renders this component far more often
+  // than the code itself actually changes. Without this, ScratchWorkspace's "load
+  // external state" effect (keyed on object identity) fires on every one of those
+  // renders and fully reloads the mirror's Blockly workspace, fighting the live
+  // block-drag mirror's moveTo() with a stale reload on the very next frame.
+  const externalState = useMemo(() => {
+    if (isTeacherEditing) return parseScratchState(teacherLiveCode)
+    if (isForcedTeacherLive) return parseScratchState(displayCode)
+    if (isSandbox) return cs.scratchSandboxProject
+    if (cs.inPersonalSandbox) return personalSandboxScratchState
+    return cs.scratchExternalState
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacherEditing, teacherLiveCode, isForcedTeacherLive, displayCode, isSandbox, cs.scratchSandboxProject, cs.inPersonalSandbox, personalSandboxScratchState, cs.scratchExternalState])
+
   return (
     <div style={s.scratchStudentWorkspace}>
       {!isViewingPrev && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && !isTeacherEditing && (
@@ -81,7 +96,7 @@ export default function StudentWorkspace({
         onCursorMove={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchCursor}
         onBlockDragMove={isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.handleScratchBlockDrag}
         onCheckResult={isViewingPrev || isForcedTeacherLive || isTeacherEditing || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
-        externalState={isTeacherEditing ? parseScratchState(teacherLiveCode) : isForcedTeacherLive ? parseScratchState(displayCode) : isSandbox ? cs.scratchSandboxProject : cs.inPersonalSandbox ? personalSandboxScratchState : cs.scratchExternalState}
+        externalState={externalState}
         externalSpriteState={isForcedTeacherLive ? displaySpriteState : null}
         externalCursor={isForcedTeacherLive ? displayCursor : null}
         externalBlockDrag={isForcedTeacherLive ? displayBlockDrag : null}

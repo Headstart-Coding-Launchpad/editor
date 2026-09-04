@@ -43,6 +43,12 @@ const STAGE_H = 360
 const SYNC_DEBOUNCE = 1000
 const CURSOR_THROTTLE_MS = 50
 const CURSOR_STALE_MS = 2000
+// A live cursor's click/drag "halo": a bigger, translucent yellow ring shown around
+// (not instead of) the small pointer dot while the source's mouse button is held,
+// for the whole drag — not just the initial click.
+const CURSOR_HALO_RADIUS = 16
+const CURSOR_HALO_FILL = 'rgba(234, 179, 8, 0.35)'
+const CURSOR_HALO_STROKE = 'rgba(202, 138, 4, 0.6)'
 const BLOCK_PLACED_CHECK_DEBOUNCE = 500
 const IDLE_FEEDBACK_DEBOUNCE = 900
 const MIN_STAGE_SCALE = 0.35
@@ -502,6 +508,33 @@ function normalizeScratchChecks(check) {
   return []
 }
 
+// A live cursor's on-screen marker: a small solid dot for the exact pointer position,
+// plus a bigger translucent yellow halo layered on top while the source's mouse
+// button is held — for the whole click/drag, not just the initial press. Rendered
+// inside a zero-size absolutely-positioned wrapper (see call sites) so both circles
+// can center on the same point via `translate(-50%, -50%)` without recomputing
+// per-circle offsets for two different diameters.
+function LiveCursorDot({ down }) {
+  return (
+    <>
+      {down && (
+        <div style={{
+          position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+          width: CURSOR_HALO_RADIUS * 2, height: CURSOR_HALO_RADIUS * 2, borderRadius: '50%',
+          background: CURSOR_HALO_FILL, border: `2px solid ${CURSOR_HALO_STROKE}`,
+          pointerEvents: 'none', zIndex: 6,
+        }} />
+      )}
+      <div style={{
+        position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+        width: 12, height: 12, borderRadius: '50%',
+        background: '#7c3aed', border: '2px solid #fff',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.3)', pointerEvents: 'none', zIndex: 6,
+      }} />
+    </>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ScratchWorkspace({
@@ -612,6 +645,7 @@ export default function ScratchWorkspace({
   const backdropNameRef     = useRef(backdrops[0]?.name ?? null)
   const lastCursorSentRef   = useRef(0)
   const cursorDotElRef      = useRef(null)
+  const cursorHaloElRef     = useRef(null)
   const cursorRafRef        = useRef(null)
   const pendingCursorRef    = useRef(null)
   const imageCacheRef       = useRef({})
@@ -672,6 +706,7 @@ export default function ScratchWorkspace({
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
   const canvasRef              = useRef(null)
+  const stageToolbarRef        = useRef(null)
   const rootRef                = useRef(null)
   const [rootSizeRef, rootSize] = useElementSize()
   const setRootNode = useCallback(node => {
@@ -1127,7 +1162,14 @@ export default function ScratchWorkspace({
     // when a watching teacher most wants to see the cursor.
     div.addEventListener('pointermove', event => {
       if (!onCursorMoveRef.current && !onBlockDragMoveRef.current) return
-      pendingCursorRef.current = { ws, spriteId, clientX: event.clientX, clientY: event.clientY }
+      // The block palette (Blockly's own flyout) is a separate sub-workspace nested
+      // inside this same div, with its own independent pan/scroll — converting a
+      // point over it through the *main* workspace's transform would place the
+      // mirror's dot at a meaningless coordinate, generally off-screen. Detected
+      // here (cheap DOM check) rather than in the rAF below, since `event.target`
+      // is only valid on the event itself.
+      const overFlyout = !!event.target?.closest?.('.blocklyFlyout')
+      pendingCursorRef.current = { ws, spriteId, clientX: event.clientX, clientY: event.clientY, down: (event.buttons & 1) === 1, overFlyout }
       if (cursorRafRef.current) return
       cursorRafRef.current = requestAnimationFrame(() => {
         cursorRafRef.current = null
@@ -1149,8 +1191,10 @@ export default function ScratchWorkspace({
           }
         }
         if (!onCursorMoveRef.current) return
-        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(pending.ws, { x: pending.clientX, y: pending.clientY })
-        onCursorMoveRef.current({ target: 'workspace', spriteId: pending.spriteId, x: wsCoord.x, y: wsCoord.y, at: now })
+        const flyoutWs = pending.overFlyout ? pending.ws.getFlyout?.()?.getWorkspace?.() : null
+        const coordWs = flyoutWs ?? pending.ws
+        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(coordWs, { x: pending.clientX, y: pending.clientY })
+        onCursorMoveRef.current({ target: flyoutWs ? 'flyout' : 'workspace', spriteId: pending.spriteId, x: wsCoord.x, y: wsCoord.y, down: pending.down, at: now })
       })
     })
     div.addEventListener('pointerleave', () => {
@@ -1217,6 +1261,13 @@ export default function ScratchWorkspace({
         if (task?.enableStageCode) injectWorkspaceFor(Blockly, '__stage__', normInitStates?.['__stage__'])
 
         if (!cancelled) setStatus('ready')
+
+        // Publish the freshly-loaded state right away, rather than waiting for the
+        // learner's first edit: a live watcher (teacher broadcast or "watch one
+        // student") otherwise has no blocks at all until that first edit's debounced
+        // sync lands, so an in-progress drag of an already-existing block has nothing
+        // to move — it only appears once the drag ends and the delayed sync catches up.
+        if (!cancelled && !readOnly) emitWorkspaceState()
 
         // Restore student-added sprites/backdrops/variables from the persisted `__meta__`
         // blob (same "state" object blocks are saved in — see emitWorkspaceState/notifyCheck).
@@ -1351,29 +1402,45 @@ export default function ScratchWorkspace({
   }, [externalCursor?.at])
 
   const effectiveCursor = (!readOnly || !externalCursor || cursorStale) ? null : externalCursor
+  const isWorkspaceCursor = effectiveCursor?.target === 'workspace' || effectiveCursor?.target === 'flyout'
 
-  // Follow the source's active sprite tab while a workspace-target cursor is live,
-  // so the cursor is never moving on a tab the mirror isn't currently showing.
+  // Follow the source's active sprite tab while a workspace- or flyout-target cursor
+  // is live, so the cursor is never moving on a tab the mirror isn't currently showing.
   useEffect(() => {
-    if (!effectiveCursor || effectiveCursor.target !== 'workspace') return
+    if (!isWorkspaceCursor) return
     if (effectiveCursor.spriteId && effectiveCursor.spriteId !== selectedSpriteId) {
       setSelectedSpriteId(effectiveCursor.spriteId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveCursor?.target, effectiveCursor?.spriteId])
 
-  // Render the workspace cursor as an SVG dot appended directly into that sprite's
-  // Blockly block-canvas group, so it inherits the workspace's own pan/zoom/scroll
+  // Render the workspace/flyout cursor as an SVG dot (plus a bigger translucent
+  // yellow halo while a click/drag is held) appended directly into that sprite's
+  // Blockly block-canvas (or, for a flyout-target cursor, the flyout's own nested
+  // sub-workspace canvas) so both inherit that surface's own pan/zoom/scroll
   // transform automatically — no manual workspace-to-screen conversion needed.
   useEffect(() => {
+    if (cursorHaloElRef.current) {
+      cursorHaloElRef.current.remove()
+      cursorHaloElRef.current = null
+    }
     if (cursorDotElRef.current) {
       cursorDotElRef.current.remove()
       cursorDotElRef.current = null
     }
-    if (!effectiveCursor || effectiveCursor.target !== 'workspace' || status !== 'ready') return undefined
+    if (!isWorkspaceCursor || status !== 'ready') return undefined
     const ws = workspaceRefs.current[effectiveCursor.spriteId]
-    const canvas = ws?.getCanvas?.()
+    const canvas = effectiveCursor.target === 'flyout' ? ws?.getFlyout?.()?.getWorkspace?.()?.getCanvas?.() : ws?.getCanvas?.()
     if (!canvas) return undefined
+    const halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    halo.setAttribute('r', String(CURSOR_HALO_RADIUS))
+    halo.setAttribute('fill', CURSOR_HALO_FILL)
+    halo.setAttribute('stroke', CURSOR_HALO_STROKE)
+    halo.setAttribute('stroke-width', '2')
+    halo.style.pointerEvents = 'none'
+    halo.style.display = 'none'
+    canvas.appendChild(halo)
+    cursorHaloElRef.current = halo
     const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     dot.setAttribute('r', '6')
     dot.setAttribute('fill', '#7c3aed')
@@ -1382,14 +1449,19 @@ export default function ScratchWorkspace({
     dot.style.pointerEvents = 'none'
     canvas.appendChild(dot)
     cursorDotElRef.current = dot
-    return () => dot.remove()
+    return () => { halo.remove(); dot.remove() }
   }, [effectiveCursor?.target, effectiveCursor?.spriteId, status])
 
   useEffect(() => {
-    if (!cursorDotElRef.current || effectiveCursor?.target !== 'workspace') return
+    if (!cursorDotElRef.current || !isWorkspaceCursor) return
     cursorDotElRef.current.setAttribute('cx', effectiveCursor.x)
     cursorDotElRef.current.setAttribute('cy', effectiveCursor.y)
-  }, [effectiveCursor?.x, effectiveCursor?.y, effectiveCursor?.target])
+    if (cursorHaloElRef.current) {
+      cursorHaloElRef.current.setAttribute('cx', effectiveCursor.x)
+      cursorHaloElRef.current.setAttribute('cy', effectiveCursor.y)
+      cursorHaloElRef.current.style.display = effectiveCursor.down ? '' : 'none'
+    }
+  }, [effectiveCursor?.x, effectiveCursor?.y, effectiveCursor?.target, effectiveCursor?.down])
 
   // ── Live block drag (mirror) ──────────────────────────────────────────────────
   // Repositions a block the mirror already has (from the last settled state) to
@@ -1786,6 +1858,13 @@ export default function ScratchWorkspace({
     const x = (event.clientX - rect.left) * (STAGE_W / rect.width)
     const y = (event.clientY - rect.top)  * (STAGE_H / rect.height)
 
+    // Sent immediately (not throttled) so a watcher sees the press-down moment itself,
+    // not just whatever the next throttled pointermove happens to catch.
+    if (!readOnly && onCursorMoveRef.current) {
+      lastCursorSentRef.current = Date.now()
+      onCursorMoveRef.current({ target: 'stage', x: x - STAGE_W / 2, y: STAGE_H / 2 - y, down: true, at: lastCursorSentRef.current })
+    }
+
     // Find top-most sprite under pointer (reverse order = drawn last = on top)
     for (let i = sprites.length - 1; i >= 0; i--) {
       const sp = sprites[i]
@@ -1806,6 +1885,23 @@ export default function ScratchWorkspace({
     const rect = event.currentTarget.getBoundingClientRect()
     const x = (event.clientX - rect.left) * (STAGE_W / rect.width)
     const y = (event.clientY - rect.top)  * (STAGE_H / rect.height)
+    const scratchX = x - STAGE_W / 2
+    const scratchY = STAGE_H / 2 - y
+    inputStateRef.current.mouseX = scratchX
+    inputStateRef.current.mouseY = scratchY
+    if (signalRef.current) { signalRef.current.mouseX = scratchX; signalRef.current.mouseY = scratchY }
+
+    // Sent unconditionally, including for the whole duration of a sprite drag below
+    // (this used to sit after that drag's early `return`, so a watcher's cursor
+    // dot froze at wherever the drag started — and its "down" halo along with it —
+    // instead of following the drag and fading out 2s after the last update).
+    if (!readOnly && onCursorMoveRef.current) {
+      const now = Date.now()
+      if (now - lastCursorSentRef.current >= CURSOR_THROTTLE_MS) {
+        lastCursorSentRef.current = now
+        onCursorMoveRef.current({ target: 'stage', x: scratchX, y: scratchY, down: inputStateRef.current.mouseDown, at: now })
+      }
+    }
 
     if (isDraggingRef.current && dragStartRef.current && draggingSpriteIdRef.current) {
       const dx = x - dragStartRef.current.canvasX
@@ -1825,20 +1921,6 @@ export default function ScratchWorkspace({
       return
     }
 
-    const scratchX = x - STAGE_W / 2
-    const scratchY = STAGE_H / 2 - y
-    inputStateRef.current.mouseX = scratchX
-    inputStateRef.current.mouseY = scratchY
-    if (signalRef.current) { signalRef.current.mouseX = scratchX; signalRef.current.mouseY = scratchY }
-
-    if (!readOnly && onCursorMoveRef.current) {
-      const now = Date.now()
-      if (now - lastCursorSentRef.current >= CURSOR_THROTTLE_MS) {
-        lastCursorSentRef.current = now
-        onCursorMoveRef.current({ target: 'stage', x: scratchX, y: scratchY, at: now })
-      }
-    }
-
     let overSprite = false
     for (let i = sprites.length - 1; i >= 0; i--) {
       if (respectStudentEditable && !isSpriteStudentEditable(sprites[i])) continue
@@ -1851,6 +1933,11 @@ export default function ScratchWorkspace({
   function handleCanvasPointerUp() {
     inputStateRef.current.mouseDown = false
     if (signalRef.current) signalRef.current.mouseDown = false
+
+    if (!readOnly && onCursorMoveRef.current) {
+      lastCursorSentRef.current = Date.now()
+      onCursorMoveRef.current({ target: 'stage', x: inputStateRef.current.mouseX, y: inputStateRef.current.mouseY, down: false, at: lastCursorSentRef.current })
+    }
 
     const wasDragging = isDraggingRef.current
     const wasMoved    = dragMovedRef.current
@@ -1886,6 +1973,56 @@ export default function ScratchWorkspace({
 
   function handleCanvasPointerLeave() {
     if (!isDraggingRef.current) setStageCursor('default')
+    if (!readOnly) onCursorMoveRef.current?.(null)
+  }
+
+  // ── Pointer events over the stage toolbar (green flag / stop / reset) ────────
+  // Tracked as a plain pixel offset from the toolbar's own top-left corner, not a
+  // fraction of its bounding box: the toolbar container stretches to fill whatever
+  // width its layout gives it (flex, `justifyContent: 'flex-start'`), but the
+  // buttons inside stay a fixed size and hug the left edge — so a container that's
+  // wider on one viewer than another (e.g. one compact/"minimised", one not) leaves
+  // a fraction of THAT width pointing at a different button on each side. Pixel
+  // offsets from the left edge stay correct regardless, since the button row's
+  // own layout (sizes, gaps, and the reserved-but-hidden collapse button in
+  // compact mode — see the CollapseTabButton `visibility` note above) is identical
+  // between viewers.
+  function toolbarOffset(event) {
+    const rect = stageToolbarRef.current?.getBoundingClientRect()
+    if (!rect || !rect.width || !rect.height) return null
+    return {
+      x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+      y: Math.max(0, Math.min(rect.height, event.clientY - rect.top)),
+    }
+  }
+
+  function handleToolbarPointerMove(event) {
+    if (readOnly || !onCursorMoveRef.current) return
+    const now = Date.now()
+    if (now - lastCursorSentRef.current < CURSOR_THROTTLE_MS) return
+    const offset = toolbarOffset(event)
+    if (!offset) return
+    lastCursorSentRef.current = now
+    onCursorMoveRef.current({ target: 'toolbar', x: offset.x, y: offset.y, down: (event.buttons & 1) === 1, at: now })
+  }
+
+  function handleToolbarPointerDown(event) {
+    if (readOnly || !onCursorMoveRef.current) return
+    const offset = toolbarOffset(event)
+    if (!offset) return
+    lastCursorSentRef.current = Date.now()
+    onCursorMoveRef.current({ target: 'toolbar', x: offset.x, y: offset.y, down: true, at: lastCursorSentRef.current })
+  }
+
+  function handleToolbarPointerUp(event) {
+    if (readOnly || !onCursorMoveRef.current) return
+    const offset = toolbarOffset(event)
+    if (!offset) return
+    lastCursorSentRef.current = Date.now()
+    onCursorMoveRef.current({ target: 'toolbar', x: offset.x, y: offset.y, down: false, at: lastCursorSentRef.current })
+  }
+
+  function handleToolbarPointerLeave() {
     if (!readOnly) onCursorMoveRef.current?.(null)
   }
 
@@ -2246,15 +2383,31 @@ export default function ScratchWorkspace({
       )}
       {!hideStage && (compact || !stagePanelCollapsed) && (
         <div style={compact ? { ...s.stagePane, display: activePane === 'stage' ? 'flex' : 'none', flexGrow: 1, flexShrink: 1, flexBasis: 0 } : s.stagePane}>
-          <div style={s.stageToolbar}>
-            {!compact && (
-              <CollapseTabButton
-                onClick={() => setStagePanelCollapsed(true)}
-                direction="right"
-                title="Collapse Stage"
-                ariaLabel="Collapse Stage"
-              />
+          <div
+            ref={stageToolbarRef}
+            style={s.stageToolbar}
+            onPointerMove={readOnly ? undefined : handleToolbarPointerMove}
+            onPointerDown={readOnly ? undefined : handleToolbarPointerDown}
+            onPointerUp={readOnly ? undefined : handleToolbarPointerUp}
+            onPointerLeave={readOnly ? undefined : handleToolbarPointerLeave}
+          >
+            {effectiveCursor?.target === 'toolbar' && (
+              <div style={{ position: 'absolute', left: effectiveCursor.x, top: effectiveCursor.y }}>
+                <LiveCursorDot down={effectiveCursor.down} />
+              </div>
             )}
+            <CollapseTabButton
+              onClick={() => setStagePanelCollapsed(true)}
+              direction="right"
+              title="Collapse Stage"
+              ariaLabel="Collapse Stage"
+              // Reserved (not simply omitted) in compact mode: this button toggles the
+              // side-by-side collapsible stage pane, which doesn't exist in compact's
+              // Blocks/Stage tab layout — but removing it outright shifted the green
+              // flag and every button after it left by its width, so its position no
+              // longer matched between compact and non-compact layouts.
+              style={compact ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+            />
             <button
               type="button"
               className="btn-primary"
@@ -2348,14 +2501,9 @@ export default function ScratchWorkspace({
               </form>
             )}
             {effectiveCursor?.target === 'stage' && (
-              <div style={{
-                position: 'absolute',
-                left: toCanvasX(effectiveCursor.x) * stageScale - 6,
-                top: toCanvasY(effectiveCursor.y) * stageScale - 6,
-                width: 12, height: 12, borderRadius: '50%',
-                background: '#7c3aed', border: '2px solid #fff',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.3)', pointerEvents: 'none', zIndex: 6,
-              }} />
+              <div style={{ position: 'absolute', left: toCanvasX(effectiveCursor.x) * stageScale, top: toCanvasY(effectiveCursor.y) * stageScale }}>
+                <LiveCursorDot down={effectiveCursor.down} />
+              </div>
             )}
           </div>
 
@@ -2401,7 +2549,7 @@ const s = {
   // made React warn about removing a style property during rerender on every transition.
   stagePane: { display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: STAGE_W * MIN_STAGE_SCALE, minHeight: 0, overflow: 'auto' },
   stageRailPane: { width: 44, minWidth: 44, display: 'flex', flexDirection: 'column', flexShrink: 0 },
-  stageToolbar: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap' },
+  stageToolbar: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap' },
   canvas: { display: 'block', width: STAGE_W, height: STAGE_H, border: '1px solid var(--ui-border-neutral)', borderRadius: 8 },
   stageFrame: { position: 'relative', width: STAGE_W, height: STAGE_H },
   // ── Sprite panel (full, below stage) ─────────────────────────────────────────
