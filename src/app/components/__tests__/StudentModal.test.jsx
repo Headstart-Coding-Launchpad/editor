@@ -13,8 +13,12 @@ vi.mock('../../../shared/iframe', () => ({
   waitForIframeText: vi.fn(),
 }))
 
+const scratchExternalStateSpy = vi.fn()
 vi.mock('../../../modules/scratch/ScratchWorkspace.jsx', () => ({
-  default: () => <div data-testid="scratch-workspace" />,
+  default: ({ externalState }) => {
+    scratchExternalStateSpy(externalState)
+    return <div data-testid="scratch-workspace" />
+  },
   SPRITE_TYPES: [],
 }))
 
@@ -377,6 +381,37 @@ describe('StudentModal', () => {
       })} />)
 
       expect(screen.getByTestId('scratch-workspace')).toBeInTheDocument()
+    })
+
+    // `student` is a live RTDB-fed object that updates on every throttled cursor/
+    // block-drag tick while being watched — far more often than currentCode itself
+    // changes. ScratchWorkspace's "load external state" effect is keyed on object
+    // identity, so a fresh parse every render would reload the mirrored Blockly
+    // workspace on every tick, stomping the live block-drag mirror's moveTo().
+    it('keeps the same externalState reference across renders while currentCode is unchanged, and only recomputes when it changes', () => {
+      scratchExternalStateSpy.mockClear()
+      const props = mkProps({ lesson: SCRATCH_LESSON, session: ACTIVE_SESSION }, {
+        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+        currentCursor: { target: 'stage', x: 1, y: 2, at: 100 },
+      })
+      const { rerender } = render(<StudentModal {...props} />)
+      const first = scratchExternalStateSpy.mock.calls.at(-1)[0]
+
+      // Unrelated update (a live cursor tick) with the same currentCode.
+      rerender(<StudentModal {...mkProps({ lesson: SCRATCH_LESSON, session: ACTIVE_SESSION }, {
+        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+        currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
+      })} />)
+      const second = scratchExternalStateSpy.mock.calls.at(-1)[0]
+      expect(second).toBe(first)
+
+      // A genuine code update.
+      rerender(<StudentModal {...mkProps({ lesson: SCRATCH_LESSON, session: ACTIVE_SESSION }, {
+        currentCode: JSON.stringify({ sprite1: { blocks: [{ type: 'event_whenflagclicked' }] } }),
+        currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
+      })} />)
+      const third = scratchExternalStateSpy.mock.calls.at(-1)[0]
+      expect(third).not.toBe(first)
     })
   })
 })

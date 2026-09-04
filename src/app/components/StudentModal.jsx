@@ -264,7 +264,16 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
   const lessonModule = getLessonModule(taskLesson?.type)
   const ModuleTeacherLiveView = !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
-  const scratchState = isScratch ? parseScratchState(student.currentCode) : null
+  // Memoized on the raw code string: `student` is a live RTDB-fed object that
+  // updates on every throttled cursor/block-drag tick while a Scratch student is
+  // being watched, far more often than currentCode itself changes. Without this,
+  // ScratchWorkspace's "load external state" effect (keyed on object identity)
+  // reloads the mirrored workspace on every one of those renders, stomping the
+  // live block-drag mirror's in-progress moveTo() with a stale reload.
+  const scratchState = useMemo(
+    () => (isScratch ? parseScratchState(student.currentCode) : null),
+    [isScratch, student.currentCode],
+  )
   const spriteState = isScratch ? (student.currentSpriteState ?? null) : null
   const cursorState = isScratch ? (student.currentCursor ?? null) : null
   const blockDragState = isScratch ? (student.currentBlockDrag ?? null) : null
