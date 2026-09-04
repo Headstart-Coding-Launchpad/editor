@@ -4,7 +4,7 @@ import { baseStyles } from './quizStyles'
 
 // Styling lives in quizStyles.js. Re-exported here so the quiz components can keep a
 // single import, and so this split stayed a move rather than a rename of 40 call sites.
-export { CONFIDENCE_COLOURS, OPTION_STATE_COLOURS, baseStyles, interactionStyles, confidenceStyles } from './quizStyles'
+export { CONFIDENCE_COLOURS, OPTION_COLOURS, OPTION_VERDICT_COLOURS, baseStyles, interactionStyles, confidenceStyles } from './quizStyles'
 
 export function getQuizOptionText(task, answerId) {
   return normalizeQuizAnswerText(task?.options?.find(option => option.id === answerId)?.text ?? '')

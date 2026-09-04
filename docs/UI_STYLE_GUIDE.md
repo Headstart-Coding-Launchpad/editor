@@ -65,7 +65,7 @@ These hold the values the app was already typing by hand, so adopting them chang
 | `--colour-warning` / `-edge` / `-text` / `-bg` | Waiting, paused, attention needed |
 | `--colour-info` / `-edge` / `-text` / `-bg` | Neutral preview and information states |
 
-**Green and red are reserved for verdicts.** If an element is not reporting an outcome — pass/fail, online/offline, destructive — it must not use the success or error families. Decorative or identifying colour comes from the brand and neutral families instead. Multiple-choice quiz options were the standing counter-example: they coloured answers by grid position out of the same palette, so a selected answer was pixel-identical to a wrong one.
+**Green and red are reserved for verdicts.** If an element is not reporting an outcome — pass/fail, online/offline, destructive — it must not use the success or error families. Decorative colour is fine, and should be drawn from anywhere but these two: multiple-choice quiz options are deliberately colour-coded by position, in blue, violet, cyan and pink, precisely so that a bright board can never be confused with a judged one. The palette they replaced took two of its four entries from the verdict families and used the same palette for the selected fill, which made a selected answer pixel-identical to a wrong one.
 
 ## Typography
 

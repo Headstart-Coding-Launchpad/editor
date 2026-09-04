@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
-import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_STATE_COLOURS, QuestionPanel, shrinkToFit } from './quizUtils'
+import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_COLOURS, OPTION_VERDICT_COLOURS, QuestionPanel, shrinkToFit } from './quizUtils'
 
 export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
   const options = task?.options ?? []
@@ -12,15 +12,11 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
   const optionsGridRef = React.useRef(null)
   const [optionsScale, setOptionsScale] = React.useState(1)
 
-  const shuffledOptions = useMemo(() => {
-    const arr = [...options]
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[arr[i], arr[j]] = [arr[j], arr[i]]
-    }
-    return arr
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.id])
+  // Options render in the order the lesson author wrote them. They are shuffled once, by
+  // the authoring agent, when the lesson is written; shuffling again per mount gave every
+  // student in the room a different order, which is why neither the colour nor the letter
+  // could be used to refer to an answer out loud.
+  const displayedOptions = options
 
   React.useLayoutEffect(() => {
     const container = optionsFrameRef.current
@@ -43,26 +39,26 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
     const observer = new ResizeObserver(run)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [shuffledOptions])
+  }, [displayedOptions])
 
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
       <div ref={optionsFrameRef} style={s.optionsFrame}>
         <div ref={optionsGridRef} style={s.options} role="radiogroup" aria-label={task?.title ?? 'Quiz options'}>
-          {shuffledOptions.map(option => {
+          {displayedOptions.map((option, index) => {
             const active = selectedAnswer === option.id
             const isCorrect = revealAnswers && option.id === correctId
             const isWrong = revealAnswers && active && option.id !== correctId
-            // Resting, chosen, or judged - never "whichever cell you happen to be in".
-            const colour = isCorrect ? OPTION_STATE_COLOURS.correct
-              : isWrong ? OPTION_STATE_COLOURS.wrong
-              : active ? OPTION_STATE_COLOURS.selected
-              : OPTION_STATE_COLOURS.resting
+            // Decoration by position; a verdict only once the answer has been submitted.
+            // OPTION_COLOURS holds no success or error hue, so a selected card can never
+            // be mistaken for a judged one.
+            const colour = OPTION_COLOURS[index % OPTION_COLOURS.length]
+            const verdict = isCorrect ? OPTION_VERDICT_COLOURS.correct : isWrong ? OPTION_VERDICT_COLOURS.wrong : null
 
-            const bg = colour.background
-            const border = colour.border
-            const textColour = colour.text
+            const bg = verdict ? verdict.background : active ? colour.active : colour.background
+            const border = verdict ? verdict.border : colour.border
+            const textColour = verdict ? verdict.text : active ? '#fff' : colour.text
             const optionText = normalizeQuizAnswerText(option.text)
             const usesBlockMarkdown = hasFencedCodeBlock(optionText)
             const usesScratchMarkdown = isScratchMarkdown(optionText)
@@ -92,7 +88,7 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
                   }
                 }}
               >
-                <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : 'var(--colour-primary)', color: '#fff' }}>
+                <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
                   {option.id}
                 </span>
                 <div style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}>

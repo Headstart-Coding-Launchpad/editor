@@ -7,25 +7,31 @@
 
 export const CONFIDENCE_COLOURS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
 
-// Answer options are deliberately not colour-coded.
+// Answer options are colour-coded by position, because four bright cards read better to
+// a classroom of children than four identical ones. The colour is decoration: it says
+// nothing about whether an answer is right.
 //
-// They used to be, from a four-entry palette indexed by grid position - which meant
-// the colour tracked the cell rather than the answer, so it carried no information at
-// all. Two of the four entries were the app's own verdict colours, and because the
-// same palette supplied the selected-state fill, selecting the option in position 2
-// produced a card pixel-identical to a wrong answer and position 4 one identical to
-// the revealed correct answer. A student could pick the right answer and watch it
-// turn red under a green "Correct!" banner.
+// Which is exactly why none of these four hues comes from the success or error families.
+// The old palette drew two of its four entries from them and used the same palette for
+// the selected fill, so OPTION_COLOURS[1].active was the isWrong red and [3].active was
+// the isCorrect green, byte for byte - a student could pick the right answer and watch it
+// turn red under a green "Correct!" banner. Blue, violet, cyan and pink cannot collide
+// with a verdict no matter which cell they land in.
 //
-// Colour on an option now means exactly one of three things: nothing (resting),
-// "you chose this" (brand purple), or a verdict after submission (success/error).
-// Identity is carried by the letter badge, which follows option.id and so survives
-// the shuffle - unlike position, which does not.
-export const OPTION_STATE_COLOURS = {
-  resting:  { background: 'var(--ui-surface-soft)', border: 'var(--ui-border-strong)', text: 'var(--colour-text)' },
-  selected: { background: 'var(--colour-primary)', border: 'var(--colour-primary)', text: '#fff' },
-  correct:  { background: 'var(--colour-success-edge)', border: 'var(--colour-success-edge)', text: '#fff' },
-  wrong:    { background: 'var(--colour-error-edge)', border: 'var(--colour-error-edge)', text: '#fff' },
+// Options are no longer shuffled here (the authoring agent shuffles them), so a given
+// question shows the same colour in the same place for every student in the room - which
+// makes "the blue one" a referent that actually works.
+export const OPTION_COLOURS = [
+  { background: '#dbeafe', border: '#2563eb', active: '#2563eb', text: '#1e3a8a' },
+  { background: '#ede9fe', border: '#7c3aed', active: '#7c3aed', text: '#4c1d95' },
+  { background: '#cffafe', border: '#0891b2', active: '#0891b2', text: '#164e63' },
+  { background: '#fce7f3', border: '#db2777', active: '#db2777', text: '#831843' },
+]
+
+// Reserved for a submitted answer, and never used by OPTION_COLOURS above.
+export const OPTION_VERDICT_COLOURS = {
+  correct: { background: 'var(--colour-success-edge)', border: 'var(--colour-success-edge)', text: '#fff' },
+  wrong:   { background: 'var(--colour-error-edge)', border: 'var(--colour-error-edge)', text: '#fff' },
 }
 
 export const baseStyles = {
@@ -77,23 +83,20 @@ export const baseStyles = {
   options: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    // Rows size to their content above a floor, rather than stretching to fill the
-    // frame. Four one-line answers used to be rendered as four ~300px boxes with the
-    // badge floating in the middle of the empty space; on a 720px-tall screen the
-    // question and its answers consumed everything with half of each card blank.
-    gridAutoRows: 'minmax(calc(var(--quiz-option-scale, 1) * 84px), auto)',
-    alignContent: 'start',
+    // Rows share the frame equally and grow into it, so the answers fill the space the
+    // question leaves rather than sitting in a band at the top.
+    gridAutoRows: 'minmax(min-content, 1fr)',
     gap: 'calc(var(--quiz-option-scale, 1) * 10px)',
+    minHeight: '100%',
   },
   option: {
     display: 'flex',
-    // Top-aligned so a one-line answer and a three-line answer in the same row start
-    // on the same baseline, and every badge sits in the same place down the column.
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
     width: '100%',
     minHeight: 0,
+    height: '100%',
     padding: 'calc(var(--quiz-option-scale, 1) * 18px) calc(var(--quiz-option-scale, 1) * 20px)',
     border: '2px solid',
     borderRadius: 8,
