@@ -7,10 +7,12 @@ const cache = {}
 export function useTypeAssets(lessonType) {
   const [data, setData] = useState(() => cache[lessonType] ?? null)
   const [loading, setLoading] = useState(!cache[lessonType])
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!lessonType) { setLoading(false); return }
     setLoading(!cache[lessonType])
+    setError(null)
     const unsub = onSnapshot(
       doc(firestore, 'lessonTypeAssets', lessonType),
       snap => {
@@ -19,7 +21,7 @@ export function useTypeAssets(lessonType) {
         setData(d)
         setLoading(false)
       },
-      () => setLoading(false),
+      err => { setError(err); setLoading(false) },
     )
     return unsub
   }, [lessonType])
@@ -29,5 +31,6 @@ export function useTypeAssets(lessonType) {
     defaultSprites: data?.defaultSprites ?? [],
     defaultBackdrops: data?.defaultBackdrops ?? [],
     loading,
+    error,
   }
 }

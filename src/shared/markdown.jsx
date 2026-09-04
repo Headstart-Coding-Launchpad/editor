@@ -322,6 +322,7 @@ const components = {
   },
   code({ node, className, children, ...props }) {
     const isInBlock = React.useContext(BlockCodeContext)
+    const inheritColor = React.useContext(MarkdownInheritColorContext)
     const isInline = !isInBlock && !className
     const text = String(children).replaceAll(INLINE_CODE_LINE_BREAK, '\n')
     const multiline = text.includes('\n')
@@ -333,7 +334,6 @@ const components = {
       if (langMatch) {
         return <InlineHighlightedCode lang={langMatch[1]} code={langMatch[2]} />
       }
-      const inheritColor = React.useContext(MarkdownInheritColorContext)
       return (
         <code
           style={{

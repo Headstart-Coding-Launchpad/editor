@@ -55,8 +55,17 @@ export function encodeLessonBlocksForFirestore(lesson) {
   return { ...lesson, tasks: mapTasks(lesson.tasks, JSON.stringify) }
 }
 
+function safeParseJsonField(v) {
+  if (typeof v !== 'string') return v
+  try {
+    return JSON.parse(v)
+  } catch {
+    return null
+  }
+}
+
 // Call on the result of getDoc/getDocs/onSnapshot right after reading .data().
 export function decodeLessonBlocksFromFirestore(lesson) {
   if (!lesson?.tasks) return lesson
-  return { ...lesson, tasks: mapTasks(lesson.tasks, v => (typeof v === 'string' ? JSON.parse(v) : v)) }
+  return { ...lesson, tasks: mapTasks(lesson.tasks, safeParseJsonField) }
 }

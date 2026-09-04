@@ -1,6 +1,17 @@
 import React, { useRef } from 'react'
 import { isImageFile, useImagePreview, ImagePreviewTooltip } from './AssetImagePreview'
 
+function useCopyFeedback() {
+  const [copied, setCopied] = React.useState(false)
+  function copy(value) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }
+  return [copied, copy]
+}
+
 function buildTree(assets) {
   const root = {}
   for (const assetPath of assets) {
@@ -37,7 +48,7 @@ function DirNode({ name, childNodes, assetsPath, copyMode, mode, onSelect, depth
 }
 
 function FileNode({ name, path, assetsPath, copyMode, mode, onSelect, depth }) {
-  const [copied, setCopied] = React.useState(false)
+  const [copied, copyToClipboard] = useCopyFeedback()
   const rowRef = useRef(null)
   const { preview, showPreview, hidePreview } = useImagePreview()
 
@@ -45,10 +56,7 @@ function FileNode({ name, path, assetsPath, copyMode, mode, onSelect, depth }) {
   const copyValue = copyMode === 'full' ? staticUrl : path
 
   function handleCopy() {
-    navigator.clipboard.writeText(copyValue).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
+    copyToClipboard(copyValue)
   }
 
   function handleSelect() {
@@ -78,17 +86,14 @@ function FileNode({ name, path, assetsPath, copyMode, mode, onSelect, depth }) {
 }
 
 function StorageFileNode({ name, url, copyMode, mode, onSelect }) {
-  const [copied, setCopied] = React.useState(false)
+  const [copied, copyToClipboard] = useCopyFeedback()
   const rowRef = useRef(null)
   const { preview, showPreview, hidePreview } = useImagePreview()
 
   const copyValue = copyMode === 'relative' ? name : url
 
   function handleCopy() {
-    navigator.clipboard.writeText(copyValue).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
+    copyToClipboard(copyValue)
   }
 
   return (

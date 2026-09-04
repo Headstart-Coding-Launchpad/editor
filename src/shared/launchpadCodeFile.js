@@ -65,5 +65,7 @@ export function downloadLaunchpadCodeFile(codeFile, name) {
   anchor.href = url
   anchor.download = makeLaunchpadFilename(name)
   anchor.click()
-  URL.revokeObjectURL(url)
+  // Deferred: revoking synchronously can abort the download in some browsers
+  // before they've started reading the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
