@@ -50,7 +50,7 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
         <div style={s.titleWrap}>
           <span style={s.kicker}>{languageLabel} reference</span>
           <span style={s.title}>{title}</span>
-          {revealed && sourceLabel && <span style={s.source}>{sourceLabel}</span>}
+          {sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
       </div>
       {lessonType === 'scratch' ? (

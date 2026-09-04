@@ -88,8 +88,10 @@ export default function TeacherView({ lessonId }) {
 
   // Load lesson from Firestore
   useEffect(() => {
+    let cancelled = false
     getDoc(doc(firestore, 'lessons', lessonId))
       .then(snap => {
+        if (cancelled) return
         if (snap.exists()) {
           setBaseLesson(decodeLessonBlocksFromFirestore(snap.data()))
         } else {
@@ -97,7 +99,8 @@ export default function TeacherView({ lessonId }) {
         }
         setLessonLoading(false)
       })
-      .catch(() => { setLessonError(true); setLessonLoading(false) })
+      .catch(() => { if (!cancelled) { setLessonError(true); setLessonLoading(false) } })
+    return () => { cancelled = true }
   }, [lessonId])
 
   // Create session only if none exists — don't auto-restart an ended session
@@ -146,7 +149,6 @@ export default function TeacherView({ lessonId }) {
   }
 
   // Load task content when displayed task changes (preview or session task)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sandboxStaging || session?.state === 'sandbox') return
     loadCurrentTaskContent(previewTaskId ?? currentTaskId)

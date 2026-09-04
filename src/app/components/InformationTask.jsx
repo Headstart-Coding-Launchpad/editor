@@ -6,6 +6,9 @@ function lessonTypeLabel(type) {
   if (type === 'python') return 'Python'
   if (type === 'scratch') return 'Scratch'
   if (type === 'html') return 'Web Dev'
+  if (type === 'filesystem') return 'Filesystem'
+  if (type === 'electronics') return 'Electronics'
+  if (type === 'arcade') return 'Arcade Kit'
   return type || 'Lesson'
 }
 

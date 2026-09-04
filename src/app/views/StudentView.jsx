@@ -207,7 +207,6 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   useEffect(() => {
     if (!videoCallLinkPushedAt) return
     setShowVideoCallPrompt(true)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoCallLinkPushedAt])
 
   function handleTopicOpen(topicId) {

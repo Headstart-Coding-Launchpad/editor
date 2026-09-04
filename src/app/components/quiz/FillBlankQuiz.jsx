@@ -20,7 +20,6 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
   const distractors = task?.distractors ?? []
 
   // Unified pool: correct answer tiles + distractor tiles, both normalised to { id, text }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const tilePool = useMemo(() => {
     const all = [
       ...blanks.map(b => ({ id: b.id, text: b.answer })),

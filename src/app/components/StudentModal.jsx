@@ -50,6 +50,7 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
   const [teacherScratchState, setTeacherScratchState] = useState(null)
   const [declinedNotice, setDeclinedNotice] = useState(false)
   const pushDebounceRef = useRef(null)
+  useEffect(() => () => clearTimeout(pushDebounceRef.current), [])
 
   // Teacher stage-change state machine
   const [stageRequestState, setStageRequestState] = useState('idle') // 'idle' | 'requesting'
@@ -122,7 +123,6 @@ export default function StudentModal({ student, lesson, session, topics, isLive,
     setShowMessageModal(false)
     setPendingHighlight(null)
     setHighlightNote('')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.anonymousId])
 
   function handleTeacherCodeChange(newCode) {

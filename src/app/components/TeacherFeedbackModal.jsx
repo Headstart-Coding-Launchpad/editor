@@ -10,6 +10,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   const [platformText, setPlatformText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(null) // null | 'lesson' | 'task' | 'platform'
+  const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose?.() }
@@ -20,6 +21,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   async function handleSubmitLesson() {
     if (!lessonText.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), {
         lessonId,
@@ -33,6 +35,8 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
       setLessonText('')
       setSubmitted('lesson')
       setTimeout(() => setSubmitted(null), 2500)
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit feedback.')
     } finally {
       setSubmitting(false)
     }
@@ -41,6 +45,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   async function handleSubmitTask() {
     if (!taskText.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), {
         lessonId,
@@ -54,6 +59,8 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
       setTaskText('')
       setSubmitted('task')
       setTimeout(() => setSubmitted(null), 2500)
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit feedback.')
     } finally {
       setSubmitting(false)
     }
@@ -62,6 +69,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
   async function handleSubmitPlatform() {
     if (!platformText.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await addDoc(collection(firestore, 'platformFeedback'), {
         lessonId:     lessonId ?? null,
@@ -75,6 +83,8 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
       setPlatformText('')
       setSubmitted('platform')
       setTimeout(() => setSubmitted(null), 2500)
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit feedback.')
     } finally {
       setSubmitting(false)
     }
@@ -98,17 +108,17 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
         <div style={s.tabs}>
           <button
             style={{ ...s.tab, ...(activeTab === 'lesson' ? s.tabActive : {}) }}
-            onClick={() => setActiveTab('lesson')}
+            onClick={() => { setActiveTab('lesson'); setSubmitError(null) }}
           >Lesson Feedback</button>
           {currentTaskTitle && (
             <button
               style={{ ...s.tab, ...(activeTab === 'task' ? s.tabActive : {}) }}
-              onClick={() => setActiveTab('task')}
+              onClick={() => { setActiveTab('task'); setSubmitError(null) }}
             >Task Feedback</button>
           )}
           <button
             style={{ ...s.tab, ...(activeTab === 'platform' ? s.tabActive : {}) }}
-            onClick={() => setActiveTab('platform')}
+            onClick={() => { setActiveTab('platform'); setSubmitError(null) }}
           >Platform Feedback</button>
         </div>
 
@@ -126,6 +136,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
                 autoFocus
               />
               {submitted === 'lesson' && <p style={s.successMsg}>Submitted!</p>}
+              {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
                 <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
                 <button
@@ -153,6 +164,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
                 autoFocus={activeTab === 'task'}
               />
               {submitted === 'task' && <p style={s.successMsg}>Submitted!</p>}
+              {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
                 <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
                 <button
@@ -180,6 +192,7 @@ export default function TeacherFeedbackModal({ lessonId, lessonTitle, currentTas
                 autoFocus={activeTab === 'platform'}
               />
               {submitted === 'platform' && <p style={s.successMsg}>Submitted!</p>}
+              {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
                 <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>Cancel</button>
                 <button
@@ -305,6 +318,13 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.85rem',
     color: '#16a34a',
+    fontWeight: 600,
+    margin: 0,
+  },
+  errorMsg: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    color: '#dc2626',
     fontWeight: 600,
     margin: 0,
   },

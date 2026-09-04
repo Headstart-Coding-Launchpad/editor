@@ -176,7 +176,6 @@ export default function LessonTaskContent({
     } else {
       setAccordionExplainerCollapsed(!wantsInstructions)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forcedPaneCommand, hasTaskExplainer, useSideExplainer, taskPanelCompact])
 
   function handleTaskPanelTabChange(id) {

@@ -20,6 +20,8 @@ export default function TaskNavigator({
   onToggle,
 }) {
   const total = students.length
+  const runCount = students.filter(st => st.lastRunStatus != null && st.lastRunAt).length
+  const checkCount = students.filter(st => st.checkPassed).length
   const flatTasks = flattenTasks(tasks)
   // Navigate Prev/Next relative to what's currently displayed (preview or session task)
   const displayId = previewTaskId ?? currentTaskId
@@ -83,8 +85,6 @@ export default function TaskNavigator({
                 {expanded && subtasks.map(task => {
                   const isCurrent = task.id === currentTaskId
                   const isPreview = previewTaskId && task.id === previewTaskId
-                  const runCount = students.filter(st => st.lastRunStatus != null && st.lastRunAt).length
-                  const checkCount = students.filter(st => st.checkPassed).length
                   const hasCheck = task.check != null
 
                   return (
@@ -121,8 +121,6 @@ export default function TaskNavigator({
           // Standalone task
           const isCurrent = item.id === currentTaskId
           const isPreview = previewTaskId && item.id === previewTaskId
-          const runCount = students.filter(st => st.lastRunStatus != null && st.lastRunAt).length
-          const checkCount = students.filter(st => st.checkPassed).length
           const hasCheck = item.check != null
 
           return (

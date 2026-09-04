@@ -13,9 +13,21 @@ export const personalSandboxStorageKey = (lessonId, anonymousId, moduleId = null
 export const personalSandboxFileStorageKey = (lessonId, filename, anonymousId, moduleId = null) =>
   studentFileStorageKey(lessonId, moduleId ? `module_${moduleId}_sandbox` : PERSONAL_SANDBOX_KEY, filename, anonymousId)
 
+// Corrupted localStorage (partial write, manual edit) shouldn't crash the reader -
+// self-heal by dropping the bad key, matching useIdentity.js's pattern.
+function safeParse(key) {
+  const raw = localStorage.getItem(key)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    localStorage.removeItem(key)
+    return null
+  }
+}
+
 export function loadSavedCode(lessonId, taskId, anonymousId) {
-  const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
-  return raw ? JSON.parse(raw) : null
+  return safeParse(studentTaskStorageKey(lessonId, taskId, anonymousId))
 }
 
 export function saveCode(lessonId, taskId, anonymousId, data) {
@@ -23,8 +35,7 @@ export function saveCode(lessonId, taskId, anonymousId, data) {
 }
 
 export function loadSavedFile(lessonId, taskId, filename, anonymousId) {
-  const raw = localStorage.getItem(studentFileStorageKey(lessonId, taskId, filename, anonymousId))
-  return raw ? JSON.parse(raw).content : null
+  return safeParse(studentFileStorageKey(lessonId, taskId, filename, anonymousId))?.content ?? null
 }
 
 export function saveFile(lessonId, taskId, filename, anonymousId, content) {
@@ -32,8 +43,7 @@ export function saveFile(lessonId, taskId, filename, anonymousId, content) {
 }
 
 export function loadPersonalSandboxCode(lessonId, anonymousId, moduleId = null) {
-  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
-  return raw ? JSON.parse(raw) : null
+  return safeParse(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
 }
 
 export function savePersonalSandboxCode(lessonId, anonymousId, data, moduleId = null) {
@@ -41,8 +51,7 @@ export function savePersonalSandboxCode(lessonId, anonymousId, data, moduleId = 
 }
 
 export function loadPersonalSandboxFile(lessonId, filename, anonymousId, moduleId = null) {
-  const raw = localStorage.getItem(personalSandboxFileStorageKey(lessonId, filename, anonymousId, moduleId))
-  return raw ? JSON.parse(raw).content : null
+  return safeParse(personalSandboxFileStorageKey(lessonId, filename, anonymousId, moduleId))?.content ?? null
 }
 
 export function savePersonalSandboxFile(lessonId, filename, anonymousId, content, moduleId = null) {
@@ -50,10 +59,7 @@ export function savePersonalSandboxFile(lessonId, filename, anonymousId, content
 }
 
 export function loadPersonalSandboxFs(lessonId, anonymousId, moduleId = null) {
-  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
-  if (!raw) return null
-  const parsed = JSON.parse(raw)
-  return parsed.fs ?? null
+  return safeParse(personalSandboxStorageKey(lessonId, anonymousId, moduleId))?.fs ?? null
 }
 
 export function savePersonalSandboxFs(lessonId, anonymousId, fs, moduleId = null) {
@@ -61,10 +67,7 @@ export function savePersonalSandboxFs(lessonId, anonymousId, fs, moduleId = null
 }
 
 export function loadSavedFs(lessonId, taskId, anonymousId) {
-  const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
-  if (!raw) return null
-  const parsed = JSON.parse(raw)
-  return parsed.fs ?? null
+  return safeParse(studentTaskStorageKey(lessonId, taskId, anonymousId))?.fs ?? null
 }
 
 export function saveFsState(lessonId, taskId, anonymousId, fs) {

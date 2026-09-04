@@ -58,7 +58,6 @@ export function useStudentPhase({
   // overwriting a session-driven task that was already applied by the phase-determination effect
   useEffect(() => {
     if (firstTaskId != null && phaseRef.current === 'loading') setCurrentTaskId(firstTaskId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstTaskId])
 
   // ─── Phase determination ───────────────────────────────────────────────────
