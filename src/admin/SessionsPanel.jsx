@@ -20,6 +20,8 @@ const STATE_BADGE = {
   sandbox: { background: '#dbeafe', color: '#1d4ed8' },
 }
 
+const OPEN_DURATION_REFRESH_MS = 30000
+
 function makeTeacherUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
 }
@@ -49,7 +51,7 @@ export default function SessionsPanel() {
   }, [])
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(Date.now()), 30000)
+    const intervalId = window.setInterval(() => setNow(Date.now()), OPEN_DURATION_REFRESH_MS)
     return () => window.clearInterval(intervalId)
   }, [])
 

@@ -4,6 +4,10 @@ import { auth } from '../shared/firebase'
 
 const AuthContext = createContext({ user: null, role: null, loading: true })
 
+// How long to wait for a cross-tab storage-event bounce (#180/#279/#305) to recover
+// before treating a reported sign-out as real.
+const BOUNCE_RECOVERY_GRACE_MS = 1000
+
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [role, setRole]       = useState(null)
@@ -39,7 +43,7 @@ export function AuthProvider({ children }) {
           setRole(null)
           setLoading(false)
           bounceRecoveryTimeout = null
-        }, 1000)
+        }, BOUNCE_RECOVERY_GRACE_MS)
         return
       }
 

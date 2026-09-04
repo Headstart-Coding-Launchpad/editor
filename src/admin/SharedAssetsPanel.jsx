@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
@@ -115,11 +115,11 @@ function TypeAssetsEditor({ lessonType }) {
   }
 
   async function handleDelete(asset) {
-    if (!confirm(`Delete "${asset.name}" from shared ${lessonType} assets?`)) return
+    if (!window.confirm(`Delete "${asset.name}" from shared ${lessonType} assets?`)) return
     try {
       await deleteObject(ref(storage, storagePath(lessonType, asset.name)))
     } catch (err) {
-      if (err.code !== 'storage/object-not-found') { alert('Could not delete: ' + err.message); return }
+      if (err.code !== 'storage/object-not-found') { window.alert('Could not delete: ' + err.message); return }
     }
     await updateField('storageAssets', storageAssets.filter(a => a.name !== asset.name))
   }
@@ -221,7 +221,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
   function removeSprite(id) {
     if (sprites.length <= 1) return
     const sprite = sprites.find(sp => sp.id === id)
-    if (!confirm(`Delete "${sprite?.name ?? 'this sprite'}" (and all its costumes) from the shared default sprites?`)) return
+    if (!window.confirm(`Delete "${sprite?.name ?? 'this sprite'}" (and all its costumes) from the shared default sprites?`)) return
     onChange(sprites.filter(sp => sp.id !== id))
   }
 
@@ -263,7 +263,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
   function removeCostume(spriteId, idx) {
     const sprite = sprites.find(s => s.id === spriteId)
     const costumeName = sprite?.costumes?.[idx]?.name
-    if (!confirm(`Delete costume "${costumeName ?? idx + 1}" from "${sprite?.name ?? 'this sprite'}"?`)) return
+    if (!window.confirm(`Delete costume "${costumeName ?? idx + 1}" from "${sprite?.name ?? 'this sprite'}"?`)) return
     onChange(sprites.map(s => s.id === spriteId
       ? { ...s, costumes: (s.costumes ?? []).filter((_, i) => i !== idx) }
       : s
@@ -430,7 +430,7 @@ function DefaultBackdropsEditor({ backdrops, storageAssets, onChange }) {
 
   function removeBackdrop(id) {
     const backdrop = backdrops.find(b => b.id === id)
-    if (!confirm(`Delete "${backdrop?.name ?? 'this backdrop'}" from the shared default backdrops?`)) return
+    if (!window.confirm(`Delete "${backdrop?.name ?? 'this backdrop'}" from the shared default backdrops?`)) return
     onChange(backdrops.filter(b => b.id !== id))
   }
 
@@ -534,7 +534,6 @@ const s = {
   spriteIndex: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '0.8rem', color: '#9ca3af', width: 18, textAlign: 'right', flexShrink: 0 },
   spriteInput: { flex: '1 1 100px', minWidth: 80, padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)', outline: 'none' },
   spriteSelect: { flex: '0 0 auto', padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)', outline: 'none', cursor: 'pointer' },
-  costumeToggleBtn: { flexShrink: 0, background: 'none', border: '1px solid #d1d5db', borderRadius: 4, color: '#374151', fontSize: '0.72rem', cursor: 'pointer', padding: '2px 7px', whiteSpace: 'nowrap' },
   costumeSection: { display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 26, paddingBottom: 4 },
   costumeRow: { display: 'flex', alignItems: 'center', gap: 6 },
   costumeTag: { flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700, background: '#dbeafe', color: '#1d4ed8', borderRadius: 3, padding: '1px 5px' },

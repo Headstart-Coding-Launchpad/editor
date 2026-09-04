@@ -34,7 +34,11 @@ export default function AdminPortal() {
   }
 
   async function handleLogout() {
-    await signOut(auth)
+    try {
+      await signOut(auth)
+    } catch (err) {
+      console.error('Sign out failed:', err)
+    }
   }
 
   return (

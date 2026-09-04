@@ -300,13 +300,13 @@ export default function LessonPanel({ view = 'lessons' }) {
   }, [lessons, levelsLoading, loading])
 
   async function handleDelete(lesson) {
-    if (!confirm(`Delete lesson "${lesson.title || lesson.id}" from Firestore?\n\nThis cannot be undone.`)) return
+    if (!window.confirm(`Delete lesson "${lesson.title || lesson.id}" from Firestore?\n\nThis cannot be undone.`)) return
     setDeletingId(lesson.id)
     try {
       await deletePublishedLesson(lesson.id)
       setDeletedIds(prev => { const next = new Set(prev); next.add(lesson.id); return next })
     } catch (err) {
-      alert('Failed to delete: ' + err.message)
+      window.alert('Failed to delete: ' + err.message)
     } finally {
       setDeletingId(null)
     }
@@ -315,7 +315,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   async function handleForkForClass(lesson, classId) {
     const cls = classes.find(item => item.id === classId)
     if (!cls) {
-      alert('Choose a class before forking this lesson.')
+      window.alert('Choose a class before forking this lesson.')
       return
     }
     const forkId = makeForkLessonId(lesson.id, cls.id)
@@ -323,14 +323,14 @@ export default function LessonPanel({ view = 'lessons' }) {
     const message = exists
       ? `Overwrite fork "${forkId}" with a fresh copy of "${lesson.title || lesson.id}" for ${cls.name}? Existing fork edits, reports, and feedback will be cleared.`
       : `Create fork "${forkId}" from "${lesson.title || lesson.id}" for ${cls.name}?`
-    if (!confirm(message)) return
+    if (!window.confirm(message)) return
 
     setForkingId(lesson.id)
     try {
       const { fork } = await publishLessonFork(lesson, cls)
       window.open(makeBuilderUrl(fork.id), '_blank', 'noopener,noreferrer')
     } catch (err) {
-      alert('Failed to fork lesson: ' + err.message)
+      window.alert('Failed to fork lesson: ' + err.message)
     } finally {
       setForkingId(null)
     }
@@ -373,23 +373,23 @@ export default function LessonPanel({ view = 'lessons' }) {
       parsed = JSON.parse(text)
       if (!parsed.id || !parsed.tasks || !parsed.type) throw new Error('Missing required fields: id, type, tasks')
     } catch (err) {
-      alert('Could not parse file: ' + err.message)
+      window.alert('Could not parse file: ' + err.message)
       return
     }
     const validation = validateLesson(parsed)
     if (validation.errors.length > 0) {
-      alert('Cannot upload lesson until these validation errors are fixed:\n\n' + validation.errors.join('\n'))
+      window.alert('Cannot upload lesson until these validation errors are fixed:\n\n' + validation.errors.join('\n'))
       return
     }
     const lessonId = parsed.id
     const exists = lessons.some(l => l.id === lessonId)
-    if (exists && !confirm(`A lesson with ID "${lessonId}" already exists in Firestore.\n\nOverwrite it?`)) return
+    if (exists && !window.confirm(`A lesson with ID "${lessonId}" already exists in Firestore.\n\nOverwrite it?`)) return
     try {
       const { lesson, level } = migrateLessonLevel(parsed)
       if (level) await setDoc(doc(firestore, LEVEL_COLLECTION, level.id), level, { merge: true })
       await publishLesson(lesson)
     } catch (err) {
-      alert('Failed to upload lesson: ' + err.message)
+      window.alert('Failed to upload lesson: ' + err.message)
     }
   }
 
@@ -892,7 +892,7 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
     const assignedText = assignedLessons.length > 0
       ? `\n\nThis will remove the level from ${assignedLessons.length} ${lessonWord}.`
       : ''
-    if (!confirm(`Delete level "${level.title}"?${assignedText}`)) return
+    if (!window.confirm(`Delete level "${level.title}"?${assignedText}`)) return
     setSaveState(null)
     try {
       await Promise.all(assignedLessons.map(lesson => updateDoc(doc(firestore, 'lessons', lesson.id), {
@@ -1101,11 +1101,11 @@ function ClassManager({ classes, loading }) {
   }
 
   async function handleArchive(cls) {
-    if (!confirm(`Archive class "${cls.name}"? Existing lesson forks will remain available.`)) return
+    if (!window.confirm(`Archive class "${cls.name}"? Existing lesson forks will remain available.`)) return
     try {
       await saveClassRecord({ ...cls, archived: true, updatedAt: Date.now() })
     } catch (err) {
-      alert('Failed to archive class: ' + err.message)
+      window.alert('Failed to archive class: ' + err.message)
     }
   }
 

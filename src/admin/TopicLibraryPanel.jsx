@@ -71,7 +71,7 @@ export default function TopicLibraryPanel() {
   }, [topics])
 
   function handleSelect(topic) {
-    if (dirty && !confirm('You have unsaved changes. Discard them?')) return
+    if (dirty && !window.confirm('You have unsaved changes. Discard them?')) return
     setSelectedId(topic.id)
     setEditing({ ...topic })
     setIsNew(false)
@@ -79,7 +79,7 @@ export default function TopicLibraryPanel() {
   }
 
   function handleNewTopic() {
-    if (dirty && !confirm('You have unsaved changes. Discard them?')) return
+    if (dirty && !window.confirm('You have unsaved changes. Discard them?')) return
     setSelectedId(null)
     setEditing(emptyTopic())
     setIsNew(true)
@@ -92,14 +92,14 @@ export default function TopicLibraryPanel() {
   }
 
   async function handleSave() {
-    if (!editing.id.trim()) { alert('Topic ID is required.'); return }
+    if (!editing.id.trim()) { window.alert('Topic ID is required.'); return }
     if (!ID_PATTERN.test(editing.id)) {
-      alert('Topic ID must contain only lowercase letters, digits, dots, underscores, and hyphens, and must start with a letter or digit.')
+      window.alert('Topic ID must contain only lowercase letters, digits, dots, underscores, and hyphens, and must start with a letter or digit.')
       return
     }
-    if (!editing.title.trim()) { alert('Title is required.'); return }
+    if (!editing.title.trim()) { window.alert('Title is required.'); return }
     if (isNew && topics.some(t => t.id === editing.id)) {
-      alert(`A topic with ID "${editing.id}" already exists.`)
+      window.alert(`A topic with ID "${editing.id}" already exists.`)
       return
     }
     setSaving(true)
@@ -110,7 +110,7 @@ export default function TopicLibraryPanel() {
       setIsNew(false)
       setDirty(false)
     } catch (err) {
-      alert('Failed to save: ' + err.message)
+      window.alert('Failed to save: ' + err.message)
     } finally {
       setSaving(false)
     }
@@ -126,17 +126,17 @@ export default function TopicLibraryPanel() {
       const text = await file.text()
       parsed = JSON.parse(text)
     } catch (err) {
-      alert('Failed to parse JSON: ' + err.message)
+      window.alert('Failed to parse JSON: ' + err.message)
       return
     }
 
     const normalized = normalizeTopicLibrary(parsed)
     if (normalized.length === 0) {
-      alert('No valid topics found in the file. The JSON must be an array of topic objects, or an object with a "topics" array. Each topic must have at least an "id" and "title".')
+      window.alert('No valid topics found in the file. The JSON must be an array of topic objects, or an object with a "topics" array. Each topic must have at least an "id" and "title".')
       return
     }
 
-    if (!confirm(
+    if (!window.confirm(
       `This will replace all ${topics.length} existing topic${topics.length !== 1 ? 's' : ''} with ${normalized.length} topic${normalized.length !== 1 ? 's' : ''} from "${file.name}".\n\nThis cannot be undone. Continue?`
     )) return
 
@@ -162,14 +162,14 @@ export default function TopicLibraryPanel() {
       setEditing(null)
       setDirty(false)
     } catch (err) {
-      alert('Upload failed: ' + err.message)
+      window.alert('Upload failed: ' + err.message)
     } finally {
       setUploading(false)
     }
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete topic "${editing.title || editing.id}"?\n\nThis cannot be undone.`)) return
+    if (!window.confirm(`Delete topic "${editing.title || editing.id}"?\n\nThis cannot be undone.`)) return
     setDeleting(true)
     try {
       await deleteDoc(doc(firestore, 'topicLibrary', editing.id))
@@ -178,7 +178,7 @@ export default function TopicLibraryPanel() {
       setEditing(null)
       setDirty(false)
     } catch (err) {
-      alert('Failed to delete: ' + err.message)
+      window.alert('Failed to delete: ' + err.message)
     } finally {
       setDeleting(false)
     }
