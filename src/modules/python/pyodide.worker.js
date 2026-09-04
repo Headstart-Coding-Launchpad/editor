@@ -7,6 +7,7 @@
  * Main → Worker : { type: 'init' }
  *                 { type: 'run',   code: string }
  *                 { type: 'input', value: string }
+ *                 { type: 'gpio_inputs', values: object, requestId?: number }
  *
  * Worker → Main : { type: 'progress',      msg: string }
  *                 { type: 'ready' }
@@ -14,6 +15,14 @@
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
  *                 { type: 'done',          status: 'success'|'error' }
+ *                 { type: 'gpio_write',     pin: string, value: 0|1 }
+ *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
+ *                 { type: 'gpio_poll',      requestId: number }
+ *
+ * GPIO messages carry MicroPython-style pin I/O for Electronics-module tasks:
+ * the worker emits 'gpio_write'/'gpio_configure' as Python calls the GPIO API,
+ * and emits 'gpio_poll' (awaiting the matching 'gpio_inputs' reply) whenever
+ * Python sleeps, so the main thread can push updated input pin state.
  *
  * `line` is only meaningful on a 'stderr' output produced from a caught Python
  * exception (see formatPythonError): it is the innermost `<student>` frame's

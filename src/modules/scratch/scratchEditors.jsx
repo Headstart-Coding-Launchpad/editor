@@ -604,7 +604,7 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
     if (editingStackId && !stacks.find(s => s.id === editingStackId)) {
       setEditingStackId(null)
     }
-  })
+  }, [stacks, editingStackId])
 
   function addStack(type) {
     const s = newStack(type)

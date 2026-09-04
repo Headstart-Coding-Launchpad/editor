@@ -113,9 +113,6 @@ export default function ElectronicsWorkspace({
   const activeMicrocontroller = circuit.components.find(component => component.type === 'microcontroller') ?? null
   const hasCodeTab = showCodeTab || Boolean(activeMicrocontroller)
   const microPythonCode = activeMicrocontroller ? getMicrocontrollerCode(circuit) : code
-  const selectedMicrocontrollerPins = selected?.type === 'microcontroller' ? normalizeMicrocontrollerPins(selected.pins) : []
-  const selectedSupplyPins = selectedMicrocontrollerPins.filter(pin => !isMicrocontrollerSignalPin(pin))
-  const selectedGpioPins = selectedMicrocontrollerPins.filter(isMicrocontrollerSignalPin)
   const paletteTypes = useMemo(() => normalizeAvailableComponents(availableComponents), [availableComponents])
   const hasPalette = paletteTypes.length > 0
   // The inspector is the palette column's opposite number: it was holding 230px open on
@@ -213,7 +210,6 @@ export default function ElectronicsWorkspace({
     if (activeTab != null || !forcedTab || forcedTabToken == null || lastForcedTabTokenRef.current === forcedTabToken) return
     lastForcedTabTokenRef.current = forcedTabToken
     setTab(forcedTab)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, forcedTab, forcedTabToken])
 
   useEffect(() => {

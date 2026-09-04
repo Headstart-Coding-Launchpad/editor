@@ -1737,7 +1737,7 @@ function evaluateReporter(block, context) {
     case 'operator_or':
       return Boolean(evaluateInput(block, 'OPERAND1', context)) || Boolean(evaluateInput(block, 'OPERAND2', context))
     case 'operator_not':
-      return !Boolean(evaluateInput(block, 'OPERAND', context))
+      return !evaluateInput(block, 'OPERAND', context)
     case 'operator_add':
       return Number(evaluateInput(block, 'NUM1', context)) + Number(evaluateInput(block, 'NUM2', context))
     case 'operator_subtract':

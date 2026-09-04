@@ -452,7 +452,7 @@ export default function FilesystemTask({ fs = DEFAULT_FS, onFsChange, onInteract
 
   function handleDeletePath(path) {
     if (!window.confirm(`Delete "${entryName(path)}"?`)) return
-    onFsChange(deleteEntry(fs, path))
+    if (!applyFsChange(deleteEntry(fs, path), `Could not delete "${entryName(path)}".`)) return
     if (selected === path) { setSelected(null); setOpenFile(null) }
     if (clipboard?.path === path) setClipboard(null)
   }

@@ -8,7 +8,7 @@ export default function ArcadePreview({ code, assets, tilemaps, runId, running =
   const [consoleLines, setConsoleLines] = useState([])
   const srcDoc = useMemo(
     () => buildArcadeIframeSrc({ code, assets, tilemaps, width, height }),
-    [code, assets, tilemaps, runId, width, height],
+    [code, assets, tilemaps, width, height],
   )
 
   useEffect(() => {

@@ -110,7 +110,7 @@ export function moveEntry(fs, srcPath, destDirPath) {
     if (key === srcPath) {
       next[newPath] = value
     } else if (isDirectory && key.startsWith(srcPath)) {
-      next[newPath + (key.endsWith('/') ? '' : '') + key.slice(srcPath.length)] = value
+      next[newPath + key.slice(srcPath.length)] = value
     } else {
       next[key] = value
     }

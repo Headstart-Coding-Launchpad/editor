@@ -744,7 +744,6 @@ export default function ScratchWorkspace({
     setSpriteContext(sprites)
     setBackdropContext(backdrops)
     setVariableContext(variables)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprites, backdrops, variables])
 
   // ── Report which of Blocks/Stage are actually on screen ──────────────────────
@@ -772,13 +771,11 @@ export default function ScratchWorkspace({
     if (!forcedPane || forcedPaneToken == null || lastForcedPaneTokenRef.current === forcedPaneToken) return
     lastForcedPaneTokenRef.current = forcedPaneToken
     handleActivePaneChange(forcedPane)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forcedPane, forcedPaneToken])
 
   useEffect(() => {
     const costumes = (sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []
     setCostumeContext(costumes.map(c => ({ ...c, imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined })))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprites, selectedSpriteId, assetsPath])
 
   useEffect(() => {

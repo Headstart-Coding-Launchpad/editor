@@ -63,7 +63,6 @@ export default function StudentWorkspace({
     if (isSandbox) return cs.scratchSandboxProject
     if (cs.inPersonalSandbox) return personalSandboxScratchState
     return cs.scratchExternalState
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTeacherEditing, teacherLiveCode, isForcedTeacherLive, displayCode, isSandbox, cs.scratchSandboxProject, cs.inPersonalSandbox, personalSandboxScratchState, cs.scratchExternalState])
 
   return (

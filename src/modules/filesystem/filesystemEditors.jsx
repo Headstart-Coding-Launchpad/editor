@@ -68,7 +68,7 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
   }
 
   function handleDelete() {
-    if (!confirm(`Delete "${entryName(path)}"?`)) return
+    if (!window.confirm(`Delete "${entryName(path)}"?`)) return
     onFsChange(deleteEntry(fs, path))
   }
 
@@ -198,7 +198,7 @@ function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = 
           </button>
         )}
         <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>✏️</button>
-        <button title="Delete" style={{ ...s.smallBtn, color: '#dc2626' }} onClick={() => { if (confirm(`Delete "${entryName(path)}"?`)) onDelete() }}>🗑</button>
+        <button title="Delete" style={{ ...s.smallBtn, color: '#dc2626' }} onClick={() => { if (window.confirm(`Delete "${entryName(path)}"?`)) onDelete() }}>🗑</button>
       </div>
 
       {editingContents && isText && (
