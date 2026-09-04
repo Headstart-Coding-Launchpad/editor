@@ -142,7 +142,7 @@ function FileGrid({ fs, currentDir, selected, onSelect, onNavigate, onDrop, rena
   function handleDropOnGrid(e) {
     e.preventDefault()
     const src = e.dataTransfer.getData('text/plain')
-    if (src) onDrop(src, currentDir)
+    if (src && onDrop) onDrop(src, currentDir)
   }
 
   function handleDirDragOver(e, path) {

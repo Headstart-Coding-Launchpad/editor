@@ -287,7 +287,6 @@ export default function TeacherView({ lessonId }) {
       const starterFiles = cloneFiles(configured.files ?? [])
       sandboxDraftRef.current.files = starterFiles
       setFiles(starterFiles)
-      setActiveFile(starterFiles[0]?.name ?? '')
       if (isSandbox) await pushSandboxFiles(starterFiles)
     }
   }

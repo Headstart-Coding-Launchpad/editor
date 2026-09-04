@@ -34,6 +34,7 @@ import {
   clamp,
   componentAnchorOffset,
   componentDimensions,
+  normalizeRotation,
   pinHandleStyle,
   pinOffset,
   rotatedComponentRect,
