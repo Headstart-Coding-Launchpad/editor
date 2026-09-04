@@ -88,6 +88,35 @@ describe('LessonTaskContent', () => {
   })
 })
 
+describe('LessonTaskContent feedback popup visibility', () => {
+  const baseProps = {
+    lesson: { type: 'python' },
+    task: { id: 1, title: 'Say hello', check: true },
+    currentTaskId: 1,
+    isSandbox: false,
+    isViewingPrev: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+    displayCheckAttempted: true,
+    displayCheckPassed: false,
+  }
+
+  it('shows the feedback popup after a check attempt in a normal (not forced-live) view', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    render(<LessonTaskContent {...baseProps} cs={{ inPersonalSandbox: false }} isForcedTeacherLive={false} />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('hides the feedback popup while the viewer is forced into a teacher/peer broadcast', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    render(<LessonTaskContent {...baseProps} cs={{ inPersonalSandbox: false }} isForcedTeacherLive={true} />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+})
+
 describe('LessonTaskContent compact Scratch layout', () => {
   const scratchProps = {
     lesson: { type: 'scratch' },
@@ -104,7 +133,7 @@ describe('LessonTaskContent compact Scratch layout', () => {
     isTeacherEditing: false,
   }
 
-  it('keeps the side-by-side split (no tabs) when the panel is measured as wide, with the explainer at its fixed 400px width — not draggable, not proportional', () => {
+  it('keeps the side-by-side split (no tabs) when the panel is measured as wide, with the explainer at its fixed 320px width — not draggable, not proportional', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
 
@@ -113,22 +142,22 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
     expect(screen.getByText('Workspace')).toBeVisible()
     const explainerText = screen.getByText('Drag the move block.')
-    const explainerColumn = explainerText.closest('[style*="width: 400px"]')
+    const explainerColumn = explainerText.closest('[style*="width: 320px"]')
     expect(explainerColumn).toBeInTheDocument()
     // No drag handle — SplitPane's draggable divider has this cursor; the fixed layout has none.
     expect(document.querySelector('[style*="cursor: col-resize"]')).not.toBeInTheDocument()
   })
 
-  it('keeps the explainer at exactly 400px regardless of how wide the panel is (no proportional growth)', () => {
+  it('keeps the explainer at exactly 320px regardless of how wide the panel is (no proportional growth)', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
     const { rerender } = render(<LessonTaskContent {...scratchProps} />)
-    const widthAt1600 = screen.getByText('Drag the move block.').closest('[style*="width: 400px"]')
+    const widthAt1600 = screen.getByText('Drag the move block.').closest('[style*="width: 320px"]')
     expect(widthAt1600).toBeInTheDocument()
 
     useElementSize.mockReturnValue([{ current: null }, { width: 3000, height: 900 }])
     rerender(<LessonTaskContent {...scratchProps} />)
-    const widthAt3000 = screen.getByText('Drag the move block.').closest('[style*="width: 400px"]')
+    const widthAt3000 = screen.getByText('Drag the move block.').closest('[style*="width: 320px"]')
     expect(widthAt3000).toBeInTheDocument()
   })
 
@@ -152,9 +181,9 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(screen.getByText('Workspace')).not.toBeVisible()
   })
 
-  it('tabs Instructions away before the code area would be squeezed under 1000px by a fixed 400px explainer, instead of leaving Blocks/Stage to compact on their own', () => {
+  it('tabs Instructions away before the code area would be squeezed under 1000px by a fixed 320px explainer, instead of leaving Blocks/Stage to compact on their own', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
-    // 1200 - 400 (fixed explainer) = 800px code area, under ScratchWorkspace's own 1000px
+    // 1200 - 320 (fixed explainer) = 880px code area, under ScratchWorkspace's own 1000px
     // "wide" threshold — but 1200px is plenty if Code gets the whole row via a tab.
     useElementSize.mockReturnValue([{ current: null }, { width: 1200, height: 900 }])
 
@@ -164,14 +193,14 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(screen.getByText('Workspace')).toBeVisible()
   })
 
-  it('sits right at the boundary: 1412px (400 explainer + 12 gap + 1000 code) stays split, 1411px tabs', () => {
+  it('sits right at the boundary: 1332px (320 explainer + 12 gap + 1000 code) stays split, 1331px tabs', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
 
-    useElementSize.mockReturnValue([{ current: null }, { width: 1412, height: 900 }])
+    useElementSize.mockReturnValue([{ current: null }, { width: 1332, height: 900 }])
     const { rerender } = render(<LessonTaskContent {...scratchProps} />)
     expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
 
-    useElementSize.mockReturnValue([{ current: null }, { width: 1411, height: 900 }])
+    useElementSize.mockReturnValue([{ current: null }, { width: 1331, height: 900 }])
     rerender(<LessonTaskContent {...scratchProps} />)
     expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
   })

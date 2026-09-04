@@ -50,13 +50,17 @@ function loadTopics() {
   return fetchPromise
 }
 
+// The topic library is not offered for Scratch lessons at all (no inline topic links, no
+// browse dialog) — Scratch's explainer content doesn't use it, and the topic reference UI
+// (built for reading dense text explanations) doesn't fit Scratch's block-based teaching.
 export function useTopicLibrary(lessonType = null, enabled = true) {
+  const shouldFetch = enabled && lessonType !== 'scratch'
   const [topics, setTopics] = useState(cachedTopics ?? [])
-  const [loading, setLoading] = useState(enabled && !cachedTopics)
+  const [loading, setLoading] = useState(shouldFetch && !cachedTopics)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!enabled) {
+    if (!shouldFetch) {
       setLoading(false)
       return
     }
@@ -68,9 +72,11 @@ export function useTopicLibrary(lessonType = null, enabled = true) {
     loadTopics()
       .then(result => { setTopics(result); setLoading(false) })
       .catch(nextError => { setError(nextError); setLoading(false) })
-  }, [enabled])
+  }, [shouldFetch])
 
-  const filteredTopics = lessonType
+  const filteredTopics = lessonType === 'scratch'
+    ? []
+    : lessonType
     ? topics.filter(topic => topic.types.length === 0 || topic.types.includes(lessonType))
     : topics
 

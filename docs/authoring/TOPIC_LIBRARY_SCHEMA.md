@@ -82,7 +82,7 @@ A single-item `topics:` array (or bare single-item array) is also accepted as a 
 |---|:---:|---|---|
 | `id` | Yes | string | Unique slug. Used in `[[wiki-links]]` and URL hash. Lowercase letters, digits, dots, underscores, and hyphens only. |
 | `title` | Yes | string | Display name in the library list and hover card. |
-| `types` | No | string array | Lesson types this topic applies to. Empty or omitted = all types. Valid values: `"python"`, `"html"`, `"scratch"`. |
+| `types` | No | string array | Lesson types this topic applies to. Empty or omitted = all types. Valid values: `"python"`, `"html"`, `"scratch"` — but see the Scratch note under Type Filtering below: `"scratch"` is currently a no-op. |
 | `category` | No | string | Short label under the title (e.g. `"Function"`, `"Concept"`, `"CSS property"`). |
 | `summary` | No | string | One-sentence description in the hover card. **Plain text only — no Markdown.** |
 | `description` | No | string | Full body text rendered with the Markdown renderer. |
@@ -96,11 +96,13 @@ A single-item `topics:` array (or bare single-item array) is also accepted as a 
 
 | `types` value | When shown |
 |---|---|
-| `[]` or omitted | All lesson types |
+| `[]` or omitted | All lesson types (except Scratch — see note) |
 | `["python"]` | Python lessons only |
 | `["html"]` | HTML lessons only |
-| `["scratch"]` | Scratch lessons only |
-| `["python", "scratch"]` | Python and Scratch lessons |
+| `["scratch"]` | Never — see note |
+| `["python", "scratch"]` | Python lessons only — the Scratch half never applies |
+
+**Scratch note**: the topic library is not offered on Scratch lessons at all — no inline `[[wiki-link]]` rendering, no hover cards, no browse dialog — regardless of a topic's `types`. This applies even to a topic with an empty/omitted `types` (normally "all types"). `"scratch"` in `types` is accepted but has no effect; don't rely on it for a topic you want Scratch students to see.
 
 ---
 

@@ -168,6 +168,16 @@ describe('LessonPanel', () => {
     expect(links[0].getAttribute('href')).toContain('/lesson/py-intro?teacher=true')
   })
 
+  it('renders a Preview link pointing to the ephemeral preview URL', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+
+    await openFirstLevel(user)
+    const links = screen.getAllByRole('link', { name: 'Preview' })
+    expect(links[0].getAttribute('href')).toContain('/lesson/py-intro?preview=true')
+  })
+
   it('shows a Draft badge for lessons with draft: true', async () => {
     const user = userEvent.setup()
     render(<LessonPanel />)

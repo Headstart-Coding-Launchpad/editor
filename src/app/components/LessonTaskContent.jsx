@@ -24,7 +24,7 @@ const MODULE_PANES_TYPES = ['electronics', 'python', 'arcade', 'html']
 // Scratch's explainer is a fixed, non-resizable width (no drag-to-resize) rather than a
 // percentage split — Scratch explainers often carry block-pill images/markdown that need
 // real width, and a fixed size is simpler and more predictable than a shrinking one.
-const EXPLAINER_FIXED_WIDTH = 400
+const EXPLAINER_FIXED_WIDTH = 320
 // Gap between the explainer and code columns (s.scratchFixedSplit) — must be included in
 // the threshold below, or the code area ends up ~12px short of SCRATCH_CODE_WIDE_WIDTH
 // right at the boundary, letting ScratchWorkspace's own Blocks/Stage tabs sneak in a hair
@@ -89,7 +89,6 @@ export default function LessonTaskContent({
   canOfferPersonalSandbox,
   explainerShowsComplete,
   presenterLayout = 'both',
-  onNeedHelp,
   onTopicOpen,
   onTopicClose,
   openTopicId,
@@ -242,6 +241,7 @@ export default function LessonTaskContent({
         title={showsCompleteCode ? 'Complete Code' : task.title}
         content={showsCompleteCode ? '```python\n' + task.completeCode + '\n```' : task.explainer}
         topicType={lesson.type}
+        showLibrary={!isScratchLesson}
         onTopicOpen={onTopicOpen}
         onTopicClose={onTopicClose}
         openTopicId={openTopicId}
@@ -255,11 +255,15 @@ export default function LessonTaskContent({
     </div>
   ) : null
 
-  const shouldShowFeedbackBanner = !cs.stagePromptAccepted && !isSandbox && !cs.inPersonalSandbox && (
+  const shouldShowFeedbackBanner = !cs.stagePromptAccepted && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && (
     ((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) || cs.offeredSupportStageIndex != null
   )
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
+      // Remounts (resetting the popup's own auto-dismiss timer and any manual dismissal)
+      // only when a genuinely new check/stage event happens, not on every unrelated
+      // re-render of this component.
+      key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}`}
       passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
       failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
@@ -283,7 +287,6 @@ export default function LessonTaskContent({
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
-      onNeedHelp={onNeedHelp}
     />
   ) : null
 
@@ -479,9 +482,9 @@ export default function LessonTaskContent({
           // 25% put the explainer - the thing a student has to read to know what to do -
           // in a ~310px column wrapping at five or six words, while the editor beside it
           // held ~900px for a 40-character line. Prose was in the narrow column and code
-          // had the wide one. 32% gives the explainer a readable measure and still leaves
-          // the workspace about two thirds of the width.
-          defaultSplit={32}
+          // had the wide one. 26% keeps the explainer's measure readable while giving the
+          // workspace noticeably more room than the previous 32% did.
+          defaultSplit={26}
           leftCollapsed={explainerCollapsed}
           collapsedLeftWidth={44}
           collapsedLeft={
