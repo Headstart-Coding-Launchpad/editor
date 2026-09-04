@@ -1128,7 +1128,14 @@ export default function ScratchWorkspace({
     // when a watching teacher most wants to see the cursor.
     div.addEventListener('pointermove', event => {
       if (!onCursorMoveRef.current && !onBlockDragMoveRef.current) return
-      pendingCursorRef.current = { ws, spriteId, clientX: event.clientX, clientY: event.clientY, down: (event.buttons & 1) === 1 }
+      // The block palette (Blockly's own flyout) is a separate sub-workspace nested
+      // inside this same div, with its own independent pan/scroll — converting a
+      // point over it through the *main* workspace's transform would place the
+      // mirror's dot at a meaningless coordinate, generally off-screen. Detected
+      // here (cheap DOM check) rather than in the rAF below, since `event.target`
+      // is only valid on the event itself.
+      const overFlyout = !!event.target?.closest?.('.blocklyFlyout')
+      pendingCursorRef.current = { ws, spriteId, clientX: event.clientX, clientY: event.clientY, down: (event.buttons & 1) === 1, overFlyout }
       if (cursorRafRef.current) return
       cursorRafRef.current = requestAnimationFrame(() => {
         cursorRafRef.current = null
@@ -1150,8 +1157,10 @@ export default function ScratchWorkspace({
           }
         }
         if (!onCursorMoveRef.current) return
-        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(pending.ws, { x: pending.clientX, y: pending.clientY })
-        onCursorMoveRef.current({ target: 'workspace', spriteId: pending.spriteId, x: wsCoord.x, y: wsCoord.y, down: pending.down, at: now })
+        const flyoutWs = pending.overFlyout ? pending.ws.getFlyout?.()?.getWorkspace?.() : null
+        const coordWs = flyoutWs ?? pending.ws
+        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(coordWs, { x: pending.clientX, y: pending.clientY })
+        onCursorMoveRef.current({ target: flyoutWs ? 'flyout' : 'workspace', spriteId: pending.spriteId, x: wsCoord.x, y: wsCoord.y, down: pending.down, at: now })
       })
     })
     div.addEventListener('pointerleave', () => {
@@ -1359,28 +1368,30 @@ export default function ScratchWorkspace({
   }, [externalCursor?.at])
 
   const effectiveCursor = (!readOnly || !externalCursor || cursorStale) ? null : externalCursor
+  const isWorkspaceCursor = effectiveCursor?.target === 'workspace' || effectiveCursor?.target === 'flyout'
 
-  // Follow the source's active sprite tab while a workspace-target cursor is live,
-  // so the cursor is never moving on a tab the mirror isn't currently showing.
+  // Follow the source's active sprite tab while a workspace- or flyout-target cursor
+  // is live, so the cursor is never moving on a tab the mirror isn't currently showing.
   useEffect(() => {
-    if (!effectiveCursor || effectiveCursor.target !== 'workspace') return
+    if (!isWorkspaceCursor) return
     if (effectiveCursor.spriteId && effectiveCursor.spriteId !== selectedSpriteId) {
       setSelectedSpriteId(effectiveCursor.spriteId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveCursor?.target, effectiveCursor?.spriteId])
 
-  // Render the workspace cursor as an SVG dot appended directly into that sprite's
-  // Blockly block-canvas group, so it inherits the workspace's own pan/zoom/scroll
+  // Render the workspace/flyout cursor as an SVG dot appended directly into that
+  // sprite's Blockly block-canvas (or, for a flyout-target cursor, the flyout's own
+  // nested sub-workspace canvas) so it inherits that surface's own pan/zoom/scroll
   // transform automatically — no manual workspace-to-screen conversion needed.
   useEffect(() => {
     if (cursorDotElRef.current) {
       cursorDotElRef.current.remove()
       cursorDotElRef.current = null
     }
-    if (!effectiveCursor || effectiveCursor.target !== 'workspace' || status !== 'ready') return undefined
+    if (!isWorkspaceCursor || status !== 'ready') return undefined
     const ws = workspaceRefs.current[effectiveCursor.spriteId]
-    const canvas = ws?.getCanvas?.()
+    const canvas = effectiveCursor.target === 'flyout' ? ws?.getFlyout?.()?.getWorkspace?.()?.getCanvas?.() : ws?.getCanvas?.()
     if (!canvas) return undefined
     const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     dot.setAttribute('r', '6')
@@ -1394,7 +1405,7 @@ export default function ScratchWorkspace({
   }, [effectiveCursor?.target, effectiveCursor?.spriteId, status])
 
   useEffect(() => {
-    if (!cursorDotElRef.current || effectiveCursor?.target !== 'workspace') return
+    if (!cursorDotElRef.current || !isWorkspaceCursor) return
     cursorDotElRef.current.setAttribute('cx', effectiveCursor.x)
     cursorDotElRef.current.setAttribute('cy', effectiveCursor.y)
     cursorDotElRef.current.setAttribute('fill', effectiveCursor.down ? '#eab308' : '#7c3aed')
@@ -2329,14 +2340,18 @@ export default function ScratchWorkspace({
                 boxShadow: '0 1px 4px rgba(0,0,0,0.3)', pointerEvents: 'none', zIndex: 6,
               }} />
             )}
-            {!compact && (
-              <CollapseTabButton
-                onClick={() => setStagePanelCollapsed(true)}
-                direction="right"
-                title="Collapse Stage"
-                ariaLabel="Collapse Stage"
-              />
-            )}
+            <CollapseTabButton
+              onClick={() => setStagePanelCollapsed(true)}
+              direction="right"
+              title="Collapse Stage"
+              ariaLabel="Collapse Stage"
+              // Reserved (not simply omitted) in compact mode: this button toggles the
+              // side-by-side collapsible stage pane, which doesn't exist in compact's
+              // Blocks/Stage tab layout — but removing it outright shifted the green
+              // flag and every button after it left by its width, so its position no
+              // longer matched between compact and non-compact layouts.
+              style={compact ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+            />
             <button
               type="button"
               className="btn-primary"
