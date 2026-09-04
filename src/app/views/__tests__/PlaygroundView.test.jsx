@@ -24,11 +24,14 @@ describe('PlaygroundView', () => {
     playgroundType = 'python'
   })
 
-  it.each(['python', 'arcade', 'electronics'])('does not seed an explainer for the %s playground', type => {
-    const lesson = renderPlayground(type)
+  it.each(['python', 'arcade', 'electronics'])(
+    'does not seed an explainer for the %s playground',
+    (type) => {
+      const lesson = renderPlayground(type)
 
-    expect(lesson.tasks[0]).not.toHaveProperty('explainer')
-  })
+      expect(lesson.tasks[0]).not.toHaveProperty('explainer')
+    }
+  )
 
   it('enables sprite and tilemap editing in the Arcade playground', () => {
     const lesson = renderPlayground('arcade')

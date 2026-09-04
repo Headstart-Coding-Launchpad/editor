@@ -45,7 +45,9 @@ export default function AccountSettings() {
       <main style={s.card}>
         <div style={s.header}>
           <span style={s.brand}>Headstart Coding - Account</span>
-          <Link style={s.backLink} to={role === 'admin' ? '/admin/accounts' : '/login'}>Back</Link>
+          <Link style={s.backLink} to={role === 'admin' ? '/admin/accounts' : '/login'}>
+            Back
+          </Link>
         </div>
         <form style={s.body} onSubmit={handleSubmit}>
           <div>
@@ -59,7 +61,7 @@ export default function AccountSettings() {
               type="password"
               minLength={8}
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               required
             />
@@ -71,7 +73,7 @@ export default function AccountSettings() {
               type="password"
               minLength={8}
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
               required
             />
@@ -143,8 +145,19 @@ const s = {
     fontSize: '0.88rem',
   },
   field: { display: 'flex', flexDirection: 'column', gap: 5 },
-  label: { fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '0.84rem', color: 'var(--colour-text)' },
-  input: { padding: '9px 11px', border: '1.5px solid #d1d5db', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: '0.92rem' },
+  label: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.84rem',
+    color: 'var(--colour-text)',
+  },
+  input: {
+    padding: '9px 11px',
+    border: '1.5px solid #d1d5db',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.92rem',
+  },
   error: { margin: 0, color: '#dc2626', fontFamily: 'var(--font-body)', fontSize: '0.85rem' },
   status: { margin: 0, color: '#15803d', fontFamily: 'var(--font-body)', fontSize: '0.85rem' },
   submit: { alignSelf: 'flex-start', padding: '8px 18px', fontSize: '0.9rem' },

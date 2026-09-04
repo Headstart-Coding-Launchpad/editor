@@ -89,7 +89,11 @@ describe('InformationTask', () => {
     })
 
     it('disables text selection in both panes when disableCopy is set', () => {
-      const task = { informationType: 'recap', leftContent: 'Left pane text', explainer: 'Right pane text' }
+      const task = {
+        informationType: 'recap',
+        leftContent: 'Left pane text',
+        explainer: 'Right pane text',
+      }
       render(<InformationTask task={task} lesson={lesson} disableCopy />)
       expect(findUserSelectNoneAncestor(screen.getByText('Left pane text'))).not.toBeNull()
       expect(findUserSelectNoneAncestor(screen.getByText('Right pane text'))).not.toBeNull()

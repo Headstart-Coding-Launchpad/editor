@@ -7,7 +7,16 @@ import { applyLessonOverride } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import { useCrossTabPresence } from '../hooks/useCrossTabPresence'
-import { flattenTasks, filterTasksByMode, findTaskById, getCompleteStage, getRevealableStages, makeExplainerPseudoTask, isExplainerPseudoTaskId, insertPseudoTaskBefore } from '../../shared/taskUtils'
+import {
+  flattenTasks,
+  filterTasksByMode,
+  findTaskById,
+  getCompleteStage,
+  getRevealableStages,
+  makeExplainerPseudoTask,
+  isExplainerPseudoTaskId,
+  insertPseudoTaskBefore,
+} from '../../shared/taskUtils'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -24,31 +33,87 @@ import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
-import { getSavedNonPythonTaskCount, getSavedPythonTasks, isPythonCodeTask } from '../studentCodeExports'
+import {
+  getSavedNonPythonTaskCount,
+  getSavedPythonTasks,
+  isPythonCodeTask,
+} from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 
-export default function StudentView({ lessonId: lessonIdProp, forceSolo = false, lesson: lessonProp = null, teacherPresentation = false, allowUnrestrictedTaskNavigation = false, previewMode = false, initialTaskId = null, onTaskChange = null }) {
+export default function StudentView({
+  lessonId: lessonIdProp,
+  forceSolo = false,
+  lesson: lessonProp = null,
+  teacherPresentation = false,
+  allowUnrestrictedTaskNavigation = false,
+  previewMode = false,
+  initialTaskId = null,
+  onTaskChange = null,
+}) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
 
   // ─── Core hooks ───────────────────────────────────────────────────────────
 
   // Lesson loads first so an authored soloOnly flag can be folded into soloMode before
   // deciding whether to subscribe to the realtime session at all.
-  const { lesson: baseLesson, lessonLoading, firstTaskId: baseFirstTaskId } = useLessonLoader(lessonId, lessonProp, initialTaskId)
+  const {
+    lesson: baseLesson,
+    lessonLoading,
+    firstTaskId: baseFirstTaskId,
+  } = useLessonLoader(lessonId, lessonProp, initialTaskId)
   const soloMode = forceSolo || !!baseLesson?.soloOnly
 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
-    session, loading: sessionLoading, connected, registerPresence, joinSession, registerJoining, unregisterJoining,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentCodeArrangeSlots, writeStudentFiles, writeStudentOutput, writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
-    setTaskId, setTeacherLive, updateTeacherLive, removeStudent, requestHelp, setStudentTopic,
-    acceptTeacherEdit, declineTeacherEdit, acceptTeacherStage, declineTeacherStage,
+    session,
+    loading: sessionLoading,
+    connected,
+    registerPresence,
+    joinSession,
+    registerJoining,
+    unregisterJoining,
+    writeStudentRun,
+    logAttempt,
+    writeStudentAnswer,
+    writeStudentCode,
+    writeStudentArcadeDesign,
+    writeStudentSpriteState,
+    writeStudentCursor,
+    writeStudentBlockDrag,
+    writeStudentCodeArrangeSlots,
+    writeStudentFiles,
+    writeStudentOutput,
+    writeStudentInteraction,
+    recordStudentCarryFallback,
+    recordSupportStageReveal,
+    writeStudentPersonalSandbox,
+    writeStudentPresence,
+    setTaskId,
+    setTeacherLive,
+    updateTeacherLive,
+    removeStudent,
+    requestHelp,
+    setStudentTopic,
+    acceptTeacherEdit,
+    declineTeacherEdit,
+    acceptTeacherStage,
+    declineTeacherStage,
     removeTeacherHighlight,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
-  const { identity, loaded: identityLoaded, authError, retrySignIn, createIdentity, updateTimestamp, updateDisplayName } = useIdentity()
-  const effectiveIdentity = teacherPresentation ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' } : identity
+  const {
+    identity,
+    loaded: identityLoaded,
+    authError,
+    retrySignIn,
+    createIdentity,
+    updateTimestamp,
+    updateDisplayName,
+  } = useIdentity()
+  const effectiveIdentity = teacherPresentation
+    ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' }
+    : identity
 
   const lesson = useMemo(
     () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
@@ -57,7 +122,9 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // Derive firstTaskId from the post-override lesson so solo-mode students start on a valid task.
   // If an explicit initialTaskId was provided (e.g. builder preview), honour it over the lesson's first task.
   const firstTaskId = useMemo(
-    () => initialTaskId ?? (lesson ? (flattenTasks(lesson.tasks)[0]?.id ?? baseFirstTaskId) : baseFirstTaskId),
+    () =>
+      initialTaskId ??
+      (lesson ? (flattenTasks(lesson.tasks)[0]?.id ?? baseFirstTaskId) : baseFirstTaskId),
     [lesson, baseFirstTaskId, initialTaskId]
   )
 
@@ -73,37 +140,74 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // ─── Phase state machine ───────────────────────────────────────────────────
 
   const {
-    phase, setPhase,
-    currentTaskId, setCurrentTaskId,
-    viewingTaskId, setViewingTaskId,
+    phase,
+    setPhase,
+    currentTaskId,
+    setCurrentTaskId,
+    viewingTaskId,
+    setViewingTaskId,
     joinError,
-    handleNameSubmit, handleWaitForTeacher, handleGoSolo,
+    handleNameSubmit,
+    handleWaitForTeacher,
+    handleGoSolo,
   } = useStudentPhase({
-    session, sessionLoading,
-    identity, identityLoaded,
-    lessonId, lessonLoading,
-    soloMode, teacherPresentation,
+    session,
+    sessionLoading,
+    identity,
+    identityLoaded,
+    lessonId,
+    lessonLoading,
+    soloMode,
+    teacherPresentation,
     firstTaskId,
     onBeforeTaskChange,
     onPersonalSandboxExit,
     onTaskReset,
-    createIdentity, updateTimestamp, joinSession, registerJoining, unregisterJoining,
+    createIdentity,
+    updateTimestamp,
+    joinSession,
+    registerJoining,
+    unregisterJoining,
   })
   const activeLesson = useMemo(
     () => getEffectiveLessonForTask(lesson, currentTaskId),
-    [lesson, currentTaskId],
+    [lesson, currentTaskId]
   )
 
   // ─── Code / editor state ───────────────────────────────────────────────────
 
   const cs = useStudentCodeState({
-    lessonId, lesson: activeLesson, currentTaskId, viewingTaskId, phase,
-    effectiveIdentity, identity, session, connected,
-    teacherPresentation, previewMode,
-    writeStudentRun, logAttempt, writeStudentAnswer, writeStudentCode, writeStudentArcadeDesign, writeStudentSpriteState, writeStudentCursor, writeStudentBlockDrag, writeStudentCodeArrangeSlots, writeStudentFiles, writeStudentOutput,
-    writeStudentInteraction, recordStudentCarryFallback, recordSupportStageReveal, writeStudentPersonalSandbox, writeStudentPresence,
-    registerPresence, removeStudent,
-    updateTeacherLive, setTeacherLive,
+    lessonId,
+    lesson: activeLesson,
+    currentTaskId,
+    viewingTaskId,
+    phase,
+    effectiveIdentity,
+    identity,
+    session,
+    connected,
+    teacherPresentation,
+    previewMode,
+    writeStudentRun,
+    logAttempt,
+    writeStudentAnswer,
+    writeStudentCode,
+    writeStudentArcadeDesign,
+    writeStudentSpriteState,
+    writeStudentCursor,
+    writeStudentBlockDrag,
+    writeStudentCodeArrangeSlots,
+    writeStudentFiles,
+    writeStudentOutput,
+    writeStudentInteraction,
+    recordStudentCarryFallback,
+    recordSupportStageReveal,
+    writeStudentPersonalSandbox,
+    writeStudentPresence,
+    registerPresence,
+    removeStudent,
+    updateTeacherLive,
+    setTeacherLive,
     removeTeacherHighlight,
   })
 
@@ -114,30 +218,41 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
 
   useEffect(() => {
     onTaskChange?.(viewingTaskId ?? currentTaskId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewingTaskId, currentTaskId])
 
   const isMobile = useIsMobile()
   const currentPythonTask = useMemo(() => {
     if (activeLesson?.type !== 'python') return null
-    const task = flattenTasks(lesson.tasks).find(item => item.id === currentTaskId)
+    const task = flattenTasks(lesson.tasks).find((item) => item.id === currentTaskId)
     return isPythonCodeTask(task) ? task : null
   }, [lesson, activeLesson?.type, currentTaskId])
   // Only shown on the session-ended screen — gating on phase avoids rescanning localStorage
   // on every keystroke while the student is still working.
   const savedPythonTasks = useMemo(() => {
     if (phase !== 'ended') return []
-    return getSavedPythonTasks({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
+    return getSavedPythonTasks({
+      lesson,
+      anonymousId: teacherPresentation ? null : identity?.anonymousId,
+    })
   }, [phase, lesson, identity?.anonymousId, teacherPresentation])
   const savedOtherTaskCount = useMemo(() => {
     if (phase !== 'ended') return 0
-    return getSavedNonPythonTaskCount({ lesson, anonymousId: teacherPresentation ? null : identity?.anonymousId })
+    return getSavedNonPythonTaskCount({
+      lesson,
+      anonymousId: teacherPresentation ? null : identity?.anonymousId,
+    })
   }, [phase, lesson, identity?.anonymousId, teacherPresentation])
   const [otherTabDismissed, setOtherTabDismissed] = useState(false)
   const [fullscreenDismissedAt, setFullscreenDismissedAt] = useState(null)
-  const otherTabOpen = useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) && !otherTabDismissed
+  const otherTabOpen =
+    useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) &&
+    !otherTabDismissed
   const fullscreenRequestedAt = session?.fullscreenRequestedAt ?? null
-  const fullscreenPromptVisible = !teacherPresentation && !!fullscreenRequestedAt && fullscreenRequestedAt !== fullscreenDismissedAt
+  const fullscreenPromptVisible =
+    !teacherPresentation &&
+    !!fullscreenRequestedAt &&
+    fullscreenRequestedAt !== fullscreenDismissedAt
 
   function handleGoFullscreen() {
     document.documentElement.requestFullscreen?.().catch(() => {})
@@ -159,7 +274,10 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   function handleDownloadCurrentCode() {
     if (!currentPythonTask) return
     cs.saveCurrentWork()
-    downloadTasks([{ id: currentPythonTask.id, title: currentPythonTask.title, code: cs.code }], currentPythonTask.title)
+    downloadTasks(
+      [{ id: currentPythonTask.id, title: currentPythonTask.title, code: cs.code }],
+      currentPythonTask.title
+    )
   }
 
   function handleDownloadAllCode() {
@@ -181,7 +299,7 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
     if (firebaseName && firebaseName !== identity.displayName) {
       updateDisplayName(firebaseName)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.students?.[identity?.anonymousId]?.displayName])
 
   // ─── Topic library tracking ────────────────────────────────────────────────
@@ -196,7 +314,7 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
     if (!sentToTopicPushedAt) return
     const sentId = session?.students?.[identity?.anonymousId]?.sentToTopicId
     if (sentId) setPendingTopicId(sentId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentToTopicPushedAt])
 
   // ─── Teacher-sent video call link ──────────────────────────────────────────
@@ -210,7 +328,8 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   }, [videoCallLinkPushedAt])
 
   function handleTopicOpen(topicId) {
-    if (identity?.anonymousId && phase === 'lesson') setStudentTopic?.(identity.anonymousId, topicId || null)
+    if (identity?.anonymousId && phase === 'lesson')
+      setStudentTopic?.(identity.anonymousId, topicId || null)
   }
 
   function handleTopicClose() {
@@ -225,16 +344,19 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // teacher's own presentation screen.
   const lastVisiblePanesRef = useRef(null)
   const [localVisiblePanes, setLocalVisiblePanes] = useState(null)
-  const handleVisiblePanesChange = useCallback((panes) => {
-    setLocalVisiblePanes(panes)
-    if (teacherPresentation || !identity?.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    const key = panes?.join(',') ?? ''
-    if (lastVisiblePanesRef.current === key) return
-    lastVisiblePanesRef.current = key
-    writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, identity?.anonymousId, phase])
+  const handleVisiblePanesChange = useCallback(
+    (panes) => {
+      setLocalVisiblePanes(panes)
+      if (teacherPresentation || !identity?.anonymousId) return
+      if (phase !== 'lesson' && phase !== 'sandbox') return
+      const key = panes?.join(',') ?? ''
+      if (lastVisiblePanesRef.current === key) return
+      lastVisiblePanesRef.current = key
+      writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [teacherPresentation, identity?.anonymousId, phase]
+  )
 
   // Scratch solo: when the current task's explainer is hidden (either the manual
   // rail-collapse or the automatic width-driven tab-away — both already folded into
@@ -249,14 +371,15 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // lesson.type — activeLesson is already the effective, composed-aware lesson for
   // currentTaskId (see getEffectiveLessonForTask), same as everything else in this
   // component that needs to know the current task's real module type.
-  const rawExplainerHidden = phase === 'solo'
-    && activeLesson?.type === 'scratch'
-    && !!explainerPseudoCandidateTask?.explainer
-    && explainerPseudoCandidateTask?.taskType !== 'quiz'
-    && explainerPseudoCandidateTask?.taskType !== 'information'
-    && viewingTaskId === null
-    && localVisiblePanes != null
-    && !localVisiblePanes.includes('instructions')
+  const rawExplainerHidden =
+    phase === 'solo' &&
+    activeLesson?.type === 'scratch' &&
+    !!explainerPseudoCandidateTask?.explainer &&
+    explainerPseudoCandidateTask?.taskType !== 'quiz' &&
+    explainerPseudoCandidateTask?.taskType !== 'information' &&
+    viewingTaskId === null &&
+    localVisiblePanes != null &&
+    !localVisiblePanes.includes('instructions')
   const [explainerPseudoActive, setExplainerPseudoActive] = useState(false)
   useEffect(() => {
     if (!rawExplainerHidden) {
@@ -299,30 +422,51 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // the whole-class command is a single shared Firebase node, so one student looking at it
   // must not clear it for everyone else, and there's no reason to treat the per-student
   // case differently from that.
-  const rawStudentPaneCommand = session?.students?.[effectiveIdentity?.anonymousId]?.teacherPaneCommand ?? null
+  const rawStudentPaneCommand =
+    session?.students?.[effectiveIdentity?.anonymousId]?.teacherPaneCommand ?? null
   const rawClassPaneCommand = session?.teacherClassPaneCommand ?? null
-  const [dismissedPaneCommandAt, setDismissedPaneCommandAt] = useState({ student: null, class: null })
+  const [dismissedPaneCommandAt, setDismissedPaneCommandAt] = useState({
+    student: null,
+    class: null,
+  })
   useEffect(() => {
     if (!localVisiblePanes) return
-    setDismissedPaneCommandAt(prev => {
-      const seenAll = panes => panes.every(pane => localVisiblePanes.includes(pane))
-      const nextStudent = rawStudentPaneCommand && prev.student !== rawStudentPaneCommand.pushedAt && seenAll(rawStudentPaneCommand.panes)
-        ? rawStudentPaneCommand.pushedAt : prev.student
-      const nextClass = rawClassPaneCommand && prev.class !== rawClassPaneCommand.pushedAt && seenAll(rawClassPaneCommand.panes)
-        ? rawClassPaneCommand.pushedAt : prev.class
-      return nextStudent === prev.student && nextClass === prev.class ? prev : { student: nextStudent, class: nextClass }
+    setDismissedPaneCommandAt((prev) => {
+      const seenAll = (panes) => panes.every((pane) => localVisiblePanes.includes(pane))
+      const nextStudent =
+        rawStudentPaneCommand &&
+        prev.student !== rawStudentPaneCommand.pushedAt &&
+        seenAll(rawStudentPaneCommand.panes)
+          ? rawStudentPaneCommand.pushedAt
+          : prev.student
+      const nextClass =
+        rawClassPaneCommand &&
+        prev.class !== rawClassPaneCommand.pushedAt &&
+        seenAll(rawClassPaneCommand.panes)
+          ? rawClassPaneCommand.pushedAt
+          : prev.class
+      return nextStudent === prev.student && nextClass === prev.class
+        ? prev
+        : { student: nextStudent, class: nextClass }
     })
   }, [localVisiblePanes, rawStudentPaneCommand, rawClassPaneCommand])
-  const studentPaneCommand = rawStudentPaneCommand && rawStudentPaneCommand.pushedAt !== dismissedPaneCommandAt.student
-    ? rawStudentPaneCommand : null
-  const classPaneCommand = rawClassPaneCommand && rawClassPaneCommand.pushedAt !== dismissedPaneCommandAt.class
-    ? rawClassPaneCommand : null
+  const studentPaneCommand =
+    rawStudentPaneCommand && rawStudentPaneCommand.pushedAt !== dismissedPaneCommandAt.student
+      ? rawStudentPaneCommand
+      : null
+  const classPaneCommand =
+    rawClassPaneCommand && rawClassPaneCommand.pushedAt !== dismissedPaneCommandAt.class
+      ? rawClassPaneCommand
+      : null
   const effectivePaneCommand = !studentPaneCommand
     ? classPaneCommand
     : !classPaneCommand
-    ? studentPaneCommand
-    : (classPaneCommand.pushedAt ?? 0) >= (studentPaneCommand.pushedAt ?? 0) ? classPaneCommand : studentPaneCommand
-  const highlightedPanes = effectivePaneCommand?.mode === 'highlight' ? effectivePaneCommand.panes : null
+      ? studentPaneCommand
+      : (classPaneCommand.pushedAt ?? 0) >= (studentPaneCommand.pushedAt ?? 0)
+        ? classPaneCommand
+        : studentPaneCommand
+  const highlightedPanes =
+    effectivePaneCommand?.mode === 'highlight' ? effectivePaneCommand.panes : null
   const forcedPaneCommand = effectivePaneCommand?.mode === 'force' ? effectivePaneCommand : null
 
   // ─── Navigation handlers ───────────────────────────────────────────────────
@@ -342,19 +486,27 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
       return
     }
     if (teacherPresentation) {
-      if (!flatTasks.some(t => t.id === taskId)) return
+      if (!flatTasks.some((t) => t.id === taskId)) return
       setTaskId(taskId)
       setCurrentTaskId(taskId)
       setViewingTaskId(null)
       setViewingExplainerSlide(false)
       cs.resetForTaskChange()
-      updateTeacherLive({ taskId, output: '', runStatus: null, checkPassed: false, checkAttempted: false, codeArrangeSlots: null, codeArrangeCursor: null })
+      updateTeacherLive({
+        taskId,
+        output: '',
+        runStatus: null,
+        checkPassed: false,
+        checkAttempted: false,
+        codeArrangeSlots: null,
+        codeArrangeCursor: null,
+      })
       return
     }
     if (!identity) return
     if (phase === 'solo' && !allowUnrestrictedTaskNavigation) {
-      const targetIdx = flatTasks.findIndex(t => t.id === taskId)
-      const currIdx = flatTasks.findIndex(t => t.id === currentTaskId)
+      const targetIdx = flatTasks.findIndex((t) => t.id === taskId)
+      const currIdx = flatTasks.findIndex((t) => t.id === currentTaskId)
       if (targetIdx > currIdx) {
         if (targetIdx > currIdx + 1) return
       }
@@ -377,7 +529,12 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
 
   // ─── Phase guards ──────────────────────────────────────────────────────────
 
-  if (phase === 'loading' || (!soloMode && sessionLoading) || lessonLoading || (!teacherPresentation && !identityLoaded)) {
+  if (
+    phase === 'loading' ||
+    (!soloMode && sessionLoading) ||
+    lessonLoading ||
+    (!teacherPresentation && !identityLoaded)
+  ) {
     return <LoadingScreen message="Loading…" />
   }
 
@@ -400,7 +557,9 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
     return (
       <NameEntry
         lessonTitle={lesson.title}
-        existingNames={session ? Object.values(session.students ?? {}).map(s => s.displayName) : []}
+        existingNames={
+          session ? Object.values(session.students ?? {}).map((s) => s.displayName) : []
+        }
         onSubmit={handleNameSubmit}
         onGoSolo={handleGoSolo}
         waitingForSession={session?.state === 'waiting'}
@@ -432,10 +591,16 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
 
   // ─── Lesson / sandbox / solo render ───────────────────────────────────────
 
-  const taskDisplayMode = previewMode ? null : (phase === 'solo' ? 'solo' : phase === 'lesson' ? 'live' : null)
+  const taskDisplayMode = previewMode
+    ? null
+    : phase === 'solo'
+      ? 'solo'
+      : phase === 'lesson'
+        ? 'live'
+        : null
   const visibleTasks = filterTasksByMode(lesson.tasks, taskDisplayMode)
   const flatTasks = flattenTasks(visibleTasks)
-  const currentIndex = flatTasks.findIndex(t => t.id === currentTaskId)
+  const currentIndex = flatTasks.findIndex((t) => t.id === currentTaskId)
   const {
     isPresentationStudentViewer,
     isStudentGoLiveViewer,
@@ -475,11 +640,18 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
     checkSuggestion: cs.checkSuggestion,
     editorActivity: cs.editorActivity,
   })
-  const task = flatTasks.find(t => t.id === displayedTaskId)
+  const task = flatTasks.find((t) => t.id === displayedTaskId)
   const displayedLesson = getEffectiveLessonForTask(lesson, displayedTaskId)
-  const displayFs = isForcedTeacherLive && displayedLesson.type === 'filesystem'
-    ? (() => { try { return JSON.parse(session?.teacherLive?.code ?? '') } catch { return cs.fsState } })()
-    : cs.fsState
+  const displayFs =
+    isForcedTeacherLive && displayedLesson.type === 'filesystem'
+      ? (() => {
+          try {
+            return JSON.parse(session?.teacherLive?.code ?? '')
+          } catch {
+            return cs.fsState
+          }
+        })()
+      : cs.fsState
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'
@@ -489,7 +661,8 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   const myNeedsHelp = !!session?.students?.[identity?.anonymousId]?.needsHelp
   const handleNeedHelp = () => requestHelp(identity.anonymousId)
   const isQuizTask = task?.taskType === 'quiz'
-  const isAutoEvaluatedQuiz = isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
+  const isAutoEvaluatedQuiz =
+    isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
   const isCodeArrangeTask = task?.taskType === 'code_arrange'
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
@@ -497,63 +670,116 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
   // e.g. just after an arrival auto-opened it, before the debounce has had time to settle —
   // so SoloNav's index (below) always has a real pseudo entry to point at while the slide
   // is open, rather than briefly falling back to the real task's own index.
-  const explainerPseudoTask = (explainerPseudoActive || viewingExplainerSlide) && task ? makeExplainerPseudoTask(task) : null
-  const flatTasksForNav = explainerPseudoTask ? insertPseudoTaskBefore(flatTasks, currentTaskId, explainerPseudoTask) : flatTasks
+  const explainerPseudoTask =
+    (explainerPseudoActive || viewingExplainerSlide) && task ? makeExplainerPseudoTask(task) : null
+  const flatTasksForNav = explainerPseudoTask
+    ? insertPseudoTaskBefore(flatTasks, currentTaskId, explainerPseudoTask)
+    : flatTasks
   // SoloNav's Previous/Next step relative to a single index, so while the slide is showing,
   // that index must point at the pseudo entry itself (one slot before the real task) rather
   // than the real task's own slot — otherwise Next would skip past the real task entirely.
   const currentIndexForNav = explainerPseudoTask
-    ? flatTasksForNav.findIndex(t => t.id === (viewingExplainerSlide ? explainerPseudoTask.id : currentTaskId))
+    ? flatTasksForNav.findIndex(
+        (t) => t.id === (viewingExplainerSlide ? explainerPseudoTask.id : currentTaskId)
+      )
     : currentIndex
   const unifiedCompleteStage = getCompleteStage(task)?.stage
-  const hasCompleteSolution = displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
-    ? !!(unifiedCompleteStage?.code ?? task?.completeCode)
-    : displayedLesson.type === 'scratch'
-    ? !!task?.completeBlocks
-    : displayedLesson.type === 'filesystem'
-    ? !!task?.completeFs
-    : displayedLesson.type === 'electronics'
-    ? !!task?.completeCircuit
-    : (unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0)
+  const hasCompleteSolution =
+    displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
+      ? !!(unifiedCompleteStage?.code ?? task?.completeCode)
+      : displayedLesson.type === 'scratch'
+        ? !!task?.completeBlocks
+        : displayedLesson.type === 'filesystem'
+          ? !!task?.completeFs
+          : displayedLesson.type === 'electronics'
+            ? !!task?.completeCircuit
+            : unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0
   const taskCodeStages = task?.codeStages ?? []
-  const hasUnifiedCodeStages = ['python', 'html'].includes(displayedLesson.type) && taskCodeStages.some(stage => ['starter', 'complete'].includes(stage?.role))
+  const hasUnifiedCodeStages =
+    ['python', 'html'].includes(displayedLesson.type) &&
+    taskCodeStages.some((stage) => ['starter', 'complete'].includes(stage?.role))
   const revealableStages = getRevealableStages(task)
-  const hasProgressiveReferences = ['python', 'html'].includes(displayedLesson.type) && revealableStages.length > 0
+  const hasProgressiveReferences =
+    ['python', 'html'].includes(displayedLesson.type) && revealableStages.length > 0
   const nextStageIndex = cs.offeredStageIndex + 1
-  const canOfferNextStage = isSolo && !['python', 'html'].includes(displayedLesson.type) && !hasProgressiveReferences && !displayCheckPassed && cs.checkFailCount >= 2 && nextStageIndex < taskCodeStages.length
+  const canOfferNextStage =
+    isSolo &&
+    !['python', 'html'].includes(displayedLesson.type) &&
+    !hasProgressiveReferences &&
+    !displayCheckPassed &&
+    cs.checkFailCount >= 2 &&
+    nextStageIndex < taskCodeStages.length
   const revealedSupportStageIndexes = Object.keys(cs.supportStageReveals ?? {}).map(Number)
-  const allReferencesRevealed = revealableStages.every(({ index }) => revealedSupportStageIndexes.includes(index))
-  const stagesExhausted = isSolo && hasCompleteSolution && !displayCheckPassed && cs.checkFailCount >= 2 && (
-    hasUnifiedCodeStages || hasProgressiveReferences ? allReferencesRevealed : nextStageIndex >= taskCodeStages.length
+  const allReferencesRevealed = revealableStages.every(({ index }) =>
+    revealedSupportStageIndexes.includes(index)
   )
+  const stagesExhausted =
+    isSolo &&
+    hasCompleteSolution &&
+    !displayCheckPassed &&
+    cs.checkFailCount >= 2 &&
+    (hasUnifiedCodeStages || hasProgressiveReferences
+      ? allReferencesRevealed
+      : nextStageIndex >= taskCodeStages.length)
   // Python previews the complete solution read-only in the reference area before offering
   // to load it into the editor. Other lesson types have no such preview yet, so they
   // keep the original single-step "load complete solution" offer.
-  const canOfferCompletePreview = ['python', 'html'].includes(displayedLesson.type) && stagesExhausted && !cs.completePreviewShown
-  const canOfferCompleteSolution = ['python', 'html'].includes(displayedLesson.type) ? (stagesExhausted && cs.completePreviewShown) : stagesExhausted
+  const canOfferCompletePreview =
+    ['python', 'html'].includes(displayedLesson.type) && stagesExhausted && !cs.completePreviewShown
+  const canOfferCompleteSolution = ['python', 'html'].includes(displayedLesson.type)
+    ? stagesExhausted && cs.completePreviewShown
+    : stagesExhausted
   const explainerShowsComplete = false
-  const hasPersonalSandbox = activeLesson.type === 'python' || activeLesson.type === 'arcade'
-    ? true
-    : activeLesson.type === 'html'
-    ? !!(activeLesson.sandboxStarterFiles?.length > 0)
-    : activeLesson.type === 'scratch'
-    ? !!(activeLesson.sandboxStarter != null)
-    : activeLesson.type === 'filesystem'
-    ? !!(activeLesson.sandboxStarterFs != null)
-    : activeLesson.type === 'electronics'
-    ? !!(activeLesson.sandboxStarterCircuit != null)
-    : false
-  const canOfferPersonalSandbox = (phase === 'lesson' || isSolo) && hasPersonalSandbox && !isQuizTask && displayCheckPassed && !cs.inPersonalSandbox && !isForcedTeacherLive
+  const hasPersonalSandbox =
+    activeLesson.type === 'python' || activeLesson.type === 'arcade'
+      ? true
+      : activeLesson.type === 'html'
+        ? !!(activeLesson.sandboxStarterFiles?.length > 0)
+        : activeLesson.type === 'scratch'
+          ? !!(activeLesson.sandboxStarter != null)
+          : activeLesson.type === 'filesystem'
+            ? !!(activeLesson.sandboxStarterFs != null)
+            : activeLesson.type === 'electronics'
+              ? !!(activeLesson.sandboxStarterCircuit != null)
+              : false
+  const canOfferPersonalSandbox =
+    (phase === 'lesson' || isSolo) &&
+    hasPersonalSandbox &&
+    !isQuizTask &&
+    displayCheckPassed &&
+    !cs.inPersonalSandbox &&
+    !isForcedTeacherLive
 
-  const isPaused = !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
+  const isPaused =
+    !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const canTeacherEditType = activeLesson?.type === 'python' || activeLesson?.type === 'html' || activeLesson?.type === 'arcade' || activeLesson?.type === 'scratch' || activeLesson?.type === 'electronics'
-  const isTeacherEditing = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType && (phase === 'lesson' || phase === 'solo')
-  const showTeacherEditConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherEditRequestedAt && !myStudentTeacherEdit?.teacherEditAcceptedAt && canTeacherEditType
-  const showStageChangeConsent = !teacherPresentation && !!myStudentTeacherEdit?.teacherStageRequestedAt && !myStudentTeacherEdit?.teacherStageAcceptedAt
+  const canTeacherEditType =
+    activeLesson?.type === 'python' ||
+    activeLesson?.type === 'html' ||
+    activeLesson?.type === 'arcade' ||
+    activeLesson?.type === 'scratch' ||
+    activeLesson?.type === 'electronics'
+  const isTeacherEditing =
+    !teacherPresentation &&
+    !!myStudentTeacherEdit?.teacherEditAcceptedAt &&
+    canTeacherEditType &&
+    (phase === 'lesson' || phase === 'solo')
+  const showTeacherEditConsent =
+    !teacherPresentation &&
+    !!myStudentTeacherEdit?.teacherEditRequestedAt &&
+    !myStudentTeacherEdit?.teacherEditAcceptedAt &&
+    canTeacherEditType
+  const showStageChangeConsent =
+    !teacherPresentation &&
+    !!myStudentTeacherEdit?.teacherStageRequestedAt &&
+    !myStudentTeacherEdit?.teacherStageAcceptedAt
   const teacherLiveCode = myStudentTeacherEdit?.teacherLiveCode ?? ''
-  const teacherLiveFiles = decodeSessionFiles(myStudentTeacherEdit?.teacherLiveFiles, decodeFileKey, 'html')
+  const teacherLiveFiles = decodeSessionFiles(
+    myStudentTeacherEdit?.teacherLiveFiles,
+    decodeFileKey,
+    'html'
+  )
   const teacherLiveActiveFile = myStudentTeacherEdit?.teacherLiveActiveFile ?? null
   const teacherLiveWorkspace = myStudentTeacherEdit?.teacherLiveWorkspace ?? null
   const teacherLiveArcadeDesign = myStudentTeacherEdit?.teacherLiveArcadeDesign ?? null
@@ -564,13 +790,23 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
       currentTaskId={currentTaskId}
       viewingTaskId={viewingTaskId}
       isSolo={isSolo}
-      pseudoTask={explainerPseudoTask ? { id: explainerPseudoTask.id, title: explainerPseudoTask.title, beforeTaskId: currentTaskId } : null}
-      canSelectTask={id => {
+      pseudoTask={
+        explainerPseudoTask
+          ? {
+              id: explainerPseudoTask.id,
+              title: explainerPseudoTask.title,
+              beforeTaskId: currentTaskId,
+            }
+          : null
+      }
+      canSelectTask={(id) => {
         if (!isSolo) return true
-        const idIdx = flatTasks.findIndex(t => t.id === id)
-        return allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
+        const idIdx = flatTasks.findIndex((t) => t.id === id)
+        return (
+          allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
+        )
       }}
-      onDotClick={id => {
+      onDotClick={(id) => {
         if (isSolo) {
           if (id !== currentTaskId || viewingExplainerSlide) handleSoloNavigate(id)
         } else if (id < currentTaskId) {
@@ -590,7 +826,9 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
       >
         Previous
       </button>
-      <span style={s.presentationTaskLabel}>Task {currentIndex + 1} / {flatTasks.length}</span>
+      <span style={s.presentationTaskLabel}>
+        Task {currentIndex + 1} / {flatTasks.length}
+      </span>
       <button
         className="btn-ghost"
         style={s.presentationBtn}
@@ -611,12 +849,15 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
           { key: 'explainer', label: 'Explainer only' },
           { key: 'both', label: 'Both' },
           { key: 'code', label: 'Code only' },
-        ].map(opt => (
+        ].map((opt) => (
           <button
             key={opt.key}
             type="button"
             className="btn-ghost"
-            style={{ ...s.presentationBtn, ...(presenterLayout === opt.key ? s.presenterLayoutBtnActive : {}) }}
+            style={{
+              ...s.presentationBtn,
+              ...(presenterLayout === opt.key ? s.presenterLayoutBtnActive : {}),
+            }}
             aria-pressed={presenterLayout === opt.key}
             onClick={() => setPresenterLayout(opt.key)}
           >
@@ -625,12 +866,16 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
         ))}
       </div>
     </div>
+  ) : isSandbox && activeLesson.type === 'python' ? (
+    <button
+      className="btn-ghost"
+      style={s.downloadCodeBtn}
+      onClick={handleDownloadLessonSandboxCode}
+    >
+      Download sandbox code
+    </button>
   ) : (
-    isSandbox && activeLesson.type === 'python' ? (
-      <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadLessonSandboxCode}>
-        Download sandbox code
-      </button>
-    ) : !isSandbox && (
+    !isSandbox && (
       <div style={s.topBarTaskControls}>
         {canRequestHelp && (
           <button
@@ -646,7 +891,11 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
         )}
         {taskProgressControl}
         {!isSolo && !isForcedTeacherLive && currentPythonTask && (
-          <button className="btn-ghost" style={s.downloadCodeBtn} onClick={handleDownloadCurrentCode}>
+          <button
+            className="btn-ghost"
+            style={s.downloadCodeBtn}
+            onClick={handleDownloadCurrentCode}
+          >
             Download code
           </button>
         )}
@@ -678,7 +927,13 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
       <TopBar
         lessonTitle={lesson.title}
         lessonLevel={lesson.level}
-        displayName={isPresentationStudentViewer ? `Other Student — ${session.teacherLive.sourceStudentName ?? 'Student'}` : teacherPresentation ? 'Presentation' : identity?.displayName}
+        displayName={
+          isPresentationStudentViewer
+            ? `Other Student — ${session.teacherLive.sourceStudentName ?? 'Student'}`
+            : teacherPresentation
+              ? 'Presentation'
+              : identity?.displayName
+        }
         isSandbox={isSandbox}
         isSolo={teacherPresentation ? undefined : isSolo}
         right={topBarRight}
@@ -698,7 +953,13 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
               <span style={s.consentTitle}>Your teacher wants to help</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>{activeLesson?.type === 'scratch' ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.' : activeLesson?.type === 'electronics' ? 'Your teacher would like to edit your breadboard to help you. You will see their changes live.' : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}</p>
+              <p style={s.consentText}>
+                {activeLesson?.type === 'scratch'
+                  ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.'
+                  : activeLesson?.type === 'electronics'
+                    ? 'Your teacher would like to edit your breadboard to help you. You will see their changes live.'
+                    : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}
+              </p>
             </div>
             <div style={s.consentFooter}>
               <button
@@ -727,7 +988,10 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
               <span style={s.consentTitle}>Your teacher wants to update your code</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>Your teacher would like to set your code to a different stage. Your current work will be replaced.</p>
+              <p style={s.consentText}>
+                Your teacher would like to set your code to a different stage. Your current work
+                will be replaced.
+              </p>
             </div>
             <div style={s.consentFooter}>
               <button
@@ -769,7 +1033,10 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
               <button
                 className="btn-primary"
                 style={{ fontSize: 13 }}
-                onClick={() => { setOpenTopicId(pendingTopicId); setPendingTopicId(null) }}
+                onClick={() => {
+                  setOpenTopicId(pendingTopicId)
+                  setPendingTopicId(null)
+                }}
               >
                 Open it
               </button>
@@ -794,7 +1061,9 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
               <span style={s.consentTitle}>Your teacher would like you to go fullscreen</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>Going fullscreen hides your browser's address bar and tabs.</p>
+              <p style={s.consentText}>
+                Going fullscreen hides your browser's address bar and tabs.
+              </p>
             </div>
             <div style={s.consentFooter}>
               <button
@@ -804,11 +1073,7 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
               >
                 Not now
               </button>
-              <button
-                className="btn-primary"
-                style={{ fontSize: 13 }}
-                onClick={handleGoFullscreen}
-              >
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={handleGoFullscreen}>
                 Go Fullscreen
               </button>
             </div>
@@ -830,7 +1095,13 @@ export default function StudentView({ lessonId: lessonIdProp, forceSolo = false,
         authError={!teacherPresentation && authError}
         onRetrySignIn={retrySignIn}
       />
-      <div style={isSolo && !isSandbox && (isQuizTask || isInformationTask || viewingExplainerSlide) ? { ...s.body, overflow: 'hidden' } : s.body}>
+      <div
+        style={
+          isSolo && !isSandbox && (isQuizTask || isInformationTask || viewingExplainerSlide)
+            ? { ...s.body, overflow: 'hidden' }
+            : s.body
+        }
+      >
         <LessonTaskContent
           lesson={displayedLesson}
           task={task}

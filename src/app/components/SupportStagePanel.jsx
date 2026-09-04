@@ -17,7 +17,7 @@ function stageToText(stage, lessonType) {
   if (lessonType === 'html') {
     if (stage.code != null) return stage.code
     return (stage.files ?? [])
-      .map(file => `/* ${file.name} */\n${file.content ?? ''}`)
+      .map((file) => `/* ${file.name} */\n${file.content ?? ''}`)
       .join('\n\n')
   }
   if (lessonType === 'filesystem') return JSON.stringify(stage.fs ?? {}, null, 2)
@@ -41,10 +41,10 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
     <section
       style={s.panel}
       aria-label={`${title} stage reference`}
-      onCopy={e => e.preventDefault()}
-      onCut={e => e.preventDefault()}
-      onDragStart={e => e.preventDefault()}
-      onContextMenu={e => e.preventDefault()}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div style={s.header}>
         <div style={s.titleWrap}>
@@ -54,7 +54,9 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
         </div>
       </div>
       {lessonType === 'scratch' ? (
-        <div style={s.markdown}><MarkdownRenderer content={text} topicType="scratch" disableCopy /></div>
+        <div style={s.markdown}>
+          <MarkdownRenderer content={text} topicType="scratch" disableCopy />
+        </div>
       ) : (
         <pre style={s.pre}>
           <code style={s.code}>{text}</code>

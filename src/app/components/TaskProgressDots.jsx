@@ -15,15 +15,34 @@ const DOT_GAP = 6
 // dropping the dots from layout in counter mode, so the title can reclaim the freed
 // space. A window resize (or the task count changing) reopens the probe, since the
 // answer may no longer hold.
-export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, onDotClick, isSolo, canSelectTask, pseudoTask }) {
+export default function TaskProgressDots({
+  tasks,
+  currentTaskId,
+  viewingTaskId,
+  onDotClick,
+  isSolo,
+  canSelectTask,
+  pseudoTask,
+}) {
   const rowRef = useRef(null)
   const baseItems = getProgressItems(tasks)
-  const pseudoIndex = pseudoTask ? baseItems.findIndex(item => item.taskIds.includes(pseudoTask.beforeTaskId)) : -1
-  const items = pseudoIndex === -1 ? baseItems : [
-    ...baseItems.slice(0, pseudoIndex),
-    { type: 'task', id: pseudoTask.id, title: pseudoTask.title, taskIds: [pseudoTask.id], isPseudo: true },
-    ...baseItems.slice(pseudoIndex),
-  ]
+  const pseudoIndex = pseudoTask
+    ? baseItems.findIndex((item) => item.taskIds.includes(pseudoTask.beforeTaskId))
+    : -1
+  const items =
+    pseudoIndex === -1
+      ? baseItems
+      : [
+          ...baseItems.slice(0, pseudoIndex),
+          {
+            type: 'task',
+            id: pseudoTask.id,
+            title: pseudoTask.title,
+            taskIds: [pseudoTask.id],
+            isPseudo: true,
+          },
+          ...baseItems.slice(pseudoIndex),
+        ]
   const naturalWidth = items.length * (DOT_WIDTH + DOT_GAP) - DOT_GAP
   const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'collapsed'
 
@@ -43,7 +62,7 @@ export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, 
     return () => window.removeEventListener('resize', reopen)
   }, [])
 
-  const currentIndex = items.findIndex(item => item.taskIds.includes(currentTaskId))
+  const currentIndex = items.findIndex((item) => item.taskIds.includes(currentTaskId))
   const currentNumber = Math.max(1, currentIndex + 1)
 
   if (mode === 'collapsed') {
@@ -55,7 +74,11 @@ export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, 
   }
 
   return (
-    <div ref={rowRef} style={{ ...s.row, visibility: mode === 'fits' ? 'visible' : 'hidden' }} title="Task progress">
+    <div
+      ref={rowRef}
+      style={{ ...s.row, visibility: mode === 'fits' ? 'visible' : 'hidden' }}
+      title="Task progress"
+    >
       {items.map((item, index) => {
         // A pseudo item (the "explainer shrunk" nav entry) has a synthetic id that
         // doesn't participate in the real task-id ordering the past/future checks
@@ -66,7 +89,12 @@ export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, 
           return (
             <button
               key={item.id}
-              style={{ ...s.dot, ...s.dotPseudo, ...(isViewing ? s.dotViewing : {}), cursor: 'pointer' }}
+              style={{
+                ...s.dot,
+                ...s.dotPseudo,
+                ...(isViewing ? s.dotViewing : {}),
+                cursor: 'pointer',
+              }}
               onClick={() => onDotClick?.(item.id)}
               title={`Explainer: ${item.title}`}
               aria-label={`Explainer: ${item.title}`}
@@ -78,8 +106,8 @@ export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, 
 
         const isCurrent = item.taskIds.includes(currentTaskId)
         const isViewing = viewingTaskId != null && item.taskIds.includes(viewingTaskId)
-        const isPast = item.taskIds.every(id => id < currentTaskId)
-        const isFuture = item.taskIds.every(id => id > currentTaskId)
+        const isPast = item.taskIds.every((id) => id < currentTaskId)
+        const isFuture = item.taskIds.every((id) => id > currentTaskId)
         const firstTaskId = item.taskIds[0]
         const clickable = isPast || (isSolo && (canSelectTask ? canSelectTask(firstTaskId) : true))
         const isGroup = item.type === 'group'
@@ -90,9 +118,9 @@ export default function TaskProgressDots({ tasks, currentTaskId, viewingTaskId, 
             style={{
               ...s.dot,
               ...(isGroup ? s.dotGroup : {}),
-              ...(isCurrent  ? s.dotCurrent  : {}),
-              ...(isViewing  ? s.dotViewing  : {}),
-              ...(isPast     ? s.dotPast     : {}),
+              ...(isCurrent ? s.dotCurrent : {}),
+              ...(isViewing ? s.dotViewing : {}),
+              ...(isPast ? s.dotPast : {}),
               ...(!isSolo && isFuture ? s.dotFuture : {}),
               cursor: clickable ? 'pointer' : 'default',
             }}

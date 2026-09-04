@@ -5,11 +5,13 @@ import '@testing-library/jest-dom'
 if (typeof window.localStorage?.clear !== 'function') {
   const values = new Map()
   const storage = {
-    get length() { return values.size },
+    get length() {
+      return values.size
+    },
     clear: () => values.clear(),
-    getItem: key => values.has(String(key)) ? values.get(String(key)) : null,
-    key: index => Array.from(values.keys())[index] ?? null,
-    removeItem: key => values.delete(String(key)),
+    getItem: (key) => (values.has(String(key)) ? values.get(String(key)) : null),
+    key: (index) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key) => values.delete(String(key)),
     setItem: (key, value) => values.set(String(key), String(value)),
   }
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })

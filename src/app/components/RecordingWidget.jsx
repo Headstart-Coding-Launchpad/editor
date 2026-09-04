@@ -8,7 +8,7 @@ function loadYouTubeIframeApi() {
   if (typeof window === 'undefined') return Promise.resolve(null)
   if (window.YT?.Player) return Promise.resolve(window.YT)
   if (youTubeApiPromise) return youTubeApiPromise
-  youTubeApiPromise = new Promise(resolve => {
+  youTubeApiPromise = new Promise((resolve) => {
     const previous = window.onYouTubeIframeAPIReady
     window.onYouTubeIframeAPIReady = () => {
       if (typeof previous === 'function') previous()
@@ -39,7 +39,7 @@ export default function RecordingWidget({ recordingUrl }) {
   useEffect(() => {
     if (!videoId) return undefined
     let cancelled = false
-    loadYouTubeIframeApi().then(YT => {
+    loadYouTubeIframeApi().then((YT) => {
       if (cancelled || !YT || !hostRef.current) return
       playerRef.current = new YT.Player(hostRef.current, {
         videoId,
@@ -51,7 +51,11 @@ export default function RecordingWidget({ recordingUrl }) {
     })
     return () => {
       cancelled = true
-      try { playerRef.current?.destroy?.() } catch { /* player never finished loading */ }
+      try {
+        playerRef.current?.destroy?.()
+      } catch {
+        /* player never finished loading */
+      }
       playerRef.current = null
     }
   }, [videoId])
@@ -59,25 +63,39 @@ export default function RecordingWidget({ recordingUrl }) {
   if (!videoId) return null
 
   function hide() {
-    try { playerRef.current?.pauseVideo?.() } catch { /* player not ready yet */ }
+    try {
+      playerRef.current?.pauseVideo?.()
+    } catch {
+      /* player not ready yet */
+    }
     setVisible(false)
   }
 
   function show() {
     setVisible(true)
-    try { playerRef.current?.playVideo?.() } catch { /* player not ready yet */ }
+    try {
+      playerRef.current?.playVideo?.()
+    } catch {
+      /* player not ready yet */
+    }
   }
 
   return (
     <>
-      <div style={{ ...s.panel, display: visible ? 'flex' : 'none', width: expanded ? EXPANDED_PANEL_WIDTH : PANEL_WIDTH }}>
+      <div
+        style={{
+          ...s.panel,
+          display: visible ? 'flex' : 'none',
+          width: expanded ? EXPANDED_PANEL_WIDTH : PANEL_WIDTH,
+        }}
+      >
         <div style={s.header}>
           <span style={s.title}>Class recording</span>
           <div style={s.headerActions}>
             <button
               type="button"
               style={s.iconBtn}
-              onClick={() => setExpanded(v => !v)}
+              onClick={() => setExpanded((v) => !v)}
               aria-label={expanded ? 'Make video smaller' : 'Make video bigger'}
             >
               {expanded ? '⤡' : '⤢'}

@@ -20,12 +20,14 @@ describe('buildArcadeIframeSrc', () => {
     expect(src).toContain('const BACKING_SCALE = 4')
     expect(src).toContain('function setCanvasSize(width, height)')
     expect(src).toContain('function formatPythonError(error)')
-    expect(src).toContain("File \"<game>\", line")
+    expect(src).toContain('File "<game>", line')
     expect(src).toContain('function preloadImages()')
-    expect(src).toContain("const assetsReady = preloadImages()")
+    expect(src).toContain('const assetsReady = preloadImages()')
     expect(src).toContain('Promise.all([loadPyodide')
     expect(src).toContain("status.style.display = 'grid';")
-    expect(src).toContain('callbacks = (caller.f_globals if caller else None) or self._namespace or {}')
+    expect(src).toContain(
+      'callbacks = (caller.f_globals if caller else None) or self._namespace or {}'
+    )
     expect(src).toContain("pyodide.setStdout({ batched: text => say('console'")
     expect(src).toContain('class _Pointer:')
     expect(src).toContain('class TileMap:')
@@ -34,13 +36,15 @@ describe('buildArcadeIframeSrc', () => {
     expect(src).toContain('class _Camera:')
     expect(src).toContain('def apply_gravity(self, amount=800, terminal_velocity=None):')
     expect(src).toContain('def move_with_tiles(self, tile_map):')
-    expect(src).toContain('self.last_tile_collisions = [dict(hit) for hit in tile_map._last_move_collisions]')
+    expect(src).toContain(
+      'self.last_tile_collisions = [dict(hit) for hit in tile_map._last_move_collisions]'
+    )
     expect(src).toContain('def _solid_tile_hits(self, sprite):')
     expect(src).toContain("'axis': axis")
     expect(src).toContain('def on_ground(self, sprite):')
     expect(src).toContain('module.pointer, module.mouse')
     expect(src).toContain('module.Sprite, module.TileMap')
-    expect(src).toContain('canvas.addEventListener(\'pointerdown\'')
+    expect(src).toContain("canvas.addEventListener('pointerdown'")
     expect(src).toContain('globalThis.hsArcadeSetCamera')
     expect(src).toContain('globalThis.hsArcadeShake')
     expect(src).toContain('globalThis.hsArcadeMusic')
@@ -62,7 +66,18 @@ describe('buildArcadeIframeSrc', () => {
 
   it('makes generated tilemap files available to TileMap by name', () => {
     const src = buildArcadeIframeSrc({
-      tilemaps: [{ name: 'world.tilemap', data: { rows: ['.#'], tileSize: 16, tiles: { '#': 'wall.png' }, properties: { '#': { solid: true } }, objects: [] } }],
+      tilemaps: [
+        {
+          name: 'world.tilemap',
+          data: {
+            rows: ['.#'],
+            tileSize: 16,
+            tiles: { '#': 'wall.png' },
+            properties: { '#': { solid: true } },
+            objects: [],
+          },
+        },
+      ],
     })
     expect(src).toContain('"world.tilemap"')
     expect(src).toContain('globalThis.hsArcadeTileMap')

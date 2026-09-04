@@ -9,7 +9,7 @@ const fs = {
 }
 
 function gridItem(name) {
-  return screen.getAllByText(name).find(element => element.parentElement?.draggable).parentElement
+  return screen.getAllByText(name).find((element) => element.parentElement?.draggable).parentElement
 }
 
 describe('FilesystemTask', () => {
@@ -35,14 +35,20 @@ describe('FilesystemTask', () => {
         onInteraction={onInteraction}
         assetsPath="https://assets.example/lesson/"
         assets={['avatar.png']}
-      />,
+      />
     )
 
     fireEvent.doubleClick(gridItem('Pictures'))
     fireEvent.click(screen.getByText('avatar.png'))
 
-    expect(screen.getByAltText('avatar.png')).toHaveAttribute('src', 'https://assets.example/lesson/avatar.png')
-    expect(onInteraction).toHaveBeenLastCalledWith({ currentDir: '/Pictures/', openFile: '/Pictures/avatar.png' })
+    expect(screen.getByAltText('avatar.png')).toHaveAttribute(
+      'src',
+      'https://assets.example/lesson/avatar.png'
+    )
+    expect(onInteraction).toHaveBeenLastCalledWith({
+      currentDir: '/Pictures/',
+      openFile: '/Pictures/avatar.png',
+    })
   })
 
   it('shows a status message and does not call onFsChange when a rename collides by name, case-insensitively', () => {

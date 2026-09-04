@@ -25,8 +25,12 @@ export default function BuilderToolbar({
             Back to Admin
           </button>
         )}
-        <button className="btn-ghost" style={s.btn} onClick={onNew}>New</button>
-        <button className="btn-ghost" style={s.btn} onClick={onUpload}>Upload</button>
+        <button className="btn-ghost" style={s.btn} onClick={onNew}>
+          New
+        </button>
+        <button className="btn-ghost" style={s.btn} onClick={onUpload}>
+          Upload
+        </button>
         <button
           className="btn-ghost"
           style={s.btn}
@@ -58,15 +62,19 @@ export default function BuilderToolbar({
             className="btn-primary"
             style={{
               ...s.btnPrimary,
-              background: saveStatus === 'done' ? '#16a34a' : saveStatus === 'error' ? '#ef4444' : undefined,
+              background:
+                saveStatus === 'done' ? '#16a34a' : saveStatus === 'error' ? '#ef4444' : undefined,
             }}
             onClick={onSave}
             disabled={saveStatus === 'saving'}
           >
-            {saveStatus === 'saving' ? 'Saving…'
-              : saveStatus === 'done' ? 'Saved ✓'
-              : saveStatus === 'error' ? 'Save failed ✕'
-              : 'Save'}
+            {saveStatus === 'saving'
+              ? 'Saving…'
+              : saveStatus === 'done'
+                ? 'Saved ✓'
+                : saveStatus === 'error'
+                  ? 'Save failed ✕'
+                  : 'Save'}
           </button>
         )}
       </div>

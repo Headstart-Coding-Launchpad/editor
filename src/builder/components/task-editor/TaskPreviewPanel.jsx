@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { MarkdownRenderer } from '../../../shared/markdown'
-import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from '../../../app/components/CollapsiblePanelControls'
+import {
+  AnimatedPanelShell,
+  CollapsedPanelRail,
+  CollapseTabButton,
+} from '../../../app/components/CollapsiblePanelControls'
 
 /**
  * Wraps the Builder's inline student/quiz preview. When a `task` is supplied, also renders a
@@ -19,8 +23,8 @@ export default function TaskPreviewPanel({ task = null, draft = false, children 
         <span className="te-preview-title">Student preview</span>
       </div>
 
-      {hasMeta && (
-        metaCollapsed ? (
+      {hasMeta &&
+        (metaCollapsed ? (
           <CollapsedPanelRail
             onClick={() => setMetaCollapsed(false)}
             label="Authoring metadata"
@@ -57,8 +61,7 @@ export default function TaskPreviewPanel({ task = null, draft = false, children 
               )}
             </div>
           </AnimatedPanelShell>
-        )
-      )}
+        ))}
 
       {children}
     </div>

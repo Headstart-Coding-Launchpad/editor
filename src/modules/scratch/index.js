@@ -34,21 +34,31 @@ const scratchModule = {
     toolbox: task.toolbox ?? '',
     starterBlocks: task.starterBlocks ?? null,
     carryBlocksFrom: task.carryBlocksFrom ?? null,
-    codeStages: task.codeStages ?? [{
-      label: 'Starter',
-      role: 'starter',
-      blocks: task.starterBlocks ?? null,
-      predefinedBlocks: task.predefinedBlocks ?? null,
-      prebuiltStacks: task.prebuiltStacks ?? null,
-    }],
+    codeStages: task.codeStages ?? [
+      {
+        label: 'Starter',
+        role: 'starter',
+        blocks: task.starterBlocks ?? null,
+        predefinedBlocks: task.predefinedBlocks ?? null,
+        prebuiltStacks: task.prebuiltStacks ?? null,
+      },
+    ],
   }),
 
-  makeNewStage: (task, existing) => existing.length === 0
-    ? {
-      label: 'Starter', role: 'starter', blocks: task.starterBlocks ?? null,
-      predefinedBlocks: task.predefinedBlocks ?? null, prebuiltStacks: task.prebuiltStacks ?? null,
-    }
-    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', markdown: '' },
+  makeNewStage: (task, existing) =>
+    existing.length === 0
+      ? {
+          label: 'Starter',
+          role: 'starter',
+          blocks: task.starterBlocks ?? null,
+          predefinedBlocks: task.predefinedBlocks ?? null,
+          prebuiltStacks: task.prebuiltStacks ?? null,
+        }
+      : {
+          label: `Support ${existing.filter((stage) => stage.role === 'support').length + 1}`,
+          role: 'support',
+          markdown: '',
+        },
 
   initCompleteTab: null,
   initStageTab: null,
@@ -70,7 +80,9 @@ const scratchModule = {
       enableStageCode: sourceTask.enableStageCode ?? false,
     }
     if (targetTask?.codeStages?.length) {
-      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, blocks } : stage)
+      updates.codeStages = targetTask.codeStages.map((stage, i) =>
+        i === 0 ? { ...stage, blocks } : stage
+      )
     }
     return updates
   },
@@ -91,11 +103,15 @@ const scratchModule = {
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: null,
   initialState: (task) => task.starterBlocks ?? null,
-  serializeState: (state) => state == null ? null : JSON.stringify(state),
+  serializeState: (state) => (state == null ? null : JSON.stringify(state)),
   deserializeState: (raw) => {
     if (raw == null) return null
     if (typeof raw === 'string') {
-      try { return JSON.parse(raw) } catch { return null }
+      try {
+        return JSON.parse(raw)
+      } catch {
+        return null
+      }
     }
     return raw
   },
@@ -103,7 +119,9 @@ const scratchModule = {
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => {
     if (lesson?.sandboxStarter != null) {
-      try { return JSON.parse(lesson.sandboxStarter) } catch {}
+      try {
+        return JSON.parse(lesson.sandboxStarter)
+      } catch {}
     }
     return task?.starterBlocks ?? null
   },

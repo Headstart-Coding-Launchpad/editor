@@ -43,7 +43,9 @@ describe('computeStageScale', () => {
   })
 
   it('never goes below the readability floor, even when height is near zero', () => {
-    expect(computeStageScale(1600, 100, { compact: false, flyoutCollapsed: false })).toBeCloseTo(0.35)
+    expect(computeStageScale(1600, 100, { compact: false, flyoutCollapsed: false })).toBeCloseTo(
+      0.35
+    )
   })
 
   it('ignores height entirely when it is not measured yet (0)', () => {
@@ -89,7 +91,10 @@ describe('student-added sprite/backdrop check-invisibility', () => {
       { id: 'sprite3', name: 'Sprite 3' },
     ]
 
-    expect(filterCheckableSpriteWorkspaces(spriteWorkspaces)).toEqual([spriteWorkspaces[0], spriteWorkspaces[2]])
+    expect(filterCheckableSpriteWorkspaces(spriteWorkspaces)).toEqual([
+      spriteWorkspaces[0],
+      spriteWorkspaces[2],
+    ])
   })
 
   it('handles an empty/missing list', () => {
@@ -120,15 +125,18 @@ describe('isValidNewVariableName', () => {
 })
 
 describe('wrapScratchBubbleText', () => {
-  const ctx = { measureText: value => ({ width: value.length * 10 }) }
+  const ctx = { measureText: (value) => ({ width: value.length * 10 }) }
 
   it('wraps speech text instead of letting it overflow a capped bubble', () => {
-    expect(wrapScratchBubbleText(ctx, 'Why was the cat sitting on the computer?', 120))
-      .toEqual(['Why was the', 'cat sitting', 'on the', 'computer?'])
+    expect(wrapScratchBubbleText(ctx, 'Why was the cat sitting on the computer?', 120)).toEqual([
+      'Why was the',
+      'cat sitting',
+      'on the',
+      'computer?',
+    ])
   })
 
   it('splits an unbroken long value to keep it inside the bubble', () => {
-    expect(wrapScratchBubbleText(ctx, 'abcdefghijkl', 40))
-      .toEqual(['abcd', 'efgh', 'ijkl'])
+    expect(wrapScratchBubbleText(ctx, 'abcdefghijkl', 40)).toEqual(['abcd', 'efgh', 'ijkl'])
   })
 })

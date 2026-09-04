@@ -7,12 +7,7 @@ import OutputPanel from '../OutputPanel'
 describe('OutputPanel input prompt focus', () => {
   it('focuses the input when a non-collapsible output panel shows a prompt', () => {
     render(
-      <OutputPanel
-        output="Name?"
-        inputPrompt="Name?"
-        onInputSubmit={vi.fn()}
-        collapsible={false}
-      />,
+      <OutputPanel output="Name?" inputPrompt="Name?" onInputSubmit={vi.fn()} collapsible={false} />
     )
 
     expect(screen.getByPlaceholderText('Type your input and press Enter')).toHaveFocus()
@@ -28,7 +23,7 @@ describe('OutputPanel input prompt focus', () => {
         onInputSubmit={vi.fn()}
         collapsible
         defaultCollapsed
-      />,
+      />
     )
 
     await user.click(screen.getByText('Output'))
@@ -37,12 +32,22 @@ describe('OutputPanel input prompt focus', () => {
   })
 
   it('can stay closed while running and only open when output arrives', async () => {
-    const { rerender } = render(<OutputPanel title="Console" running={false} openOnRun={false} openOnOutput />)
+    const { rerender } = render(
+      <OutputPanel title="Console" running={false} openOnRun={false} openOnOutput />
+    )
 
     rerender(<OutputPanel title="Console" running openOnRun={false} openOnOutput />)
     expect(screen.getByText('Show')).toBeInTheDocument()
 
-    rerender(<OutputPanel title="Console" running openOnRun={false} openOnOutput output="Hello from the game\n" />)
+    rerender(
+      <OutputPanel
+        title="Console"
+        running
+        openOnRun={false}
+        openOnOutput
+        output="Hello from the game\n"
+      />
+    )
     await waitFor(() => expect(screen.getByText('Hide')).toBeInTheDocument())
   })
 })

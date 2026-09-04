@@ -83,7 +83,7 @@ function replaceTaskAtFlatIndex(tasks, flatIndex, newTask) {
 function appendTaskToList(tasks, task, groupTitle) {
   if (!groupTitle) return [...tasks, task]
   let found = false
-  const updated = tasks.map(item => {
+  const updated = tasks.map((item) => {
     if (item.type === 'group' && item.title === groupTitle) {
       found = true
       return { ...item, subtasks: [...(item.subtasks ?? []), task] }
@@ -96,12 +96,17 @@ function appendTaskToList(tasks, task, groupTitle) {
 
 function summarize(id, lesson) {
   const tasks = lesson.tasks ?? []
-  return { id, title: lesson.title ?? '', type: lesson.type ?? '', flatTaskCount: flattenTasks(tasks).length }
+  return {
+    id,
+    title: lesson.title ?? '',
+    type: lesson.type ?? '',
+    flatTaskCount: flattenTasks(tasks).length,
+  }
 }
 
 async function fetchTopicLibrary() {
   const snap = await db.collection('topicLibrary').get()
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
 }
 
 async function publishLesson(lesson, { allowDraft = true } = {}) {
@@ -110,19 +115,24 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
     ? await db.collection('lessons').doc(migrated.lesson.id).get()
     : null
   const existingLesson = existingSnap?.exists ? existingSnap.data() : null
-  const lessonToPublish = (
+  const lessonToPublish =
     existingLesson?.storageAssets && migrated.lesson.storageAssets === undefined
       ? { ...migrated.lesson, storageAssets: existingLesson.storageAssets }
       : migrated.lesson
-  )
   const { valid, errors, warnings } = validateLessonForMcp(lessonToPublish)
   if (!valid) return { success: false, valid, errors, warnings }
   if (!allowDraft && lessonToPublish.draft === true) {
-    return { success: false, valid: false, errors: ['Draft lessons cannot be published. Clear draft only after full validation passes.'], warnings }
+    return {
+      success: false,
+      valid: false,
+      errors: ['Draft lessons cannot be published. Clear draft only after full validation passes.'],
+      warnings,
+    }
   }
-  const topicValidation = lessonToPublish.draft === true
-    ? { valid: true, errors: [], warnings: [] }
-    : validateLessonTopics(lessonToPublish, await fetchTopicLibrary())
+  const topicValidation =
+    lessonToPublish.draft === true
+      ? { valid: true, errors: [], warnings: [] }
+      : validateLessonTopics(lessonToPublish, await fetchTopicLibrary())
   if (!topicValidation.valid) {
     return {
       success: false,
@@ -133,7 +143,10 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
     }
   }
   if (migrated.level) {
-    await db.collection(LEVEL_COLLECTION).doc(migrated.level.id).set(migrated.level, { merge: true })
+    await db
+      .collection(LEVEL_COLLECTION)
+      .doc(migrated.level.id)
+      .set(migrated.level, { merge: true })
   }
   const audited = applyLessonAuditMetadata(existingLesson, lessonToPublish)
   if (audited.material) await db.collection('lessons').doc(lessonToPublish.id).set(audited.lesson)
@@ -153,7 +166,7 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
 
 async function clearLessonChildCollection(lessonId, collectionName) {
   const snap = await db.collection('lessons').doc(lessonId).collection(collectionName).get()
-  await Promise.all(snap.docs.map(doc => doc.ref.delete()))
+  await Promise.all(snap.docs.map((doc) => doc.ref.delete()))
   return snap.size
 }
 
@@ -168,10 +181,11 @@ async function clearLessonRunData(lessonId) {
 export async function listLessons() {
   const snap = await db.collection('lessons').get()
   return snap.docs
-    .map(doc => {
+    .map((doc) => {
       const d = doc.data()
       const taskCount = (d.tasks ?? []).reduce(
-        (acc, t) => acc + (t.type === 'group' ? (t.subtasks?.length ?? 0) : 1), 0
+        (acc, t) => acc + (t.type === 'group' ? (t.subtasks?.length ?? 0) : 1),
+        0
       )
       return {
         id: doc.id,
@@ -181,11 +195,13 @@ export async function listLessons() {
         version: d.version ?? 0,
         level: d.level ?? null,
         levelId: d.levelId ?? null,
-        fork: d.fork ? {
-          sourceLessonId: d.fork.sourceLessonId,
-          classId: d.fork.classId,
-          className: d.fork.className ?? '',
-        } : null,
+        fork: d.fork
+          ? {
+              sourceLessonId: d.fork.sourceLessonId,
+              classId: d.fork.classId,
+              className: d.fork.className ?? '',
+            }
+          : null,
         taskCount,
       }
     })
@@ -219,10 +235,12 @@ export async function getTask(lessonId, taskIndex) {
   if (!snap.exists) throw new Error(`Lesson '${lessonId}' not found`)
   const tasks = snap.data().tasks ?? []
   const loc = findTaskByFlatIndex(tasks, taskIndex)
-  if (!loc) throw new Error(`Task index ${taskIndex} is out of range (lesson has ${flattenTasks(tasks).length} tasks)`)
-  const task = loc.innerIdx === null
-    ? tasks[loc.outerIdx]
-    : tasks[loc.outerIdx].subtasks[loc.innerIdx]
+  if (!loc)
+    throw new Error(
+      `Task index ${taskIndex} is out of range (lesson has ${flattenTasks(tasks).length} tasks)`
+    )
+  const task =
+    loc.innerIdx === null ? tasks[loc.outerIdx] : tasks[loc.outerIdx].subtasks[loc.innerIdx]
   return { lessonId, taskIndex, task }
 }
 
@@ -232,14 +250,23 @@ export async function upsertTask(lessonId, taskIndex, task) {
   const lesson = { id: snap.id, ...snap.data() }
   const updatedTasks = replaceTaskAtFlatIndex(lesson.tasks ?? [], taskIndex, task)
   if (!updatedTasks) {
-    throw new Error(`Task index ${taskIndex} is out of range (lesson has ${flattenTasks(lesson.tasks ?? []).length} tasks)`)
+    throw new Error(
+      `Task index ${taskIndex} is out of range (lesson has ${flattenTasks(lesson.tasks ?? []).length} tasks)`
+    )
   }
   const updatedLesson = { ...lesson, tasks: updatedTasks }
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
   const audited = applyLessonAuditMetadata(lesson, updatedLesson)
   if (audited.material) await db.collection('lessons').doc(lessonId).set(audited.lesson)
-  return { success: true, lessonId, taskIndex, warnings, version: audited.lesson.version ?? 0, noOp: !audited.material }
+  return {
+    success: true,
+    lessonId,
+    taskIndex,
+    warnings,
+    version: audited.lesson.version ?? 0,
+    noOp: !audited.material,
+  }
 }
 
 export async function appendTask(lessonId, task, groupTitle) {
@@ -252,7 +279,14 @@ export async function appendTask(lessonId, task, groupTitle) {
   if (errors.length > 0) return { success: false, errors, warnings }
   const audited = applyLessonAuditMetadata(lesson, updatedLesson)
   if (audited.material) await db.collection('lessons').doc(lessonId).set(audited.lesson)
-  return { success: true, lessonId, taskIndex: flattenTasks(updatedTasks).length, warnings, version: audited.lesson.version ?? 0, noOp: !audited.material }
+  return {
+    success: true,
+    lessonId,
+    taskIndex: flattenTasks(updatedTasks).length,
+    warnings,
+    version: audited.lesson.version ?? 0,
+    noOp: !audited.material,
+  }
 }
 
 export async function upsertLesson(lesson) {
@@ -266,12 +300,23 @@ export async function deleteLesson(id) {
   return { success: true, id }
 }
 
-export async function forkLesson(sourceLessonId, classId, { publish = true, includeLesson = false } = {}) {
+export async function forkLesson(
+  sourceLessonId,
+  classId,
+  { publish = true, includeLesson = false } = {}
+) {
   const source = await getLesson(sourceLessonId)
   const cls = await getClass(classId)
   const fork = buildLessonFork(source, cls)
   if (!publish) {
-    return { success: true, published: false, id: fork.id, sourceLessonId, classId: cls.id, lesson: fork }
+    return {
+      success: true,
+      published: false,
+      id: fork.id,
+      sourceLessonId,
+      classId: cls.id,
+      lesson: fork,
+    }
   }
   const result = await publishLesson(fork, { allowDraft: false })
   if (!result.success) return result
@@ -289,10 +334,14 @@ export async function forkLesson(sourceLessonId, classId, { publish = true, incl
 export async function listLessonForks(sourceLessonId) {
   const snap = await db.collection('lessons').get()
   return snap.docs
-    .map(doc => ({ id: doc.id, ...doc.data() }))
-    .filter(lesson => lesson.fork?.sourceLessonId === sourceLessonId)
-    .sort((a, b) => String(a.fork?.className ?? a.title ?? a.id).localeCompare(String(b.fork?.className ?? b.title ?? b.id)))
-    .map(lesson => ({
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter((lesson) => lesson.fork?.sourceLessonId === sourceLessonId)
+    .sort((a, b) =>
+      String(a.fork?.className ?? a.title ?? a.id).localeCompare(
+        String(b.fork?.className ?? b.title ?? b.id)
+      )
+    )
+    .map((lesson) => ({
       ...summarize(lesson.id, lesson),
       sourceLessonId: lesson.fork.sourceLessonId,
       classId: lesson.fork.classId,
@@ -347,4 +396,3 @@ export async function publishYamlLesson(yamlText, includeLesson = false) {
   if (includeLesson && result.success) result.lesson = lesson
   return result
 }
-

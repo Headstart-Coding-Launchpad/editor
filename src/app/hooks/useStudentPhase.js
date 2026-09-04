@@ -10,10 +10,14 @@ import { useState, useRef, useEffect } from 'react'
  * onPersonalSandboxExit() — call when a forced task/phase change must close personal sandbox
  */
 export function useStudentPhase({
-  session, sessionLoading,
-  identity, identityLoaded,
-  lessonId, lessonLoading,
-  soloMode, teacherPresentation,
+  session,
+  sessionLoading,
+  identity,
+  identityLoaded,
+  lessonId,
+  lessonLoading,
+  soloMode,
+  teacherPresentation,
   firstTaskId = null,
   onBeforeTaskChange,
   onPersonalSandboxExit,
@@ -63,7 +67,8 @@ export function useStudentPhase({
   // ─── Phase determination ───────────────────────────────────────────────────
 
   useEffect(() => {
-    if ((!soloMode && sessionLoading) || (!teacherPresentation && !identityLoaded) || lessonLoading) return
+    if ((!soloMode && sessionLoading) || (!teacherPresentation && !identityLoaded) || lessonLoading)
+      return
 
     if (teacherPresentation) {
       if (!session) {
@@ -157,7 +162,10 @@ export function useStudentPhase({
     // Student was in the waiting room and the session just became active
     if (phaseRef.current === 'waiting') {
       if (isReturning) {
-        if (session.state === 'sandbox') { setPhase('sandbox'); return }
+        if (session.state === 'sandbox') {
+          setPhase('sandbox')
+          return
+        }
         setCurrentTaskId(session.currentTaskId ?? 1)
         setPhase('lesson')
       } else {
@@ -174,11 +182,23 @@ export function useStudentPhase({
     // Returning student — update timestamp and drop in
     updateTimestamp(sessionTs)
 
-    if (session.state === 'sandbox') { setPhase('sandbox'); return }
+    if (session.state === 'sandbox') {
+      setPhase('sandbox')
+      return
+    }
     setCurrentTaskId(session.currentTaskId ?? 1)
     setPhase('lesson')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionLoading, identityLoaded, lessonLoading, session?.state, session?.createdAt, session?.currentTaskId, soloMode, teacherPresentation])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    sessionLoading,
+    identityLoaded,
+    lessonLoading,
+    session?.state,
+    session?.createdAt,
+    session?.currentTaskId,
+    soloMode,
+    teacherPresentation,
+  ])
 
   // Close teacher presentation window when session ends
   useEffect(() => {
@@ -195,7 +215,7 @@ export function useStudentPhase({
       setCurrentTaskId(session.currentTaskId)
       setViewingTaskId(null)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.currentTaskId])
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -217,9 +237,18 @@ export function useStudentPhase({
       unregisterJoining(joiningTempIdRef.current)
       joiningTempIdRef.current = null
     }
-    if (!session || session.state === 'ended') { setPhase('waiting'); return }
-    if (session.state === 'waiting') { setPhase('waiting'); return }
-    if (session.state === 'sandbox') { setPhase('sandbox'); return }
+    if (!session || session.state === 'ended') {
+      setPhase('waiting')
+      return
+    }
+    if (session.state === 'waiting') {
+      setPhase('waiting')
+      return
+    }
+    if (session.state === 'sandbox') {
+      setPhase('sandbox')
+      return
+    }
     setCurrentTaskId(session.currentTaskId ?? 1)
     setPhase('lesson')
   }
@@ -238,10 +267,15 @@ export function useStudentPhase({
   }
 
   return {
-    phase, setPhase,
-    currentTaskId, setCurrentTaskId,
-    viewingTaskId, setViewingTaskId,
+    phase,
+    setPhase,
+    currentTaskId,
+    setCurrentTaskId,
+    viewingTaskId,
+    setViewingTaskId,
     joinError,
-    handleNameSubmit, handleWaitForTeacher, handleGoSolo,
+    handleNameSubmit,
+    handleWaitForTeacher,
+    handleGoSolo,
   }
 }

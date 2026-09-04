@@ -9,7 +9,7 @@ const authMocks = vi.hoisted(() => ({
 
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (...args) => authMocks.onAuthStateChanged(...args),
-  signInAnonymously:  (...args) => authMocks.signInAnonymously(...args),
+  signInAnonymously: (...args) => authMocks.signInAnonymously(...args),
 }))
 
 vi.mock('../../../shared/firebase', () => ({
@@ -17,7 +17,7 @@ vi.mock('../../../shared/firebase', () => ({
 }))
 
 const STORAGE_KEY = 'headstart_identity'
-const MOCK_UID    = 'firebase-anon-uid'
+const MOCK_UID = 'firebase-anon-uid'
 
 describe('useIdentity', () => {
   beforeEach(() => {
@@ -252,7 +252,9 @@ describe('useIdentity', () => {
     authMocks.signInAnonymously.mockReset()
     authMocks.signInAnonymously.mockResolvedValue({ user: { uid: MOCK_UID } })
 
-    act(() => { result.current.retrySignIn() })
+    act(() => {
+      result.current.retrySignIn()
+    })
 
     await waitFor(() => expect(result.current.authError).toBe(false))
   }, 15000)

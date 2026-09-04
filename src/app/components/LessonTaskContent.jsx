@@ -102,7 +102,9 @@ export default function LessonTaskContent({
   // fallback for every type) so its open/closed state can feed visiblePanes below just
   // like the side-rail's explainerCollapsed does.
   const [accordionExplainerCollapsed, setAccordionExplainerCollapsed] = useState(false)
-  const [taskPanelTab, setTaskPanelTab] = useState(() => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code')
+  const [taskPanelTab, setTaskPanelTab] = useState(
+    () => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code'
+  )
   const [taskPanelSizeRef, taskPanelSize] = useElementSize()
   // Scratch's Instructions/Code (desktop-compact, below) and, inside ScratchWorkspace
   // itself, Blocks/Stage are the only panes that hide via this shared explainer/code
@@ -123,11 +125,24 @@ export default function LessonTaskContent({
   // share the same row's height), so a short-but-wide window is left to ScratchWorkspace's
   // own compact detection (which checks height too) rather than tabbing Instructions away
   // for no benefit.
-  const taskPanelCompact = isScratchLesson && taskPanelMeasured &&
+  const taskPanelCompact =
+    isScratchLesson &&
+    taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
-  const hasTaskExplainer = (!!task?.explainer || showsCompleteCode) && !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide
-  const useFluidWorkspace = supportsSideExplainer && !isMobile && !isQuizTask && !isInformationTask && !isViewingExplainerSlide
+  const hasTaskExplainer =
+    (!!task?.explainer || showsCompleteCode) &&
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isViewingExplainerSlide
+  const useFluidWorkspace =
+    supportsSideExplainer &&
+    !isMobile &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isViewingExplainerSlide
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
@@ -138,26 +153,38 @@ export default function LessonTaskContent({
   const instructionsPaneVisible = !hasTaskExplainer
     ? false
     : taskPanelCompact
-    ? taskPanelTab === 'instructions'
-    : useSideExplainer
-    ? !explainerCollapsed
-    : !accordionExplainerCollapsed
+      ? taskPanelTab === 'instructions'
+      : useSideExplainer
+        ? !explainerCollapsed
+        : !accordionExplainerCollapsed
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
   const visiblePanes = isScratchLesson
-    ? [...(instructionsPaneVisible ? ['instructions'] : []), ...(codePaneVisible ? scratchCodePanes : [])]
+    ? [
+        ...(instructionsPaneVisible ? ['instructions'] : []),
+        ...(codePaneVisible ? scratchCodePanes : []),
+      ]
     : supportsModulePanes
-    ? [...(instructionsPaneVisible ? ['instructions'] : []), ...modulePanes]
-    : hasTaskExplainer
-    ? (instructionsPaneVisible ? ['instructions'] : [])
-    : null
+      ? [...(instructionsPaneVisible ? ['instructions'] : []), ...modulePanes]
+      : hasTaskExplainer
+        ? instructionsPaneVisible
+          ? ['instructions']
+          : []
+        : null
   const visiblePanesKey = visiblePanes?.join(',') ?? ''
   const instructionsHighlighted = !!highlightedPanes?.includes('instructions')
 
   useEffect(() => {
-    if (isScratchLesson || supportsModulePanes || hasTaskExplainer) onVisiblePanesChange?.(visiblePanes)
-  // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScratchLesson, supportsModulePanes, hasTaskExplainer, visiblePanesKey, onVisiblePanesChange])
+    if (isScratchLesson || supportsModulePanes || hasTaskExplainer)
+      onVisiblePanesChange?.(visiblePanes)
+    // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isScratchLesson,
+    supportsModulePanes,
+    hasTaskExplainer,
+    visiblePanesKey,
+    onVisiblePanesChange,
+  ])
 
   // Teacher "force" push for the instructions/explainer pane — applied once per distinct
   // forcedPaneCommand (guarded by its pushedAt token) via the same collapse/tab state a
@@ -167,7 +194,12 @@ export default function LessonTaskContent({
   // see forcedPaneCommand passed to StudentWorkspace below.
   const lastAppliedForceTokenRef = useRef(null)
   useEffect(() => {
-    if (!forcedPaneCommand || !hasTaskExplainer || lastAppliedForceTokenRef.current === forcedPaneCommand.pushedAt) return
+    if (
+      !forcedPaneCommand ||
+      !hasTaskExplainer ||
+      lastAppliedForceTokenRef.current === forcedPaneCommand.pushedAt
+    )
+      return
     lastAppliedForceTokenRef.current = forcedPaneCommand.pushedAt
     const wantsInstructions = forcedPaneCommand.panes.includes('instructions')
     if (useSideExplainer) {
@@ -184,36 +216,80 @@ export default function LessonTaskContent({
   }
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
-  const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonMod?.type ?? lesson.type)
-  const activeSupportStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && supportsStageReveal && cs.activeSupportStageIndex != null
-    ? getRevealableStages(task).find(({ index }) => index === cs.activeSupportStageIndex) ?? null
-    : null
+  const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(
+    lessonMod?.type ?? lesson.type
+  )
+  const activeSupportStage =
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isViewingExplainerSlide &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    supportsStageReveal &&
+    cs.activeSupportStageIndex != null
+      ? (getRevealableStages(task).find(({ index }) => index === cs.activeSupportStageIndex) ??
+        null)
+      : null
   const authoredCompleteStage = getCompleteStage(task)?.stage
-  const completeReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.completePreviewShown && ['python', 'html'].includes(lesson.type) && (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
-    ? authoredCompleteStage ?? (lesson.type === 'html'
-      ? { label: 'Complete solution', files: task.completeFiles ?? [], entryFile: task.completeEntryFile ?? task.entryFile }
-      : { label: 'Complete solution', code: task.completeCode })
+  const completeReferenceStage =
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isViewingExplainerSlide &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    cs.completePreviewShown &&
+    ['python', 'html'].includes(lesson.type) &&
+    (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
+      ? (authoredCompleteStage ??
+        (lesson.type === 'html'
+          ? {
+              label: 'Complete solution',
+              files: task.completeFiles ?? [],
+              entryFile: task.completeEntryFile ?? task.entryFile,
+            }
+          : { label: 'Complete solution', code: task.completeCode }))
+      : null
+  const targetedReferenceStage =
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isViewingExplainerSlide &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    cs.targetedPreviewStageIndex != null
+      ? (task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null)
+      : null
+  const displayedReferenceStage =
+    completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage
+  const targetedOfferStage = cs.targetedStageOffer
+    ? (task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null)
     : null
-  const targetedReferenceStage = !isSandbox && !cs.inPersonalSandbox && !isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.targetedPreviewStageIndex != null
-    ? task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null
-    : null
-  const displayedReferenceStage = completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage
-  const targetedOfferStage = cs.targetedStageOffer ? task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null : null
-  const genericNextStage = !targetedOfferStage && cs.offeredSupportStageIndex == null && canOfferNextStage
-    ? task?.codeStages?.[cs.offeredStageIndex + 1] ?? null
-    : null
+  const genericNextStage =
+    !targetedOfferStage && cs.offeredSupportStageIndex == null && canOfferNextStage
+      ? (task?.codeStages?.[cs.offeredStageIndex + 1] ?? null)
+      : null
 
-  const taskContentStyle = (!isSandbox && isQuizTask)
-    ? s.taskContentQuiz
-    : (!isSandbox && (isInformationTask || isViewingExplainerSlide))
-    ? s.taskContentInfo
-    : (modStyles.taskContentStyle ?? s.taskContentFallback)
+  const taskContentStyle =
+    !isSandbox && isQuizTask
+      ? s.taskContentQuiz
+      : !isSandbox && (isInformationTask || isViewingExplainerSlide)
+        ? s.taskContentInfo
+        : (modStyles.taskContentStyle ?? s.taskContentFallback)
 
-  const editorAreaStyle = (!isSandbox && isQuizTask)
-    ? s.editorAreaQuiz
-    : (!isSandbox && (isInformationTask || isViewingExplainerSlide))
-    ? s.editorAreaInfo
-    : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
+  const editorAreaStyle =
+    !isSandbox && isQuizTask
+      ? s.editorAreaQuiz
+      : !isSandbox && (isInformationTask || isViewingExplainerSlide)
+        ? s.editorAreaInfo
+        : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
 
   // s.fluidTaskContent's overflow:'hidden' + minHeight:0 applies to every fluid-workspace
   // type, Scratch included: scratchTaskPanelWrap carries no height floor of its own to
@@ -254,9 +330,13 @@ export default function LessonTaskContent({
     </div>
   ) : null
 
-  const shouldShowFeedbackBanner = !cs.stagePromptAccepted && !isSandbox && !cs.inPersonalSandbox && !isForcedTeacherLive && (
-    ((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) || cs.offeredSupportStageIndex != null
-  )
+  const shouldShowFeedbackBanner =
+    !cs.stagePromptAccepted &&
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isForcedTeacherLive &&
+    (((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) ||
+      cs.offeredSupportStageIndex != null)
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
       // Remounts (resetting the popup's own auto-dismiss timer and any manual dismissal)
@@ -266,23 +346,34 @@ export default function LessonTaskContent({
       passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
       failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
-      onShowCodeStage={targetedOfferStage
-        ? cs.handlePreviewTargetedStage
-        : cs.offeredSupportStageIndex != null
-        ? cs.handleRevealOfferedSupportStage
-        : canOfferNextStage ? () => {
-        const nextStageIndex = cs.offeredStageIndex + 1
-        cs.handleAcceptGenericNextStage(nextStageIndex)
-      } : undefined}
-      stageActionLabel={targetedOfferStage
-        ? `Show ${targetedOfferStage.label || 'reference'}`
-        : cs.offeredSupportStageIndex != null ? 'Show reference'
-        : genericNextStage ? `Use ${genericNextStage.label || 'next stage'}` : undefined}
-      stageActionConfirm={targetedOfferStage?.action === 'replace'
-        ? `This will replace your current work with “${targetedOfferStage.label || 'this stage'}”. Continue?`
-        : genericNextStage
-          ? `This will replace your current work with “${genericNextStage.label || 'the next stage'}”. Continue?`
-        : undefined}
+      onShowCodeStage={
+        targetedOfferStage
+          ? cs.handlePreviewTargetedStage
+          : cs.offeredSupportStageIndex != null
+            ? cs.handleRevealOfferedSupportStage
+            : canOfferNextStage
+              ? () => {
+                  const nextStageIndex = cs.offeredStageIndex + 1
+                  cs.handleAcceptGenericNextStage(nextStageIndex)
+                }
+              : undefined
+      }
+      stageActionLabel={
+        targetedOfferStage
+          ? `Show ${targetedOfferStage.label || 'reference'}`
+          : cs.offeredSupportStageIndex != null
+            ? 'Show reference'
+            : genericNextStage
+              ? `Use ${genericNextStage.label || 'next stage'}`
+              : undefined
+      }
+      stageActionConfirm={
+        targetedOfferStage?.action === 'replace'
+          ? `This will replace your current work with “${targetedOfferStage.label || 'this stage'}”. Continue?`
+          : genericNextStage
+            ? `This will replace your current work with “${genericNextStage.label || 'the next stage'}”. Continue?`
+            : undefined
+      }
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
@@ -292,27 +383,36 @@ export default function LessonTaskContent({
   const workspaceContent = (
     <>
       {isSandbox && sandboxExplainer && (
-        <ExplainerPanel title="Instructions" content={sandboxExplainer} topicType={lesson.type} disableCopy />
+        <ExplainerPanel
+          title="Instructions"
+          content={sandboxExplainer}
+          topicType={lesson.type}
+          disableCopy
+        />
       )}
 
-      {displayedReferenceStage && (() => {
-        const reveal = completeReferenceStage || targetedReferenceStage ? null : cs.supportStageReveals?.[activeSupportStage?.index]
-        const sourceLabel = completeReferenceStage
-          ? 'Complete reference'
-          : targetedReferenceStage
-            ? 'Shown for your feedback'
-          : reveal?.source === 'teacher'
-            ? 'Opened by your teacher'
-            : 'Shown after a failed attempt'
-        return (
-          <SupportStagePanel
-            stage={completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage.stage}
-            lessonType={lesson.type}
-            revealed={completeReferenceStage || targetedReferenceStage ? true : !!reveal}
-            sourceLabel={sourceLabel}
-          />
-        )
-      })()}
+      {displayedReferenceStage &&
+        (() => {
+          const reveal =
+            completeReferenceStage || targetedReferenceStage
+              ? null
+              : cs.supportStageReveals?.[activeSupportStage?.index]
+          const sourceLabel = completeReferenceStage
+            ? 'Complete reference'
+            : targetedReferenceStage
+              ? 'Shown for your feedback'
+              : reveal?.source === 'teacher'
+                ? 'Opened by your teacher'
+                : 'Shown after a failed attempt'
+          return (
+            <SupportStagePanel
+              stage={completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage.stage}
+              lessonType={lesson.type}
+              revealed={completeReferenceStage || targetedReferenceStage ? true : !!reveal}
+              sourceLabel={sourceLabel}
+            />
+          )
+        })()}
 
       {!isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
@@ -381,7 +481,9 @@ export default function LessonTaskContent({
           teacherLiveActiveFile={teacherLiveActiveFile}
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-          onVisiblePanesChange={isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined}
+          onVisiblePanesChange={
+            isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined
+          }
           highlightedPanes={highlightedPanes}
           forcedPaneCommand={forcedPaneCommand}
         />
@@ -399,9 +501,15 @@ export default function LessonTaskContent({
   // available height, so it needs the editor area itself to scroll instead of clipping it.
   const editorArea = (
     <div
-      style={useFluidWorkspace
-        ? { ...editorAreaStyle, ...s.fluidWorkspace, ...(isCodeArrangeTask ? { overflow: 'auto' } : {}) }
-        : editorAreaStyle}
+      style={
+        useFluidWorkspace
+          ? {
+              ...editorAreaStyle,
+              ...s.fluidWorkspace,
+              ...(isCodeArrangeTask ? { overflow: 'auto' } : {}),
+            }
+          : editorAreaStyle
+      }
       className={isForcedTeacherLive ? 'live-view-active' : undefined}
     >
       {workspaceContent}
@@ -411,12 +519,16 @@ export default function LessonTaskContent({
   return (
     <TaskSlideTransition transitionKey={transitionKey} style={transitionStyle}>
       {previewMode && task && !isSandbox && (
-        <Banner accent="#0ea5e9" color="#0369a1" style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}>
+        <Banner
+          accent="#0ea5e9"
+          color="#0369a1"
+          style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}
+        >
           {task.taskMode === 'live'
             ? 'Live sessions only'
             : task.taskMode === 'solo'
-            ? 'Solo mode only'
-            : 'Live + Solo'}
+              ? 'Solo mode only'
+              : 'Live + Solo'}
         </Banner>
       )}
 
@@ -435,7 +547,10 @@ export default function LessonTaskContent({
           {taskPanelCompact && (
             <PanelTabs
               label="Task panel"
-              tabs={[{ id: 'instructions', label: 'Instructions' }, { id: 'code', label: 'Code' }]}
+              tabs={[
+                { id: 'instructions', label: 'Instructions' },
+                { id: 'code', label: 'Code' },
+              ]}
               activeId={taskPanelTab}
               onChange={handleTaskPanelTabChange}
               highlightedIds={highlightedPanes}
@@ -447,9 +562,16 @@ export default function LessonTaskContent({
               id={taskPanelCompact ? 'panel-tabpanel-instructions' : undefined}
               aria-labelledby={taskPanelCompact ? 'panel-tab-instructions' : undefined}
               hidden={taskPanelCompact ? taskPanelTab !== 'instructions' : undefined}
-              style={taskPanelCompact
-                ? { ...s.scratchCodeFlex, display: taskPanelTab === 'instructions' ? 'flex' : 'none' }
-                : (explainerCollapsed ? s.scratchExplainerRail : s.scratchExplainerFixed)}
+              style={
+                taskPanelCompact
+                  ? {
+                      ...s.scratchCodeFlex,
+                      display: taskPanelTab === 'instructions' ? 'flex' : 'none',
+                    }
+                  : explainerCollapsed
+                    ? s.scratchExplainerRail
+                    : s.scratchExplainerFixed
+              }
             >
               {!taskPanelCompact && explainerCollapsed ? (
                 <CollapsedPanelRail
@@ -460,16 +582,20 @@ export default function LessonTaskContent({
                   ariaLabel="Show Explainer"
                   highlighted={instructionsHighlighted}
                 />
-              ) : taskExplainer}
+              ) : (
+                taskExplainer
+              )}
             </div>
             <div
               role={taskPanelCompact ? 'tabpanel' : undefined}
               id={taskPanelCompact ? 'panel-tabpanel-code' : undefined}
               aria-labelledby={taskPanelCompact ? 'panel-tab-code' : undefined}
               hidden={taskPanelCompact ? taskPanelTab !== 'code' : undefined}
-              style={taskPanelCompact
-                ? { ...s.scratchCodeFlex, display: taskPanelTab === 'code' ? 'flex' : 'none' }
-                : s.scratchCodeFlex}
+              style={
+                taskPanelCompact
+                  ? { ...s.scratchCodeFlex, display: taskPanelTab === 'code' ? 'flex' : 'none' }
+                  : s.scratchCodeFlex
+              }
             >
               {editorArea}
             </div>

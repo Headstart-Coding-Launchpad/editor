@@ -19,10 +19,10 @@ export default function CopyCodePanel({ code, language = 'python' }) {
     <section
       style={s.panel}
       aria-label={`${languageLabel} reference code`}
-      onCopy={e => e.preventDefault()}
-      onCut={e => e.preventDefault()}
-      onDragStart={e => e.preventDefault()}
-      onContextMenu={e => e.preventDefault()}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div style={s.header}>
         <span style={s.title}>{languageLabel} reference</span>

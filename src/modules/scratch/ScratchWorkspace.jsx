@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
+import {
+  CollapsedPanelRail,
+  CollapseTabButton,
+} from '../../app/components/CollapsiblePanelControls'
 import { useElementSize } from '../../shared/useElementSize.js'
 import {
   loadBlocklyModules,
@@ -108,10 +111,17 @@ export function computeBlockScale(width, height) {
 // it's unit-testable without Blockly.
 export function computeStageScale(width, height, { compact, flyoutCollapsed }) {
   const editorReserve = flyoutCollapsed
-    ? (width < 760 ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT : MIN_EDITOR_WIDTH_COLLAPSED)
-    : (width < 760 ? MIN_EDITOR_WIDTH_COMPACT : MIN_EDITOR_WIDTH)
-  const widthScale = compact ? (width - 8) / (STAGE_W + 2) : (width - editorReserve - 8) / (STAGE_W + 2)
-  const heightScale = height > 0 ? (height - STAGE_TOOLBAR_HEIGHT_RESERVE) / (STAGE_H + 2) : Infinity
+    ? width < 760
+      ? MIN_EDITOR_WIDTH_COLLAPSED_COMPACT
+      : MIN_EDITOR_WIDTH_COLLAPSED
+    : width < 760
+      ? MIN_EDITOR_WIDTH_COMPACT
+      : MIN_EDITOR_WIDTH
+  const widthScale = compact
+    ? (width - 8) / (STAGE_W + 2)
+    : (width - editorReserve - 8) / (STAGE_W + 2)
+  const heightScale =
+    height > 0 ? (height - STAGE_TOOLBAR_HEIGHT_RESERVE) / (STAGE_H + 2) : Infinity
   const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
   return Number.isFinite(nextScale) ? nextScale : 1
 }
@@ -128,12 +138,19 @@ const STAGE_RUNTIME_STATE = {
   costume: null,
 }
 
-const toCanvasX = x => STAGE_W / 2 + x
-const toCanvasY = y => STAGE_H / 2 - y
+const toCanvasX = (x) => STAGE_W / 2 + x
+const toCanvasY = (y) => STAGE_H / 2 - y
 
 export const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
 
-const SPRITE_TYPE_COLOR = { cat: '#FFA500', ball: '#4C97FF', star: '#FFD700', arrow: '#9966FF', bat: 'var(--colour-ink-strong)', parrot: '#22c55e' }
+const SPRITE_TYPE_COLOR = {
+  cat: '#FFA500',
+  ball: '#4C97FF',
+  star: '#FFD700',
+  arrow: '#9966FF',
+  bat: 'var(--colour-ink-strong)',
+  parrot: '#22c55e',
+}
 
 export function isSpriteStudentEditable(sprite) {
   return sprite?.studentEditable !== false
@@ -163,12 +180,12 @@ export function filterCheckableSpriteWorkspaces(spriteWorkspaces) {
 export function isValidNewVariableName(name, existingVariables = []) {
   const trimmed = String(name ?? '').trim()
   if (!trimmed) return false
-  return !(existingVariables ?? []).some(v => v.name.toLowerCase() === trimmed.toLowerCase())
+  return !(existingVariables ?? []).some((v) => v.name.toLowerCase() === trimmed.toLowerCase())
 }
 
 const ROT_STYLES = [
-  { val: 'all around',  icon: '↺', title: 'Rotate all around' },
-  { val: 'left-right',  icon: '↔', title: 'Flip left-right only' },
+  { val: 'all around', icon: '↺', title: 'Rotate all around' },
+  { val: 'left-right', icon: '↔', title: 'Flip left-right only' },
   { val: "don't rotate", icon: '↑', title: "Don't rotate" },
 ]
 
@@ -179,7 +196,17 @@ function normaliseInitialStates(raw, sprites) {
 }
 
 function defaultSpriteState(sp) {
-  return { x: sp.x ?? 0, y: sp.y ?? 0, size: sp.size ?? 100, direction: sp.direction ?? 90, visible: sp.visible ?? true, bubble: '', bubbleType: 'say', rotationStyle: sp.rotationStyle ?? 'all around', costume: sp.costume ?? sp.costumes?.[0]?.name ?? null }
+  return {
+    x: sp.x ?? 0,
+    y: sp.y ?? 0,
+    size: sp.size ?? 100,
+    direction: sp.direction ?? 90,
+    visible: sp.visible ?? true,
+    bubble: '',
+    bubbleType: 'say',
+    rotationStyle: sp.rotationStyle ?? 'all around',
+    costume: sp.costume ?? sp.costumes?.[0]?.name ?? null,
+  }
 }
 
 function initSpriteStates(sprites) {
@@ -193,50 +220,94 @@ function initSpriteStates(sprites) {
 function drawScratchSpriteAtOrigin(ctx, type, r) {
   switch (type) {
     case 'ball':
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = '#4C97FF'; ctx.fill()
-      ctx.strokeStyle = '#2244aa'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(0, 0, r, 0, Math.PI * 2)
+      ctx.fillStyle = '#4C97FF'
+      ctx.fill()
+      ctx.strokeStyle = '#2244aa'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
       break
     case 'star': {
       ctx.beginPath()
       for (let i = 0; i < 10; i++) {
         const a = (i * Math.PI) / 5 - Math.PI / 2
         const rad = i % 2 === 0 ? r : r * 0.42
-        i === 0 ? ctx.moveTo(Math.cos(a) * rad, Math.sin(a) * rad) : ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad)
+        i === 0
+          ? ctx.moveTo(Math.cos(a) * rad, Math.sin(a) * rad)
+          : ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad)
       }
-      ctx.closePath(); ctx.fillStyle = '#FFD700'; ctx.fill()
-      ctx.strokeStyle = '#CC9900'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.closePath()
+      ctx.fillStyle = '#FFD700'
+      ctx.fill()
+      ctx.strokeStyle = '#CC9900'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
       break
     }
     case 'arrow':
       ctx.beginPath()
-      ctx.moveTo(0, -r); ctx.lineTo(r * 0.65, r * 0.5); ctx.lineTo(0, r * 0.1); ctx.lineTo(-r * 0.65, r * 0.5)
-      ctx.closePath(); ctx.fillStyle = '#9966FF'; ctx.fill()
-      ctx.strokeStyle = '#6633cc'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.moveTo(0, -r)
+      ctx.lineTo(r * 0.65, r * 0.5)
+      ctx.lineTo(0, r * 0.1)
+      ctx.lineTo(-r * 0.65, r * 0.5)
+      ctx.closePath()
+      ctx.fillStyle = '#9966FF'
+      ctx.fill()
+      ctx.strokeStyle = '#6633cc'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
       break
     case 'bat':
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'; ctx.fill()
-      ctx.beginPath(); ctx.ellipse(-r * 0.9, -r * 0.1, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'; ctx.fill()
-      ctx.beginPath(); ctx.ellipse(r * 0.9, -r * 0.1, r * 0.55, r * 0.3, 0.3, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'; ctx.fill()
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2)
+      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(-r * 0.9, -r * 0.1, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2)
+      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(r * 0.9, -r * 0.1, r * 0.55, r * 0.3, 0.3, 0, Math.PI * 2)
+      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fill()
       break
     case 'parrot':
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = '#22c55e'; ctx.fill()
-      ctx.strokeStyle = '#166534'; ctx.lineWidth = 1.5; ctx.stroke()
-      ctx.beginPath(); ctx.moveTo(r * 0.3, -r * 0.1); ctx.lineTo(r * 0.8, r * 0.1); ctx.lineTo(r * 0.3, r * 0.25)
-      ctx.closePath(); ctx.fillStyle = '#FBA504'; ctx.fill()
+      ctx.beginPath()
+      ctx.arc(0, 0, r, 0, Math.PI * 2)
+      ctx.fillStyle = '#22c55e'
+      ctx.fill()
+      ctx.strokeStyle = '#166534'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(r * 0.3, -r * 0.1)
+      ctx.lineTo(r * 0.8, r * 0.1)
+      ctx.lineTo(r * 0.3, r * 0.25)
+      ctx.closePath()
+      ctx.fillStyle = '#FBA504'
+      ctx.fill()
       break
-    default: { // cat
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = '#FFA500'; ctx.fill(); ctx.strokeStyle = '#cc6600'; ctx.lineWidth = 1.5; ctx.stroke()
+    default: {
+      // cat
+      ctx.beginPath()
+      ctx.arc(0, 0, r, 0, Math.PI * 2)
+      ctx.fillStyle = '#FFA500'
+      ctx.fill()
+      ctx.strokeStyle = '#cc6600'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
       const er = Math.max(2, r * 0.18)
-      ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.2, er, 0, Math.PI * 2); ctx.arc(r * 0.3, -r * 0.2, er, 0, Math.PI * 2)
-      ctx.fillStyle = '#222'; ctx.fill()
-      ctx.beginPath(); ctx.arc(0, r * 0.15, r * 0.35, 0, Math.PI)
-      ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(-r * 0.3, -r * 0.2, er, 0, Math.PI * 2)
+      ctx.arc(r * 0.3, -r * 0.2, er, 0, Math.PI * 2)
+      ctx.fillStyle = '#222'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(0, r * 0.15, r * 0.35, 0, Math.PI)
+      ctx.strokeStyle = '#222'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
       break
     }
   }
@@ -253,9 +324,9 @@ function drawEmojiAtOrigin(ctx, emoji, r) {
 function drawSpriteShape(ctx, s, type, emoji) {
   const cx = toCanvasX(s.x)
   const cy = toCanvasY(s.y)
-  const r  = Math.max(4, (s.size / 100) * 24)
+  const r = Math.max(4, (s.size / 100) * 24)
   const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
-  const rs  = s.rotationStyle ?? 'all around'
+  const rs = s.rotationStyle ?? 'all around'
   const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
   const flipH = rs === 'left-right' && dir > 90 && dir < 270
   ctx.save()
@@ -283,7 +354,7 @@ export function wrapScratchBubbleText(ctx, message, maxWidth) {
   if (line) lines.push(line)
 
   // A long unbroken value (for example a URL) still needs to stay inside the bubble.
-  return lines.flatMap(currentLine => {
+  return lines.flatMap((currentLine) => {
     if (ctx.measureText(currentLine).width <= maxWidth) return currentLine
     const characters = []
     let segment = ''
@@ -304,41 +375,75 @@ function drawBubble(ctx, s) {
   if (!s.bubble) return
   const cx = toCanvasX(s.x)
   const cy = toCanvasY(s.y)
-  const r  = Math.max(4, (s.size / 100) * 24)
+  const r = Math.max(4, (s.size / 100) * 24)
   const fontSize = Math.max(11, r * 0.6)
   ctx.font = `${fontSize}px Quicksand, sans-serif`
   const maxTextWidth = 180
   const lines = wrapScratchBubbleText(ctx, s.bubble, maxTextWidth)
   if (!lines.length) return
   const lineHeight = Math.ceil(fontSize * 1.25)
-  const bw = Math.min(Math.max(...lines.map(line => ctx.measureText(line).width)) + 20, maxTextWidth + 20)
+  const bw = Math.min(
+    Math.max(...lines.map((line) => ctx.measureText(line).width)) + 20,
+    maxTextWidth + 20
+  )
   const bh = Math.max(lines.length * lineHeight + 16, 30)
   const bx = Math.min(STAGE_W - bw - 4, cx + r + 6)
   const by = Math.max(4, cy - bh - r - 6)
   const isThink = s.bubbleType === 'think'
-  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10)
-  ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.5; ctx.stroke()
+  ctx.beginPath()
+  ctx.roundRect(bx, by, bw, bh, 10)
+  ctx.fillStyle = '#fff'
+  ctx.fill()
+  ctx.strokeStyle = '#bbb'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
   if (isThink) {
-    const dotEndX = bx + bw * 0.25; const dotEndY = by + bh
-    const dotStartX = cx + r * 0.5; const dotStartY = cy - r * 0.6
+    const dotEndX = bx + bw * 0.25
+    const dotEndY = by + bh
+    const dotStartX = cx + r * 0.5
+    const dotStartY = cy - r * 0.6
     for (let i = 0; i < 3; i++) {
       const t = i / 2
-      const dx = dotStartX + (dotEndX - dotStartX) * t; const dy = dotStartY + (dotEndY - dotStartY) * t
-      ctx.beginPath(); ctx.arc(dx, dy, 2 + i * 1.2, 0, Math.PI * 2)
-      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.5; ctx.stroke()
+      const dx = dotStartX + (dotEndX - dotStartX) * t
+      const dy = dotStartY + (dotEndY - dotStartY) * t
+      ctx.beginPath()
+      ctx.arc(dx, dy, 2 + i * 1.2, 0, Math.PI * 2)
+      ctx.fillStyle = '#fff'
+      ctx.fill()
+      ctx.strokeStyle = '#bbb'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
     }
   } else {
-    const tailX = bx + Math.min(18, bw * 0.2); const tailY = by + bh
-    const tipX = cx + r * 0.4; const tipY = cy - r * 0.2
-    ctx.beginPath(); ctx.moveTo(tailX - 6, tailY); ctx.lineTo(tailX + 6, tailY); ctx.lineTo(tipX, tipY)
-    ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill()
-    ctx.beginPath(); ctx.moveTo(tailX - 6, tailY); ctx.lineTo(tipX, tipY); ctx.lineTo(tailX + 6, tailY)
-    ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.5; ctx.stroke()
-    ctx.beginPath(); ctx.moveTo(tailX - 5, tailY); ctx.lineTo(tailX + 5, tailY)
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke()
+    const tailX = bx + Math.min(18, bw * 0.2)
+    const tailY = by + bh
+    const tipX = cx + r * 0.4
+    const tipY = cy - r * 0.2
+    ctx.beginPath()
+    ctx.moveTo(tailX - 6, tailY)
+    ctx.lineTo(tailX + 6, tailY)
+    ctx.lineTo(tipX, tipY)
+    ctx.closePath()
+    ctx.fillStyle = '#fff'
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(tailX - 6, tailY)
+    ctx.lineTo(tipX, tipY)
+    ctx.lineTo(tailX + 6, tailY)
+    ctx.strokeStyle = '#bbb'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(tailX - 5, tailY)
+    ctx.lineTo(tailX + 5, tailY)
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2.5
+    ctx.stroke()
   }
-  ctx.fillStyle = '#222'; ctx.font = `${fontSize}px Quicksand, sans-serif`
-  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#222'
+  ctx.font = `${fontSize}px Quicksand, sans-serif`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
   const textY = by + 8 + fontSize
   lines.forEach((line, index) => ctx.fillText(line, bx + 10, textY + index * lineHeight))
 }
@@ -346,9 +451,9 @@ function drawBubble(ctx, s) {
 function drawSpriteImage(ctx, s, img) {
   const cx = toCanvasX(s.x)
   const cy = toCanvasY(s.y)
-  const r  = Math.max(4, (s.size / 100) * 24)
+  const r = Math.max(4, (s.size / 100) * 24)
   const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
-  const rs  = s.rotationStyle ?? 'all around'
+  const rs = s.rotationStyle ?? 'all around'
   const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
   const flipH = rs === 'left-right' && dir > 90 && dir < 270
   const drawSize = r * 2
@@ -362,23 +467,36 @@ function drawSpriteImage(ctx, s, img) {
 
 // Shared by real sprites and clones: picks the current costume image (falling back to the
 // vector shape) and draws one instance. `state` may belong to a sprite or a clone of one.
-function drawSpriteVisual(ctx, state, costumes, fallbackType, fallbackEmoji, assetsPath, imageCache) {
+function drawSpriteVisual(
+  ctx,
+  state,
+  costumes,
+  fallbackType,
+  fallbackEmoji,
+  assetsPath,
+  imageCache
+) {
   if (!state?.visible) return
-  const costumeEntry = costumes?.length > 0
-    ? (costumes.find(c => c.name === state.costume) ?? costumes[0])
-    : null
+  const costumeEntry =
+    costumes?.length > 0 ? (costumes.find((c) => c.name === state.costume) ?? costumes[0]) : null
   if (costumeEntry?.image) {
     const url = resolveAssetFileUrl(assetsPath, costumeEntry.image)
     const img = imageCache[url]
-    if (img) { drawSpriteImage(ctx, state, img); return }
+    if (img) {
+      drawSpriteImage(ctx, state, img)
+      return
+    }
   }
   drawSpriteShape(ctx, state, fallbackType ?? 'cat', costumeEntry?.emoji || fallbackEmoji)
 }
 
-function spriteRadius(s) { return Math.max(4, (s.size / 100) * 24) }
+function spriteRadius(s) {
+  return Math.max(4, (s.size / 100) * 24)
+}
 
 function hitTest(s, canvasX, canvasY) {
-  const cx = toCanvasX(s.x); const cy = toCanvasY(s.y)
+  const cx = toCanvasX(s.x)
+  const cy = toCanvasY(s.y)
   return Math.hypot(canvasX - cx, canvasY - cy) <= spriteRadius(s) + 8
 }
 
@@ -387,27 +505,33 @@ function hitTest(s, canvasX, canvasY) {
 function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
   const cx = size / 2
   const cy = size / 2
-  const r  = Math.max(4, size * 0.35)
+  const r = Math.max(4, size * 0.35)
   const dir = Number.isFinite(Number(state?.direction)) ? Number(state.direction) : 90
-  const rs  = state?.rotationStyle ?? 'all around'
+  const rs = state?.rotationStyle ?? 'all around'
   const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
   const flipH = rs === 'left-right' && dir > 90 && dir < 270
 
-  const costumeEntry = sprite.costumes?.length > 0
-    ? (sprite.costumes.find(c => c.name === state?.costume) ?? sprite.costumes[0])
-    : null
+  const costumeEntry =
+    sprite.costumes?.length > 0
+      ? (sprite.costumes.find((c) => c.name === state?.costume) ?? sprite.costumes[0])
+      : null
   if (costumeEntry?.image && imageCache) {
     const url = resolveAssetFileUrl(assetsPath, costumeEntry.image)
     const img = imageCache[url]
     if (img) {
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate(rot)
       if (flipH) ctx.scale(-1, 1)
       ctx.drawImage(img, -r, -r, r * 2, r * 2)
-      ctx.restore(); return
+      ctx.restore()
+      return
     }
   }
 
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(rot)
   if (flipH) ctx.scale(-1, 1)
   const thumbEmoji = costumeEntry?.emoji || sprite.emoji
   if (thumbEmoji) drawEmojiAtOrigin(ctx, thumbEmoji, r)
@@ -439,7 +563,14 @@ function PropField({ label, value, onChange, readOnly, min, max }) {
         style={s.spritePropInput}
         value={value}
         readOnly={readOnly}
-        onChange={readOnly ? undefined : e => { const v = e.target.valueAsNumber; if (!isNaN(v)) onChange(v) }}
+        onChange={
+          readOnly
+            ? undefined
+            : (e) => {
+                const v = e.target.valueAsNumber
+                if (!isNaN(v)) onChange(v)
+              }
+        }
       />
     </div>
   )
@@ -452,35 +583,41 @@ function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {
   try {
     if (check.type === 'block_used') {
       if (check.spriteName) {
-        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        const target =
+          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
         return target ? evaluateScratchCheck(check, target.workspace, null, null) : false
       }
-      return spriteWorkspaces.some(sp => evaluateScratchCheck(check, sp.workspace, null, null))
+      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, null))
     }
     if (check.type === 'variable_equals' || check.type === 'variable_compare') {
       return evaluateScratchCheck(check, null, null, signal)
     }
     if (check.type === 'block_run') {
       if (check.spriteName) {
-        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        const target =
+          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
         return target ? evaluateScratchCheck(check, target.workspace, null, signal) : false
       }
-      return spriteWorkspaces.some(sp => evaluateScratchCheck(check, sp.workspace, null, signal))
+      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, signal))
     }
     if (check.type === 'blocks_in_order' || check.type === 'block_count') {
       if (check.spriteName) {
-        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        const target =
+          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
         if (!target) return false
         return evaluateScratchCheck(check, target.workspace, null, null)
       }
-      return spriteWorkspaces.some(sp => evaluateScratchCheck(check, sp.workspace, null, null))
+      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, null))
     }
     // sprite_property / sprite_property_delta / sprite_property_changed / costume_is: match by name or fall back to first
-    const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+    const target =
+      spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
     if (!target) return false
     const preRunState = preRunSpriteStates[target.id] ?? null
     return evaluateScratchCheck(check, target.workspace, target.state, signal, preRunState)
-  } catch { return false }
+  } catch {
+    return false
+  }
 }
 
 // Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation.
@@ -489,21 +626,24 @@ function evalSingleCheckPartial(check, spriteWorkspaces) {
   try {
     const bySprite = (fn) => {
       if (check.spriteName) {
-        const target = spriteWorkspaces.find(sp => sp.name === check.spriteName) ?? spriteWorkspaces[0]
+        const target =
+          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
         return target ? fn(target.workspace) : 'pending'
       }
-      const results = spriteWorkspaces.map(sp => fn(sp.workspace))
-      if (results.some(r => r === 'pass')) return 'pass'
-      if (results.some(r => r === 'fail')) return 'fail'
+      const results = spriteWorkspaces.map((sp) => fn(sp.workspace))
+      if (results.some((r) => r === 'pass')) return 'pass'
+      if (results.some((r) => r === 'fail')) return 'fail'
       return 'pending'
     }
-    return bySprite(ws => partialEvaluateScratchCheck(check, ws))
-  } catch { return 'pending' }
+    return bySprite((ws) => partialEvaluateScratchCheck(check, ws))
+  } catch {
+    return 'pending'
+  }
 }
 
 function normalizeScratchChecks(check) {
   if (!check) return []
-  if (Array.isArray(check)) return check.filter(c => c?.type)
+  if (Array.isArray(check)) return check.filter((c) => c?.type)
   if (check.type) return [check]
   return []
 }
@@ -518,19 +658,38 @@ function LiveCursorDot({ down }) {
   return (
     <>
       {down && (
-        <div style={{
-          position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-          width: CURSOR_HALO_RADIUS * 2, height: CURSOR_HALO_RADIUS * 2, borderRadius: '50%',
-          background: CURSOR_HALO_FILL, border: `2px solid ${CURSOR_HALO_STROKE}`,
-          pointerEvents: 'none', zIndex: 6,
-        }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: CURSOR_HALO_RADIUS * 2,
+            height: CURSOR_HALO_RADIUS * 2,
+            borderRadius: '50%',
+            background: CURSOR_HALO_FILL,
+            border: `2px solid ${CURSOR_HALO_STROKE}`,
+            pointerEvents: 'none',
+            zIndex: 6,
+          }}
+        />
       )}
-      <div style={{
-        position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-        width: 12, height: 12, borderRadius: '50%',
-        background: '#7c3aed', border: '2px solid #fff',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.3)', pointerEvents: 'none', zIndex: 6,
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          background: '#7c3aed',
+          border: '2px solid #fff',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+          pointerEvents: 'none',
+          zIndex: 6,
+        }}
+      />
     </>
   )
 }
@@ -543,7 +702,7 @@ export default function ScratchWorkspace({
   unrestricted = false,
   assetsPath = '',
   initialStates = null,
-  initialState  = null,      // legacy single-sprite alias
+  initialState = null, // legacy single-sprite alias
   onStateChange,
   onSpriteStatesChange,
   onActivity,
@@ -551,7 +710,7 @@ export default function ScratchWorkspace({
   onBlockDragMove,
   onCheckResult,
   externalStates = null,
-  externalState  = null,     // legacy alias
+  externalState = null, // legacy alias
   externalSpriteState = null,
   externalCursor = null,
   externalBlockDrag = null,
@@ -565,8 +724,8 @@ export default function ScratchWorkspace({
   hideSpriteProps = false,
   onRemoveSprite = null,
   spritePanelFooter = null,
-  predefinedBlocks = null,   // Legacy PredefinedBlock[] merged for current tab
-  prebuiltStacks = null,     // Visual stack snippets merged for current tab
+  predefinedBlocks = null, // Legacy PredefinedBlock[] merged for current tab
+  prebuiltStacks = null, // Visual stack snippets merged for current tab
   respectStudentEditable = false,
   forceCompact = false,
   onVisiblePanesChange = null,
@@ -578,22 +737,35 @@ export default function ScratchWorkspace({
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
   // a session without disturbing already-injected Blockly workspaces. ScratchWorkspace remounts
   // per task (callers key it by task id), so these re-seed correctly on every task change.
-  const [sprites, setSprites] = useState(() => task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES)
-  const [backdrops, setBackdrops] = useState(() => task?.backdrops?.length > 0 ? task.backdrops : [])
+  const [sprites, setSprites] = useState(() =>
+    task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
+  )
+  const [backdrops, setBackdrops] = useState(() =>
+    task?.backdrops?.length > 0 ? task.backdrops : []
+  )
   // Variables shown/selectable at runtime = author-authored + any the student created this
   // session (restored from persisted `__meta__.createdVariables` on mount — see the init effect).
   const [createdVariables, setCreatedVariables] = useState([])
-  const variables = useMemo(() => [...(task?.variables ?? []), ...createdVariables], [task?.variables, createdVariables])
+  const variables = useMemo(
+    () => [...(task?.variables ?? []), ...createdVariables],
+    [task?.variables, createdVariables]
+  )
   const selectableSprites = getSelectableScratchSprites(sprites, respectStudentEditable)
 
   const canAddSprite = !readOnly && !!task?.allowAddSprite
   const canAddBackdrop = !readOnly && !!task?.allowAddBackdrop
   const canCreateVariable = !readOnly && !!task?.allowCreateVariable
   const { defaultSprites: libSprites, defaultBackdrops: libBackdrops } = useTypeAssets(
-    (canAddSprite || canAddBackdrop) ? 'scratch' : null,
+    canAddSprite || canAddBackdrop ? 'scratch' : null
   )
-  const spriteLibraryOptions = resolvePresetLibrary(normalizeSpritePresets(libSprites), task?.addSpritePresetIds)
-  const backdropLibraryOptions = resolvePresetLibrary(normalizeBackdropPresets(libBackdrops), task?.addBackdropPresetIds)
+  const spriteLibraryOptions = resolvePresetLibrary(
+    normalizeSpritePresets(libSprites),
+    task?.addSpritePresetIds
+  )
+  const backdropLibraryOptions = resolvePresetLibrary(
+    normalizeBackdropPresets(libBackdrops),
+    task?.addBackdropPresetIds
+  )
   const [spritePickerOpen, setSpritePickerOpen] = useState(false)
   const [backdropPickerOpen, setBackdropPickerOpen] = useState(false)
   const [variablePrompt, setVariablePrompt] = useState(null) // { value, error } | null
@@ -606,65 +778,70 @@ export default function ScratchWorkspace({
     const raw = initialStates ?? initialState
     return normaliseInitialStates(typeof raw === 'function' ? raw() : raw, sprites)
   }
-  const normExtStates   = externalStates ?? (externalState ? normaliseInitialStates(externalState, sprites) : null)
+  const normExtStates =
+    externalStates ?? (externalState ? normaliseInitialStates(externalState, sprites) : null)
 
-  const blocksDivRefs       = useRef({})
-  const workspaceRefs       = useRef({})
-  const spriteStatesRef     = useRef(initSpriteStates(sprites))
-  const clonesRef           = useRef({})
+  const blocksDivRefs = useRef({})
+  const workspaceRefs = useRef({})
+  const spriteStatesRef = useRef(initSpriteStates(sprites))
+  const clonesRef = useRef({})
   const preRunSpriteStatesRef = useRef({})
-  const BlocklyRef          = useRef(null)
-  const signalRef           = useRef(null)
-  const syncTimerRef        = useRef(null)
-  const pendingSyncRef      = useRef(false)
-  const suppressChangeRef   = useRef(false)
-  const lastCheckRef        = useRef(null)
+  const BlocklyRef = useRef(null)
+  const signalRef = useRef(null)
+  const syncTimerRef = useRef(null)
+  const pendingSyncRef = useRef(false)
+  const suppressChangeRef = useRef(false)
+  const lastCheckRef = useRef(null)
   const lastCheckSuggestionRef = useRef('')
   const blockPlacedTimerRef = useRef(null)
   const idleFeedbackTimerRef = useRef(null)
   const evaluateBlockPlacedChecksRef = useRef(null)
   const evaluateIdleFeedbackRef = useRef(null)
   const lastEmittedStateRef = useRef(null)
-  const statusRef           = useRef('loading')
-  const runningRef          = useRef(false)
-  const onStateChangeRef    = useRef(onStateChange)
+  const statusRef = useRef('loading')
+  const runningRef = useRef(false)
+  const onStateChangeRef = useRef(onStateChange)
   const onSpriteStatesChangeRef = useRef(onSpriteStatesChange)
-  const onActivityRef       = useRef(onActivity)
-  const onCursorMoveRef     = useRef(onCursorMove)
-  const onBlockDragMoveRef  = useRef(onBlockDragMove)
-  const onCheckResultRef    = useRef(onCheckResult)
+  const onActivityRef = useRef(onActivity)
+  const onCursorMoveRef = useRef(onCursorMove)
+  const onBlockDragMoveRef = useRef(onBlockDragMove)
+  const onCheckResultRef = useRef(onCheckResult)
   const onVisiblePanesChangeRef = useRef(onVisiblePanesChange)
-  const draggingBlockRef    = useRef(null)
-  const askResolveRef       = useRef(null)
-  const inputStateRef       = useRef({ keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0 })
-  const keySignalsRef       = useRef(new Map()) // normalizedKey → active signal (at most one per key)
-  const isDraggingRef       = useRef(false)
-  const dragStartRef        = useRef(null)
-  const dragMovedRef        = useRef(false)
+  const draggingBlockRef = useRef(null)
+  const askResolveRef = useRef(null)
+  const inputStateRef = useRef({ keysPressed: new Set(), mouseDown: false, mouseX: 0, mouseY: 0 })
+  const keySignalsRef = useRef(new Map()) // normalizedKey → active signal (at most one per key)
+  const isDraggingRef = useRef(false)
+  const dragStartRef = useRef(null)
+  const dragMovedRef = useRef(false)
   const draggingSpriteIdRef = useRef(null)
-  const backdropNameRef     = useRef(backdrops[0]?.name ?? null)
-  const lastCursorSentRef   = useRef(0)
-  const cursorDotElRef      = useRef(null)
-  const cursorHaloElRef     = useRef(null)
-  const cursorRafRef        = useRef(null)
-  const pendingCursorRef    = useRef(null)
-  const imageCacheRef       = useRef({})
-  const variableRuntimeRef  = useRef({})
+  const backdropNameRef = useRef(backdrops[0]?.name ?? null)
+  const lastCursorSentRef = useRef(0)
+  const cursorDotElRef = useRef(null)
+  const cursorHaloElRef = useRef(null)
+  const cursorRafRef = useRef(null)
+  const pendingCursorRef = useRef(null)
+  const imageCacheRef = useRef({})
+  const variableRuntimeRef = useRef({})
   // Kept in sync every render (see below) so the `useCallback([])`-memoized emitWorkspaceState
   // — bound once per sprite workspace at injection time via addChangeListener — always reads
   // the latest sprites/backdrops/createdVariables instead of a stale closure from whichever
   // render was active when that workspace was injected.
-  const spritesRef          = useRef(sprites)
-  const backdropsRef        = useRef(backdrops)
+  const spritesRef = useRef(sprites)
+  const backdropsRef = useRef(backdrops)
   const createdVariablesRef = useRef(createdVariables)
-  const spriteAddWrapRef    = useRef(null)
-  const backdropAddWrapRef  = useRef(null)
+  const spriteAddWrapRef = useRef(null)
+  const backdropAddWrapRef = useRef(null)
 
-  const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null))
+  const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(
+    selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null)
+  )
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
 
   function canSelectSpriteId(id) {
-    return id === '__stage__' || !respectStudentEditable || selectableSprites.some(sp => sp.id === id)
+    return (
+      id === '__stage__' || !respectStudentEditable || selectableSprites.some((sp) => sp.id === id)
+    )
   }
 
   function setSelectedSpriteId(id) {
@@ -678,20 +855,20 @@ export default function ScratchWorkspace({
     saveLayoutTab(SCRATCH_PANEL_TABS_SURFACE, id)
   }
 
-  const [status, setStatus]         = useState('loading')
-  const [running, setRunning]       = useState(false)
+  const [status, setStatus] = useState('loading')
+  const [running, setRunning] = useState(false)
   const [checkPassed, setCheckPassed] = useState(false)
   const [checkAttempted, setCheckAttempted] = useState(false)
   const [spriteStates, setSpriteStates] = useState(() => initSpriteStates(sprites))
   const [cloneStates, setCloneStates] = useState({})
   const [variableValues, setVariableValues] = useState({})
-  const [askPrompt, setAskPrompt]   = useState(null)
-  const [askValue, setAskValue]     = useState('')
+  const [askPrompt, setAskPrompt] = useState(null)
+  const [askValue, setAskValue] = useState('')
   const [broadcastToasts, setBroadcastToasts] = useState([])
   function pushToast(message, kind = 'broadcast', duration = 2000) {
     const id = Date.now() + Math.random()
-    setBroadcastToasts(prev => [...prev, { id, message, kind }])
-    setTimeout(() => setBroadcastToasts(prev => prev.filter(t => t.id !== id)), duration)
+    setBroadcastToasts((prev) => [...prev, { id, message, kind }])
+    setTimeout(() => setBroadcastToasts((prev) => prev.filter((t) => t.id !== id)), duration)
   }
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
@@ -701,26 +878,31 @@ export default function ScratchWorkspace({
   // for the separate, measurement-driven Blocks/Stage tab switcher used at narrow sizes.
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [compact, setCompact] = useState(forceCompact)
-  const [activePane, setActivePane] = useState(() => loadLayoutTab(SCRATCH_PANEL_TABS_SURFACE) || 'blocks')
+  const [activePane, setActivePane] = useState(
+    () => loadLayoutTab(SCRATCH_PANEL_TABS_SURFACE) || 'blocks'
+  )
   const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
-  const canvasRef              = useRef(null)
-  const stageToolbarRef        = useRef(null)
-  const rootRef                = useRef(null)
+  const canvasRef = useRef(null)
+  const stageToolbarRef = useRef(null)
+  const rootRef = useRef(null)
   const [rootSizeRef, rootSize] = useElementSize()
-  const setRootNode = useCallback(node => {
-    rootRef.current = node
-    rootSizeRef(node)
-  }, [rootSizeRef])
-  const rootResizeFrameRef     = useRef(0)
-  const flyoutCollapsedRef     = useRef(false)
-  const compactRef             = useRef(forceCompact)
-  const blockScaleRef          = useRef(BLOCK_SCALE_MAX)
-  const blockDragActiveRef     = useRef(false)
-  const pendingScaleRecalcRef  = useRef(false)
-  const hideStageRef           = useRef(hideStage)
-  const isWindowResizeRef      = useRef(false)
+  const setRootNode = useCallback(
+    (node) => {
+      rootRef.current = node
+      rootSizeRef(node)
+    },
+    [rootSizeRef]
+  )
+  const rootResizeFrameRef = useRef(0)
+  const flyoutCollapsedRef = useRef(false)
+  const compactRef = useRef(forceCompact)
+  const blockScaleRef = useRef(BLOCK_SCALE_MAX)
+  const blockDragActiveRef = useRef(false)
+  const pendingScaleRecalcRef = useRef(false)
+  const hideStageRef = useRef(hideStage)
+  const isWindowResizeRef = useRef(false)
 
   flyoutCollapsedRef.current = flyoutCollapsed
   compactRef.current = compact
@@ -768,64 +950,99 @@ export default function ScratchWorkspace({
   // on an unrelated re-render.
   const lastForcedPaneTokenRef = useRef(null)
   useEffect(() => {
-    if (!forcedPane || forcedPaneToken == null || lastForcedPaneTokenRef.current === forcedPaneToken) return
+    if (
+      !forcedPane ||
+      forcedPaneToken == null ||
+      lastForcedPaneTokenRef.current === forcedPaneToken
+    )
+      return
     lastForcedPaneTokenRef.current = forcedPaneToken
     handleActivePaneChange(forcedPane)
   }, [forcedPane, forcedPaneToken])
 
   useEffect(() => {
-    const costumes = (sprites.find(sp => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []
-    setCostumeContext(costumes.map(c => ({ ...c, imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined })))
+    const costumes =
+      (sprites.find((sp) => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []
+    setCostumeContext(
+      costumes.map((c) => ({
+        ...c,
+        imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined,
+      }))
+    )
   }, [sprites, selectedSpriteId, assetsPath])
 
   useEffect(() => {
     if (controlledSpriteId !== null) return
     if (selectedSpriteId && canSelectSpriteId(selectedSpriteId)) return
-    setInternalSelectedSpriteId(selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setInternalSelectedSpriteId(
+      selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null)
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [respectStudentEditable, sprites, task?.enableStageCode])
 
   // ── Draw stage ──────────────────────────────────────────────────────────────
-  const drawStage = useCallback((states, clones = {}) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, STAGE_W, STAGE_H)
+  const drawStage = useCallback(
+    (states, clones = {}) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      ctx.clearRect(0, 0, STAGE_W, STAGE_H)
 
-    const currentName = backdropNameRef.current
-    const backdrop = (currentName ? backdrops.find(b => b.name === currentName) : null) ?? backdrops[0]
+      const currentName = backdropNameRef.current
+      const backdrop =
+        (currentName ? backdrops.find((b) => b.name === currentName) : null) ?? backdrops[0]
 
-    if (backdrop?.image) {
-      const url = resolveAssetFileUrl(assetsPath, backdrop.image)
-      const img = imageCacheRef.current[url]
-      if (img) {
-        ctx.drawImage(img, 0, 0, STAGE_W, STAGE_H)
+      if (backdrop?.image) {
+        const url = resolveAssetFileUrl(assetsPath, backdrop.image)
+        const img = imageCacheRef.current[url]
+        if (img) {
+          ctx.drawImage(img, 0, 0, STAGE_W, STAGE_H)
+        } else {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, STAGE_W, STAGE_H)
+        }
       } else {
-        ctx.fillStyle = '#ffffff'
+        ctx.fillStyle = backdrop?.colour ?? '#ffffff'
         ctx.fillRect(0, 0, STAGE_W, STAGE_H)
       }
-    } else {
-      ctx.fillStyle = backdrop?.colour ?? '#ffffff'
-      ctx.fillRect(0, 0, STAGE_W, STAGE_H)
-    }
 
-    for (const sp of sprites) {
-      drawSpriteVisual(ctx, states[sp.id], sp.costumes, sp.type ?? 'cat', sp.emoji, assetsPath, imageCacheRef.current)
-    }
-    for (const clone of Object.values(clones)) {
-      const base = sprites.find(sp => sp.id === clone.baseId)
-      drawSpriteVisual(ctx, clone.state, clone.costumes, base?.type ?? 'cat', base?.emoji, assetsPath, imageCacheRef.current)
-    }
-    for (const sp of sprites) {
-      const state = states[sp.id]
-      if (state?.bubble) drawBubble(ctx, state)
-    }
-    for (const clone of Object.values(clones)) {
-      if (clone.state?.bubble) drawBubble(ctx, clone.state)
-    }
-  }, [sprites, backdrops, assetsPath])
+      for (const sp of sprites) {
+        drawSpriteVisual(
+          ctx,
+          states[sp.id],
+          sp.costumes,
+          sp.type ?? 'cat',
+          sp.emoji,
+          assetsPath,
+          imageCacheRef.current
+        )
+      }
+      for (const clone of Object.values(clones)) {
+        const base = sprites.find((sp) => sp.id === clone.baseId)
+        drawSpriteVisual(
+          ctx,
+          clone.state,
+          clone.costumes,
+          base?.type ?? 'cat',
+          base?.emoji,
+          assetsPath,
+          imageCacheRef.current
+        )
+      }
+      for (const sp of sprites) {
+        const state = states[sp.id]
+        if (state?.bubble) drawBubble(ctx, state)
+      }
+      for (const clone of Object.values(clones)) {
+        if (clone.state?.bubble) drawBubble(ctx, clone.state)
+      }
+    },
+    [sprites, backdrops, assetsPath]
+  )
 
-  useEffect(() => { drawStage(spriteStates, cloneStates) }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage])
+  useEffect(() => {
+    drawStage(spriteStates, cloneStates)
+  }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage])
 
   useEffect(() => {
     if (!stagePanelCollapsed) drawStage(spriteStatesRef.current, clonesRef.current)
@@ -842,7 +1059,7 @@ export default function ScratchWorkspace({
       const img = new Image()
       img.onload = () => {
         imageCacheRef.current[url] = img
-        setImageVersion(v => v + 1)
+        setImageVersion((v) => v + 1)
       }
       img.src = url
     }
@@ -860,7 +1077,7 @@ export default function ScratchWorkspace({
         const img = new Image()
         img.onload = () => {
           imageCacheRef.current[url] = img
-          setImageVersion(v => v + 1)
+          setImageVersion((v) => v + 1)
         }
         img.src = url
       }
@@ -883,8 +1100,12 @@ export default function ScratchWorkspace({
     // Font Loading API) so .catch()/.finally() are always safe to chain.
     Promise.resolve(document.fonts?.load("16px 'Noto Color Emoji'"))
       .catch(() => {})
-      .finally(() => { if (!cancelled) setImageVersion(v => v + 1) })
-    return () => { cancelled = true }
+      .finally(() => {
+        if (!cancelled) setImageVersion((v) => v + 1)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // ── Emit workspace states ────────────────────────────────────────────────────
@@ -899,8 +1120,8 @@ export default function ScratchWorkspace({
       // path as authored blocks: stashed under a `__meta__` key alongside the per-sprite Blockly
       // states so callers that store this blob opaquely (carry-through, teacher live view) need
       // no changes. Restored on mount — see the init effect's `restoreAddedSprites` call.
-      const addedSprites = spritesRef.current.filter(sp => sp.studentAdded)
-      const addedBackdrops = backdropsRef.current.filter(b => b.studentAdded)
+      const addedSprites = spritesRef.current.filter((sp) => sp.studentAdded)
+      const addedBackdrops = backdropsRef.current.filter((b) => b.studentAdded)
       const createdVars = createdVariablesRef.current
       if (addedSprites.length || addedBackdrops.length || createdVars.length) {
         states.__meta__ = {
@@ -928,7 +1149,9 @@ export default function ScratchWorkspace({
   const resizeBlocklyWorkspaces = useCallback(() => {
     const Blockly = BlocklyRef.current
     if (!Blockly) return
-    try { Blockly.WidgetDiv?.hide?.() } catch {}
+    try {
+      Blockly.WidgetDiv?.hide?.()
+    } catch {}
     try {
       if (Blockly.DropDownDiv?.hideWithoutAnimation) Blockly.DropDownDiv.hideWithoutAnimation()
       else Blockly.DropDownDiv?.hide?.()
@@ -940,11 +1163,18 @@ export default function ScratchWorkspace({
     isWindowResizeRef.current = false
     for (const ws of Object.values(workspaceRefs.current)) {
       try {
-        try { ws.setScale(blockScaleRef.current) } catch {}
+        try {
+          ws.setScale(blockScaleRef.current)
+        } catch {}
         const scrollX = ws.scrollX
         const scrollY = ws.scrollY
         Blockly.svgResize(ws)
-        if (isWindowResize && flyoutCollapsedRef.current && Number.isFinite(scrollX) && Number.isFinite(scrollY)) {
+        if (
+          isWindowResize &&
+          flyoutCollapsedRef.current &&
+          Number.isFinite(scrollX) &&
+          Number.isFinite(scrollY)
+        ) {
           ws.scrollX = scrollX
           ws.scrollY = scrollY
           ws.translate?.(scrollX, scrollY)
@@ -958,17 +1188,19 @@ export default function ScratchWorkspace({
   }, [stagePanelCollapsed, resizeBlocklyWorkspaces])
 
   const buildSpriteWorkspaces = useCallback(() => {
-    const result = sprites.map(sp => ({
-      id: sp.id,
-      name: sp.name,
-      studentAdded: !!sp.studentAdded,
-      workspace: workspaceRefs.current[sp.id],
-      state: spriteStatesRef.current[sp.id],
-      costumes: sp.costumes ?? [],
-      onUpdate: s => {
-        commitSpriteStates({ ...spriteStatesRef.current, [sp.id]: s })
-      },
-    })).filter(sp => sp.workspace)
+    const result = sprites
+      .map((sp) => ({
+        id: sp.id,
+        name: sp.name,
+        studentAdded: !!sp.studentAdded,
+        workspace: workspaceRefs.current[sp.id],
+        state: spriteStatesRef.current[sp.id],
+        costumes: sp.costumes ?? [],
+        onUpdate: (s) => {
+          commitSpriteStates({ ...spriteStatesRef.current, [sp.id]: s })
+        },
+      }))
+      .filter((sp) => sp.workspace)
     // Include stage workspace when enabled
     if (task?.enableStageCode && workspaceRefs.current['__stage__']) {
       result.push({
@@ -1004,10 +1236,13 @@ export default function ScratchWorkspace({
     } else {
       baseToolbox = isStage ? STAGE_TOOLBOX : (task?.toolbox ?? DEFAULT_TOOLBOX)
     }
-    const withStacks = prebuiltStacks?.length || predefinedBlocks?.length
-      ? addPrebuiltStacksToToolbox(baseToolbox, prebuiltStacks, predefinedBlocks)
-      : baseToolbox
-    const withCreateVariable = canCreateVariable ? addCreateVariableButtonToToolbox(withStacks) : withStacks
+    const withStacks =
+      prebuiltStacks?.length || predefinedBlocks?.length
+        ? addPrebuiltStacksToToolbox(baseToolbox, prebuiltStacks, predefinedBlocks)
+        : baseToolbox
+    const withCreateVariable = canCreateVariable
+      ? addCreateVariableButtonToToolbox(withStacks)
+      : withStacks
     return buildAlwaysOpenToolbox(withCreateVariable, { position: { x: state.x, y: state.y } })
   }
 
@@ -1050,10 +1285,7 @@ export default function ScratchWorkspace({
     setTimeout(() => {
       const selected = Blockly.getSelected?.()
       const flyoutWs = ws.getFlyout?.()?.getWorkspace?.()
-      if (
-        selected?.type &&
-        (selected.workspace === ws || selected.workspace === flyoutWs)
-      ) {
+      if (selected?.type && (selected.workspace === ws || selected.workspace === flyoutWs)) {
         runClickedBlock(selected, spriteId)
       }
     }, 0)
@@ -1064,7 +1296,7 @@ export default function ScratchWorkspace({
   // the "ensure workspaces" effect below, keyed off `sprites`.
   function restoreAddedSprites(addedSprites) {
     if (!addedSprites?.length) return
-    setSprites(prev => [...prev, ...addedSprites])
+    setSprites((prev) => [...prev, ...addedSprites])
     const nextStates = { ...spriteStatesRef.current }
     for (const sp of addedSprites) nextStates[sp.id] = defaultSpriteState(sp)
     commitSpriteStates(nextStates)
@@ -1077,15 +1309,18 @@ export default function ScratchWorkspace({
   // Blockly block-change event of its own to trigger the usual debounced save.
   function handleAddSprite(preset) {
     const newSprite = { ...createSpriteFromPreset(sprites, preset), studentAdded: true }
-    setSprites(prev => [...prev, newSprite])
-    commitSpriteStates({ ...spriteStatesRef.current, [newSprite.id]: defaultSpriteState(newSprite) })
+    setSprites((prev) => [...prev, newSprite])
+    commitSpriteStates({
+      ...spriteStatesRef.current,
+      [newSprite.id]: defaultSpriteState(newSprite),
+    })
     setSpritePickerOpen(false)
     requestAnimationFrame(persistMetaNow)
   }
 
   function handleAddBackdrop(preset) {
     const newBackdrop = { ...createBackdropFromPreset(backdrops, preset), studentAdded: true }
-    setBackdrops(prev => [...prev, newBackdrop])
+    setBackdrops((prev) => [...prev, newBackdrop])
     backdropNameRef.current = newBackdrop.name
     setBackdropName(newBackdrop.name)
     setBackdropPickerOpen(false)
@@ -1094,14 +1329,14 @@ export default function ScratchWorkspace({
 
   function submitCreateVariable(rawName) {
     if (!isValidNewVariableName(rawName, variables)) {
-      setVariablePrompt(prev => ({
+      setVariablePrompt((prev) => ({
         value: prev?.value ?? rawName ?? '',
         error: String(rawName ?? '').trim() ? 'That name is already used.' : 'Enter a name.',
       }))
       return
     }
     const name = String(rawName).trim()
-    setCreatedVariables(prev => [...prev, { name }])
+    setCreatedVariables((prev) => [...prev, { name }])
     setVariablePrompt(null)
     requestAnimationFrame(persistMetaNow)
   }
@@ -1143,11 +1378,17 @@ export default function ScratchWorkspace({
         syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
       }
       clearTimeout(blockPlacedTimerRef.current)
-      blockPlacedTimerRef.current = setTimeout(() => evaluateBlockPlacedChecksRef.current?.(), BLOCK_PLACED_CHECK_DEBOUNCE)
+      blockPlacedTimerRef.current = setTimeout(
+        () => evaluateBlockPlacedChecksRef.current?.(),
+        BLOCK_PLACED_CHECK_DEBOUNCE
+      )
       clearTimeout(idleFeedbackTimerRef.current)
-      idleFeedbackTimerRef.current = setTimeout(() => evaluateIdleFeedbackRef.current?.(), IDLE_FEEDBACK_DEBOUNCE)
+      idleFeedbackTimerRef.current = setTimeout(
+        () => evaluateIdleFeedbackRef.current?.(),
+        IDLE_FEEDBACK_DEBOUNCE
+      )
     })
-    div.addEventListener('click', event => handleWorkspaceDomClick(event, ws, spriteId, Blockly))
+    div.addEventListener('click', (event) => handleWorkspaceDomClick(event, ws, spriteId, Blockly))
     // Cursor position is captured off the hot path: a block (or flyout-stack) drag
     // fires very frequent native pointermove events on this same div, and reading
     // layout synchronously inside that handler (screenToWsCoordinates forces a
@@ -1157,7 +1398,7 @@ export default function ScratchWorkspace({
     // writes for this frame have already happened, so the read doesn't force an
     // extra out-of-band layout pass. Deliberately still runs during drags: that's
     // when a watching teacher most wants to see the cursor.
-    div.addEventListener('pointermove', event => {
+    div.addEventListener('pointermove', (event) => {
       if (!onCursorMoveRef.current && !onBlockDragMoveRef.current) return
       // The block palette (Blockly's own flyout) is a separate sub-workspace nested
       // inside this same div, with its own independent pan/scroll — converting a
@@ -1166,7 +1407,14 @@ export default function ScratchWorkspace({
       // here (cheap DOM check) rather than in the rAF below, since `event.target`
       // is only valid on the event itself.
       const overFlyout = !!event.target?.closest?.('.blocklyFlyout')
-      pendingCursorRef.current = { ws, spriteId, clientX: event.clientX, clientY: event.clientY, down: (event.buttons & 1) === 1, overFlyout }
+      pendingCursorRef.current = {
+        ws,
+        spriteId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        down: (event.buttons & 1) === 1,
+        overFlyout,
+      }
       if (cursorRafRef.current) return
       cursorRafRef.current = requestAnimationFrame(() => {
         cursorRafRef.current = null
@@ -1184,14 +1432,30 @@ export default function ScratchWorkspace({
           const block = pending.ws.getBlockById(dragging.blockId)
           if (block) {
             const xy = block.getRelativeToSurfaceXY()
-            onBlockDragMoveRef.current({ spriteId: dragging.spriteId, blockId: dragging.blockId, x: xy.x, y: xy.y, at: now })
+            onBlockDragMoveRef.current({
+              spriteId: dragging.spriteId,
+              blockId: dragging.blockId,
+              x: xy.x,
+              y: xy.y,
+              at: now,
+            })
           }
         }
         if (!onCursorMoveRef.current) return
         const flyoutWs = pending.overFlyout ? pending.ws.getFlyout?.()?.getWorkspace?.() : null
         const coordWs = flyoutWs ?? pending.ws
-        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(coordWs, { x: pending.clientX, y: pending.clientY })
-        onCursorMoveRef.current({ target: flyoutWs ? 'flyout' : 'workspace', spriteId: pending.spriteId, x: wsCoord.x, y: wsCoord.y, down: pending.down, at: now })
+        const wsCoord = Blockly.utils.svgMath.screenToWsCoordinates(coordWs, {
+          x: pending.clientX,
+          y: pending.clientY,
+        })
+        onCursorMoveRef.current({
+          target: flyoutWs ? 'flyout' : 'workspace',
+          spriteId: pending.spriteId,
+          x: wsCoord.x,
+          y: wsCoord.y,
+          down: pending.down,
+          at: now,
+        })
       })
     })
     div.addEventListener('pointerleave', () => {
@@ -1215,7 +1479,13 @@ export default function ScratchWorkspace({
       // recalculating from container size is exactly the "auto behavior fights a manual
       // choice" problem the compact-tab rework above was built to avoid. The wheel now
       // pans instead, since it no longer has a zoom job to do.
-      zoom: { controls: false, wheel: false, startScale: BLOCK_SCALE_MAX, minScale: BLOCK_SCALE_MIN, maxScale: BLOCK_SCALE_MAX },
+      zoom: {
+        controls: false,
+        wheel: false,
+        startScale: BLOCK_SCALE_MAX,
+        minScale: BLOCK_SCALE_MIN,
+        maxScale: BLOCK_SCALE_MAX,
+      },
       move: { scrollbars: true, drag: true, wheel: true },
       trashcan: true,
       readOnly,
@@ -1223,14 +1493,22 @@ export default function ScratchWorkspace({
     workspaceRefs.current[spriteId] = ws
     Blockly.svgResize(ws)
     if (canCreateVariable && !readOnly) {
-      try { ws.registerButtonCallback(CREATE_VARIABLE_CALLBACK_KEY, () => setVariablePrompt({ value: '', error: '' })) } catch {}
+      try {
+        ws.registerButtonCallback(CREATE_VARIABLE_CALLBACK_KEY, () =>
+          setVariablePrompt({ value: '', error: '' })
+        )
+      } catch {}
     }
     if (initState) {
       try {
         suppressChangeRef.current = true
         loadWorkspace(Blockly, ws, initState)
-        requestAnimationFrame(() => { suppressChangeRef.current = false })
-      } catch { suppressChangeRef.current = false }
+        requestAnimationFrame(() => {
+          suppressChangeRef.current = false
+        })
+      } catch {
+        suppressChangeRef.current = false
+      }
     }
     attachWorkspaceListeners(ws, div, spriteId, Blockly)
     return ws
@@ -1246,7 +1524,7 @@ export default function ScratchWorkspace({
         if (cancelled) return
         BlocklyRef.current = Blockly
 
-        await new Promise(r => requestAnimationFrame(r))
+        await new Promise((r) => requestAnimationFrame(r))
         if (cancelled) return
 
         const normInitStates = resolveInitStates()
@@ -1255,7 +1533,8 @@ export default function ScratchWorkspace({
         for (const sp of sprites) injectWorkspaceFor(Blockly, sp.id, normInitStates[sp.id])
 
         // Create stage workspace if enabled
-        if (task?.enableStageCode) injectWorkspaceFor(Blockly, '__stage__', normInitStates?.['__stage__'])
+        if (task?.enableStageCode)
+          injectWorkspaceFor(Blockly, '__stage__', normInitStates?.['__stage__'])
 
         if (!cancelled) setStatus('ready')
 
@@ -1273,7 +1552,7 @@ export default function ScratchWorkspace({
         const meta = normInitStates?.__meta__ ?? null
         if (!cancelled && meta) {
           restoreAddedSprites(meta.addedSprites)
-          if (meta.addedBackdrops?.length) setBackdrops(prev => [...prev, ...meta.addedBackdrops])
+          if (meta.addedBackdrops?.length) setBackdrops((prev) => [...prev, ...meta.addedBackdrops])
           if (meta.createdVariables?.length) setCreatedVariables(meta.createdVariables)
           if (meta.variableValues) {
             variableRuntimeRef.current = { ...meta.variableValues }
@@ -1303,7 +1582,7 @@ export default function ScratchWorkspace({
       for (const ws of Object.values(workspaceRefs.current)) ws?.dispose?.()
       workspaceRefs.current = {}
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Ensure a Blockly workspace exists for every current sprite ───────────────
@@ -1319,7 +1598,7 @@ export default function ScratchWorkspace({
       injectedAny = true
     }
     if (injectedAny) requestAnimationFrame(resizeBlocklyWorkspaces)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprites, status])
 
   // ── Resize active workspace when sprite selection changes ────────────────────
@@ -1339,8 +1618,13 @@ export default function ScratchWorkspace({
         // Skip svgResize while a block is being dragged — svgResize shifts ws.scrollX
         // by the flyout width, which would make the dragged block jump away from the cursor.
         // The deferred recalc triggered on pointerup will run svgResize afterwards.
-        if (blockDragActiveRef.current) { pendingScaleRecalcRef.current = true; return }
-        try { BlocklyRef.current.svgResize(ws) } catch {}
+        if (blockDragActiveRef.current) {
+          pendingScaleRecalcRef.current = true
+          return
+        }
+        try {
+          BlocklyRef.current.svgResize(ws)
+        } catch {}
       })
     } catch {}
   }, [flyoutCollapsed, selectedSpriteId, status])
@@ -1352,7 +1636,16 @@ export default function ScratchWorkspace({
       for (const sp of sprites) refreshSpriteToolbox(sp.id)
       if (task?.enableStageCode) refreshSpriteToolbox('__stage__')
     } catch {}
-  }, [task?.toolbox, task?.enableStageCode, unrestricted, status, sprites, predefinedBlocks, prebuiltStacks, flyoutCollapsed])
+  }, [
+    task?.toolbox,
+    task?.enableStageCode,
+    unrestricted,
+    status,
+    sprites,
+    predefinedBlocks,
+    prebuiltStacks,
+    flyoutCollapsed,
+  ])
 
   // ── Load external state (teacher push) ───────────────────────────────────────
   useEffect(() => {
@@ -1364,8 +1657,12 @@ export default function ScratchWorkspace({
         const ws = workspaceRefs.current[id]
         if (ws && state) loadWorkspace(BlocklyRef.current, ws, state)
       }
-      requestAnimationFrame(() => { suppressChangeRef.current = false })
-    } catch { suppressChangeRef.current = false }
+      requestAnimationFrame(() => {
+        suppressChangeRef.current = false
+      })
+    } catch {
+      suppressChangeRef.current = false
+    }
   }, [normExtStates, status])
 
   // ── Load external sprite/stage state (mirror) ────────────────────────────────
@@ -1393,13 +1690,17 @@ export default function ScratchWorkspace({
     setCursorStale(false)
     if (!externalCursor?.at) return undefined
     const remaining = CURSOR_STALE_MS - (Date.now() - externalCursor.at)
-    if (remaining <= 0) { setCursorStale(true); return undefined }
+    if (remaining <= 0) {
+      setCursorStale(true)
+      return undefined
+    }
     const t = setTimeout(() => setCursorStale(true), remaining)
     return () => clearTimeout(t)
   }, [externalCursor?.at])
 
-  const effectiveCursor = (!readOnly || !externalCursor || cursorStale) ? null : externalCursor
-  const isWorkspaceCursor = effectiveCursor?.target === 'workspace' || effectiveCursor?.target === 'flyout'
+  const effectiveCursor = !readOnly || !externalCursor || cursorStale ? null : externalCursor
+  const isWorkspaceCursor =
+    effectiveCursor?.target === 'workspace' || effectiveCursor?.target === 'flyout'
 
   // Follow the source's active sprite tab while a workspace- or flyout-target cursor
   // is live, so the cursor is never moving on a tab the mirror isn't currently showing.
@@ -1427,7 +1728,10 @@ export default function ScratchWorkspace({
     }
     if (!isWorkspaceCursor || status !== 'ready') return undefined
     const ws = workspaceRefs.current[effectiveCursor.spriteId]
-    const canvas = effectiveCursor.target === 'flyout' ? ws?.getFlyout?.()?.getWorkspace?.()?.getCanvas?.() : ws?.getCanvas?.()
+    const canvas =
+      effectiveCursor.target === 'flyout'
+        ? ws?.getFlyout?.()?.getWorkspace?.()?.getCanvas?.()
+        : ws?.getCanvas?.()
     if (!canvas) return undefined
     const halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     halo.setAttribute('r', String(CURSOR_HALO_RADIUS))
@@ -1446,7 +1750,10 @@ export default function ScratchWorkspace({
     dot.style.pointerEvents = 'none'
     canvas.appendChild(dot)
     cursorDotElRef.current = dot
-    return () => { halo.remove(); dot.remove() }
+    return () => {
+      halo.remove()
+      dot.remove()
+    }
   }, [effectiveCursor?.target, effectiveCursor?.spriteId, status])
 
   useEffect(() => {
@@ -1475,7 +1782,9 @@ export default function ScratchWorkspace({
     const block = ws?.getBlockById(externalBlockDrag.blockId)
     if (!block || typeof block.moveTo !== 'function') return
     try {
-      block.moveTo(new BlocklyRef.current.utils.Coordinate(externalBlockDrag.x, externalBlockDrag.y))
+      block.moveTo(
+        new BlocklyRef.current.utils.Coordinate(externalBlockDrag.x, externalBlockDrag.y)
+      )
     } catch {}
   }, [externalBlockDrag, status, readOnly])
 
@@ -1506,14 +1815,17 @@ export default function ScratchWorkspace({
     // margin before switching back, so the layout change compact causes can't immediately
     // re-measure back across the same line and flip straight back.
     const wasCompact = compactRef.current
-    const isCompact = forceCompact || (wasCompact
-      ? w < NARROW_BREAKPOINT + COMPACT_EXIT_HYSTERESIS
-      : w < NARROW_BREAKPOINT)
+    const isCompact =
+      forceCompact ||
+      (wasCompact ? w < NARROW_BREAKPOINT + COMPACT_EXIT_HYSTERESIS : w < NARROW_BREAKPOINT)
     setCompact(isCompact)
     compactRef.current = isCompact
     blockScaleRef.current = computeBlockScale(w, h)
 
-    const scale = computeStageScale(w, h, { compact: isCompact, flyoutCollapsed: flyoutCollapsedRef.current })
+    const scale = computeStageScale(w, h, {
+      compact: isCompact,
+      flyoutCollapsed: flyoutCollapsedRef.current,
+    })
     setStageScale(scale)
     cancelAnimationFrame(rootResizeFrameRef.current)
     isWindowResizeRef.current = true
@@ -1551,12 +1863,22 @@ export default function ScratchWorkspace({
       if (!rootEl) return
       const { width: w, height: h } = rootEl.getBoundingClientRect()
       if (!w) return
-      setStageScale(computeStageScale(w, h, { compact: compactRef.current, flyoutCollapsed: flyoutCollapsedRef.current }))
+      setStageScale(
+        computeStageScale(w, h, {
+          compact: compactRef.current,
+          flyoutCollapsed: flyoutCollapsedRef.current,
+        })
+      )
       requestAnimationFrame(resizeBlocklyWorkspaces)
     }
 
-    const onDown = () => { blockDragActiveRef.current = true }
-    const onUp = () => { blockDragActiveRef.current = false; runPendingRecalc() }
+    const onDown = () => {
+      blockDragActiveRef.current = true
+    }
+    const onUp = () => {
+      blockDragActiveRef.current = false
+      runPendingRecalc()
+    }
 
     el.addEventListener('pointerdown', onDown)
     document.addEventListener('pointerup', onUp)
@@ -1572,26 +1894,27 @@ export default function ScratchWorkspace({
   const createSignal = useCallback(() => {
     const signal = createRunSignal()
     signal.keysPressed = inputStateRef.current.keysPressed
-    signal.mouseDown   = inputStateRef.current.mouseDown
-    signal.mouseX      = inputStateRef.current.mouseX
-    signal.mouseY      = inputStateRef.current.mouseY
-    signal.backdrop    = backdropNameRef.current
-    signal.backdrops   = backdrops
-    signal.onBackdropChange = name => {
+    signal.mouseDown = inputStateRef.current.mouseDown
+    signal.mouseX = inputStateRef.current.mouseX
+    signal.mouseY = inputStateRef.current.mouseY
+    signal.backdrop = backdropNameRef.current
+    signal.backdrops = backdrops
+    signal.onBackdropChange = (name) => {
       backdropNameRef.current = name
       setBackdropName(name)
     }
-    signal.ask = q => new Promise(resolve => {
-      askResolveRef.current = resolve
-      setAskValue('')
-      setAskPrompt(q)
-    })
+    signal.ask = (q) =>
+      new Promise((resolve) => {
+        askResolveRef.current = resolve
+        setAskValue('')
+        setAskPrompt(q)
+      })
     signal.variables = { ...variableRuntimeRef.current }
-    signal.onVariablesChange = vars => {
+    signal.onVariablesChange = (vars) => {
       variableRuntimeRef.current = { ...vars }
       setVariableValues({ ...vars })
     }
-    signal.onBroadcast = msg => pushToast(msg, 'broadcast')
+    signal.onBroadcast = (msg) => pushToast(msg, 'broadcast')
     // A script threw instead of running to completion (a bad block combination, a missing
     // sprite/variable reference, etc.). This used to be swallowed silently — no message, no
     // console line, nothing — so a broken script just appeared to do nothing. Surface it via
@@ -1599,7 +1922,7 @@ export default function ScratchWorkspace({
     // error text, since this module's audience is often younger learners debugging by trial
     // and error and a raw stack trace wouldn't mean much to them.
     signal.onError = () => pushToast('This script ran into a problem and stopped.', 'error', 4000)
-    signal.onCloneCreated = clone => {
+    signal.onCloneCreated = (clone) => {
       clonesRef.current = { ...clonesRef.current, [clone.id]: clone }
       setCloneStates(clonesRef.current)
     }
@@ -1608,7 +1931,7 @@ export default function ScratchWorkspace({
       clonesRef.current = { ...clonesRef.current, [id]: { ...clonesRef.current[id], state } }
       setCloneStates(clonesRef.current)
     }
-    signal.onCloneDeleted = id => {
+    signal.onCloneDeleted = (id) => {
       if (!clonesRef.current[id]) return
       const next = { ...clonesRef.current }
       delete next[id]
@@ -1627,14 +1950,17 @@ export default function ScratchWorkspace({
   const check = task?.check
   const scratchChecks = normalizeScratchChecks(check)
   // after_block_placed is handled via workspace change listener, not the run cycle.
-  const hasAfterRunCheck = scratchChecks.some(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
-  const hasAfterBlockPlacedCheck = scratchChecks.some(c => c.evaluation === 'after_block_placed')
+  const hasAfterRunCheck = scratchChecks.some(
+    (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
+  )
+  const hasAfterBlockPlacedCheck = scratchChecks.some((c) => c.evaluation === 'after_block_placed')
 
   const notifyCheck = useCallback((passed, force = false, meta = {}) => {
     const suggestion = meta.suggestion ?? ''
     setCheckPassed(passed)
     setCheckAttempted(true)
-    if (!force && lastCheckRef.current === passed && lastCheckSuggestionRef.current === suggestion) return
+    if (!force && lastCheckRef.current === passed && lastCheckSuggestionRef.current === suggestion)
+      return
     lastCheckRef.current = passed
     lastCheckSuggestionRef.current = suggestion
     let workspaceStates = null
@@ -1665,33 +1991,35 @@ export default function ScratchWorkspace({
   // Called on every debounced workspace change when after_block_placed checks are present.
   function evaluateBlockPlacedChecks() {
     if (!BlocklyRef.current) return
-    const afterBlockChecks = scratchChecks.filter(c => c.evaluation === 'after_block_placed')
+    const afterBlockChecks = scratchChecks.filter((c) => c.evaluation === 'after_block_placed')
     if (afterBlockChecks.length === 0) return
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const results = afterBlockChecks.map(c => evalSingleCheckPartial(c, sws))
-    const completionPassed = results.every(r => r === 'pass')
+    const results = afterBlockChecks.map((c) => evalSingleCheckPartial(c, sws))
+    const completionPassed = results.every((r) => r === 'pass')
     if (completionPassed && hasAfterRunCheck) {
       // All block-placement checks pass, but there are also after_run checks (e.g. block_run)
       // that only a real Run can verify — don't declare the check attempted/passed yet.
       clearCheckFeedback()
-    } else if (results.every(r => r === 'pass')) {
+    } else if (results.every((r) => r === 'pass')) {
       const evaluation = evaluateCheckWithCustomFeedback(
         task,
         completionPassed,
-        feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+        (feedbackCheck) =>
+          evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
         '',
         {},
-        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
       )
       notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
-    } else if (results.some(r => r === 'fail')) {
+    } else if (results.some((r) => r === 'fail')) {
       const evaluation = evaluateCheckWithCustomFeedback(
         task,
         false,
-        feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+        (feedbackCheck) =>
+          evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
         '',
         {},
-        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
       )
       notifyCheck(false, false, { suggestion: evaluation.suggestion })
     } else {
@@ -1706,17 +2034,22 @@ export default function ScratchWorkspace({
     // Idle evaluation happens purely from editing, without a run — only after_block_placed
     // checks can be assessed here. after_run checks (e.g. block_run) need a real run and must
     // not be judged against a stale signalRef from a previous run.
-    const idleChecks = scratchChecks.filter(c => c.evaluation === 'after_block_placed')
-    const completionPassed = idleChecks.length > 0 && idleChecks.every(c => evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current))
+    const idleChecks = scratchChecks.filter((c) => c.evaluation === 'after_block_placed')
+    const completionPassed =
+      idleChecks.length > 0 &&
+      idleChecks.every((c) =>
+        evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
+      )
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
-      feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+      (feedbackCheck) =>
+        evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
       '',
       {},
-      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE },
+      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE }
     )
-    if (evaluation.feedbackResults.some(result => result.passed)) {
+    if (evaluation.feedbackResults.some((result) => result.passed)) {
       notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
     }
   }
@@ -1728,15 +2061,20 @@ export default function ScratchWorkspace({
       setRunning(false)
       if (scratchChecks.length > 0 && hasAfterRunCheck) {
         const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-        const afterRunChecks = scratchChecks.filter(c => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed')
-        const completionPassed = afterRunChecks.every(c => evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current))
+        const afterRunChecks = scratchChecks.filter(
+          (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
+        )
+        const completionPassed = afterRunChecks.every((c) =>
+          evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)
+        )
         const evaluation = evaluateCheckWithCustomFeedback(
           task,
           completionPassed,
-          feedbackCheck => evalSingleCheck(feedbackCheck, sws, signal, preRunSpriteStatesRef.current),
+          (feedbackCheck) =>
+            evalSingleCheck(feedbackCheck, sws, signal, preRunSpriteStatesRef.current),
           '',
           {},
-          { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+          { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
         )
         notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
       }
@@ -1764,7 +2102,11 @@ export default function ScratchWorkspace({
     setCheckAttempted(false)
     const signal = createSignal()
     signalRef.current = signal
-    try { await runAllSprites(buildSpriteWorkspaces(), signal) } catch (err) { signal.onError?.(err) }
+    try {
+      await runAllSprites(buildSpriteWorkspaces(), signal)
+    } catch (err) {
+      signal.onError?.(err)
+    }
     finishRun(signal)
   }
 
@@ -1781,7 +2123,11 @@ export default function ScratchWorkspace({
     const signal = createSignal()
     signalRef.current = signal
     const startBlock = block.type === 'event_whenflagclicked' ? block.getNextBlock() : block
-    try { await runBlockInContext(startBlock, buildSpriteWorkspaces(), spriteId, signal) } catch (err) { signal.onError?.(err) }
+    try {
+      await runBlockInContext(startBlock, buildSpriteWorkspaces(), spriteId, signal)
+    } catch (err) {
+      signal.onError?.(err)
+    }
     finishRun(signal)
   }
 
@@ -1795,7 +2141,11 @@ export default function ScratchWorkspace({
     if (shouldFinishRun) preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
     const signal = createSignal()
     keySignalsRef.current.set(key, signal)
-    try { await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key) } catch (err) { signal.onError?.(err) }
+    try {
+      await runAllSpritesEvent(buildSpriteWorkspaces(), 'event_whenkeypressed', signal, key)
+    } catch (err) {
+      signal.onError?.(err)
+    }
     if (keySignalsRef.current.get(key) === signal) keySignalsRef.current.delete(key)
     if (shouldFinishRun) finishRun(signal)
   }
@@ -1834,14 +2184,15 @@ export default function ScratchWorkspace({
 
   function handleCheck() {
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const completionPassed = scratchChecks.every(c => evalSingleCheck(c, sws, signalRef.current))
+    const completionPassed = scratchChecks.every((c) => evalSingleCheck(c, sws, signalRef.current))
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
-      feedbackCheck => evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
+      (feedbackCheck) =>
+        evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
       '',
       {},
-      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT },
+      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
     )
     notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
   }
@@ -1853,13 +2204,19 @@ export default function ScratchWorkspace({
 
     const rect = event.currentTarget.getBoundingClientRect()
     const x = (event.clientX - rect.left) * (STAGE_W / rect.width)
-    const y = (event.clientY - rect.top)  * (STAGE_H / rect.height)
+    const y = (event.clientY - rect.top) * (STAGE_H / rect.height)
 
     // Sent immediately (not throttled) so a watcher sees the press-down moment itself,
     // not just whatever the next throttled pointermove happens to catch.
     if (!readOnly && onCursorMoveRef.current) {
       lastCursorSentRef.current = Date.now()
-      onCursorMoveRef.current({ target: 'stage', x: x - STAGE_W / 2, y: STAGE_H / 2 - y, down: true, at: lastCursorSentRef.current })
+      onCursorMoveRef.current({
+        target: 'stage',
+        x: x - STAGE_W / 2,
+        y: STAGE_H / 2 - y,
+        down: true,
+        at: lastCursorSentRef.current,
+      })
     }
 
     // Find top-most sprite under pointer (reverse order = drawn last = on top)
@@ -1868,11 +2225,13 @@ export default function ScratchWorkspace({
       const state = spriteStatesRef.current[sp.id]
       if (state && hitTest(state, x, y)) {
         isDraggingRef.current = true
-        dragMovedRef.current  = false
+        dragMovedRef.current = false
         draggingSpriteIdRef.current = sp.id
         dragStartRef.current = { canvasX: x, canvasY: y, spriteX: state.x, spriteY: state.y }
         event.currentTarget.setPointerCapture(event.pointerId)
-        setStageCursor(isSpriteStudentEditable(sp) || !respectStudentEditable ? 'grabbing' : 'default')
+        setStageCursor(
+          isSpriteStudentEditable(sp) || !respectStudentEditable ? 'grabbing' : 'default'
+        )
         return
       }
     }
@@ -1881,12 +2240,15 @@ export default function ScratchWorkspace({
   function handleCanvasPointerMove(event) {
     const rect = event.currentTarget.getBoundingClientRect()
     const x = (event.clientX - rect.left) * (STAGE_W / rect.width)
-    const y = (event.clientY - rect.top)  * (STAGE_H / rect.height)
+    const y = (event.clientY - rect.top) * (STAGE_H / rect.height)
     const scratchX = x - STAGE_W / 2
     const scratchY = STAGE_H / 2 - y
     inputStateRef.current.mouseX = scratchX
     inputStateRef.current.mouseY = scratchY
-    if (signalRef.current) { signalRef.current.mouseX = scratchX; signalRef.current.mouseY = scratchY }
+    if (signalRef.current) {
+      signalRef.current.mouseX = scratchX
+      signalRef.current.mouseY = scratchY
+    }
 
     // Sent unconditionally, including for the whole duration of a sprite drag below
     // (this used to sit after that drag's early `return`, so a watcher's cursor
@@ -1896,7 +2258,13 @@ export default function ScratchWorkspace({
       const now = Date.now()
       if (now - lastCursorSentRef.current >= CURSOR_THROTTLE_MS) {
         lastCursorSentRef.current = now
-        onCursorMoveRef.current({ target: 'stage', x: scratchX, y: scratchY, down: inputStateRef.current.mouseDown, at: now })
+        onCursorMoveRef.current({
+          target: 'stage',
+          x: scratchX,
+          y: scratchY,
+          down: inputStateRef.current.mouseDown,
+          at: now,
+        })
       }
     }
 
@@ -1905,9 +2273,17 @@ export default function ScratchWorkspace({
       const dy = y - dragStartRef.current.canvasY
       if (!dragMovedRef.current && Math.hypot(dx, dy) > 3) {
         dragMovedRef.current = true
-        onActivityRef.current?.({ type: 'sprite_drag', at: Date.now(), spriteId: draggingSpriteIdRef.current })
+        onActivityRef.current?.({
+          type: 'sprite_drag',
+          at: Date.now(),
+          spriteId: draggingSpriteIdRef.current,
+        })
       }
-      if (respectStudentEditable && !isSpriteStudentEditable(sprites.find(sp => sp.id === draggingSpriteIdRef.current))) return
+      if (
+        respectStudentEditable &&
+        !isSpriteStudentEditable(sprites.find((sp) => sp.id === draggingSpriteIdRef.current))
+      )
+        return
       if (dragMovedRef.current) {
         const id = draggingSpriteIdRef.current
         const newX = Math.max(-240, Math.min(240, dragStartRef.current.spriteX + dx))
@@ -1922,7 +2298,10 @@ export default function ScratchWorkspace({
     for (let i = sprites.length - 1; i >= 0; i--) {
       if (respectStudentEditable && !isSpriteStudentEditable(sprites[i])) continue
       const state = spriteStatesRef.current[sprites[i].id]
-      if (state && hitTest(state, x, y)) { overSprite = true; break }
+      if (state && hitTest(state, x, y)) {
+        overSprite = true
+        break
+      }
     }
     setStageCursor(overSprite ? 'grab' : 'default')
   }
@@ -1933,15 +2312,21 @@ export default function ScratchWorkspace({
 
     if (!readOnly && onCursorMoveRef.current) {
       lastCursorSentRef.current = Date.now()
-      onCursorMoveRef.current({ target: 'stage', x: inputStateRef.current.mouseX, y: inputStateRef.current.mouseY, down: false, at: lastCursorSentRef.current })
+      onCursorMoveRef.current({
+        target: 'stage',
+        x: inputStateRef.current.mouseX,
+        y: inputStateRef.current.mouseY,
+        down: false,
+        at: lastCursorSentRef.current,
+      })
     }
 
     const wasDragging = isDraggingRef.current
-    const wasMoved    = dragMovedRef.current
-    const draggedId   = draggingSpriteIdRef.current
-    isDraggingRef.current       = false
-    dragStartRef.current        = null
-    dragMovedRef.current        = false
+    const wasMoved = dragMovedRef.current
+    const draggedId = draggingSpriteIdRef.current
+    isDraggingRef.current = false
+    dragStartRef.current = null
+    dragMovedRef.current = false
     draggingSpriteIdRef.current = null
     setStageCursor('default')
 
@@ -1958,12 +2343,18 @@ export default function ScratchWorkspace({
         const signal = createSignal()
         signalRef.current = signal
         const allSws = buildSpriteWorkspaces()
-        const sws = allSws.filter(s => s.id === draggedId)
+        const sws = allSws.filter((s) => s.id === draggedId)
         runAllSpritesEvent(sws, 'event_whenthisspriteclicked', signal, null, allSws)
           .then(() => finishRun(signal))
           .catch(() => finishRun(signal))
       }
-    } else if (wasDragging && wasMoved && draggedId && (!respectStudentEditable || isSpriteStudentEditable(sprites.find(sp => sp.id === draggedId)))) {
+    } else if (
+      wasDragging &&
+      wasMoved &&
+      draggedId &&
+      (!respectStudentEditable ||
+        isSpriteStudentEditable(sprites.find((sp) => sp.id === draggedId)))
+    ) {
       refreshSpriteToolbox(draggedId)
     }
   }
@@ -2000,7 +2391,13 @@ export default function ScratchWorkspace({
     const offset = toolbarOffset(event)
     if (!offset) return
     lastCursorSentRef.current = now
-    onCursorMoveRef.current({ target: 'toolbar', x: offset.x, y: offset.y, down: (event.buttons & 1) === 1, at: now })
+    onCursorMoveRef.current({
+      target: 'toolbar',
+      x: offset.x,
+      y: offset.y,
+      down: (event.buttons & 1) === 1,
+      at: now,
+    })
   }
 
   function handleToolbarPointerDown(event) {
@@ -2008,7 +2405,13 @@ export default function ScratchWorkspace({
     const offset = toolbarOffset(event)
     if (!offset) return
     lastCursorSentRef.current = Date.now()
-    onCursorMoveRef.current({ target: 'toolbar', x: offset.x, y: offset.y, down: true, at: lastCursorSentRef.current })
+    onCursorMoveRef.current({
+      target: 'toolbar',
+      x: offset.x,
+      y: offset.y,
+      down: true,
+      at: lastCursorSentRef.current,
+    })
   }
 
   function handleToolbarPointerUp(event) {
@@ -2016,7 +2419,13 @@ export default function ScratchWorkspace({
     const offset = toolbarOffset(event)
     if (!offset) return
     lastCursorSentRef.current = Date.now()
-    onCursorMoveRef.current({ target: 'toolbar', x: offset.x, y: offset.y, down: false, at: lastCursorSentRef.current })
+    onCursorMoveRef.current({
+      target: 'toolbar',
+      x: offset.x,
+      y: offset.y,
+      down: false,
+      at: lastCursorSentRef.current,
+    })
   }
 
   function handleToolbarPointerLeave() {
@@ -2039,7 +2448,13 @@ export default function ScratchWorkspace({
       // on that input — those keystrokes are text, not a stage "key pressed" event, and must
       // not run whenkeypressed hats or re-evaluate after_run checks against a no-op run.
       const tag = event.target?.tagName?.toLowerCase()
-      if (tag === 'input' || tag === 'select' || tag === 'textarea' || event.target?.isContentEditable) return
+      if (
+        tag === 'input' ||
+        tag === 'select' ||
+        tag === 'textarea' ||
+        event.target?.isContentEditable
+      )
+        return
       const key = normalizeKey(event.key)
       if (!key) return
       if (document.activeElement === canvasRef.current && PAGE_NAVIGATION_KEYS.has(event.key)) {
@@ -2054,40 +2469,89 @@ export default function ScratchWorkspace({
     }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
-    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
 
   // Close the sprite/backdrop add pickers on an outside click.
   useEffect(() => {
     if (!spritePickerOpen && !backdropPickerOpen) return
     function onPointerDown(e) {
-      if (spritePickerOpen && spriteAddWrapRef.current && !spriteAddWrapRef.current.contains(e.target)) setSpritePickerOpen(false)
-      if (backdropPickerOpen && backdropAddWrapRef.current && !backdropAddWrapRef.current.contains(e.target)) setBackdropPickerOpen(false)
+      if (
+        spritePickerOpen &&
+        spriteAddWrapRef.current &&
+        !spriteAddWrapRef.current.contains(e.target)
+      )
+        setSpritePickerOpen(false)
+      if (
+        backdropPickerOpen &&
+        backdropAddWrapRef.current &&
+        !backdropAddWrapRef.current.contains(e.target)
+      )
+        setBackdropPickerOpen(false)
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [spritePickerOpen, backdropPickerOpen])
 
-  const showManualCheck = scratchChecks.some(c => c.evaluation === 'manual')
+  const showManualCheck = scratchChecks.some((c) => c.evaluation === 'manual')
 
   // ── Sprite panel (tiles + properties) ────────────────────────────────────────
   function renderSpriteProps(compact) {
-    const sp = sprites.find(x => x.id === selectedSpriteId)
+    const sp = sprites.find((x) => x.id === selectedSpriteId)
     const st = spriteStates[selectedSpriteId]
     if (!sp || !st) return null
     return (
       <div style={compact ? s.spritePropBarCompact : s.spritePropBar}>
-        <PropField label="x" value={Math.round(st.x ?? 0)} onChange={v => updateSpriteStateOverride(selectedSpriteId, { x: Math.max(-240, Math.min(240, v)) })} readOnly={readOnly} min={-240} max={240} />
-        <PropField label="y" value={Math.round(st.y ?? 0)} onChange={v => updateSpriteStateOverride(selectedSpriteId, { y: Math.max(-180, Math.min(180, v)) })} readOnly={readOnly} min={-180} max={180} />
-        <PropField label="Direction" value={Math.round(st.direction ?? 90)} onChange={v => updateSpriteStateOverride(selectedSpriteId, { direction: v })} readOnly={readOnly} min={-179} max={180} />
-        <PropField label="Size" value={Math.round(st.size ?? 100)} onChange={v => updateSpriteStateOverride(selectedSpriteId, { size: Math.max(1, v) })} readOnly={readOnly} min={1} max={1000} />
+        <PropField
+          label="x"
+          value={Math.round(st.x ?? 0)}
+          onChange={(v) =>
+            updateSpriteStateOverride(selectedSpriteId, { x: Math.max(-240, Math.min(240, v)) })
+          }
+          readOnly={readOnly}
+          min={-240}
+          max={240}
+        />
+        <PropField
+          label="y"
+          value={Math.round(st.y ?? 0)}
+          onChange={(v) =>
+            updateSpriteStateOverride(selectedSpriteId, { y: Math.max(-180, Math.min(180, v)) })
+          }
+          readOnly={readOnly}
+          min={-180}
+          max={180}
+        />
+        <PropField
+          label="Direction"
+          value={Math.round(st.direction ?? 90)}
+          onChange={(v) => updateSpriteStateOverride(selectedSpriteId, { direction: v })}
+          readOnly={readOnly}
+          min={-179}
+          max={180}
+        />
+        <PropField
+          label="Size"
+          value={Math.round(st.size ?? 100)}
+          onChange={(v) => updateSpriteStateOverride(selectedSpriteId, { size: Math.max(1, v) })}
+          readOnly={readOnly}
+          min={1}
+          max={1000}
+        />
         <div style={s.spritePropField}>
           <span style={s.spritePropLabel}>Show</span>
           <button
             type="button"
             style={{ ...s.showHideBtn, ...(st.visible ? s.showHideBtnOn : s.showHideBtnOff) }}
-            onClick={readOnly ? undefined : () => updateSpriteStateOverride(selectedSpriteId, { visible: !st.visible })}
+            onClick={
+              readOnly
+                ? undefined
+                : () => updateSpriteStateOverride(selectedSpriteId, { visible: !st.visible })
+            }
             disabled={readOnly}
             title={st.visible ? 'Click to hide' : 'Click to show'}
           >
@@ -2101,8 +2565,15 @@ export default function ScratchWorkspace({
               <button
                 key={val}
                 type="button"
-                style={{ ...s.rotStyleBtn, ...((st.rotationStyle ?? 'all around') === val ? s.rotStyleBtnActive : {}) }}
-                onClick={readOnly ? undefined : () => updateSpriteStateOverride(selectedSpriteId, { rotationStyle: val })}
+                style={{
+                  ...s.rotStyleBtn,
+                  ...((st.rotationStyle ?? 'all around') === val ? s.rotStyleBtnActive : {}),
+                }}
+                onClick={
+                  readOnly
+                    ? undefined
+                    : () => updateSpriteStateOverride(selectedSpriteId, { rotationStyle: val })
+                }
                 disabled={readOnly}
                 title={title}
               >
@@ -2118,9 +2589,17 @@ export default function ScratchWorkspace({
               style={s.costumeSelect}
               value={st.costume ?? sp.costumes[0]?.name ?? ''}
               disabled={readOnly}
-              onChange={readOnly ? undefined : e => updateSpriteStateOverride(selectedSpriteId, { costume: e.target.value })}
+              onChange={
+                readOnly
+                  ? undefined
+                  : (e) => updateSpriteStateOverride(selectedSpriteId, { costume: e.target.value })
+              }
             >
-              {sp.costumes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {sp.costumes.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
         )}
@@ -2136,10 +2615,26 @@ export default function ScratchWorkspace({
       onClick={() => setSelectedSpriteId('__stage__')}
       title="Stage scripts"
     >
-      <div style={{ ...s.spriteTileThumb, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <path d="M8 21h8M12 17v4"/>
+      <div
+        style={{
+          ...s.spriteTileThumb,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#6b7280"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <path d="M8 21h8M12 17v4" />
         </svg>
       </div>
       <span style={s.spriteTileName}>Stage</span>
@@ -2150,14 +2645,26 @@ export default function ScratchWorkspace({
     <button
       key="__stage__"
       type="button"
-      style={{ ...s.spriteTileCompact, ...('__stage__' === selectedSpriteId ? s.spriteTileCompactActive : {}) }}
+      style={{
+        ...s.spriteTileCompact,
+        ...('__stage__' === selectedSpriteId ? s.spriteTileCompactActive : {}),
+      }}
       onClick={() => setSelectedSpriteId('__stage__')}
       title="Stage scripts"
     >
       <div style={s.spriteTileCompactThumb}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <path d="M8 21h8M12 17v4"/>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#6b7280"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <path d="M8 21h8M12 17v4" />
         </svg>
       </div>
       <span style={s.spriteTileCompactName}>Stage</span>
@@ -2168,28 +2675,44 @@ export default function ScratchWorkspace({
     <div style={s.spritePanel}>
       <div style={s.spriteTileRow}>
         {stageTileFull}
-        {selectableSprites.map(sp => (
+        {selectableSprites.map((sp) => (
           <div
             key={sp.id}
             role="button"
             tabIndex={0}
             style={{ ...s.spriteTile, ...(sp.id === selectedSpriteId ? s.spriteTileActive : {}) }}
             onClick={() => setSelectedSpriteId(sp.id)}
-            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedSpriteId(sp.id)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedSpriteId(sp.id)}
           >
             <div style={s.spriteTileThumb}>
-              <SpriteThumb sprite={sp} state={spriteStates[sp.id]} imageCache={imageCacheRef.current} assetsPath={assetsPath} size={52} imageVersion={imageVersion} />
-              {!spriteStates[sp.id]?.visible && <span style={s.spriteTileHiddenBadge} title="Hidden">👁</span>}
+              <SpriteThumb
+                sprite={sp}
+                state={spriteStates[sp.id]}
+                imageCache={imageCacheRef.current}
+                assetsPath={assetsPath}
+                size={52}
+                imageVersion={imageVersion}
+              />
+              {!spriteStates[sp.id]?.visible && (
+                <span style={s.spriteTileHiddenBadge} title="Hidden">
+                  👁
+                </span>
+              )}
             </div>
             <span style={s.spriteTileName}>{sp.name}</span>
             {!readOnly && onRemoveSprite && (
               <button
                 type="button"
                 className="te-sprite-remove-circle"
-                onClick={e => { e.stopPropagation(); onRemoveSprite(sp.id) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRemoveSprite(sp.id)
+                }}
                 disabled={sprites.length <= 1}
                 title="Remove sprite"
-              >✕</button>
+              >
+                ✕
+              </button>
             )}
           </div>
         ))}
@@ -2210,7 +2733,7 @@ export default function ScratchWorkspace({
             <button
               type="button"
               style={s.spriteAddTile}
-              onClick={() => setSpritePickerOpen(open => !open)}
+              onClick={() => setSpritePickerOpen((open) => !open)}
               aria-expanded={spritePickerOpen}
               aria-label="Add sprite"
               title="Add sprite"
@@ -2220,12 +2743,31 @@ export default function ScratchWorkspace({
             </button>
             {spritePickerOpen && (
               <div style={s.addPickerPanel} role="listbox" aria-label="Choose a sprite to add">
-                {spriteLibraryOptions.length === 0 && <p style={s.addPickerEmpty}>No sprites available</p>}
-                {spriteLibraryOptions.map(preset => (
-                  <button key={preset.id} type="button" style={s.addPickerItem} role="option" onClick={() => handleAddSprite(preset)}>
-                    {preset.costumes?.[0]?.image
-                      ? <img src={resolveAssetFileUrl(assetsPath, preset.costumes[0].image)} alt="" style={s.addPickerThumbImg} onError={e => { e.target.style.display = 'none' }} />
-                      : <span style={s.addPickerThumbEmoji}>{preset.costumes?.[0]?.emoji || preset.emoji || '🟢'}</span>}
+                {spriteLibraryOptions.length === 0 && (
+                  <p style={s.addPickerEmpty}>No sprites available</p>
+                )}
+                {spriteLibraryOptions.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    style={s.addPickerItem}
+                    role="option"
+                    onClick={() => handleAddSprite(preset)}
+                  >
+                    {preset.costumes?.[0]?.image ? (
+                      <img
+                        src={resolveAssetFileUrl(assetsPath, preset.costumes[0].image)}
+                        alt=""
+                        style={s.addPickerThumbImg}
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <span style={s.addPickerThumbEmoji}>
+                        {preset.costumes?.[0]?.emoji || preset.emoji || '🟢'}
+                      </span>
+                    )}
                     <span style={s.addPickerName}>{preset.name}</span>
                   </button>
                 ))}
@@ -2244,15 +2786,25 @@ export default function ScratchWorkspace({
     <div style={s.spritePanelCompact}>
       <div style={s.spriteTileRowCompact}>
         {stageTileCompact}
-        {selectableSprites.map(sp => (
+        {selectableSprites.map((sp) => (
           <button
             key={sp.id}
             type="button"
-            style={{ ...s.spriteTileCompact, ...(sp.id === selectedSpriteId ? s.spriteTileCompactActive : {}) }}
+            style={{
+              ...s.spriteTileCompact,
+              ...(sp.id === selectedSpriteId ? s.spriteTileCompactActive : {}),
+            }}
             onClick={() => setSelectedSpriteId(sp.id)}
           >
             <div style={s.spriteTileCompactThumb}>
-              <SpriteThumb sprite={sp} state={spriteStates[sp.id]} imageCache={imageCacheRef.current} assetsPath={assetsPath} size={24} imageVersion={imageVersion} />
+              <SpriteThumb
+                sprite={sp}
+                state={spriteStates[sp.id]}
+                imageCache={imageCacheRef.current}
+                assetsPath={assetsPath}
+                size={24}
+                imageVersion={imageVersion}
+              />
             </div>
             <span style={s.spriteTileCompactName}>{sp.name}</span>
           </button>
@@ -2264,14 +2816,19 @@ export default function ScratchWorkspace({
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="scratch-workspace" style={hideStage ? s.rootColumn : compact ? s.rootCompact : s.root} ref={setRootNode}>
+    <div
+      className="scratch-workspace"
+      style={hideStage ? s.rootColumn : compact ? s.rootCompact : s.root}
+      ref={setRootNode}
+    >
       {status !== 'ready' && (
         <div style={s.overlay}>
           <div style={s.centre}>
-            {status === 'loading'
-              ? <p style={s.loadingText}>Getting Scratch ready…</p>
-              : <p style={s.errorText}>Scratch failed to load. Please refresh the page.</p>
-            }
+            {status === 'loading' ? (
+              <p style={s.loadingText}>Getting Scratch ready…</p>
+            ) : (
+              <p style={s.errorText}>Scratch failed to load. Please refresh the page.</p>
+            )}
           </div>
         </div>
       )}
@@ -2280,21 +2837,34 @@ export default function ScratchWorkspace({
         <div style={s.modalOverlay} onClick={() => setVariablePrompt(null)}>
           <form
             style={s.variableModal}
-            onClick={e => e.stopPropagation()}
-            onSubmit={e => { e.preventDefault(); submitCreateVariable(variablePrompt.value) }}
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault()
+              submitCreateVariable(variablePrompt.value)
+            }}
           >
-            <label style={s.askLabel} htmlFor="scratch-new-variable-name">New variable name</label>
+            <label style={s.askLabel} htmlFor="scratch-new-variable-name">
+              New variable name
+            </label>
             <input
               id="scratch-new-variable-name"
               style={s.askInput}
               autoFocus
               value={variablePrompt.value}
-              onChange={e => setVariablePrompt({ value: e.target.value, error: '' })}
+              onChange={(e) => setVariablePrompt({ value: e.target.value, error: '' })}
             />
             {variablePrompt.error && <span style={s.errorText}>{variablePrompt.error}</span>}
             <div style={s.variableModalRow}>
-              <button type="button" className="btn-secondary" onClick={() => setVariablePrompt(null)}>Cancel</button>
-              <button type="submit" className="btn-primary" style={s.askBtn}>Create</button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setVariablePrompt(null)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary" style={s.askBtn}>
+                Create
+              </button>
             </div>
           </form>
         </div>
@@ -2311,7 +2881,10 @@ export default function ScratchWorkspace({
       {!hideStage && compact && (
         <PanelTabs
           label="Scratch panel"
-          tabs={[{ id: 'blocks', label: 'Blocks' }, { id: 'stage', label: 'Stage' }]}
+          tabs={[
+            { id: 'blocks', label: 'Blocks' },
+            { id: 'stage', label: 'Stage' },
+          ]}
           activeId={activePane}
           onChange={handleActivePaneChange}
           highlightedIds={highlightedPanes}
@@ -2319,45 +2892,65 @@ export default function ScratchWorkspace({
       )}
 
       {/* Block editor — all workspace divs stacked, only selected one visible */}
-      <div style={compact ? { ...s.editorPane, display: activePane === 'blocks' ? 'flex' : 'none' } : s.editorPane}>
+      <div
+        style={
+          compact
+            ? { ...s.editorPane, display: activePane === 'blocks' ? 'flex' : 'none' }
+            : s.editorPane
+        }
+      >
         <div style={s.editorPaneHeader}>
           <button
             type="button"
-            onClick={() => setFlyoutCollapsed(c => !c)}
+            onClick={() => setFlyoutCollapsed((c) => !c)}
             style={flyoutCollapsed ? s.flyoutToggleBtnOpen : s.flyoutToggleBtnHide}
             title={flyoutCollapsed ? 'Show blocks palette' : 'Hide blocks palette'}
           >
             {flyoutCollapsed ? (
               <>
-                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
-                  <rect x="0" y="0" width="6" height="6" rx="1"/>
-                  <rect x="8" y="0" width="6" height="6" rx="1"/>
-                  <rect x="0" y="8" width="6" height="6" rx="1"/>
-                  <rect x="8" y="8" width="6" height="6" rx="1"/>
+                <svg
+                  aria-hidden="true"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 14 14"
+                  fill="currentColor"
+                >
+                  <rect x="0" y="0" width="6" height="6" rx="1" />
+                  <rect x="8" y="0" width="6" height="6" rx="1" />
+                  <rect x="0" y="8" width="6" height="6" rx="1" />
+                  <rect x="8" y="8" width="6" height="6" rx="1" />
                 </svg>
                 Blocks
               </>
-            ) : '◀ Hide'}
+            ) : (
+              '◀ Hide'
+            )}
           </button>
         </div>
         <div style={s.editorPaneBody}>
           {task?.enableStageCode && (
             <div
               key="__stage__"
-              ref={el => { if (el) blocksDivRefs.current['__stage__'] = el }}
+              ref={(el) => {
+                if (el) blocksDivRefs.current['__stage__'] = el
+              }}
               style={{
-                position: 'absolute', inset: 0,
+                position: 'absolute',
+                inset: 0,
                 visibility: selectedSpriteId === '__stage__' ? 'visible' : 'hidden',
                 pointerEvents: selectedSpriteId === '__stage__' ? 'auto' : 'none',
               }}
             />
           )}
-          {sprites.map(sp => (
+          {sprites.map((sp) => (
             <div
               key={sp.id}
-              ref={el => { if (el) blocksDivRefs.current[sp.id] = el }}
+              ref={(el) => {
+                if (el) blocksDivRefs.current[sp.id] = el
+              }}
               style={{
-                position: 'absolute', inset: 0,
+                position: 'absolute',
+                inset: 0,
                 visibility: sp.id === selectedSpriteId ? 'visible' : 'hidden',
                 pointerEvents: sp.id === selectedSpriteId ? 'auto' : 'none',
               }}
@@ -2379,7 +2972,19 @@ export default function ScratchWorkspace({
         </div>
       )}
       {!hideStage && (compact || !stagePanelCollapsed) && (
-        <div style={compact ? { ...s.stagePane, display: activePane === 'stage' ? 'flex' : 'none', flexGrow: 1, flexShrink: 1, flexBasis: 0 } : s.stagePane}>
+        <div
+          style={
+            compact
+              ? {
+                  ...s.stagePane,
+                  display: activePane === 'stage' ? 'flex' : 'none',
+                  flexGrow: 1,
+                  flexShrink: 1,
+                  flexBasis: 0,
+                }
+              : s.stagePane
+          }
+        >
           <div
             ref={stageToolbarRef}
             style={s.stageToolbar}
@@ -2389,7 +2994,9 @@ export default function ScratchWorkspace({
             onPointerLeave={readOnly ? undefined : handleToolbarPointerLeave}
           >
             {effectiveCursor?.target === 'toolbar' && (
-              <div style={{ position: 'absolute', left: effectiveCursor.x, top: effectiveCursor.y }}>
+              <div
+                style={{ position: 'absolute', left: effectiveCursor.x, top: effectiveCursor.y }}
+              >
                 <LiveCursorDot down={effectiveCursor.down} />
               </div>
             )}
@@ -2409,11 +3016,23 @@ export default function ScratchWorkspace({
               type="button"
               className="btn-primary"
               style={s.greenFlagBtn}
-              onClick={e => { e.currentTarget.blur(); handleRun() }}
+              onClick={(e) => {
+                e.currentTarget.blur()
+                handleRun()
+              }}
               aria-label="Run"
               title="Run green flag scripts"
             >
-              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 15 15"><rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151"/><polygon points="3,1 14,6 3,11" fill="#22c55e"/></svg>
+              <svg
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 15 15"
+              >
+                <rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151" />
+                <polygon points="3,1 14,6 3,11" fill="#22c55e" />
+              </svg>
             </button>
             <button
               type="button"
@@ -2425,7 +3044,13 @@ export default function ScratchWorkspace({
             >
               <span style={s.stopIcon} aria-hidden="true" />
             </button>
-            <button type="button" className="btn-secondary" style={s.resetBtn} onClick={handleResetStage} title="Reset the stage: put sprites back where they started">
+            <button
+              type="button"
+              className="btn-secondary"
+              style={s.resetBtn}
+              onClick={handleResetStage}
+              title="Reset the stage: put sprites back where they started"
+            >
               Reset Stage
             </button>
             {canAddBackdrop && (
@@ -2434,20 +3059,47 @@ export default function ScratchWorkspace({
                   type="button"
                   className="btn-secondary"
                   style={s.resetBtn}
-                  onClick={() => setBackdropPickerOpen(open => !open)}
+                  onClick={() => setBackdropPickerOpen((open) => !open)}
                   aria-expanded={backdropPickerOpen}
                   title="Add backdrop"
                 >
                   + Backdrop
                 </button>
                 {backdropPickerOpen && (
-                  <div style={s.addPickerPanel} role="listbox" aria-label="Choose a backdrop to add">
-                    {backdropLibraryOptions.length === 0 && <p style={s.addPickerEmpty}>No backdrops available</p>}
-                    {backdropLibraryOptions.map(preset => (
-                      <button key={preset.id} type="button" style={s.addPickerItem} role="option" onClick={() => handleAddBackdrop(preset)}>
-                        {preset.image
-                          ? <img src={resolveAssetFileUrl(assetsPath, preset.image)} alt="" style={s.addPickerThumbImg} onError={e => { e.target.style.display = 'none' }} />
-                          : <span style={{ ...s.addPickerThumbEmoji, background: preset.colour ?? '#fff', borderRadius: 4 }} />}
+                  <div
+                    style={s.addPickerPanel}
+                    role="listbox"
+                    aria-label="Choose a backdrop to add"
+                  >
+                    {backdropLibraryOptions.length === 0 && (
+                      <p style={s.addPickerEmpty}>No backdrops available</p>
+                    )}
+                    {backdropLibraryOptions.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        style={s.addPickerItem}
+                        role="option"
+                        onClick={() => handleAddBackdrop(preset)}
+                      >
+                        {preset.image ? (
+                          <img
+                            src={resolveAssetFileUrl(assetsPath, preset.image)}
+                            alt=""
+                            style={s.addPickerThumbImg}
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <span
+                            style={{
+                              ...s.addPickerThumbEmoji,
+                              background: preset.colour ?? '#fff',
+                              borderRadius: 4,
+                            }}
+                          />
+                        )}
                         <span style={s.addPickerName}>{preset.name}</span>
                       </button>
                     ))}
@@ -2457,22 +3109,27 @@ export default function ScratchWorkspace({
             )}
           </div>
 
-          <div style={{ ...s.stageFrame, width: STAGE_W * stageScale, height: STAGE_H * stageScale }}>
-            {variables.some(v => v.showOnStage) && (
+          <div
+            style={{ ...s.stageFrame, width: STAGE_W * stageScale, height: STAGE_H * stageScale }}
+          >
+            {variables.some((v) => v.showOnStage) && (
               <div style={s.variableMonitors}>
-                {variables.filter(v => v.showOnStage).map(v => (
-                  <div key={v.name} style={s.variableMonitor}>
-                    <span style={s.variableMonitorName}>{v.name}</span>
-                    <span style={s.variableMonitorValue}>{variableValues[v.name] ?? 0}</span>
-                  </div>
-                ))}
+                {variables
+                  .filter((v) => v.showOnStage)
+                  .map((v) => (
+                    <div key={v.name} style={s.variableMonitor}>
+                      <span style={s.variableMonitorName}>{v.name}</span>
+                      <span style={s.variableMonitorValue}>{variableValues[v.name] ?? 0}</span>
+                    </div>
+                  ))}
               </div>
             )}
             {broadcastToasts.length > 0 && (
               <div style={s.broadcastToastStack}>
-                {broadcastToasts.map(t => (
+                {broadcastToasts.map((t) => (
                   <div key={t.id} style={t.kind === 'error' ? s.errorToast : s.broadcastToast}>
-                    <span style={s.broadcastToastIcon}>{t.kind === 'error' ? '⚠️' : '📢'}</span> {t.message}
+                    <span style={s.broadcastToastIcon}>{t.kind === 'error' ? '⚠️' : '📢'}</span>{' '}
+                    {t.message}
                   </div>
                 ))}
               </div>
@@ -2482,7 +3139,12 @@ export default function ScratchWorkspace({
               width={STAGE_W}
               height={STAGE_H}
               tabIndex={readOnly ? undefined : 0}
-              style={{ ...s.canvas, width: STAGE_W * stageScale, height: STAGE_H * stageScale, cursor: readOnly ? 'default' : stageCursor }}
+              style={{
+                ...s.canvas,
+                width: STAGE_W * stageScale,
+                height: STAGE_H * stageScale,
+                cursor: readOnly ? 'default' : stageCursor,
+              }}
               onPointerDown={readOnly ? undefined : handleCanvasPointerDown}
               onPointerMove={readOnly ? undefined : handleCanvasPointerMove}
               onPointerUp={readOnly ? undefined : handleCanvasPointerUp}
@@ -2492,13 +3154,26 @@ export default function ScratchWorkspace({
               <form style={s.askBox} onSubmit={handleAskSubmit}>
                 <label style={s.askLabel}>{askPrompt}</label>
                 <div style={s.askRow}>
-                  <input style={s.askInput} value={askValue} onChange={e => setAskValue(e.target.value)} autoFocus />
-                  <button className="btn-primary" style={s.askBtn} type="submit">OK</button>
+                  <input
+                    style={s.askInput}
+                    value={askValue}
+                    onChange={(e) => setAskValue(e.target.value)}
+                    autoFocus
+                  />
+                  <button className="btn-primary" style={s.askBtn} type="submit">
+                    OK
+                  </button>
                 </div>
               </form>
             )}
             {effectiveCursor?.target === 'stage' && (
-              <div style={{ position: 'absolute', left: toCanvasX(effectiveCursor.x) * stageScale, top: toCanvasY(effectiveCursor.y) * stageScale }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: toCanvasX(effectiveCursor.x) * stageScale,
+                  top: toCanvasY(effectiveCursor.y) * stageScale,
+                }}
+              >
                 <LiveCursorDot down={effectiveCursor.down} />
               </div>
             )}
@@ -2508,17 +3183,24 @@ export default function ScratchWorkspace({
 
           <div style={s.controls}>
             {!readOnly && showManualCheck && (
-              <button className="btn-secondary" style={s.checkBtn} onClick={handleCheck}>Check</button>
+              <button className="btn-secondary" style={s.checkBtn} onClick={handleCheck}>
+                Check
+              </button>
             )}
             {scratchChecks.length > 0 && !checkAttempted && showManualCheck && !running && (
               <span style={s.checkNone}>Run your code, then click Check</span>
             )}
-            {scratchChecks.length > 0 && !checkAttempted && hasAfterRunCheck && !showManualCheck && !running && (
-              <span style={s.checkNone}>Run your code to check</span>
-            )}
-            {scratchChecks.length > 0 && !checkAttempted && hasAfterBlockPlacedCheck && !hasAfterRunCheck && !showManualCheck && !running && (
-              <span style={s.checkNone}>Place the blocks to check</span>
-            )}
+            {scratchChecks.length > 0 &&
+              !checkAttempted &&
+              hasAfterRunCheck &&
+              !showManualCheck &&
+              !running && <span style={s.checkNone}>Run your code to check</span>}
+            {scratchChecks.length > 0 &&
+              !checkAttempted &&
+              hasAfterBlockPlacedCheck &&
+              !hasAfterRunCheck &&
+              !showManualCheck &&
+              !running && <span style={s.checkNone}>Place the blocks to check</span>}
           </div>
         </div>
       )}
@@ -2531,109 +3213,516 @@ const s = {
   // natural height — the stage stays a constant size and the editor pane (which stretches
   // to match via align-items:stretch) tracks it, instead of both being squeezed by
   // whatever vertical space sibling page content happens to leave.
-  root: { display: 'flex', flex: '1 1 auto', minWidth: 0, minHeight: 0, height: '100%', gap: 8, position: 'relative' },
-  rootColumn: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 0, height: '100%', position: 'relative' },
+  root: {
+    display: 'flex',
+    flex: '1 1 auto',
+    minWidth: 0,
+    minHeight: 0,
+    height: '100%',
+    gap: 8,
+    position: 'relative',
+  },
+  rootColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    gap: 0,
+    height: '100%',
+    position: 'relative',
+  },
   // Compact layout: Blocks/Stage tab bar on top, one full-width pane below (see `compact`).
-  rootCompact: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minWidth: 0, minHeight: 0, height: '100%', gap: 8, position: 'relative' },
+  rootCompact: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minWidth: 0,
+    minHeight: 0,
+    height: '100%',
+    gap: 8,
+    position: 'relative',
+  },
   overlay: { position: 'absolute', inset: 0, zIndex: 10, background: '#f5f5f5', borderRadius: 8 },
-  editorPane: { flex: '1 1 420px', minWidth: 0, border: '1px solid var(--ui-border-neutral)', borderRadius: 8, overflow: 'hidden', background: '#F9F9F9', display: 'flex', flexDirection: 'column' },
-  editorPaneHeader: { display: 'flex', alignItems: 'center', height: 30, padding: '0 6px', borderBottom: '1px solid var(--ui-border-neutral)', background: '#fafafa', flexShrink: 0 },
+  editorPane: {
+    flex: '1 1 420px',
+    minWidth: 0,
+    border: '1px solid var(--ui-border-neutral)',
+    borderRadius: 8,
+    overflow: 'hidden',
+    background: '#F9F9F9',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  editorPaneHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    height: 30,
+    padding: '0 6px',
+    borderBottom: '1px solid var(--ui-border-neutral)',
+    background: '#fafafa',
+    flexShrink: 0,
+  },
   editorPaneBody: { flex: 1, minHeight: 0, position: 'relative' },
-  flyoutToggleBtnOpen: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'var(--colour-primary)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
-  flyoutToggleBtnHide: { padding: '4px 10px', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 700, border: '2px solid var(--colour-primary)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: 'var(--colour-primary)', display: 'flex', alignItems: 'center', gap: 5 },
+  flyoutToggleBtnOpen: {
+    padding: '4px 10px',
+    fontSize: '0.8rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    border: '2px solid var(--colour-primary)',
+    borderRadius: 6,
+    background: 'var(--colour-primary)',
+    cursor: 'pointer',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+  },
+  flyoutToggleBtnHide: {
+    padding: '4px 10px',
+    fontSize: '0.8rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    border: '2px solid var(--colour-primary)',
+    borderRadius: 6,
+    background: 'transparent',
+    cursor: 'pointer',
+    color: 'var(--colour-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+  },
   // The compact variant overrides these with flexGrow/flexShrink/flexBasis longhands
   // rather than `flex: 1`: mixing the shorthand onto a style that already sets flexShrink
   // made React warn about removing a style property during rerender on every transition.
-  stagePane: { display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: STAGE_W * MIN_STAGE_SCALE, minHeight: 0, overflow: 'auto' },
-  stageRailPane: { width: 44, minWidth: 44, display: 'flex', flexDirection: 'column', flexShrink: 0 },
-  stageToolbar: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap' },
-  canvas: { display: 'block', width: STAGE_W, height: STAGE_H, border: '1px solid var(--ui-border-neutral)', borderRadius: 8 },
+  stagePane: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flexShrink: 0,
+    minWidth: STAGE_W * MIN_STAGE_SCALE,
+    minHeight: 0,
+    overflow: 'auto',
+  },
+  stageRailPane: {
+    width: 44,
+    minWidth: 44,
+    display: 'flex',
+    flexDirection: 'column',
+    flexShrink: 0,
+  },
+  stageToolbar: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  canvas: {
+    display: 'block',
+    width: STAGE_W,
+    height: STAGE_H,
+    border: '1px solid var(--ui-border-neutral)',
+    borderRadius: 8,
+  },
   stageFrame: { position: 'relative', width: STAGE_W, height: STAGE_H },
   // ── Sprite panel (full, below stage) ─────────────────────────────────────────
   spritePanel: { display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 0 2px' },
   spriteTileRow: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   spriteTile: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    padding: '6px 8px', border: '2px solid var(--ui-border-neutral)', borderRadius: 8,
-    background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
-    transition: 'border-color 0.12s, background 0.12s', position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+    padding: '6px 8px',
+    border: '2px solid var(--ui-border-neutral)',
+    borderRadius: 8,
+    background: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    transition: 'border-color 0.12s, background 0.12s',
+    position: 'relative',
   },
   spriteTileActive: { borderColor: 'var(--colour-primary)', background: '#f3eeff' },
-  spriteTileThumb: { width: 52, height: 52, borderRadius: 6, overflow: 'hidden', background: '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  spriteTileHiddenBadge: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: 'rgba(0,0,0,0.35)', borderRadius: 6 },
-  spriteTileName: { fontSize: '0.72rem', fontWeight: 600, color: 'var(--colour-text)', maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  spriteTileThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 6,
+    overflow: 'hidden',
+    background: '#f8f8f8',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  spriteTileHiddenBadge: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 18,
+    background: 'rgba(0,0,0,0.35)',
+    borderRadius: 6,
+  },
+  spriteTileName: {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: 'var(--colour-text)',
+    maxWidth: 64,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   spriteAddTile: {
-    width: 70, minHeight: 82, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-    padding: '6px 8px', border: '2px dashed var(--colour-primary)', borderRadius: 8,
-    background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--colour-primary)',
+    width: 70,
+    minHeight: 82,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: '6px 8px',
+    border: '2px dashed var(--colour-primary)',
+    borderRadius: 8,
+    background: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--colour-primary)',
   },
   spriteAddIcon: { fontSize: '1.5rem', lineHeight: 1, fontWeight: 500 },
   // ── Student "Add sprite"/"Add backdrop" pickers ──────────────────────────────
   addPickerWrap: { position: 'relative' },
   addPickerPanel: {
-    position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20,
-    display: 'flex', flexWrap: 'wrap', gap: 6, width: 220, maxHeight: 220, overflowY: 'auto',
-    padding: 8, background: '#fff', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    marginTop: 4,
+    zIndex: 20,
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    width: 220,
+    maxHeight: 220,
+    overflowY: 'auto',
+    padding: 8,
+    background: '#fff',
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 8,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
   },
-  addPickerEmpty: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--colour-muted-soft)', margin: 0 },
+  addPickerEmpty: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    color: 'var(--colour-muted-soft)',
+    margin: 0,
+  },
   addPickerItem: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 64,
-    padding: '4px 4px 6px', border: '1px solid var(--ui-border-neutral)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 3,
+    width: 64,
+    padding: '4px 4px 6px',
+    border: '1px solid var(--ui-border-neutral)',
+    borderRadius: 6,
+    background: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   addPickerThumbImg: { width: 32, height: 32, objectFit: 'contain' },
-  addPickerThumbEmoji: { width: 32, height: 32, fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  addPickerName: { fontSize: '0.68rem', fontWeight: 600, color: 'var(--colour-text)', maxWidth: 58, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  addPickerThumbEmoji: {
+    width: 32,
+    height: 32,
+    fontSize: 22,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPickerName: {
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    color: 'var(--colour-text)',
+    maxWidth: 58,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   // ── "Make a Variable" modal ──────────────────────────────────────────────────
-  modalOverlay: { position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  variableModal: { display: 'grid', gap: 8, width: 260, padding: 16, background: '#fff', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.22)' },
+  modalOverlay: {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 30,
+    background: 'rgba(15,23,42,0.35)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  variableModal: {
+    display: 'grid',
+    gap: 8,
+    width: 260,
+    padding: 16,
+    background: '#fff',
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 10,
+    boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
+  },
   variableModalRow: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 },
-  spritePropBar: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '4px 2px', borderTop: '1px solid var(--ui-border-neutral)' },
+  spritePropBar: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    padding: '4px 2px',
+    borderTop: '1px solid var(--ui-border-neutral)',
+  },
   spritePanelEditor: { paddingTop: 10, borderTop: '1px solid var(--ui-border-neutral)' },
   spritePanelFooter: { paddingTop: 8 },
   spritePropField: { display: 'flex', flexDirection: 'column', gap: 2 },
-  spritePropLabel: { fontSize: '0.65rem', fontWeight: 700, color: 'var(--colour-muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.03em' },
-  spritePropInput: { width: 58, padding: '3px 5px', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--colour-text)', textAlign: 'center', background: '#fff' },
-  showHideBtn: { width: 30, height: 26, border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 5, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', transition: 'background 0.1s' },
-  showHideBtnOn:  { background: '#f0fdf4', borderColor: '#86efac' },
+  spritePropLabel: {
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    color: 'var(--colour-muted)',
+    fontFamily: 'var(--font-body)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.03em',
+  },
+  spritePropInput: {
+    width: 58,
+    padding: '3px 5px',
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 5,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    color: 'var(--colour-text)',
+    textAlign: 'center',
+    background: '#fff',
+  },
+  showHideBtn: {
+    width: 30,
+    height: 26,
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 5,
+    cursor: 'pointer',
+    fontSize: 14,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#fff',
+    transition: 'background 0.1s',
+  },
+  showHideBtnOn: { background: '#f0fdf4', borderColor: '#86efac' },
   showHideBtnOff: { background: '#fef2f2', borderColor: '#fca5a5', opacity: 0.7 },
   rotStyleGroup: { display: 'flex', gap: 2 },
-  rotStyleBtn: { width: 26, height: 26, border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', fontFamily: 'var(--font-body)', transition: 'background 0.1s, border-color 0.1s' },
-  rotStyleBtnActive: { background: '#ede9fe', borderColor: 'var(--colour-primary)', color: 'var(--colour-primary)' },
-  costumeSelect: { padding: '3px 5px', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 5, fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--colour-text)', background: '#fff', cursor: 'pointer' },
+  rotStyleBtn: {
+    width: 26,
+    height: 26,
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: 13,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#fff',
+    fontFamily: 'var(--font-body)',
+    transition: 'background 0.1s, border-color 0.1s',
+  },
+  rotStyleBtnActive: {
+    background: '#ede9fe',
+    borderColor: 'var(--colour-primary)',
+    color: 'var(--colour-primary)',
+  },
+  costumeSelect: {
+    padding: '3px 5px',
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 5,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    color: 'var(--colour-text)',
+    background: '#fff',
+    cursor: 'pointer',
+  },
   // ── Sprite panel compact (hideStage mode) ─────────────────────────────────────
-  spritePanelCompact: { display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--ui-border-neutral)', background: '#fafafa', flexShrink: 0 },
+  spritePanelCompact: {
+    display: 'flex',
+    flexDirection: 'column',
+    borderBottom: '1px solid var(--ui-border-neutral)',
+    background: '#fafafa',
+    flexShrink: 0,
+  },
   spriteTileRowCompact: { display: 'flex', gap: 5, flexWrap: 'wrap', padding: '5px 8px' },
   spriteTileCompact: {
-    display: 'flex', alignItems: 'center', gap: 5,
-    padding: '3px 8px 3px 4px', border: '2px solid var(--ui-border-neutral)', borderRadius: 16,
-    background: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    padding: '3px 8px 3px 4px',
+    border: '2px solid var(--ui-border-neutral)',
+    borderRadius: 16,
+    background: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
     transition: 'border-color 0.12s, background 0.12s',
   },
   spriteTileCompactActive: { borderColor: 'var(--colour-primary)', background: '#f3eeff' },
-  spriteTileCompactThumb: { width: 24, height: 24, borderRadius: 4, overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  spriteTileCompactName: { fontSize: '0.78rem', fontWeight: 600, color: 'var(--colour-text)', maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  spritePropBarCompact: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '4px 8px 6px', borderTop: '1px solid var(--ui-border-neutral)' },
-  variableMonitors: { position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 3, zIndex: 5, pointerEvents: 'none' },
-  variableMonitor: { display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,140,26,0.92)', borderRadius: 4, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700 },
+  spriteTileCompactThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    overflow: 'hidden',
+    background: '#f0f0f0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spriteTileCompactName: {
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: 'var(--colour-text)',
+    maxWidth: 72,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  spritePropBarCompact: {
+    display: 'flex',
+    gap: 6,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    padding: '4px 8px 6px',
+    borderTop: '1px solid var(--ui-border-neutral)',
+  },
+  variableMonitors: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    zIndex: 5,
+    pointerEvents: 'none',
+  },
+  variableMonitor: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0,
+    background: 'rgba(255,140,26,0.92)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+  },
   variableMonitorName: { padding: '2px 6px', color: '#fff', background: 'rgba(0,0,0,0.18)' },
   variableMonitorValue: { padding: '2px 6px', color: '#fff', minWidth: 24, textAlign: 'right' },
-  broadcastToastStack: { position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', zIndex: 6, pointerEvents: 'none' },
-  broadcastToast: { background: 'rgba(255, 171, 25, 0.96)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.22)', whiteSpace: 'nowrap', animation: 'scratch-toast-in 0.18s ease' },
-  errorToast: { background: 'rgba(220, 38, 38, 0.96)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: '0.78rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.22)', whiteSpace: 'nowrap', animation: 'scratch-toast-in 0.18s ease' },
+  broadcastToastStack: {
+    position: 'absolute',
+    top: 8,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    alignItems: 'center',
+    zIndex: 6,
+    pointerEvents: 'none',
+  },
+  broadcastToast: {
+    background: 'rgba(255, 171, 25, 0.96)',
+    color: '#fff',
+    padding: '4px 14px',
+    borderRadius: 20,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
+    whiteSpace: 'nowrap',
+    animation: 'scratch-toast-in 0.18s ease',
+  },
+  errorToast: {
+    background: 'rgba(220, 38, 38, 0.96)',
+    color: '#fff',
+    padding: '4px 14px',
+    borderRadius: 20,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
+    whiteSpace: 'nowrap',
+    animation: 'scratch-toast-in 0.18s ease',
+  },
   broadcastToastIcon: { fontSize: '0.75rem' },
-  askBox: { position: 'absolute', left: 12, right: 12, bottom: 12, display: 'grid', gap: 8, padding: 10, background: '#fff', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.14)' },
-  askLabel: { fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--colour-text)' },
+  askBox: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+    display: 'grid',
+    gap: 8,
+    padding: 10,
+    background: '#fff',
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 8,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+  },
+  askLabel: {
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'var(--colour-text)',
+  },
   askRow: { display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 },
-  askInput: { minWidth: 0, padding: '8px 10px', border: '1px solid var(--ui-border-neutral-strong)', borderRadius: 6, fontFamily: 'var(--font-body)', fontSize: 14 },
+  askInput: {
+    minWidth: 0,
+    padding: '8px 10px',
+    border: '1px solid var(--ui-border-neutral-strong)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontSize: 14,
+  },
   askBtn: { padding: '8px 12px', fontSize: 13, borderRadius: 6 },
   controls: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  greenFlagBtn: { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderColor: 'var(--colour-muted-soft)' },
-  stopFlagBtn:  { width: 44, height: 36, padding: 0, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ef4444', borderColor: '#dc2626', color: '#fff' },
-  stopIcon:   { width: 14, height: 14, display: 'inline-block', background: '#fff', borderRadius: 2 },
-  resetBtn:   { padding: '8px 14px', fontSize: 14 },
-  checkBtn:   { padding: '10px 20px', fontSize: 15 },
-  centre:     { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 32 },
+  greenFlagBtn: {
+    width: 44,
+    height: 36,
+    padding: 0,
+    minWidth: 44,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: 'var(--colour-muted-soft)',
+  },
+  stopFlagBtn: {
+    width: 44,
+    height: 36,
+    padding: 0,
+    minWidth: 44,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    borderColor: '#dc2626',
+    color: '#fff',
+  },
+  stopIcon: { width: 14, height: 14, display: 'inline-block', background: '#fff', borderRadius: 2 },
+  resetBtn: { padding: '8px 14px', fontSize: 14 },
+  checkBtn: { padding: '10px 20px', fontSize: 15 },
+  centre: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    padding: 32,
+  },
   loadingText: { fontFamily: 'var(--font-body)', color: 'var(--colour-text)', fontSize: '1rem' },
-  errorText:   { fontFamily: 'var(--font-body)', color: '#ef4444', fontSize: '1rem' },
-  checkNone:   { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-muted-soft)' },
+  errorText: { fontFamily: 'var(--font-body)', color: '#ef4444', fontSize: '1rem' },
+  checkNone: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    color: 'var(--colour-muted-soft)',
+  },
 }

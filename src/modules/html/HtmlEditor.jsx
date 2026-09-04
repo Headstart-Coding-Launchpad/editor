@@ -2,16 +2,33 @@ import React, { useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import AssetBrowser from '../../shared/AssetBrowser'
 
-export default function HtmlEditor({ files = [], activeFile, onTabChange, onFileChange, onSelectionChange, onActivity, remoteSelection, teacherHighlights, onHighlightDismiss, readOnly = false, assetsPath, assets, storageAssets, attachedTop = false, errorLine = null, onRunShortcut }) {
+export default function HtmlEditor({
+  files = [],
+  activeFile,
+  onTabChange,
+  onFileChange,
+  onSelectionChange,
+  onActivity,
+  remoteSelection,
+  teacherHighlights,
+  onHighlightDismiss,
+  readOnly = false,
+  assetsPath,
+  assets,
+  storageAssets,
+  attachedTop = false,
+  errorLine = null,
+  onRunShortcut,
+}) {
   const [showAssets, setShowAssets] = useState(false)
-  const current = files.find(f => f.name === activeFile) ?? files[0]
+  const current = files.find((f) => f.name === activeFile) ?? files[0]
   const hasAssets = !!(assetsPath && assets?.length) || storageAssets?.length > 0
 
   return (
     <div style={s.wrap}>
       {/* File tabs + Assets toggle */}
       <div style={{ ...s.tabs, ...(attachedTop ? s.tabsAttachedTop : {}) }} className="ui-tabs">
-        {files.map(f => (
+        {files.map((f) => (
           <button
             key={f.name}
             className={`ui-tab ui-tab--code${f.name === activeFile ? ' is-active' : ''}`}
@@ -32,7 +49,7 @@ export default function HtmlEditor({ files = [], activeFile, onTabChange, onFile
               ...s.assetsTab,
               ...(showAssets ? s.assetsTabActive : {}),
             }}
-            onClick={() => setShowAssets(o => !o)}
+            onClick={() => setShowAssets((o) => !o)}
           >
             Assets
           </button>
@@ -42,7 +59,12 @@ export default function HtmlEditor({ files = [], activeFile, onTabChange, onFile
       {/* Asset panel */}
       {showAssets && hasAssets && (
         <div style={s.assetPanel}>
-          <AssetBrowser assetsPath={assetsPath} assets={assets} storageAssets={storageAssets} copyMode="relative" />
+          <AssetBrowser
+            assetsPath={assetsPath}
+            assets={assets}
+            storageAssets={storageAssets}
+            copyMode="relative"
+          />
         </div>
       )}
 
@@ -53,9 +75,9 @@ export default function HtmlEditor({ files = [], activeFile, onTabChange, onFile
           value={current.content}
           language={current.type ?? 'html'}
           readOnly={readOnly}
-          onChange={content => onFileChange?.(current.name, content)}
-          onSelectionChange={selection => onSelectionChange?.(selection, current.name)}
-          onActivity={activity => onActivity?.(activity, current.name)}
+          onChange={(content) => onFileChange?.(current.name, content)}
+          onSelectionChange={(selection) => onSelectionChange?.(selection, current.name)}
+          onActivity={(activity) => onActivity?.(activity, current.name)}
           remoteSelection={remoteSelection}
           teacherHighlights={teacherHighlights}
           onHighlightDismiss={onHighlightDismiss}

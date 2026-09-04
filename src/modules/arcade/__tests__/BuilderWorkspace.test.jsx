@@ -11,10 +11,12 @@ vi.mock('../../../builder/components/task-editor/TaskEditorFields', () => ({
   StageMetadataEditor: () => <div>stage-metadata-editor</div>,
 }))
 vi.mock('../ArcadePreview', () => ({
-  default: ({ assets }) => <div>preview-assets:{assets.map(a => a.name).join(',')}</div>,
+  default: ({ assets }) => <div>preview-assets:{assets.map((a) => a.name).join(',')}</div>,
 }))
 vi.mock('../ArcadeDesignStudio', () => ({
-  default: ({ availableAssets }) => <div>design-assets:{availableAssets.map(a => a.name).join(',')}</div>,
+  default: ({ availableAssets }) => (
+    <div>design-assets:{availableAssets.map((a) => a.name).join(',')}</div>
+  ),
 }))
 vi.mock('../../../shared/useLessonStorageAssets', () => ({
   useLessonStorageAssets: () => ({
@@ -27,8 +29,16 @@ vi.mock('../../../shared/useLessonStorageAssets', () => ({
 vi.mock('../../../shared/useTypeAssets', () => ({
   useTypeAssets: () => ({
     typeStorageAssets: [
-      { name: 'shared-shown.png', url: 'https://storage.test/shared-shown.png', showInEditor: true },
-      { name: 'shared-hidden.png', url: 'https://storage.test/shared-hidden.png', showInEditor: false },
+      {
+        name: 'shared-shown.png',
+        url: 'https://storage.test/shared-shown.png',
+        showInEditor: true,
+      },
+      {
+        name: 'shared-hidden.png',
+        url: 'https://storage.test/shared-hidden.png',
+        showInEditor: false,
+      },
     ],
   }),
 }))

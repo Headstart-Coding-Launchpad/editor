@@ -86,7 +86,13 @@ describe('ArcadeDesignStudio undo/redo', () => {
 
     // A brand-new design object arrives from outside (task switch) rather than from this
     // component's own onChange — the stale history must not carry over.
-    rerender(<ArcadeDesignStudio task={{ arcadeTools: 'sprites' }} design={designWithOneSprite()} onChange={() => {}} />)
+    rerender(
+      <ArcadeDesignStudio
+        task={{ arcadeTools: 'sprites' }}
+        design={designWithOneSprite()}
+        onChange={() => {}}
+      />
+    )
 
     expect(screen.getByRole('button', { name: /Undo/ })).toBeDisabled()
   })

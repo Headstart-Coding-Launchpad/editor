@@ -38,13 +38,13 @@ function isCodebaseMapMentioned(mapText, normalized) {
     path.basename(normalized),
   ].filter(Boolean)
 
-  return suffixes.some(suffix => mapText.includes(suffix) || mapText.includes(`\`${suffix}\``))
+  return suffixes.some((suffix) => mapText.includes(suffix) || mapText.includes(`\`${suffix}\``))
 }
 
-const markdownFiles = walk(path.join(root, 'docs'), file => file.endsWith('.md'))
+const markdownFiles = walk(path.join(root, 'docs'), (file) => file.endsWith('.md'))
 const rootMarkdownFiles = ['AGENTS.md', 'README.md']
-  .map(file => path.join(root, file))
-  .filter(file => existsSync(file))
+  .map((file) => path.join(root, file))
+  .filter((file) => existsSync(file))
 const checkedMarkdownFiles = [...markdownFiles, ...rootMarkdownFiles]
 
 for (const file of checkedMarkdownFiles) {
@@ -80,16 +80,18 @@ if (existsSync(codebaseMap)) {
   const mapText = read(codebaseMap)
   const sourceRoots = ['src', 'cli', 'functions', 'scripts']
   const sourceFiles = sourceRoots
-    .map(dir => path.join(root, dir))
-    .filter(dir => existsSync(dir) && statSync(dir).isDirectory())
-    .flatMap(dir => walk(dir, file => {
-      const normalized = rel(file)
-      if (normalized.includes('/__tests__/')) return false
-      if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false
-      if (normalized.endsWith('package-lock.json')) return false
-      if (/firebase-adminsdk|service-account|credentials/i.test(normalized)) return false
-      return /\.(js|jsx|mjs|json)$/.test(normalized)
-    }))
+    .map((dir) => path.join(root, dir))
+    .filter((dir) => existsSync(dir) && statSync(dir).isDirectory())
+    .flatMap((dir) =>
+      walk(dir, (file) => {
+        const normalized = rel(file)
+        if (normalized.includes('/__tests__/')) return false
+        if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false
+        if (normalized.endsWith('package-lock.json')) return false
+        if (/firebase-adminsdk|service-account|credentials/i.test(normalized)) return false
+        return /\.(js|jsx|mjs|json)$/.test(normalized)
+      })
+    )
 
   for (const file of sourceFiles) {
     const normalized = rel(file)

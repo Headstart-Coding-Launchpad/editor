@@ -16,13 +16,19 @@ function stubResizeObserver() {
       this.disconnected = false
       instances.push(this)
     }
-    observe(node) { this.node = node }
-    disconnect() { this.disconnected = true }
+    observe(node) {
+      this.node = node
+    }
+    disconnect() {
+      this.disconnected = true
+    }
   }
   return {
     instances,
     fire: (instance, contentRect) => instance.cb([{ contentRect }]),
-    restore: () => { globalThis.ResizeObserver = original },
+    restore: () => {
+      globalThis.ResizeObserver = original
+    },
   }
 }
 
@@ -39,14 +45,14 @@ describe('useElementSize', () => {
   it('starts at zero before any measurement', () => {
     observer = stubResizeObserver()
     const sizes = []
-    render(<Probe onSize={s => sizes.push(s)} />)
+    render(<Probe onSize={(s) => sizes.push(s)} />)
     expect(sizes[0]).toEqual({ width: 0, height: 0 })
   })
 
   it('updates to the observed content-box size', () => {
     observer = stubResizeObserver()
     const sizes = []
-    render(<Probe onSize={s => sizes.push(s)} />)
+    render(<Probe onSize={(s) => sizes.push(s)} />)
 
     act(() => observer.fire(observer.instances[0], { width: 640, height: 480 }))
 

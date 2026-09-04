@@ -19,7 +19,10 @@ vi.mock('../ScratchWorkspace', () => ({
   },
 }))
 vi.mock('../../../app/studentTaskContent', () => ({
-  selectScratchInitialProject: vi.fn(({ readSavedCode }) => { readSavedCode?.(); return null }),
+  selectScratchInitialProject: vi.fn(({ readSavedCode }) => {
+    readSavedCode?.()
+    return null
+  }),
   selectScratchToolboxSnippets: vi.fn(() => ({ predefinedBlocks: [], prebuiltStacks: [] })),
 }))
 vi.mock('../../../app/studentStorage', () => ({
@@ -80,11 +83,23 @@ describe('Scratch StudentWorkspace teacher-live-broadcast remount', () => {
     // Broadcast still active: no remount, no extra re-read of saved state.
     rerender(
       <StudentWorkspace
-        lesson={lesson} task={task} cs={cs} lessonId="lesson-1" identityId="student-1"
-        activeStudentView={null} viewingTaskId={null} currentTaskId="task-1"
-        isSandbox={false} isViewingPrev={false} isTeacherEditing={false}
-        teacherLiveCode="" displayCode="updated" displaySpriteState={null}
-        displayCursor={null} displayBlockDrag={null} isForcedTeacherLive
+        lesson={lesson}
+        task={task}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        activeStudentView={null}
+        viewingTaskId={null}
+        currentTaskId="task-1"
+        isSandbox={false}
+        isViewingPrev={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        displayCode="updated"
+        displaySpriteState={null}
+        displayCursor={null}
+        displayBlockDrag={null}
+        isForcedTeacherLive
       />
     )
     expect(mountCount).toHaveBeenCalledTimes(1)
@@ -94,11 +109,23 @@ describe('Scratch StudentWorkspace teacher-live-broadcast remount', () => {
     // instead of keeping the leftover broadcast blocks in the live Blockly object.
     rerender(
       <StudentWorkspace
-        lesson={lesson} task={task} cs={cs} lessonId="lesson-1" identityId="student-1"
-        activeStudentView={null} viewingTaskId={null} currentTaskId="task-1"
-        isSandbox={false} isViewingPrev={false} isTeacherEditing={false}
-        teacherLiveCode="" displayCode="" displaySpriteState={null}
-        displayCursor={null} displayBlockDrag={null} isForcedTeacherLive={false}
+        lesson={lesson}
+        task={task}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        activeStudentView={null}
+        viewingTaskId={null}
+        currentTaskId="task-1"
+        isSandbox={false}
+        isViewingPrev={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        displayCode=""
+        displaySpriteState={null}
+        displayCursor={null}
+        displayBlockDrag={null}
+        isForcedTeacherLive={false}
       />
     )
     expect(mountCount).toHaveBeenCalledTimes(2)
@@ -112,11 +139,23 @@ describe('Scratch StudentWorkspace teacher-live-broadcast remount', () => {
 
     rerender(
       <StudentWorkspace
-        lesson={lesson} task={task} cs={cs} lessonId="lesson-1" identityId="student-1"
-        activeStudentView={null} viewingTaskId={null} currentTaskId="task-1"
-        isSandbox={false} isViewingPrev={false} isTeacherEditing={false}
-        teacherLiveCode="" displayCode="" displaySpriteState={null}
-        displayCursor={null} displayBlockDrag={null} isForcedTeacherLive={false}
+        lesson={lesson}
+        task={task}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        activeStudentView={null}
+        viewingTaskId={null}
+        currentTaskId="task-1"
+        isSandbox={false}
+        isViewingPrev={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        displayCode=""
+        displaySpriteState={null}
+        displayCursor={null}
+        displayBlockDrag={null}
+        isForcedTeacherLive={false}
         highlightedPanes={['blocks']}
       />
     )
@@ -138,11 +177,23 @@ describe('Scratch StudentWorkspace externalState memoization', () => {
     // Unrelated re-render (e.g. a live cursor tick) with the same displayCode.
     rerender(
       <StudentWorkspace
-        lesson={lesson} task={task} cs={cs} lessonId="lesson-1" identityId="student-1"
-        activeStudentView={null} viewingTaskId={null} currentTaskId="task-1"
-        isSandbox={false} isViewingPrev={false} isTeacherEditing={false}
-        teacherLiveCode="" displayCode='{"a":1}' displaySpriteState={null}
-        displayCursor={{ target: 'stage', x: 1, y: 2, at: Date.now() }} displayBlockDrag={null} isForcedTeacherLive
+        lesson={lesson}
+        task={task}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        activeStudentView={null}
+        viewingTaskId={null}
+        currentTaskId="task-1"
+        isSandbox={false}
+        isViewingPrev={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        displayCode='{"a":1}'
+        displaySpriteState={null}
+        displayCursor={{ target: 'stage', x: 1, y: 2, at: Date.now() }}
+        displayBlockDrag={null}
+        isForcedTeacherLive
       />
     )
     const second = externalStateSpy.mock.calls.at(-1)[0]
@@ -151,11 +202,23 @@ describe('Scratch StudentWorkspace externalState memoization', () => {
     // A genuine broadcast update: displayCode actually changes.
     rerender(
       <StudentWorkspace
-        lesson={lesson} task={task} cs={cs} lessonId="lesson-1" identityId="student-1"
-        activeStudentView={null} viewingTaskId={null} currentTaskId="task-1"
-        isSandbox={false} isViewingPrev={false} isTeacherEditing={false}
-        teacherLiveCode="" displayCode='{"a":2}' displaySpriteState={null}
-        displayCursor={null} displayBlockDrag={null} isForcedTeacherLive
+        lesson={lesson}
+        task={task}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        activeStudentView={null}
+        viewingTaskId={null}
+        currentTaskId="task-1"
+        isSandbox={false}
+        isViewingPrev={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        displayCode='{"a":2}'
+        displaySpriteState={null}
+        displayCursor={null}
+        displayBlockDrag={null}
+        isForcedTeacherLive
       />
     )
     const third = externalStateSpy.mock.calls.at(-1)[0]

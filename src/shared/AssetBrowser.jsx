@@ -4,10 +4,13 @@ import { isImageFile, useImagePreview, ImagePreviewTooltip } from './AssetImageP
 function useCopyFeedback() {
   const [copied, setCopied] = React.useState(false)
   function copy(value) {
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    }).catch(() => {})
+    navigator.clipboard
+      .writeText(value)
+      .then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      })
+      .catch(() => {})
   }
   return [copied, copy]
 }
@@ -33,16 +36,37 @@ function DirNode({ name, childNodes, assetsPath, copyMode, mode, onSelect, depth
     <div>
       <button
         style={{ ...s.dirBtn, paddingLeft: 8 + depth * 14 }}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
       >
         <span style={s.arrow}>{open ? '▾' : '▸'}</span>
         <span style={s.itemLabel}>📁 {name}</span>
       </button>
-      {open && Object.entries(childNodes).map(([n, node]) =>
-        node._dir
-          ? <DirNode key={n} name={n} childNodes={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={depth + 1} />
-          : <FileNode key={n} name={n} path={node._path} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={depth + 1} />
-      )}
+      {open &&
+        Object.entries(childNodes).map(([n, node]) =>
+          node._dir ? (
+            <DirNode
+              key={n}
+              name={n}
+              childNodes={node._ch}
+              assetsPath={assetsPath}
+              copyMode={copyMode}
+              mode={mode}
+              onSelect={onSelect}
+              depth={depth + 1}
+            />
+          ) : (
+            <FileNode
+              key={n}
+              name={n}
+              path={node._path}
+              assetsPath={assetsPath}
+              copyMode={copyMode}
+              mode={mode}
+              onSelect={onSelect}
+              depth={depth + 1}
+            />
+          )
+        )}
     </div>
   )
 }
@@ -70,7 +94,9 @@ function FileNode({ name, path, assetsPath, copyMode, mode, onSelect, depth }) {
       onMouseEnter={isImageFile(name) ? () => showPreview(staticUrl, rowRef.current) : undefined}
       onMouseLeave={isImageFile(name) ? hidePreview : undefined}
     >
-      <span style={s.itemLabel}>{isImageFile(name) ? '🖼' : '📄'} {name}</span>
+      <span style={s.itemLabel}>
+        {isImageFile(name) ? '🖼' : '📄'} {name}
+      </span>
       {mode === 'select' ? (
         <button style={s.actionBtn} onClick={handleSelect}>
           Select
@@ -103,11 +129,17 @@ function StorageFileNode({ name, url, copyMode, mode, onSelect }) {
       onMouseEnter={isImageFile(name) ? () => showPreview(url, rowRef.current) : undefined}
       onMouseLeave={isImageFile(name) ? hidePreview : undefined}
     >
-      <span style={s.itemLabel}>{isImageFile(name) ? '🖼' : '📄'} {name}</span>
+      <span style={s.itemLabel}>
+        {isImageFile(name) ? '🖼' : '📄'} {name}
+      </span>
       {mode === 'select' ? (
-        <button style={s.actionBtn} onClick={() => onSelect?.(url)}>Select</button>
+        <button style={s.actionBtn} onClick={() => onSelect?.(url)}>
+          Select
+        </button>
       ) : (
-        <button style={s.actionBtn} onClick={handleCopy}>{copied ? '✓' : copyMode === 'relative' ? 'Copy' : 'Copy URL'}</button>
+        <button style={s.actionBtn} onClick={handleCopy}>
+          {copied ? '✓' : copyMode === 'relative' ? 'Copy' : 'Copy URL'}
+        </button>
       )}
       <ImagePreviewTooltip preview={preview} />
     </div>
@@ -125,7 +157,15 @@ function StorageFileNode({ name, url, copyMode, mode, onSelect }) {
  * onSelect      – called with the path/URL when mode="select" and user clicks Select
  * style         – optional style overrides on the outer panel
  */
-export default function AssetBrowser({ assetsPath, assets, storageAssets, copyMode = 'relative', mode = 'browse', onSelect, style }) {
+export default function AssetBrowser({
+  assetsPath,
+  assets,
+  storageAssets,
+  copyMode = 'relative',
+  mode = 'browse',
+  onSelect,
+  style,
+}) {
   const hasStatic = assetsPath && assets?.length > 0
   const hasStorage = storageAssets?.length > 0
   if (!hasStatic && !hasStorage) return null
@@ -134,16 +174,48 @@ export default function AssetBrowser({ assetsPath, assets, storageAssets, copyMo
 
   return (
     <div style={{ ...s.panel, ...style }}>
-      {hasStatic && Object.entries(tree).map(([name, node]) =>
-        node._dir
-          ? <DirNode key={name} name={name} childNodes={node._ch} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
-          : <FileNode key={name} name={name} path={node._path} assetsPath={assetsPath} copyMode={copyMode} mode={mode} onSelect={onSelect} depth={0} />
-      )}
+      {hasStatic &&
+        Object.entries(tree).map(([name, node]) =>
+          node._dir ? (
+            <DirNode
+              key={name}
+              name={name}
+              childNodes={node._ch}
+              assetsPath={assetsPath}
+              copyMode={copyMode}
+              mode={mode}
+              onSelect={onSelect}
+              depth={0}
+            />
+          ) : (
+            <FileNode
+              key={name}
+              name={name}
+              path={node._path}
+              assetsPath={assetsPath}
+              copyMode={copyMode}
+              mode={mode}
+              onSelect={onSelect}
+              depth={0}
+            />
+          )
+        )}
       {hasStorage && (
         <>
-          {hasStatic && <div style={s.storageDivider}><span style={s.storageDividerLabel}>Firebase Storage</span></div>}
-          {storageAssets.map(asset => (
-            <StorageFileNode key={asset.name} name={asset.name} url={asset.url} copyMode={copyMode} mode={mode} onSelect={onSelect} />
+          {hasStatic && (
+            <div style={s.storageDivider}>
+              <span style={s.storageDividerLabel}>Firebase Storage</span>
+            </div>
+          )}
+          {storageAssets.map((asset) => (
+            <StorageFileNode
+              key={asset.name}
+              name={asset.name}
+              url={asset.url}
+              copyMode={copyMode}
+              mode={mode}
+              onSelect={onSelect}
+            />
           ))}
         </>
       )}

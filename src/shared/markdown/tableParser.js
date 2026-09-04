@@ -1,16 +1,16 @@
 function splitTableRow(line) {
   const trimmed = line.trim()
   const withoutOuterPipes = trimmed.replace(/^\|/, '').replace(/\|$/, '')
-  return withoutOuterPipes.split('|').map(cell => cell.trim())
+  return withoutOuterPipes.split('|').map((cell) => cell.trim())
 }
 
 function isTableSeparator(line) {
   const cells = splitTableRow(line)
-  return cells.length > 1 && cells.every(cell => /^:?-{3,}:?$/.test(cell))
+  return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
 }
 
 function getTableAlignment(separator) {
-  return splitTableRow(separator).map(cell => {
+  return splitTableRow(separator).map((cell) => {
     const left = cell.startsWith(':')
     const right = cell.endsWith(':')
     if (left && right) return 'center'

@@ -10,18 +10,24 @@ export function useTypeAssets(lessonType) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!lessonType) { setLoading(false); return }
+    if (!lessonType) {
+      setLoading(false)
+      return
+    }
     setLoading(!cache[lessonType])
     setError(null)
     const unsub = onSnapshot(
       doc(firestore, 'lessonTypeAssets', lessonType),
-      snap => {
+      (snap) => {
         const d = snap.exists() ? snap.data() : {}
         cache[lessonType] = d
         setData(d)
         setLoading(false)
       },
-      err => { setError(err); setLoading(false) },
+      (err) => {
+        setError(err)
+        setLoading(false)
+      }
     )
     return unsub
   }, [lessonType])

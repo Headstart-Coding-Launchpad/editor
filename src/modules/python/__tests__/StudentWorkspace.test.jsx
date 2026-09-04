@@ -14,12 +14,25 @@ vi.mock('../../../app/components/CopyCodePanel', () => ({
 }))
 
 const cs = {
-  code: '', output: '', runStatus: null, checkPassed: false,
-  running: false, runningTests: false, testResults: null,
-  pyodideStatus: 'ready', inPersonalSandbox: false,
-  handleRun: vi.fn(), handleStop: vi.fn(), handleRunTests: vi.fn(), handleResetCode: vi.fn(),
-  handleCodeChange: vi.fn(), handleEditorSelection: vi.fn(), handleEditorActivity: vi.fn(),
-  handleInputSubmit: vi.fn(), dismissHighlight: vi.fn(), readSavedTaskCode: vi.fn(),
+  code: '',
+  output: '',
+  runStatus: null,
+  checkPassed: false,
+  running: false,
+  runningTests: false,
+  testResults: null,
+  pyodideStatus: 'ready',
+  inPersonalSandbox: false,
+  handleRun: vi.fn(),
+  handleStop: vi.fn(),
+  handleRunTests: vi.fn(),
+  handleResetCode: vi.fn(),
+  handleCodeChange: vi.fn(),
+  handleEditorSelection: vi.fn(),
+  handleEditorActivity: vi.fn(),
+  handleInputSubmit: vi.fn(),
+  dismissHighlight: vi.fn(),
+  readSavedTaskCode: vi.fn(),
 }
 
 describe('Python StudentWorkspace onVisiblePanesChange reporting (teacher live-status badge)', () => {

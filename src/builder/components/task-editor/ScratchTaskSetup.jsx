@@ -5,29 +5,68 @@ import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { copyScratchSpriteStateToStarters } from '../../lessonUtils'
-import { CodeWorkspaceTabs, Modal, SpriteManager, SpriteAddPicker, BackdropManager, StageMetadataEditor } from './TaskEditorFields'
-import { ScratchToolboxPicker, VariableManager, PrebuiltStacksEditor } from '../../../modules/scratch/scratchEditors'
+import {
+  CodeWorkspaceTabs,
+  Modal,
+  SpriteManager,
+  SpriteAddPicker,
+  BackdropManager,
+  StageMetadataEditor,
+} from './TaskEditorFields'
+import {
+  ScratchToolboxPicker,
+  VariableManager,
+  PrebuiltStacksEditor,
+} from '../../../modules/scratch/scratchEditors'
 
 // A checked-subset picker for the two "student additions" library restrictions
 // (`addSpritePresetIds` / `addBackdropPresetIds`). No checks = the author is offering the
 // whole admin-curated library; checking any item switches to "restricted to just these".
 function PresetSubsetEditor({ presets, selectedIds, onChange, emptyLabel }) {
   if (!presets?.length) {
-    return <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: '2px 0 0 24px' }}>{emptyLabel}</p>
+    return (
+      <p
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.78rem',
+          color: '#9ca3af',
+          margin: '2px 0 0 24px',
+        }}
+      >
+        {emptyLabel}
+      </p>
+    )
   }
   const restricted = Array.isArray(selectedIds) && selectedIds.length > 0
   return (
     <div style={{ margin: '2px 0 0 24px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: 0 }}>
-        {restricted ? 'Restricted to the checked items below:' : 'The whole library is offered — check items to restrict to a subset.'}
+      <p
+        style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: 0 }}
+      >
+        {restricted
+          ? 'Restricted to the checked items below:'
+          : 'The whole library is offered — check items to restrict to a subset.'}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {presets.map(p => (
-          <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: '0.78rem', border: '1px solid #e5e7eb', borderRadius: 5, padding: '2px 6px', cursor: 'pointer' }}>
+        {presets.map((p) => (
+          <label
+            key={p.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.78rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 5,
+              padding: '2px 6px',
+              cursor: 'pointer',
+            }}
+          >
             <input
               type="checkbox"
               checked={restricted && selectedIds.includes(p.id)}
-              onChange={e => {
+              onChange={(e) => {
                 const current = new Set(restricted ? selectedIds : [])
                 if (e.target.checked) current.add(p.id)
                 else current.delete(p.id)
@@ -52,7 +91,13 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const [scratchModalTab, setScratchModalTab] = useState('starter')
   const [modalSelectedSpriteId, setModalSelectedSpriteId] = useState(null)
   const [modalSpritePanelTarget, setModalSpritePanelTarget] = useState(null)
-  const [sidebarSections, setSidebarSections] = useState({ toolbox: true, sprites: true, backdrops: true, variables: false, studentAdditions: false })
+  const [sidebarSections, setSidebarSections] = useState({
+    toolbox: true,
+    sprites: true,
+    backdrops: true,
+    variables: false,
+    studentAdditions: false,
+  })
   const { defaultSprites: libSprites, defaultBackdrops: libBackdrops } = useTypeAssets('scratch')
   const [modalStarterBlocks, setModalStarterBlocks] = useState(null)
   const modalStarterBlocksRef = useRef(null)
@@ -62,10 +107,14 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   const closeStarterBlocksFrameRef = useRef(null)
   const tabChangeFrameRef = useRef(null)
 
-  useEffect(() => () => {
-    if (closeStarterBlocksFrameRef.current != null) cancelAnimationFrame(closeStarterBlocksFrameRef.current)
-    if (tabChangeFrameRef.current != null) cancelAnimationFrame(tabChangeFrameRef.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (closeStarterBlocksFrameRef.current != null)
+        cancelAnimationFrame(closeStarterBlocksFrameRef.current)
+      if (tabChangeFrameRef.current != null) cancelAnimationFrame(tabChangeFrameRef.current)
+    },
+    []
+  )
 
   const codeStages = task.codeStages ?? []
 
@@ -75,13 +124,13 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
 
   function updateStage(idx, updates) {
     const existing = task.codeStages ?? []
-    const updated = existing.map((s, i) => i === idx ? { ...s, ...updates } : s)
+    const updated = existing.map((s, i) => (i === idx ? { ...s, ...updates } : s))
     onUpdate({ ...task, codeStages: updated })
   }
 
   function replaceStage(idx, nextStage) {
     const existing = task.codeStages ?? []
-    const updated = existing.map((s, i) => i === idx ? nextStage : s)
+    const updated = existing.map((s, i) => (i === idx ? nextStage : s))
     onUpdate({ ...task, codeStages: updated })
   }
 
@@ -98,11 +147,11 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   function handleStarterSpritesChange(newSprites) {
     const previousSprites = getScratchSprites()
     set('sprites', newSprites)
-    const previousIds = new Set(previousSprites.map(sp => sp.id))
-    const added = newSprites.find(sp => !previousIds.has(sp.id))
+    const previousIds = new Set(previousSprites.map((sp) => sp.id))
+    const added = newSprites.find((sp) => !previousIds.has(sp.id))
     if (added) {
       setModalSelectedSpriteId(added.id)
-    } else if (!newSprites.find(sp => sp.id === modalSelectedSpriteId)) {
+    } else if (!newSprites.find((sp) => sp.id === modalSelectedSpriteId)) {
       setModalSelectedSpriteId(newSprites[0]?.id ?? null)
     }
   }
@@ -126,7 +175,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   }
 
   function handleCloseStarterBlocks() {
-    setStarterBlocksSyncKey(key => key + 1)
+    setStarterBlocksSyncKey((key) => key + 1)
     closeStarterBlocksFrameRef.current = requestAnimationFrame(() => {
       closeStarterBlocksFrameRef.current = null
       setStarterBlocksOpen(false)
@@ -134,7 +183,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   }
 
   function toggleSidebarSection(name) {
-    setSidebarSections(prev => ({ ...prev, [name]: !prev[name] }))
+    setSidebarSections((prev) => ({ ...prev, [name]: !prev[name] }))
   }
 
   function handleScratchModalTabChange(tab) {
@@ -142,13 +191,15 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     setCheckResult(null)
 
     if (tab === 'complete') {
-      setStarterBlocksSyncKey(key => key + 1)
+      setStarterBlocksSyncKey((key) => key + 1)
       tabChangeFrameRef.current = requestAnimationFrame(() => {
         tabChangeFrameRef.current = null
-        const starterSnapshot = modalStarterBlocksRef.current ?? modalStarterBlocks ?? task.starterBlocks
-        const initBlocks = task.completeBlocks != null
-          ? cloneBlocks(task.completeBlocks)
-          : cloneBlocks(starterSnapshot)
+        const starterSnapshot =
+          modalStarterBlocksRef.current ?? modalStarterBlocks ?? task.starterBlocks
+        const initBlocks =
+          task.completeBlocks != null
+            ? cloneBlocks(task.completeBlocks)
+            : cloneBlocks(starterSnapshot)
         if (task.completeBlocks == null) {
           set('completeBlocks', initBlocks)
         }
@@ -165,7 +216,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   function handleAddScratchStage() {
     const existing = task.codeStages ?? []
     const newStage = {
-      label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
+      label: `Support ${existing.filter((stage) => stage.role === 'support').length + 1}`,
       role: 'support',
       markdown: '',
     }
@@ -177,9 +228,10 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
   function handleCopySpriteInfoToStarter() {
     const stageMatch = scratchModalTab.match(/^stage_(\d+)$/)
     const stageIndex = stageMatch ? parseInt(stageMatch[1], 10) : null
-    const spriteStates = scratchModalTab === 'complete'
-      ? modalCompleteSpriteStatesRef.current
-      : modalStageSpriteStatesRef.current[stageIndex]
+    const spriteStates =
+      scratchModalTab === 'complete'
+        ? modalCompleteSpriteStatesRef.current
+        : modalStageSpriteStatesRef.current[stageIndex]
     const sprites = task.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
     set('sprites', copyScratchSpriteStateToStarters(sprites, spriteStates))
   }
@@ -189,12 +241,12 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
     set('completeBlocks', blocks)
     setTestScratchBlocks(blocks)
     modalCompleteBlocksRef.current = blocks
-    setCompleteReloadKey(k => k + 1)
+    setCompleteReloadKey((k) => k + 1)
   }
 
   function handleCopyFromStarter(stageIdx) {
     updateStage(stageIdx, { blocks: cloneBlocks(task.starterBlocks) })
-    setStageReloadKey(k => k + 1)
+    setStageReloadKey((k) => k + 1)
   }
 
   function handleRemoveScratchStage(idx) {
@@ -235,22 +287,38 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                 unifiedStages
               />
               {scratchModalTab !== 'starter' && (
-                <button type="button" className="btn-ghost te-secondary-btn" onClick={() => setScratchModalTab('starter')}>
+                <button
+                  type="button"
+                  className="btn-ghost te-secondary-btn"
+                  onClick={() => setScratchModalTab('starter')}
+                >
                   Project setup
                 </button>
               )}
               {scratchModalTab === 'complete' && checkResult !== null && (
-                <span className={checkResult === 'pass' ? 'te-scratch-check-pass' : 'te-scratch-check-fail'}>
+                <span
+                  className={
+                    checkResult === 'pass' ? 'te-scratch-check-pass' : 'te-scratch-check-fail'
+                  }
+                >
                   {checkResult === 'pass' ? 'Check passes' : 'Check not passing'}
                 </span>
               )}
               {scratchModalTab !== 'starter' && (
-                <button type="button" className="btn-ghost te-secondary-btn" onClick={handleCopySpriteInfoToStarter}>
+                <button
+                  type="button"
+                  className="btn-ghost te-secondary-btn"
+                  onClick={handleCopySpriteInfoToStarter}
+                >
                   Copy Sprite Info to Starter
                 </button>
               )}
               {scratchModalTab === 'complete' && (
-                <button type="button" className="btn-ghost te-secondary-btn" onClick={handleCopyFromStarterToComplete}>
+                <button
+                  type="button"
+                  className="btn-ghost te-secondary-btn"
+                  onClick={handleCopyFromStarterToComplete}
+                >
                   Copy from starter code
                 </button>
               )}
@@ -260,11 +328,20 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               {scratchModalTab === 'starter' && (
                 <div className="te-scratch-config-sidebar">
                   <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.88rem' }}>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.88rem',
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={!!task.enableStageCode}
-                        onChange={e => {
+                        onChange={(e) => {
                           if (!e.target.checked) {
                             const nextStarter = { ...(task.starterBlocks ?? {}) }
                             delete nextStarter['__stage__']
@@ -273,8 +350,12 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                             onUpdate({
                               ...task,
                               enableStageCode: false,
-                              starterBlocks: Object.keys(nextStarter).length ? nextStarter : undefined,
-                              completeBlocks: Object.keys(nextComplete).length ? nextComplete : undefined,
+                              starterBlocks: Object.keys(nextStarter).length
+                                ? nextStarter
+                                : undefined,
+                              completeBlocks: Object.keys(nextComplete).length
+                                ? nextComplete
+                                : undefined,
                             })
                           } else {
                             set('enableStageCode', true)
@@ -283,28 +364,61 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                       />
                       <span style={{ fontWeight: 600 }}>Enable stage code</span>
                     </label>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', margin: '4px 0 0 24px' }}>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.8rem',
+                        color: '#6b7280',
+                        margin: '4px 0 0 24px',
+                      }}
+                    >
                       Show a Stage tab in the workspace for backdrop-level scripts.
                     </p>
                   </div>
 
                   <div className="te-collapsible">
-                    <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('toolbox')}>
+                    <button
+                      type="button"
+                      className="te-collapsible__header"
+                      onClick={() => toggleSidebarSection('toolbox')}
+                    >
                       <span className="te-collapsible__label">Toolbox blocks</span>
-                      <span className="te-collapsible__chevron" style={{ transform: sidebarSections.toolbox ? 'rotate(180deg)' : 'none' }}>▾</span>
+                      <span
+                        className="te-collapsible__chevron"
+                        style={{ transform: sidebarSections.toolbox ? 'rotate(180deg)' : 'none' }}
+                      >
+                        ▾
+                      </span>
                     </button>
                     {sidebarSections.toolbox && (
                       <>
                         <ScratchToolboxPicker
                           toolbox={task.toolbox ?? ''}
-                          onChange={toolbox => set('toolbox', toolbox)}
+                          onChange={(toolbox) => set('toolbox', toolbox)}
                         />
                         <div style={{ padding: '8px 12px', borderTop: '1px solid #e5e7eb' }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.82rem', color: 'var(--colour-text)', display: 'block', marginBottom: 6 }}>Prebuilt stacks</span>
+                          <span
+                            style={{
+                              fontFamily: 'var(--font-body)',
+                              fontWeight: 600,
+                              fontSize: '0.82rem',
+                              color: 'var(--colour-text)',
+                              display: 'block',
+                              marginBottom: 6,
+                            }}
+                          >
+                            Prebuilt stacks
+                          </span>
                           <PrebuiltStacksEditor
                             prebuiltStacks={task.prebuiltStacks ?? []}
                             predefinedBlocks={task.predefinedBlocks ?? []}
-                            onChange={stacks => onUpdate({ ...task, prebuiltStacks: stacks.length ? stacks : undefined, predefinedBlocks: undefined })}
+                            onChange={(stacks) =>
+                              onUpdate({
+                                ...task,
+                                prebuiltStacks: stacks.length ? stacks : undefined,
+                                predefinedBlocks: undefined,
+                              })
+                            }
                           />
                         </div>
                       </>
@@ -312,9 +426,18 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   </div>
 
                   <div className="te-collapsible">
-                    <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('sprites')}>
+                    <button
+                      type="button"
+                      className="te-collapsible__header"
+                      onClick={() => toggleSidebarSection('sprites')}
+                    >
                       <span className="te-collapsible__label">Sprites</span>
-                      <span className="te-collapsible__chevron" style={{ transform: sidebarSections.sprites ? 'rotate(180deg)' : 'none' }}>▾</span>
+                      <span
+                        className="te-collapsible__chevron"
+                        style={{ transform: sidebarSections.sprites ? 'rotate(180deg)' : 'none' }}
+                      >
+                        ▾
+                      </span>
                     </button>
                     {sidebarSections.sprites && (
                       <div ref={setModalSpritePanelTarget} className="te-sprite-panel-host" />
@@ -322,15 +445,28 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   </div>
 
                   <div className="te-collapsible">
-                    <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('backdrops')}>
+                    <button
+                      type="button"
+                      className="te-collapsible__header"
+                      onClick={() => toggleSidebarSection('backdrops')}
+                    >
                       <span className="te-collapsible__label">Backdrops</span>
-                      <span className="te-collapsible__chevron" style={{ transform: sidebarSections.backdrops ? 'rotate(180deg)' : 'none' }}>▾</span>
+                      <span
+                        className="te-collapsible__chevron"
+                        style={{ transform: sidebarSections.backdrops ? 'rotate(180deg)' : 'none' }}
+                      >
+                        ▾
+                      </span>
                     </button>
                     {sidebarSections.backdrops && (
                       <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb' }}>
                         <BackdropManager
-                          backdrops={task.backdrops?.length > 0 ? task.backdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
-                          onChange={backdrops => set('backdrops', backdrops)}
+                          backdrops={
+                            task.backdrops?.length > 0
+                              ? task.backdrops
+                              : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]
+                          }
+                          onChange={(backdrops) => set('backdrops', backdrops)}
                           assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                           storageAssets={lesson.storageAssets ?? []}
                           lessonId={lesson.id}
@@ -341,33 +477,80 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                   </div>
 
                   <div className="te-collapsible">
-                    <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('variables')}>
+                    <button
+                      type="button"
+                      className="te-collapsible__header"
+                      onClick={() => toggleSidebarSection('variables')}
+                    >
                       <span className="te-collapsible__label">Variables</span>
-                      <span className="te-collapsible__chevron" style={{ transform: sidebarSections.variables ? 'rotate(180deg)' : 'none' }}>▾</span>
+                      <span
+                        className="te-collapsible__chevron"
+                        style={{ transform: sidebarSections.variables ? 'rotate(180deg)' : 'none' }}
+                      >
+                        ▾
+                      </span>
                     </button>
                     {sidebarSections.variables && (
                       <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb' }}>
                         <VariableManager
                           variables={task.variables ?? []}
-                          onChange={variables => set('variables', variables.length > 0 ? variables : undefined)}
+                          onChange={(variables) =>
+                            set('variables', variables.length > 0 ? variables : undefined)
+                          }
                         />
                       </div>
                     )}
                   </div>
 
                   <div className="te-collapsible">
-                    <button type="button" className="te-collapsible__header" onClick={() => toggleSidebarSection('studentAdditions')}>
+                    <button
+                      type="button"
+                      className="te-collapsible__header"
+                      onClick={() => toggleSidebarSection('studentAdditions')}
+                    >
                       <span className="te-collapsible__label">Student additions</span>
-                      <span className="te-collapsible__chevron" style={{ transform: sidebarSections.studentAdditions ? 'rotate(180deg)' : 'none' }}>▾</span>
+                      <span
+                        className="te-collapsible__chevron"
+                        style={{
+                          transform: sidebarSections.studentAdditions ? 'rotate(180deg)' : 'none',
+                        }}
+                      >
+                        ▾
+                      </span>
                     </button>
                     {sidebarSections.studentAdditions && (
-                      <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          borderTop: '1px solid #e5e7eb',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                        }}
+                      >
                         <div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.86rem' }}>
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              cursor: 'pointer',
+                              fontFamily: 'var(--font-body)',
+                              fontSize: '0.86rem',
+                            }}
+                          >
                             <input
                               type="checkbox"
                               checked={!!task.allowAddSprite}
-                              onChange={e => onUpdate({ ...task, allowAddSprite: e.target.checked || undefined, addSpritePresetIds: e.target.checked ? task.addSpritePresetIds : undefined })}
+                              onChange={(e) =>
+                                onUpdate({
+                                  ...task,
+                                  allowAddSprite: e.target.checked || undefined,
+                                  addSpritePresetIds: e.target.checked
+                                    ? task.addSpritePresetIds
+                                    : undefined,
+                                })
+                              }
                             />
                             <span style={{ fontWeight: 600 }}>Allow students to add sprites</span>
                           </label>
@@ -375,17 +558,34 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                             <PresetSubsetEditor
                               presets={libSprites}
                               selectedIds={task.addSpritePresetIds}
-                              onChange={ids => set('addSpritePresetIds', ids)}
+                              onChange={(ids) => set('addSpritePresetIds', ids)}
                               emptyLabel="No shared sprites configured yet — add some in Admin → Shared Assets → Scratch first."
                             />
                           )}
                         </div>
                         <div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.86rem' }}>
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              cursor: 'pointer',
+                              fontFamily: 'var(--font-body)',
+                              fontSize: '0.86rem',
+                            }}
+                          >
                             <input
                               type="checkbox"
                               checked={!!task.allowAddBackdrop}
-                              onChange={e => onUpdate({ ...task, allowAddBackdrop: e.target.checked || undefined, addBackdropPresetIds: e.target.checked ? task.addBackdropPresetIds : undefined })}
+                              onChange={(e) =>
+                                onUpdate({
+                                  ...task,
+                                  allowAddBackdrop: e.target.checked || undefined,
+                                  addBackdropPresetIds: e.target.checked
+                                    ? task.addBackdropPresetIds
+                                    : undefined,
+                                })
+                              }
                             />
                             <span style={{ fontWeight: 600 }}>Allow students to add backdrops</span>
                           </label>
@@ -393,21 +593,43 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                             <PresetSubsetEditor
                               presets={libBackdrops}
                               selectedIds={task.addBackdropPresetIds}
-                              onChange={ids => set('addBackdropPresetIds', ids)}
+                              onChange={(ids) => set('addBackdropPresetIds', ids)}
                               emptyLabel="No shared backdrops configured yet — add some in Admin → Shared Assets → Scratch first."
                             />
                           )}
                         </div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.86rem' }}>
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-body)',
+                            fontSize: '0.86rem',
+                          }}
+                        >
                           <input
                             type="checkbox"
                             checked={!!task.allowCreateVariable}
-                            onChange={e => set('allowCreateVariable', e.target.checked || undefined)}
+                            onChange={(e) =>
+                              set('allowCreateVariable', e.target.checked || undefined)
+                            }
                           />
-                          <span style={{ fontWeight: 600 }}>Allow students to create their own variables</span>
+                          <span style={{ fontWeight: 600 }}>
+                            Allow students to create their own variables
+                          </span>
                         </label>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: 0 }}>
-                          Student-added sprites/backdrops and student-created variables are decorative — they never satisfy a check that targets an author-known sprite or variable name.
+                        <p
+                          style={{
+                            fontFamily: 'var(--font-body)',
+                            fontSize: '0.78rem',
+                            color: '#6b7280',
+                            margin: 0,
+                          }}
+                        >
+                          Student-added sprites/backdrops and student-created variables are
+                          decorative — they never satisfy a check that targets an author-known
+                          sprite or variable name.
                         </p>
                       </div>
                     )}
@@ -418,28 +640,32 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               <div className="te-scratch-modal-workspace">
                 {scratchModalTab === 'starter' ? (
                   <ScratchWorkspace
-                    key={`builder-scratch-starter-${task.id}-${getScratchSprites().map(sp => sp.id).join(',')}`}
+                    key={`builder-scratch-starter-${task.id}-${getScratchSprites()
+                      .map((sp) => sp.id)
+                      .join(',')}`}
                     task={{ ...task, sprites: getScratchSprites() }}
                     hideStage
                     assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                     initialStates={modalStarterBlocks}
-                    onStateChange={states => {
+                    onStateChange={(states) => {
                       modalStarterBlocksRef.current = states
                       setModalStarterBlocks(states)
                       set('starterBlocks', states)
                     }}
-                    onSpriteStatesChange={states => {
+                    onSpriteStatesChange={(states) => {
                       set('sprites', copyScratchSpriteStateToStarters(getScratchSprites(), states))
                     }}
                     syncNowKey={starterBlocksSyncKey}
                     selectedSpriteId={modalSelectedSpriteId}
                     onSpriteSelect={setModalSelectedSpriteId}
                     hideSpriteProps
-                    onRemoveSprite={id => handleStarterSpritesChange(getScratchSprites().filter(sp => sp.id !== id))}
+                    onRemoveSprite={(id) =>
+                      handleStarterSpritesChange(getScratchSprites().filter((sp) => sp.id !== id))
+                    }
                     spritePanelTarget={modalSpritePanelTarget}
                     predefinedBlocks={task.predefinedBlocks ?? null}
                     prebuiltStacks={task.prebuiltStacks ?? null}
-                    spritePanelEditor={(
+                    spritePanelEditor={
                       <SpriteManager
                         sprites={getScratchSprites()}
                         focusedSpriteId={modalSelectedSpriteId}
@@ -451,30 +677,32 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                         lessonId={lesson.id}
                         lessonType={lesson.type}
                       />
-                    )}
-                    spritePanelFooter={(
+                    }
+                    spritePanelFooter={
                       <SpriteAddPicker
                         sprites={getScratchSprites()}
                         onChange={handleStarterSpritesChange}
                         lessonType={lesson.type}
                       />
-                    )}
+                    }
                   />
                 ) : scratchModalTab === 'complete' ? (
                   <ScratchWorkspace
-                    key={`builder-scratch-complete-${task.id}-${getScratchSprites().map(sp => sp.id).join(',')}-${completeReloadKey}`}
+                    key={`builder-scratch-complete-${task.id}-${getScratchSprites()
+                      .map((sp) => sp.id)
+                      .join(',')}-${completeReloadKey}`}
                     task={{ ...task, sprites: getScratchSprites() }}
                     assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                     initialStates={testScratchBlocks}
-                    onStateChange={states => {
+                    onStateChange={(states) => {
                       modalCompleteBlocksRef.current = states
                       setTestScratchBlocks(states)
                       set('completeBlocks', states)
                     }}
-                    onSpriteStatesChange={states => {
+                    onSpriteStatesChange={(states) => {
                       modalCompleteSpriteStatesRef.current = states
                     }}
-                    onCheckResult={passed => {
+                    onCheckResult={(passed) => {
                       setCheckResult(passed ? 'pass' : 'fail')
                       if (task.check) {
                         onUpdate({
@@ -488,98 +716,170 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                     predefinedBlocks={task.predefinedBlocks ?? null}
                     prebuiltStacks={task.prebuiltStacks ?? null}
                   />
-                ) : (() => {
-                  const stageMatch = scratchModalTab.match(/^stage_(\d+)$/)
-                  if (!stageMatch) return null
-                  const stageIdx = parseInt(stageMatch[1], 10)
-                  const stage = codeStages[stageIdx]
-                  if (!stage) return null
-                  if (stage.role === 'support') {
+                ) : (
+                  (() => {
+                    const stageMatch = scratchModalTab.match(/^stage_(\d+)$/)
+                    if (!stageMatch) return null
+                    const stageIdx = parseInt(stageMatch[1], 10)
+                    const stage = codeStages[stageIdx]
+                    if (!stage) return null
+                    if (stage.role === 'support') {
+                      return (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            flex: 1,
+                            minHeight: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '6px 10px',
+                              borderBottom: '1px solid #e5e7eb',
+                              flexShrink: 0,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: 'var(--font-body)',
+                                fontSize: '0.8rem',
+                                color: '#6b7280',
+                                fontWeight: 600,
+                              }}
+                            >
+                              Stage label:
+                            </span>
+                            <input
+                              className="te-input"
+                              style={{ width: 200, padding: '4px 8px', fontSize: '0.82rem' }}
+                              value={stage.label ?? ''}
+                              onChange={(e) => updateStage(stageIdx, { label: e.target.value })}
+                              placeholder={`Support ${stageIdx + 1}`}
+                            />
+                            <StageMetadataEditor
+                              stage={stage}
+                              onChange={(nextStage) => replaceStage(stageIdx, nextStage)}
+                            />
+                          </div>
+                          <div style={{ padding: 12, overflow: 'auto' }}>
+                            <ExplainerEditor
+                              title={stage.label || 'Scratch reference'}
+                              value={stage.markdown ?? ''}
+                              onChange={(markdown) => updateStage(stageIdx, { markdown })}
+                              lessonType="scratch"
+                              inlineCodeLanguages={['scratch']}
+                              assets={lesson.assets ?? []}
+                              assetsPath={
+                                lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''
+                              }
+                              storageAssets={lesson.storageAssets ?? []}
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+                    const stagePredefined = [
+                      ...(task.predefinedBlocks ?? []),
+                      ...(stage.predefinedBlocks ?? []),
+                    ]
+                    const stagePrebuilt = [
+                      ...(task.prebuiltStacks ?? []),
+                      ...(stage.prebuiltStacks ?? []),
+                    ]
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0, flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
+                      <div
+                        style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '6px 10px',
+                            borderBottom: '1px solid #e5e7eb',
+                            flexShrink: 0,
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: 'var(--font-body)',
+                              fontSize: '0.8rem',
+                              color: '#6b7280',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Stage label:
+                          </span>
                           <input
                             className="te-input"
                             style={{ width: 200, padding: '4px 8px', fontSize: '0.82rem' }}
                             value={stage.label ?? ''}
-                            onChange={e => updateStage(stageIdx, { label: e.target.value })}
-                            placeholder={`Support ${stageIdx + 1}`}
+                            onChange={(e) => updateStage(stageIdx, { label: e.target.value })}
+                            placeholder={`Stage ${stageIdx + 1}`}
                           />
-                          <StageMetadataEditor stage={stage} onChange={nextStage => replaceStage(stageIdx, nextStage)} />
-                        </div>
-                        <div style={{ padding: 12, overflow: 'auto' }}>
-                          <ExplainerEditor
-                            title={stage.label || 'Scratch reference'}
-                            value={stage.markdown ?? ''}
-                            onChange={markdown => updateStage(stageIdx, { markdown })}
-                            lessonType="scratch"
-                            inlineCodeLanguages={['scratch']}
-                            assets={lesson.assets ?? []}
-                            assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
-                            storageAssets={lesson.storageAssets ?? []}
+                          <StageMetadataEditor
+                            stage={stage}
+                            onChange={(nextStage) => replaceStage(stageIdx, nextStage)}
                           />
+                          <button
+                            type="button"
+                            className="btn-ghost te-secondary-btn"
+                            onClick={() => handleCopyFromStarter(stageIdx)}
+                            title="Replace this stage's blocks with a copy of the starter code"
+                          >
+                            Copy from starter code
+                          </button>
+                          <div style={{ flex: '1 1 100%', padding: '4px 0 0' }}>
+                            <span
+                              style={{
+                                fontFamily: 'var(--font-body)',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                color: '#6b7280',
+                                display: 'block',
+                                marginBottom: 4,
+                              }}
+                            >
+                              Prebuilt stacks for this stage
+                            </span>
+                            <PrebuiltStacksEditor
+                              prebuiltStacks={stage.prebuiltStacks ?? []}
+                              predefinedBlocks={stage.predefinedBlocks ?? []}
+                              onChange={(stacks) =>
+                                updateStage(stageIdx, {
+                                  prebuiltStacks: stacks.length ? stacks : undefined,
+                                  predefinedBlocks: undefined,
+                                })
+                              }
+                            />
+                          </div>
                         </div>
+                        <ScratchWorkspace
+                          key={`builder-scratch-stage-${task.id}-${stageIdx}-${getScratchSprites()
+                            .map((sp) => sp.id)
+                            .join(',')}-${stageReloadKey}`}
+                          task={{ ...task, sprites: getScratchSprites() }}
+                          hideStage
+                          assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+                          initialStates={stage.blocks ?? null}
+                          onStateChange={(states) => updateStage(stageIdx, { blocks: states })}
+                          onSpriteStatesChange={(states) => {
+                            modalStageSpriteStatesRef.current[stageIdx] = states
+                          }}
+                          syncNowKey={starterBlocksSyncKey}
+                          predefinedBlocks={stagePredefined.length ? stagePredefined : null}
+                          prebuiltStacks={stagePrebuilt.length ? stagePrebuilt : null}
+                        />
                       </div>
                     )
-                  }
-                  const stagePredefined = [
-                    ...(task.predefinedBlocks ?? []),
-                    ...(stage.predefinedBlocks ?? []),
-                  ]
-                  const stagePrebuilt = [
-                    ...(task.prebuiltStacks ?? []),
-                    ...(stage.prebuiltStacks ?? []),
-                  ]
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0, flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
-                        <input
-                          className="te-input"
-                          style={{ width: 200, padding: '4px 8px', fontSize: '0.82rem' }}
-                          value={stage.label ?? ''}
-                          onChange={e => updateStage(stageIdx, { label: e.target.value })}
-                          placeholder={`Stage ${stageIdx + 1}`}
-                        />
-                        <StageMetadataEditor
-                          stage={stage}
-                          onChange={nextStage => replaceStage(stageIdx, nextStage)}
-                        />
-                        <button
-                          type="button"
-                          className="btn-ghost te-secondary-btn"
-                          onClick={() => handleCopyFromStarter(stageIdx)}
-                          title="Replace this stage's blocks with a copy of the starter code"
-                        >
-                          Copy from starter code
-                        </button>
-                        <div style={{ flex: '1 1 100%', padding: '4px 0 0' }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', display: 'block', marginBottom: 4 }}>Prebuilt stacks for this stage</span>
-                          <PrebuiltStacksEditor
-                            prebuiltStacks={stage.prebuiltStacks ?? []}
-                            predefinedBlocks={stage.predefinedBlocks ?? []}
-                            onChange={stacks => updateStage(stageIdx, { prebuiltStacks: stacks.length ? stacks : undefined, predefinedBlocks: undefined })}
-                          />
-                        </div>
-                      </div>
-                      <ScratchWorkspace
-                        key={`builder-scratch-stage-${task.id}-${stageIdx}-${getScratchSprites().map(sp => sp.id).join(',')}-${stageReloadKey}`}
-                        task={{ ...task, sprites: getScratchSprites() }}
-                        hideStage
-                        assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
-                        initialStates={stage.blocks ?? null}
-                        onStateChange={states => updateStage(stageIdx, { blocks: states })}
-                        onSpriteStatesChange={states => {
-                          modalStageSpriteStatesRef.current[stageIdx] = states
-                        }}
-                        syncNowKey={starterBlocksSyncKey}
-                        predefinedBlocks={stagePredefined.length ? stagePredefined : null}
-                        prebuiltStacks={stagePrebuilt.length ? stagePrebuilt : null}
-                      />
-                    </div>
-                  )
-                })()}
+                  })()
+                )}
               </div>
             </div>
           </div>

@@ -14,7 +14,14 @@ function optionLabel(filename) {
   return ext ? `${filename}  [${ext}]` : filename
 }
 
-export default function AssetPicker({ lessonId, lessonType, value, onChange, placeholder, assetsPath }) {
+export default function AssetPicker({
+  lessonId,
+  lessonType,
+  value,
+  onChange,
+  placeholder,
+  assetsPath,
+}) {
   const { lessonFolderAssets, sharedAssets, loading } = useAssets()
   const [showManual, setShowManual] = useState(false)
   const [open, setOpen] = useState(false)
@@ -27,7 +34,8 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
   const lessonItems = lessonFolderAssets(lessonId)
   const typeItems = lessonType ? sharedAssets(lessonType) : []
   const commonItems = sharedAssets('common')
-  const hasManifestEntries = lessonItems.length > 0 || typeItems.length > 0 || commonItems.length > 0
+  const hasManifestEntries =
+    lessonItems.length > 0 || typeItems.length > 0 || commonItems.length > 0
 
   const allManifestFiles = [...lessonItems, ...typeItems, ...commonItems]
   const valueInManifest = value && allManifestFiles.includes(value)
@@ -35,7 +43,9 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
 
   const groups = [
     lessonItems.length > 0 ? { label: 'Lesson assets', items: lessonItems } : null,
-    typeItems.length > 0 && lessonType ? { label: `Shared (${lessonType})`, items: typeItems } : null,
+    typeItems.length > 0 && lessonType
+      ? { label: `Shared (${lessonType})`, items: typeItems }
+      : null,
     commonItems.length > 0 ? { label: 'Shared (common)', items: commonItems } : null,
   ].filter(Boolean)
 
@@ -52,7 +62,9 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
 
   useEffect(() => {
     if (!open) return
-    function close() { closeDropdown() }
+    function close() {
+      closeDropdown()
+    }
     window.addEventListener('scroll', close, true)
     window.addEventListener('resize', close)
     return () => {
@@ -107,7 +119,7 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
       <input
         style={s.input}
         value={value ?? ''}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? 'e.g. images/photo.png'}
       />
     )
@@ -120,11 +132,16 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
           <input
             style={{ ...s.input, flex: 1 }}
             value={value ?? ''}
-            onChange={e => onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder ?? 'e.g. images/photo.png'}
             autoFocus
           />
-          <button type="button" style={s.browseBtn} onClick={switchToDropdown} title="Back to asset browser">
+          <button
+            type="button"
+            style={s.browseBtn}
+            onClick={switchToDropdown}
+            title="Back to asset browser"
+          >
             Browse
           </button>
         </div>
@@ -157,7 +174,11 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
           <div
             role="option"
             aria-selected={!value}
-            style={{ ...s.option, ...s.optionPlaceholder, ...(hoveredKey === '' ? s.optionHover : {}) }}
+            style={{
+              ...s.option,
+              ...s.optionPlaceholder,
+              ...(hoveredKey === '' ? s.optionHover : {}),
+            }}
             onMouseEnter={() => setHoveredKey('')}
             onMouseLeave={() => setHoveredKey(null)}
             onClick={() => handleSelect('')}
@@ -165,10 +186,10 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
             — select asset —
           </div>
 
-          {groups.map(group => (
+          {groups.map((group) => (
             <React.Fragment key={group.label}>
               <div style={s.groupLabel}>{group.label}</div>
-              {group.items.map(f => (
+              {group.items.map((f) => (
                 <div
                   key={f}
                   role="option"
@@ -178,10 +199,11 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
                     ...(f === value ? s.optionActive : hoveredKey === f ? s.optionHover : {}),
                   }}
                   onClick={() => handleSelect(f)}
-                  onMouseEnter={e => handleItemEnter(f, e)}
+                  onMouseEnter={(e) => handleItemEnter(f, e)}
                   onMouseLeave={handleItemLeave}
                 >
-                  {isImageFile(f) ? '🖼 ' : '📄 '}{optionLabel(f)}
+                  {isImageFile(f) ? '🖼 ' : '📄 '}
+                  {optionLabel(f)}
                 </div>
               ))}
             </React.Fragment>
@@ -189,7 +211,11 @@ export default function AssetPicker({ lessonId, lessonType, value, onChange, pla
 
           <div
             role="option"
-            style={{ ...s.option, ...s.optionManual, ...(hoveredKey === MANUAL_VALUE ? s.optionHover : {}) }}
+            style={{
+              ...s.option,
+              ...s.optionManual,
+              ...(hoveredKey === MANUAL_VALUE ? s.optionHover : {}),
+            }}
             onMouseEnter={() => setHoveredKey(MANUAL_VALUE)}
             onMouseLeave={() => setHoveredKey(null)}
             onClick={handleManualClick}

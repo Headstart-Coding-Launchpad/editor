@@ -19,7 +19,17 @@ export default function QuizTask({
   showCorrectAnswer = false,
 }) {
   const quizType = task?.quizType ?? 'multiple_choice'
-  const props = { task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }
+  const props = {
+    task,
+    selectedAnswer,
+    onSelectAnswer,
+    submitted,
+    checkPassed,
+    disabled,
+    showQuestion,
+    showResult,
+    showCorrectAnswer,
+  }
 
   if (quizType === 'match') return <MatchQuiz {...props} />
   if (quizType === 'fill_blank') return <FillBlankQuiz {...props} />

@@ -2,7 +2,18 @@ import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import TeacherLiveView from './TeacherLiveView.jsx'
-import { DEFAULT_AVAILABLE_COMPONENTS, DEFAULT_CIRCUIT, applyI2cLcdEvent, applyMicrocontrollerGpioValues, cloneCircuit, evaluateElectronicsCheck, getMicrocontrollerCode, getMicrocontrollerInputValues, parseCircuit, serializeCircuit } from './circuit'
+import {
+  DEFAULT_AVAILABLE_COMPONENTS,
+  DEFAULT_CIRCUIT,
+  applyI2cLcdEvent,
+  applyMicrocontrollerGpioValues,
+  cloneCircuit,
+  evaluateElectronicsCheck,
+  getMicrocontrollerCode,
+  getMicrocontrollerInputValues,
+  parseCircuit,
+  serializeCircuit,
+} from './circuit'
 import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from '../python/pyodide'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 
@@ -82,7 +93,7 @@ const MICROPYTHON_SHIM = [
   '',
   'def _lcd_emit(sda, scl, action, **payload):',
   '    message = {"sda": _lcd_pin_name(sda), "scl": _lcd_pin_name(scl), "action": action, **payload}',
-  '    print(f"[lcd {json.dumps(message, separators=(\',\', \':\'))}]")',
+  "    print(f\"[lcd {json.dumps(message, separators=(',', ':'))}]\")",
   '',
   'class _LCD1602:',
   '    def __init__(self, sda, scl, address=0x27):',
@@ -130,11 +141,7 @@ const MICROPYTHON_SHIM = [
 ].join('\n')
 
 export function buildMicroPythonProgram(code) {
-  return [
-    `exec(${JSON.stringify(MICROPYTHON_SHIM)}, globals())`,
-    '',
-    code,
-  ].join('\n')
+  return [`exec(${JSON.stringify(MICROPYTHON_SHIM)}, globals())`, '', code].join('\n')
 }
 
 const PIN_OUTPUT_RE = /\[pin\s+([^\]]+)\]\s+([01])/g
@@ -177,7 +184,7 @@ function stripLcdOutputLines(text) {
 
 function clearMicrocontrollerGpioValues(circuitLike) {
   const next = parseCircuit(circuitLike, DEFAULT_CIRCUIT)
-  const microcontroller = next.components.find(component => component.type === 'microcontroller')
+  const microcontroller = next.components.find((component) => component.type === 'microcontroller')
   if (!microcontroller) return next
   const control = { ...(next.controls?.[microcontroller.id] ?? {}) }
   delete control.gpio
@@ -197,8 +204,10 @@ const electronicsModule = {
   TeacherLiveView,
 
   getDisplayState: (task, stage, liveState, tab) => {
-    if (tab === 'complete') return serializeCircuit(task?.completeCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
-    if (tab?.startsWith('stage_')) return serializeCircuit(stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
+    if (tab === 'complete')
+      return serializeCircuit(task?.completeCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
+    if (tab?.startsWith('stage_'))
+      return serializeCircuit(stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
     return liveState
   },
 
@@ -209,19 +218,31 @@ const electronicsModule = {
     availableComponents: task.availableComponents ?? [...DEFAULT_AVAILABLE_COMPONENTS],
     carryCircuitFrom: task.carryCircuitFrom ?? null,
     microcontroller: task.microcontroller ?? { enabled: false, boardType: null, starterCode: '' },
-    codeStages: task.codeStages ?? [{
-      label: 'Starter',
-      role: 'starter',
-      circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-    }],
+    codeStages: task.codeStages ?? [
+      {
+        label: 'Starter',
+        role: 'starter',
+        circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
+      },
+    ],
   }),
 
-  makeNewStage: (task, existing) => existing.length === 0
-    ? { label: 'Starter', role: 'starter', circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
-    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', code: '' },
+  makeNewStage: (task, existing) =>
+    existing.length === 0
+      ? {
+          label: 'Starter',
+          role: 'starter',
+          circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
+        }
+      : {
+          label: `Support ${existing.filter((stage) => stage.role === 'support').length + 1}`,
+          role: 'support',
+          code: '',
+        },
 
   initCompleteTab: (task, { onUpdate }) => {
-    if (!task.completeCircuit) onUpdate({ ...task, completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) })
+    if (!task.completeCircuit)
+      onUpdate({ ...task, completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) })
   },
 
   initStageTab: null,
@@ -231,10 +252,14 @@ const electronicsModule = {
   carryThroughLabel: 'Carry circuit from task',
   // Also patches codeStages[0].circuit (see python/index.js's getCarryThroughUpdates for why).
   getCarryThroughUpdates: (sourceTask, targetTask) => {
-    const circuit = cloneCircuit(sourceTask.completeCircuit ?? sourceTask.starterCircuit ?? DEFAULT_CIRCUIT)
+    const circuit = cloneCircuit(
+      sourceTask.completeCircuit ?? sourceTask.starterCircuit ?? DEFAULT_CIRCUIT
+    )
     const updates = { starterCircuit: circuit }
     if (targetTask?.codeStages?.length) {
-      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, circuit: cloneCircuit(circuit) } : stage)
+      updates.codeStages = targetTask.codeStages.map((stage, i) =>
+        i === 0 ? { ...stage, circuit: cloneCircuit(circuit) } : stage
+      )
     }
     return updates
   },
@@ -251,10 +276,11 @@ const electronicsModule = {
 
   defaultState: serializeCircuit(DEFAULT_CIRCUIT),
   initialState: (task) => serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-  serializeState: (state) => typeof state === 'string' ? state : serializeCircuit(state),
+  serializeState: (state) => (typeof state === 'string' ? state : serializeCircuit(state)),
   deserializeState: (raw) => serializeCircuit(parseCircuit(raw, DEFAULT_CIRCUIT)),
 
-  getSandboxState: (lesson, task) => serializeCircuit(lesson?.sandboxStarterCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT),
+  getSandboxState: (lesson, task) =>
+    serializeCircuit(lesson?.sandboxStarterCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT),
 
   runtime: {
     init: initPyodide,
@@ -274,8 +300,9 @@ const electronicsModule = {
         }
         return latestCircuit
       }
-      const currentCircuitWithOutputs = () => applyMicrocontrollerGpioValues(clearMicrocontrollerGpioValues(currentCircuit()), pinValues)
-      const publishCircuit = nextCircuit => {
+      const currentCircuitWithOutputs = () =>
+        applyMicrocontrollerGpioValues(clearMicrocontrollerGpioValues(currentCircuit()), pinValues)
+      const publishCircuit = (nextCircuit) => {
         latestCircuit = nextCircuit
         callbacks?.onCodeUpdate?.(serializeCircuit(nextCircuit))
       }
@@ -313,7 +340,7 @@ const electronicsModule = {
           const visibleText = stripLcdOutputLines(stripPinWriteLines(text))
           if (visibleText) callbacks?.onOutput?.(visibleText, kind)
         },
-      }).then(result => ({
+      }).then((result) => ({
         ...result,
         updatedCode: serializeCircuit(currentCircuitWithOutputs()),
       }))

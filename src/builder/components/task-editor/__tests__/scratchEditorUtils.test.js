@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { buildScratchToolboxXml, parseScratchToolboxXml } from '../../../../modules/scratch/scratchEditors'
+import {
+  buildScratchToolboxXml,
+  parseScratchToolboxXml,
+} from '../../../../modules/scratch/scratchEditors'
 
 describe('buildScratchToolboxXml', () => {
   it('returns an xml element with category children for selected types', () => {

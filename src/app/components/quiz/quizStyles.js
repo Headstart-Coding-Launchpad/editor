@@ -30,8 +30,16 @@ export const OPTION_COLOURS = [
 
 // Reserved for a submitted answer, and never used by OPTION_COLOURS above.
 export const OPTION_VERDICT_COLOURS = {
-  correct: { background: 'var(--colour-success-edge)', border: 'var(--colour-success-edge)', text: '#fff' },
-  wrong:   { background: 'var(--colour-error-edge)', border: 'var(--colour-error-edge)', text: '#fff' },
+  correct: {
+    background: 'var(--colour-success-edge)',
+    border: 'var(--colour-success-edge)',
+    text: '#fff',
+  },
+  wrong: {
+    background: 'var(--colour-error-edge)',
+    border: 'var(--colour-error-edge)',
+    text: '#fff',
+  },
 }
 
 export const baseStyles = {

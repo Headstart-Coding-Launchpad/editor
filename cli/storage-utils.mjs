@@ -23,15 +23,17 @@ export function validateSlug(value, label) {
 
 export async function listBucketAssets(bucket, prefix) {
   const [files] = await bucket.getFiles({ prefix })
-  const assets = await Promise.all(files
-    .filter(file => file.name !== prefix)
-    .map(async file => {
-      const [metadata] = await file.getMetadata()
-      const token = metadata.metadata?.firebaseStorageDownloadTokens?.split(',')[0] ?? ''
-      return {
-        name: file.name.slice(prefix.length),
-        url: buildDownloadUrl(bucket.name, file.name, token),
-      }
-    }))
-  return assets.filter(asset => asset.name)
+  const assets = await Promise.all(
+    files
+      .filter((file) => file.name !== prefix)
+      .map(async (file) => {
+        const [metadata] = await file.getMetadata()
+        const token = metadata.metadata?.firebaseStorageDownloadTokens?.split(',')[0] ?? ''
+        return {
+          name: file.name.slice(prefix.length),
+          url: buildDownloadUrl(bucket.name, file.name, token),
+        }
+      })
+  )
+  return assets.filter((asset) => asset.name)
 }

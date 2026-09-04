@@ -11,7 +11,7 @@ const accounts = [
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
   onSnapshot: (col, next) => {
-    next({ docs: accounts.map(a => ({ id: a.id, data: () => a })) })
+    next({ docs: accounts.map((a) => ({ id: a.id, data: () => a })) })
     return () => {}
   },
 }))

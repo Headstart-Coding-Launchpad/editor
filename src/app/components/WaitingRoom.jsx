@@ -4,7 +4,7 @@ export default function WaitingRoom({ lessonTitle, lessonDescription, videoCallL
   const [dots, setDots] = useState('.')
 
   useEffect(() => {
-    const t = setInterval(() => setDots(d => d.length < 3 ? d + '.' : '.'), 600)
+    const t = setInterval(() => setDots((d) => (d.length < 3 ? d + '.' : '.')), 600)
     return () => clearInterval(t)
   }, [])
 
@@ -14,9 +14,7 @@ export default function WaitingRoom({ lessonTitle, lessonDescription, videoCallL
         <div style={s.header}>
           <span style={s.logo}>Headstart Coding - LaunchPad</span>
           <h1 style={s.title}>{lessonTitle}</h1>
-          {lessonDescription && (
-            <p style={s.description}>{lessonDescription}</p>
-          )}
+          {lessonDescription && <p style={s.description}>{lessonDescription}</p>}
         </div>
         <div style={s.body}>
           <p style={s.waiting}>Your teacher is getting ready{dots}</p>

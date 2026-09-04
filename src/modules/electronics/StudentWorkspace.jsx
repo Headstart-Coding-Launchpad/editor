@@ -4,26 +4,53 @@ import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 import { resolveSavedCarrySource } from '../../app/studentTaskContent'
 
 export default function StudentWorkspace({
-  lesson, task, cs, viewingTaskId, isViewingPrev, isForcedTeacherLive,
-  displayCode, displayOutput, displayRunStatus, displayCheckPassed,
-  isTeacherEditing, teacherLiveCode, teacherLiveWorkspace,
-  onVisiblePanesChange, highlightedPanes, forcedPaneCommand,
+  lesson,
+  task,
+  cs,
+  viewingTaskId,
+  isViewingPrev,
+  isForcedTeacherLive,
+  displayCode,
+  displayOutput,
+  displayRunStatus,
+  displayCheckPassed,
+  isTeacherEditing,
+  teacherLiveCode,
+  teacherLiveWorkspace,
+  onVisiblePanesChange,
+  highlightedPanes,
+  forcedPaneCommand,
 }) {
-  const forcedTab = forcedPaneCommand?.panes?.find(p => p === 'breadboard' || p === 'code') ?? null
+  const forcedTab =
+    forcedPaneCommand?.panes?.find((p) => p === 'breadboard' || p === 'code') ?? null
   const viewedWork = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
-  const viewedCarry = isViewingPrev && viewedWork == null
-    ? resolveSavedCarrySource({
-      tasks: lesson.tasks,
-      taskId: viewingTaskId,
-      carryFromId: task?.carryCircuitFrom,
-      carryField: 'carryCircuitFrom',
-      readSavedState: cs.readSavedTaskCode,
-      hasSavedState: saved => saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
-    })
-    : null
-  const viewedCode = viewedWork?.code ?? viewedCarry?.saved?.code ?? serializeCircuit(task?.starterCircuit ?? DEFAULT_CIRCUIT)
-  const raw = isForcedTeacherLive ? displayCode : isTeacherEditing ? teacherLiveCode : isViewingPrev ? viewedCode : cs.code
-  const circuit = useMemo(() => parseCircuit(raw, task?.starterCircuit ?? DEFAULT_CIRCUIT), [raw, task?.starterCircuit])
+  const viewedCarry =
+    isViewingPrev && viewedWork == null
+      ? resolveSavedCarrySource({
+          tasks: lesson.tasks,
+          taskId: viewingTaskId,
+          carryFromId: task?.carryCircuitFrom,
+          carryField: 'carryCircuitFrom',
+          readSavedState: cs.readSavedTaskCode,
+          hasSavedState: (saved) =>
+            saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
+        })
+      : null
+  const viewedCode =
+    viewedWork?.code ??
+    viewedCarry?.saved?.code ??
+    serializeCircuit(task?.starterCircuit ?? DEFAULT_CIRCUIT)
+  const raw = isForcedTeacherLive
+    ? displayCode
+    : isTeacherEditing
+      ? teacherLiveCode
+      : isViewingPrev
+        ? viewedCode
+        : cs.code
+  const circuit = useMemo(
+    () => parseCircuit(raw, task?.starterCircuit ?? DEFAULT_CIRCUIT),
+    [raw, task?.starterCircuit]
+  )
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const showCodeTab = task?.microcontroller?.enabled === true
 
@@ -37,9 +64,12 @@ export default function StudentWorkspace({
   // state, and re-rendered - an unbounded loop ("Maximum update depth exceeded") on every
   // electronics task. The other pane-reporting modules pass a plain state setter straight
   // through, which is already stable; this wrapper has to be memoised to match.
-  const handleTabChange = useCallback(pane => {
-    onVisiblePanesChange?.([pane])
-  }, [onVisiblePanesChange])
+  const handleTabChange = useCallback(
+    (pane) => {
+      onVisiblePanesChange?.([pane])
+    },
+    [onVisiblePanesChange]
+  )
 
   function handleLegacyCodeChange(nextCode) {
     handleCircuitChange({

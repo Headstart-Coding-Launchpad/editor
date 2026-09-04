@@ -60,26 +60,70 @@ export default function SplitPane({
 
   const paneStyle = isDragging ? { pointerEvents: 'none' } : undefined
   const leftStyle = leftCollapsed
-    ? { width: collapsedLeftWidth, minWidth: collapsedLeftWidth, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }
+    ? {
+        width: collapsedLeftWidth,
+        minWidth: collapsedLeftWidth,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }
     : rightCollapsed
-    ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', ...paneStyle }
-    : { width: `${splitPct}%`, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', ...paneStyle }
+      ? {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          ...paneStyle,
+        }
+      : {
+          width: `${splitPct}%`,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          ...paneStyle,
+        }
   const rightStyle = rightCollapsed
-    ? { width: collapsedRightWidth, minWidth: collapsedRightWidth, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }
+    ? {
+        width: collapsedRightWidth,
+        minWidth: collapsedRightWidth,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }
     : leftCollapsed
-    ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...paneStyle }
-    : { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...paneStyle }
+      ? {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          ...paneStyle,
+        }
+      : {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          ...paneStyle,
+        }
 
   return (
     <div ref={containerRef} style={{ display: 'flex', minHeight: 0, overflow: 'hidden', ...style }}>
-      <div style={leftStyle}>
-        {leftCollapsed ? collapsedLeft : left}
-      </div>
+      <div style={leftStyle}>{leftCollapsed ? collapsedLeft : left}</div>
       {!rightCollapsed && !leftCollapsed && (
         <div
           onMouseDown={onMouseDown}
-          onMouseEnter={e => { e.currentTarget.style.background = '#c4b5fd' }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#e5e7eb' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#c4b5fd'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#e5e7eb'
+          }}
           style={{
             width: 5,
             cursor: 'col-resize',
@@ -89,9 +133,7 @@ export default function SplitPane({
           }}
         />
       )}
-      <div style={rightStyle}>
-        {rightCollapsed ? collapsedRight : right}
-      </div>
+      <div style={rightStyle}>{rightCollapsed ? collapsedRight : right}</div>
     </div>
   )
 }

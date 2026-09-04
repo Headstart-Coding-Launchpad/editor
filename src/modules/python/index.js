@@ -30,11 +30,16 @@ const pythonModule = {
   makeCodeTaskFields: (task) => ({
     starterCode: task.starterCode ?? '',
     carryCodeFrom: task.carryCodeFrom ?? null,
-    codeStages: task.codeStages ?? [{ label: 'Starter', role: 'starter', code: task.starterCode ?? '' }],
+    codeStages: task.codeStages ?? [
+      { label: 'Starter', role: 'starter', code: task.starterCode ?? '' },
+    ],
   }),
 
   makeNewStage: (task, existing) => ({
-    label: existing.length === 0 ? 'Starter' : `Support ${existing.filter(stage => stage.role === 'support').length + 1}`,
+    label:
+      existing.length === 0
+        ? 'Starter'
+        : `Support ${existing.filter((stage) => stage.role === 'support').length + 1}`,
     role: existing.length === 0 ? 'starter' : 'support',
     code: existing.length === 0 ? (task.starterCode ?? '') : '',
   }),
@@ -52,9 +57,10 @@ const pythonModule = {
 
   initStageTab: null,
 
-  defaultCheck: (interactionMode) => interactionMode === 'submit'
-    ? [{ type: 'code_contains', value: '' }]
-    : [{ type: 'output_contains', value: '' }],
+  defaultCheck: (interactionMode) =>
+    interactionMode === 'submit'
+      ? [{ type: 'code_contains', value: '' }]
+      : [{ type: 'output_contains', value: '' }],
 
   carryThroughField: 'carryCodeFrom',
   carryThroughLabel: 'Carry code from task',
@@ -65,7 +71,9 @@ const pythonModule = {
     const code = sourceTask.completeCode ?? sourceTask.starterCode ?? ''
     const updates = { starterCode: code }
     if (targetTask?.codeStages?.length) {
-      updates.codeStages = targetTask.codeStages.map((stage, i) => i === 0 ? { ...stage, code } : stage)
+      updates.codeStages = targetTask.codeStages.map((stage, i) =>
+        i === 0 ? { ...stage, code } : stage
+      )
     }
     return updates
   },
@@ -93,7 +101,7 @@ const pythonModule = {
   // correct if ever actually invoked (currently it isn't — see moduleInterface.test.js).
   initialState: (task) => getStarterStage(task)?.stage?.code ?? task.starterCode ?? '',
   serializeState: (state) => state,
-  deserializeState: (raw) => typeof raw === 'string' ? raw : '',
+  deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',

@@ -11,7 +11,14 @@ import { useTeacherLivePublish } from '../useTeacherLivePublish'
 // mirror's Blockly workspace until the presenter's next real edit resynced it
 // a second later — which is why a block dragged right after "Go Live" never
 // visibly moved on its first drag.
-function useHarness({ initialSession, lesson, currentTaskId, code, scratchCode, updateTeacherLive }) {
+function useHarness({
+  initialSession,
+  lesson,
+  currentTaskId,
+  code,
+  scratchCode,
+  updateTeacherLive,
+}) {
   const identityRef = useRef(null)
   const sessionRef = useRef(initialSession)
   const lessonRef = useRef(lesson)
@@ -32,12 +39,33 @@ function useHarness({ initialSession, lesson, currentTaskId, code, scratchCode, 
 
   const publish = useTeacherLivePublish({
     teacherPresentation: true,
-    identityRef, sessionRef, lessonRef, currentTaskIdRef,
-    codeRef, scratchCodeRef, arcadeDesignRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef,
-    editorSelectionRef, editorActivityRef,
-    lesson, session, identity: null, currentTaskId,
-    code, files: [], activeFile: '', output: '', runStatus: null,
-    checkPassed: false, checkAttempted: false, checkSuggestion: null, fsState: null,
+    identityRef,
+    sessionRef,
+    lessonRef,
+    currentTaskIdRef,
+    codeRef,
+    scratchCodeRef,
+    arcadeDesignRef,
+    filesRef,
+    activeFileRef,
+    outputRef,
+    runStatusRef,
+    fsStateRef,
+    editorSelectionRef,
+    editorActivityRef,
+    lesson,
+    session,
+    identity: null,
+    currentTaskId,
+    code,
+    files: [],
+    activeFile: '',
+    output: '',
+    runStatus: null,
+    checkPassed: false,
+    checkAttempted: false,
+    checkSuggestion: null,
+    fsState: null,
     updateTeacherLive,
   })
 
@@ -50,14 +78,16 @@ describe('useTeacherLivePublish — Scratch code source', () => {
     const scratchJson = JSON.stringify({ sprite1: { blocks: [{ id: 'b1' }] } })
     const lesson = { type: 'scratch', tasks: [{ id: 1 }] }
 
-    const { result } = renderHook(() => useHarness({
-      initialSession: { teacherLive: null },
-      lesson,
-      currentTaskId: 1,
-      code: '', // generic `code` state is never populated for Scratch tasks
-      scratchCode: scratchJson,
-      updateTeacherLive,
-    }))
+    const { result } = renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: null },
+        lesson,
+        currentTaskId: 1,
+        code: '', // generic `code` state is never populated for Scratch tasks
+        scratchCode: scratchJson,
+        updateTeacherLive,
+      })
+    )
 
     act(() => {
       result.current.setSession({ teacherLive: { active: true, source: 'teacher' } })
@@ -72,14 +102,16 @@ describe('useTeacherLivePublish — Scratch code source', () => {
     const updateTeacherLive = vi.fn()
     const lesson = { type: 'python', tasks: [{ id: 1 }] }
 
-    const { result } = renderHook(() => useHarness({
-      initialSession: { teacherLive: null },
-      lesson,
-      currentTaskId: 1,
-      code: 'print("hi")',
-      scratchCode: '',
-      updateTeacherLive,
-    }))
+    const { result } = renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: null },
+        lesson,
+        currentTaskId: 1,
+        code: 'print("hi")',
+        scratchCode: '',
+        updateTeacherLive,
+      })
+    )
 
     act(() => {
       result.current.setSession({ teacherLive: { active: true, source: 'teacher' } })

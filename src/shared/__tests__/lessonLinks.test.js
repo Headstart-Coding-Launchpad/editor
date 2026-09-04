@@ -14,7 +14,9 @@ describe('getLessonLinks', () => {
 
   it('returns a solo link with ?solo=true appended', () => {
     const { solo } = getLessonLinks('py-intro')
-    expect(solo).toBe(`${window.location.origin}${window.location.pathname}#/lesson/py-intro?solo=true`)
+    expect(solo).toBe(
+      `${window.location.origin}${window.location.pathname}#/lesson/py-intro?solo=true`
+    )
   })
 
   it('returns exactly the join and solo keys', () => {

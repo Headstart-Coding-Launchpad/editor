@@ -49,7 +49,11 @@ describe('AuthContext', () => {
       .mockRejectedValueOnce(new Error('cold cache'))
       .mockResolvedValueOnce({ claims: { role: 'teacher' } })
 
-    render(<AuthProvider><Probe /></AuthProvider>)
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    )
 
     await waitFor(() => {
       expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
@@ -71,7 +75,11 @@ describe('AuthContext', () => {
     const retryError = new Error('still cold')
     authMocks.getIdTokenResult.mockRejectedValue(retryError)
 
-    render(<AuthProvider><Probe /></AuthProvider>)
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    )
 
     await waitFor(() => {
       expect(screen.getByText('user:none role:none')).toBeInTheDocument()
@@ -79,8 +87,14 @@ describe('AuthContext', () => {
 
     // The redirect to /login that follows from this state needs a traceable cause —
     // both the cold-cache retry attempt and its final failure should be logged.
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('retrying with a network refresh'), expect.any(Error))
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('signing out and redirecting to /login'), retryError)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('retrying with a network refresh'),
+      expect.any(Error)
+    )
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('signing out and redirecting to /login'),
+      retryError
+    )
   })
 
   it('holds the loading screen during the grace period and signs out if no recovery', async () => {
@@ -94,22 +108,36 @@ describe('AuthContext', () => {
       })
       authMocks.getIdTokenResult.mockResolvedValue({ claims: { role: 'teacher' } })
 
-      render(<AuthProvider><Probe /></AuthProvider>)
+      render(
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      )
 
       // Initial sign-in
-      await act(async () => { await authCallback(firebaseUser) })
+      await act(async () => {
+        await authCallback(firebaseUser)
+      })
       expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
 
       // Firebase fires null — the cross-tab storage-event bounce (#180/#279/#305).
       // Should immediately enter loading (not redirect), log the warning, then sign
       // out only after the grace period elapses with no recovery.
-      act(() => { authCallback(null) })
+      act(() => {
+        authCallback(null)
+      })
       expect(screen.getByText('loading')).toBeInTheDocument()
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('waiting for potential bounce recovery'))
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('waiting for potential bounce recovery')
+      )
 
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => {
+        vi.runAllTimers()
+      })
       expect(screen.getByText('user:none role:none')).toBeInTheDocument()
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no recovery within grace period'))
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no recovery within grace period')
+      )
     } finally {
       vi.useRealTimers()
     }
@@ -126,21 +154,33 @@ describe('AuthContext', () => {
       })
       authMocks.getIdTokenResult.mockResolvedValue({ claims: { role: 'teacher' } })
 
-      render(<AuthProvider><Probe /></AuthProvider>)
+      render(
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      )
 
-      await act(async () => { await authCallback(firebaseUser) })
+      await act(async () => {
+        await authCallback(firebaseUser)
+      })
       expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
 
       // Null bounce — enters loading
-      act(() => { authCallback(null) })
+      act(() => {
+        authCallback(null)
+      })
       expect(screen.getByText('loading')).toBeInTheDocument()
 
       // User comes back before grace period (Firebase recovered) — should stay signed in
-      await act(async () => { await authCallback(firebaseUser) })
+      await act(async () => {
+        await authCallback(firebaseUser)
+      })
       expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
 
       // Confirm the grace-period timer was cancelled: running outstanding timers has no effect
-      act(() => { vi.runAllTimers() })
+      act(() => {
+        vi.runAllTimers()
+      })
       expect(screen.getByText('user:teacher-uid role:teacher')).toBeInTheDocument()
     } finally {
       vi.useRealTimers()

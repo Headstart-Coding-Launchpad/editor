@@ -10,12 +10,24 @@ describe('TargetedStageOfferPreview', () => {
     render(
       <TargetedStageOfferPreview
         lessonType="python"
-        task={{ codeStages: [{ label: 'Loop reference', code: 'for name in names:\n  print(name)' }] }}
+        task={{
+          codeStages: [{ label: 'Loop reference', code: 'for name in names:\n  print(name)' }],
+        }}
         incorrectCheckResults={[
-          { passed: true, priority: 2, hint: 'Less specific', stageOffer: { stageIndex: 0, action: 'replace' } },
-          { passed: true, priority: 1, hint: 'Use a loop', stageOffer: { stageIndex: 0, action: 'preview' } },
+          {
+            passed: true,
+            priority: 2,
+            hint: 'Less specific',
+            stageOffer: { stageIndex: 0, action: 'replace' },
+          },
+          {
+            passed: true,
+            priority: 1,
+            hint: 'Use a loop',
+            stageOffer: { stageIndex: 0, action: 'preview' },
+          },
         ]}
-      />,
+      />
     )
 
     expect(screen.getByText('Student feedback preview')).toBeInTheDocument()

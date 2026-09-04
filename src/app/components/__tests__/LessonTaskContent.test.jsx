@@ -37,7 +37,9 @@ const FILESYSTEM_MODULE = {
 // StudentWorkspace components report their own internal panes) so tests can verify
 // LessonTaskContent merges the "instructions" pane into that report correctly.
 function PythonWorkspaceStub({ onVisiblePanesChange }) {
-  useEffect(() => { onVisiblePanesChange?.(['code']) }, [onVisiblePanesChange])
+  useEffect(() => {
+    onVisiblePanesChange?.(['code'])
+  }, [onVisiblePanesChange])
   return <div>Workspace</div>
 }
 const PYTHON_MODULE_WITH_PANES = {
@@ -80,7 +82,7 @@ describe('LessonTaskContent', () => {
         isAutoEvaluatedQuiz={false}
         isInformationTask={false}
         isTeacherEditing={false}
-      />,
+      />
     )
 
     expect(screen.getByLabelText('Greeting stage reference')).toHaveTextContent('print("Hello")')
@@ -106,13 +108,25 @@ describe('LessonTaskContent feedback popup visibility', () => {
 
   it('shows the feedback popup after a check attempt in a normal (not forced-live) view', () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
-    render(<LessonTaskContent {...baseProps} cs={{ inPersonalSandbox: false }} isForcedTeacherLive={false} />)
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        cs={{ inPersonalSandbox: false }}
+        isForcedTeacherLive={false}
+      />
+    )
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('hides the feedback popup while the viewer is forced into a teacher/peer broadcast', () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
-    render(<LessonTaskContent {...baseProps} cs={{ inPersonalSandbox: false }} isForcedTeacherLive={true} />)
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        cs={{ inPersonalSandbox: false }}
+        isForcedTeacherLive={true}
+      />
+    )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
@@ -176,7 +190,10 @@ describe('LessonTaskContent compact Scratch layout', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Instructions' }))
 
-    expect(screen.getByRole('tab', { name: 'Instructions' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Instructions' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
     expect(screen.getByText('Drag the move block.')).toBeVisible()
     expect(screen.getByText('Workspace')).not.toBeVisible()
   })
@@ -259,7 +276,9 @@ describe('LessonTaskContent compact Scratch layout', () => {
     getLessonModule.mockReturnValue({
       type: 'scratch',
       StudentWorkspace: () => {
-        useEffect(() => { mountCount++ }, [])
+        useEffect(() => {
+          mountCount++
+        }, [])
         return <div>Workspace</div>
       },
       getLayoutStyles: () => ({}),
@@ -310,7 +329,7 @@ describe('LessonTaskContent instructions-pane reporting', () => {
         lesson={{ type: 'scratch' }}
         task={{ id: 1, title: 'Move the cat', explainer: 'Drag the move block.' }}
         onVisiblePanesChange={onVisiblePanesChange}
-      />,
+      />
     )
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'blocks', 'stage'])
@@ -332,7 +351,7 @@ describe('LessonTaskContent instructions-pane reporting', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         onVisiblePanesChange={onVisiblePanesChange}
-      />,
+      />
     )
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'code'])
@@ -354,7 +373,7 @@ describe('LessonTaskContent instructions-pane reporting', () => {
         lesson={{ type: 'filesystem' }}
         task={{ id: 1, title: 'Explore files', explainer: 'Look around the tree.' }}
         onVisiblePanesChange={onVisiblePanesChange}
-      />,
+      />
     )
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions'])
@@ -389,7 +408,7 @@ describe('LessonTaskContent highlightedPanes', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         highlightedPanes={['instructions']}
-      />,
+      />
     )
 
     expect(screen.getByTitle('Collapse Explainer')).toHaveClass('pane-highlight-pulse')
@@ -405,7 +424,7 @@ describe('LessonTaskContent highlightedPanes', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         highlightedPanes={['code']}
-      />,
+      />
     )
 
     expect(screen.getByTitle('Collapse Explainer')).not.toHaveClass('pane-highlight-pulse')
@@ -415,7 +434,10 @@ describe('LessonTaskContent highlightedPanes', () => {
     let receivedProp
     getLessonModule.mockReturnValue({
       type: 'electronics',
-      StudentWorkspace: ({ highlightedPanes }) => { receivedProp = highlightedPanes; return <div>Workspace</div> },
+      StudentWorkspace: ({ highlightedPanes }) => {
+        receivedProp = highlightedPanes
+        return <div>Workspace</div>
+      },
       getLayoutStyles: () => ({}),
     })
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
@@ -426,7 +448,7 @@ describe('LessonTaskContent highlightedPanes', () => {
         lesson={{ type: 'electronics' }}
         task={{ id: 1, title: 'Wire it up' }}
         highlightedPanes={['breadboard']}
-      />,
+      />
     )
 
     expect(receivedProp).toEqual(['breadboard'])
@@ -457,7 +479,7 @@ describe('LessonTaskContent forcedPaneCommand', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         forcedPaneCommand={{ mode: 'force', panes: ['instructions'], pushedAt: 111 }}
-      />,
+      />
     )
 
     expect(screen.getByText('Use the print function.')).toBeVisible()
@@ -473,7 +495,7 @@ describe('LessonTaskContent forcedPaneCommand', () => {
         {...baseProps}
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
-      />,
+      />
     )
     expect(screen.getByText('Use the print function.')).toBeVisible()
 
@@ -483,7 +505,7 @@ describe('LessonTaskContent forcedPaneCommand', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         forcedPaneCommand={{ mode: 'force', panes: ['code'], pushedAt: 222 }}
-      />,
+      />
     )
 
     expect(screen.queryByText('Use the print function.')).not.toBeInTheDocument()
@@ -506,7 +528,7 @@ describe('LessonTaskContent forcedPaneCommand', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         forcedPaneCommand={command}
-      />,
+      />
     )
     expect(screen.getByTitle('Show Explainer')).toBeInTheDocument()
 
@@ -521,7 +543,7 @@ describe('LessonTaskContent forcedPaneCommand', () => {
         lesson={{ type: 'python' }}
         task={{ id: 1, title: 'Say hello', explainer: 'Use the print function.' }}
         forcedPaneCommand={{ ...command }}
-      />,
+      />
     )
     expect(screen.getByText('Use the print function.')).toBeVisible()
   })
@@ -530,7 +552,10 @@ describe('LessonTaskContent forcedPaneCommand', () => {
     let receivedProp
     getLessonModule.mockReturnValue({
       type: 'electronics',
-      StudentWorkspace: ({ forcedPaneCommand }) => { receivedProp = forcedPaneCommand; return <div>Workspace</div> },
+      StudentWorkspace: ({ forcedPaneCommand }) => {
+        receivedProp = forcedPaneCommand
+        return <div>Workspace</div>
+      },
       getLayoutStyles: () => ({}),
     })
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
@@ -542,7 +567,7 @@ describe('LessonTaskContent forcedPaneCommand', () => {
         lesson={{ type: 'electronics' }}
         task={{ id: 1, title: 'Wire it up' }}
         forcedPaneCommand={command}
-      />,
+      />
     )
 
     expect(receivedProp).toBe(command)

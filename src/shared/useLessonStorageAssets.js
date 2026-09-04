@@ -15,11 +15,15 @@ function relativeStorageName(itemRef, prefix) {
 
 async function listFolderAssets(folderRef, prefix) {
   const snap = await listAll(folderRef)
-  const direct = await Promise.all(snap.items.map(async itemRef => ({
-    name: relativeStorageName(itemRef, prefix),
-    url: await getDownloadURL(itemRef),
-  })))
-  const nested = await Promise.all(snap.prefixes.map(childRef => listFolderAssets(childRef, prefix)))
+  const direct = await Promise.all(
+    snap.items.map(async (itemRef) => ({
+      name: relativeStorageName(itemRef, prefix),
+      url: await getDownloadURL(itemRef),
+    }))
+  )
+  const nested = await Promise.all(
+    snap.prefixes.map((childRef) => listFolderAssets(childRef, prefix))
+  )
   return [...direct, ...nested.flat()]
 }
 
@@ -77,12 +81,14 @@ export function useLessonStorageAssets(lessonId, schemaAssets = []) {
       }
     }
     load()
-    return () => { alive = false }
+    return () => {
+      alive = false
+    }
   }, [lessonId])
 
   const storageAssets = useMemo(
     () => mergeStorageAssets(schemaAssets, folderAssets),
-    [schemaAssets, folderAssets],
+    [schemaAssets, folderAssets]
   )
 
   return { storageAssets, folderAssets, loading, error, refresh }

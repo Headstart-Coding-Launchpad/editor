@@ -12,8 +12,10 @@ vi.mock('../../../builder/components/TaskList', () => ({
   default: ({ tasks, onAdd, onDelete, onSelect }) => (
     <div>
       <button onClick={onAdd}>mock-add-task</button>
-      {tasks.map(t => (
-        <button key={t.id} onClick={() => onSelect(t.id)}>select-{t.id}</button>
+      {tasks.map((t) => (
+        <button key={t.id} onClick={() => onSelect(t.id)}>
+          select-{t.id}
+        </button>
       ))}
       <button onClick={() => onDelete(1)}>delete-task-1</button>
       <button onClick={() => onDelete(2)}>delete-task-2</button>
@@ -105,7 +107,7 @@ describe('EditLessonModal', () => {
 
     await waitFor(() => expect(props.onApplySession).toHaveBeenCalledOnce())
     const savedTasks = props.onApplySession.mock.calls[0][0]
-    expect(savedTasks.map(t => t.id)).toEqual([1, 2])
+    expect(savedTasks.map((t) => t.id)).toEqual([1, 2])
     expect(props.onClose).toHaveBeenCalledOnce()
   })
 

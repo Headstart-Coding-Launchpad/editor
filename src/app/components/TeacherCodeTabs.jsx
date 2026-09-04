@@ -15,18 +15,20 @@ export default function TeacherCodeTabs({
 }) {
   return (
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Teacher code workspace">
-      {!unifiedStages && <button
-        type="button"
-        className={`ui-tab${activeTab === 'starter' ? ' is-active' : ''}`}
-        role="tab"
-        aria-selected={activeTab === 'starter'}
-        onClick={onStarter}
-      >
-        {starterLabel}
-      </button>}
+      {!unifiedStages && (
+        <button
+          type="button"
+          className={`ui-tab${activeTab === 'starter' ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'starter'}
+          onClick={onStarter}
+        >
+          {starterLabel}
+        </button>
+      )}
       {stages.map((stage, i) => {
         const role = getStageRole(stage)
-        const rolePrefix = unifiedStages ? `${role}: ` : (role === 'support' ? '' : `${role}: `)
+        const rolePrefix = unifiedStages ? `${role}: ` : role === 'support' ? '' : `${role}: `
         return (
           <button
             key={i}
@@ -36,7 +38,8 @@ export default function TeacherCodeTabs({
             aria-selected={activeTab === `stage_${i}`}
             onClick={() => onStage?.(i)}
           >
-            {rolePrefix}{stage.label || `Stage ${i + 1}`}
+            {rolePrefix}
+            {stage.label || `Stage ${i + 1}`}
           </button>
         )
       })}
@@ -63,18 +66,31 @@ export default function TeacherCodeTabs({
               // it, regardless of whether this module type uses the unified tab layout. This
               // is the same safe path the per-student Reveal action already uses for every
               // module type (see StudentModal.jsx's onRevealSupportStage).
-              const stage = activeTab.startsWith('stage_') ? stages[parseInt(activeTab.replace('stage_', ''), 10)] : null
+              const stage = activeTab.startsWith('stage_')
+                ? stages[parseInt(activeTab.replace('stage_', ''), 10)]
+                : null
               const isRevealableStage = stage && getStageRole(stage) !== 'starter'
               const action = isRevealableStage
                 ? `reveal_stage_${activeTab.replace('stage_', '')}`
-                : activeTab === 'complete' ? 'complete' : activeTab.startsWith('stage_') ? activeTab : 'starter'
+                : activeTab === 'complete'
+                  ? 'complete'
+                  : activeTab.startsWith('stage_')
+                    ? activeTab
+                    : 'starter'
               const verb = isRevealableStage ? 'Reveal' : 'Send'
-              if (window.confirm(`${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : stage?.label ?? activeTab} to all students?`)) {
+              if (
+                window.confirm(
+                  `${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : (stage?.label ?? activeTab)} to all students?`
+                )
+              ) {
                 onSendToAll(action)
               }
             }}
           >
-            {activeTab.startsWith('stage_') && getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter' ? 'Reveal to all' : 'Send to all'}
+            {activeTab.startsWith('stage_') &&
+            getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter'
+              ? 'Reveal to all'
+              : 'Send to all'}
           </button>
         </div>
       )}

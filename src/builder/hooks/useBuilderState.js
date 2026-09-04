@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { flattenTasks, findGroupForTask, updateTaskInTasks, updateSubtaskTitles } from '../../shared/taskUtils'
+import {
+  flattenTasks,
+  findGroupForTask,
+  updateTaskInTasks,
+  updateSubtaskTitles,
+} from '../../shared/taskUtils'
 import { renumberTasks, validateLesson } from '../lessonUtils'
 import { HTML_ONLY } from '../components/FileManager'
 import { createSpriteFromPreset } from '../../shared/spritePresets'
@@ -18,7 +23,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
 
   function handleLessonUpdate(updater) {
     if (typeof updater === 'function') {
-      onUpdate(prev => {
+      onUpdate((prev) => {
         const next = updater(prev)
         return { ...next, tasks: updateSubtaskTitles(next.tasks) }
       })
@@ -55,7 +60,8 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
           variables: JSON.parse(JSON.stringify(prevTask.variables ?? [])),
         }
       }
-      const sprites = defaultSprites.length > 0 ? [createSpriteFromPreset([], defaultSprites[0])] : undefined
+      const sprites =
+        defaultSprites.length > 0 ? [createSpriteFromPreset([], defaultSprites[0])] : undefined
       return {
         toolbox: '',
         starterBlocks: null,
@@ -65,9 +71,13 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     }
     if (moduleType === 'electronics') {
       return {
-        starterCircuit: prevTask ? cloneCircuit(prevTask.completeCircuit ?? prevTask.starterCircuit ?? DEFAULT_CIRCUIT) : cloneCircuit(DEFAULT_CIRCUIT),
+        starterCircuit: prevTask
+          ? cloneCircuit(prevTask.completeCircuit ?? prevTask.starterCircuit ?? DEFAULT_CIRCUIT)
+          : cloneCircuit(DEFAULT_CIRCUIT),
         carryCircuitFrom: prevTask?.id ?? null,
-        microcontroller: prevTask?.microcontroller ? { ...prevTask.microcontroller } : { enabled: false, boardType: null, starterCode: '' },
+        microcontroller: prevTask?.microcontroller
+          ? { ...prevTask.microcontroller }
+          : { enabled: false, boardType: null, starterCode: '' },
       }
     }
     if (moduleType === 'filesystem') {
@@ -78,15 +88,19 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     }
     return {
       starterFiles: prevTask
-        ? (prevTask.completeFiles ?? prevTask.starterFiles ?? []).map(f => ({ ...f }))
+        ? (prevTask.completeFiles ?? prevTask.starterFiles ?? []).map((f) => ({ ...f }))
         : [{ name: 'index.html', type: 'html', content: HTML_ONLY }],
-      entryFile: prevTask ? (prevTask.completeEntryFile ?? prevTask.entryFile ?? 'index.html') : 'index.html',
+      entryFile: prevTask
+        ? (prevTask.completeEntryFile ?? prevTask.entryFile ?? 'index.html')
+        : 'index.html',
       carryCodeFrom: prevTask?.id ?? null,
     }
   }
 
   function nextId() {
-    const allTasks = (lesson.tasks ?? []).flatMap(item => item.type === 'group' ? (item.subtasks ?? []) : [item])
+    const allTasks = (lesson.tasks ?? []).flatMap((item) =>
+      item.type === 'group' ? (item.subtasks ?? []) : [item]
+    )
     return allTasks.reduce((m, t) => Math.max(m, t.id), 0) + 1
   }
 
@@ -94,21 +108,26 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const flat = flattenTasks(lesson.tasks)
     const defaultPrev = flat[flat.length - 1] ?? null
     if (selectedTaskId != null) {
-      const topIdx = lesson.tasks.findIndex(item => item.type !== 'group' && item.id === selectedTaskId)
+      const topIdx = lesson.tasks.findIndex(
+        (item) => item.type !== 'group' && item.id === selectedTaskId
+      )
       if (topIdx >= 0) return { index: topIdx + 1, prevTask: lesson.tasks[topIdx] }
       const groupIdx = lesson.tasks.findIndex(
-        item => item.type === 'group' && (item.subtasks ?? []).some(s => s.id === selectedTaskId)
+        (item) =>
+          item.type === 'group' && (item.subtasks ?? []).some((s) => s.id === selectedTaskId)
       )
       if (groupIdx >= 0) {
         const group = lesson.tasks[groupIdx]
         return {
           index: groupIdx + 1,
-          prevTask: (group.subtasks ?? []).find(s => s.id === selectedTaskId) ?? defaultPrev,
+          prevTask: (group.subtasks ?? []).find((s) => s.id === selectedTaskId) ?? defaultPrev,
         }
       }
     }
     if (selectedGroupId != null) {
-      const groupIdx = lesson.tasks.findIndex(item => item.type === 'group' && item.id === selectedGroupId)
+      const groupIdx = lesson.tasks.findIndex(
+        (item) => item.type === 'group' && item.id === selectedGroupId
+      )
       if (groupIdx >= 0) {
         const group = lesson.tasks[groupIdx]
         return { index: groupIdx + 1, prevTask: (group.subtasks ?? []).at(-1) ?? defaultPrev }
@@ -127,14 +146,21 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
         taskActivity: '',
         explainer: '',
       }
-      handleLessonUpdate(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }))
+      handleLessonUpdate((prev) => ({ ...prev, tasks: [...prev.tasks, newTask] }))
       selectTask(newId)
       return
     }
     const { index, prevTask } = topLevelInsertPosition()
     const newId = nextId()
-    const newTask = { id: newId, title: '', intent: '', taskActivity: '', explainer: '', ...defaultTypeFields(prevTask) }
-    handleLessonUpdate(prev => {
+    const newTask = {
+      id: newId,
+      title: '',
+      intent: '',
+      taskActivity: '',
+      explainer: '',
+      ...defaultTypeFields(prevTask),
+    }
+    handleLessonUpdate((prev) => {
       const next = [...prev.tasks]
       next.splice(index, 0, newTask)
       return { ...prev, tasks: next }
@@ -155,7 +181,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       ...(isComposedLesson(lesson) ? {} : defaultTypeFields(null)),
     }
     const newGroup = { id: groupId, type: 'group', title: 'New Group', subtasks: [firstSubtask] }
-    handleLessonUpdate(prev => {
+    handleLessonUpdate((prev) => {
       const next = [...prev.tasks]
       next.splice(index, 0, newGroup)
       return { ...prev, tasks: next }
@@ -164,29 +190,36 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   }
 
   function handleAddSubtask(groupId) {
-    const group = lesson.tasks.find(t => t.type === 'group' && t.id === groupId)
+    const group = lesson.tasks.find((t) => t.type === 'group' && t.id === groupId)
     if (!group) return
     const newId = nextId()
     const subtasks = group.subtasks ?? []
-    const selectedSubtaskIdx = selectedTaskId != null
-      ? subtasks.findIndex(s => s.id === selectedTaskId)
-      : -1
+    const selectedSubtaskIdx =
+      selectedTaskId != null ? subtasks.findIndex((s) => s.id === selectedTaskId) : -1
     const insertIndex = selectedSubtaskIdx >= 0 ? selectedSubtaskIdx + 1 : subtasks.length
-    const prevSubtask = selectedSubtaskIdx >= 0 ? subtasks[selectedSubtaskIdx] : (subtasks[subtasks.length - 1] ?? null)
+    const prevSubtask =
+      selectedSubtaskIdx >= 0
+        ? subtasks[selectedSubtaskIdx]
+        : (subtasks[subtasks.length - 1] ?? null)
     const newSubtask = {
       id: newId,
       title: '',
       intent: '',
       taskActivity: '',
       explainer: '',
-      ...(isComposedLesson(lesson) ? {} : defaultTypeFields(prevSubtask, group.moduleType ?? lesson.type)),
+      ...(isComposedLesson(lesson)
+        ? {}
+        : defaultTypeFields(prevSubtask, group.moduleType ?? lesson.type)),
     }
-    handleLessonUpdate(prev => ({
+    handleLessonUpdate((prev) => ({
       ...prev,
-      tasks: prev.tasks.map(t => {
+      tasks: prev.tasks.map((t) => {
         if (t.type !== 'group' || t.id !== groupId) return t
         const subs = t.subtasks ?? []
-        return { ...t, subtasks: [...subs.slice(0, insertIndex), newSubtask, ...subs.slice(insertIndex)] }
+        return {
+          ...t,
+          subtasks: [...subs.slice(0, insertIndex), newSubtask, ...subs.slice(insertIndex)],
+        }
       }),
     }))
     selectTask(newId)
@@ -196,9 +229,9 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     const newId = nextId()
     if (groupId) {
       const dup = { ...task, id: newId, title: task.title ? `${task.title} (copy)` : '' }
-      handleLessonUpdate(prev => ({
+      handleLessonUpdate((prev) => ({
         ...prev,
-        tasks: prev.tasks.map(t =>
+        tasks: prev.tasks.map((t) =>
           t.type === 'group' && t.id === groupId
             ? { ...t, subtasks: [...(t.subtasks ?? []), dup] }
             : t
@@ -206,7 +239,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
       }))
     } else {
       const dup = { ...task, id: newId, title: task.title ? `${task.title} (copy)` : '' }
-      handleLessonUpdate(prev => ({ ...prev, tasks: [...prev.tasks, dup] }))
+      handleLessonUpdate((prev) => ({ ...prev, tasks: [...prev.tasks, dup] }))
       selectTask(dup.id)
       return
     }
@@ -217,64 +250,81 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     if (!skipConfirm && !confirm('Delete this task?')) return
     const group = findGroupForTask(lesson.tasks, taskId)
     if (group) {
-      const newSubtasks = (group.subtasks ?? []).filter(t => t.id !== taskId)
+      const newSubtasks = (group.subtasks ?? []).filter((t) => t.id !== taskId)
       if (newSubtasks.length === 0) {
-        handleLessonUpdate(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== group.id) }))
-        const remaining = flattenTasks(lesson.tasks.filter(t => t.id !== group.id))
+        handleLessonUpdate((prev) => ({
+          ...prev,
+          tasks: prev.tasks.filter((t) => t.id !== group.id),
+        }))
+        const remaining = flattenTasks(lesson.tasks.filter((t) => t.id !== group.id))
         selectTask(remaining[0]?.id ?? null)
       } else {
-        handleLessonUpdate(prev => ({
+        handleLessonUpdate((prev) => ({
           ...prev,
-          tasks: prev.tasks.map(t =>
+          tasks: prev.tasks.map((t) =>
             t.type === 'group' && t.id === group.id ? { ...t, subtasks: newSubtasks } : t
           ),
         }))
         selectTask(newSubtasks[0]?.id ?? null)
       }
     } else {
-      handleLessonUpdate(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== taskId) }))
-      const remaining = flattenTasks(lesson.tasks.filter(t => !(t.type !== 'group' && t.id === taskId)))
+      handleLessonUpdate((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) }))
+      const remaining = flattenTasks(
+        lesson.tasks.filter((t) => !(t.type !== 'group' && t.id === taskId))
+      )
       selectTask(remaining[0]?.id ?? null)
     }
   }
 
   function handleDeleteGroup(groupId, { skipConfirm = false } = {}) {
     if (!skipConfirm && !confirm('Delete this group and all its subtasks?')) return
-    handleLessonUpdate(prev => ({ ...prev, tasks: prev.tasks.filter(t => !(t.type === 'group' && t.id === groupId)) }))
-    const remaining = flattenTasks(lesson.tasks.filter(t => !(t.type === 'group' && t.id === groupId)))
+    handleLessonUpdate((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((t) => !(t.type === 'group' && t.id === groupId)),
+    }))
+    const remaining = flattenTasks(
+      lesson.tasks.filter((t) => !(t.type === 'group' && t.id === groupId))
+    )
     selectTask(remaining[0]?.id ?? null)
   }
 
   function handleReorder(reorderedTasks) {
-    onUpdate(prev => ({ ...prev, tasks: reorderedTasks }))
+    onUpdate((prev) => ({ ...prev, tasks: reorderedTasks }))
   }
 
   function handleReorderSubtask(groupId, reorderedSubtasks) {
-    const updated = lesson.tasks.map(item => {
+    const updated = lesson.tasks.map((item) => {
       if (item.type !== 'group') return item
       return { ...item, subtasks: item.id === groupId ? reorderedSubtasks : (item.subtasks ?? []) }
     })
-    onUpdate(prev => ({ ...prev, tasks: updated }))
+    onUpdate((prev) => ({ ...prev, tasks: updated }))
   }
 
   function handleRenumberTasks() {
-    const selectedIndex = selectedTaskId != null
-      ? flattenTasks(lesson.tasks).findIndex(task => task.id === selectedTaskId)
-      : -1
-    handleLessonUpdate(prev => ({ ...prev, tasks: renumberTasks(prev.tasks) }))
+    const selectedIndex =
+      selectedTaskId != null
+        ? flattenTasks(lesson.tasks).findIndex((task) => task.id === selectedTaskId)
+        : -1
+    handleLessonUpdate((prev) => ({ ...prev, tasks: renumberTasks(prev.tasks) }))
     if (selectedIndex >= 0) selectTask(selectedIndex + 1)
   }
 
   // Derived state
   const { errors, warnings } = validateLesson(lesson)
   const flatTasks = flattenTasks(lesson.tasks)
-  const selectedTask = selectedTaskId != null ? flatTasks.find(t => t.id === selectedTaskId) : null
-  const selectedGroup = selectedGroupId != null
-    ? lesson.tasks.find(t => t.type === 'group' && t.id === selectedGroupId)
-    : null
-  const lessonForEditor = selectedTask ? { ...getEffectiveLessonForTask(lesson, selectedTask), tasks: flatTasks } : lesson
+  const selectedTask =
+    selectedTaskId != null ? flatTasks.find((t) => t.id === selectedTaskId) : null
+  const selectedGroup =
+    selectedGroupId != null
+      ? lesson.tasks.find((t) => t.type === 'group' && t.id === selectedGroupId)
+      : null
+  const lessonForEditor = selectedTask
+    ? { ...getEffectiveLessonForTask(lesson, selectedTask), tasks: flatTasks }
+    : lesson
   const selectedTaskGroup = selectedTask
-    ? (lesson.tasks.find(t => t.type === 'group' && (t.subtasks ?? []).some(s => s.id === selectedTask.id)) ?? null)
+    ? (lesson.tasks.find(
+        (t) => t.type === 'group' && (t.subtasks ?? []).some((s) => s.id === selectedTask.id)
+      ) ?? null)
     : null
 
   return {

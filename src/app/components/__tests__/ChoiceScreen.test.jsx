@@ -11,7 +11,14 @@ describe('ChoiceScreen', () => {
   })
 
   it('renders the lesson description when provided', () => {
-    render(<ChoiceScreen lessonTitle="Lesson" lessonDescription="Learn the basics." onJoinLive={vi.fn()} onGoSolo={vi.fn()} />)
+    render(
+      <ChoiceScreen
+        lessonTitle="Lesson"
+        lessonDescription="Learn the basics."
+        onJoinLive={vi.fn()}
+        onGoSolo={vi.fn()}
+      />
+    )
     expect(screen.getByText('Learn the basics.')).toBeInTheDocument()
   })
 

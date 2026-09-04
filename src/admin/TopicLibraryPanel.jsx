@@ -6,13 +6,27 @@ import { MarkdownFieldEditor } from '../shared/MarkdownFieldEditor'
 import { getLessonModules } from '../modules/registry'
 
 const LESSON_MODULES = getLessonModules()
-const LESSON_TYPES = LESSON_MODULES.map(module => module.type)
-const LESSON_TYPE_LABELS = Object.fromEntries(LESSON_MODULES.map(module => [module.type, module.label]))
-const INLINE_CODE_LANGUAGES = [...new Set(LESSON_MODULES.flatMap(module => module.explainerInlineCodeLanguages ?? []))]
-const ID_PATTERN   = /^[a-z0-9][a-z0-9._-]*$/
+const LESSON_TYPES = LESSON_MODULES.map((module) => module.type)
+const LESSON_TYPE_LABELS = Object.fromEntries(
+  LESSON_MODULES.map((module) => [module.type, module.label])
+)
+const INLINE_CODE_LANGUAGES = [
+  ...new Set(LESSON_MODULES.flatMap((module) => module.explainerInlineCodeLanguages ?? [])),
+]
+const ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/
 
 function emptyTopic() {
-  return { id: '', title: '', types: [], category: '', summary: '', description: '', syntax: '', aliases: [], related: [] }
+  return {
+    id: '',
+    title: '',
+    types: [],
+    category: '',
+    summary: '',
+    description: '',
+    syntax: '',
+    aliases: [],
+    related: [],
+  }
 }
 
 function primaryType(types) {
@@ -25,47 +39,53 @@ function arrayToCSV(arr) {
 }
 
 function csvToArray(str) {
-  return str.split(',').map(s => s.trim()).filter(Boolean)
+  return str
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 export default function TopicLibraryPanel() {
-  const [topics, setTopics]       = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
+  const [topics, setTopics] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
-  const [editing, setEditing]     = useState(null)
-  const [isNew, setIsNew]         = useState(false)
-  const [saving, setSaving]       = useState(false)
-  const [deleting, setDeleting]   = useState(false)
-  const [dirty, setDirty]         = useState(false)
-  const [query, setQuery]         = useState('')
+  const [editing, setEditing] = useState(null)
+  const [isNew, setIsNew] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState(null)
   const [uploading, setUploading] = useState(false)
-  const uploadRef                 = useRef(null)
+  const uploadRef = useRef(null)
 
   useEffect(() => {
     return onSnapshot(
       collection(firestore, 'topicLibrary'),
-      snap => {
-        const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      (snap) => {
+        const raw = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         setTopics(normalizeTopicLibrary(raw))
         setLoading(false)
         setError(null)
       },
-      err => { setError(err.message); setLoading(false) },
+      (err) => {
+        setError(err.message)
+        setLoading(false)
+      }
     )
   }, [])
 
   const textFiltered = useMemo(() => searchTopics(topics, query), [topics, query])
   const filtered = useMemo(() => {
     if (!typeFilter) return textFiltered
-    return textFiltered.filter(t => (t.types ?? []).includes(typeFilter))
+    return textFiltered.filter((t) => (t.types ?? []).includes(typeFilter))
   }, [textFiltered, typeFilter])
 
   const typeCounts = useMemo(() => {
     const counts = { all: topics.length }
     for (const type of LESSON_TYPES) {
-      counts[type] = topics.filter(t => (t.types ?? []).includes(type)).length
+      counts[type] = topics.filter((t) => (t.types ?? []).includes(type)).length
     }
     return counts
   }, [topics])
@@ -87,18 +107,26 @@ export default function TopicLibraryPanel() {
   }
 
   function update(field, value) {
-    setEditing(prev => ({ ...prev, [field]: value }))
+    setEditing((prev) => ({ ...prev, [field]: value }))
     setDirty(true)
   }
 
   async function handleSave() {
-    if (!editing.id.trim()) { window.alert('Topic ID is required.'); return }
-    if (!ID_PATTERN.test(editing.id)) {
-      window.alert('Topic ID must contain only lowercase letters, digits, dots, underscores, and hyphens, and must start with a letter or digit.')
+    if (!editing.id.trim()) {
+      window.alert('Topic ID is required.')
       return
     }
-    if (!editing.title.trim()) { window.alert('Title is required.'); return }
-    if (isNew && topics.some(t => t.id === editing.id)) {
+    if (!ID_PATTERN.test(editing.id)) {
+      window.alert(
+        'Topic ID must contain only lowercase letters, digits, dots, underscores, and hyphens, and must start with a letter or digit.'
+      )
+      return
+    }
+    if (!editing.title.trim()) {
+      window.alert('Title is required.')
+      return
+    }
+    if (isNew && topics.some((t) => t.id === editing.id)) {
       window.alert(`A topic with ID "${editing.id}" already exists.`)
       return
     }
@@ -132,26 +160,31 @@ export default function TopicLibraryPanel() {
 
     const normalized = normalizeTopicLibrary(parsed)
     if (normalized.length === 0) {
-      window.alert('No valid topics found in the file. The JSON must be an array of topic objects, or an object with a "topics" array. Each topic must have at least an "id" and "title".')
+      window.alert(
+        'No valid topics found in the file. The JSON must be an array of topic objects, or an object with a "topics" array. Each topic must have at least an "id" and "title".'
+      )
       return
     }
 
-    if (!window.confirm(
-      `This will replace all ${topics.length} existing topic${topics.length !== 1 ? 's' : ''} with ${normalized.length} topic${normalized.length !== 1 ? 's' : ''} from "${file.name}".\n\nThis cannot be undone. Continue?`
-    )) return
+    if (
+      !window.confirm(
+        `This will replace all ${topics.length} existing topic${topics.length !== 1 ? 's' : ''} with ${normalized.length} topic${normalized.length !== 1 ? 's' : ''} from "${file.name}".\n\nThis cannot be undone. Continue?`
+      )
+    )
+      return
 
     setUploading(true)
     try {
-      const deleteRefs = topics.map(t => doc(firestore, 'topicLibrary', t.id))
+      const deleteRefs = topics.map((t) => doc(firestore, 'topicLibrary', t.id))
       for (let i = 0; i < deleteRefs.length; i += 500) {
         const batch = writeBatch(firestore)
-        deleteRefs.slice(i, i + 500).forEach(ref => batch.delete(ref))
+        deleteRefs.slice(i, i + 500).forEach((ref) => batch.delete(ref))
         await batch.commit()
       }
 
       for (let i = 0; i < normalized.length; i += 500) {
         const batch = writeBatch(firestore)
-        normalized.slice(i, i + 500).forEach(topic => {
+        normalized.slice(i, i + 500).forEach((topic) => {
           batch.set(doc(firestore, 'topicLibrary', topic.id), topic)
         })
         await batch.commit()
@@ -169,7 +202,8 @@ export default function TopicLibraryPanel() {
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete topic "${editing.title || editing.id}"?\n\nThis cannot be undone.`)) return
+    if (!window.confirm(`Delete topic "${editing.title || editing.id}"?\n\nThis cannot be undone.`))
+      return
     setDeleting(true)
     try {
       await deleteDoc(doc(firestore, 'topicLibrary', editing.id))
@@ -189,7 +223,9 @@ export default function TopicLibraryPanel() {
       <div style={s.header}>
         <div>
           <h2 style={s.title}>Topic Library</h2>
-          <p style={s.subtitle}>{topics.length} topic{topics.length !== 1 ? 's' : ''} · stored in Firestore</p>
+          <p style={s.subtitle}>
+            {topics.length} topic{topics.length !== 1 ? 's' : ''} · stored in Firestore
+          </p>
         </div>
         <div style={s.headerBtns}>
           <input
@@ -208,14 +244,26 @@ export default function TopicLibraryPanel() {
           >
             {uploading ? 'Uploading…' : 'Upload JSON'}
           </button>
-          <button className="btn-primary" style={s.newBtn} onClick={handleNewTopic} disabled={uploading}>
+          <button
+            className="btn-primary"
+            style={s.newBtn}
+            onClick={handleNewTopic}
+            disabled={uploading}
+          >
             + New Topic
           </button>
         </div>
       </div>
 
       <div className="ui-tabs" role="tablist" aria-label="Filter topics by lesson type">
-        {[{ key: null, label: 'All', count: typeCounts.all }, ...LESSON_TYPES.map(t => ({ key: t, label: LESSON_TYPE_LABELS[t] ?? t, count: typeCounts[t] }))].map(({ key, label, count }) => (
+        {[
+          { key: null, label: 'All', count: typeCounts.all },
+          ...LESSON_TYPES.map((t) => ({
+            key: t,
+            label: LESSON_TYPE_LABELS[t] ?? t,
+            count: typeCounts[t],
+          })),
+        ].map(({ key, label, count }) => (
           <button
             key={label}
             className={`ui-tab${typeFilter === key ? ' is-active' : ''}`}
@@ -233,17 +281,20 @@ export default function TopicLibraryPanel() {
           <input
             style={s.search}
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search topics…"
             aria-label="Search topics"
           />
           {loading && <p style={s.muted}>Loading…</p>}
           {error && <p style={s.errorText}>Error: {error}</p>}
           <div style={s.list}>
-            {filtered.map(topic => (
+            {filtered.map((topic) => (
               <button
                 key={topic.id}
-                style={{ ...s.listItem, ...(selectedId === topic.id && !isNew ? s.listItemActive : {}) }}
+                style={{
+                  ...s.listItem,
+                  ...(selectedId === topic.id && !isNew ? s.listItemActive : {}),
+                }}
                 onClick={() => handleSelect(topic)}
               >
                 <span style={s.listTitle}>{topic.title}</span>
@@ -286,27 +337,34 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
     <div style={f.form}>
       <div style={f.row}>
         <div style={f.field}>
-          <label style={f.label}>ID <span style={f.required}>*</span></label>
+          <label style={f.label}>
+            ID <span style={f.required}>*</span>
+          </label>
           {isNew ? (
             <input
               style={f.input}
               value={topic.id}
-              onChange={e => onChange('id', e.target.value.toLowerCase())}
+              onChange={(e) => onChange('id', e.target.value.toLowerCase())}
               placeholder="e.g. for-loop"
               spellCheck={false}
             />
           ) : (
             <div style={f.idDisplay}>{topic.id}</div>
           )}
-          <span style={f.hint}>Unique slug used in [[wiki-links]]. Lowercase letters, digits, dots, underscores, hyphens.</span>
+          <span style={f.hint}>
+            Unique slug used in [[wiki-links]]. Lowercase letters, digits, dots, underscores,
+            hyphens.
+          </span>
         </div>
 
         <div style={f.field}>
-          <label style={f.label}>Title <span style={f.required}>*</span></label>
+          <label style={f.label}>
+            Title <span style={f.required}>*</span>
+          </label>
           <input
             style={f.input}
             value={topic.title}
-            onChange={e => onChange('title', e.target.value)}
+            onChange={(e) => onChange('title', e.target.value)}
             placeholder="e.g. For loops"
           />
         </div>
@@ -318,7 +376,7 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
           <input
             style={f.input}
             value={topic.category}
-            onChange={e => onChange('category', e.target.value)}
+            onChange={(e) => onChange('category', e.target.value)}
             placeholder="e.g. Loop, Function, Concept"
           />
         </div>
@@ -327,15 +385,15 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
           <label style={f.label}>Lesson types</label>
           <div style={f.checkboxes}>
             <span style={f.checkboxHint}>Leave all unchecked to show for all types.</span>
-            {LESSON_TYPES.map(type => (
+            {LESSON_TYPES.map((type) => (
               <label key={type} style={f.checkboxLabel}>
                 <input
                   type="checkbox"
                   checked={topic.types.includes(type)}
-                  onChange={e => {
+                  onChange={(e) => {
                     const next = e.target.checked
                       ? [...topic.types, type]
-                      : topic.types.filter(t => t !== type)
+                      : topic.types.filter((t) => t !== type)
                     onChange('types', next)
                   }}
                 />
@@ -347,11 +405,14 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
       </div>
 
       <div style={f.fieldFull}>
-        <label style={f.label}>Summary <span style={f.hint}>(Markdown — shown in hover card and detail pane lead-in)</span></label>
+        <label style={f.label}>
+          Summary{' '}
+          <span style={f.hint}>(Markdown — shown in hover card and detail pane lead-in)</span>
+        </label>
         <div style={f.markdownWrap}>
           <MarkdownFieldEditor
             value={topic.summary}
-            onChange={val => onChange('summary', val)}
+            onChange={(val) => onChange('summary', val)}
             placeholder="One-sentence description shown in the hover card and detail pane lead-in."
             height={120}
             minHeight={80}
@@ -362,11 +423,13 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
       </div>
 
       <div style={f.fieldFull}>
-        <label style={f.label}>Description <span style={f.hint}>(Markdown — full body text)</span></label>
+        <label style={f.label}>
+          Description <span style={f.hint}>(Markdown — full body text)</span>
+        </label>
         <div style={f.markdownWrap}>
           <MarkdownFieldEditor
             value={topic.description}
-            onChange={val => onChange('description', val)}
+            onChange={(val) => onChange('description', val)}
             placeholder="Full description in Markdown…"
             height={260}
             minHeight={200}
@@ -377,11 +440,13 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
       </div>
 
       <div style={f.fieldFull}>
-        <label style={f.label}>Syntax <span style={f.hint}>(Markdown — code example rendered below description)</span></label>
+        <label style={f.label}>
+          Syntax <span style={f.hint}>(Markdown — code example rendered below description)</span>
+        </label>
         <div style={f.markdownWrap}>
           <MarkdownFieldEditor
             value={topic.syntax}
-            onChange={val => onChange('syntax', val)}
+            onChange={(val) => onChange('syntax', val)}
             placeholder="Syntax or usage example in Markdown…"
             height={180}
             minHeight={140}
@@ -397,7 +462,7 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
           <input
             style={f.input}
             value={arrayToCSV(topic.aliases)}
-            onChange={e => onChange('aliases', csvToArray(e.target.value))}
+            onChange={(e) => onChange('aliases', csvToArray(e.target.value))}
             placeholder="e.g. for loop, for loops, repeat"
           />
           <span style={f.hint}>Comma-separated. Used by search and auto-suggestion.</span>
@@ -409,9 +474,11 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
             value={topic.related}
             allTopics={allTopics}
             currentId={topic.id}
-            onChange={val => onChange('related', val)}
+            onChange={(val) => onChange('related', val)}
           />
-          <span style={f.hint}>Topic IDs shown as clickable pills at the bottom of the detail pane.</span>
+          <span style={f.hint}>
+            Topic IDs shown as clickable pills at the bottom of the detail pane.
+          </span>
         </div>
       </div>
 
@@ -440,12 +507,12 @@ function TopicForm({ topic, isNew, allTopics, saving, deleting, onChange, onSave
 }
 
 function RelatedPicker({ value, allTopics, currentId, onChange }) {
-  const [query, setQuery]   = useState('')
-  const [open, setOpen]     = useState(false)
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
 
   const available = useMemo(
-    () => searchTopics(allTopics, query).filter(t => t.id !== currentId && !value.includes(t.id)),
-    [allTopics, query, currentId, value],
+    () => searchTopics(allTopics, query).filter((t) => t.id !== currentId && !value.includes(t.id)),
+    [allTopics, query, currentId, value]
   )
 
   function add(id) {
@@ -454,18 +521,20 @@ function RelatedPicker({ value, allTopics, currentId, onChange }) {
   }
 
   function remove(id) {
-    onChange(value.filter(v => v !== id))
+    onChange(value.filter((v) => v !== id))
   }
 
   return (
     <div style={rp.wrap}>
       <div style={rp.tags}>
-        {value.map(id => {
-          const topic = allTopics.find(t => t.id === id)
+        {value.map((id) => {
+          const topic = allTopics.find((t) => t.id === id)
           return (
             <span key={id} style={rp.tag}>
               {topic ? topic.title : id}
-              <button type="button" style={rp.tagRemove} onClick={() => remove(id)} title="Remove">×</button>
+              <button type="button" style={rp.tagRemove} onClick={() => remove(id)} title="Remove">
+                ×
+              </button>
             </span>
           )
         })}
@@ -473,14 +542,17 @@ function RelatedPicker({ value, allTopics, currentId, onChange }) {
           <input
             style={rp.input}
             value={query}
-            onChange={e => { setQuery(e.target.value); setOpen(true) }}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setOpen(true)
+            }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             placeholder={value.length ? '' : 'Search to add…'}
           />
           {open && available.length > 0 && (
             <div style={rp.dropdown}>
-              {available.slice(0, 12).map(topic => (
+              {available.slice(0, 12).map((topic) => (
                 <button
                   key={topic.id}
                   type="button"
@@ -500,57 +572,225 @@ function RelatedPicker({ value, allTopics, currentId, onChange }) {
 }
 
 const s = {
-  section:       { display: 'flex', flexDirection: 'column', gap: 20 },
-  header:        { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 },
-  title:         { margin: 0, fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)' },
-  subtitle:      { margin: '4px 0 0', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af' },
-  headerBtns:    { display: 'flex', gap: 8, alignItems: 'center' },
-  uploadBtn:     { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
-  newBtn:        { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
-  body:          { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 0, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', background: '#fff', minHeight: 600 },
-  listPane:      { display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb', background: '#f9fafb', minHeight: 0 },
-  typeTabCount:  { background: '#f0eafa', color: 'var(--colour-primary)', borderRadius: 999, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700 },
-  search:        { margin: 12, padding: '9px 11px', border: '1px solid #d1d5db', borderRadius: 7, fontFamily: 'var(--font-body)', fontSize: '0.88rem', flexShrink: 0 },
-  list:          { overflowY: 'auto', flex: 1, padding: '0 8px 12px' },
-  listItem:      { display: 'flex', flexDirection: 'column', gap: 2, width: '100%', textAlign: 'left', border: 'none', borderRadius: 7, background: 'none', padding: '9px 10px', cursor: 'pointer' },
-  listItemActive:{ background: '#f0eafa' },
-  listTitle:     { fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--colour-text)', fontSize: '0.88rem' },
-  listMeta:      { fontFamily: 'var(--font-body)', fontSize: '0.73rem', color: '#9ca3af' },
-  editorPane:    { overflowY: 'auto', padding: '24px 28px' },
-  placeholder:   { fontFamily: 'var(--font-body)', color: '#9ca3af', fontSize: '0.9rem', margin: 0 },
-  muted:         { fontFamily: 'var(--font-body)', fontSize: '0.84rem', color: '#9ca3af', margin: '8px 4px' },
-  errorText:     { fontFamily: 'var(--font-body)', fontSize: '0.84rem', color: '#dc2626', margin: '8px 4px' },
+  section: { display: 'flex', flexDirection: 'column', gap: 20 },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 },
+  title: {
+    margin: 0,
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1.1rem',
+    color: 'var(--colour-text)',
+  },
+  subtitle: {
+    margin: '4px 0 0',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    color: '#9ca3af',
+  },
+  headerBtns: { display: 'flex', gap: 8, alignItems: 'center' },
+  uploadBtn: { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
+  newBtn: { whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.86rem' },
+  body: {
+    display: 'grid',
+    gridTemplateColumns: '280px 1fr',
+    gap: 0,
+    border: '1px solid #e5e7eb',
+    borderRadius: 10,
+    overflow: 'hidden',
+    background: '#fff',
+    minHeight: 600,
+  },
+  listPane: {
+    display: 'flex',
+    flexDirection: 'column',
+    borderRight: '1px solid #e5e7eb',
+    background: '#f9fafb',
+    minHeight: 0,
+  },
+  typeTabCount: {
+    background: '#f0eafa',
+    color: 'var(--colour-primary)',
+    borderRadius: 999,
+    padding: '1px 6px',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+  },
+  search: {
+    margin: 12,
+    padding: '9px 11px',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    flexShrink: 0,
+  },
+  list: { overflowY: 'auto', flex: 1, padding: '0 8px 12px' },
+  listItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    width: '100%',
+    textAlign: 'left',
+    border: 'none',
+    borderRadius: 7,
+    background: 'none',
+    padding: '9px 10px',
+    cursor: 'pointer',
+  },
+  listItemActive: { background: '#f0eafa' },
+  listTitle: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    color: 'var(--colour-text)',
+    fontSize: '0.88rem',
+  },
+  listMeta: { fontFamily: 'var(--font-body)', fontSize: '0.73rem', color: '#9ca3af' },
+  editorPane: { overflowY: 'auto', padding: '24px 28px' },
+  placeholder: { fontFamily: 'var(--font-body)', color: '#9ca3af', fontSize: '0.9rem', margin: 0 },
+  muted: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.84rem',
+    color: '#9ca3af',
+    margin: '8px 4px',
+  },
+  errorText: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.84rem',
+    color: '#dc2626',
+    margin: '8px 4px',
+  },
 }
 
 const f = {
-  form:          { display: 'flex', flexDirection: 'column', gap: 18 },
-  row:           { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
-  field:         { display: 'flex', flexDirection: 'column', gap: 5 },
-  fieldFull:     { display: 'flex', flexDirection: 'column', gap: 5 },
-  label:         { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.84rem', color: 'var(--colour-text)' },
-  required:      { color: '#dc2626' },
-  hint:          { fontFamily: 'var(--font-body)', fontSize: '0.74rem', color: '#9ca3af' },
-  input:         { padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 7, fontFamily: 'var(--font-body)', fontSize: '0.88rem', color: 'var(--colour-text)' },
-  idDisplay:     { padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 7, fontFamily: 'var(--font-code)', fontSize: '0.84rem', color: '#6b7280', background: '#f9fafb' },
-  summaryTextarea: { padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 7, fontFamily: 'var(--font-body)', fontSize: '0.88rem', color: 'var(--colour-text)', resize: 'vertical', lineHeight: 1.5 },
-  markdownWrap:  { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' },
-  checkboxes:    { display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 },
-  checkboxHint:  { fontFamily: 'var(--font-body)', fontSize: '0.74rem', color: '#9ca3af' },
-  checkboxLabel: { display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: 'var(--colour-text)', cursor: 'pointer' },
-  actions:       { display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid #f3f4f6' },
-  saveBtn:       { padding: '9px 20px', fontSize: '0.9rem' },
-  deleteBtn:     { padding: '9px 16px', fontSize: '0.9rem' },
+  form: { display: 'flex', flexDirection: 'column', gap: 18 },
+  row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+  field: { display: 'flex', flexDirection: 'column', gap: 5 },
+  fieldFull: { display: 'flex', flexDirection: 'column', gap: 5 },
+  label: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.84rem',
+    color: 'var(--colour-text)',
+  },
+  required: { color: '#dc2626' },
+  hint: { fontFamily: 'var(--font-body)', fontSize: '0.74rem', color: '#9ca3af' },
+  input: {
+    padding: '8px 10px',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    color: 'var(--colour-text)',
+  },
+  idDisplay: {
+    padding: '8px 10px',
+    border: '1px solid #e5e7eb',
+    borderRadius: 7,
+    fontFamily: 'var(--font-code)',
+    fontSize: '0.84rem',
+    color: '#6b7280',
+    background: '#f9fafb',
+  },
+  summaryTextarea: {
+    padding: '8px 10px',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    color: 'var(--colour-text)',
+    resize: 'vertical',
+    lineHeight: 1.5,
+  },
+  markdownWrap: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' },
+  checkboxes: { display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 },
+  checkboxHint: { fontFamily: 'var(--font-body)', fontSize: '0.74rem', color: '#9ca3af' },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.86rem',
+    color: 'var(--colour-text)',
+    cursor: 'pointer',
+  },
+  actions: { display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid #f3f4f6' },
+  saveBtn: { padding: '9px 20px', fontSize: '0.9rem' },
+  deleteBtn: { padding: '9px 16px', fontSize: '0.9rem' },
 }
 
 const rp = {
-  wrap:       { position: 'relative' },
-  tags:       { display: 'flex', flexWrap: 'wrap', gap: 5, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 7, background: '#fff', minHeight: 38 },
-  tag:        { display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0eafa', border: '1px solid #ded1f3', borderRadius: 999, padding: '2px 8px 2px 10px', fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--colour-primary)' },
-  tagRemove:  { border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--colour-primary)', fontSize: '0.9rem', lineHeight: 1, display: 'inline-flex', alignItems: 'center' },
-  inputWrap:  { position: 'relative', flex: 1, minWidth: 80 },
-  input:      { border: 'none', outline: 'none', padding: '2px 0', fontFamily: 'var(--font-body)', fontSize: '0.86rem', width: '100%', background: 'transparent' },
-  dropdown:   { position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 7, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', minWidth: 220, marginTop: 4 },
-  option:     { display: 'flex', alignItems: 'baseline', gap: 8, width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '7px 12px', cursor: 'pointer' },
-  optionTitle:{ fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: 'var(--colour-text)', fontWeight: 600 },
-  optionId:   { fontFamily: 'var(--font-code)', fontSize: '0.76rem', color: '#9ca3af' },
+  wrap: { position: 'relative' },
+  tags: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 5,
+    padding: '6px 8px',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    background: '#fff',
+    minHeight: 38,
+  },
+  tag: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    background: '#f0eafa',
+    border: '1px solid #ded1f3',
+    borderRadius: 999,
+    padding: '2px 8px 2px 10px',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    color: 'var(--colour-primary)',
+  },
+  tagRemove: {
+    border: 'none',
+    background: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    color: 'var(--colour-primary)',
+    fontSize: '0.9rem',
+    lineHeight: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
+  inputWrap: { position: 'relative', flex: 1, minWidth: 80 },
+  input: {
+    border: 'none',
+    outline: 'none',
+    padding: '2px 0',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.86rem',
+    width: '100%',
+    background: 'transparent',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    zIndex: 100,
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: 7,
+    boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+    minWidth: 220,
+    marginTop: 4,
+  },
+  option: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 8,
+    width: '100%',
+    textAlign: 'left',
+    border: 'none',
+    background: 'none',
+    padding: '7px 12px',
+    cursor: 'pointer',
+  },
+  optionTitle: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.86rem',
+    color: 'var(--colour-text)',
+    fontWeight: 600,
+  },
+  optionId: { fontFamily: 'var(--font-code)', fontSize: '0.76rem', color: '#9ca3af' },
 }

@@ -20,15 +20,31 @@ function formatLastRun(ts) {
 // visiblePanes in LessonTaskContent.jsx. Ids with no entry here (e.g. HTML file names)
 // pass through as-is via the ?? fallback below.
 const VISIBLE_PANE_LABELS = {
-  instructions: 'Info', blocks: 'Blocks', stage: 'Stage',
-  breadboard: 'Breadboard', code: 'Code', console: 'Console',
-  sprites: 'Sprites', tilemaps: 'Tilemaps', running: 'Running', preview: 'Preview',
+  instructions: 'Info',
+  blocks: 'Blocks',
+  stage: 'Stage',
+  breadboard: 'Breadboard',
+  code: 'Code',
+  console: 'Console',
+  sprites: 'Sprites',
+  tilemaps: 'Tilemaps',
+  running: 'Running',
+  preview: 'Preview',
 }
 function formatVisiblePanes(panes) {
-  return panes.map(p => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
+  return panes.map((p) => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
 }
 
-export default function StudentCard({ student, lesson, lessonId, session, topics, onRename, onRemove, onExpand }) {
+export default function StudentCard({
+  student,
+  lesson,
+  lessonId,
+  session,
+  topics,
+  onRename,
+  onRemove,
+  onExpand,
+}) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
@@ -45,7 +61,7 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
   // Refresh "X ago" label every 30 seconds
   useEffect(() => {
     if (!student.lastRunAt) return
-    const interval = setInterval(() => setTick(n => n + 1), 30000)
+    const interval = setInterval(() => setTick((n) => n + 1), 30000)
     return () => clearInterval(interval)
   }, [student.lastRunAt])
 
@@ -62,8 +78,16 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
   // resolves the same way; without this every code task in a composed lesson (27 of the
   // 28 published lessons) fell through to the HTML fallback and showed "No run yet".
   const taskLesson = getEffectiveLessonForTask(lesson, currentTask)
-  const { isPython, isScratch, isElectronics, isArcade, isFilesystem, isQuiz, isInformation, isSessionSandbox } =
-    deriveTaskContext(taskLesson, currentTask, session)
+  const {
+    isPython,
+    isScratch,
+    isElectronics,
+    isArcade,
+    isFilesystem,
+    isQuiz,
+    isInformation,
+    isSessionSandbox,
+  } = deriveTaskContext(taskLesson, currentTask, session)
   // Python, Arcade and Electronics all run code that prints to a console, so the teacher
   // wants the same first-few-lines-of-output snippet for all three.
   const hasConsoleOutput = isPython || isArcade || isElectronics
@@ -71,41 +95,64 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
   const isShortAnswer = quizType === 'short_answer'
   const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
   const isConfidence = quizType === 'confidence'
-  const quizAnswerText = isQuiz && !isShortAnswer && !isMatchOrFillBlank && !isConfidence ? getQuizOptionText(currentTask, student.currentAnswer) : ''
+  const quizAnswerText =
+    isQuiz && !isShortAnswer && !isMatchOrFillBlank && !isConfidence
+      ? getQuizOptionText(currentTask, student.currentAnswer)
+      : ''
   const quizSubmitted = isQuiz && student.lastRunStatus === 'submitted'
-  const confidenceLevel = isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
+  const confidenceLevel =
+    isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
 
   // The dot is presence, which is what a dot beside a name means everywhere else. It
   // used to carry run status while the pill next to it carried presence - two dots one
   // row apart answering different questions, so an idle-but-connected student read as
   // half offline. Run status is already in the output snippet and the pass/fail badge.
-  const presenceState = session?.state === 'waiting' ? 'waiting' : student.online ? 'online' : 'offline'
-  const statusColour = presenceState === 'waiting' ? 'var(--colour-warning)'
-    : presenceState === 'online' ? 'var(--colour-success)'
-    : 'var(--colour-muted-soft)'
-  const presenceTitle = presenceState === 'waiting' ? 'Waiting to join'
-    : presenceState === 'online' ? 'Connected now'
-    : 'Offline'
+  const presenceState =
+    session?.state === 'waiting' ? 'waiting' : student.online ? 'online' : 'offline'
+  const statusColour =
+    presenceState === 'waiting'
+      ? 'var(--colour-warning)'
+      : presenceState === 'online'
+        ? 'var(--colour-success)'
+        : 'var(--colour-muted-soft)'
+  const presenceTitle =
+    presenceState === 'waiting'
+      ? 'Waiting to join'
+      : presenceState === 'online'
+        ? 'Connected now'
+        : 'Offline'
 
   // Confidence tasks have no pass/fail check — teacher just sees the submitted level
   // For match/fill_blank quizzes, checkPassed comes from internal quiz logic rather than task.check
-  const hasCheck = !isConfidence && (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
+  const hasCheck =
+    !isConfidence &&
+    (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const hasActiveOverride = !!student.checkOverridePushedAt
-  const supportRevealCount = Object.keys(session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}).length
-  const checkPassed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
-  const checkFailed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === false : (checkAttempted && student.checkPassed !== true))
+  const supportRevealCount = Object.keys(
+    session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}
+  ).length
+  const checkPassed =
+    hasCheck &&
+    (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
+  const checkFailed =
+    hasCheck &&
+    (hasActiveOverride
+      ? student.checkOverridePassed === false
+      : checkAttempted && student.checkPassed !== true)
   const checkCardStyle = student.needsHelp
     ? s.cardNeedsHelp
     : checkPassed
-    ? s.cardCheckPassed
-    : checkFailed
-    ? s.cardCheckFailed
-    : null
+      ? s.cardCheckPassed
+      : checkFailed
+        ? s.cardCheckFailed
+        : null
   const hasAnswer = student.currentAnswer != null && student.currentAnswer !== ''
 
   const expandable = !isInformation
-  const openStudent = () => { if (expandable) onExpand?.(student) }
+  const openStudent = () => {
+    if (expandable) onExpand?.(student)
+  }
 
   return (
     // The card is the click target. A dedicated full-width Expand button cost ~45px on
@@ -118,9 +165,12 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
       tabIndex={expandable ? 0 : undefined}
       aria-label={expandable ? `Expand ${student.displayName}` : undefined}
       onClick={openStudent}
-      onKeyDown={event => {
+      onKeyDown={(event) => {
         if (!expandable) return
-        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openStudent() }
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openStudent()
+        }
       }}
     >
       {/* Header row */}
@@ -128,31 +178,42 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         <div style={s.nameRow}>
           <span style={{ ...s.statusDot, background: statusColour }} title={presenceTitle} />
           {editing ? (
-            <form onSubmit={handleRename} style={s.nameForm} onClick={event => event.stopPropagation()}>
+            <form
+              onSubmit={handleRename}
+              style={s.nameForm}
+              onClick={(event) => event.stopPropagation()}
+            >
               <input
                 style={s.nameInput}
                 value={nameValue}
                 autoFocus
-                onChange={e => setNameValue(e.target.value)}
+                onChange={(e) => setNameValue(e.target.value)}
                 onBlur={handleRename}
               />
             </form>
           ) : (
-            <span style={s.name} title={student.displayName}>{student.displayName}</span>
+            <span style={s.name} title={student.displayName}>
+              {student.displayName}
+            </span>
           )}
           {!isQuiz && !isInformation && student.lastRunAt && (
-            <span style={s.lastRunLabel} title="Last run">▶ {formatLastRun(student.lastRunAt)}</span>
+            <span style={s.lastRunLabel} title="Last run">
+              ▶ {formatLastRun(student.lastRunAt)}
+            </span>
           )}
           <button
             style={s.pencil}
-            onClick={event => { event.stopPropagation(); setEditing(e => !e) }}
+            onClick={(event) => {
+              event.stopPropagation()
+              setEditing((e) => !e)
+            }}
             title="Rename student"
           >
             ✏️
           </button>
           <button
             style={s.removeBtn}
-            onClick={event => {
+            onClick={(event) => {
               event.stopPropagation()
               if (window.confirm(`Remove ${student.displayName} from the session?`)) {
                 onRemove?.(student.anonymousId)
@@ -170,35 +231,54 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
             <PresenceBadge student={student} session={session} />
           )}
           {student.online && student.windowFocused === false && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeAway }} title="Student's tab is not focused">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeAway }}
+              title="Student's tab is not focused"
+            >
               Away
             </span>
           )}
           {student.isFullscreen && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeFullscreen }} title="Student is in fullscreen mode">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeFullscreen }}
+              title="Student is in fullscreen mode"
+            >
               ⛶ Fullscreen
             </span>
           )}
           {isActive && (
             <span className="activity-dots" title="Student is active">
-              <span /><span /><span />
+              <span />
+              <span />
+              <span />
             </span>
           )}
           {checkPassed && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgePassed }} title="Completion check passed">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgePassed }}
+              title="Completion check passed"
+            >
               <span style={s.checkBadgeIcon}>✓</span>
               Passed
             </span>
           )}
           {checkFailed && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeFailed }} title="Completion check failed">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeFailed }}
+              title="Completion check failed"
+            >
               <span style={s.checkBadgeIcon}>✕</span>
               Failed
             </span>
           )}
           {hasActiveOverride && (
             <span
-              style={{ ...s.checkBadge, ...(student.checkOverridePassed ? s.checkBadgeOverridePassed : s.checkBadgeOverrideFailed) }}
+              style={{
+                ...s.checkBadge,
+                ...(student.checkOverridePassed
+                  ? s.checkBadgeOverridePassed
+                  : s.checkBadgeOverrideFailed),
+              }}
               title="Check overridden by teacher"
             >
               <span style={s.checkBadgeIcon}>{student.checkOverridePassed ? '✓' : '✕'}</span>
@@ -206,30 +286,46 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
             </span>
           )}
           {student.inPersonalSandbox && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeSandbox }} title="Student is in their personal sandbox">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeSandbox }}
+              title="Student is in their personal sandbox"
+            >
               Sandbox
             </span>
           )}
           {student.needsHelp && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeHelp }} title="Student has requested help">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeHelp }}
+              title="Student has requested help"
+            >
               Help
             </span>
           )}
           {supportRevealCount > 0 && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeSupport }} title="Student has opened support reference">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeSupport }}
+              title="Student has opened support reference"
+            >
               Support {supportRevealCount > 1 ? supportRevealCount : ''}
             </span>
           )}
-          {student.currentTopicId && (() => {
-            const topic = topics?.find(t => t.id === student.currentTopicId)
-            return (
-              <span style={{ ...s.checkBadge, ...s.checkBadgeTopic }} title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}>
-                📖 {topic?.title ?? student.currentTopicId}
-              </span>
-            )
-          })()}
+          {student.currentTopicId &&
+            (() => {
+              const topic = topics?.find((t) => t.id === student.currentTopicId)
+              return (
+                <span
+                  style={{ ...s.checkBadge, ...s.checkBadgeTopic }}
+                  title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}
+                >
+                  📖 {topic?.title ?? student.currentTopicId}
+                </span>
+              )
+            })()}
           {Array.isArray(student.visiblePanes) && student.visiblePanes.length > 0 && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeView }} title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}>
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeView }}
+              title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}
+            >
               👀 {formatVisiblePanes(student.visiblePanes)}
             </span>
           )}
@@ -245,7 +341,15 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         <div style={s.quizAnswer}>
           {hasAnswer ? (
             isConfidence ? (
-              <span style={{ ...s.confidenceBadge, background: confidenceLevel >= 1 && confidenceLevel <= 5 ? CONFIDENCE_COLOURS[confidenceLevel - 1] : '#9ca3af' }}>
+              <span
+                style={{
+                  ...s.confidenceBadge,
+                  background:
+                    confidenceLevel >= 1 && confidenceLevel <= 5
+                      ? CONFIDENCE_COLOURS[confidenceLevel - 1]
+                      : '#9ca3af',
+                }}
+              >
                 {confidenceLevel}/5
               </span>
             ) : isShortAnswer ? (
@@ -255,10 +359,10 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
                 {student.checkPassed === true
                   ? '✓ All correct'
                   : student.checkPassed === false && quizSubmitted
-                  ? '✗ Some incorrect'
-                  : quizSubmitted
-                  ? 'Answered'
-                  : 'In progress…'}
+                    ? '✗ Some incorrect'
+                    : quizSubmitted
+                      ? 'Answered'
+                      : 'In progress…'}
               </span>
             ) : (
               <>
@@ -275,12 +379,20 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
       ) : hasConsoleOutput ? (
         isSubmitMode ? (
           <pre style={s.snippet}>
-            {student.lastRunStatus === 'submitted'
-              ? (student.currentCode ?? '').split('\n').slice(0, 2).join('\n') || <span style={{ color: '#9ca3af' }}>No code yet</span>
-              : <span style={{ color: '#9ca3af' }}>Waiting for submission</span>}
+            {student.lastRunStatus === 'submitted' ? (
+              (student.currentCode ?? '').split('\n').slice(0, 2).join('\n') || (
+                <span style={{ color: '#9ca3af' }}>No code yet</span>
+              )
+            ) : (
+              <span style={{ color: '#9ca3af' }}>Waiting for submission</span>
+            )}
           </pre>
         ) : (
-          <pre style={s.snippet}>{(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || <span style={{ color: '#9ca3af' }}>No output yet</span>}</pre>
+          <pre style={s.snippet}>
+            {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
+              <span style={{ color: '#9ca3af' }}>No output yet</span>
+            )}
+          </pre>
         )
       ) : isScratch ? (
         <div style={s.iframeThumb}>
@@ -296,12 +408,13 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         </div>
       ) : (
         <div style={s.iframeThumb}>
-          {student.currentFiles
-            ? <span style={{ color: '#6b7280', fontSize: 12 }}>HTML project</span>
-            : <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>}
+          {student.currentFiles ? (
+            <span style={{ color: '#6b7280', fontSize: 12 }}>HTML project</span>
+          ) : (
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>
+          )}
         </div>
       )}
-
     </div>
   )
 }

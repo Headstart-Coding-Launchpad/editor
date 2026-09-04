@@ -9,11 +9,11 @@ const AuthContext = createContext({ user: null, role: null, loading: true })
 const BOUNCE_RECOVERY_GRACE_MS = 1000
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
-  const [role, setRole]       = useState(null)
+  const [user, setUser] = useState(null)
+  const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
-  const initializedRef        = useRef(false)
-  const wasSignedInRef        = useRef(false)
+  const initializedRef = useRef(false)
+  const wasSignedInRef = useRef(false)
 
   useEffect(() => {
     let bounceRecoveryTimeout = null
@@ -33,11 +33,15 @@ export function AuthProvider({ children }) {
         // Hold the loading state and wait; if the user comes back in a subsequent
         // onAuthStateChanged call, cancel the timeout and stay signed in.
         // If not, it's a real sign-out and we redirect after the grace period.
-        console.warn('Auth: onAuthStateChanged reported no user for a previously signed-in session — waiting for potential bounce recovery before redirecting.')
+        console.warn(
+          'Auth: onAuthStateChanged reported no user for a previously signed-in session — waiting for potential bounce recovery before redirecting.'
+        )
         setLoading(true)
 
         bounceRecoveryTimeout = setTimeout(() => {
-          console.warn('Auth: no recovery within grace period — treating as a real sign-out and redirecting to /login.')
+          console.warn(
+            'Auth: no recovery within grace period — treating as a real sign-out and redirecting to /login.'
+          )
           wasSignedInRef.current = false
           setUser(null)
           setRole(null)
@@ -73,7 +77,10 @@ export function AuthProvider({ children }) {
             setUser(firebaseUser)
             setRole(retryResult.claims.role ?? null)
           } catch (retryErr) {
-            console.error('Auth: ID token retry also failed — signing out and redirecting to /login:', retryErr)
+            console.error(
+              'Auth: ID token retry also failed — signing out and redirecting to /login:',
+              retryErr
+            )
             setUser(null)
             setRole(null)
           }
@@ -94,11 +101,7 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  return (
-    <AuthContext.Provider value={{ user, role, loading }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={{ user, role, loading }}>{children}</AuthContext.Provider>
 }
 
 export default AuthContext

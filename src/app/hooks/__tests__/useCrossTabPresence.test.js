@@ -5,7 +5,7 @@ import { useCrossTabPresence } from '../useCrossTabPresence'
 describe('useCrossTabPresence', () => {
   it('detects a peer tab already listening on the same lesson+student channel', async () => {
     const peer = new BroadcastChannel('headstart_presence_lesson-1_student-1')
-    peer.onmessage = event => {
+    peer.onmessage = (event) => {
       if (event.data?.type === 'ping') peer.postMessage({ type: 'pong' })
     }
 
@@ -28,13 +28,13 @@ describe('useCrossTabPresence', () => {
 
   it('does not react to a tab for a different student or lesson', async () => {
     const peer = new BroadcastChannel('headstart_presence_lesson-3_student-other')
-    peer.onmessage = event => {
+    peer.onmessage = (event) => {
       if (event.data?.type === 'ping') peer.postMessage({ type: 'pong' })
     }
 
     const { result } = renderHook(() => useCrossTabPresence('lesson-3', 'student-1'))
 
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await new Promise((resolve) => setTimeout(resolve, 20))
     expect(result.current).toBe(false)
     peer.close()
   })
@@ -43,7 +43,7 @@ describe('useCrossTabPresence', () => {
     const { result: noLesson } = renderHook(() => useCrossTabPresence(null, 'student-1'))
     const { result: noStudent } = renderHook(() => useCrossTabPresence('lesson-4', null))
 
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await new Promise((resolve) => setTimeout(resolve, 20))
     expect(noLesson.current).toBe(false)
     expect(noStudent.current).toBe(false)
   })

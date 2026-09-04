@@ -3,7 +3,13 @@ import PythonEditor from './PythonEditor.jsx'
 
 const attachedEditorStyle = { borderRadius: '0 0 8px 8px' }
 
-export default function PythonTeacherLiveView({ displayState, readOnly, onChange, onActivity, isInSandbox }) {
+export default function PythonTeacherLiveView({
+  displayState,
+  readOnly,
+  onChange,
+  onActivity,
+  isInSandbox,
+}) {
   return (
     <PythonEditor
       code={displayState ?? ''}

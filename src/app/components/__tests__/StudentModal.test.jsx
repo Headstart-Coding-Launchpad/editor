@@ -108,25 +108,28 @@ function mkProps(overrides = {}, studentOverrides = {}) {
 
 const CODE_ARRANGE_LESSON = {
   type: 'python',
-  tasks: [{
-    id: 1,
-    title: 'Arrange Task',
-    taskType: 'code_arrange',
-    moduleType: 'python',
-    lines: [
-      { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] },
-      { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: 'print(2)' }] },
-    ],
-    distractors: [{ id: 'D1', code: 'print(99)' }],
-  }],
+  tasks: [
+    {
+      id: 1,
+      title: 'Arrange Task',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [
+        { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] },
+        { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: 'print(2)' }] },
+      ],
+      distractors: [{ id: 'D1', code: 'print(99)' }],
+    },
+  ],
 }
 
 describe('code_arrange tasks', () => {
-  it('renders the tile board matching the student\'s assembled code, not a raw code editor', () => {
-    render(<StudentModal {...mkProps(
-      { lesson: CODE_ARRANGE_LESSON },
-      { currentCode: 'print(1)\nprint(2)' }
-    )} />)
+  it("renders the tile board matching the student's assembled code, not a raw code editor", () => {
+    render(
+      <StudentModal
+        {...mkProps({ lesson: CODE_ARRANGE_LESSON }, { currentCode: 'print(1)\nprint(2)' })}
+      />
+    )
 
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     // Both tiles are placed in their slots — the distractor stays in the pool.
@@ -136,20 +139,21 @@ describe('code_arrange tasks', () => {
   })
 
   it('shows empty slots when the student has not placed any tiles yet', () => {
-    render(<StudentModal {...mkProps(
-      { lesson: CODE_ARRANGE_LESSON },
-      { currentCode: '' }
-    )} />)
+    render(<StudentModal {...mkProps({ lesson: CODE_ARRANGE_LESSON }, { currentCode: '' })} />)
 
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     expect(screen.getAllByText('Empty line')).toHaveLength(2)
   })
 
   it('shows the live code editor, not the stale tile board, once the session is in sandbox mode', () => {
-    render(<StudentModal {...mkProps(
-      { lesson: CODE_ARRANGE_LESSON, session: { state: 'sandbox', currentTaskId: 1 } },
-      { currentCode: 'print("free code")' }
-    )} />)
+    render(
+      <StudentModal
+        {...mkProps(
+          { lesson: CODE_ARRANGE_LESSON, session: { state: 'sandbox', currentTaskId: 1 } },
+          { currentCode: 'print("free code")' }
+        )}
+      />
+    )
 
     expect(screen.getByTestId('code-editor')).toBeInTheDocument()
     expect(screen.queryByText('print(1)')).not.toBeInTheDocument()
@@ -162,10 +166,31 @@ describe('StudentModal', () => {
   })
 
   it.each([
-    ['HTML', { type: 'html', tasks: [{ id: 1, title: 'HTML task', starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hello</p>' }] }] }],
-    ['ArcadeKit', { type: 'arcade', tasks: [{ id: 1, title: 'Arcade task', starterCode: 'game.run()' }] }],
+    [
+      'HTML',
+      {
+        type: 'html',
+        tasks: [
+          {
+            id: 1,
+            title: 'HTML task',
+            starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hello</p>' }],
+          },
+        ],
+      },
+    ],
+    [
+      'ArcadeKit',
+      { type: 'arcade', tasks: [{ id: 1, title: 'Arcade task', starterCode: 'game.run()' }] },
+    ],
     ['Electronics', { type: 'electronics', tasks: [{ id: 1, title: 'Circuit task' }] }],
-    ['a composed ArcadeKit task', { type: 'composed', tasks: [{ id: 1, moduleType: 'arcade', title: 'Arcade task', starterCode: 'game.run()' }] }],
+    [
+      'a composed ArcadeKit task',
+      {
+        type: 'composed',
+        tasks: [{ id: 1, moduleType: 'arcade', title: 'Arcade task', starterCode: 'game.run()' }],
+      },
+    ],
   ])('offers teacher live editing for %s workspaces', async (_name, lesson) => {
     const user = userEvent.setup()
     const onRequestTeacherEdit = vi.fn()
@@ -271,12 +296,14 @@ describe('StudentModal', () => {
   describe('remote reset stage options', () => {
     const LESSON_WITH_STAGES = {
       type: 'python',
-      tasks: [{
-        id: 1,
-        title: 'Task 1',
-        completeCode: 'print("done")',
-        codeStages: [{ label: 'Stage 1', code: 'x = 1' }],
-      }],
+      tasks: [
+        {
+          id: 1,
+          title: 'Task 1',
+          completeCode: 'print("done")',
+          codeStages: [{ label: 'Stage 1', code: 'x = 1' }],
+        },
+      ],
     }
 
     it('renders the Set Stage button when stages are available', () => {
@@ -309,11 +336,20 @@ describe('StudentModal', () => {
       const user = userEvent.setup()
       const onRequestTeacherStage = vi.fn()
       const onClearTeacherStage = vi.fn()
-      const props = mkProps({ lesson: LESSON_WITH_STAGES, onRequestTeacherStage, onClearTeacherStage })
+      const props = mkProps({
+        lesson: LESSON_WITH_STAGES,
+        onRequestTeacherStage,
+        onClearTeacherStage,
+      })
       const { rerender } = render(<StudentModal {...props} />)
       await user.click(screen.getByRole('button', { name: /Set Stage/i }))
       await user.click(screen.getByRole('button', { name: 'Starter' }))
-      rerender(<StudentModal {...props} student={{ ...props.student, teacherStageRequestedAt: 1, teacherStageAcceptedAt: 2 }} />)
+      rerender(
+        <StudentModal
+          {...props}
+          student={{ ...props.student, teacherStageRequestedAt: 1, teacherStageAcceptedAt: 2 }}
+        />
+      )
       expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'starter')
       expect(onClearTeacherStage).toHaveBeenCalledWith('student-1')
     })
@@ -322,14 +358,16 @@ describe('StudentModal', () => {
   describe('reveal solution', () => {
     const LESSON_WITH_COMPLETE_STAGE = {
       type: 'python',
-      tasks: [{
-        id: 1,
-        title: 'Task 1',
-        codeStages: [
-          { role: 'support', label: 'Hint', code: 'x = 1' },
-          { role: 'complete', label: 'Complete', code: 'print("done")' },
-        ],
-      }],
+      tasks: [
+        {
+          id: 1,
+          title: 'Task 1',
+          codeStages: [
+            { role: 'support', label: 'Hint', code: 'x = 1' },
+            { role: 'complete', label: 'Complete', code: 'print("done")' },
+          ],
+        },
+      ],
     }
 
     it('records the support reveal and pushes the remote reset when solution is revealed', async () => {
@@ -372,13 +410,20 @@ describe('StudentModal', () => {
 
   describe('Scratch lessons', () => {
     it('renders the Scratch workspace when opening the modal', () => {
-      render(<StudentModal {...mkProps({
-        lesson: SCRATCH_LESSON,
-        session: ACTIVE_SESSION,
-      }, {
-        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
-        currentOutput: JSON.stringify({ x: 0, y: 0 }),
-      })} />)
+      render(
+        <StudentModal
+          {...mkProps(
+            {
+              lesson: SCRATCH_LESSON,
+              session: ACTIVE_SESSION,
+            },
+            {
+              currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+              currentOutput: JSON.stringify({ x: 0, y: 0 }),
+            }
+          )}
+        />
+      )
 
       expect(screen.getByTestId('scratch-workspace')).toBeInTheDocument()
     })
@@ -390,26 +435,45 @@ describe('StudentModal', () => {
     // workspace on every tick, stomping the live block-drag mirror's moveTo().
     it('keeps the same externalState reference across renders while currentCode is unchanged, and only recomputes when it changes', () => {
       scratchExternalStateSpy.mockClear()
-      const props = mkProps({ lesson: SCRATCH_LESSON, session: ACTIVE_SESSION }, {
-        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
-        currentCursor: { target: 'stage', x: 1, y: 2, at: 100 },
-      })
+      const props = mkProps(
+        { lesson: SCRATCH_LESSON, session: ACTIVE_SESSION },
+        {
+          currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+          currentCursor: { target: 'stage', x: 1, y: 2, at: 100 },
+        }
+      )
       const { rerender } = render(<StudentModal {...props} />)
       const first = scratchExternalStateSpy.mock.calls.at(-1)[0]
 
       // Unrelated update (a live cursor tick) with the same currentCode.
-      rerender(<StudentModal {...mkProps({ lesson: SCRATCH_LESSON, session: ACTIVE_SESSION }, {
-        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
-        currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
-      })} />)
+      rerender(
+        <StudentModal
+          {...mkProps(
+            { lesson: SCRATCH_LESSON, session: ACTIVE_SESSION },
+            {
+              currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+              currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
+            }
+          )}
+        />
+      )
       const second = scratchExternalStateSpy.mock.calls.at(-1)[0]
       expect(second).toBe(first)
 
       // A genuine code update.
-      rerender(<StudentModal {...mkProps({ lesson: SCRATCH_LESSON, session: ACTIVE_SESSION }, {
-        currentCode: JSON.stringify({ sprite1: { blocks: [{ type: 'event_whenflagclicked' }] } }),
-        currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
-      })} />)
+      rerender(
+        <StudentModal
+          {...mkProps(
+            { lesson: SCRATCH_LESSON, session: ACTIVE_SESSION },
+            {
+              currentCode: JSON.stringify({
+                sprite1: { blocks: [{ type: 'event_whenflagclicked' }] },
+              }),
+              currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
+            }
+          )}
+        />
+      )
       const third = scratchExternalStateSpy.mock.calls.at(-1)[0]
       expect(third).not.toBe(first)
     })
@@ -433,31 +497,44 @@ describe('StudentModal — teacher pane highlight/force', () => {
     expect(screen.queryByText('Blocks')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Highlight/ }))
-    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith('student-1', { mode: 'highlight', panes: ['instructions'] })
+    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith('student-1', {
+      mode: 'highlight',
+      panes: ['instructions'],
+    })
   })
 
   it('pushes a force command with the checked panes for a Scratch lesson', async () => {
     const user = userEvent.setup()
     const onPushTeacherPaneCommand = vi.fn()
-    render(<StudentModal {...mkProps({
-      lesson: SCRATCH_LESSON,
-      onPushTeacherPaneCommand,
-    }, {
-      currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
-    })} />)
+    render(
+      <StudentModal
+        {...mkProps(
+          {
+            lesson: SCRATCH_LESSON,
+            onPushTeacherPaneCommand,
+          },
+          {
+            currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+          }
+        )}
+      />
+    )
 
     await user.click(screen.getByRole('button', { name: /Focus/ }))
     await user.click(screen.getByText('Blocks'))
     await user.click(screen.getByRole('button', { name: /Switch to this/ }))
 
-    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith(
-      'student-1',
-      { mode: 'force', panes: expect.arrayContaining(['instructions', 'blocks']) },
-    )
+    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith('student-1', {
+      mode: 'force',
+      panes: expect.arrayContaining(['instructions', 'blocks']),
+    })
   })
 
   it('does not render the Focus control on an Information task', () => {
-    const infoLesson = { type: 'python', tasks: [{ id: 1, title: 'Info', taskType: 'information' }] }
+    const infoLesson = {
+      type: 'python',
+      tasks: [{ id: 1, title: 'Info', taskType: 'information' }],
+    }
     render(<StudentModal {...mkProps({ lesson: infoLesson, onPushTeacherPaneCommand: vi.fn() })} />)
     expect(screen.queryByRole('button', { name: /Focus/ })).not.toBeInTheDocument()
   })

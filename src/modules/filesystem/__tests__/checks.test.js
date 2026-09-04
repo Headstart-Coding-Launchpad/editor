@@ -11,16 +11,22 @@ describe('evaluateFsCheck', () => {
 
   describe('fs_file_exists', () => {
     it('passes when file exists', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/notes.txt' }, fs)).toBe(true)
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/notes.txt' }, fs)).toBe(
+        true
+      )
     })
     it('fails when file does not exist', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/missing.txt' }, fs)).toBe(false)
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/missing.txt' }, fs)).toBe(
+        false
+      )
     })
     it('fails for a directory path', () => {
       expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/' }, fs)).toBe(false)
     })
     it('passes with different casing (case-insensitive)', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/documents/NOTES.TXT' }, fs)).toBe(true)
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/documents/NOTES.TXT' }, fs)).toBe(
+        true
+      )
     })
     it('passes with * wildcard matching filename', () => {
       expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/*.txt' }, fs)).toBe(true)
@@ -32,7 +38,9 @@ describe('evaluateFsCheck', () => {
       expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/**/*.txt' }, fs)).toBe(true)
     })
     it('passes with ? wildcard matching single char', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/notes.tx?' }, fs)).toBe(true)
+      expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/notes.tx?' }, fs)).toBe(
+        true
+      )
     })
     it('fails when wildcard matches no file', () => {
       expect(evaluateFsCheck({ type: 'fs_file_exists', path: '/Documents/*.py' }, fs)).toBe(false)
@@ -68,7 +76,9 @@ describe('evaluateFsCheck', () => {
       expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/Documents/' }, fs)).toBe(false)
     })
     it('fails when path exists as file', () => {
-      expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/Documents/notes.txt' }, fs)).toBe(false)
+      expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/Documents/notes.txt' }, fs)).toBe(
+        false
+      )
     })
     it('fails when path exists with different casing (case-insensitive)', () => {
       expect(evaluateFsCheck({ type: 'fs_not_exists', path: '/DOCUMENTS/' }, fs)).toBe(false)
@@ -83,81 +93,167 @@ describe('evaluateFsCheck', () => {
 
   describe('fs_content_contains', () => {
     it('passes when content contains value (case-insensitive)', () => {
-      expect(evaluateFsCheck({ type: 'fs_content_contains', path: '/Documents/notes.txt', value: 'hello' }, fs)).toBe(true)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_content_contains', path: '/Documents/notes.txt', value: 'hello' },
+          fs
+        )
+      ).toBe(true)
     })
     it('fails when content does not contain value', () => {
-      expect(evaluateFsCheck({ type: 'fs_content_contains', path: '/Documents/notes.txt', value: 'goodbye' }, fs)).toBe(false)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_content_contains', path: '/Documents/notes.txt', value: 'goodbye' },
+          fs
+        )
+      ).toBe(false)
     })
     it('fails for nonexistent file', () => {
-      expect(evaluateFsCheck({ type: 'fs_content_contains', path: '/missing.txt', value: 'x' }, fs)).toBe(false)
+      expect(
+        evaluateFsCheck({ type: 'fs_content_contains', path: '/missing.txt', value: 'x' }, fs)
+      ).toBe(false)
     })
     it('matches across Windows line endings (CRLF in content, LF in value)', () => {
       const winFs = { '/f.txt': { type: 'file', content: 'Hello\r\nWorld' } }
-      expect(evaluateFsCheck({ type: 'fs_content_contains', path: '/f.txt', value: 'hello\nworld' }, winFs)).toBe(true)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_content_contains', path: '/f.txt', value: 'hello\nworld' },
+          winFs
+        )
+      ).toBe(true)
     })
   })
 
   describe('fs_content_equals', () => {
     it('passes on exact match (trimmed, case-insensitive)', () => {
-      expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello world' }, fs)).toBe(true)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello world' },
+          fs
+        )
+      ).toBe(true)
     })
     it('fails when content does not match', () => {
-      expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello' }, fs)).toBe(false)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_content_equals', path: '/Documents/notes.txt', value: 'hello' },
+          fs
+        )
+      ).toBe(false)
     })
     it('matches across Windows line endings (CRLF in content, LF in value)', () => {
       const winFs = { '/f.txt': { type: 'file', content: 'Hello\r\nWorld' } }
-      expect(evaluateFsCheck({ type: 'fs_content_equals', path: '/f.txt', value: 'hello\nworld' }, winFs)).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_content_equals', path: '/f.txt', value: 'hello\nworld' }, winFs)
+      ).toBe(true)
     })
   })
 
   describe('fs_file_in_dir', () => {
     it('passes when file is in the specified dir', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/Documents/notes.txt', dir: '/Documents/' }, fs)).toBe(true)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_file_in_dir', path: '/Documents/notes.txt', dir: '/Documents/' },
+          fs
+        )
+      ).toBe(true)
     })
     it('fails when file is in a different dir', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/Documents/notes.txt', dir: '/Pictures/' }, fs)).toBe(false)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_file_in_dir', path: '/Documents/notes.txt', dir: '/Pictures/' },
+          fs
+        )
+      ).toBe(false)
     })
     it('fails when file does not exist', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/missing.txt', dir: '/' }, fs)).toBe(false)
+      expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/missing.txt', dir: '/' }, fs)).toBe(
+        false
+      )
     })
     it('passes with different casing on path and dir (case-insensitive)', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_in_dir', path: '/DOCUMENTS/notes.txt', dir: '/documents/' }, fs)).toBe(true)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_file_in_dir', path: '/DOCUMENTS/notes.txt', dir: '/documents/' },
+          fs
+        )
+      ).toBe(true)
     })
   })
 
   describe('fs_dir_opened', () => {
     it('passes when the student navigated to the expected folder', () => {
-      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, { currentDir: '/Documents/' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, {
+          currentDir: '/Documents/',
+        })
+      ).toBe(true)
     })
     it('fails when the student is viewing a different folder', () => {
-      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, { currentDir: '/Pictures/' })).toBe(false)
+      expect(
+        evaluateFsCheck({ type: 'fs_dir_opened', path: '/Documents/' }, fs, {
+          currentDir: '/Pictures/',
+        })
+      ).toBe(false)
     })
     it('passes when casing differs (case-insensitive)', () => {
-      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/documents/' }, fs, { currentDir: '/Documents/' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_dir_opened', path: '/documents/' }, fs, {
+          currentDir: '/Documents/',
+        })
+      ).toBe(true)
     })
     it('passes when wildcard matches the current dir', () => {
-      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Doc*/' }, fs, { currentDir: '/Documents/' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_dir_opened', path: '/Doc*/' }, fs, {
+          currentDir: '/Documents/',
+        })
+      ).toBe(true)
     })
     it('fails when wildcard does not match the current dir', () => {
-      expect(evaluateFsCheck({ type: 'fs_dir_opened', path: '/Pro*/' }, fs, { currentDir: '/Documents/' })).toBe(false)
+      expect(
+        evaluateFsCheck({ type: 'fs_dir_opened', path: '/Pro*/' }, fs, {
+          currentDir: '/Documents/',
+        })
+      ).toBe(false)
     })
   })
 
   describe('fs_file_opened', () => {
     it('passes when the student opened the expected file', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, { openFile: '/Documents/notes.txt' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, {
+          openFile: '/Documents/notes.txt',
+        })
+      ).toBe(true)
     })
     it('fails when the student opened a different file', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, { openFile: '/Documents/other.txt' })).toBe(false)
+      expect(
+        evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/notes.txt' }, fs, {
+          openFile: '/Documents/other.txt',
+        })
+      ).toBe(false)
     })
     it('passes when casing differs (case-insensitive)', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/documents/NOTES.TXT' }, fs, { openFile: '/Documents/notes.txt' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_file_opened', path: '/documents/NOTES.TXT' }, fs, {
+          openFile: '/Documents/notes.txt',
+        })
+      ).toBe(true)
     })
     it('passes when wildcard matches the opened file', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/*.txt' }, fs, { openFile: '/Documents/notes.txt' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/*.txt' }, fs, {
+          openFile: '/Documents/notes.txt',
+        })
+      ).toBe(true)
     })
     it('fails when wildcard does not match the opened file', () => {
-      expect(evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/*.py' }, fs, { openFile: '/Documents/notes.txt' })).toBe(false)
+      expect(
+        evaluateFsCheck({ type: 'fs_file_opened', path: '/Documents/*.py' }, fs, {
+          openFile: '/Documents/notes.txt',
+        })
+      ).toBe(false)
     })
   })
 
@@ -171,28 +267,63 @@ describe('evaluateFsCheck', () => {
     }
 
     it('checks path existence with an item type field', () => {
-      expect(evaluateFsCheck({ type: 'fs_path', operator: 'exists', path: '/Projects/app.py', itemType: 'file' }, richFs)).toBe(true)
-      expect(evaluateFsCheck({ type: 'fs_path', operator: 'exists', path: '/Projects/app.py', itemType: 'dir' }, richFs)).toBe(false)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_path', operator: 'exists', path: '/Projects/app.py', itemType: 'file' },
+          richFs
+        )
+      ).toBe(true)
+      expect(
+        evaluateFsCheck(
+          { type: 'fs_path', operator: 'exists', path: '/Projects/app.py', itemType: 'dir' },
+          richFs
+        )
+      ).toBe(false)
     })
 
     it('checks file content with regex flags', () => {
-      const check = { type: 'fs_file_content', operator: 'matches_regex', path: '/Projects/app.py', value: '^print', flags: 'm' }
+      const check = {
+        type: 'fs_file_content',
+        operator: 'matches_regex',
+        path: '/Projects/app.py',
+        value: '^print',
+        flags: 'm',
+      }
       expect(evaluateFsCheck(check, richFs)).toBe(true)
     })
 
     it('checks file line counts with comparison operators', () => {
-      const check = { type: 'fs_file_line_count', operator: 'less_than_or_equal', path: '/Projects/app.py', value: '2' }
+      const check = {
+        type: 'fs_file_line_count',
+        operator: 'less_than_or_equal',
+        path: '/Projects/app.py',
+        value: '2',
+      }
       expect(evaluateFsCheck(check, richFs)).toBe(true)
     })
 
     it('checks folder child counts by item type', () => {
-      const check = { type: 'fs_folder_count', operator: 'greater_than_or_equal', path: '/Projects/', itemType: 'file', value: '2' }
+      const check = {
+        type: 'fs_folder_count',
+        operator: 'greater_than_or_equal',
+        path: '/Projects/',
+        itemType: 'file',
+        value: '2',
+      }
       expect(evaluateFsCheck(check, richFs)).toBe(true)
     })
 
     it('checks opened folders and files with the same canonical type', () => {
-      expect(evaluateFsCheck({ type: 'fs_opened', path: '/Projects/', itemType: 'dir' }, richFs, { currentDir: '/Projects/' })).toBe(true)
-      expect(evaluateFsCheck({ type: 'fs_opened', path: '/Projects/app.py', itemType: 'file' }, richFs, { openFile: '/Projects/app.py' })).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_opened', path: '/Projects/', itemType: 'dir' }, richFs, {
+          currentDir: '/Projects/',
+        })
+      ).toBe(true)
+      expect(
+        evaluateFsCheck({ type: 'fs_opened', path: '/Projects/app.py', itemType: 'file' }, richFs, {
+          openFile: '/Projects/app.py',
+        })
+      ).toBe(true)
     })
   })
 

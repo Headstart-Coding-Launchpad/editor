@@ -16,26 +16,24 @@ import {
 
 export function substituteTestInputs(value, inputs) {
   if (typeof value !== 'string' || !inputs?.length) return value
-  return inputs.reduce(
-    (v, { name, value: val }) => {
-      if (!name) return v
-      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      return v.replace(new RegExp(`\\{${escapedName}\\}`, 'g'), () => val ?? '')
-    },
-    value,
-  )
+  return inputs.reduce((v, { name, value: val }) => {
+    if (!name) return v
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return v.replace(new RegExp(`\\{${escapedName}\\}`, 'g'), () => val ?? '')
+  }, value)
 }
 
 export function resolveTestCheck(check, inputs) {
   if (!check || !inputs?.length) return check
-  if (Array.isArray(check)) return check.map(c => resolveTestCheck(c, inputs))
-  if (typeof check.value === 'string') return { ...check, value: substituteTestInputs(check.value, inputs) }
+  if (Array.isArray(check)) return check.map((c) => resolveTestCheck(c, inputs))
+  if (typeof check.value === 'string')
+    return { ...check, value: substituteTestInputs(check.value, inputs) }
   return check
 }
 
 export function normalizeChecks(check) {
   if (!check) return []
-  if (Array.isArray(check)) return check.filter(c => c?.type)
+  if (Array.isArray(check)) return check.filter((c) => c?.type)
   return [check]
 }
 
@@ -47,26 +45,54 @@ export const FEEDBACK_TIMING = {
 export const CORE_CHECK_DEFINITIONS = {
   output: {
     subject: 'Output',
-    operators: ['contains', 'not_contains', 'equals', 'not_equals', 'matches_regex', 'not_matches_regex'],
+    operators: [
+      'contains',
+      'not_contains',
+      'equals',
+      'not_equals',
+      'matches_regex',
+      'not_matches_regex',
+    ],
     fields: ['value', 'flags'],
     evaluate: 'on_run',
   },
   output_line_count: {
     subject: 'Output line count',
-    operators: ['equals', 'not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal'],
+    operators: [
+      'equals',
+      'not_equals',
+      'greater_than',
+      'greater_than_or_equal',
+      'less_than',
+      'less_than_or_equal',
+    ],
     fields: ['operator', 'value'],
     evaluate: 'on_run',
   },
   code: {
     subject: 'Code',
-    operators: ['contains', 'not_contains', 'equals', 'not_equals', 'matches_regex', 'not_matches_regex'],
+    operators: [
+      'contains',
+      'not_contains',
+      'equals',
+      'not_equals',
+      'matches_regex',
+      'not_matches_regex',
+    ],
     fields: ['value', 'flags'],
     evaluate: 'on_change',
     submitAllowed: true,
   },
   answer: {
     subject: 'Answer',
-    operators: ['contains', 'not_contains', 'equals', 'not_equals', 'matches_regex', 'not_matches_regex'],
+    operators: [
+      'contains',
+      'not_contains',
+      'equals',
+      'not_equals',
+      'matches_regex',
+      'not_matches_regex',
+    ],
     fields: ['value', 'flags'],
     evaluate: 'on_submit',
   },
@@ -124,7 +150,7 @@ export function normalizeFeedbackChecks(taskOrChecks) {
     return []
   }
   const raw = taskOrChecks?.feedbackChecks ?? taskOrChecks?.incorrectChecks ?? taskOrChecks
-  return normalizeChecks(raw).map(check => {
+  return normalizeChecks(raw).map((check) => {
     const withDefaults = { mode: 'blocking', show: 'after_attempt', ...check }
     return { ...withDefaults, show: normalizeFeedbackShow(withDefaults.show) }
   })
@@ -201,7 +227,10 @@ export function checkRequiresRun(check) {
 
 export function checkAllowedForSubmit(check) {
   const normalized = normalizeCheckShape(check)
-  return CHECK_TYPES.SUBMIT_ALLOWED.includes(normalized?.type) || CORE_CHECK_DEFINITIONS[normalized?.type]?.submitAllowed === true
+  return (
+    CHECK_TYPES.SUBMIT_ALLOWED.includes(normalized?.type) ||
+    CORE_CHECK_DEFINITIONS[normalized?.type]?.submitAllowed === true
+  )
 }
 
 export function filterChecksForInteraction(check, interactionMode) {
@@ -254,21 +283,32 @@ export function evaluateSingleCheck(check, output, context = {}) {
 
   if (check.type === 'answer') {
     const answer = context.answer ?? output
-    if (check.operator === 'contains') return matchesContainValue(answer, check.value, normalizeOutput)
-    if (check.operator === 'not_contains') return !wildcardContains(normalizeOutput(answer), normalizeOutput(check.value))
-    if (check.operator === 'equals') return wildcardEquals(normalizeExactOutput(answer), normalizeExactOutput(check.value))
-    if (check.operator === 'not_equals') return !wildcardEquals(normalizeExactOutput(answer), normalizeExactOutput(check.value))
+    if (check.operator === 'contains')
+      return matchesContainValue(answer, check.value, normalizeOutput)
+    if (check.operator === 'not_contains')
+      return !wildcardContains(normalizeOutput(answer), normalizeOutput(check.value))
+    if (check.operator === 'equals')
+      return wildcardEquals(normalizeExactOutput(answer), normalizeExactOutput(check.value))
+    if (check.operator === 'not_equals')
+      return !wildcardEquals(normalizeExactOutput(answer), normalizeExactOutput(check.value))
     if (check.operator === 'matches_regex') return matchesRegex(answer, check.value, check.flags)
-    if (check.operator === 'not_matches_regex') return !matchesRegex(answer, check.value, check.flags)
+    if (check.operator === 'not_matches_regex')
+      return !matchesRegex(answer, check.value, check.flags)
   }
 
   if (check.type === 'output') {
-    if (check.operator === 'contains') return matchesContainValue(output, check.value, normalizeOutput)
-    if (check.operator === 'not_contains') return !wildcardContains(normalizeOutput(output), normalizeOutput(check.value))
-    if (check.operator === 'equals') return wildcardEquals(normalizeExactOutput(output), normalizeExactOutput(check.value))
-    if (check.operator === 'not_equals') return !wildcardEquals(normalizeExactOutput(output), normalizeExactOutput(check.value))
-    if (check.operator === 'matches_regex') return matchesRegex(normalizeOutput(output, true), check.value, check.flags)
-    if (check.operator === 'not_matches_regex') return !matchesRegex(normalizeOutput(output, true), check.value, check.flags)
+    if (check.operator === 'contains')
+      return matchesContainValue(output, check.value, normalizeOutput)
+    if (check.operator === 'not_contains')
+      return !wildcardContains(normalizeOutput(output), normalizeOutput(check.value))
+    if (check.operator === 'equals')
+      return wildcardEquals(normalizeExactOutput(output), normalizeExactOutput(check.value))
+    if (check.operator === 'not_equals')
+      return !wildcardEquals(normalizeExactOutput(output), normalizeExactOutput(check.value))
+    if (check.operator === 'matches_regex')
+      return matchesRegex(normalizeOutput(output, true), check.value, check.flags)
+    if (check.operator === 'not_matches_regex')
+      return !matchesRegex(normalizeOutput(output, true), check.value, check.flags)
   }
 
   if (check.type === 'output_line_count') {
@@ -289,11 +329,11 @@ export function evaluateSingleCheck(check, output, context = {}) {
 export function evaluateCheck(check, output, context = {}) {
   const checks = normalizeChecks(check)
   if (checks.length === 0) return false
-  return checks.every(c => evaluateSingleCheck(c, output, context))
+  return checks.every((c) => evaluateSingleCheck(c, output, context))
 }
 
 export function evaluateCheckResults(check, output, context = {}) {
-  return normalizeChecks(check).map(c => ({
+  return normalizeChecks(check).map((c) => ({
     ...c,
     passed: evaluateSingleCheck(c, output, context),
   }))
@@ -301,10 +341,12 @@ export function evaluateCheckResults(check, output, context = {}) {
 
 export function evaluateFeedbackCheckResults(taskOrChecks, output, context = {}, options = {}) {
   const timing = normalizeFeedbackShow(options.feedbackTiming ?? options.timing)
-  return normalizeFeedbackChecks(taskOrChecks).filter(c => feedbackCheckMatchesTiming(c, timing)).map(c => ({
-    ...c,
-    passed: evaluateSingleCheck(c, output, context),
-  }))
+  return normalizeFeedbackChecks(taskOrChecks)
+    .filter((c) => feedbackCheckMatchesTiming(c, timing))
+    .map((c) => ({
+      ...c,
+      passed: evaluateSingleCheck(c, output, context),
+    }))
 }
 
 // Feedback checks may overlap. Pick one deterministic, author-controlled match
@@ -312,14 +354,17 @@ export function evaluateFeedbackCheckResults(taskOrChecks, output, context = {},
 // priority retain their existing array order.
 export function getHighestPriorityFeedbackMatch(results = []) {
   const safeResults = Array.isArray(results) ? results : []
-  return safeResults.reduce((best, result, index) => {
-    if (!result?.passed) return best
-    const priority = Number.isInteger(Number(result.priority)) && Number(result.priority) > 0
-      ? Number(result.priority)
-      : index + 1
-    if (!best || priority < best.priority) return { result, priority, index }
-    return best
-  }, null)?.result ?? null
+  return (
+    safeResults.reduce((best, result, index) => {
+      if (!result?.passed) return best
+      const priority =
+        Number.isInteger(Number(result.priority)) && Number(result.priority) > 0
+          ? Number(result.priority)
+          : index + 1
+      if (!best || priority < best.priority) return { result, priority, index }
+      return best
+    }, null)?.result ?? null
+  )
 }
 
 export function getStageOfferMatchThreshold(stageOffer) {
@@ -327,19 +372,34 @@ export function getStageOfferMatchThreshold(stageOffer) {
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
 
-export function buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context = {}) {
-  const blockingMatch = getHighestPriorityFeedbackMatch(feedbackResults.filter(result => (result.mode ?? 'blocking') === 'blocking'))
+export function buildCheckFeedbackResult(
+  task,
+  completionPassed,
+  feedbackResults,
+  output,
+  context = {}
+) {
+  const blockingMatch = getHighestPriorityFeedbackMatch(
+    feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
+  )
   const matchedFeedback = getHighestPriorityFeedbackMatch(feedbackResults)
-  const matchedFeedbackHint = matchedFeedback && String(matchedFeedback.hint ?? '').trim()
-    ? matchedFeedback
-    : feedbackResults.find(result => result.passed && String(result.hint ?? '').trim())
-  const nudgeMatch = feedbackResults.find(result => result.passed && result.mode === 'nudge' && String(result.hint ?? '').trim())
+  const matchedFeedbackHint =
+    matchedFeedback && String(matchedFeedback.hint ?? '').trim()
+      ? matchedFeedback
+      : feedbackResults.find((result) => result.passed && String(result.hint ?? '').trim())
+  const nudgeMatch = feedbackResults.find(
+    (result) => result.passed && result.mode === 'nudge' && String(result.hint ?? '').trim()
+  )
   const passed = completionPassed && !blockingMatch
   const suggestion = blockingMatch
-    ? (String(matchedFeedback?.hint ?? blockingMatch.hint ?? '').trim() || 'Not quite.')
+    ? String(matchedFeedback?.hint ?? blockingMatch.hint ?? '').trim() || 'Not quite.'
     : completionPassed
-      ? (nudgeMatch ? String(nudgeMatch.hint).trim() : '')
-      : (matchedFeedbackHint ? String(matchedFeedbackHint.hint).trim() : getFirstFailedCheckHint(task?.check, output, context))
+      ? nudgeMatch
+        ? String(nudgeMatch.hint).trim()
+        : ''
+      : matchedFeedbackHint
+        ? String(matchedFeedbackHint.hint).trim()
+        : getFirstFailedCheckHint(task?.check, output, context)
 
   return {
     passed,
@@ -359,11 +419,18 @@ export function evaluateCheckWithFeedback(task, output, context = {}, options = 
   return buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context)
 }
 
-export function evaluateCheckWithCustomFeedback(task, completionPassed, isFeedbackCheckPassed, output = '', context = {}, options = {}) {
+export function evaluateCheckWithCustomFeedback(
+  task,
+  completionPassed,
+  isFeedbackCheckPassed,
+  output = '',
+  context = {},
+  options = {}
+) {
   const timing = normalizeFeedbackShow(options.feedbackTiming ?? options.timing)
   const feedbackResults = normalizeFeedbackChecks(task)
-    .filter(c => feedbackCheckMatchesTiming(c, timing))
-    .map(c => ({
+    .filter((c) => feedbackCheckMatchesTiming(c, timing))
+    .map((c) => ({
       ...c,
       passed: isFeedbackCheckPassed(c),
     }))
@@ -371,8 +438,9 @@ export function evaluateCheckWithCustomFeedback(task, completionPassed, isFeedba
 }
 
 export function getFirstFailedCheckHint(check, output, context = {}) {
-  const failed = evaluateCheckResults(check, output, context)
-    .find(result => !result.passed && String(result.hint ?? '').trim())
+  const failed = evaluateCheckResults(check, output, context).find(
+    (result) => !result.passed && String(result.hint ?? '').trim()
+  )
   return failed ? String(failed.hint).trim() : ''
 }
 
@@ -380,7 +448,9 @@ export function getFirstFailedCheckHint(check, output, context = {}) {
 // Call this when the completion check has failed to get a targeted hint.
 export function getIncorrectCheckHint(incorrectChecks, output, context = {}) {
   const checks = normalizeFeedbackChecks(incorrectChecks)
-  const matched = checks.find(c => evaluateSingleCheck(c, output, context) && String(c.hint ?? '').trim())
+  const matched = checks.find(
+    (c) => evaluateSingleCheck(c, output, context) && String(c.hint ?? '').trim()
+  )
   return matched ? String(matched.hint).trim() : ''
 }
 
@@ -390,6 +460,7 @@ export function getIncorrectCheckHint(incorrectChecks, output, context = {}) {
 export function evaluateCheckWithCode(check, code, context = {}) {
   const checks = normalizeChecks(check)
   if (checks.length === 0) return false
-  if (!checks.every(c => checkAllowedForSubmit(c) || ELECTRONICS_CHECK_TYPES.includes(c.type))) return false
-  return checks.every(c => evaluateSingleCheck(c, '', { code, ...context }))
+  if (!checks.every((c) => checkAllowedForSubmit(c) || ELECTRONICS_CHECK_TYPES.includes(c.type)))
+    return false
+  return checks.every((c) => evaluateSingleCheck(c, '', { code, ...context }))
 }

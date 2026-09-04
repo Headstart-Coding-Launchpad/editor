@@ -41,18 +41,18 @@ export function getLineParts(line) {
 
 // The ordered slot parts within a single line.
 export function getLineSlots(line) {
-  return getLineParts(line).filter(part => part?.type === 'slot')
+  return getLineParts(line).filter((part) => part?.type === 'slot')
 }
 
 // Every slot across the whole task, in authoring order (line order, then
 // part order within a line). This is the full ordered id list a student
 // must fill; drives completeness checks.
 export function getAllSlots(task) {
-  return getLines(task).flatMap(line => getLineSlots(line))
+  return getLines(task).flatMap((line) => getLineSlots(line))
 }
 
 export function getSlotIds(task) {
-  return getAllSlots(task).map(slot => slot.id)
+  return getAllSlots(task).map((slot) => slot.id)
 }
 
 export function getDistractors(task) {
@@ -66,8 +66,8 @@ export function getDistractors(task) {
 // re-renders/reloads.
 export function getTaskPool(task) {
   const all = [
-    ...getAllSlots(task).map(slot => ({ id: slot.id, code: slot.code ?? '' })),
-    ...getDistractors(task).map(d => ({ id: d?.id, code: d?.code ?? '' })),
+    ...getAllSlots(task).map((slot) => ({ id: slot.id, code: slot.code ?? '' })),
+    ...getDistractors(task).map((d) => ({ id: d?.id, code: d?.code ?? '' })),
   ]
   return all.sort((a, b) => stableHash(a.code) - stableHash(b.code))
 }
@@ -75,20 +75,20 @@ export function getTaskPool(task) {
 // Looks up a tile's display code by its fragment id. Used for the drag-image
 // label, which only ever has a tile id to work from.
 export function getFragmentCodeById(task, fragmentId) {
-  return getTaskPool(task).find(fragment => fragment.id === fragmentId)?.code ?? ''
+  return getTaskPool(task).find((fragment) => fragment.id === fragmentId)?.code ?? ''
 }
 
 // Whether a fragment id belongs to the task's shared pool. Used by the
 // Builder to prune preview state after edits remove a tile.
 export function fragmentIdExists(task, fragmentId) {
-  return getTaskPool(task).some(fragment => fragment.id === fragmentId)
+  return getTaskPool(task).some((fragment) => fragment.id === fragmentId)
 }
 
 export function isArrangementComplete(task, slotState) {
   const slotIds = getSlotIds(task)
   if (slotIds.length === 0) return false
   const state = slotState && typeof slotState === 'object' ? slotState : {}
-  return slotIds.every(id => state[id] != null && state[id] !== '')
+  return slotIds.every((id) => state[id] != null && state[id] !== '')
 }
 
 // Assembles a single authored line into its final source text, given the
@@ -97,12 +97,14 @@ export function isArrangementComplete(task, slotState) {
 // through unchanged, in part order.
 export function assembleLineCode(line, slotState, pool) {
   const state = slotState && typeof slotState === 'object' ? slotState : {}
-  return getLineParts(line).map(part => {
-    if (part?.type === 'slot') {
-      return pool.find(fragment => fragment.id === state[part.id])?.code ?? ''
-    }
-    return part?.text ?? ''
-  }).join('')
+  return getLineParts(line)
+    .map((part) => {
+      if (part?.type === 'slot') {
+        return pool.find((fragment) => fragment.id === state[part.id])?.code ?? ''
+      }
+      return part?.text ?? ''
+    })
+    .join('')
 }
 
 // Assembles the full runnable program from the current slot placements: each
@@ -112,7 +114,9 @@ export function assembleLineCode(line, slotState, pool) {
 export function assembleCodeArrangement(task, slotState) {
   if (!isArrangementComplete(task, slotState)) return null
   const pool = getTaskPool(task)
-  return getLines(task).map(line => assembleLineCode(line, slotState, pool)).join('\n')
+  return getLines(task)
+    .map((line) => assembleLineCode(line, slotState, pool))
+    .join('\n')
 }
 
 // Builds the arrangement that matches the authored solution: every slot's
@@ -120,7 +124,7 @@ export function assembleCodeArrangement(task, slotState) {
 // fragment's id — see the module doc comment). Used by the Builder preview
 // so authors have a one-click way to check their intended solution passes.
 export function buildSolutionSlotState(task) {
-  return Object.fromEntries(getAllSlots(task).map(slot => [slot.id, slot.id]))
+  return Object.fromEntries(getAllSlots(task).map((slot) => [slot.id, slot.id]))
 }
 
 // HTML tasks assemble into a single target file — the entry file by default,
@@ -153,7 +157,10 @@ function deriveLineSlotState(line, codeLine, pool) {
     if (part?.type === 'slot') {
       for (const fragment of pool) {
         if (codeLine.startsWith(fragment.code, pos)) {
-          const result = match(index + 1, pos + fragment.code.length, { ...acc, [part.id]: fragment.id })
+          const result = match(index + 1, pos + fragment.code.length, {
+            ...acc,
+            [part.id]: fragment.id,
+          })
           if (result) return result
         }
       }

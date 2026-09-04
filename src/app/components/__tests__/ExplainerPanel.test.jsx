@@ -4,7 +4,11 @@ import { describe, it, expect, vi } from 'vitest'
 import ExplainerPanel from '../ExplainerPanel'
 
 vi.mock('../../../shared/markdown', () => ({
-  MarkdownRenderer: ({ content, disableCopy }) => <div data-testid="markdown" data-disable-copy={String(!!disableCopy)}>{content}</div>,
+  MarkdownRenderer: ({ content, disableCopy }) => (
+    <div data-testid="markdown" data-disable-copy={String(!!disableCopy)}>
+      {content}
+    </div>
+  ),
 }))
 
 describe('ExplainerPanel', () => {
@@ -74,7 +78,14 @@ describe('ExplainerPanel', () => {
 
   it('reports its open/closed state via onCollapsedChange when collapsible, including the initial open state', () => {
     const onCollapsedChange = vi.fn()
-    render(<ExplainerPanel title="Section" content="Content" collapsible onCollapsedChange={onCollapsedChange} />)
+    render(
+      <ExplainerPanel
+        title="Section"
+        content="Content"
+        collapsible
+        onCollapsedChange={onCollapsedChange}
+      />
+    )
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
 
     fireEvent.click(screen.getByRole('button'))
@@ -86,7 +97,14 @@ describe('ExplainerPanel', () => {
 
   it('does not call onCollapsedChange when not collapsible (e.g. the side-explainer layout)', () => {
     const onCollapsedChange = vi.fn()
-    render(<ExplainerPanel title="Section" content="Content" collapsible={false} onCollapsedChange={onCollapsedChange} />)
+    render(
+      <ExplainerPanel
+        title="Section"
+        content="Content"
+        collapsible={false}
+        onCollapsedChange={onCollapsedChange}
+      />
+    )
     expect(onCollapsedChange).not.toHaveBeenCalled()
   })
 })

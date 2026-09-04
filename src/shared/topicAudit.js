@@ -3,7 +3,9 @@ const WIKI_LINK_PATTERN = /\[\[([a-z0-9][a-z0-9._-]*)(?:\|[^\]\n]+)?\]\]/gi
 const TOPIC_HREF_PATTERN = /#topic\/([a-z0-9][a-z0-9._-]*)/gi
 
 function normalizeId(value) {
-  return String(value ?? '').trim().toLowerCase()
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
 }
 
 export function extractTopicIdsFromText(value) {
@@ -23,10 +25,10 @@ export function normalizeTopicLinks(value) {
     const text = String(entry).trim()
     const markedIds = extractTopicIdsFromText(text)
     if (markedIds.length > 0) {
-      markedIds.forEach(id => ids.add(id))
+      markedIds.forEach((id) => ids.add(id))
       continue
     }
-    text.split(/[\s,]+/).forEach(part => {
+    text.split(/[\s,]+/).forEach((part) => {
       const id = normalizeId(part)
       if (TOPIC_ID_PATTERN.test(id)) ids.add(id)
     })
@@ -48,7 +50,8 @@ export function validateTopicProposals(proposals) {
     else if (seen.has(id)) errors.push(`${label} duplicates id "${id}"`)
     else seen.add(id)
     if (!String(proposal?.title ?? '').trim()) errors.push(`${label} is missing a title`)
-    if (!String(proposal?.description ?? '').trim()) errors.push(`${label} is missing a description`)
+    if (!String(proposal?.description ?? '').trim())
+      errors.push(`${label} is missing a description`)
     if (!['proposed', 'deferred'].includes(normalizeId(proposal?.status))) {
       errors.push(`${label} status must be proposed or deferred`)
     }
@@ -59,15 +62,15 @@ export function validateTopicProposals(proposals) {
 function collectMarkedIds(value, ids, key = '') {
   if (value == null) return
   if (key === 'topicLinks') {
-    normalizeTopicLinks(value).forEach(id => ids.add(id))
+    normalizeTopicLinks(value).forEach((id) => ids.add(id))
     return
   }
   if (typeof value === 'string') {
-    extractTopicIdsFromText(value).forEach(id => ids.add(id))
+    extractTopicIdsFromText(value).forEach((id) => ids.add(id))
     return
   }
   if (Array.isArray(value)) {
-    value.forEach(item => collectMarkedIds(item, ids))
+    value.forEach((item) => collectMarkedIds(item, ids))
     return
   }
   if (typeof value === 'object') {
@@ -115,15 +118,17 @@ export function collectLessonTopicReferences(lesson) {
 }
 
 export function auditLessonTopics(lesson, topics = []) {
-  const existingIds = new Set((topics ?? []).map(topic => normalizeId(topic?.id ?? topic)).filter(Boolean))
+  const existingIds = new Set(
+    (topics ?? []).map((topic) => normalizeId(topic?.id ?? topic)).filter(Boolean)
+  )
   const proposals = (Array.isArray(lesson?.topicProposals) ? lesson.topicProposals : [])
-    .filter(proposal => proposal && normalizeId(proposal.id))
-    .map(proposal => ({ ...proposal, id: normalizeId(proposal.id) }))
-  const proposalById = new Map(proposals.map(proposal => [proposal.id, proposal]))
+    .filter((proposal) => proposal && normalizeId(proposal.id))
+    .map((proposal) => ({ ...proposal, id: normalizeId(proposal.id) }))
+  const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal]))
   const references = collectLessonTopicReferences(lesson)
-  const referencedIds = new Set(references.map(reference => reference.id))
+  const referencedIds = new Set(references.map((reference) => reference.id))
 
-  const withStatus = references.map(reference => ({
+  const withStatus = references.map((reference) => ({
     ...reference,
     exists: existingIds.has(reference.id),
     proposal: proposalById.get(reference.id) ?? null,
@@ -131,9 +136,9 @@ export function auditLessonTopics(lesson, topics = []) {
 
   return {
     references: withStatus,
-    existing: withStatus.filter(reference => reference.exists),
-    missing: withStatus.filter(reference => !reference.exists),
-    unusedProposals: proposals.filter(proposal => !referencedIds.has(proposal.id)),
+    existing: withStatus.filter((reference) => reference.exists),
+    missing: withStatus.filter((reference) => !reference.exists),
+    unusedProposals: proposals.filter((proposal) => !referencedIds.has(proposal.id)),
   }
 }
 
@@ -141,17 +146,21 @@ export function validateLessonTopics(lesson, topics) {
   const audit = auditLessonTopics(lesson, topics)
   const errors = validateTopicProposals(lesson?.topicProposals)
   const warnings = []
-  const missingIds = audit.missing.map(item => item.id)
+  const missingIds = audit.missing.map((item) => item.id)
 
   if (missingIds.length > 0) {
-    errors.push(`Cannot save a lesson while Topic Library entries are missing: ${missingIds.join(', ')}`)
+    errors.push(
+      `Cannot save a lesson while Topic Library entries are missing: ${missingIds.join(', ')}`
+    )
   }
 
   if (missingIds.length > 0) {
     warnings.push(`Missing Topic Library entries: ${missingIds.join(', ')}`)
   }
   if (audit.unusedProposals.length > 0) {
-    warnings.push(`Unused topic proposals: ${audit.unusedProposals.map(item => item.id).join(', ')}`)
+    warnings.push(
+      `Unused topic proposals: ${audit.unusedProposals.map((item) => item.id).join(', ')}`
+    )
   }
 
   return { valid: errors.length === 0, errors, warnings, audit }

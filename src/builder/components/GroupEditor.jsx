@@ -8,15 +8,15 @@ export default function GroupEditor({ group, onUpdate }) {
         <input
           style={s.input}
           value={group.title}
-          onChange={e => onUpdate({ ...group, title: e.target.value })}
+          onChange={(e) => onUpdate({ ...group, title: e.target.value })}
           placeholder="e.g. Functions"
           autoFocus
         />
       </div>
       <p style={s.hint}>
-        This group contains {group.subtasks?.length ?? 0} subtask{(group.subtasks?.length ?? 0) !== 1 ? 's' : ''}.
-        Subtasks are shown as a single step in the student progress indicator.
-        Use the task list to add, reorder, or delete subtasks.
+        This group contains {group.subtasks?.length ?? 0} subtask
+        {(group.subtasks?.length ?? 0) !== 1 ? 's' : ''}. Subtasks are shown as a single step in the
+        student progress indicator. Use the task list to add, reorder, or delete subtasks.
       </p>
     </div>
   )

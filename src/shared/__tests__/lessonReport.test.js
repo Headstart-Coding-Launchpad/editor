@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import yaml from 'js-yaml'
-import { anonymizeSessionReport, attachTeacherFeedback, buildSessionReport, reportToYamlText } from '../lessonReport'
+import {
+  anonymizeSessionReport,
+  attachTeacherFeedback,
+  buildSessionReport,
+  reportToYamlText,
+} from '../lessonReport'
 
 const lesson = {
   id: 'demo-lesson',
@@ -13,7 +18,10 @@ const lesson = {
       title: 'Multiple Choice',
       taskType: 'quiz',
       quizType: 'multiple_choice',
-      options: [{ id: 'a', text: 'Yes' }, { id: 'b', text: 'No' }],
+      options: [
+        { id: 'a', text: 'Yes' },
+        { id: 'b', text: 'No' },
+      ],
       check: { type: 'answer_equals', value: 'a' },
     },
     {
@@ -55,11 +63,34 @@ const session = {
   attemptLog: {
     alice: {
       1: {
-        k1: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 1, loggedAt: 1100 },
-        k2: { submission: 'print("hello")', passed: true, suggestion: null, attemptNumber: 2, retries: 0, loggedAt: 1300, passedAt: 1300 },
+        k1: {
+          submission: 'print("hi")',
+          passed: false,
+          suggestion: 'missing hello',
+          attemptNumber: 1,
+          retries: 1,
+          loggedAt: 1100,
+        },
+        k2: {
+          submission: 'print("hello")',
+          passed: true,
+          suggestion: null,
+          attemptNumber: 2,
+          retries: 0,
+          loggedAt: 1300,
+          passedAt: 1300,
+        },
       },
       3: {
-        k3: { submission: 'a', passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1150, passedAt: 1150 },
+        k3: {
+          submission: 'a',
+          passed: true,
+          suggestion: null,
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1150,
+          passedAt: 1150,
+        },
       },
       4: {
         k4: {
@@ -100,16 +131,47 @@ const session = {
         },
       },
       6: {
-        k7: { submission: 3, passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1210, passedAt: 1210 },
-        k8: { submission: 4, passed: true, suggestion: null, attemptNumber: 2, retries: 0, loggedAt: 1220, passedAt: 1220 },
+        k7: {
+          submission: 3,
+          passed: true,
+          suggestion: null,
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1210,
+          passedAt: 1210,
+        },
+        k8: {
+          submission: 4,
+          passed: true,
+          suggestion: null,
+          attemptNumber: 2,
+          retries: 0,
+          loggedAt: 1220,
+          passedAt: 1220,
+        },
       },
       7: {
-        k9: { submission: 'It prints text.', passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1230, passedAt: 1230 },
+        k9: {
+          submission: 'It prints text.',
+          passed: true,
+          suggestion: null,
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1230,
+          passedAt: 1230,
+        },
       },
     },
     bob: {
       1: {
-        k10: { submission: 'print("hi")', passed: false, suggestion: 'missing hello', attemptNumber: 1, retries: 0, loggedAt: 1200 },
+        k10: {
+          submission: 'print("hi")',
+          passed: false,
+          suggestion: 'missing hello',
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1200,
+        },
       },
       4: {
         k11: {
@@ -122,34 +184,48 @@ const session = {
         },
       },
       6: {
-        k12: { submission: '5', passed: true, suggestion: null, attemptNumber: 1, retries: 0, loggedAt: 1270, passedAt: 1270 },
+        k12: {
+          submission: '5',
+          passed: true,
+          suggestion: null,
+          attemptNumber: 1,
+          retries: 0,
+          loggedAt: 1270,
+          passedAt: 1270,
+        },
       },
     },
   },
 }
 
 function studentByLabel(report, label) {
-  return report.students.find(s => s.studentLabel === label)
+  return report.students.find((s) => s.studentLabel === label)
 }
 
 function taskById(items, taskId) {
-  return items.find(t => t.taskId === taskId)
+  return items.find((t) => t.taskId === taskId)
 }
 
 describe('buildSessionReport', () => {
   it('excludes information tasks and includes check-less quiz tasks', () => {
     const report = buildSessionReport({ session, lesson })
-    expect(report.taskSummary.map(t => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
+    expect(report.taskSummary.map((t) => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
     for (const student of report.students) {
-      expect(student.tasks.map(t => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
+      expect(student.tasks.map((t) => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
     }
   })
 
   it('adds explicit taskType and quizType fields', () => {
     const report = buildSessionReport({ session, lesson })
     expect(taskById(report.students[0].tasks, 1)).toMatchObject({ taskType: 'code' })
-    expect(taskById(report.students[0].tasks, 3)).toMatchObject({ taskType: 'quiz', quizType: 'multiple_choice' })
-    expect(taskById(report.taskSummary, 6)).toMatchObject({ taskType: 'quiz', quizType: 'confidence' })
+    expect(taskById(report.students[0].tasks, 3)).toMatchObject({
+      taskType: 'quiz',
+      quizType: 'multiple_choice',
+    })
+    expect(taskById(report.taskSummary, 6)).toMatchObject({
+      taskType: 'quiz',
+      quizType: 'confidence',
+    })
   })
 
   it('adds defaulted priority to task summaries', () => {
@@ -163,18 +239,44 @@ describe('buildSessionReport', () => {
     const alice = studentByLabel(report, 'Student 1')
     const bob = studentByLabel(report, 'Student 2')
 
-    expect(taskById(alice.tasks, 1)).toMatchObject({ completed: true, attempts: 3, finalResult: 'passed' })
-    expect(taskById(bob.tasks, 1)).toMatchObject({ completed: false, attempts: 1, finalResult: 'failed' })
-    expect(taskById(bob.tasks, 3)).toMatchObject({ completed: false, attempts: 0, finalResult: 'not_attempted' })
-    expect(taskById(report.taskSummary, 1).commonFailures).toEqual([{ suggestion: 'missing hello', count: 2 }])
+    expect(taskById(alice.tasks, 1)).toMatchObject({
+      completed: true,
+      attempts: 3,
+      finalResult: 'passed',
+    })
+    expect(taskById(bob.tasks, 1)).toMatchObject({
+      completed: false,
+      attempts: 1,
+      finalResult: 'failed',
+    })
+    expect(taskById(bob.tasks, 3)).toMatchObject({
+      completed: false,
+      attempts: 0,
+      finalResult: 'not_attempted',
+    })
+    expect(taskById(report.taskSummary, 1).commonFailures).toEqual([
+      { suggestion: 'missing hello', count: 2 },
+    ])
   })
 
   it('preserves distinct attempts with submission and retry counts', () => {
     const report = buildSessionReport({ session, lesson })
     const aliceCode = taskById(studentByLabel(report, 'Student 1').tasks, 1)
     expect(aliceCode.distinctAttempts).toEqual([
-      { attemptNumber: 1, passed: false, retries: 1, suggestion: 'missing hello', submission: 'print("hi")' },
-      { attemptNumber: 2, passed: true, retries: 0, suggestion: null, submission: 'print("hello")' },
+      {
+        attemptNumber: 1,
+        passed: false,
+        retries: 1,
+        suggestion: 'missing hello',
+        submission: 'print("hi")',
+      },
+      {
+        attemptNumber: 2,
+        passed: true,
+        retries: 0,
+        suggestion: null,
+        submission: 'print("hello")',
+      },
     ])
   })
 
@@ -212,7 +314,9 @@ describe('buildSessionReport', () => {
     }
     const report = buildSessionReport({ session: scratchSession, lesson: scratchLesson })
     const aliceScratch = taskById(studentByLabel(report, 'Student 1').tasks, 1)
-    expect(aliceScratch.distinctAttempts[0].submission).toEqual({ sprite1: { blocks: { blocks: [] } } })
+    expect(aliceScratch.distinctAttempts[0].submission).toEqual({
+      sprite1: { blocks: { blocks: [] } },
+    })
     expect(aliceScratch.attempts).toBe(1)
     expect(aliceScratch.finalResult).toBe('passed')
   })
@@ -274,7 +378,10 @@ describe('buildSessionReport', () => {
     const aliceShort = taskById(studentByLabel(report, 'Student 1').tasks, 7)
     const bobShort = taskById(studentByLabel(report, 'Student 2').tasks, 7)
     expect(aliceShort).toMatchObject({ completed: true, finalResult: 'not_applicable' })
-    expect(aliceShort.distinctAttempts[0]).toMatchObject({ passed: null, submission: 'It prints text.' })
+    expect(aliceShort.distinctAttempts[0]).toMatchObject({
+      passed: null,
+      submission: 'It prints text.',
+    })
     expect(bobShort).toMatchObject({ completed: false, finalResult: 'not_attempted' })
     expect(taskById(report.taskSummary, 7)).toMatchObject({ respondedCount: 1, totalStudents: 2 })
   })
@@ -330,7 +437,13 @@ describe('buildSessionReport', () => {
       override: { taskId: 1, overriddenAt: 1500, attemptNumber: 1, previousCheckState: 'failed' },
     })
     expect(bobCode.distinctAttempts).toEqual([
-      { attemptNumber: 1, passed: false, retries: 0, suggestion: 'missing hello', submission: 'print("hi")' },
+      {
+        attemptNumber: 1,
+        passed: false,
+        retries: 0,
+        suggestion: 'missing hello',
+        submission: 'print("hi")',
+      },
     ])
     expect(taskById(report.taskSummary, 1)).toMatchObject({
       completedCount: 2,
@@ -359,7 +472,12 @@ describe('buildSessionReport', () => {
       attempts: 0,
       finalResult: 'overridden_unattempted',
       timeOnTaskMs: 400,
-      override: { taskId: 3, overriddenAt: 1400, attemptNumber: 0, previousCheckState: 'unattempted' },
+      override: {
+        taskId: 3,
+        overriddenAt: 1400,
+        attemptNumber: 0,
+        previousCheckState: 'unattempted',
+      },
       distinctAttempts: [],
     })
     expect(taskById(report.taskSummary, 3)).toMatchObject({
@@ -377,8 +495,18 @@ describe('buildSessionReport', () => {
       title: 'Carry Demo',
       tasks: [
         { id: 1, title: 'Build One', check: { type: 'output_contains', value: 'one' } },
-        { id: 2, title: 'Skipped Bridge', carryCodeFrom: 1, check: { type: 'output_contains', value: 'two' } },
-        { id: 3, title: 'Continue', carryCodeFrom: 2, check: { type: 'output_contains', value: 'three' } },
+        {
+          id: 2,
+          title: 'Skipped Bridge',
+          carryCodeFrom: 1,
+          check: { type: 'output_contains', value: 'two' },
+        },
+        {
+          id: 3,
+          title: 'Continue',
+          carryCodeFrom: 2,
+          check: { type: 'output_contains', value: 'three' },
+        },
       ],
     }
     const carrySession = {
@@ -411,13 +539,15 @@ describe('buildSessionReport', () => {
     })
     expect(taskById(report.taskSummary, 3)).toMatchObject({
       carryFallbackCount: 1,
-      carryFallbacks: [{
-        field: 'carryCodeFrom',
-        requestedSourceTaskId: 2,
-        resolvedSourceTaskId: 1,
-        skippedSourceTaskIds: [2],
-        count: 1,
-      }],
+      carryFallbacks: [
+        {
+          field: 'carryCodeFrom',
+          requestedSourceTaskId: 2,
+          resolvedSourceTaskId: 1,
+          skippedSourceTaskIds: [2],
+          count: 1,
+        },
+      ],
     })
   })
 
@@ -427,34 +557,52 @@ describe('buildSessionReport', () => {
       supportRevealLog: {
         alice: {
           1: {
-            0: { taskId: 1, stageIndex: 0, stageLabel: 'With name started', source: 'student', attemptNumber: 2, revealedAt: 1250 },
+            0: {
+              taskId: 1,
+              stageIndex: 0,
+              stageLabel: 'With name started',
+              source: 'student',
+              attemptNumber: 2,
+              revealedAt: 1250,
+            },
           },
         },
         bob: {
           1: {
-            0: { taskId: 1, stageIndex: 0, stageLabel: 'With name started', source: 'teacher', attemptNumber: 1, revealedAt: 1260 },
+            0: {
+              taskId: 1,
+              stageIndex: 0,
+              stageLabel: 'With name started',
+              source: 'teacher',
+              attemptNumber: 1,
+              revealedAt: 1260,
+            },
           },
         },
       },
     }
     const report = buildSessionReport({ session: withReveals, lesson })
 
-    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).supportReveals).toEqual([{
-      taskId: 1,
-      stageIndex: 0,
-      stageLabel: 'With name started',
-      source: 'student',
-      attemptNumber: 2,
-      revealedAt: 1250,
-    }])
-    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).supportReveals).toEqual([{
-      taskId: 1,
-      stageIndex: 0,
-      stageLabel: 'With name started',
-      source: 'teacher',
-      attemptNumber: 1,
-      revealedAt: 1260,
-    }])
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).supportReveals).toEqual([
+      {
+        taskId: 1,
+        stageIndex: 0,
+        stageLabel: 'With name started',
+        source: 'student',
+        attemptNumber: 2,
+        revealedAt: 1250,
+      },
+    ])
+    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).supportReveals).toEqual([
+      {
+        taskId: 1,
+        stageIndex: 0,
+        stageLabel: 'With name started',
+        source: 'teacher',
+        attemptNumber: 1,
+        revealedAt: 1260,
+      },
+    ])
     expect(taskById(report.taskSummary, 1)).toMatchObject({
       supportRevealCount: 2,
       supportRevealStudentCount: 2,
@@ -502,7 +650,11 @@ describe('attachTeacherFeedback', () => {
 
   it('returns the report unchanged when the teacher left every field blank', () => {
     const report = buildSessionReport({ session, lesson })
-    const result = attachTeacherFeedback(report, { rating: null, whatWorkedWell: '  ', whatDidntWork: '' })
+    const result = attachTeacherFeedback(report, {
+      rating: null,
+      whatWorkedWell: '  ',
+      whatDidntWork: '',
+    })
     expect(result).toBe(report)
     expect(result.teacherFeedback).toBeUndefined()
   })
@@ -514,7 +666,11 @@ describe('attachTeacherFeedback', () => {
 
   it('discards an out-of-range rating', () => {
     const report = buildSessionReport({ session, lesson })
-    const result = attachTeacherFeedback(report, { rating: 7, whatWorkedWell: 'Fine', whatDidntWork: '' })
+    const result = attachTeacherFeedback(report, {
+      rating: 7,
+      whatWorkedWell: 'Fine',
+      whatDidntWork: '',
+    })
     expect(result.teacherFeedback.rating).toBeNull()
   })
 })
@@ -531,9 +687,7 @@ describe('reportToYamlText', () => {
     const report = buildSessionReport({ session, lesson })
     const oldReport = {
       ...report,
-      students: [
-        { anonymousId: 'alice', displayName: 'Alice', tasks: report.students[0].tasks },
-      ],
+      students: [{ anonymousId: 'alice', displayName: 'Alice', tasks: report.students[0].tasks }],
     }
     const parsed = yaml.load(reportToYamlText(oldReport))
     expect(parsed.students).toEqual([

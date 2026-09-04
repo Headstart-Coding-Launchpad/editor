@@ -28,12 +28,18 @@ export function getPaneOptionsForLessonType(lessonType) {
 
 // label/buttonStyle let TeacherView reuse this for the whole-class version with its own
 // wording, while StudentModal uses the defaults for the per-student version.
-export default function PaneFocusDropdown({ lessonType, onHighlight, onForce, label = 'Focus', buttonStyle }) {
+export default function PaneFocusDropdown({
+  lessonType,
+  onHighlight,
+  onForce,
+  label = 'Focus',
+  buttonStyle,
+}) {
   const options = getPaneOptionsForLessonType(lessonType)
   const [checked, setChecked] = useState(() => new Set(['instructions']))
 
   function toggle(id) {
-    setChecked(prev => {
+    setChecked((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -43,15 +49,19 @@ export default function PaneFocusDropdown({ lessonType, onHighlight, onForce, la
 
   return (
     <DropdownMenu label={label} buttonClassName="btn-ghost" buttonStyle={buttonStyle}>
-      {close => {
+      {(close) => {
         const panes = Array.from(checked)
         return (
           <>
             <span style={s.heading}>Show on student screen:</span>
             <div style={s.optionsList}>
-              {options.map(opt => (
+              {options.map((opt) => (
                 <label key={opt.id} style={s.optionRow}>
-                  <input type="checkbox" checked={checked.has(opt.id)} onChange={() => toggle(opt.id)} />
+                  <input
+                    type="checkbox"
+                    checked={checked.has(opt.id)}
+                    onChange={() => toggle(opt.id)}
+                  />
                   {opt.label}
                 </label>
               ))}
@@ -60,16 +70,27 @@ export default function PaneFocusDropdown({ lessonType, onHighlight, onForce, la
               type="button"
               style={s.actionBtn}
               disabled={panes.length === 0}
-              onClick={() => { onHighlight(panes); close() }}
+              onClick={() => {
+                onHighlight(panes)
+                close()
+              }}
               title="Draws a pulsing glow on these tabs without changing what the student is looking at"
             >
               ✨ Highlight
             </button>
             <button
               type="button"
-              style={{ ...s.actionBtn, background: 'var(--colour-primary)', color: '#fff', borderColor: 'var(--colour-primary)' }}
+              style={{
+                ...s.actionBtn,
+                background: 'var(--colour-primary)',
+                color: '#fff',
+                borderColor: 'var(--colour-primary)',
+              }}
               disabled={panes.length === 0}
-              onClick={() => { onForce(panes); close() }}
+              onClick={() => {
+                onForce(panes)
+                close()
+              }}
               title="Immediately switches the student to these tabs — they're free to navigate away again after"
             >
               👉 Switch to this

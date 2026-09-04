@@ -4,7 +4,11 @@ import TeacherFeedbackModal from '../../app/components/TeacherFeedbackModal'
 import { useAuth } from '../../auth/useAuth'
 import { flattenTasks } from '../../shared/taskUtils'
 import { MarkdownRenderer } from '../../shared/markdown'
-import { AnimatedPanelShell, CollapsedPanelRail, CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
+import {
+  AnimatedPanelShell,
+  CollapsedPanelRail,
+  CollapseTabButton,
+} from '../../app/components/CollapsiblePanelControls'
 
 // This view is only reachable from the Builder (`/builder`, a teacher/author workflow operating
 // on a locally-loaded lesson draft) — never from the student-facing `/lesson/:lessonId` route.
@@ -17,9 +21,10 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
   const [metaCollapsed, setMetaCollapsed] = useState(true)
 
   const flatTasks = flattenTasks(lesson?.tasks ?? [])
-  const currentTask = flatTasks.find(t => t.id === currentTaskId) ?? null
+  const currentTask = flatTasks.find((t) => t.id === currentTaskId) ?? null
   const intent = typeof currentTask?.intent === 'string' ? currentTask.intent.trim() : ''
-  const taskActivity = typeof currentTask?.taskActivity === 'string' ? currentTask.taskActivity.trim() : ''
+  const taskActivity =
+    typeof currentTask?.taskActivity === 'string' ? currentTask.taskActivity.trim() : ''
   const hasMeta = !!(intent || taskActivity)
 
   return (
@@ -30,14 +35,18 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
           <button className="btn-ghost" style={s.feedbackBtn} onClick={() => setShowFeedback(true)}>
             Feedback
           </button>
-          <button className="btn-secondary" style={s.backBtn} onClick={() => onClose(currentTaskId)}>
+          <button
+            className="btn-secondary"
+            style={s.backBtn}
+            onClick={() => onClose(currentTaskId)}
+          >
             Go back to Builder
           </button>
         </div>
       </div>
 
-      {hasMeta && (
-        metaCollapsed ? (
+      {hasMeta &&
+        (metaCollapsed ? (
           <CollapsedPanelRail
             onClick={() => setMetaCollapsed(false)}
             label="Authoring metadata"
@@ -82,8 +91,7 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
               </div>
             </AnimatedPanelShell>
           </div>
-        )
-      )}
+        ))}
 
       <div style={s.studentWrap}>
         <StudentView

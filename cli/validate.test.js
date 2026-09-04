@@ -4,11 +4,13 @@ import { validateLessonForMcp } from './validate.mjs'
 
 describe('CLI lesson validation', () => {
   it('loads the validator through Node ESM resolution', () => {
-    expect(() => execFileSync(
-      process.execPath,
-      ['--input-type=module', '--eval', "import './cli/validate.mjs'"],
-      { cwd: process.cwd(), stdio: 'pipe' },
-    )).not.toThrow()
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        ['--input-type=module', '--eval', "import './cli/validate.mjs'"],
+        { cwd: process.cwd(), stdio: 'pipe' }
+      )
+    ).not.toThrow()
   })
 
   it('loads the shared check dispatcher and validates a basic lesson', () => {
@@ -47,7 +49,9 @@ describe('CLI lesson validation', () => {
     })
 
     expect(result.valid).toBe(true)
-    expect(result.warnings.some(w => w.includes('complete solution fails a code check'))).toBe(true)
+    expect(result.warnings.some((w) => w.includes('complete solution fails a code check'))).toBe(
+      true
+    )
   })
 
   it('validates code_arrange tasks', () => {
@@ -88,11 +92,13 @@ describe('CLI lesson validation', () => {
       ],
     })
     expect(invalid.valid).toBe(false)
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 is a code-arrange task but must use the Python or HTML module',
-      'Task 1 is a code-arrange task but has no lines',
-      'Task 1 is a code-arrange task but has no completion check',
-    ]))
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 is a code-arrange task but must use the Python or HTML module',
+        'Task 1 is a code-arrange task but has no lines',
+        'Task 1 is a code-arrange task but has no completion check',
+      ])
+    )
 
     const invalidInline = validateLessonForMcp({
       id: 'arrange-invalid-inline',
@@ -110,10 +116,12 @@ describe('CLI lesson validation', () => {
       ],
     })
     expect(invalidInline.valid).toBe(false)
-    expect(invalidInline.errors).toEqual(expect.arrayContaining([
-      'Task 1 line 1 blank 1 has no id',
-      'Task 1 line 1 blank 1 has no correct value',
-    ]))
+    expect(invalidInline.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 line 1 blank 1 has no id',
+        'Task 1 line 1 blank 1 has no correct value',
+      ])
+    )
   })
 
   it('accepts electronics lessons supported by the app module registry', () => {
@@ -166,7 +174,9 @@ describe('CLI lesson validation', () => {
     })
 
     expect(result.valid).toBe(false)
-    expect(result.errors).toEqual(expect.arrayContaining(['Task 1 has a part-exists check but no part type or label']))
+    expect(result.errors).toEqual(
+      expect.arrayContaining(['Task 1 has a part-exists check but no part type or label'])
+    )
   })
 
   it('recognizes canonical (non-legacy) filesystem check type names, matching the Builder', () => {
@@ -185,7 +195,9 @@ describe('CLI lesson validation', () => {
     })
 
     expect(result.valid).toBe(false)
-    expect(result.errors).toEqual(expect.arrayContaining(['Task 1 has a file-content check but no expected value']))
+    expect(result.errors).toEqual(
+      expect.arrayContaining(['Task 1 has a file-content check but no expected value'])
+    )
   })
 
   it('validates optional task priority values', () => {
@@ -218,14 +230,16 @@ describe('CLI lesson validation', () => {
       type: 'python',
       title: 'Stage roles',
       description: 'A lesson with revealable stages',
-      tasks: [{
-        title: 'Use a variable',
-        starterCode: 'name = ""',
-        codeStages: [
-          { label: 'With name started', revealable: true, code: 'name = "Ada"' },
-          { label: 'Extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
-        ],
-      }],
+      tasks: [
+        {
+          title: 'Use a variable',
+          starterCode: 'name = ""',
+          codeStages: [
+            { label: 'With name started', revealable: true, code: 'name = "Ada"' },
+            { label: 'Extension', role: 'extension', revealable: true, code: 'first = "Ada"' },
+          ],
+        },
+      ],
     })
     expect(valid.errors).toEqual([])
 
@@ -234,17 +248,17 @@ describe('CLI lesson validation', () => {
       type: 'python',
       title: 'Stage roles',
       description: 'A lesson with bad stages',
-      tasks: [{
-        title: 'Use a variable',
-        starterCode: 'name = ""',
-        codeStages: [
-          { label: 'Wrong role', role: 'stretch', code: '' },
-        ],
-      }],
+      tasks: [
+        {
+          title: 'Use a variable',
+          starterCode: 'name = ""',
+          codeStages: [{ label: 'Wrong role', role: 'stretch', code: '' }],
+        },
+      ],
     })
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'Task 1 stage 1 role must be one of: starter, support, complete',
-    ]))
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining(['Task 1 stage 1 role must be one of: starter, support, complete'])
+    )
   })
 
   it('validates class fork metadata and deterministic ids', () => {
@@ -266,10 +280,12 @@ describe('CLI lesson validation', () => {
       fork: { sourceLessonId: 'python-basics', classId: 'maple', taskLinks: {} },
       tasks: [{ id: 1, title: 'Print hello', starterCode: 'print("hello")' }],
     })
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      "forked lesson id must be 'python-basics-maple'",
-      'fork.taskLinks must be an array when provided',
-    ]))
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining([
+        "forked lesson id must be 'python-basics-maple'",
+        'fork.taskLinks must be an array when provided',
+      ])
+    )
   })
 
   it('validates recordingUrl as a YouTube link', () => {
@@ -291,29 +307,48 @@ describe('CLI lesson validation', () => {
       recordingUrl: 'https://drive.google.com/file/d/abc123/view',
       tasks: [{ id: 1, title: 'Print hello', starterCode: 'print("hello")' }],
     })
-    expect(invalid.errors).toEqual(expect.arrayContaining([
-      'recordingUrl must be a YouTube link (youtube.com or youtu.be)',
-    ]))
+    expect(invalid.errors).toEqual(
+      expect.arrayContaining(['recordingUrl must be a YouTube link (youtube.com or youtu.be)'])
+    )
   })
 
   it('accepts incomplete real tasks while draft is enabled, but applies full validation after it is cleared', () => {
     const draft = {
-      id: 'draft-python', type: 'python', title: 'Draft Python', description: 'In progress', draft: true,
-      tasks: [{ id: 7, title: 'Variables', taskType: 'information', intent: 'Explain variables and ask learners to make one.' }],
+      id: 'draft-python',
+      type: 'python',
+      title: 'Draft Python',
+      description: 'In progress',
+      draft: true,
+      tasks: [
+        {
+          id: 7,
+          title: 'Variables',
+          taskType: 'information',
+          intent: 'Explain variables and ask learners to make one.',
+        },
+      ],
     }
     expect(validateLessonForMcp(draft)).toMatchObject({ valid: true, errors: [] })
-    expect(validateLessonForMcp({ ...draft, draft: false }).errors).toContain('Task 1 is an information task but has no explainer')
+    expect(validateLessonForMcp({ ...draft, draft: false }).errors).toContain(
+      'Task 1 is an information task but has no explainer'
+    )
   })
 
   it('rejects malformed draft task structures while retaining code-task representation', () => {
     const result = validateLessonForMcp({
-      id: 'bad-draft', type: 'python', title: 'Bad draft', description: 'In progress', draft: true,
+      id: 'bad-draft',
+      type: 'python',
+      title: 'Bad draft',
+      description: 'In progress',
+      draft: true,
       tasks: [{ id: 1, title: 'Broken', intent: 'Brief', taskType: 'draft', options: {} }],
     })
     expect(result.valid).toBe(false)
-    expect(result.errors).toEqual(expect.arrayContaining([
-      'Task 1 taskType must be information or quiz when provided',
-      'Task 1 options must be an array of objects when provided',
-    ]))
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        'Task 1 taskType must be information or quiz when provided',
+        'Task 1 options must be an array of objects when provided',
+      ])
+    )
   })
 })

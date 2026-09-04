@@ -25,10 +25,12 @@ const MODULE_LABELS = {
 }
 
 export function getLessonModules() {
-  return MODULE_ORDER
-    .map(type => MODULES[type])
+  return MODULE_ORDER.map((type) => MODULES[type])
     .filter(Boolean)
-    .map(module => ({ ...module, label: module.label ?? MODULE_LABELS[module.type] ?? module.type }))
+    .map((module) => ({
+      ...module,
+      label: module.label ?? MODULE_LABELS[module.type] ?? module.type,
+    }))
 }
 
 export function getLessonModule(type) {

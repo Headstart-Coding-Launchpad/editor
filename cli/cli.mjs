@@ -22,7 +22,8 @@ import { validateLessonTopics } from '../src/shared/topicAudit.js'
 
 const MIME_MAP = {
   '.png': 'image/png',
-  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
@@ -54,9 +55,9 @@ async function writeText(filePath, text) {
 
 function currentOutputFormat() {
   if (process.argv.includes('--yaml')) return 'yaml'
-  const formatIndex = process.argv.findIndex(arg => arg === '--format' || arg === '-f')
+  const formatIndex = process.argv.findIndex((arg) => arg === '--format' || arg === '-f')
   if (formatIndex !== -1) return process.argv[formatIndex + 1] === 'yaml' ? 'yaml' : 'json'
-  const inlineFormat = process.argv.find(arg => arg.startsWith('--format='))
+  const inlineFormat = process.argv.find((arg) => arg.startsWith('--format='))
   return inlineFormat?.split('=')[1] === 'yaml' ? 'yaml' : 'json'
 }
 
@@ -94,11 +95,17 @@ function replaceArtifactSegment(inputPath, fromSegment, toSegment, extension) {
 }
 
 function inferJsonPath(yamlPath, lessonId) {
-  return replaceArtifactSegment(yamlPath, 'YAML Files', 'JSON Files', '.json') ?? resolve(`${lessonId}.json`)
+  return (
+    replaceArtifactSegment(yamlPath, 'YAML Files', 'JSON Files', '.json') ??
+    resolve(`${lessonId}.json`)
+  )
 }
 
 function inferYamlPath(jsonPath, lessonId) {
-  return replaceArtifactSegment(jsonPath, 'JSON Files', 'YAML Files', '.yaml') ?? resolve(`${lessonId}.yaml`)
+  return (
+    replaceArtifactSegment(jsonPath, 'JSON Files', 'YAML Files', '.yaml') ??
+    resolve(`${lessonId}.yaml`)
+  )
 }
 
 async function preflightYamlLesson(file) {
@@ -123,23 +130,27 @@ async function preflightYamlLesson(file) {
   }
 
   const validation = validateLessonForMcp(lesson)
-  add(validation.valid, 'lesson validates', validation.valid ? `${validation.warnings.length} warning(s)` : validation.errors.join('; '))
+  add(
+    validation.valid,
+    'lesson validates',
+    validation.valid ? `${validation.warnings.length} warning(s)` : validation.errors.join('; ')
+  )
 
   const { listTopics } = await loadTopics()
   const topics = await listTopics()
   const topicValidation = validateLessonTopics(lesson, topics)
-  const linkedTopicIds = topicValidation.audit.references.map(reference => reference.id)
-  const missingTopicIds = topicValidation.audit.missing.map(reference => reference.id)
+  const linkedTopicIds = topicValidation.audit.references.map((reference) => reference.id)
+  const missingTopicIds = topicValidation.audit.missing.map((reference) => reference.id)
   add(
     topicValidation.valid,
     'topic requirements pass',
     missingTopicIds.length
       ? `${missingTopicIds.join(', ')} (${topicValidation.errors.join('; ')})`
-      : `${linkedTopicIds.length} link id(s)`,
+      : `${linkedTopicIds.length} link id(s)`
   )
 
   return {
-    valid: checks.every(check => check.ok),
+    valid: checks.every((check) => check.ok),
     lessonId: lesson.id,
     checks,
     warnings: [...validation.warnings, ...topicValidation.warnings],
@@ -196,512 +207,1027 @@ await yargs(hideBin(process.argv))
 
   // ─── LESSONS ────────────────────────────────────────────────────────────────
 
-  .command('lessons', 'Manage lessons in Firestore', yargs => yargs
+  .command('lessons', 'Manage lessons in Firestore', (yargs) =>
+    yargs
 
-    .command('list', 'List all published lessons', {}, cmd(async () => {
-      const { listLessons } = await loadLessons()
-      print(await listLessons())
-    }))
+      .command(
+        'list',
+        'List all published lessons',
+        {},
+        cmd(async () => {
+          const { listLessons } = await loadLessons()
+          print(await listLessons())
+        })
+      )
 
-    .command('get <id>', 'Fetch the full lesson JSON', {}, cmd(async ({ id }) => {
-      const { getLesson } = await loadLessons()
-      const lesson = await getLesson(id)
-      const { lessonToYamlText } = await loadYaml()
-      print(lesson, { yamlText: lessonToYamlText(lesson) })
-    }))
-
-    .command('skeleton <id>', 'Fetch lesson metadata and compact task list (no task bodies)', {}, cmd(async ({ id }) => {
-      const { getLessonSkeleton } = await loadLessons()
-      print(await getLessonSkeleton(id))
-    }))
-
-    .command('validate [file]', 'Validate a lesson from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
-      const { validateLessonForMcp } = await loadValidate()
-      const result = validateLessonForMcp(parseLessonJsonOrYaml(file, await readText(file)))
-      print(result)
-      if (!result.valid) process.exit(1)
-    }))
-
-    .command('test-checks <lessonPath>', 'Test source-code check cases from a JSON or YAML file', {
-      cases: { type: 'string', demandOption: true, describe: 'JSON or YAML file containing named task cases' },
-    }, cmd(async ({ lessonPath, cases }) => {
-      const { testLessonChecks } = await loadCheckTests()
-      const lesson = parseLessonJsonOrYaml(lessonPath, await readText(lessonPath))
-      const casesFile = parseJsonOrYaml(cases, await readText(cases))
-      const result = testLessonChecks(lesson, casesFile)
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
-
-    .command('upsert [file]', 'Create or update a lesson from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
-      const { upsertLesson } = await loadLessons()
-      const result = await upsertLesson(parseLessonJsonOrYaml(file, await readText(file)))
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
-
-    .command('delete <id>', 'Permanently delete a lesson from Firestore', {}, cmd(async ({ id }) => {
-      const { deleteLesson } = await loadLessons()
-      print(await deleteLesson(id))
-    }))
-
-    .command('fork <sourceLessonId>', 'Create or overwrite a published class fork of a stock lesson', {
-      'class-id': { type: 'string', demandOption: true, describe: 'Class id; fork lesson id becomes sourceLessonId-classId' },
-      output: { alias: 'o', type: 'string', describe: 'Write the generated fork lesson to this JSON/YAML file' },
-      publish: { type: 'boolean', default: true, describe: 'Publish the generated fork immediately; use --no-publish to only write/print it' },
-      'include-lesson': { type: 'boolean', default: false, describe: 'Include the generated lesson in command output' },
-    }, cmd(async ({ sourceLessonId, 'class-id': classId, output, publish, 'include-lesson': includeLesson }) => {
-      const { forkLesson } = await loadLessons()
-      const result = await forkLesson(sourceLessonId, classId, { publish, includeLesson: includeLesson || !publish || Boolean(output) })
-      if (output) {
-        const outputPath = resolve(output)
-        const lesson = result.lesson
-        if (!lesson) throw new Error('Could not write output without generated lesson data')
-        if (['.yaml', '.yml'].includes(extname(outputPath).toLowerCase())) {
+      .command(
+        'get <id>',
+        'Fetch the full lesson JSON',
+        {},
+        cmd(async ({ id }) => {
+          const { getLesson } = await loadLessons()
+          const lesson = await getLesson(id)
           const { lessonToYamlText } = await loadYaml()
-          await writeText(outputPath, lessonToYamlText(lesson))
-        } else {
-          await writeText(outputPath, JSON.stringify(lesson, null, 2))
-        }
-        result.outputPath = printRelativePath(outputPath)
-      }
-      print(result, {
-        yamlText: result.lesson
-          ? yamlDump({ ...result, lesson: result.lesson })
-          : yamlDump(result),
-      })
-      if (!result.success) process.exit(1)
-    }))
+          print(lesson, { yamlText: lessonToYamlText(lesson) })
+        })
+      )
 
-    .command('forks <sourceLessonId>', 'List forks created from a stock lesson', {}, cmd(async ({ sourceLessonId }) => {
-      const { listLessonForks } = await loadLessons()
-      print(await listLessonForks(sourceLessonId))
-    }))
+      .command(
+        'skeleton <id>',
+        'Fetch lesson metadata and compact task list (no task bodies)',
+        {},
+        cmd(async ({ id }) => {
+          const { getLessonSkeleton } = await loadLessons()
+          print(await getLessonSkeleton(id))
+        })
+      )
 
-    .command('lineage <id>', 'Show whether a lesson is stock or a fork and its lineage metadata', {}, cmd(async ({ id }) => {
-      const { getLessonLineage } = await loadLessons()
-      print(await getLessonLineage(id))
-    }))
-
-    .command('yaml-to-json [file]', 'Convert a YAML lesson to JSON - file path or stdin', {
-      output: { alias: 'o', type: 'string', describe: 'Write the converted lesson JSON to this path' },
-      'lesson-only': { type: 'boolean', default: false, describe: 'Print only the converted lesson JSON' },
-    }, cmd(async ({ file, output, 'lesson-only': lessonOnly }) => {
-      const { parseYamlLesson, lessonToYamlObject, lessonToYamlText } = await loadYaml()
-      const { validateLessonForMcp } = await loadValidate()
-      const lesson = parseYamlLesson(await readText(file))
-      const { valid, errors, warnings } = validateLessonForMcp(lesson)
-      const result = { lesson, valid, errors, warnings }
-      if (output) {
-        if (!valid) {
+      .command(
+        'validate [file]',
+        'Validate a lesson from JSON or YAML — file path or stdin',
+        {},
+        cmd(async ({ file }) => {
+          const { validateLessonForMcp } = await loadValidate()
+          const result = validateLessonForMcp(parseLessonJsonOrYaml(file, await readText(file)))
           print(result)
-          process.exit(1)
-        }
-        const outputPath = resolve(output)
-        await writeText(outputPath, JSON.stringify(lesson, null, 2))
-        result.outputPath = printRelativePath(outputPath)
-      }
-      const yamlText = lessonOnly
-        ? lessonToYamlText(lesson)
-        : yamlDump({ ...result, lesson: lessonToYamlObject(lesson) })
-      print(lessonOnly ? lesson : result, { yamlText })
-      if (!valid) process.exit(1)
-    }))
+          if (!result.valid) process.exit(1)
+        })
+      )
 
-    .command('json-to-yaml <file> [output]', 'Convert a lesson JSON file to concise YAML', {}, cmd(async ({ file, output }) => {
-      const { lessonToYamlText } = await loadYaml()
-      const lesson = parseJson(await readText(file))
-      const yamlText = lessonToYamlText(lesson)
-      const outputPath = resolve(output ?? inferYamlPath(file, lesson.id ?? 'lesson'))
-      await writeText(outputPath, yamlText)
-      print({ success: true, outputPath: printRelativePath(outputPath) })
-    }))
+      .command(
+        'test-checks <lessonPath>',
+        'Test source-code check cases from a JSON or YAML file',
+        {
+          cases: {
+            type: 'string',
+            demandOption: true,
+            describe: 'JSON or YAML file containing named task cases',
+          },
+        },
+        cmd(async ({ lessonPath, cases }) => {
+          const { testLessonChecks } = await loadCheckTests()
+          const lesson = parseLessonJsonOrYaml(lessonPath, await readText(lessonPath))
+          const casesFile = parseJsonOrYaml(cases, await readText(cases))
+          const result = testLessonChecks(lesson, casesFile)
+          print(result)
+          if (!result.success) process.exit(1)
+        })
+      )
 
-    .command('preflight <file>', 'Run YAML validation and check topic links against LaunchPad', {}, cmd(async ({ file }) => {
-      const result = await preflightYamlLesson(file)
-      print(result)
-      if (!result.valid) process.exit(1)
-    }))
+      .command(
+        'upsert [file]',
+        'Create or update a lesson from JSON or YAML — file path or stdin',
+        {},
+        cmd(async ({ file }) => {
+          const { upsertLesson } = await loadLessons()
+          const result = await upsertLesson(parseLessonJsonOrYaml(file, await readText(file)))
+          print(result)
+          if (!result.success) process.exit(1)
+        })
+      )
 
-    .command('publish-yaml [file]', 'Convert YAML and publish to Firestore in one step - file path or stdin', {
-      'include-lesson': { type: 'boolean', default: false, describe: 'Include the converted lesson JSON in the output' },
-      json: { type: 'string', describe: 'Write the converted lesson JSON to this path before publishing' },
-      'write-json': { type: 'boolean', default: false, describe: 'Write converted JSON to the inferred matching JSON Files path before publishing' },
-    }, cmd(async ({ file, 'include-lesson': includeLesson, json, 'write-json': writeJson }) => {
-      const yamlText = await readText(file)
-      const { parseYamlLesson, lessonToYamlObject } = await loadYaml()
-      const { validateLessonForMcp } = await loadValidate()
-      const lesson = parseYamlLesson(yamlText)
-      const validation = validateLessonForMcp(lesson)
-      if (!validation.valid) {
-        print({ success: false, ...validation })
-        process.exit(1)
-      }
-      let outputPath = null
-      if (json || writeJson) {
-        outputPath = resolve(json ?? inferJsonPath(file, lesson.id))
-        await writeText(outputPath, JSON.stringify(lesson, null, 2))
-      }
+      .command(
+        'delete <id>',
+        'Permanently delete a lesson from Firestore',
+        {},
+        cmd(async ({ id }) => {
+          const { deleteLesson } = await loadLessons()
+          print(await deleteLesson(id))
+        })
+      )
 
-      const { publishYamlLesson } = await loadLessons()
-      const result = await publishYamlLesson(yamlText, includeLesson)
-      if (includeLesson && result.success) result.lesson = lesson
-      if (outputPath) result.outputPath = printRelativePath(outputPath)
-      print(result, {
-        yamlText: includeLesson && result.success
-          ? yamlDump({ ...result, lesson: lessonToYamlObject(lesson) })
-          : yamlDump(result),
-      })
-      if (!result.success) process.exit(1)
-    }))
+      .command(
+        'fork <sourceLessonId>',
+        'Create or overwrite a published class fork of a stock lesson',
+        {
+          'class-id': {
+            type: 'string',
+            demandOption: true,
+            describe: 'Class id; fork lesson id becomes sourceLessonId-classId',
+          },
+          output: {
+            alias: 'o',
+            type: 'string',
+            describe: 'Write the generated fork lesson to this JSON/YAML file',
+          },
+          publish: {
+            type: 'boolean',
+            default: true,
+            describe:
+              'Publish the generated fork immediately; use --no-publish to only write/print it',
+          },
+          'include-lesson': {
+            type: 'boolean',
+            default: false,
+            describe: 'Include the generated lesson in command output',
+          },
+        },
+        cmd(
+          async ({
+            sourceLessonId,
+            'class-id': classId,
+            output,
+            publish,
+            'include-lesson': includeLesson,
+          }) => {
+            const { forkLesson } = await loadLessons()
+            const result = await forkLesson(sourceLessonId, classId, {
+              publish,
+              includeLesson: includeLesson || !publish || Boolean(output),
+            })
+            if (output) {
+              const outputPath = resolve(output)
+              const lesson = result.lesson
+              if (!lesson) throw new Error('Could not write output without generated lesson data')
+              if (['.yaml', '.yml'].includes(extname(outputPath).toLowerCase())) {
+                const { lessonToYamlText } = await loadYaml()
+                await writeText(outputPath, lessonToYamlText(lesson))
+              } else {
+                await writeText(outputPath, JSON.stringify(lesson, null, 2))
+              }
+              result.outputPath = printRelativePath(outputPath)
+            }
+            print(result, {
+              yamlText: result.lesson
+                ? yamlDump({ ...result, lesson: result.lesson })
+                : yamlDump(result),
+            })
+            if (!result.success) process.exit(1)
+          }
+        )
+      )
 
-    .command('topics <id>', 'Audit lesson topic references against the Firestore Topic Library', {}, cmd(async ({ id }) => {
-      const { getLessonTopicAudit } = await loadLessons()
-      print(await getLessonTopicAudit(id))
-    }))
+      .command(
+        'forks <sourceLessonId>',
+        'List forks created from a stock lesson',
+        {},
+        cmd(async ({ sourceLessonId }) => {
+          const { listLessonForks } = await loadLessons()
+          print(await listLessonForks(sourceLessonId))
+        })
+      )
 
-    .demandCommand(1, 'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics')
-    .help()
+      .command(
+        'lineage <id>',
+        'Show whether a lesson is stock or a fork and its lineage metadata',
+        {},
+        cmd(async ({ id }) => {
+          const { getLessonLineage } = await loadLessons()
+          print(await getLessonLineage(id))
+        })
+      )
+
+      .command(
+        'yaml-to-json [file]',
+        'Convert a YAML lesson to JSON - file path or stdin',
+        {
+          output: {
+            alias: 'o',
+            type: 'string',
+            describe: 'Write the converted lesson JSON to this path',
+          },
+          'lesson-only': {
+            type: 'boolean',
+            default: false,
+            describe: 'Print only the converted lesson JSON',
+          },
+        },
+        cmd(async ({ file, output, 'lesson-only': lessonOnly }) => {
+          const { parseYamlLesson, lessonToYamlObject, lessonToYamlText } = await loadYaml()
+          const { validateLessonForMcp } = await loadValidate()
+          const lesson = parseYamlLesson(await readText(file))
+          const { valid, errors, warnings } = validateLessonForMcp(lesson)
+          const result = { lesson, valid, errors, warnings }
+          if (output) {
+            if (!valid) {
+              print(result)
+              process.exit(1)
+            }
+            const outputPath = resolve(output)
+            await writeText(outputPath, JSON.stringify(lesson, null, 2))
+            result.outputPath = printRelativePath(outputPath)
+          }
+          const yamlText = lessonOnly
+            ? lessonToYamlText(lesson)
+            : yamlDump({ ...result, lesson: lessonToYamlObject(lesson) })
+          print(lessonOnly ? lesson : result, { yamlText })
+          if (!valid) process.exit(1)
+        })
+      )
+
+      .command(
+        'json-to-yaml <file> [output]',
+        'Convert a lesson JSON file to concise YAML',
+        {},
+        cmd(async ({ file, output }) => {
+          const { lessonToYamlText } = await loadYaml()
+          const lesson = parseJson(await readText(file))
+          const yamlText = lessonToYamlText(lesson)
+          const outputPath = resolve(output ?? inferYamlPath(file, lesson.id ?? 'lesson'))
+          await writeText(outputPath, yamlText)
+          print({ success: true, outputPath: printRelativePath(outputPath) })
+        })
+      )
+
+      .command(
+        'preflight <file>',
+        'Run YAML validation and check topic links against LaunchPad',
+        {},
+        cmd(async ({ file }) => {
+          const result = await preflightYamlLesson(file)
+          print(result)
+          if (!result.valid) process.exit(1)
+        })
+      )
+
+      .command(
+        'publish-yaml [file]',
+        'Convert YAML and publish to Firestore in one step - file path or stdin',
+        {
+          'include-lesson': {
+            type: 'boolean',
+            default: false,
+            describe: 'Include the converted lesson JSON in the output',
+          },
+          json: {
+            type: 'string',
+            describe: 'Write the converted lesson JSON to this path before publishing',
+          },
+          'write-json': {
+            type: 'boolean',
+            default: false,
+            describe:
+              'Write converted JSON to the inferred matching JSON Files path before publishing',
+          },
+        },
+        cmd(async ({ file, 'include-lesson': includeLesson, json, 'write-json': writeJson }) => {
+          const yamlText = await readText(file)
+          const { parseYamlLesson, lessonToYamlObject } = await loadYaml()
+          const { validateLessonForMcp } = await loadValidate()
+          const lesson = parseYamlLesson(yamlText)
+          const validation = validateLessonForMcp(lesson)
+          if (!validation.valid) {
+            print({ success: false, ...validation })
+            process.exit(1)
+          }
+          let outputPath = null
+          if (json || writeJson) {
+            outputPath = resolve(json ?? inferJsonPath(file, lesson.id))
+            await writeText(outputPath, JSON.stringify(lesson, null, 2))
+          }
+
+          const { publishYamlLesson } = await loadLessons()
+          const result = await publishYamlLesson(yamlText, includeLesson)
+          if (includeLesson && result.success) result.lesson = lesson
+          if (outputPath) result.outputPath = printRelativePath(outputPath)
+          print(result, {
+            yamlText:
+              includeLesson && result.success
+                ? yamlDump({ ...result, lesson: lessonToYamlObject(lesson) })
+                : yamlDump(result),
+          })
+          if (!result.success) process.exit(1)
+        })
+      )
+
+      .command(
+        'topics <id>',
+        'Audit lesson topic references against the Firestore Topic Library',
+        {},
+        cmd(async ({ id }) => {
+          const { getLessonTopicAudit } = await loadLessons()
+          print(await getLessonTopicAudit(id))
+        })
+      )
+
+      .demandCommand(
+        1,
+        'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics'
+      )
+      .help()
   )
 
   // ─── TASKS ──────────────────────────────────────────────────────────────────
 
-  .command('tasks', 'Manage individual tasks within a lesson', yargs => yargs
+  .command('tasks', 'Manage individual tasks within a lesson', (yargs) =>
+    yargs
 
-    .command('get <lessonId> <taskIndex>', 'Fetch a single task by 1-based flat index', {}, cmd(async ({ lessonId, taskIndex }) => {
-      const { getTask } = await loadLessons()
-      print(await getTask(lessonId, Number(taskIndex)))
-    }))
+      .command(
+        'get <lessonId> <taskIndex>',
+        'Fetch a single task by 1-based flat index',
+        {},
+        cmd(async ({ lessonId, taskIndex }) => {
+          const { getTask } = await loadLessons()
+          print(await getTask(lessonId, Number(taskIndex)))
+        })
+      )
 
-    .command('upsert <lessonId> <taskIndex> [file]', 'Replace a task by flat index — file path or stdin (JSON or YAML)', {}, cmd(async ({ lessonId, taskIndex, file }) => {
-      const { upsertTask } = await loadLessons()
-      const result = await upsertTask(lessonId, Number(taskIndex), parseJsonOrYaml(file, await readText(file)))
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
+      .command(
+        'upsert <lessonId> <taskIndex> [file]',
+        'Replace a task by flat index — file path or stdin (JSON or YAML)',
+        {},
+        cmd(async ({ lessonId, taskIndex, file }) => {
+          const { upsertTask } = await loadLessons()
+          const result = await upsertTask(
+            lessonId,
+            Number(taskIndex),
+            parseJsonOrYaml(file, await readText(file))
+          )
+          print(result)
+          if (!result.success) process.exit(1)
+        })
+      )
 
-    .command('append <lessonId> [file]', 'Append a task to a lesson — file path or stdin (JSON or YAML)', {
-      group: { type: 'string', describe: 'Group title to append into (created if it does not exist)' },
-    }, cmd(async ({ lessonId, group, file }) => {
-      const { appendTask } = await loadLessons()
-      const result = await appendTask(lessonId, parseJsonOrYaml(file, await readText(file)), group)
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
+      .command(
+        'append <lessonId> [file]',
+        'Append a task to a lesson — file path or stdin (JSON or YAML)',
+        {
+          group: {
+            type: 'string',
+            describe: 'Group title to append into (created if it does not exist)',
+          },
+        },
+        cmd(async ({ lessonId, group, file }) => {
+          const { appendTask } = await loadLessons()
+          const result = await appendTask(
+            lessonId,
+            parseJsonOrYaml(file, await readText(file)),
+            group
+          )
+          print(result)
+          if (!result.success) process.exit(1)
+        })
+      )
 
-    .demandCommand(1, 'Specify a subcommand: get | upsert | append')
-    .help()
+      .demandCommand(1, 'Specify a subcommand: get | upsert | append')
+      .help()
   )
 
   // ─── TOPICS ─────────────────────────────────────────────────────────────────
 
-  .command('topics', 'Manage topics in the topic library', yargs => yargs
+  .command('topics', 'Manage topics in the topic library', (yargs) =>
+    yargs
 
-    .command('list', 'List all topics', {}, cmd(async () => {
-      const { listTopics } = await loadTopics()
-      print(await listTopics())
-    }))
+      .command(
+        'list',
+        'List all topics',
+        {},
+        cmd(async () => {
+          const { listTopics } = await loadTopics()
+          print(await listTopics())
+        })
+      )
 
-    .command('get <id>', 'Fetch a topic by ID', {}, cmd(async ({ id }) => {
-      const { getTopic } = await loadTopics()
-      const topic = await getTopic(id)
-      const { topicToYamlText } = await loadYaml()
-      print(topic, { yamlText: topicToYamlText(topic) })
-    }))
+      .command(
+        'get <id>',
+        'Fetch a topic by ID',
+        {},
+        cmd(async ({ id }) => {
+          const { getTopic } = await loadTopics()
+          const topic = await getTopic(id)
+          const { topicToYamlText } = await loadYaml()
+          print(topic, { yamlText: topicToYamlText(topic) })
+        })
+      )
 
-    .command('upsert [file]', 'Create or update one topic from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
-      const { upsertTopic } = await loadTopics()
-      const result = await upsertTopic(parseTopicJsonOrYaml(file, await readText(file)))
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
-
-    .command('upsert-library [file]', 'Create or update many topics from JSON or YAML — file path or stdin', {}, cmd(async ({ file }) => {
-      const { upsertTopicLibrary } = await loadTopics()
-      const result = await upsertTopicLibrary(parseTopicLibraryJsonOrYaml(file, await readText(file)))
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
-
-    .command('yaml-to-json [file]', 'Convert a YAML topic library to JSON - file path or stdin', {
-      output: { alias: 'o', type: 'string', describe: 'Write the converted topic library JSON to this path' },
-      'topics-only': { type: 'boolean', default: false, describe: 'Print only the converted topics array' },
-    }, cmd(async ({ file, output, 'topics-only': topicsOnly }) => {
-      const { parseYamlTopicLibrary } = await loadYaml()
-      const { validateTopicLibrary } = await loadTopicUtils()
-      const topics = parseYamlTopicLibrary(await readText(file))
-      const validation = validateTopicLibrary(topics)
-      const result = { topics: validation.topics, valid: validation.valid, errors: validation.errors }
-      if (output) {
-        if (!validation.valid) {
+      .command(
+        'upsert [file]',
+        'Create or update one topic from JSON or YAML — file path or stdin',
+        {},
+        cmd(async ({ file }) => {
+          const { upsertTopic } = await loadTopics()
+          const result = await upsertTopic(parseTopicJsonOrYaml(file, await readText(file)))
           print(result)
-          process.exit(1)
-        }
-        const outputPath = resolve(output)
-        await writeText(outputPath, JSON.stringify({ topics: validation.topics }, null, 2))
-        result.outputPath = printRelativePath(outputPath)
-      }
-      print(topicsOnly ? validation.topics : result)
-      if (!validation.valid) process.exit(1)
-    }))
+          if (!result.success) process.exit(1)
+        })
+      )
 
-    .command('json-to-yaml <file> [output]', 'Convert topic JSON to topic-library YAML', {}, cmd(async ({ file, output }) => {
-      const { topicLibraryToYamlText } = await loadYaml()
-      const input = parseJson(await readText(file))
-      const yamlText = topicLibraryToYamlText(input)
-      const outputPath = resolve(output ?? inferYamlPath(file, 'topic-library'))
-      await writeText(outputPath, yamlText)
-      print({ success: true, outputPath: printRelativePath(outputPath) })
-    }))
+      .command(
+        'upsert-library [file]',
+        'Create or update many topics from JSON or YAML — file path or stdin',
+        {},
+        cmd(async ({ file }) => {
+          const { upsertTopicLibrary } = await loadTopics()
+          const result = await upsertTopicLibrary(
+            parseTopicLibraryJsonOrYaml(file, await readText(file))
+          )
+          print(result)
+          if (!result.success) process.exit(1)
+        })
+      )
 
-    .command('publish-yaml [file]', 'Convert YAML topic library and publish to Firestore - file path or stdin', {
-      'include-topics': { type: 'boolean', default: false, describe: 'Include the converted topics in the output' },
-      json: { type: 'string', describe: 'Write the converted topic library JSON to this path before publishing' },
-      'write-json': { type: 'boolean', default: false, describe: 'Write converted JSON to the inferred matching JSON Files path before publishing' },
-    }, cmd(async ({ file, 'include-topics': includeTopics, json, 'write-json': writeJson }) => {
-      const { parseYamlTopicLibrary } = await loadYaml()
-      const { validateTopicLibrary } = await loadTopicUtils()
-      const topics = parseYamlTopicLibrary(await readText(file))
-      const validation = validateTopicLibrary(topics)
-      if (!validation.valid) {
-        print({ success: false, errors: validation.errors })
-        process.exit(1)
-      }
+      .command(
+        'yaml-to-json [file]',
+        'Convert a YAML topic library to JSON - file path or stdin',
+        {
+          output: {
+            alias: 'o',
+            type: 'string',
+            describe: 'Write the converted topic library JSON to this path',
+          },
+          'topics-only': {
+            type: 'boolean',
+            default: false,
+            describe: 'Print only the converted topics array',
+          },
+        },
+        cmd(async ({ file, output, 'topics-only': topicsOnly }) => {
+          const { parseYamlTopicLibrary } = await loadYaml()
+          const { validateTopicLibrary } = await loadTopicUtils()
+          const topics = parseYamlTopicLibrary(await readText(file))
+          const validation = validateTopicLibrary(topics)
+          const result = {
+            topics: validation.topics,
+            valid: validation.valid,
+            errors: validation.errors,
+          }
+          if (output) {
+            if (!validation.valid) {
+              print(result)
+              process.exit(1)
+            }
+            const outputPath = resolve(output)
+            await writeText(outputPath, JSON.stringify({ topics: validation.topics }, null, 2))
+            result.outputPath = printRelativePath(outputPath)
+          }
+          print(topicsOnly ? validation.topics : result)
+          if (!validation.valid) process.exit(1)
+        })
+      )
 
-      let outputPath = null
-      if (json || writeJson) {
-        outputPath = resolve(json ?? inferJsonPath(file, 'topic-library'))
-        await writeText(outputPath, JSON.stringify({ topics: validation.topics }, null, 2))
-      }
+      .command(
+        'json-to-yaml <file> [output]',
+        'Convert topic JSON to topic-library YAML',
+        {},
+        cmd(async ({ file, output }) => {
+          const { topicLibraryToYamlText } = await loadYaml()
+          const input = parseJson(await readText(file))
+          const yamlText = topicLibraryToYamlText(input)
+          const outputPath = resolve(output ?? inferYamlPath(file, 'topic-library'))
+          await writeText(outputPath, yamlText)
+          print({ success: true, outputPath: printRelativePath(outputPath) })
+        })
+      )
 
-      const { upsertTopicLibrary } = await loadTopics()
-      const result = await upsertTopicLibrary(validation.topics)
-      if (includeTopics && result.success) result.topics = validation.topics
-      if (outputPath) result.outputPath = printRelativePath(outputPath)
-      print(result)
-      if (!result.success) process.exit(1)
-    }))
+      .command(
+        'publish-yaml [file]',
+        'Convert YAML topic library and publish to Firestore - file path or stdin',
+        {
+          'include-topics': {
+            type: 'boolean',
+            default: false,
+            describe: 'Include the converted topics in the output',
+          },
+          json: {
+            type: 'string',
+            describe: 'Write the converted topic library JSON to this path before publishing',
+          },
+          'write-json': {
+            type: 'boolean',
+            default: false,
+            describe:
+              'Write converted JSON to the inferred matching JSON Files path before publishing',
+          },
+        },
+        cmd(async ({ file, 'include-topics': includeTopics, json, 'write-json': writeJson }) => {
+          const { parseYamlTopicLibrary } = await loadYaml()
+          const { validateTopicLibrary } = await loadTopicUtils()
+          const topics = parseYamlTopicLibrary(await readText(file))
+          const validation = validateTopicLibrary(topics)
+          if (!validation.valid) {
+            print({ success: false, errors: validation.errors })
+            process.exit(1)
+          }
 
-    .command('delete <id>', 'Permanently delete a topic from the library', {}, cmd(async ({ id }) => {
-      const { deleteTopic } = await loadTopics()
-      print(await deleteTopic(id))
-    }))
+          let outputPath = null
+          if (json || writeJson) {
+            outputPath = resolve(json ?? inferJsonPath(file, 'topic-library'))
+            await writeText(outputPath, JSON.stringify({ topics: validation.topics }, null, 2))
+          }
 
-    .demandCommand(1, 'Specify a subcommand: list | get | upsert | upsert-library | yaml-to-json | json-to-yaml | publish-yaml | delete')
-    .help()
+          const { upsertTopicLibrary } = await loadTopics()
+          const result = await upsertTopicLibrary(validation.topics)
+          if (includeTopics && result.success) result.topics = validation.topics
+          if (outputPath) result.outputPath = printRelativePath(outputPath)
+          print(result)
+          if (!result.success) process.exit(1)
+        })
+      )
+
+      .command(
+        'delete <id>',
+        'Permanently delete a topic from the library',
+        {},
+        cmd(async ({ id }) => {
+          const { deleteTopic } = await loadTopics()
+          print(await deleteTopic(id))
+        })
+      )
+
+      .demandCommand(
+        1,
+        'Specify a subcommand: list | get | upsert | upsert-library | yaml-to-json | json-to-yaml | publish-yaml | delete'
+      )
+      .help()
   )
 
   // ─── FEEDBACK ──────────────────────────────────────────────────────────────
 
-  .command('feedback', 'Read, write, and clear platform and lesson feedback from Firestore', yargs => yargs
+  .command(
+    'feedback',
+    'Read, write, and clear platform and lesson feedback from Firestore',
+    (yargs) =>
+      yargs
 
-    .command('platform', 'List platform feedback', {
-      'lesson-id': { type: 'string', describe: 'Only include platform feedback linked to this lesson ID' },
-      'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
-      'include-archived': { type: 'boolean', default: false, describe: 'Include archived feedback items' },
-    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
-      const { listPlatformFeedback } = await loadFeedback()
-      print(await listPlatformFeedback({ lessonId, taskId, scope, includeArchived }))
-    }))
+        .command(
+          'platform',
+          'List platform feedback',
+          {
+            'lesson-id': {
+              type: 'string',
+              describe: 'Only include platform feedback linked to this lesson ID',
+            },
+            'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
+            scope: {
+              type: 'string',
+              choices: ['lesson', 'task'],
+              describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)',
+            },
+            'include-archived': {
+              type: 'boolean',
+              default: false,
+              describe: 'Include archived feedback items',
+            },
+          },
+          cmd(
+            async ({
+              'lesson-id': lessonId,
+              'task-id': taskId,
+              scope,
+              'include-archived': includeArchived,
+            }) => {
+              const { listPlatformFeedback } = await loadFeedback()
+              print(await listPlatformFeedback({ lessonId, taskId, scope, includeArchived }))
+            }
+          )
+        )
 
-    .command('lesson <lessonId>', 'List all feedback saved under one lesson', {
-      'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
-      'include-archived': { type: 'boolean', default: false, describe: 'Include archived feedback items' },
-    }, cmd(async ({ lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
-      const { listLessonFeedback } = await loadFeedback()
-      print(await listLessonFeedback(lessonId, { taskId, scope, includeArchived }))
-    }))
+        .command(
+          'lesson <lessonId>',
+          'List all feedback saved under one lesson',
+          {
+            'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
+            scope: {
+              type: 'string',
+              choices: ['lesson', 'task'],
+              describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)',
+            },
+            'include-archived': {
+              type: 'boolean',
+              default: false,
+              describe: 'Include archived feedback items',
+            },
+          },
+          cmd(
+            async ({ lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
+              const { listLessonFeedback } = await loadFeedback()
+              print(await listLessonFeedback(lessonId, { taskId, scope, includeArchived }))
+            }
+          )
+        )
 
-    .command('all [lessonId]', 'List platform and lesson feedback together', {
-      'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)' },
-      'include-archived': { type: 'boolean', default: false, describe: 'Include archived feedback items' },
-    }, cmd(async ({ lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
-      const { listAllFeedback } = await loadFeedback()
-      print(await listAllFeedback({ lessonId, taskId, scope, includeArchived }))
-    }))
+        .command(
+          'all [lessonId]',
+          'List platform and lesson feedback together',
+          {
+            'task-id': { type: 'string', describe: 'Only include feedback linked to this task ID' },
+            scope: {
+              type: 'string',
+              choices: ['lesson', 'task'],
+              describe: 'Filter by scope: "lesson" (no task) or "task" (task-specific)',
+            },
+            'include-archived': {
+              type: 'boolean',
+              default: false,
+              describe: 'Include archived feedback items',
+            },
+          },
+          cmd(
+            async ({ lessonId, 'task-id': taskId, scope, 'include-archived': includeArchived }) => {
+              const { listAllFeedback } = await loadFeedback()
+              print(await listAllFeedback({ lessonId, taskId, scope, includeArchived }))
+            }
+          )
+        )
 
-    .command('add-lesson <lessonId>', 'Add a feedback item to a lesson', {
-      text: { type: 'string', demandOption: true, describe: 'Feedback text' },
-      email: { type: 'string', default: '', describe: 'Teacher email address' },
-      'lesson-title': { type: 'string', describe: 'Lesson title (informational)' },
-      'task-id': { type: 'string', describe: 'Task ID (makes this task-scoped feedback)' },
-      'task-title': { type: 'string', describe: 'Task title (informational)' },
-    }, cmd(async ({ lessonId, text, email, 'lesson-title': lessonTitle, 'task-id': taskId, 'task-title': taskTitle }) => {
-      const { addLessonFeedback } = await loadFeedback()
-      print(await addLessonFeedback(lessonId, { text, teacherEmail: email, lessonTitle, taskId, taskTitle }))
-    }))
+        .command(
+          'add-lesson <lessonId>',
+          'Add a feedback item to a lesson',
+          {
+            text: { type: 'string', demandOption: true, describe: 'Feedback text' },
+            email: { type: 'string', default: '', describe: 'Teacher email address' },
+            'lesson-title': { type: 'string', describe: 'Lesson title (informational)' },
+            'task-id': { type: 'string', describe: 'Task ID (makes this task-scoped feedback)' },
+            'task-title': { type: 'string', describe: 'Task title (informational)' },
+          },
+          cmd(
+            async ({
+              lessonId,
+              text,
+              email,
+              'lesson-title': lessonTitle,
+              'task-id': taskId,
+              'task-title': taskTitle,
+            }) => {
+              const { addLessonFeedback } = await loadFeedback()
+              print(
+                await addLessonFeedback(lessonId, {
+                  text,
+                  teacherEmail: email,
+                  lessonTitle,
+                  taskId,
+                  taskTitle,
+                })
+              )
+            }
+          )
+        )
 
-    .command('add-platform', 'Add a platform feedback item', {
-      text: { type: 'string', demandOption: true, describe: 'Feedback text' },
-      email: { type: 'string', default: '', describe: 'Teacher email address' },
-      'lesson-id': { type: 'string', describe: 'Lesson context (optional)' },
-      'lesson-title': { type: 'string', describe: 'Lesson title (informational)' },
-      'task-id': { type: 'string', describe: 'Task context (optional)' },
-      'task-title': { type: 'string', describe: 'Task title (informational)' },
-    }, cmd(async ({ text, email, 'lesson-id': lessonId, 'lesson-title': lessonTitle, 'task-id': taskId, 'task-title': taskTitle }) => {
-      const { addPlatformFeedback } = await loadFeedback()
-      print(await addPlatformFeedback({ text, teacherEmail: email, lessonId, lessonTitle, taskId, taskTitle }))
-    }))
+        .command(
+          'add-platform',
+          'Add a platform feedback item',
+          {
+            text: { type: 'string', demandOption: true, describe: 'Feedback text' },
+            email: { type: 'string', default: '', describe: 'Teacher email address' },
+            'lesson-id': { type: 'string', describe: 'Lesson context (optional)' },
+            'lesson-title': { type: 'string', describe: 'Lesson title (informational)' },
+            'task-id': { type: 'string', describe: 'Task context (optional)' },
+            'task-title': { type: 'string', describe: 'Task title (informational)' },
+          },
+          cmd(
+            async ({
+              text,
+              email,
+              'lesson-id': lessonId,
+              'lesson-title': lessonTitle,
+              'task-id': taskId,
+              'task-title': taskTitle,
+            }) => {
+              const { addPlatformFeedback } = await loadFeedback()
+              print(
+                await addPlatformFeedback({
+                  text,
+                  teacherEmail: email,
+                  lessonId,
+                  lessonTitle,
+                  taskId,
+                  taskTitle,
+                })
+              )
+            }
+          )
+        )
 
-    .command('archive-lesson <lessonId> <id>', 'Archive a single feedback item from a lesson', {}, cmd(async ({ lessonId, id }) => {
-      const { archiveLessonFeedbackItem } = await loadFeedback()
-      print(await archiveLessonFeedbackItem(lessonId, id))
-    }))
+        .command(
+          'archive-lesson <lessonId> <id>',
+          'Archive a single feedback item from a lesson',
+          {},
+          cmd(async ({ lessonId, id }) => {
+            const { archiveLessonFeedbackItem } = await loadFeedback()
+            print(await archiveLessonFeedbackItem(lessonId, id))
+          })
+        )
 
-    .command('archive-platform <id>', 'Archive a single platform feedback item', {}, cmd(async ({ id }) => {
-      const { archivePlatformFeedbackItem } = await loadFeedback()
-      print(await archivePlatformFeedbackItem(id))
-    }))
+        .command(
+          'archive-platform <id>',
+          'Archive a single platform feedback item',
+          {},
+          cmd(async ({ id }) => {
+            const { archivePlatformFeedbackItem } = await loadFeedback()
+            print(await archivePlatformFeedbackItem(id))
+          })
+        )
 
-    .command('clear-lesson <lessonId>', 'Archive all feedback items from a lesson (supports filters)', {
-      'task-id': { type: 'string', describe: 'Only archive feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before archiving' },
-    }, cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
-      const { clearLessonFeedback } = await loadFeedback()
-      print(await clearLessonFeedback(lessonId, { taskId, scope }))
-    }))
+        .command(
+          'clear-lesson <lessonId>',
+          'Archive all feedback items from a lesson (supports filters)',
+          {
+            'task-id': { type: 'string', describe: 'Only archive feedback linked to this task ID' },
+            scope: {
+              type: 'string',
+              choices: ['lesson', 'task'],
+              describe: 'Filter by scope before archiving',
+            },
+          },
+          cmd(async ({ lessonId, 'task-id': taskId, scope }) => {
+            const { clearLessonFeedback } = await loadFeedback()
+            print(await clearLessonFeedback(lessonId, { taskId, scope }))
+          })
+        )
 
-    .command('clear-platform', 'Archive all platform feedback items (supports filters)', {
-      'lesson-id': { type: 'string', describe: 'Only archive platform feedback linked to this lesson ID' },
-      'task-id': { type: 'string', describe: 'Only archive feedback linked to this task ID' },
-      'scope': { type: 'string', choices: ['lesson', 'task'], describe: 'Filter by scope before archiving' },
-    }, cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope }) => {
-      const { clearPlatformFeedback } = await loadFeedback()
-      print(await clearPlatformFeedback({ lessonId, taskId, scope }))
-    }))
+        .command(
+          'clear-platform',
+          'Archive all platform feedback items (supports filters)',
+          {
+            'lesson-id': {
+              type: 'string',
+              describe: 'Only archive platform feedback linked to this lesson ID',
+            },
+            'task-id': { type: 'string', describe: 'Only archive feedback linked to this task ID' },
+            scope: {
+              type: 'string',
+              choices: ['lesson', 'task'],
+              describe: 'Filter by scope before archiving',
+            },
+          },
+          cmd(async ({ 'lesson-id': lessonId, 'task-id': taskId, scope }) => {
+            const { clearPlatformFeedback } = await loadFeedback()
+            print(await clearPlatformFeedback({ lessonId, taskId, scope }))
+          })
+        )
 
-    .demandCommand(1, 'Specify a subcommand: platform | lesson | all | add-lesson | add-platform | archive-lesson | archive-platform | clear-lesson | clear-platform')
-    .help()
+        .demandCommand(
+          1,
+          'Specify a subcommand: platform | lesson | all | add-lesson | add-platform | archive-lesson | archive-platform | clear-lesson | clear-platform'
+        )
+        .help()
   )
 
   // ─── ASSETS ─────────────────────────────────────────────────────────────────
 
-  .command('assets', 'Manage lesson asset files in Firebase Storage', yargs => yargs
+  .command('assets', 'Manage lesson asset files in Firebase Storage', (yargs) =>
+    yargs
 
-    .command('list <lessonId>', 'List assets for a lesson', {}, cmd(async ({ lessonId }) => {
-      const { listLessonAssets } = await loadAssets()
-      print(await listLessonAssets(lessonId))
-    }))
+      .command(
+        'list <lessonId>',
+        'List assets for a lesson',
+        {},
+        cmd(async ({ lessonId }) => {
+          const { listLessonAssets } = await loadAssets()
+          print(await listLessonAssets(lessonId))
+        })
+      )
 
-    .command('upload <lessonId> <filepath>', 'Upload a local file as a lesson asset', {
-      filename: { type: 'string', describe: 'Storage filename (defaults to the file\'s basename)' },
-      'mime-type': { type: 'string', describe: 'MIME type (auto-detected from file extension if omitted)' },
-    }, cmd(async ({ lessonId, filepath, filename, 'mime-type': mimeType }) => {
-      const resolvedFilename = filename ?? basename(filepath)
-      const resolvedMimeType = mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
-      const buffer = await readFile(filepath)
-      const { uploadLessonAsset } = await loadAssets()
-      print(await uploadLessonAsset(lessonId, resolvedFilename, buffer.toString('base64'), resolvedMimeType))
-    }))
+      .command(
+        'upload <lessonId> <filepath>',
+        'Upload a local file as a lesson asset',
+        {
+          filename: {
+            type: 'string',
+            describe: "Storage filename (defaults to the file's basename)",
+          },
+          'mime-type': {
+            type: 'string',
+            describe: 'MIME type (auto-detected from file extension if omitted)',
+          },
+        },
+        cmd(async ({ lessonId, filepath, filename, 'mime-type': mimeType }) => {
+          const resolvedFilename = filename ?? basename(filepath)
+          const resolvedMimeType =
+            mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
+          const buffer = await readFile(filepath)
+          const { uploadLessonAsset } = await loadAssets()
+          print(
+            await uploadLessonAsset(
+              lessonId,
+              resolvedFilename,
+              buffer.toString('base64'),
+              resolvedMimeType
+            )
+          )
+        })
+      )
 
-    .command('delete <lessonId> <filename>', 'Delete a lesson asset from Firebase Storage', {}, cmd(async ({ lessonId, filename }) => {
-      const { deleteLessonAsset } = await loadAssets()
-      print(await deleteLessonAsset(lessonId, filename))
-    }))
+      .command(
+        'delete <lessonId> <filename>',
+        'Delete a lesson asset from Firebase Storage',
+        {},
+        cmd(async ({ lessonId, filename }) => {
+          const { deleteLessonAsset } = await loadAssets()
+          print(await deleteLessonAsset(lessonId, filename))
+        })
+      )
 
-    .command('list-type <type>', 'List shared assets and Scratch defaults for a lesson type', {}, cmd(async ({ type }) => {
-      const { listTypeAssets } = await loadTypeAssets()
-      print(await listTypeAssets(type))
-    }))
+      .command(
+        'list-type <type>',
+        'List shared assets and Scratch defaults for a lesson type',
+        {},
+        cmd(async ({ type }) => {
+          const { listTypeAssets } = await loadTypeAssets()
+          print(await listTypeAssets(type))
+        })
+      )
 
-    .command('upload-type <type> <filepath>', 'Upload a local file as a shared asset for a lesson type', {
-      filename: { type: 'string', describe: 'Storage filename (defaults to the file\'s basename)' },
-      'mime-type': { type: 'string', describe: 'MIME type (auto-detected from file extension if omitted)' },
-    }, cmd(async ({ type, filepath, filename, 'mime-type': mimeType }) => {
-      const resolvedFilename = filename ?? basename(filepath)
-      const resolvedMimeType = mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
-      const buffer = await readFile(filepath)
-      const { uploadTypeAsset } = await loadTypeAssets()
-      print(await uploadTypeAsset(type, resolvedFilename, buffer.toString('base64'), resolvedMimeType))
-    }))
+      .command(
+        'upload-type <type> <filepath>',
+        'Upload a local file as a shared asset for a lesson type',
+        {
+          filename: {
+            type: 'string',
+            describe: "Storage filename (defaults to the file's basename)",
+          },
+          'mime-type': {
+            type: 'string',
+            describe: 'MIME type (auto-detected from file extension if omitted)',
+          },
+        },
+        cmd(async ({ type, filepath, filename, 'mime-type': mimeType }) => {
+          const resolvedFilename = filename ?? basename(filepath)
+          const resolvedMimeType =
+            mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
+          const buffer = await readFile(filepath)
+          const { uploadTypeAsset } = await loadTypeAssets()
+          print(
+            await uploadTypeAsset(
+              type,
+              resolvedFilename,
+              buffer.toString('base64'),
+              resolvedMimeType
+            )
+          )
+        })
+      )
 
-    .command('set-default-sprites <type> [file]', 'Replace the default Scratch sprite list for a lesson type — file path or stdin (JSON or YAML)', {}, cmd(async ({ type, file }) => {
-      const { setDefaultSprites } = await loadTypeAssets()
-      print(await setDefaultSprites(type, parseJsonOrYaml(file, await readText(file))))
-    }))
+      .command(
+        'set-default-sprites <type> [file]',
+        'Replace the default Scratch sprite list for a lesson type — file path or stdin (JSON or YAML)',
+        {},
+        cmd(async ({ type, file }) => {
+          const { setDefaultSprites } = await loadTypeAssets()
+          print(await setDefaultSprites(type, parseJsonOrYaml(file, await readText(file))))
+        })
+      )
 
-    .command('upload-backdrop <type> <filepath>', 'Upload a local image and add it as a default Scratch backdrop in one step', {
-      id: { type: 'string', describe: 'Backdrop id (auto-generated if omitted)' },
-      name: { type: 'string', describe: 'Backdrop display name (defaults to the generated id)' },
-      colour: { type: 'string', describe: 'Fallback solid colour shown before the image loads (hex, defaults to #ffffff)' },
-      filename: { type: 'string', describe: 'Storage filename (defaults to the file\'s basename)' },
-      'mime-type': { type: 'string', describe: 'MIME type (auto-detected from file extension if omitted)' },
-    }, cmd(async ({ type, filepath, id, name, colour, filename, 'mime-type': mimeType }) => {
-      const resolvedFilename = filename ?? basename(filepath)
-      const resolvedMimeType = mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
-      const buffer = await readFile(filepath)
-      const { uploadDefaultBackdrop } = await loadTypeAssets()
-      print(await uploadDefaultBackdrop(type, resolvedFilename, buffer.toString('base64'), resolvedMimeType, { id, name, colour }))
-    }))
+      .command(
+        'upload-backdrop <type> <filepath>',
+        'Upload a local image and add it as a default Scratch backdrop in one step',
+        {
+          id: { type: 'string', describe: 'Backdrop id (auto-generated if omitted)' },
+          name: {
+            type: 'string',
+            describe: 'Backdrop display name (defaults to the generated id)',
+          },
+          colour: {
+            type: 'string',
+            describe:
+              'Fallback solid colour shown before the image loads (hex, defaults to #ffffff)',
+          },
+          filename: {
+            type: 'string',
+            describe: "Storage filename (defaults to the file's basename)",
+          },
+          'mime-type': {
+            type: 'string',
+            describe: 'MIME type (auto-detected from file extension if omitted)',
+          },
+        },
+        cmd(async ({ type, filepath, id, name, colour, filename, 'mime-type': mimeType }) => {
+          const resolvedFilename = filename ?? basename(filepath)
+          const resolvedMimeType =
+            mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
+          const buffer = await readFile(filepath)
+          const { uploadDefaultBackdrop } = await loadTypeAssets()
+          print(
+            await uploadDefaultBackdrop(
+              type,
+              resolvedFilename,
+              buffer.toString('base64'),
+              resolvedMimeType,
+              { id, name, colour }
+            )
+          )
+        })
+      )
 
-    .demandCommand(1, 'Specify a subcommand: list | upload | delete | list-type | upload-type | set-default-sprites | upload-backdrop')
-    .help()
+      .demandCommand(
+        1,
+        'Specify a subcommand: list | upload | delete | list-type | upload-type | set-default-sprites | upload-backdrop'
+      )
+      .help()
   )
 
   // --- LEVELS ---------------------------------------------------------------
 
-  .command('levels', 'Manage reusable lesson level records', yargs => yargs
+  .command('levels', 'Manage reusable lesson level records', (yargs) =>
+    yargs
 
-    .command('list', 'List reusable levels', {
-      'scope-type': { type: 'string', choices: ['course', 'module', 'collection', 'type'], describe: 'Filter by scope type' },
-      'scope-id': { type: 'string', describe: 'Filter by scope id' },
-    }, cmd(async ({ 'scope-type': scopeType, 'scope-id': scopeId }) => {
-      const { listLevels } = await loadLevels()
-      print(await listLevels({ scopeType, scopeId }))
-    }))
+      .command(
+        'list',
+        'List reusable levels',
+        {
+          'scope-type': {
+            type: 'string',
+            choices: ['course', 'module', 'collection', 'type'],
+            describe: 'Filter by scope type',
+          },
+          'scope-id': { type: 'string', describe: 'Filter by scope id' },
+        },
+        cmd(async ({ 'scope-type': scopeType, 'scope-id': scopeId }) => {
+          const { listLevels } = await loadLevels()
+          print(await listLevels({ scopeType, scopeId }))
+        })
+      )
 
-    .command('upsert', 'Create or update a reusable level', {
-      id: { type: 'string', describe: 'Level id; defaults to a slug from title and scope' },
-      title: { type: 'string', demandOption: true, describe: 'Display title' },
-      description: { type: 'string', default: '', describe: 'Description' },
-      order: { type: 'number', default: 0, describe: 'Sort order' },
-      color: { type: 'string', default: '#7c3aed', describe: 'Badge colour' },
-      icon: { type: 'string', default: 'star', describe: 'Icon key' },
-      'scope-type': { type: 'string', choices: ['course', 'module', 'collection', 'type'], default: 'type', describe: 'Scope type' },
-      'scope-id': { type: 'string', demandOption: true, describe: 'Scope id' },
-    }, cmd(async ({ id, title, description, order, color, icon, 'scope-type': scopeType, 'scope-id': scopeId }) => {
-      const { upsertLevel } = await loadLevels()
-      print(await upsertLevel({ id, title, description, order, color, icon, scopeType, scopeId }))
-    }))
+      .command(
+        'upsert',
+        'Create or update a reusable level',
+        {
+          id: { type: 'string', describe: 'Level id; defaults to a slug from title and scope' },
+          title: { type: 'string', demandOption: true, describe: 'Display title' },
+          description: { type: 'string', default: '', describe: 'Description' },
+          order: { type: 'number', default: 0, describe: 'Sort order' },
+          color: { type: 'string', default: '#7c3aed', describe: 'Badge colour' },
+          icon: { type: 'string', default: 'star', describe: 'Icon key' },
+          'scope-type': {
+            type: 'string',
+            choices: ['course', 'module', 'collection', 'type'],
+            default: 'type',
+            describe: 'Scope type',
+          },
+          'scope-id': { type: 'string', demandOption: true, describe: 'Scope id' },
+        },
+        cmd(
+          async ({
+            id,
+            title,
+            description,
+            order,
+            color,
+            icon,
+            'scope-type': scopeType,
+            'scope-id': scopeId,
+          }) => {
+            const { upsertLevel } = await loadLevels()
+            print(
+              await upsertLevel({ id, title, description, order, color, icon, scopeType, scopeId })
+            )
+          }
+        )
+      )
 
-    .command('delete <id>', 'Delete a reusable level record', {}, cmd(async ({ id }) => {
-      const { deleteLevel } = await loadLevels()
-      print(await deleteLevel(id))
-    }))
+      .command(
+        'delete <id>',
+        'Delete a reusable level record',
+        {},
+        cmd(async ({ id }) => {
+          const { deleteLevel } = await loadLevels()
+          print(await deleteLevel(id))
+        })
+      )
 
-    .demandCommand(1, 'Specify a subcommand: list | upsert | delete')
-    .help()
+      .demandCommand(1, 'Specify a subcommand: list | upsert | delete')
+      .help()
   )
   // --- CLASSES --------------------------------------------------------------
 
-  .command('classes', 'Manage admin-only durable class records used for lesson forks', yargs => yargs
+  .command('classes', 'Manage admin-only durable class records used for lesson forks', (yargs) =>
+    yargs
 
-    .command('list', 'List classes', {
-      'include-archived': { type: 'boolean', default: false, describe: 'Include archived class records' },
-    }, cmd(async ({ 'include-archived': includeArchived }) => {
-      const { listClasses } = await loadClasses()
-      print(await listClasses({ includeArchived }))
-    }))
+      .command(
+        'list',
+        'List classes',
+        {
+          'include-archived': {
+            type: 'boolean',
+            default: false,
+            describe: 'Include archived class records',
+          },
+        },
+        cmd(async ({ 'include-archived': includeArchived }) => {
+          const { listClasses } = await loadClasses()
+          print(await listClasses({ includeArchived }))
+        })
+      )
 
-    .command('upsert', 'Create or update a class record', {
-      id: { type: 'string', demandOption: true, describe: 'Class id used in fork lesson ids' },
-      name: { type: 'string', demandOption: true, describe: 'Class display name' },
-    }, cmd(async ({ id, name }) => {
-      const { upsertClass } = await loadClasses()
-      print(await upsertClass({ id, name, archived: false }))
-    }))
+      .command(
+        'upsert',
+        'Create or update a class record',
+        {
+          id: { type: 'string', demandOption: true, describe: 'Class id used in fork lesson ids' },
+          name: { type: 'string', demandOption: true, describe: 'Class display name' },
+        },
+        cmd(async ({ id, name }) => {
+          const { upsertClass } = await loadClasses()
+          print(await upsertClass({ id, name, archived: false }))
+        })
+      )
 
-    .command('archive <id>', 'Archive a class record', {}, cmd(async ({ id }) => {
-      const { archiveClass } = await loadClasses()
-      print(await archiveClass(id))
-    }))
+      .command(
+        'archive <id>',
+        'Archive a class record',
+        {},
+        cmd(async ({ id }) => {
+          const { archiveClass } = await loadClasses()
+          print(await archiveClass(id))
+        })
+      )
 
-    .demandCommand(1, 'Specify a subcommand: list | upsert | archive')
-    .help()
+      .demandCommand(1, 'Specify a subcommand: list | upsert | archive')
+      .help()
   )
-  .demandCommand(1, 'Specify a command: lessons | tasks | topics | feedback | assets | levels | classes')
+  .demandCommand(
+    1,
+    'Specify a command: lessons | tasks | topics | feedback | assets | levels | classes'
+  )
   .help()
   .parseAsync()

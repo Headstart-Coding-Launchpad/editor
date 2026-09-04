@@ -79,12 +79,26 @@ describe('StudentCard', () => {
 
   describe('check badges', () => {
     it('shows the Passed badge when checkPassed and the task has a check', () => {
-      render(<StudentCard {...mkProps({ lesson: LESSON_WITH_CHECK }, { checkPassed: true, lastRunStatus: 'success' })} />)
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: LESSON_WITH_CHECK },
+            { checkPassed: true, lastRunStatus: 'success' }
+          )}
+        />
+      )
       expect(screen.getByText('Passed')).toBeInTheDocument()
     })
 
     it('shows the Failed badge when a run was attempted but check not passed', () => {
-      render(<StudentCard {...mkProps({ lesson: LESSON_WITH_CHECK }, { checkPassed: false, lastRunStatus: 'error' })} />)
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: LESSON_WITH_CHECK },
+            { checkPassed: false, lastRunStatus: 'error' }
+          )}
+        />
+      )
       expect(screen.getByText('Failed')).toBeInTheDocument()
     })
 
@@ -113,17 +127,23 @@ describe('StudentCard', () => {
   describe('quiz answer display', () => {
     const QUIZ_LESSON = {
       type: 'python',
-      tasks: [{
-        id: 1,
-        taskType: 'quiz',
-        quizType: 'multiple_choice',
-        title: 'Quiz',
-        options: [{ id: 'a', text: 'Option A' }],
-      }],
+      tasks: [
+        {
+          id: 1,
+          taskType: 'quiz',
+          quizType: 'multiple_choice',
+          title: 'Quiz',
+          options: [{ id: 'a', text: 'Option A' }],
+        },
+      ],
     }
 
     it('shows the answer ID and option text for a multiple-choice response', () => {
-      render(<StudentCard {...mkProps({ lesson: QUIZ_LESSON }, { currentAnswer: 'a', lastRunStatus: 'submitted' })} />)
+      render(
+        <StudentCard
+          {...mkProps({ lesson: QUIZ_LESSON }, { currentAnswer: 'a', lastRunStatus: 'submitted' })}
+        />
+      )
       expect(screen.getByText('a')).toBeInTheDocument()
     })
 
@@ -135,17 +155,28 @@ describe('StudentCard', () => {
     it('preserves line breaks in short-answer responses', () => {
       const shortAnswerLesson = {
         type: 'python',
-        tasks: [{
-          id: 1,
-          taskType: 'quiz',
-          quizType: 'short_answer',
-          title: 'Quiz',
-        }],
+        tasks: [
+          {
+            id: 1,
+            taskType: 'quiz',
+            quizType: 'short_answer',
+            title: 'Quiz',
+          },
+        ],
       }
 
-      render(<StudentCard {...mkProps({ lesson: shortAnswerLesson }, { currentAnswer: 'line one\nline two', lastRunStatus: 'submitted' })} />)
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: shortAnswerLesson },
+            { currentAnswer: 'line one\nline two', lastRunStatus: 'submitted' }
+          )}
+        />
+      )
 
-      const answer = screen.getByText((_, element) => element?.tagName === 'SPAN' && element.textContent === 'line one\nline two')
+      const answer = screen.getByText(
+        (_, element) => element?.tagName === 'SPAN' && element.textContent === 'line one\nline two'
+      )
 
       expect(answer).toHaveStyle({ whiteSpace: 'pre-wrap' })
     })
@@ -223,16 +254,17 @@ describe('StudentCard', () => {
   // the task's own moduleType. Before this was fixed every code task in a composed lesson
   // (27 of the 28 published lessons) fell through to the HTML fallback.
   describe('composed lessons', () => {
-    const composedLesson = moduleType => ({
+    const composedLesson = (moduleType) => ({
       type: 'composed',
       tasks: [{ id: 1, title: 'Task 1', moduleType }],
     })
 
     it('shows the output snippet for a Python task rather than the HTML fallback', () => {
-      render(<StudentCard {...mkProps(
-        { lesson: composedLesson('python') },
-        { currentOutput: 'Hello from Python' },
-      )} />)
+      render(
+        <StudentCard
+          {...mkProps({ lesson: composedLesson('python') }, { currentOutput: 'Hello from Python' })}
+        />
+      )
       expect(screen.getByText(/Hello from Python/)).toBeInTheDocument()
       expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
     })
@@ -243,29 +275,35 @@ describe('StudentCard', () => {
       expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
     })
 
-    it.each(['arcade', 'electronics'])('shows the output snippet for a %s task', moduleType => {
-      render(<StudentCard {...mkProps(
-        { lesson: composedLesson(moduleType) },
-        { currentOutput: 'device ready' },
-      )} />)
+    it.each(['arcade', 'electronics'])('shows the output snippet for a %s task', (moduleType) => {
+      render(
+        <StudentCard
+          {...mkProps({ lesson: composedLesson(moduleType) }, { currentOutput: 'device ready' })}
+        />
+      )
       expect(screen.getByText(/device ready/)).toBeInTheDocument()
       expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
     })
 
     it('shows block state for a Scratch task rather than the HTML fallback', () => {
-      render(<StudentCard {...mkProps(
-        { lesson: composedLesson('scratch') },
-        { currentCode: '{"blocks":[]}' },
-      )} />)
+      render(
+        <StudentCard
+          {...mkProps({ lesson: composedLesson('scratch') }, { currentCode: '{"blocks":[]}' })}
+        />
+      )
       expect(screen.getByText('Blocks edited')).toBeInTheDocument()
       expect(screen.queryByText('HTML project')).not.toBeInTheDocument()
     })
 
     it('still shows the HTML fallback for an HTML task', () => {
-      render(<StudentCard {...mkProps(
-        { lesson: composedLesson('html') },
-        { currentFiles: [{ name: 'index.html' }] },
-      )} />)
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: composedLesson('html') },
+            { currentFiles: [{ name: 'index.html' }] }
+          )}
+        />
+      )
       expect(screen.getByText('HTML project')).toBeInTheDocument()
     })
   })
@@ -290,7 +328,10 @@ describe('StudentCard', () => {
     })
 
     it('leaves an information task inert', () => {
-      const lesson = { type: 'python', tasks: [{ id: 1, title: 'Task 1', taskType: 'information' }] }
+      const lesson = {
+        type: 'python',
+        tasks: [{ id: 1, title: 'Task 1', taskType: 'information' }],
+      }
       render(<StudentCard {...mkProps({ lesson })} />)
       expect(screen.queryByRole('button', { name: /expand/i })).not.toBeInTheDocument()
     })

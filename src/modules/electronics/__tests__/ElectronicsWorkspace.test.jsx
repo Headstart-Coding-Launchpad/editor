@@ -78,7 +78,15 @@ function wireCircuit(locked) {
   return {
     ...DEFAULT_CIRCUIT,
     components: [battery, led],
-    wires: [{ id: 'wire1', from: `${battery.id}.positive`, to: `${led.id}.anode`, color: '#ef4444', locked }],
+    wires: [
+      {
+        id: 'wire1',
+        from: `${battery.id}.positive`,
+        to: `${led.id}.anode`,
+        color: '#ef4444',
+        locked,
+      },
+    ],
   }
 }
 
@@ -224,22 +232,34 @@ describe('ElectronicsWorkspace — highlightedTabs (teacher highlight)', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Breadboard' })).not.toHaveClass('pane-highlight-pulse')
+    expect(screen.getByRole('button', { name: 'Breadboard' })).not.toHaveClass(
+      'pane-highlight-pulse'
+    )
     expect(screen.getByRole('button', { name: 'MicroPython' })).toHaveClass('pane-highlight-pulse')
   })
 
   it('pulses nothing when highlightedTabs is omitted', () => {
     render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab />)
 
-    expect(screen.getByRole('button', { name: 'Breadboard' })).not.toHaveClass('pane-highlight-pulse')
-    expect(screen.getByRole('button', { name: 'MicroPython' })).not.toHaveClass('pane-highlight-pulse')
+    expect(screen.getByRole('button', { name: 'Breadboard' })).not.toHaveClass(
+      'pane-highlight-pulse'
+    )
+    expect(screen.getByRole('button', { name: 'MicroPython' })).not.toHaveClass(
+      'pane-highlight-pulse'
+    )
   })
 })
 
 describe('ElectronicsWorkspace — forcedTab (teacher force-switch)', () => {
   it('jumps to the forced tab once, then lets the student navigate away freely afterward', () => {
     const { rerender } = render(
-      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab forcedTab="code" forcedTabToken={1} />
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        forcedTab="code"
+        forcedTabToken={1}
+      />
     )
     expect(screen.getByRole('button', { name: 'MicroPython' })).toHaveClass('is-active')
 
@@ -248,13 +268,25 @@ describe('ElectronicsWorkspace — forcedTab (teacher force-switch)', () => {
 
     // Re-rendering with the SAME token must not snap it back to "code" — a force isn't a lock.
     rerender(
-      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab forcedTab="code" forcedTabToken={1} />
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        forcedTab="code"
+        forcedTabToken={1}
+      />
     )
     expect(screen.getByRole('button', { name: 'Breadboard' })).toHaveClass('is-active')
 
     // A genuinely new token (different pushedAt) does jump again.
     rerender(
-      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} showCodeTab forcedTab="code" forcedTabToken={2} />
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        forcedTab="code"
+        forcedTabToken={2}
+      />
     )
     expect(screen.getByRole('button', { name: 'MicroPython' })).toHaveClass('is-active')
   })
@@ -360,7 +392,13 @@ describe('ElectronicsWorkspace — locked ("Fixed") parts stay operable', () => 
     expect(screen.getByText('Delete part')).not.toBeDisabled()
     cleanup()
 
-    render(<ElectronicsWorkspace circuit={buttonCircuit({ locked: true })} onChange={vi.fn()} setupMode />)
+    render(
+      <ElectronicsWorkspace
+        circuit={buttonCircuit({ locked: true })}
+        onChange={vi.fn()}
+        setupMode
+      />
+    )
     fireEvent.click(document.querySelector('[data-component]'))
     expect(screen.getByText('Rotate 90 deg')).not.toBeDisabled()
     expect(screen.getByText('Delete part')).not.toBeDisabled()
@@ -485,8 +523,9 @@ describe('ElectronicsWorkspace — slide switch hit target', () => {
     fireEvent.pointerUp(board, { clientX: 300, clientY: 300 })
 
     expect(onChange).toHaveBeenCalled()
-    expect(onChange.mock.calls.at(-1)[0].components[0].position)
-      .not.toEqual(circuit.components[0].position)
+    expect(onChange.mock.calls.at(-1)[0].components[0].position).not.toEqual(
+      circuit.components[0].position
+    )
   })
 
   it('does not start a component drag when the switch body is pressed', () => {
@@ -495,7 +534,8 @@ describe('ElectronicsWorkspace — slide switch hit target', () => {
     render(<ElectronicsWorkspace circuit={circuit} onChange={onChange} />)
 
     const track = switchBody().querySelector('rect')
-    const board = document.querySelector('[tabindex="0"][style]') ?? document.querySelector('[tabindex]')
+    const board =
+      document.querySelector('[tabindex="0"][style]') ?? document.querySelector('[tabindex]')
     fireEvent.pointerDown(track, { button: 0, clientX: 100, clientY: 100 })
     fireEvent.pointerMove(board, { clientX: 300, clientY: 300 })
     fireEvent.pointerUp(board, { clientX: 300, clientY: 300 })
@@ -513,7 +553,11 @@ describe('ElectronicsWorkspace — board chrome declutter', () => {
     expect(screen.queryByText(/Drag a part onto the board/)).toBeNull()
 
     rerender(
-      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={['led']} />
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        availableComponents={['led']}
+      />
     )
     expect(screen.getByText(/Drag a part onto the board/)).toBeInTheDocument()
   })
@@ -530,7 +574,14 @@ describe('ElectronicsWorkspace — board chrome declutter', () => {
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [battery],
-      wires: [{ id: 'w1', from: `${battery.id}.positive`, to: `${battery.id}.negative`, color: '#ef4444' }],
+      wires: [
+        {
+          id: 'w1',
+          from: `${battery.id}.positive`,
+          to: `${battery.id}.negative`,
+          color: '#ef4444',
+        },
+      ],
     }
     render(<ElectronicsWorkspace circuit={circuit} onChange={vi.fn()} />)
 
@@ -560,7 +611,9 @@ describe('ElectronicsWorkspace — board chrome declutter', () => {
 
 describe('ElectronicsWorkspace — layout', () => {
   it('drops the palette column when the task offers no parts, keeping wiring available', () => {
-    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={[]} />)
+    render(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={[]} />
+    )
 
     expect(screen.queryByText(/Drag a part onto the board/)).toBeNull()
     expect(screen.queryByRole('button', { name: /Battery/ })).toBeNull()
@@ -569,14 +622,22 @@ describe('ElectronicsWorkspace — layout', () => {
   })
 
   it('keeps the palette when the task offers parts', () => {
-    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} availableComponents={['battery', 'led']} />)
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        availableComponents={['battery', 'led']}
+      />
+    )
 
     expect(screen.getByText(/Drag a part onto the board/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Battery/ })).toBeInTheDocument()
   })
 
   it('keeps the board title out of the tab order so it does not read as a tab', () => {
-    render(<ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} title="Starter board" />)
+    render(
+      <ElectronicsWorkspace circuit={DEFAULT_CIRCUIT} onChange={vi.fn()} title="Starter board" />
+    )
 
     expect(screen.getByText('Starter board')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Starter board' })).toBeNull()

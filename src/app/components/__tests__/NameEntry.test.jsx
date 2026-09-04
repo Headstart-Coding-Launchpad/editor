@@ -100,7 +100,9 @@ describe('NameEntry', () => {
   })
 
   it('shows a join-error banner when joinError is set', () => {
-    renderEntry({ joinError: "Couldn't connect to the class session. Check your connection and try again." })
+    renderEntry({
+      joinError: "Couldn't connect to the class session. Check your connection and try again.",
+    })
     expect(screen.getByText(/Couldn't connect to the class session/)).toBeInTheDocument()
   })
 

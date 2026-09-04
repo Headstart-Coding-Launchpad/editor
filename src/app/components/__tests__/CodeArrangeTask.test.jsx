@@ -72,12 +72,22 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
 
     rerender(
-      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{ L1: 'L1' }} onRun={vi.fn()} />
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1' }}
+        onRun={vi.fn()}
+      />
     )
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
 
     rerender(
-      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{ L1: 'L1', L2: 'D1' }} onRun={vi.fn()} />
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1', L2: 'D1' }}
+        onRun={vi.fn()}
+      />
     )
     // Complete (every slot filled) even though L2 holds a distractor —
     // completion gates on fill state only, not on tile identity.
@@ -88,7 +98,12 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
     const user = userEvent.setup()
     const onRun = vi.fn()
     render(
-      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{ L1: 'L1', L2: 'L2' }} onRun={onRun} />
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1', L2: 'L2' }}
+        onRun={onRun}
+      />
     )
     await user.click(screen.getByRole('button', { name: 'Run' }))
     expect(onRun).toHaveBeenCalledTimes(1)
@@ -104,13 +119,20 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
         onAssembledCodeChange={onAssembledCodeChange}
       />
     )
-    expect(onAssembledCodeChange).toHaveBeenCalledWith('for i in range(5): print(i * 2)\nprint("done")')
+    expect(onAssembledCodeChange).toHaveBeenCalledWith(
+      'for i in range(5): print(i * 2)\nprint("done")'
+    )
   })
 
   it('does not report assembled code while the arrangement is incomplete', () => {
     const onAssembledCodeChange = vi.fn()
     render(
-      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{ L1: 'L1' }} onAssembledCodeChange={onAssembledCodeChange} />
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1' }}
+        onAssembledCodeChange={onAssembledCodeChange}
+      />
     )
     expect(onAssembledCodeChange).not.toHaveBeenCalled()
   })
@@ -118,13 +140,27 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
   it('places a tile into a slot via tap-to-select then tap-to-place, and removes it from the pool', async () => {
     const user = userEvent.setup()
     let answer = {}
-    const onSelectAnswer = vi.fn(next => { answer = next })
+    const onSelectAnswer = vi.fn((next) => {
+      answer = next
+    })
     const { rerender } = render(
-      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={answer} onSelectAnswer={onSelectAnswer} />
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={answer}
+        onSelectAnswer={onSelectAnswer}
+      />
     )
 
     await user.click(screen.getByText('for i in range(5): print(i * 2)'))
-    rerender(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={answer} onSelectAnswer={onSelectAnswer} />)
+    rerender(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={answer}
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
     await user.click(screen.getAllByText('Tap to place')[0])
 
     expect(onSelectAnswer).toHaveBeenLastCalledWith({ L1: 'L1' })
@@ -163,13 +199,20 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
       lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: '<h1>Hello</h1>' }] }],
       check: { type: 'html_element', operator: 'exists', selector: 'h1' },
     }
-    render(<CodeArrangeTask task={htmlTask} moduleType="html" selectedAnswer={{}} iframeSrc={null} />)
+    render(
+      <CodeArrangeTask task={htmlTask} moduleType="html" selectedAnswer={{}} iframeSrc={null} />
+    )
     expect(screen.queryByText('Run your code to see output here.')).not.toBeInTheDocument()
   })
 
   it('hides the Run row and blocks interaction when disabled', () => {
     render(
-      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{ L1: 'L1', L2: 'L2' }} disabled />
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1', L2: 'L2' }}
+        disabled
+      />
     )
     expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
   })
@@ -221,13 +264,27 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
   it('places a tile into a blank via tap-to-select then tap-to-place', async () => {
     const user = userEvent.setup()
     let answer = {}
-    const onSelectAnswer = vi.fn(next => { answer = next })
+    const onSelectAnswer = vi.fn((next) => {
+      answer = next
+    })
     const { rerender } = render(
-      <CodeArrangeTask task={INLINE_TASK} moduleType="python" selectedAnswer={answer} onSelectAnswer={onSelectAnswer} />
+      <CodeArrangeTask
+        task={INLINE_TASK}
+        moduleType="python"
+        selectedAnswer={answer}
+        onSelectAnswer={onSelectAnswer}
+      />
     )
 
     await user.click(screen.getByText('5'))
-    rerender(<CodeArrangeTask task={INLINE_TASK} moduleType="python" selectedAnswer={answer} onSelectAnswer={onSelectAnswer} />)
+    rerender(
+      <CodeArrangeTask
+        task={INLINE_TASK}
+        moduleType="python"
+        selectedAnswer={answer}
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
     await user.click(screen.getByText('Tap to place'))
 
     expect(onSelectAnswer).toHaveBeenLastCalledWith({ S1: 'S1' })
@@ -308,12 +365,21 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockReturnValue({ left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 })
     const onDragCursor = vi.fn()
-    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} onDragCursor={onDragCursor} />)
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{}}
+        onDragCursor={onDragCursor}
+      />
+    )
 
     const tile = screen.getByRole('button', { name: 'for i in range(5): print(i * 2)' })
     dragStartAt(tile, 100, 50)
 
-    expect(onDragCursor).toHaveBeenCalledWith(expect.objectContaining({ tileId: 'L1', x: 0.25, y: 0.25 }))
+    expect(onDragCursor).toHaveBeenCalledWith(
+      expect.objectContaining({ tileId: 'L1', x: 0.25, y: 0.25 })
+    )
     getRectSpy.mockRestore()
   })
 
@@ -322,7 +388,14 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockReturnValue({ left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 })
     const onDragCursor = vi.fn()
-    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} onDragCursor={onDragCursor} />)
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{}}
+        onDragCursor={onDragCursor}
+      />
+    )
 
     const tile = screen.getByRole('button', { name: 'for i in range(5): print(i * 2)' })
     dragStartAt(tile, 100, 50)
@@ -351,16 +424,30 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
       ],
     }
     let answer = {}
-    const onSelectAnswer = vi.fn(next => { answer = next })
+    const onSelectAnswer = vi.fn((next) => {
+      answer = next
+    })
     const { rerender } = render(
-      <CodeArrangeTask task={mixedTask} moduleType="python" selectedAnswer={answer} onSelectAnswer={onSelectAnswer} />
+      <CodeArrangeTask
+        task={mixedTask}
+        moduleType="python"
+        selectedAnswer={answer}
+        onSelectAnswer={onSelectAnswer}
+      />
     )
 
     // S1's own correct tile ("5") tapped, then placed into L1's whole-line
     // slot (the first "Tap to place" target — L1 renders before L2) instead
     // of its own blank.
     await user.click(screen.getByText('5'))
-    rerender(<CodeArrangeTask task={mixedTask} moduleType="python" selectedAnswer={answer} onSelectAnswer={onSelectAnswer} />)
+    rerender(
+      <CodeArrangeTask
+        task={mixedTask}
+        moduleType="python"
+        selectedAnswer={answer}
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
     await user.click(screen.getAllByText('Tap to place')[0])
 
     expect(onSelectAnswer).toHaveBeenLastCalledWith({ L1: 'S1' })

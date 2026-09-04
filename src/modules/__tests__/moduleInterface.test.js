@@ -93,7 +93,7 @@ describe('module interface contract', () => {
       })
 
       it('has serializeState and deserializeState (function or null)', () => {
-        const isFnOrNull = v => v === null || typeof v === 'function'
+        const isFnOrNull = (v) => v === null || typeof v === 'function'
         expect(isFnOrNull(mod.serializeState)).toBe(true)
         expect(isFnOrNull(mod.deserializeState)).toBe(true)
       })
@@ -175,7 +175,9 @@ describe('module interface contract', () => {
     it('uses source code rather than a non-string live state in the teacher editor', () => {
       const task = { starterCode: 'game.run()' }
 
-      expect(mod.getDisplayState(task, null, 'student game code', 'starter')).toBe('student game code')
+      expect(mod.getDisplayState(task, null, 'student game code', 'starter')).toBe(
+        'student game code'
+      )
       expect(mod.getDisplayState(task, null, { files: [] }, 'starter')).toBe('game.run()')
     })
   })
@@ -209,11 +211,9 @@ describe('module interface contract', () => {
 
   describe('electronics-specific', () => {
     it('keeps the MicroPython Pin shim out of the async student-code transform', () => {
-      const program = buildMicroPythonProgram([
-        'from machine import Pin',
-        'led = Pin("GP0", Pin.OUT)',
-        'led.on()',
-      ].join('\n'))
+      const program = buildMicroPythonProgram(
+        ['from machine import Pin', 'led = Pin("GP0", Pin.OUT)', 'led.on()'].join('\n')
+      )
 
       expect(program.split('\n')[0]).toMatch(/^exec\("import sys, types/)
       expect(program).not.toContain('\nclass _Pin:')

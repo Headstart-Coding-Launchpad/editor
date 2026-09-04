@@ -3,7 +3,11 @@ import { flattenTasks, getTaskPriority } from '../../shared/taskUtils'
 
 function OptionalBadge({ task }) {
   if (getTaskPriority(task) !== 'optional') return null
-  return <span style={s.optionalBadge} title="Optional task">optional</span>
+  return (
+    <span style={s.optionalBadge} title="Optional task">
+      optional
+    </span>
+  )
 }
 
 export default function TaskNavigator({
@@ -20,27 +24,31 @@ export default function TaskNavigator({
   onToggle,
 }) {
   const total = students.length
-  const runCount = students.filter(st => st.lastRunStatus != null && st.lastRunAt).length
-  const checkCount = students.filter(st => st.checkPassed).length
+  const runCount = students.filter((st) => st.lastRunStatus != null && st.lastRunAt).length
+  const checkCount = students.filter((st) => st.checkPassed).length
   const flatTasks = flattenTasks(tasks)
   // Navigate Prev/Next relative to what's currently displayed (preview or session task)
   const displayId = previewTaskId ?? currentTaskId
-  const displayIndex = flatTasks.findIndex(t => t.id === displayId)
+  const displayIndex = flatTasks.findIndex((t) => t.id === displayId)
 
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const map = {}
-    tasks.forEach(item => { if (item.type === 'group') map[item.id] = true })
+    tasks.forEach((item) => {
+      if (item.type === 'group') map[item.id] = true
+    })
     return map
   })
 
   function toggleGroup(groupId) {
-    setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }))
+    setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
   }
 
   if (collapsed) {
     return (
       <div style={s.collapsedWrap}>
-        <button style={s.collapseBtn} onClick={onToggle} title="Show Tasks">›</button>
+        <button style={s.collapseBtn} onClick={onToggle} title="Show Tasks">
+          ›
+        </button>
         <span style={s.collapsedLabel}>Tasks</span>
       </div>
     )
@@ -51,10 +59,10 @@ export default function TaskNavigator({
       <div style={s.header}>
         <span style={s.headerLabel}>Tasks</span>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {session?.state === 'active' && (
-            <span style={s.state}>LIVE</span>
-          )}
-          <button style={s.toggleBtn} onClick={onToggle} title="Collapse Tasks">‹</button>
+          {session?.state === 'active' && <span style={s.state}>LIVE</span>}
+          <button style={s.toggleBtn} onClick={onToggle} title="Collapse Tasks">
+            ‹
+          </button>
         </div>
       </div>
 
@@ -62,8 +70,8 @@ export default function TaskNavigator({
         {tasks.map((item, i) => {
           if (item.type === 'group') {
             const subtasks = item.subtasks ?? []
-            const isCurrentGroup = subtasks.some(t => t.id === currentTaskId)
-            const isPreviewGroup = previewTaskId && subtasks.some(t => t.id === previewTaskId)
+            const isCurrentGroup = subtasks.some((t) => t.id === currentTaskId)
+            const isPreviewGroup = previewTaskId && subtasks.some((t) => t.id === previewTaskId)
             const expanded = expandedGroups[item.id] !== false
 
             return (
@@ -73,47 +81,50 @@ export default function TaskNavigator({
                     ...s.groupHeader,
                     ...(isCurrentGroup ? s.groupHeaderActive : {}),
                     ...(isPreviewGroup && !isCurrentGroup ? s.groupHeaderPreview : {}),
-                    ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}),
+                    ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
                   }}
-                  onClick={() => (!isSandbox && !sandboxStaging) && toggleGroup(item.id)}
+                  onClick={() => !isSandbox && !sandboxStaging && toggleGroup(item.id)}
                 >
                   <span style={s.groupChevron}>{expanded ? '▾' : '▸'}</span>
                   <span style={s.groupHeaderTitle}>{item.title || 'Untitled Group'}</span>
                   <span style={s.groupBadge}>{subtasks.length}</span>
                 </button>
 
-                {expanded && subtasks.map(task => {
-                  const isCurrent = task.id === currentTaskId
-                  const isPreview = previewTaskId && task.id === previewTaskId
-                  const hasCheck = task.check != null
+                {expanded &&
+                  subtasks.map((task) => {
+                    const isCurrent = task.id === currentTaskId
+                    const isPreview = previewTaskId && task.id === previewTaskId
+                    const hasCheck = task.check != null
 
-                  return (
-                    <button
-                      key={task.id}
-                      style={{
-                        ...s.subtaskItem,
-                        ...(isCurrent ? s.subtaskItemActive : {}),
-                        ...(isPreview && !isCurrent ? s.subtaskItemPreview : {}),
-                        ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}),
-                      }}
-                      onClick={() => (!isSandbox && !sandboxStaging) && onTaskSelect?.(task.id)}
-                    >
-                      <span style={s.subtaskDot} />
-                      <div style={s.detail}>
-                        <span style={s.taskTitle}>{task.title}</span>
-                        <OptionalBadge task={task} />
-                        {isCurrent && total > 0 && (
-                          <span style={s.stat}>
-                            {runCount}/{total} run
-                            {hasCheck ? ` · ${checkCount} ✅` : ''}
-                          </span>
-                        )}
-                      </div>
-                      {isCurrent && <span style={s.arrow}>◀</span>}
-                      {isPreview && !isCurrent && <span style={s.previewEye}>👁</span>}
-                    </button>
-                  )
-                })}
+                    return (
+                      <button
+                        key={task.id}
+                        style={{
+                          ...s.subtaskItem,
+                          ...(isCurrent ? s.subtaskItemActive : {}),
+                          ...(isPreview && !isCurrent ? s.subtaskItemPreview : {}),
+                          ...(isSandbox || sandboxStaging
+                            ? { opacity: 0.45, cursor: 'default' }
+                            : {}),
+                        }}
+                        onClick={() => !isSandbox && !sandboxStaging && onTaskSelect?.(task.id)}
+                      >
+                        <span style={s.subtaskDot} />
+                        <div style={s.detail}>
+                          <span style={s.taskTitle}>{task.title}</span>
+                          <OptionalBadge task={task} />
+                          {isCurrent && total > 0 && (
+                            <span style={s.stat}>
+                              {runCount}/{total} run
+                              {hasCheck ? ` · ${checkCount} ✅` : ''}
+                            </span>
+                          )}
+                        </div>
+                        {isCurrent && <span style={s.arrow}>◀</span>}
+                        {isPreview && !isCurrent && <span style={s.previewEye}>👁</span>}
+                      </button>
+                    )
+                  })}
               </div>
             )
           }
@@ -130,9 +141,9 @@ export default function TaskNavigator({
                 ...s.item,
                 ...(isCurrent ? s.itemActive : {}),
                 ...(isPreview && !isCurrent ? s.itemPreview : {}),
-                ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}),
+                ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
               }}
-              onClick={() => (!isSandbox && !sandboxStaging) && onTaskSelect?.(item.id)}
+              onClick={() => !isSandbox && !sandboxStaging && onTaskSelect?.(item.id)}
             >
               <span style={s.num}>{item.id}</span>
               <div style={s.detail}>
@@ -156,7 +167,10 @@ export default function TaskNavigator({
       <div style={s.navButtons}>
         <button
           className="btn-secondary"
-          style={{ ...s.navBtn, ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}) }}
+          style={{
+            ...s.navBtn,
+            ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
+          }}
           disabled={displayIndex <= 0}
           onClick={() => {
             if (isSandbox || sandboxStaging) return
@@ -168,7 +182,10 @@ export default function TaskNavigator({
         </button>
         <button
           className="btn-secondary"
-          style={{ ...s.navBtn, ...((isSandbox || sandboxStaging) ? { opacity: 0.45, cursor: 'default' } : {}) }}
+          style={{
+            ...s.navBtn,
+            ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
+          }}
           disabled={displayIndex >= flatTasks.length - 1}
           onClick={() => {
             if (isSandbox || sandboxStaging) return
@@ -187,11 +204,27 @@ export default function TaskNavigator({
             Deactivate Sandbox
           </button>
         ) : sandboxStaging ? (
-          <button className="btn-ghost" style={{ width: '100%', color: 'var(--colour-primary)', border: '1px solid var(--colour-primary)' }} onClick={onSandbox}>
+          <button
+            className="btn-ghost"
+            style={{
+              width: '100%',
+              color: 'var(--colour-primary)',
+              border: '1px solid var(--colour-primary)',
+            }}
+            onClick={onSandbox}
+          >
             Cancel Sandbox
           </button>
         ) : (
-          <button className="btn-ghost" style={{ width: '100%', color: 'var(--colour-primary)', border: '1px solid var(--colour-primary)' }} onClick={onSandbox}>
+          <button
+            className="btn-ghost"
+            style={{
+              width: '100%',
+              color: 'var(--colour-primary)',
+              border: '1px solid var(--colour-primary)',
+            }}
+            onClick={onSandbox}
+          >
             Sandbox
           </button>
         )}

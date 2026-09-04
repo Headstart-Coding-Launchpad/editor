@@ -5,15 +5,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import SessionsPanel from '../SessionsPanel'
 
 const firebaseDbMocks = vi.hoisted(() => ({
-  ref:     vi.fn((_db, path) => ({ path })),
+  ref: vi.fn((_db, path) => ({ path })),
   onValue: vi.fn(),
-  remove:  vi.fn(() => Promise.resolve()),
+  remove: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('firebase/database', () => ({
-  ref:     (...args) => firebaseDbMocks.ref(...args),
+  ref: (...args) => firebaseDbMocks.ref(...args),
   onValue: (...args) => firebaseDbMocks.onValue(...args),
-  remove:  (...args) => firebaseDbMocks.remove(...args),
+  remove: (...args) => firebaseDbMocks.remove(...args),
 }))
 
 vi.mock('firebase/firestore', () => ({
@@ -42,7 +42,7 @@ function fireSessions(sessionsById) {
 function fireLessons(lessons) {
   const lessonsCallback = onSnapshot.mock.calls[0]?.[1]
   act(() => {
-    lessonsCallback?.({ docs: lessons.map(l => ({ id: l.id, data: () => l })) })
+    lessonsCallback?.({ docs: lessons.map((l) => ({ id: l.id, data: () => l })) })
   })
 }
 
@@ -72,7 +72,7 @@ describe('SessionsPanel', () => {
     render(<SessionsPanel />)
     fireSessions({
       'py-intro': { state: 'active', createdAt: Date.now(), students: {} },
-      'html-1':   { state: 'ended', createdAt: Date.now(), students: {} },
+      'html-1': { state: 'ended', createdAt: Date.now(), students: {} },
     })
 
     expect(screen.getAllByText('py-intro').length).toBeGreaterThan(0)
@@ -105,7 +105,9 @@ describe('SessionsPanel', () => {
 
   it('shows a Paused chip for paused sessions', () => {
     render(<SessionsPanel />)
-    fireSessions({ 'py-intro': { state: 'active', isPaused: true, createdAt: Date.now(), students: {} } })
+    fireSessions({
+      'py-intro': { state: 'active', isPaused: true, createdAt: Date.now(), students: {} },
+    })
 
     expect(screen.getByText('Paused')).toBeInTheDocument()
   })

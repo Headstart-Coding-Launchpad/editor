@@ -8,8 +8,15 @@ function applySuffix(name, existing) {
   return `${name}-${n}`
 }
 
-export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, onGoSolo, waitingForSession = false, joinError = null }) {
-  const [value, setValue]       = useState('')
+export default function NameEntry({
+  lessonTitle,
+  existingNames = [],
+  onSubmit,
+  onGoSolo,
+  waitingForSession = false,
+  joinError = null,
+}) {
+  const [value, setValue] = useState('')
   const [confirmed, setConfirmed] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -51,23 +58,40 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
           {confirmed ? (
             <>
               <p style={s.note}>
-                The name <strong>{value.trim()}</strong> is already taken.
-                You&apos;ll join as <strong>{confirmed}</strong>.
+                The name <strong>{value.trim()}</strong> is already taken. You&apos;ll join as{' '}
+                <strong>{confirmed}</strong>.
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-primary" disabled={submitting} onClick={() => submit(confirmed)}>
+                <button
+                  className="btn-primary"
+                  disabled={submitting}
+                  onClick={() => submit(confirmed)}
+                >
                   {submitting ? 'Joining…' : `Join as ${confirmed}`}
                 </button>
-                <button className="btn-ghost" style={{ color: 'var(--colour-primary)', border: '1px solid var(--colour-primary)' }}
-                  disabled={submitting} onClick={() => setConfirmed(null)}>
+                <button
+                  className="btn-ghost"
+                  style={{
+                    color: 'var(--colour-primary)',
+                    border: '1px solid var(--colour-primary)',
+                  }}
+                  disabled={submitting}
+                  onClick={() => setConfirmed(null)}
+                >
                   Choose a different name
                 </button>
               </div>
             </>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            >
               {waitingForSession && (
-                <p style={s.waitNote}>Enter your name and we&apos;ll put you in the waiting room until your teacher starts.</p>
+                <p style={s.waitNote}>
+                  Enter your name and we&apos;ll put you in the waiting room until your teacher
+                  starts.
+                </p>
               )}
               <label style={s.label}>
                 What&apos;s your name?
@@ -77,7 +101,7 @@ export default function NameEntry({ lessonTitle, existingNames = [], onSubmit, o
                   type="text"
                   placeholder="e.g. Jamie"
                   value={value}
-                  onChange={e => setValue(e.target.value)}
+                  onChange={(e) => setValue(e.target.value)}
                   maxLength={30}
                   autoComplete="new-password"
                 />

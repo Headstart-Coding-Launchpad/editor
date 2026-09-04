@@ -38,7 +38,11 @@ function defaultProps(overrides = {}) {
     onBeforeTaskChange: vi.fn(),
     onPersonalSandboxExit: vi.fn(),
     onTaskReset: vi.fn(),
-    createIdentity: vi.fn((displayName, ts) => ({ anonymousId: 'anon-1', displayName, lastSessionTimestamp: ts })),
+    createIdentity: vi.fn((displayName, ts) => ({
+      anonymousId: 'anon-1',
+      displayName,
+      lastSessionTimestamp: ts,
+    })),
     updateTimestamp: vi.fn(),
     joinSession: vi.fn().mockResolvedValue(undefined),
     registerJoining: vi.fn().mockResolvedValue(undefined),
@@ -60,17 +64,25 @@ describe('useStudentPhase', () => {
     })
 
     it('goes to choice when no session and not soloMode', async () => {
-      const { result } = renderHook(() => useStudentPhase(defaultProps({ session: null, soloMode: false })))
+      const { result } = renderHook(() =>
+        useStudentPhase(defaultProps({ session: null, soloMode: false }))
+      )
       await waitFor(() => expect(result.current.phase).toBe('choice'))
     })
 
     it('goes to solo when no session and soloMode', async () => {
-      const { result } = renderHook(() => useStudentPhase(defaultProps({ session: null, soloMode: true })))
+      const { result } = renderHook(() =>
+        useStudentPhase(defaultProps({ session: null, soloMode: true }))
+      )
       await waitFor(() => expect(result.current.phase).toBe('solo'))
     })
 
     it('calls createIdentity when soloMode with no identity', async () => {
-      const createIdentity = vi.fn(() => ({ anonymousId: 'solo-id', displayName: 'Solo', lastSessionTimestamp: 0 }))
+      const createIdentity = vi.fn(() => ({
+        anonymousId: 'solo-id',
+        displayName: 'Solo',
+        lastSessionTimestamp: 0,
+      }))
       const props = defaultProps({ session: null, soloMode: true, identity: null, createIdentity })
       renderHook(() => useStudentPhase(props))
       await waitFor(() => expect(createIdentity).toHaveBeenCalledWith('Solo', expect.any(Number)))
@@ -79,10 +91,9 @@ describe('useStudentPhase', () => {
 
   describe('choice phase transitions', () => {
     it('transitions from choice to name-entry when a waiting session appears (fresh arrival)', async () => {
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session: null, identity: null }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({ session: null, identity: null }),
+      })
       await waitFor(() => expect(result.current.phase).toBe('choice'))
 
       rerender(defaultProps({ session: makeSession({ state: 'waiting' }), identity: null }))
@@ -91,26 +102,31 @@ describe('useStudentPhase', () => {
     })
 
     it('transitions from choice to name-entry when an active session appears with no matching identity', async () => {
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session: null, identity: null }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({ session: null, identity: null }),
+      })
       await waitFor(() => expect(result.current.phase).toBe('choice'))
 
-      rerender(defaultProps({ session: makeSession({ state: 'active', createdAt: 1000 }), identity: null }))
+      rerender(
+        defaultProps({ session: makeSession({ state: 'active', createdAt: 1000 }), identity: null })
+      )
 
       await waitFor(() => expect(result.current.phase).toBe('name-entry'))
     })
 
     it('transitions from choice straight to lesson when an active session appears matching a returning identity', async () => {
       const identity = makeIdentity({ lastSessionTimestamp: 1000 })
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session: null, identity }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({ session: null, identity }),
+      })
       await waitFor(() => expect(result.current.phase).toBe('choice'))
 
-      rerender(defaultProps({ session: makeSession({ state: 'active', createdAt: 1000, currentTaskId: 4 }), identity }))
+      rerender(
+        defaultProps({
+          session: makeSession({ state: 'active', createdAt: 1000, currentTaskId: 4 }),
+          identity,
+        })
+      )
 
       await waitFor(() => expect(result.current.phase).toBe('lesson'))
       expect(result.current.currentTaskId).toBe(4)
@@ -163,16 +179,30 @@ describe('useStudentPhase', () => {
     it('goes to choice from loading phase when session is ended and not soloMode', async () => {
       const session = makeSession({ state: 'ended' })
       const { result } = renderHook(() =>
-        useStudentPhase(defaultProps({ session, identity: null, identityLoaded: true, soloMode: false }))
+        useStudentPhase(
+          defaultProps({ session, identity: null, identityLoaded: true, soloMode: false })
+        )
       )
       await waitFor(() => expect(result.current.phase).toBe('choice'))
     })
 
     it('goes to solo from loading phase when session is ended and soloMode', async () => {
-      const createIdentity = vi.fn(() => ({ anonymousId: 'solo', displayName: 'Solo', lastSessionTimestamp: 0 }))
+      const createIdentity = vi.fn(() => ({
+        anonymousId: 'solo',
+        displayName: 'Solo',
+        lastSessionTimestamp: 0,
+      }))
       const session = makeSession({ state: 'ended' })
       const { result } = renderHook(() =>
-        useStudentPhase(defaultProps({ session, identity: null, identityLoaded: true, soloMode: true, createIdentity }))
+        useStudentPhase(
+          defaultProps({
+            session,
+            identity: null,
+            identityLoaded: true,
+            soloMode: true,
+            createIdentity,
+          })
+        )
       )
       await waitFor(() => expect(result.current.phase).toBe('solo'))
     })
@@ -227,19 +257,26 @@ describe('useStudentPhase', () => {
       const onTaskReset = vi.fn()
       const identity = makeIdentity()
       const session = makeSession({ state: 'active', currentTaskId: 1 })
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session, identity, onBeforeTaskChange, onPersonalSandboxExit, onTaskReset }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({
+          session,
+          identity,
+          onBeforeTaskChange,
+          onPersonalSandboxExit,
+          onTaskReset,
+        }),
+      })
       await waitFor(() => expect(result.current.phase).toBe('lesson'))
 
-      rerender(defaultProps({
-        session: makeSession({ state: 'active', currentTaskId: 2 }),
-        identity,
-        onBeforeTaskChange,
-        onPersonalSandboxExit,
-        onTaskReset,
-      }))
+      rerender(
+        defaultProps({
+          session: makeSession({ state: 'active', currentTaskId: 2 }),
+          identity,
+          onBeforeTaskChange,
+          onPersonalSandboxExit,
+          onTaskReset,
+        })
+      )
 
       await waitFor(() => expect(result.current.currentTaskId).toBe(2))
       expect(onBeforeTaskChange).toHaveBeenCalled()
@@ -253,10 +290,9 @@ describe('useStudentPhase', () => {
       const onPersonalSandboxExit = vi.fn()
       const identity = makeIdentity()
       const session = makeSession({ state: 'active', currentTaskId: 1 })
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session, identity, onPersonalSandboxExit }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({ session, identity, onPersonalSandboxExit }),
+      })
       await waitFor(() => expect(result.current.phase).toBe('lesson'))
 
       rerender(defaultProps({ session: null, identity, onPersonalSandboxExit }))
@@ -269,13 +305,14 @@ describe('useStudentPhase', () => {
       const onPersonalSandboxExit = vi.fn()
       const identity = makeIdentity()
       const session = makeSession({ state: 'active', currentTaskId: 1 })
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session, identity, onPersonalSandboxExit }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({ session, identity, onPersonalSandboxExit }),
+      })
       await waitFor(() => expect(result.current.phase).toBe('lesson'))
 
-      rerender(defaultProps({ session: makeSession({ state: 'ended' }), identity, onPersonalSandboxExit }))
+      rerender(
+        defaultProps({ session: makeSession({ state: 'ended' }), identity, onPersonalSandboxExit })
+      )
 
       await waitFor(() => expect(result.current.phase).toBe('ended'))
       expect(onPersonalSandboxExit).toHaveBeenCalled()
@@ -286,10 +323,9 @@ describe('useStudentPhase', () => {
     it('does not overwrite a session-driven currentTaskId when firstTaskId resolves', async () => {
       const identity = makeIdentity()
       const session = makeSession({ state: 'active', currentTaskId: 3 })
-      const { result, rerender } = renderHook(
-        (props) => useStudentPhase(props),
-        { initialProps: defaultProps({ session, identity, firstTaskId: null }) }
-      )
+      const { result, rerender } = renderHook((props) => useStudentPhase(props), {
+        initialProps: defaultProps({ session, identity, firstTaskId: null }),
+      })
       await waitFor(() => expect(result.current.currentTaskId).toBe(3))
       expect(result.current.phase).toBe('lesson')
 
@@ -303,7 +339,11 @@ describe('useStudentPhase', () => {
 
   describe('name entry handlers', () => {
     it('handleGoSolo creates solo identity and sets phase to solo', async () => {
-      const createIdentity = vi.fn(() => ({ anonymousId: 'solo', displayName: 'Solo', lastSessionTimestamp: 0 }))
+      const createIdentity = vi.fn(() => ({
+        anonymousId: 'solo',
+        displayName: 'Solo',
+        lastSessionTimestamp: 0,
+      }))
       const { result } = renderHook(() =>
         useStudentPhase(defaultProps({ session: null, createIdentity }))
       )
@@ -315,9 +355,7 @@ describe('useStudentPhase', () => {
     })
 
     it('handleWaitForTeacher sets phase to waiting when no active session', async () => {
-      const { result } = renderHook(() =>
-        useStudentPhase(defaultProps({ session: null }))
-      )
+      const { result } = renderHook(() => useStudentPhase(defaultProps({ session: null })))
       await waitFor(() => expect(result.current.phase).toBe('choice'))
 
       // manually set to a different phase to verify the handler
@@ -328,14 +366,28 @@ describe('useStudentPhase', () => {
 
     it('handleNameSubmit calls joinSession and transitions to lesson', async () => {
       const joinSession = vi.fn().mockResolvedValue(undefined)
-      const createIdentity = vi.fn(() => ({ anonymousId: 'a1', displayName: 'Bob', lastSessionTimestamp: 1000 }))
+      const createIdentity = vi.fn(() => ({
+        anonymousId: 'a1',
+        displayName: 'Bob',
+        lastSessionTimestamp: 1000,
+      }))
       const session = makeSession({ state: 'active', currentTaskId: 2 })
       const { result } = renderHook(() =>
-        useStudentPhase(defaultProps({ session, joinSession, createIdentity, identity: null, identityLoaded: true }))
+        useStudentPhase(
+          defaultProps({
+            session,
+            joinSession,
+            createIdentity,
+            identity: null,
+            identityLoaded: true,
+          })
+        )
       )
       await waitFor(() => expect(result.current.phase).toBe('name-entry'))
 
-      await act(async () => { await result.current.handleNameSubmit('Bob') })
+      await act(async () => {
+        await result.current.handleNameSubmit('Bob')
+      })
 
       expect(joinSession).toHaveBeenCalledWith('a1', 'Bob')
       expect(result.current.phase).toBe('lesson')
@@ -344,34 +396,65 @@ describe('useStudentPhase', () => {
 
     it('handleNameSubmit sets joinError and stays on name-entry when joinSession rejects', async () => {
       const joinSession = vi.fn().mockRejectedValue(new Error('permission_denied'))
-      const createIdentity = vi.fn(() => ({ anonymousId: 'a1', displayName: 'Bob', lastSessionTimestamp: 1000 }))
+      const createIdentity = vi.fn(() => ({
+        anonymousId: 'a1',
+        displayName: 'Bob',
+        lastSessionTimestamp: 1000,
+      }))
       const session = makeSession({ state: 'active', currentTaskId: 2 })
       const { result } = renderHook(() =>
-        useStudentPhase(defaultProps({ session, joinSession, createIdentity, identity: null, identityLoaded: true }))
+        useStudentPhase(
+          defaultProps({
+            session,
+            joinSession,
+            createIdentity,
+            identity: null,
+            identityLoaded: true,
+          })
+        )
       )
       await waitFor(() => expect(result.current.phase).toBe('name-entry'))
 
-      await act(async () => { await result.current.handleNameSubmit('Bob') })
+      await act(async () => {
+        await result.current.handleNameSubmit('Bob')
+      })
 
       expect(result.current.phase).toBe('name-entry')
       expect(result.current.joinError).toBeTruthy()
     })
 
     it('handleNameSubmit clears a prior joinError on a fresh attempt', async () => {
-      const joinSession = vi.fn()
+      const joinSession = vi
+        .fn()
         .mockRejectedValueOnce(new Error('permission_denied'))
         .mockResolvedValueOnce(undefined)
-      const createIdentity = vi.fn(() => ({ anonymousId: 'a1', displayName: 'Bob', lastSessionTimestamp: 1000 }))
+      const createIdentity = vi.fn(() => ({
+        anonymousId: 'a1',
+        displayName: 'Bob',
+        lastSessionTimestamp: 1000,
+      }))
       const session = makeSession({ state: 'active', currentTaskId: 2 })
       const { result } = renderHook(() =>
-        useStudentPhase(defaultProps({ session, joinSession, createIdentity, identity: null, identityLoaded: true }))
+        useStudentPhase(
+          defaultProps({
+            session,
+            joinSession,
+            createIdentity,
+            identity: null,
+            identityLoaded: true,
+          })
+        )
       )
       await waitFor(() => expect(result.current.phase).toBe('name-entry'))
 
-      await act(async () => { await result.current.handleNameSubmit('Bob') })
+      await act(async () => {
+        await result.current.handleNameSubmit('Bob')
+      })
       expect(result.current.joinError).toBeTruthy()
 
-      await act(async () => { await result.current.handleNameSubmit('Bob') })
+      await act(async () => {
+        await result.current.handleNameSubmit('Bob')
+      })
       expect(result.current.joinError).toBeNull()
       expect(result.current.phase).toBe('lesson')
     })

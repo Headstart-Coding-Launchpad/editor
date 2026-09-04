@@ -7,7 +7,7 @@ const MAX_SIGN_IN_ATTEMPTS = 3
 const RETRY_DELAY_MS = 800
 
 function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // Retries signInAnonymously a few times with a short, linearly-increasing delay before
@@ -42,18 +42,18 @@ export function useIdentity() {
   // page reloads so it can serve as the stable student key in the Realtime Database.
   useEffect(() => {
     let cancelled = false
-    const unsubscribe = onAuthStateChanged(auth, user => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setAuthUid(user.uid)
         setAuthError(false)
       } else {
         signInWithRetry()
-          .then(uid => {
+          .then((uid) => {
             if (cancelled) return
             setAuthUid(uid)
             setAuthError(false)
           })
-          .catch(err => {
+          .catch((err) => {
             if (cancelled) return
             console.warn('Anonymous sign-in failed after retries; falling back to local UUID:', err)
             setAuthUid(crypto.randomUUID())
@@ -70,7 +70,7 @@ export function useIdentity() {
   // Re-subscribes to auth state, which re-triggers the sign-in (and its retries) above.
   const retrySignIn = useCallback(() => {
     setAuthError(false)
-    setSignInAttempt(n => n + 1)
+    setSignInAttempt((n) => n + 1)
   }, [])
 
   // Load identity from localStorage once the Firebase UID is known.
@@ -104,7 +104,7 @@ export function useIdentity() {
   /** Create a fresh identity (new session or first ever visit). */
   function createIdentity(displayName, sessionTimestamp) {
     const id = {
-      anonymousId:          authUid,
+      anonymousId: authUid,
       displayName,
       lastSessionTimestamp: sessionTimestamp,
     }
@@ -126,5 +126,13 @@ export function useIdentity() {
     save(updated)
   }
 
-  return { identity, loaded, authError, retrySignIn, createIdentity, updateTimestamp, updateDisplayName }
+  return {
+    identity,
+    loaded,
+    authError,
+    retrySignIn,
+    createIdentity,
+    updateTimestamp,
+    updateDisplayName,
+  }
 }

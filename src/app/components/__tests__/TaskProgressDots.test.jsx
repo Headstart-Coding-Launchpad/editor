@@ -13,7 +13,9 @@ function stubRowWidth(width) {
   HTMLElement.prototype.getBoundingClientRect = function () {
     return { width, height: 32, top: 0, left: 0, right: width, bottom: 32, x: 0, y: 0, toJSON() {} }
   }
-  return () => { HTMLElement.prototype.getBoundingClientRect = original }
+  return () => {
+    HTMLElement.prototype.getBoundingClientRect = original
+  }
 }
 
 // Renders with a wrapper width comfortably wide enough to fit every dot, so
@@ -32,8 +34,8 @@ afterEach(() => {
 
 // Three simple standalone tasks used across most tests
 const THREE_TASKS = [
-  { id: 1, title: 'Task One',   type: 'task' },
-  { id: 2, title: 'Task Two',   type: 'task' },
+  { id: 1, title: 'Task One', type: 'task' },
+  { id: 2, title: 'Task Two', type: 'task' },
   { id: 3, title: 'Task Three', type: 'task' },
 ]
 
@@ -41,11 +43,7 @@ describe('TaskProgressDots', () => {
   describe('dot count', () => {
     it('renders the correct number of dots for standalone tasks', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={1}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={1} onDotClick={vi.fn()} />
       ).restore
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(3)
@@ -65,22 +63,14 @@ describe('TaskProgressDots', () => {
         { id: 3, title: 'Solo Task', type: 'task' },
       ]
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={tasks}
-          currentTaskId={1}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={tasks} currentTaskId={1} onDotClick={vi.fn()} />
       ).restore
       expect(screen.getAllByRole('button')).toHaveLength(2)
     })
 
     it('renders nothing (no buttons) when tasks is empty', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={[]}
-          currentTaskId={null}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={[]} currentTaskId={null} onDotClick={vi.fn()} />
       ).restore
       expect(screen.queryAllByRole('button')).toHaveLength(0)
     })
@@ -89,11 +79,7 @@ describe('TaskProgressDots', () => {
   describe('current task highlight', () => {
     it('shows the task number on the current dot (not a checkmark)', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={2}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={2} onDotClick={vi.fn()} />
       ).restore
       // The current task shows its 1-based index (2), not a checkmark
       const buttons = screen.getAllByRole('button')
@@ -103,11 +89,7 @@ describe('TaskProgressDots', () => {
 
     it('shows a checkmark on past task dots', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={3}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={3} onDotClick={vi.fn()} />
       ).restore
       const buttons = screen.getAllByRole('button')
       // Tasks 1 and 2 are past — both should show ✓
@@ -117,11 +99,7 @@ describe('TaskProgressDots', () => {
 
     it('shows the index number on future task dots', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={1}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={1} onDotClick={vi.fn()} />
       ).restore
       const buttons = screen.getAllByRole('button')
       // Task 3 is in the future — shows index 3
@@ -134,11 +112,7 @@ describe('TaskProgressDots', () => {
       const user = userEvent.setup()
       const onDotClick = vi.fn()
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={3}
-          onDotClick={onDotClick}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={3} onDotClick={onDotClick} />
       ).restore
       const buttons = screen.getAllByRole('button')
       // First button is task id 1 (past)
@@ -150,11 +124,7 @@ describe('TaskProgressDots', () => {
       const user = userEvent.setup()
       const onDotClick = vi.fn()
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={3}
-          onDotClick={onDotClick}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={3} onDotClick={onDotClick} />
       ).restore
       const buttons = screen.getAllByRole('button')
       await user.click(buttons[1])
@@ -170,7 +140,7 @@ describe('TaskProgressDots', () => {
           currentTaskId={1}
           isSolo={false}
           onDotClick={vi.fn()}
-        />,
+        />
       ).restore
       const buttons = screen.getAllByRole('button')
       // Task 3 is future and should be disabled
@@ -186,7 +156,7 @@ describe('TaskProgressDots', () => {
           currentTaskId={1}
           isSolo={false}
           onDotClick={onDotClick}
-        />,
+        />
       ).restore
       const buttons = screen.getAllByRole('button')
       // Click the last (future/disabled) button
@@ -201,7 +171,7 @@ describe('TaskProgressDots', () => {
           currentTaskId={1}
           isSolo={true}
           onDotClick={vi.fn()}
-        />,
+        />
       ).restore
       const buttons = screen.getAllByRole('button')
       // In solo mode, future dots are clickable (not disabled)
@@ -220,7 +190,7 @@ describe('TaskProgressDots', () => {
           isSolo={true}
           canSelectTask={canSelectTask}
           onDotClick={onDotClick}
-        />,
+        />
       ).restore
       const buttons = screen.getAllByRole('button')
       expect(buttons[2]).toBeDisabled()
@@ -232,11 +202,7 @@ describe('TaskProgressDots', () => {
   describe('title / aria-label', () => {
     it('sets aria-label on each dot to the task title', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={1}
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={1} onDotClick={vi.fn()} />
       ).restore
       expect(screen.getByRole('button', { name: 'Task One' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Task Two' })).toBeInTheDocument()
@@ -253,7 +219,7 @@ describe('TaskProgressDots', () => {
           isSolo
           pseudoTask={{ id: '__explainer__2', title: 'Task Two', beforeTaskId: 2 }}
           onDotClick={vi.fn()}
-        />,
+        />
       ).restore
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(4)
@@ -273,7 +239,7 @@ describe('TaskProgressDots', () => {
           isSolo
           pseudoTask={{ id: '__explainer__2', title: 'Task Two', beforeTaskId: 2 }}
           onDotClick={onDotClick}
-        />,
+        />
       ).restore
       await user.click(screen.getAllByRole('button')[1])
       expect(onDotClick).toHaveBeenCalledWith('__explainer__2')
@@ -290,7 +256,7 @@ describe('TaskProgressDots', () => {
           canSelectTask={() => false}
           pseudoTask={{ id: '__explainer__2', title: 'Task Two', beforeTaskId: 2 }}
           onDotClick={onDotClick}
-        />,
+        />
       ).restore
       const pseudoButton = screen.getAllByRole('button')[1]
       expect(pseudoButton).not.toBeDisabled()
@@ -306,19 +272,14 @@ describe('TaskProgressDots', () => {
           isSolo
           pseudoTask={{ id: '__explainer__missing', title: 'Ghost', beforeTaskId: 999 }}
           onDotClick={vi.fn()}
-        />,
+        />
       ).restore
       expect(screen.getAllByRole('button')).toHaveLength(3)
     })
 
     it('does not render an extra dot when pseudoTask is absent', () => {
       activeRestore = renderWide(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={2}
-          isSolo
-          onDotClick={vi.fn()}
-        />,
+        <TaskProgressDots tasks={THREE_TASKS} currentTaskId={2} isSolo onDotClick={vi.fn()} />
       ).restore
       expect(screen.getAllByRole('button')).toHaveLength(3)
     })
@@ -328,13 +289,7 @@ describe('TaskProgressDots', () => {
     it('renders a text counter instead of dots when the measured width is narrower than the dots need', () => {
       // 3 dots need 3*38-6 = 108px; 60px is not enough room
       activeRestore = stubRowWidth(60)
-      render(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={2}
-          onDotClick={vi.fn()}
-        />,
-      )
+      render(<TaskProgressDots tasks={THREE_TASKS} currentTaskId={2} onDotClick={vi.fn()} />)
       expect(screen.queryAllByRole('button')).toHaveLength(0)
       expect(screen.getByTitle('Task progress')).toBeInTheDocument()
     })
@@ -344,25 +299,13 @@ describe('TaskProgressDots', () => {
       // visibility:hidden, which still claims their full flex-basis and never
       // lets a sibling (the lesson title) reclaim that space.
       activeRestore = stubRowWidth(60)
-      render(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={2}
-          onDotClick={vi.fn()}
-        />,
-      )
+      render(<TaskProgressDots tasks={THREE_TASKS} currentTaskId={2} onDotClick={vi.fn()} />)
       expect(document.querySelectorAll('button')).toHaveLength(0)
     })
 
     it('switches back to dots after a window resize if there is now enough room', () => {
       const restoreNarrow = stubRowWidth(60)
-      render(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={2}
-          onDotClick={vi.fn()}
-        />,
-      )
+      render(<TaskProgressDots tasks={THREE_TASKS} currentTaskId={2} onDotClick={vi.fn()} />)
       expect(screen.queryAllByRole('button')).toHaveLength(0)
 
       restoreNarrow()
@@ -374,13 +317,7 @@ describe('TaskProgressDots', () => {
 
     it('re-collapses to the counter after a window resize if there is no longer enough room', () => {
       const restoreWide = stubRowWidth(2000)
-      render(
-        <TaskProgressDots
-          tasks={THREE_TASKS}
-          currentTaskId={2}
-          onDotClick={vi.fn()}
-        />,
-      )
+      render(<TaskProgressDots tasks={THREE_TASKS} currentTaskId={2} onDotClick={vi.fn()} />)
       expect(screen.getAllByRole('button')).toHaveLength(3)
 
       restoreWide()

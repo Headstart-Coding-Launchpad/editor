@@ -18,7 +18,8 @@ vi.mock('../../../shared/useIsMobile', () => ({
 
 vi.mock('../../../shared/lessonService', () => ({
   fetchLessonById: (...args) => mocks.fetchLessonById(...args),
-  applyLessonOverride: (lesson, overrideTasks) => (overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson),
+  applyLessonOverride: (lesson, overrideTasks) =>
+    overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson,
 }))
 
 vi.mock('../../hooks/useSession', () => ({
@@ -43,7 +44,12 @@ vi.mock('../../../modules/html/iframe', () => ({
 }))
 
 vi.mock('../../components/TopBar', () => ({
-  default: ({ lessonTitle, isSolo, right }) => <div>{lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}{right}</div>,
+  default: ({ lessonTitle, isSolo, right }) => (
+    <div>
+      {lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}
+      {right}
+    </div>
+  ),
 }))
 
 vi.mock('../../../modules/python/PythonEditor', () => ({
@@ -57,7 +63,11 @@ vi.mock('../../components/OutputPanel', () => ({
 vi.mock('../../components/TaskProgressDots', () => ({
   default: ({ tasks, onDotClick }) => (
     <div>
-      {tasks.map(task => <button key={task.id} type="button" onClick={() => onDotClick(task.id)}>{task.title}</button>)}
+      {tasks.map((task) => (
+        <button key={task.id} type="button" onClick={() => onDotClick(task.id)}>
+          {task.title}
+        </button>
+      ))}
     </div>
   ),
 }))
@@ -87,7 +97,9 @@ vi.mock('../../components/InformationTask', () => ({
 }))
 
 vi.mock('../../../modules/html/HtmlEditor', () => ({
-  default: ({ files = [] }) => <output data-testid="html-files">{files.map(file => file.content).join('\n')}</output>,
+  default: ({ files = [] }) => (
+    <output data-testid="html-files">{files.map((file) => file.content).join('\n')}</output>
+  ),
 }))
 
 vi.mock('../../components/CollapsibleIframePreview', () => ({
@@ -95,7 +107,7 @@ vi.mock('../../components/CollapsibleIframePreview', () => ({
 }))
 
 vi.mock('../../../modules/scratch/ScratchWorkspace', () => ({
-  default: props => {
+  default: (props) => {
     mocks.scratchWorkspace(props)
     return <div>Scratch</div>
   },
@@ -123,7 +135,12 @@ vi.mock('../../components/LiveActivityToast', () => ({
 }))
 
 vi.mock('../../../shared/SplitPane', () => ({
-  default: ({ left, right }) => <div>{left}{right}</div>,
+  default: ({ left, right }) => (
+    <div>
+      {left}
+      {right}
+    </div>
+  ),
 }))
 
 vi.mock('../../components/StudentEditorHeader', () => ({
@@ -291,20 +308,40 @@ describe('StudentView', () => {
         students: {},
       },
       loading: false,
-      registerPresence: vi.fn(), joinSession: vi.fn(),
-      writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-      writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(),
-      setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+      registerPresence: vi.fn(),
+      joinSession: vi.fn(),
+      writeStudentRun: vi.fn(),
+      writeStudentCode: vi.fn(),
+      writeStudentFiles: vi.fn(),
+      writeStudentOutput: vi.fn(),
+      writeStudentInteraction: vi.fn(),
+      writeStudentPersonalSandbox: vi.fn(),
+      setTaskId: vi.fn(),
+      setTeacherLive: vi.fn(),
+      updateTeacherLive: vi.fn(),
+      removeStudent: vi.fn(),
     })
-    localStorage.setItem('headstart_composed-1_1_index.html_student-1', JSON.stringify({ content: '<h1>Saved HTML</h1>' }))
+    localStorage.setItem(
+      'headstart_composed-1_1_index.html_student-1',
+      JSON.stringify({ content: '<h1>Saved HTML</h1>' })
+    )
 
     render(
       <StudentView
         lessonId="composed-1"
         lesson={{
-          id: 'composed-1', title: 'Composed', type: 'composed',
+          id: 'composed-1',
+          title: 'Composed',
+          type: 'composed',
           tasks: [
-            { id: 1, title: 'HTML task', moduleType: 'html', starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter HTML</h1>' }] },
+            {
+              id: 1,
+              title: 'HTML task',
+              moduleType: 'html',
+              starterFiles: [
+                { name: 'index.html', type: 'html', content: '<h1>Starter HTML</h1>' },
+              ],
+            },
             { id: 2, title: 'Python task', moduleType: 'python', starterCode: 'print("current")' },
           ],
         }}
@@ -314,39 +351,66 @@ describe('StudentView', () => {
     await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("current")'))
     await user.click(screen.getByRole('button', { name: 'HTML task' }))
 
-    await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Saved HTML</h1>'))
+    await waitFor(() =>
+      expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Saved HTML</h1>')
+    )
   })
 
   it('builds the HTML preview when teacher live switches composed modules', async () => {
     mocks.useSession.mockReturnValue({
       session: {
-        lessonId: 'composed-live', state: 'active', createdAt: 456, currentTaskId: 1, students: {},
+        lessonId: 'composed-live',
+        state: 'active',
+        createdAt: 456,
+        currentTaskId: 1,
+        students: {},
         teacherLive: {
-          active: true, source: 'teacher', taskId: 2, updatedAt: 789,
-          files: { 'index.html': '<h1>Teacher live</h1>' }, activeFile: 'index.html',
+          active: true,
+          source: 'teacher',
+          taskId: 2,
+          updatedAt: 789,
+          files: { 'index.html': '<h1>Teacher live</h1>' },
+          activeFile: 'index.html',
         },
       },
       loading: false,
-      registerPresence: vi.fn(), joinSession: vi.fn(),
-      writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-      writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(),
-      setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+      registerPresence: vi.fn(),
+      joinSession: vi.fn(),
+      writeStudentRun: vi.fn(),
+      writeStudentCode: vi.fn(),
+      writeStudentFiles: vi.fn(),
+      writeStudentOutput: vi.fn(),
+      writeStudentInteraction: vi.fn(),
+      writeStudentPersonalSandbox: vi.fn(),
+      setTaskId: vi.fn(),
+      setTeacherLive: vi.fn(),
+      updateTeacherLive: vi.fn(),
+      removeStudent: vi.fn(),
     })
 
     render(
       <StudentView
         lessonId="composed-live"
         lesson={{
-          id: 'composed-live', title: 'Composed live', type: 'composed',
+          id: 'composed-live',
+          title: 'Composed live',
+          type: 'composed',
           tasks: [
             { id: 1, title: 'Python task', moduleType: 'python', starterCode: 'print("current")' },
-            { id: 2, title: 'HTML task', moduleType: 'html', starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter</h1>' }] },
+            {
+              id: 2,
+              title: 'HTML task',
+              moduleType: 'html',
+              starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter</h1>' }],
+            },
           ],
         }}
       />
     )
 
-    await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Teacher live</h1>'))
+    await waitFor(() =>
+      expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Teacher live</h1>')
+    )
     expect(mocks.buildIframeSrc).toHaveBeenCalled()
   })
 
@@ -362,22 +426,39 @@ describe('StudentView', () => {
           ...sessionOverrides,
         },
         loading: false,
-        registerPresence: vi.fn(), joinSession: vi.fn(),
-        writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-        writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(), writeStudentPresence: vi.fn(),
-        setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
       }
     }
 
     const scratchLesson = {
-      id: 'scratch-1-1', title: 'Scratch 1.1', type: 'scratch',
+      id: 'scratch-1-1',
+      title: 'Scratch 1.1',
+      type: 'scratch',
       tasks: [{ id: 1, title: 'Move', starterBlocks: null }],
     }
 
     it('passes a per-student highlight command down to ScratchWorkspace as highlightedPanes', async () => {
-      mocks.useSession.mockReturnValue(mkScratchSession({
-        students: { 'student-1': { teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 1 } } },
-      }))
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          students: {
+            'student-1': {
+              teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 1 },
+            },
+          },
+        })
+      )
 
       render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
 
@@ -393,9 +474,11 @@ describe('StudentView', () => {
     })
 
     it('passes a whole-class force command down to ScratchWorkspace as forcedPane/forcedPaneToken', async () => {
-      mocks.useSession.mockReturnValue(mkScratchSession({
-        teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
-      }))
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
+        })
+      )
 
       render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
 
@@ -406,10 +489,16 @@ describe('StudentView', () => {
     })
 
     it('prefers whichever of the per-student or whole-class command was pushed more recently', async () => {
-      mocks.useSession.mockReturnValue(mkScratchSession({
-        students: { 'student-1': { teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 10 } } },
-        teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
-      }))
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          students: {
+            'student-1': {
+              teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 10 },
+            },
+          },
+          teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
+        })
+      )
 
       render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
 
@@ -432,10 +521,19 @@ describe('StudentView', () => {
           ...sessionOverrides,
         },
         loading: false,
-        registerPresence: vi.fn(), joinSession: vi.fn(),
-        writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-        writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(), writeStudentPresence: vi.fn(),
-        setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
         ...hookOverrides,
       }
     }
@@ -453,7 +551,7 @@ describe('StudentView', () => {
       })
     })
 
-    it('calls requestFullscreen from the student\'s own click and dismisses the prompt', async () => {
+    it("calls requestFullscreen from the student's own click and dismisses the prompt", async () => {
       const user = userEvent.setup()
       const requestFullscreen = vi.fn().mockResolvedValue(undefined)
       document.documentElement.requestFullscreen = requestFullscreen
@@ -464,7 +562,9 @@ describe('StudentView', () => {
       await user.click(goFullscreenBtn)
 
       expect(requestFullscreen).toHaveBeenCalledTimes(1)
-      expect(screen.queryByText('Your teacher would like you to go fullscreen')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Your teacher would like you to go fullscreen')
+      ).not.toBeInTheDocument()
     })
 
     it('dismisses the prompt without requesting fullscreen when Not now is clicked', async () => {
@@ -478,13 +578,18 @@ describe('StudentView', () => {
       await user.click(notNowBtn)
 
       expect(requestFullscreen).not.toHaveBeenCalled()
-      expect(screen.queryByText('Your teacher would like you to go fullscreen')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Your teacher would like you to go fullscreen')
+      ).not.toBeInTheDocument()
     })
 
     it('exits fullscreen automatically once the session ends', async () => {
       const exitFullscreen = vi.fn().mockResolvedValue(undefined)
       document.exitFullscreen = exitFullscreen
-      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: document.body })
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        value: document.body,
+      })
 
       mocks.useSession.mockReturnValue(mkLiveSession())
       const { rerender } = render(<StudentView lessonId="python-1-1" />)
@@ -511,10 +616,19 @@ describe('StudentView', () => {
           ...sessionOverrides,
         },
         loading: false,
-        registerPresence: vi.fn(), joinSession: vi.fn(),
-        writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-        writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(), writeStudentPresence: vi.fn(),
-        setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
         requestHelp: vi.fn(),
         ...hookOverrides,
       }
@@ -534,7 +648,9 @@ describe('StudentView', () => {
     })
 
     it('shows a requested state and disables the button once the teacher has been notified', async () => {
-      mocks.useSession.mockReturnValue(mkLiveSession({ students: { 'student-1': { needsHelp: true } } }))
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ students: { 'student-1': { needsHelp: true } } })
+      )
       render(<StudentView lessonId="python-1-1" />)
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
 
@@ -556,7 +672,12 @@ describe('StudentView', () => {
       title: 'Scratch 1.1',
       type: 'scratch',
       tasks: [
-        { id: 1, title: 'Move the cat', starterBlocks: null, explainer: 'Drag a move block onto the stage.' },
+        {
+          id: 1,
+          title: 'Move the cat',
+          starterBlocks: null,
+          explainer: 'Drag a move block onto the stage.',
+        },
         { id: 2, title: 'Turn the cat', starterBlocks: null, explainer: 'Now add a turn block.' },
       ],
     }
@@ -571,7 +692,9 @@ describe('StudentView', () => {
       await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
 
       // The nav count only bumps to 3 after the debounce window fires.
-      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), { timeout: 2000 })
+      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), {
+        timeout: 2000,
+      })
 
       await user.click(screen.getByRole('button', { name: 'Show Explainer' }))
 
@@ -587,7 +710,9 @@ describe('StudentView', () => {
       expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
 
       await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled(), { timeout: 2000 })
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled(), {
+        timeout: 2000,
+      })
 
       await user.click(screen.getByRole('button', { name: 'Previous' }))
 
@@ -608,9 +733,16 @@ describe('StudentView', () => {
           lessonId="python-1-1"
           forceSolo
           lesson={{
-            id: 'python-1-1', title: 'Python 1.1', type: 'python',
+            id: 'python-1-1',
+            title: 'Python 1.1',
+            type: 'python',
             tasks: [
-              { id: 1, title: 'Task one', starterCode: 'print("hi")', explainer: 'Read this first.' },
+              {
+                id: 1,
+                title: 'Task one',
+                starterCode: 'print("hi")',
+                explainer: 'Read this first.',
+              },
               { id: 2, title: 'Task two', starterCode: 'print("bye")', explainer: 'Then this.' },
             ],
           }}
@@ -623,7 +755,7 @@ describe('StudentView', () => {
       await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
 
       // Wait out the (Scratch-only) debounce window, then confirm the count never bumped.
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500))
       expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
     })
 
@@ -660,10 +792,24 @@ describe('StudentView', () => {
           lessonId="composed-scratch-1"
           forceSolo
           lesson={{
-            id: 'composed-scratch-1', title: 'Composed', type: 'composed',
+            id: 'composed-scratch-1',
+            title: 'Composed',
+            type: 'composed',
             tasks: [
-              { id: 1, title: 'Move the cat', moduleType: 'scratch', starterBlocks: null, explainer: 'Drag a move block.' },
-              { id: 2, title: 'Turn the cat', moduleType: 'scratch', starterBlocks: null, explainer: 'Now turn.' },
+              {
+                id: 1,
+                title: 'Move the cat',
+                moduleType: 'scratch',
+                starterBlocks: null,
+                explainer: 'Drag a move block.',
+              },
+              {
+                id: 2,
+                title: 'Turn the cat',
+                moduleType: 'scratch',
+                starterBlocks: null,
+                explainer: 'Now turn.',
+              },
             ],
           }}
         />
@@ -674,7 +820,9 @@ describe('StudentView', () => {
 
       await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
 
-      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), { timeout: 2000 })
+      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), {
+        timeout: 2000,
+      })
     })
 
     it('does not add a pseudo-task for a composed lesson task whose module type is not scratch', async () => {
@@ -684,9 +832,17 @@ describe('StudentView', () => {
           lessonId="composed-python-1"
           forceSolo
           lesson={{
-            id: 'composed-python-1', title: 'Composed', type: 'composed',
+            id: 'composed-python-1',
+            title: 'Composed',
+            type: 'composed',
             tasks: [
-              { id: 1, title: 'Task one', moduleType: 'python', starterCode: 'print("hi")', explainer: 'Read this first.' },
+              {
+                id: 1,
+                title: 'Task one',
+                moduleType: 'python',
+                starterCode: 'print("hi")',
+                explainer: 'Read this first.',
+              },
             ],
           }}
         />
@@ -697,7 +853,7 @@ describe('StudentView', () => {
 
       await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
 
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500))
       expect(screen.getByText('Task 1 of 1')).toBeInTheDocument()
     })
   })

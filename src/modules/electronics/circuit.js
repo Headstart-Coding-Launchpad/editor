@@ -50,19 +50,34 @@ export const COMPONENT_LABELS = {
 
 export const COMPONENT_GROUPS = [
   { id: 'power', label: 'Power', types: ['battery', 'terminal'] },
-  { id: 'basics', label: 'Basics', types: ['resistor', 'led', 'push_button', 'slide_switch', 'potentiometer'] },
-  { id: 'outputs', label: 'Outputs', types: ['motor', 'servo_motor', 'buzzer', 'rgb_led', 'lcd1602'] },
+  {
+    id: 'basics',
+    label: 'Basics',
+    types: ['resistor', 'led', 'push_button', 'slide_switch', 'potentiometer'],
+  },
+  {
+    id: 'outputs',
+    label: 'Outputs',
+    types: ['motor', 'servo_motor', 'buzzer', 'rgb_led', 'lcd1602'],
+  },
   { id: 'control', label: 'Control', types: ['microcontroller', 'transistor', 'diode', 'sensor'] },
 ]
 
 export const COMPONENT_DESCRIPTIONS = {
-  microcontroller: 'A Micro Controller runs MicroPython and exposes configurable GPIO pins that can connect code to the breadboard circuit.',
-  transistor: 'A transistor is an electronic switch that uses a tiny electrical signal from your code to safely control much larger amounts of power for components like motors.',
-  diode: 'A diode is a one-way street for electricity that protects your delicate circuit board by blocking current from flowing in the wrong direction.',
-  sensor: 'Sensors act as the "eyes and ears" of your circuit, measuring physical things in the real world (like light, temperature, or distance) and turning them into data your code can read.',
-  servo_motor: 'A servo is a smart motor that you can program to rotate to a precise angle (like exactly 90 degrees) and hold its position, making it perfect for robotic arms or steering.',
-  rgb_led: 'An RGB LED combines red, green, and blue lights into a single bulb, allowing your code to mix them together to create almost any color imaginable.',
-  lcd1602: 'A 16 by 2 character display. Connect VCC and GND for power, then wire SDA and SCL to two Micro Controller GPIO pins for I²C text output.',
+  microcontroller:
+    'A Micro Controller runs MicroPython and exposes configurable GPIO pins that can connect code to the breadboard circuit.',
+  transistor:
+    'A transistor is an electronic switch that uses a tiny electrical signal from your code to safely control much larger amounts of power for components like motors.',
+  diode:
+    'A diode is a one-way street for electricity that protects your delicate circuit board by blocking current from flowing in the wrong direction.',
+  sensor:
+    'Sensors act as the "eyes and ears" of your circuit, measuring physical things in the real world (like light, temperature, or distance) and turning them into data your code can read.',
+  servo_motor:
+    'A servo is a smart motor that you can program to rotate to a precise angle (like exactly 90 degrees) and hold its position, making it perfect for robotic arms or steering.',
+  rgb_led:
+    'An RGB LED combines red, green, and blue lights into a single bulb, allowing your code to mix them together to create almost any color imaginable.',
+  lcd1602:
+    'A 16 by 2 character display. Connect VCC and GND for power, then wire SDA and SCL to two Micro Controller GPIO pins for I²C text output.',
 }
 
 export const DEFAULT_AVAILABLE_COMPONENTS = [...COMPONENT_TYPES]
@@ -85,9 +100,30 @@ export const BATTERY_VOLTAGE_OPTIONS = [
 ]
 
 export const LED_COLOR_OPTIONS = [
-  { value: 'red', label: 'Red', fill: '#fb7185', offFill: '#fecdd3', stroke: '#be123c', glow: '#fb7185' },
-  { value: 'green', label: 'Green', fill: '#4ade80', offFill: '#bbf7d0', stroke: '#15803d', glow: '#22c55e' },
-  { value: 'blue', label: 'Blue', fill: '#60a5fa', offFill: '#bfdbfe', stroke: '#1d4ed8', glow: '#3b82f6' },
+  {
+    value: 'red',
+    label: 'Red',
+    fill: '#fb7185',
+    offFill: '#fecdd3',
+    stroke: '#be123c',
+    glow: '#fb7185',
+  },
+  {
+    value: 'green',
+    label: 'Green',
+    fill: '#4ade80',
+    offFill: '#bbf7d0',
+    stroke: '#15803d',
+    glow: '#22c55e',
+  },
+  {
+    value: 'blue',
+    label: 'Blue',
+    fill: '#60a5fa',
+    offFill: '#bfdbfe',
+    stroke: '#1d4ed8',
+    glow: '#3b82f6',
+  },
 ]
 
 const DEFAULT_RESISTANCE_OHMS = 330
@@ -169,7 +205,7 @@ export function serializeCircuit(circuit) {
 
 export function normalizeCircuit(circuit = DEFAULT_CIRCUIT) {
   const components = Array.isArray(circuit.components)
-    ? circuit.components.map(component => normalizeComponent(component, circuit))
+    ? circuit.components.map((component) => normalizeComponent(component, circuit))
     : []
   return {
     version: 1,
@@ -216,7 +252,7 @@ export function normalizeMicrocontrollerPins(value, fallback = MICROCONTROLLER_D
   const source = Array.isArray(value) && value.length > 0 ? value : fallback
   const seen = new Set()
   const pins = []
-  source.forEach(raw => {
+  source.forEach((raw) => {
     const pin = normalizeGpioPinName(raw)
     if (!pin || seen.has(pin)) return
     seen.add(pin)
@@ -248,7 +284,7 @@ export function makeNextGpioPinName(existingPins = []) {
 
 export function getMicrocontrollerComponent(circuit) {
   const normalized = normalizeCircuit(circuit)
-  return normalized.components.find(component => component.type === 'microcontroller') ?? null
+  return normalized.components.find((component) => component.type === 'microcontroller') ?? null
 }
 
 export function getMicrocontrollerCode(circuit) {
@@ -257,10 +293,14 @@ export function getMicrocontrollerCode(circuit) {
 }
 
 function normalizeGpioValues(value = {}, pins = []) {
-  const allowedPins = new Set(normalizeMicrocontrollerPins(pins, []).filter(isMicrocontrollerSignalPin))
-  return Object.fromEntries(Object.entries(value ?? {})
-    .map(([pin, nextValue]) => [normalizeGpioPinName(pin), nextValue ? 1 : 0])
-    .filter(([pin]) => pin && allowedPins.has(pin)))
+  const allowedPins = new Set(
+    normalizeMicrocontrollerPins(pins, []).filter(isMicrocontrollerSignalPin)
+  )
+  return Object.fromEntries(
+    Object.entries(value ?? {})
+      .map(([pin, nextValue]) => [normalizeGpioPinName(pin), nextValue ? 1 : 0])
+      .filter(([pin]) => pin && allowedPins.has(pin))
+  )
 }
 
 export function getMicrocontrollerGpioValues(circuit, componentLike = null) {
@@ -274,8 +314,12 @@ export function applyMicrocontrollerGpioValues(circuit, values = {}) {
   const next = cloneCircuit(circuit)
   const microcontroller = getMicrocontrollerComponent(next)
   if (!microcontroller) return next
-  const signalPins = normalizeMicrocontrollerPins(microcontroller.pins, []).filter(isMicrocontrollerSignalPin)
-  const nextValues = { ...normalizeGpioValues(next.controls?.[microcontroller.id]?.gpio, microcontroller.pins) }
+  const signalPins = normalizeMicrocontrollerPins(microcontroller.pins, []).filter(
+    isMicrocontrollerSignalPin
+  )
+  const nextValues = {
+    ...normalizeGpioValues(next.controls?.[microcontroller.id]?.gpio, microcontroller.pins),
+  }
   Object.entries(values ?? {}).forEach(([rawPin, value]) => {
     const pin = normalizeGpioPinName(rawPin)
     if (signalPins.includes(pin)) nextValues[pin] = value ? 1 : 0
@@ -295,19 +339,25 @@ export function getMicrocontrollerInputValues(circuit, componentLike = null) {
   const microcontroller = componentLike ?? getMicrocontrollerComponent(normalized)
   if (!microcontroller) return {}
   const analysis = analyzeCircuit(normalized)
-  const signalPins = normalizeMicrocontrollerPins(microcontroller.pins, []).filter(isMicrocontrollerSignalPin)
-  return Object.fromEntries(signalPins.map(pin => {
-    const ref = pinRef(microcontroller.id, pin)
-    const node = analysis.nodeForRef(ref)
-    if (analysis.voltageSources.some(source => source.positiveNode === node)) return [pin, 1]
-    if (analysis.voltageSources.some(source => source.negativeNode === node)) return [pin, 0]
-    const participatesInSolvedCircuit = analysis.solvedEdges.some(edge => edge.fromNode === node || edge.toNode === node)
-    if (!participatesInSolvedCircuit) return [pin, null]
-    const voltage = analysis.voltageForRef(ref)
-    if (voltage >= MICROCONTROLLER_SUPPLY_VOLTAGE * 0.6) return [pin, 1]
-    if (voltage <= MICROCONTROLLER_SUPPLY_VOLTAGE * 0.3) return [pin, 0]
-    return [pin, null]
-  }))
+  const signalPins = normalizeMicrocontrollerPins(microcontroller.pins, []).filter(
+    isMicrocontrollerSignalPin
+  )
+  return Object.fromEntries(
+    signalPins.map((pin) => {
+      const ref = pinRef(microcontroller.id, pin)
+      const node = analysis.nodeForRef(ref)
+      if (analysis.voltageSources.some((source) => source.positiveNode === node)) return [pin, 1]
+      if (analysis.voltageSources.some((source) => source.negativeNode === node)) return [pin, 0]
+      const participatesInSolvedCircuit = analysis.solvedEdges.some(
+        (edge) => edge.fromNode === node || edge.toNode === node
+      )
+      if (!participatesInSolvedCircuit) return [pin, null]
+      const voltage = analysis.voltageForRef(ref)
+      if (voltage >= MICROCONTROLLER_SUPPLY_VOLTAGE * 0.6) return [pin, 1]
+      if (voltage <= MICROCONTROLLER_SUPPLY_VOLTAGE * 0.3) return [pin, 0]
+      return [pin, null]
+    })
+  )
 }
 
 export function hasCircuitPath(circuitLike, fromRef, toRef) {
@@ -320,7 +370,7 @@ export function hasCircuitPath(circuitLike, fromRef, toRef) {
     if (current === toRef) return true
     if (!current || visited.has(current)) continue
     visited.add(current)
-    graph.get(current)?.forEach(next => queue.push(next))
+    graph.get(current)?.forEach((next) => queue.push(next))
   }
   return false
 }
@@ -331,17 +381,22 @@ export function getI2cLcdTargets(circuitLike, sdaPin, sclPin) {
   if (!microcontroller) return []
   const sdaRef = pinRef(microcontroller.id, normalizeGpioPinName(sdaPin))
   const sclRef = pinRef(microcontroller.id, normalizeGpioPinName(sclPin))
-  return circuit.components.filter(component => (
-    component.type === 'lcd1602' &&
-    getComponentState(circuit, component.id).powered &&
-    hasCircuitPath(circuit, sdaRef, pinRef(component.id, 'SDA')) &&
-    hasCircuitPath(circuit, sclRef, pinRef(component.id, 'SCL'))
-  ))
+  return circuit.components.filter(
+    (component) =>
+      component.type === 'lcd1602' &&
+      getComponentState(circuit, component.id).powered &&
+      hasCircuitPath(circuit, sdaRef, pinRef(component.id, 'SDA')) &&
+      hasCircuitPath(circuit, sclRef, pinRef(component.id, 'SCL'))
+  )
 }
 
 function lcdControlState(control = {}) {
   return {
-    lines: [0, 1].map(row => String(control.lines?.[row] ?? '').slice(0, 16).padEnd(16, ' ')),
+    lines: [0, 1].map((row) =>
+      String(control.lines?.[row] ?? '')
+        .slice(0, 16)
+        .padEnd(16, ' ')
+    ),
     cursor: {
       col: Math.max(0, Math.min(15, Number(control.cursor?.col ?? 0) || 0)),
       row: Math.max(0, Math.min(1, Number(control.cursor?.row ?? 0) || 0)),
@@ -373,7 +428,7 @@ function writeLcdText(state, text) {
 export function applyI2cLcdEvent(circuitLike, event = {}) {
   const circuit = cloneCircuit(parseCircuit(circuitLike))
   const targets = getI2cLcdTargets(circuit, event.sda, event.scl)
-  targets.forEach(component => {
+  targets.forEach((component) => {
     let state = lcdControlState(circuit.controls?.[component.id])
     if (event.action === 'init' || event.action === 'clear') {
       state = { ...state, lines: [' '.repeat(16), ' '.repeat(16)], cursor: { col: 0, row: 0 } }
@@ -401,7 +456,7 @@ export function applyI2cLcdEvent(circuitLike, event = {}) {
 export function normalizeAvailableComponents(value) {
   if (!Array.isArray(value)) return [...DEFAULT_AVAILABLE_COMPONENTS]
   const seen = new Set()
-  return value.filter(type => {
+  return value.filter((type) => {
     if (!COMPONENT_TYPES.includes(type) || seen.has(type)) return false
     seen.add(type)
     return true
@@ -412,9 +467,17 @@ export function getWireColorForPins(from, to, selected = 'auto') {
   if (selected && selected !== 'auto') return selected
   const refs = `${from ?? ''}.${to ?? ''}`.toLowerCase()
   if (refs.includes('.green')) return '#16a34a'
-  if (refs.includes('.blue') || refs.includes('wiper') || refs.includes('signal') || refs.includes('base') || refs.includes('.gp')) return '#2563eb'
+  if (
+    refs.includes('.blue') ||
+    refs.includes('wiper') ||
+    refs.includes('signal') ||
+    refs.includes('base') ||
+    refs.includes('.gp')
+  )
+    return '#2563eb'
   if (refs.includes('positive') || refs.includes('anode') || refs.includes('.red')) return '#ef4444'
-  if (refs.includes('negative') || refs.includes('cathode') || refs.includes('emitter')) return '#111827'
+  if (refs.includes('negative') || refs.includes('cathode') || refs.includes('emitter'))
+    return '#111827'
   return '#f59e0b'
 }
 
@@ -424,14 +487,18 @@ export function findComponent(circuit, query) {
 
 export function findComponents(circuit, selector = {}) {
   const normalized = normalizeCircuit(circuit)
-  return normalized.components.filter(component => componentMatchesSelector(component, selector))
+  return normalized.components.filter((component) => componentMatchesSelector(component, selector))
 }
 
 function componentMatchesSelector(component, selector = {}) {
   const type = selector.type ?? selector.componentType ?? selector.typeName
   if (selector.id && component.id !== selector.id) return false
   if (type && component.type !== type) return false
-  if (selector.label && String(component.label ?? '').toLowerCase() !== String(selector.label).toLowerCase()) return false
+  if (
+    selector.label &&
+    String(component.label ?? '').toLowerCase() !== String(selector.label).toLowerCase()
+  )
+    return false
   return true
 }
 
@@ -443,7 +510,11 @@ function internalConnections(component, controls, mode = 'signal') {
   if (mode === 'short') return []
   if (component.type === 'resistor') return [['a', 'b']]
   if (component.type === 'diode') return [['anode', 'cathode']]
-  if (component.type === 'potentiometer') return [['left', 'wiper'], ['wiper', 'right']]
+  if (component.type === 'potentiometer')
+    return [
+      ['left', 'wiper'],
+      ['wiper', 'right'],
+    ]
   return []
 }
 
@@ -452,12 +523,17 @@ function transistorBaseIsHigh(circuit, component) {
   const control = normalized.controls[component.id] ?? {}
   if (control.baseHigh === true) return true
   const sourceRefs = getVoltageSources(normalized)
-    .filter(source => source.voltage > 0)
-    .map(source => source.positiveRef)
+    .filter((source) => source.voltage > 0)
+    .map((source) => source.positiveRef)
     .filter(Boolean)
   if (sourceRefs.length === 0) return false
-  const graph = buildGraph(normalized, 'signal', { excludeComponents: new Set([component.id]), transistorsOpen: true })
-  return sourceRefs.some(sourceRef => graphConnects(graph, sourceRef, pinRef(component.id, 'base')))
+  const graph = buildGraph(normalized, 'signal', {
+    excludeComponents: new Set([component.id]),
+    transistorsOpen: true,
+  })
+  return sourceRefs.some((sourceRef) =>
+    graphConnects(graph, sourceRef, pinRef(component.id, 'base'))
+  )
 }
 
 function buildGraph(circuit, mode = 'signal', options = {}) {
@@ -470,8 +546,8 @@ function buildGraph(circuit, mode = 'signal', options = {}) {
     graph.get(x).add(y)
     graph.get(y).add(x)
   }
-  normalized.wires.forEach(wire => addEdge(wire.from, wire.to))
-  normalized.components.forEach(component => {
+  normalized.wires.forEach((wire) => addEdge(wire.from, wire.to))
+  normalized.components.forEach((component) => {
     if (options.excludeComponents?.has(component.id)) return
     if (component.type === 'transistor') {
       if (!options.transistorsOpen && transistorBaseIsHigh(normalized, component)) {
@@ -495,7 +571,7 @@ function graphConnects(graph, a, b) {
     if (current === b) return true
     if (visited.has(current)) continue
     visited.add(current)
-    graph.get(current)?.forEach(next => queue.push(next))
+    graph.get(current)?.forEach((next) => queue.push(next))
   }
   return false
 }
@@ -503,12 +579,12 @@ function graphConnects(graph, a, b) {
 function graphDistance(graph, starts, target) {
   if (!target) return Infinity
   const queue = starts.filter(Boolean)
-  const distances = new Map(queue.map(start => [start, 0]))
+  const distances = new Map(queue.map((start) => [start, 0]))
   while (queue.length) {
     const current = queue.shift()
     const distance = distances.get(current) ?? 0
     if (current === target) return distance
-    graph.get(current)?.forEach(next => {
+    graph.get(current)?.forEach((next) => {
       if (distances.has(next)) return
       distances.set(next, distance + 1)
       queue.push(next)
@@ -523,12 +599,12 @@ export function arePinsConnected(circuit, a, b) {
 
 export function getWireCurrentDirection(circuit, wire) {
   const normalized = normalizeCircuit(circuit)
-  const batteries = normalized.components.filter(component => component.type === 'battery')
+  const batteries = normalized.components.filter((component) => component.type === 'battery')
   if (!wire || batteries.length === 0) return 'forward'
 
   const graph = buildGraph(normalized)
-  const positiveRefs = batteries.map(component => pinRef(component.id, 'positive'))
-  const negativeRefs = batteries.map(component => pinRef(component.id, 'negative'))
+  const positiveRefs = batteries.map((component) => pinRef(component.id, 'positive'))
+  const negativeRefs = batteries.map((component) => pinRef(component.id, 'negative'))
   const fromPositiveDistance = graphDistance(graph, positiveRefs, wire.from)
   const toPositiveDistance = graphDistance(graph, positiveRefs, wire.to)
   const fromNegativeDistance = graphDistance(graph, negativeRefs, wire.from)
@@ -552,9 +628,16 @@ export function getWireCurrentDirection(circuit, wire) {
 function defaultPinFor(component, role = 'positive') {
   if (!component) return ''
   if (component.type === 'battery') return role === 'negative' ? 'negative' : 'positive'
-  if (component.type === 'led' || component.type === 'diode') return role === 'negative' ? 'cathode' : 'anode'
+  if (component.type === 'led' || component.type === 'diode')
+    return role === 'negative' ? 'cathode' : 'anode'
   if (component.type === 'rgb_led') return role === 'negative' ? 'cathode' : 'red'
-  if (component.type === 'motor' || component.type === 'servo_motor' || component.type === 'buzzer' || component.type === 'sensor') return role === 'negative' ? 'negative' : 'positive'
+  if (
+    component.type === 'motor' ||
+    component.type === 'servo_motor' ||
+    component.type === 'buzzer' ||
+    component.type === 'sensor'
+  )
+    return role === 'negative' ? 'negative' : 'positive'
   if (component.type === 'lcd1602') return role === 'negative' ? 'GND' : 'VCC'
   if (component.type === 'potentiometer') return role === 'negative' ? 'right' : 'left'
   if (component.type === 'transistor') return role === 'negative' ? 'emitter' : 'collector'
@@ -565,7 +648,7 @@ function defaultPinFor(component, role = 'positive') {
 function resolveEndpointRefs(circuit, endpoint = {}, role = 'positive') {
   const normalized = normalizeCircuit(circuit)
   const selector = endpoint.component ?? endpoint
-  return findComponents(normalized, selector).map(component => {
+  return findComponents(normalized, selector).map((component) => {
     const pin = endpoint.pin || selector.pin || defaultPinFor(component, role)
     return pinRef(component.id, pin)
   })
@@ -575,29 +658,35 @@ function hasPathBetweenEndpoints(circuit, from, to) {
   const graph = buildGraph(circuit)
   const fromRefs = resolveEndpointRefs(circuit, from, 'positive')
   const toRefs = resolveEndpointRefs(circuit, to, 'positive')
-  return fromRefs.some(fromRef => toRefs.some(toRef => graphConnects(graph, fromRef, toRef)))
+  return fromRefs.some((fromRef) => toRefs.some((toRef) => graphConnects(graph, fromRef, toRef)))
 }
 
 function pathIncludesComponent(circuit, from, to, selector) {
   const graph = buildGraph(circuit)
   const fromRefs = resolveEndpointRefs(circuit, from, 'positive')
   const toRefs = resolveEndpointRefs(circuit, to, 'positive')
-  const includedIds = new Set(findComponents(circuit, selector).map(component => component.id))
+  const includedIds = new Set(findComponents(circuit, selector).map((component) => component.id))
   if (includedIds.size === 0) return false
-  return [...includedIds].some(componentId => {
-    const graphWithoutComponent = buildGraph(circuit, 'signal', { excludeComponents: new Set([componentId]) })
-    return fromRefs.some(fromRef => toRefs.some(toRef => (
-      graphConnects(graph, fromRef, toRef) && !graphConnects(graphWithoutComponent, fromRef, toRef)
-    )))
+  return [...includedIds].some((componentId) => {
+    const graphWithoutComponent = buildGraph(circuit, 'signal', {
+      excludeComponents: new Set([componentId]),
+    })
+    return fromRefs.some((fromRef) =>
+      toRefs.some(
+        (toRef) =>
+          graphConnects(graph, fromRef, toRef) &&
+          !graphConnects(graphWithoutComponent, fromRef, toRef)
+      )
+    )
   })
 }
 
 export function circuitHasShort(circuit) {
   const normalized = normalizeCircuit(circuit)
   const graph = buildGraph(normalized, 'short')
-  return getVoltageSources(normalized).some(source => (
+  return getVoltageSources(normalized).some((source) =>
     graphConnects(graph, source.positiveRef, source.negativeRef)
-  ))
+  )
 }
 
 // Which wires and parts actually form the short, so the board can colour them rather
@@ -610,17 +699,18 @@ export function getShortCircuitPath(circuit) {
   const wireIds = new Set()
   const componentIds = new Set()
 
-  getVoltageSources(normalized).forEach(source => {
+  getVoltageSources(normalized).forEach((source) => {
     const path = graphPath(graph, source.positiveRef, source.negativeRef)
     if (!path) return
     componentIds.add(source.componentId)
     for (let index = 0; index < path.length - 1; index += 1) {
       const from = path[index]
       const to = path[index + 1]
-      const wire = normalized.wires.find(candidate => (
-        (candidate.from === from && candidate.to === to)
-        || (candidate.from === to && candidate.to === from)
-      ))
+      const wire = normalized.wires.find(
+        (candidate) =>
+          (candidate.from === from && candidate.to === to) ||
+          (candidate.from === to && candidate.to === from)
+      )
       if (wire) {
         wireIds.add(wire.id)
         continue
@@ -637,9 +727,9 @@ export function getShortCircuitPath(circuit) {
 
 function componentIdForRef(circuit, ref) {
   if (!ref) return null
-  const match = circuit.components.find(component => (
-    ref === component.id || ref.startsWith(`${component.id}.`)
-  ))
+  const match = circuit.components.find(
+    (component) => ref === component.id || ref.startsWith(`${component.id}.`)
+  )
   return match?.id ?? null
 }
 
@@ -660,7 +750,7 @@ function graphPath(graph, a, b) {
       }
       return path
     }
-    graph.get(current)?.forEach(next => {
+    graph.get(current)?.forEach((next) => {
       if (cameFrom.has(next)) return
       cameFrom.set(next, current)
       queue.push(next)
@@ -694,7 +784,7 @@ function getMicrocontrollerSupplyPins(component) {
 function getVoltageSources(circuit) {
   const normalized = normalizeCircuit(circuit)
   const sources = []
-  normalized.components.forEach(component => {
+  normalized.components.forEach((component) => {
     if (component.type === 'battery') {
       sources.push({
         id: component.id,
@@ -710,7 +800,7 @@ function getVoltageSources(circuit) {
     const { powerPins, groundPins } = getMicrocontrollerSupplyPins(component)
     const groundPin = groundPins[0]
     if (!groundPin) return
-    powerPins.forEach(powerPin => {
+    powerPins.forEach((powerPin) => {
       sources.push({
         id: `${component.id}.${powerPin}`,
         componentId: component.id,
@@ -733,11 +823,13 @@ function getVoltageSources(circuit) {
       })
     })
   })
-  return sources.filter(source => source.positiveRef && source.negativeRef && source.voltage > 0)
+  return sources.filter((source) => source.positiveRef && source.negativeRef && source.voltage > 0)
 }
 
 export function getComponentResistanceOhms(component) {
-  const value = Number(component?.props?.resistanceOhms ?? component?.props?.resistance ?? DEFAULT_RESISTANCE_OHMS)
+  const value = Number(
+    component?.props?.resistanceOhms ?? component?.props?.resistance ?? DEFAULT_RESISTANCE_OHMS
+  )
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_RESISTANCE_OHMS
 }
 
@@ -752,22 +844,44 @@ function addWeightedEdge(graph, from, to, resistanceOhms = 0) {
 function buildResistanceGraph(circuit) {
   const normalized = normalizeCircuit(circuit)
   const graph = new Map()
-  normalized.wires.forEach(wire => addWeightedEdge(graph, wire.from, wire.to, 0))
-  normalized.components.forEach(component => {
+  normalized.wires.forEach((wire) => addWeightedEdge(graph, wire.from, wire.to, 0))
+  normalized.components.forEach((component) => {
     if (component.type === 'resistor') {
-      addWeightedEdge(graph, pinRef(component.id, 'a'), pinRef(component.id, 'b'), getComponentResistanceOhms(component))
+      addWeightedEdge(
+        graph,
+        pinRef(component.id, 'a'),
+        pinRef(component.id, 'b'),
+        getComponentResistanceOhms(component)
+      )
       return
     }
     if (component.type === 'potentiometer') {
-      const rawValue = Number(normalized.controls[component.id]?.value ?? component.props?.value ?? 50)
+      const rawValue = Number(
+        normalized.controls[component.id]?.value ?? component.props?.value ?? 50
+      )
       const value = Math.min(100, Math.max(0, Number.isFinite(rawValue) ? rawValue : 50)) / 100
-      addWeightedEdge(graph, pinRef(component.id, 'left'), pinRef(component.id, 'wiper'), Math.round(POTENTIOMETER_RESISTANCE_OHMS * value))
-      addWeightedEdge(graph, pinRef(component.id, 'wiper'), pinRef(component.id, 'right'), Math.round(POTENTIOMETER_RESISTANCE_OHMS * (1 - value)))
+      addWeightedEdge(
+        graph,
+        pinRef(component.id, 'left'),
+        pinRef(component.id, 'wiper'),
+        Math.round(POTENTIOMETER_RESISTANCE_OHMS * value)
+      )
+      addWeightedEdge(
+        graph,
+        pinRef(component.id, 'wiper'),
+        pinRef(component.id, 'right'),
+        Math.round(POTENTIOMETER_RESISTANCE_OHMS * (1 - value))
+      )
       return
     }
     if (component.type === 'transistor') {
       if (transistorBaseIsHigh(normalized, component)) {
-        addWeightedEdge(graph, pinRef(component.id, 'collector'), pinRef(component.id, 'emitter'), 0)
+        addWeightedEdge(
+          graph,
+          pinRef(component.id, 'collector'),
+          pinRef(component.id, 'emitter'),
+          0
+        )
       }
       return
     }
@@ -781,7 +895,7 @@ function buildResistanceGraph(circuit) {
 class UnionFind {
   constructor(values = []) {
     this.parent = new Map()
-    values.forEach(value => this.add(value))
+    values.forEach((value) => this.add(value))
   }
 
   add(value) {
@@ -806,7 +920,11 @@ class UnionFind {
 }
 
 function idealConnectionsFor(component, circuit) {
-  if (component.type === 'push_button' || component.type === 'slide_switch' || component.type === 'terminal') {
+  if (
+    component.type === 'push_button' ||
+    component.type === 'slide_switch' ||
+    component.type === 'terminal'
+  ) {
     return internalConnections(component, circuit.controls, 'signal')
   }
   if (component.type === 'transistor' && transistorBaseIsHigh(circuit, component)) {
@@ -835,10 +953,10 @@ function addIdealEdge(graph, a, b) {
 function buildIdealGraph(circuit, excludedWireId = null) {
   const normalized = normalizeCircuit(circuit)
   const graph = new Map()
-  normalized.wires.forEach(wire => {
+  normalized.wires.forEach((wire) => {
     if (wire.id !== excludedWireId) addIdealEdge(graph, wire.from, wire.to)
   })
-  normalized.components.forEach(component => {
+  normalized.components.forEach((component) => {
     idealConnectionsFor(component, normalized).forEach(([a, b]) => {
       addIdealEdge(graph, pinRef(component.id, a), pinRef(component.id, b))
     })
@@ -854,7 +972,7 @@ function reachableIdealRefs(circuit, startRef, excludedWireId = null) {
     const current = queue.shift()
     if (!current || visited.has(current)) continue
     visited.add(current)
-    graph.get(current)?.forEach(next => queue.push(next))
+    graph.get(current)?.forEach((next) => queue.push(next))
   }
   return visited
 }
@@ -876,20 +994,47 @@ function addResistiveEdge(edges, component, fromPin, toPin, resistanceOhms) {
 function buildResistiveEdges(circuit) {
   const normalized = normalizeCircuit(circuit)
   const edges = []
-  normalized.components.forEach(component => {
+  normalized.components.forEach((component) => {
     if (component.type === 'resistor') {
       addResistiveEdge(edges, component, 'a', 'b', getComponentResistanceOhms(component))
     } else if (component.type === 'potentiometer') {
-      const rawValue = Number(normalized.controls[component.id]?.value ?? component.props?.value ?? 50)
+      const rawValue = Number(
+        normalized.controls[component.id]?.value ?? component.props?.value ?? 50
+      )
       const value = Math.min(100, Math.max(0, Number.isFinite(rawValue) ? rawValue : 50)) / 100
-      addResistiveEdge(edges, component, 'left', 'wiper', Math.max(1, Math.round(POTENTIOMETER_RESISTANCE_OHMS * value)))
-      addResistiveEdge(edges, component, 'wiper', 'right', Math.max(1, Math.round(POTENTIOMETER_RESISTANCE_OHMS * (1 - value))))
+      addResistiveEdge(
+        edges,
+        component,
+        'left',
+        'wiper',
+        Math.max(1, Math.round(POTENTIOMETER_RESISTANCE_OHMS * value))
+      )
+      addResistiveEdge(
+        edges,
+        component,
+        'wiper',
+        'right',
+        Math.max(1, Math.round(POTENTIOMETER_RESISTANCE_OHMS * (1 - value)))
+      )
     } else if (component.type === 'led') {
       addResistiveEdge(edges, component, 'anode', 'cathode', LOAD_RESISTANCE_OHMS.led)
     } else if (component.type === 'rgb_led') {
-      RGB_LED_PINS.forEach(pin => addResistiveEdge(edges, component, pin, 'cathode', LOAD_RESISTANCE_OHMS.rgb_led))
-    } else if (component.type === 'motor' || component.type === 'servo_motor' || component.type === 'buzzer' || component.type === 'sensor') {
-      addResistiveEdge(edges, component, 'positive', 'negative', LOAD_RESISTANCE_OHMS[component.type])
+      RGB_LED_PINS.forEach((pin) =>
+        addResistiveEdge(edges, component, pin, 'cathode', LOAD_RESISTANCE_OHMS.rgb_led)
+      )
+    } else if (
+      component.type === 'motor' ||
+      component.type === 'servo_motor' ||
+      component.type === 'buzzer' ||
+      component.type === 'sensor'
+    ) {
+      addResistiveEdge(
+        edges,
+        component,
+        'positive',
+        'negative',
+        LOAD_RESISTANCE_OHMS[component.type]
+      )
     } else if (component.type === 'lcd1602') {
       addResistiveEdge(edges, component, 'VCC', 'GND', LOAD_RESISTANCE_OHMS.lcd1602)
     } else if (component.type === 'diode') {
@@ -918,31 +1063,33 @@ function solveLinearSystem(matrix, vector) {
       for (let item = col; item <= size; item += 1) a[row][item] -= factor * a[col][item]
     }
   }
-  return a.map(row => Number.isFinite(row[size]) ? row[size] : 0)
+  return a.map((row) => (Number.isFinite(row[size]) ? row[size] : 0))
 }
 
 function analyzeCircuit(circuit) {
   const normalized = normalizeCircuit(circuit)
   const voltageSources = getVoltageSources(normalized)
-  const sourceBattery = normalized.components.find(component => component.type === 'battery') ?? null
-  const primarySource = voltageSources.find(source => source.type === 'battery') ?? voltageSources[0] ?? null
+  const sourceBattery =
+    normalized.components.find((component) => component.type === 'battery') ?? null
+  const primarySource =
+    voltageSources.find((source) => source.type === 'battery') ?? voltageSources[0] ?? null
   const sourceVoltage = primarySource?.voltage ?? 0
   const shorted = circuitHasShort(normalized)
   const uf = new UnionFind()
 
-  normalized.components.forEach(component => {
-    component.pins.forEach(pin => uf.add(pinRef(component.id, pin)))
+  normalized.components.forEach((component) => {
+    component.pins.forEach((pin) => uf.add(pinRef(component.id, pin)))
   })
-  normalized.wires.forEach(wire => {
+  normalized.wires.forEach((wire) => {
     uf.union(wire.from, wire.to)
   })
-  normalized.components.forEach(component => {
+  normalized.components.forEach((component) => {
     idealConnectionsFor(component, normalized).forEach(([a, b]) => {
       uf.union(pinRef(component.id, a), pinRef(component.id, b))
     })
   })
 
-  const sources = voltageSources.map(source => ({
+  const sources = voltageSources.map((source) => ({
     ...source,
     positiveNode: uf.find(source.positiveRef),
     negativeNode: uf.find(source.negativeRef),
@@ -952,11 +1099,13 @@ function analyzeCircuit(circuit) {
   const negativeRef = primarySource?.negativeRef ?? null
   const positiveNode = positiveRef ? uf.find(positiveRef) : null
   const negativeNode = negativeRef ? uf.find(negativeRef) : null
-  const resistiveEdges = buildResistiveEdges(normalized).map(edge => ({
-    ...edge,
-    fromNode: uf.find(edge.fromRef),
-    toNode: uf.find(edge.toRef),
-  })).filter(edge => edge.fromNode !== edge.toNode)
+  const resistiveEdges = buildResistiveEdges(normalized)
+    .map((edge) => ({
+      ...edge,
+      fromNode: uf.find(edge.fromRef),
+      toNode: uf.find(edge.toRef),
+    }))
+    .filter((edge) => edge.fromNode !== edge.toNode)
   const fixedVoltages = new Map()
   function setFixedVoltage(node, voltage) {
     if (!node || conflictingSources) return
@@ -968,7 +1117,7 @@ function analyzeCircuit(circuit) {
     fixedVoltages.set(node, voltage)
   }
   if (!shorted) {
-    sources.forEach(source => {
+    sources.forEach((source) => {
       if (source.positiveNode === source.negativeNode) {
         conflictingSources = true
         return
@@ -978,18 +1127,20 @@ function analyzeCircuit(circuit) {
     })
   }
 
-  const nodeSet = new Set(sources.flatMap(source => [source.positiveNode, source.negativeNode]).filter(Boolean))
-  resistiveEdges.forEach(edge => {
+  const nodeSet = new Set(
+    sources.flatMap((source) => [source.positiveNode, source.negativeNode]).filter(Boolean)
+  )
+  resistiveEdges.forEach((edge) => {
     nodeSet.add(edge.fromNode)
     nodeSet.add(edge.toNode)
   })
-  const unknownNodes = [...nodeSet].filter(node => node && !fixedVoltages.has(node))
+  const unknownNodes = [...nodeSet].filter((node) => node && !fixedVoltages.has(node))
   const indexByNode = new Map(unknownNodes.map((node, index) => [node, index]))
   const matrix = unknownNodes.map(() => unknownNodes.map(() => 0))
   const vector = unknownNodes.map(() => 0)
 
   if (sources.length > 0 && !shorted && !conflictingSources) {
-    resistiveEdges.forEach(edge => {
+    resistiveEdges.forEach((edge) => {
       const conductance = 1 / edge.resistanceOhms
       const fromIndex = indexByNode.get(edge.fromNode)
       const toIndex = indexByNode.get(edge.toNode)
@@ -1012,11 +1163,11 @@ function analyzeCircuit(circuit) {
   solveLinearSystem(matrix, vector).forEach((voltage, index) => {
     voltages.set(unknownNodes[index], voltage)
   })
-  nodeSet.forEach(node => {
+  nodeSet.forEach((node) => {
     if (node && !voltages.has(node)) voltages.set(node, 0)
   })
 
-  const solvedEdges = resistiveEdges.map(edge => {
+  const solvedEdges = resistiveEdges.map((edge) => {
     const fromVoltage = voltages.get(edge.fromNode) ?? 0
     const toVoltage = voltages.get(edge.toNode) ?? 0
     const voltage = fromVoltage - toVoltage
@@ -1030,14 +1181,15 @@ function analyzeCircuit(circuit) {
     }
   })
   const sourceCurrentMa = new Map()
-  sources.forEach(source => {
-    const currentMa = !shorted && !conflictingSources
-      ? solvedEdges.reduce((sum, edge) => {
-          if (edge.fromNode === source.positiveNode) return sum + Math.max(0, edge.currentMa)
-          if (edge.toNode === source.positiveNode) return sum + Math.max(0, -edge.currentMa)
-          return sum
-        }, 0)
-      : 0
+  sources.forEach((source) => {
+    const currentMa =
+      !shorted && !conflictingSources
+        ? solvedEdges.reduce((sum, edge) => {
+            if (edge.fromNode === source.positiveNode) return sum + Math.max(0, edge.currentMa)
+            if (edge.toNode === source.positiveNode) return sum + Math.max(0, -edge.currentMa)
+            return sum
+          }, 0)
+        : 0
     sourceCurrentMa.set(source.id, currentMa)
   })
   const totalCurrentMa = [...sourceCurrentMa.values()].reduce((sum, value) => sum + value, 0)
@@ -1048,7 +1200,10 @@ function analyzeCircuit(circuit) {
     primarySource,
     sourceBattery,
     sourceVoltage,
-    shorted: shorted || conflictingSources || sources.some(source => source.positiveNode === source.negativeNode),
+    shorted:
+      shorted ||
+      conflictingSources ||
+      sources.some((source) => source.positiveNode === source.negativeNode),
     positiveRef,
     negativeRef,
     positiveNode,
@@ -1057,24 +1212,30 @@ function analyzeCircuit(circuit) {
     solvedEdges,
     totalCurrentMa,
     sourceCurrentMa,
-    nodeForRef: ref => uf.find(ref),
-    voltageForRef: ref => voltages.get(uf.find(ref)) ?? 0,
+    nodeForRef: (ref) => uf.find(ref),
+    voltageForRef: (ref) => voltages.get(uf.find(ref)) ?? 0,
   }
 }
 
 function findSolvedEdge(analysis, componentId, fromPin, toPin) {
-  return analysis.solvedEdges.find(edge => (
-    edge.componentId === componentId &&
-    ((edge.fromPin === fromPin && edge.toPin === toPin) || (edge.fromPin === toPin && edge.toPin === fromPin))
-  )) ?? null
+  return (
+    analysis.solvedEdges.find(
+      (edge) =>
+        edge.componentId === componentId &&
+        ((edge.fromPin === fromPin && edge.toPin === toPin) ||
+          (edge.fromPin === toPin && edge.toPin === fromPin))
+    ) ?? null
+  )
 }
 
 function electricalOutputFor(analysis, component, positivePin, negativePin) {
   const edge = findSolvedEdge(analysis, component.id, positivePin, negativePin)
   const supplyVoltage = analysis.sourceVoltage || 0
-  const rawVoltage = edge ? edge.fromPin === positivePin ? edge.voltage : -edge.voltage : 0
+  const rawVoltage = edge ? (edge.fromPin === positivePin ? edge.voltage : -edge.voltage) : 0
   const voltage = Math.max(0, rawVoltage)
-  const currentMa = edge ? Math.max(0, edge.fromPin === positivePin ? edge.currentMa : -edge.currentMa) : 0
+  const currentMa = edge
+    ? Math.max(0, edge.fromPin === positivePin ? edge.currentMa : -edge.currentMa)
+    : 0
   const level = supplyVoltage > 0 ? clamp01(voltage / supplyVoltage) : 0
   return {
     voltage: roundMetric(voltage),
@@ -1096,10 +1257,17 @@ export function getCircuitMetrics(circuit) {
 
 export function getWireState(circuit, wireLike) {
   const normalized = normalizeCircuit(circuit)
-  const wire = typeof wireLike === 'string'
-    ? normalized.wires.find(item => item.id === wireLike)
-    : wireLike
-  if (!wire) return { energized: false, voltage: 0, currentMa: 0, fromVoltage: 0, toVoltage: 0, direction: 'forward' }
+  const wire =
+    typeof wireLike === 'string' ? normalized.wires.find((item) => item.id === wireLike) : wireLike
+  if (!wire)
+    return {
+      energized: false,
+      voltage: 0,
+      currentMa: 0,
+      fromVoltage: 0,
+      toVoltage: 0,
+      direction: 'forward',
+    }
 
   const analysis = analyzeCircuit(normalized)
   const fromVoltage = analysis.voltageForRef(wire.from)
@@ -1108,18 +1276,24 @@ export function getWireState(circuit, wireLike) {
     const side = reachableIdealRefs(normalized, ref, wire.id)
     if (side.has(otherRef)) return 0
     const crossingCurrents = []
-    analysis.solvedEdges.forEach(edge => {
-      if (side.has(edge.fromRef) !== side.has(edge.toRef)) crossingCurrents.push(Math.abs(edge.currentMa))
+    analysis.solvedEdges.forEach((edge) => {
+      if (side.has(edge.fromRef) !== side.has(edge.toRef))
+        crossingCurrents.push(Math.abs(edge.currentMa))
     })
-    if (analysis.positiveRef && analysis.negativeRef && side.has(analysis.positiveRef) !== side.has(analysis.negativeRef)) {
+    if (
+      analysis.positiveRef &&
+      analysis.negativeRef &&
+      side.has(analysis.positiveRef) !== side.has(analysis.negativeRef)
+    ) {
       crossingCurrents.push(Math.abs(analysis.totalCurrentMa))
     }
     return Math.max(0, ...crossingCurrents)
   }
   const fromSideCurrent = crossingCurrentFrom(wire.from, wire.to)
   const toSideCurrent = crossingCurrentFrom(wire.to, wire.from)
-  const possibleCurrents = [fromSideCurrent, toSideCurrent].filter(value => value > 0)
-  const currentMa = analysis.shorted || possibleCurrents.length === 0 ? 0 : Math.min(...possibleCurrents)
+  const possibleCurrents = [fromSideCurrent, toSideCurrent].filter((value) => value > 0)
+  const currentMa =
+    analysis.shorted || possibleCurrents.length === 0 ? 0 : Math.min(...possibleCurrents)
   const voltage = Math.max(Math.abs(fromVoltage), Math.abs(toVoltage))
   return {
     energized: !analysis.shorted && currentMa > 0.01,
@@ -1141,7 +1315,7 @@ function estimateSeriesResistance(circuit, fromRef, toRef) {
     const current = queue.shift()
     const currentDistance = distances.get(current) ?? Infinity
     if (current === toRef) return currentDistance
-    graph.get(current)?.forEach(edge => {
+    graph.get(current)?.forEach((edge) => {
       const nextDistance = currentDistance + edge.resistanceOhms
       if (nextDistance < (distances.get(edge.to) ?? Infinity)) {
         distances.set(edge.to, nextDistance)
@@ -1158,25 +1332,32 @@ function mixRgbChannels(channels) {
     green: [34, 197, 94],
     blue: [59, 130, 246],
   }
-  const mixed = channels.reduce((acc, channel) => {
-    const value = values[channel] ?? [0, 0, 0]
-    return acc.map((part, index) => Math.min(255, part + value[index]))
-  }, [0, 0, 0])
-  return `#${mixed.map(value => value.toString(16).padStart(2, '0')).join('')}`
+  const mixed = channels.reduce(
+    (acc, channel) => {
+      const value = values[channel] ?? [0, 0, 0]
+      return acc.map((part, index) => Math.min(255, part + value[index]))
+    },
+    [0, 0, 0]
+  )
+  return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`
 }
 
 export function getComponentState(circuit, componentId) {
   const normalized = normalizeCircuit(circuit)
-  const component = normalized.components.find(c => c.id === componentId)
+  const component = normalized.components.find((c) => c.id === componentId)
   if (!component) return {}
   const control = normalized.controls[componentId] ?? {}
   const analysis = analyzeCircuit(normalized)
   const refHasSourceRole = (ref, role) => {
     const node = analysis.nodeForRef(ref)
-    return analysis.voltageSources.some(source => node === (role === 'negative' ? source.negativeNode : source.positiveNode))
+    return analysis.voltageSources.some(
+      (source) => node === (role === 'negative' ? source.negativeNode : source.positiveNode)
+    )
   }
   if (component.type === 'battery') {
-    const source = analysis.voltageSources.find(item => item.componentId === component.id && item.type === 'battery')
+    const source = analysis.voltageSources.find(
+      (item) => item.componentId === component.id && item.type === 'battery'
+    )
     return {
       powered: false,
       voltage: getBatteryVoltage(component),
@@ -1185,7 +1366,7 @@ export function getComponentState(circuit, componentId) {
   }
   if (component.type === 'microcontroller') {
     const sourceCurrentMa = analysis.voltageSources
-      .filter(source => source.componentId === component.id)
+      .filter((source) => source.componentId === component.id)
       .reduce((sum, source) => sum + (analysis.sourceCurrentMa.get(source.id) ?? 0), 0)
     return {
       powered: true,
@@ -1200,15 +1381,46 @@ export function getComponentState(circuit, componentId) {
   }
   if (component.type === 'rgb_led') {
     const hasReturn = refHasSourceRole(pinRef(component.id, 'cathode'), 'negative')
-    const channelStates = RGB_LED_PINS.map(pin => ({ pin, output: electricalOutputFor(analysis, component, pin, 'cathode') }))
-    const channels = channelStates.filter(channel => channel.output.voltage > 0.01).map(channel => channel.pin)
+    const channelStates = RGB_LED_PINS.map((pin) => ({
+      pin,
+      output: electricalOutputFor(analysis, component, pin, 'cathode'),
+    }))
+    const channels = channelStates
+      .filter((channel) => channel.output.voltage > 0.01)
+      .map((channel) => channel.pin)
     const powered = channels.length > 0
-    const brightest = channelStates.reduce((best, channel) => channel.output.level > best.level ? channel.output : best, { voltage: 0, currentMa: 0, level: 0 })
+    const brightest = channelStates.reduce(
+      (best, channel) => (channel.output.level > best.level ? channel.output : best),
+      { voltage: 0, currentMa: 0, level: 0 }
+    )
     const outputLevel = powered
-      ? { ...brightest, seriesResistanceOhms: analysis.positiveRef && analysis.negativeRef ? estimateSeriesResistance(normalized, analysis.positiveRef, pinRef(component.id, channels[0] ?? 'red')) + estimateSeriesResistance(normalized, pinRef(component.id, 'cathode'), analysis.negativeRef) : 0 }
+      ? {
+          ...brightest,
+          seriesResistanceOhms:
+            analysis.positiveRef && analysis.negativeRef
+              ? estimateSeriesResistance(
+                  normalized,
+                  analysis.positiveRef,
+                  pinRef(component.id, channels[0] ?? 'red')
+                ) +
+                estimateSeriesResistance(
+                  normalized,
+                  pinRef(component.id, 'cathode'),
+                  analysis.negativeRef
+                )
+              : 0,
+        }
       : { voltage: 0, currentMa: 0, level: 0, seriesResistanceOhms: 0 }
     const active = powered && !circuitHasShort(normalized) && outputLevel.level > 0.03
-    return { on: active, powered, hasReturn, channels, color: mixRgbChannels(channels), brightness: Math.round(outputLevel.level * 100), ...outputLevel }
+    return {
+      on: active,
+      powered,
+      hasReturn,
+      channels,
+      color: mixRgbChannels(channels),
+      brightness: Math.round(outputLevel.level * 100),
+      ...outputLevel,
+    }
   }
   if (component.type === 'lcd1602') {
     const hasPositive = refHasSourceRole(pinRef(component.id, 'VCC'), 'positive')
@@ -1216,7 +1428,11 @@ export function getComponentState(circuit, componentId) {
     const measuredOutput = electricalOutputFor(analysis, component, 'VCC', 'GND')
     const powered = (hasPositive && hasReturn) || measuredOutput.currentMa > 0.01
     const controlLines = Array.isArray(control.lines) ? control.lines : []
-    const lines = [0, 1].map(row => String(controlLines[row] ?? '').slice(0, 16).padEnd(16, ' '))
+    const lines = [0, 1].map((row) =>
+      String(controlLines[row] ?? '')
+        .slice(0, 16)
+        .padEnd(16, ' ')
+    )
     return {
       powered: powered && !circuitHasShort(normalized),
       hasPositive,
@@ -1231,7 +1447,8 @@ export function getComponentState(circuit, componentId) {
     }
   }
   const positivePin = component.type === 'led' || component.type === 'diode' ? 'anode' : 'positive'
-  const negativePin = component.type === 'led' || component.type === 'diode' ? 'cathode' : 'negative'
+  const negativePin =
+    component.type === 'led' || component.type === 'diode' ? 'cathode' : 'negative'
   const hasPositive = refHasSourceRole(pinRef(component.id, positivePin), 'positive')
   const hasReturn = refHasSourceRole(pinRef(component.id, negativePin), 'negative')
   const measuredOutput = electricalOutputFor(analysis, component, positivePin, negativePin)
@@ -1239,19 +1456,74 @@ export function getComponentState(circuit, componentId) {
   const outputLevel = powered
     ? {
         ...measuredOutput,
-        seriesResistanceOhms: analysis.positiveRef && analysis.negativeRef ? estimateSeriesResistance(normalized, analysis.positiveRef, pinRef(component.id, positivePin)) + estimateSeriesResistance(normalized, pinRef(component.id, negativePin), analysis.negativeRef) : 0,
+        seriesResistanceOhms:
+          analysis.positiveRef && analysis.negativeRef
+            ? estimateSeriesResistance(
+                normalized,
+                analysis.positiveRef,
+                pinRef(component.id, positivePin)
+              ) +
+              estimateSeriesResistance(
+                normalized,
+                pinRef(component.id, negativePin),
+                analysis.negativeRef
+              )
+            : 0,
       }
     : { voltage: 0, currentMa: 0, level: 0, seriesResistanceOhms: 0 }
   const active = powered && !circuitHasShort(normalized) && outputLevel.level > 0.03
-  if (component.type === 'led') return { on: active, powered, hasPositive, hasReturn, brightness: Math.round(outputLevel.level * 100), ...outputLevel }
-  if (component.type === 'diode') return { powered: active, conducting: active, hasPositive, hasReturn, ...outputLevel }
-  if (component.type === 'motor') return { on: active, powered, hasPositive, hasReturn, speed: Math.round(outputLevel.level * 100), ...outputLevel }
-  if (component.type === 'servo_motor') return { on: active, powered, hasPositive, hasReturn, angle: Number(control.angle ?? component.props?.angle ?? 90), ...outputLevel }
-  if (component.type === 'buzzer') return { on: active, powered, hasPositive, hasReturn, volume: Math.round(outputLevel.level * 100), ...outputLevel }
-  if (component.type === 'push_button') return { pressed: control.pressed === true, closed: control.pressed === true }
+  if (component.type === 'led')
+    return {
+      on: active,
+      powered,
+      hasPositive,
+      hasReturn,
+      brightness: Math.round(outputLevel.level * 100),
+      ...outputLevel,
+    }
+  if (component.type === 'diode')
+    return { powered: active, conducting: active, hasPositive, hasReturn, ...outputLevel }
+  if (component.type === 'motor')
+    return {
+      on: active,
+      powered,
+      hasPositive,
+      hasReturn,
+      speed: Math.round(outputLevel.level * 100),
+      ...outputLevel,
+    }
+  if (component.type === 'servo_motor')
+    return {
+      on: active,
+      powered,
+      hasPositive,
+      hasReturn,
+      angle: Number(control.angle ?? component.props?.angle ?? 90),
+      ...outputLevel,
+    }
+  if (component.type === 'buzzer')
+    return {
+      on: active,
+      powered,
+      hasPositive,
+      hasReturn,
+      volume: Math.round(outputLevel.level * 100),
+      ...outputLevel,
+    }
+  if (component.type === 'push_button')
+    return { pressed: control.pressed === true, closed: control.pressed === true }
   if (component.type === 'slide_switch') return { closed: control.closed === true }
-  if (component.type === 'potentiometer') return { value: Number(control.value ?? component.props?.value ?? 50) }
-  if (component.type === 'sensor') return { powered: active, hasPositive, hasReturn, kind: component.props?.kind ?? 'light', value: Number(control.value ?? component.props?.value ?? 50), ...outputLevel }
+  if (component.type === 'potentiometer')
+    return { value: Number(control.value ?? component.props?.value ?? 50) }
+  if (component.type === 'sensor')
+    return {
+      powered: active,
+      hasPositive,
+      hasReturn,
+      kind: component.props?.kind ?? 'light',
+      value: Number(control.value ?? component.props?.value ?? 50),
+      ...outputLevel,
+    }
   if (component.type === 'resistor') {
     const edge = findSolvedEdge(analysis, component.id, 'a', 'b')
     return {
@@ -1282,14 +1554,22 @@ function setControlForCheck(circuit, component, active) {
 }
 
 function controlAffectsComponentPower(circuit, controlSelector, componentSelector) {
-  const controls = findComponents(circuit, controlSelector)
-    .filter(component => component.type === 'push_button' || component.type === 'slide_switch' || component.type === 'transistor')
+  const controls = findComponents(circuit, controlSelector).filter(
+    (component) =>
+      component.type === 'push_button' ||
+      component.type === 'slide_switch' ||
+      component.type === 'transistor'
+  )
   const targets = findComponents(circuit, componentSelector)
-  return controls.some(control => targets.some(target => {
-    const offCircuit = setControlForCheck(circuit, control, false)
-    const onCircuit = setControlForCheck(circuit, control, true)
-    return !componentCountsAsPowered(offCircuit, target) && componentCountsAsPowered(onCircuit, target)
-  }))
+  return controls.some((control) =>
+    targets.some((target) => {
+      const offCircuit = setControlForCheck(circuit, control, false)
+      const onCircuit = setControlForCheck(circuit, control, true)
+      return (
+        !componentCountsAsPowered(offCircuit, target) && componentCountsAsPowered(onCircuit, target)
+      )
+    })
+  )
 }
 
 export function evaluateElectronicsCheck(check, circuitLike) {
@@ -1302,11 +1582,16 @@ export function evaluateElectronicsCheck(check, circuitLike) {
     return findComponents(circuit, check.component).length >= minCount
   }
   if (check.type === 'circuit_component_powered') {
-    return findComponents(circuit, check.component).some(component => componentCountsAsPowered(circuit, component))
+    return findComponents(circuit, check.component).some((component) =>
+      componentCountsAsPowered(circuit, component)
+    )
   }
   if (check.type === 'circuit_component_unpowered') {
     const components = findComponents(circuit, check.component)
-    return components.length > 0 && components.every(component => !componentCountsAsPowered(circuit, component))
+    return (
+      components.length > 0 &&
+      components.every((component) => !componentCountsAsPowered(circuit, component))
+    )
   }
   if (check.type === 'circuit_control_affects_power') {
     return controlAffectsComponentPower(circuit, check.control, check.component)
@@ -1355,22 +1640,23 @@ export function makeComponent(type, index, position = { row: 2, col: 2 }) {
     position,
     rotation: 0,
     pins: COMPONENT_PINS[type] ?? ['a', 'b'],
-    props: type === 'potentiometer'
-      ? { value: 50 }
-      : type === 'resistor'
-        ? { resistanceOhms: DEFAULT_RESISTANCE_OHMS }
-        : type === 'led'
-          ? { color: 'red' }
-          : type === 'sensor'
-            ? { kind: 'light', value: 50 }
-            : type === 'servo_motor'
-              ? { angle: 90 }
-          : type === 'microcontroller'
-            ? { boardType: 'MicroPython', code: DEFAULT_MICROPYTHON_CODE }
-            : type === 'lcd1602'
-              ? { address: '0x27' }
-            : type === 'battery'
-                  ? { voltage: 5 }
-                  : {},
+    props:
+      type === 'potentiometer'
+        ? { value: 50 }
+        : type === 'resistor'
+          ? { resistanceOhms: DEFAULT_RESISTANCE_OHMS }
+          : type === 'led'
+            ? { color: 'red' }
+            : type === 'sensor'
+              ? { kind: 'light', value: 50 }
+              : type === 'servo_motor'
+                ? { angle: 90 }
+                : type === 'microcontroller'
+                  ? { boardType: 'MicroPython', code: DEFAULT_MICROPYTHON_CODE }
+                  : type === 'lcd1602'
+                    ? { address: '0x27' }
+                    : type === 'battery'
+                      ? { voltage: 5 }
+                      : {},
   }
 }

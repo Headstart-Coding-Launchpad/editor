@@ -4,7 +4,13 @@ import OutputPanel from './OutputPanel'
 import CollapsibleIframePreview from './CollapsibleIframePreview'
 import { baseStyles as s, interactionStyles as sm, QuestionPanel } from './quiz/quizUtils'
 import {
-  assembleCodeArrangement, getFragmentCodeById, getLineParts, getLines, getSlotIds, getTaskPool, isArrangementComplete,
+  assembleCodeArrangement,
+  getFragmentCodeById,
+  getLineParts,
+  getLines,
+  getSlotIds,
+  getTaskPool,
+  isArrangementComplete,
 } from '../../shared/codeArrange'
 
 // Matches ScratchWorkspace's live-cursor mirror (see CURSOR_THROTTLE_MS /
@@ -58,7 +64,10 @@ export default function CodeArrangeTask({
   const lines = getLines(task)
   const pool = getTaskPool(task)
   const slotIds = getSlotIds(task)
-  const state = selectedAnswer && typeof selectedAnswer === 'object' && !Array.isArray(selectedAnswer) ? selectedAnswer : {}
+  const state =
+    selectedAnswer && typeof selectedAnswer === 'object' && !Array.isArray(selectedAnswer)
+      ? selectedAnswer
+      : {}
   const placedIds = new Set(Object.values(state))
   const blocked = !!disabled || running
   const complete = isArrangementComplete(task, state)
@@ -75,7 +84,7 @@ export default function CodeArrangeTask({
       assembledRef.current = assembled
       onAssembledCodeChange?.(assembled)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task, stateKey])
 
   function publishState(next) {
@@ -109,8 +118,9 @@ export default function CodeArrangeTask({
 
   const dnd = useTileDragAndDrop({
     blocked,
-    getLabelForTile: fragmentId => getFragmentCodeById(task, fragmentId),
-    onDragStart: (event, tileId) => onDragCursor && emitDragCursorNow(event.clientX, event.clientY, tileId),
+    getLabelForTile: (fragmentId) => getFragmentCodeById(task, fragmentId),
+    onDragStart: (event, tileId) =>
+      onDragCursor && emitDragCursorNow(event.clientX, event.clientY, tileId),
     onDragEnd: () => onDragCursor?.(null),
   })
   const { draggingTile, dragOverTarget, touchSelectedTile } = dnd
@@ -123,14 +133,19 @@ export default function CodeArrangeTask({
   // looked wrong.
   const activeId = draggingTile || touchSelectedTile || externalDragCursor?.tileId || null
 
-  useEffect(() => () => { if (dragCursorRafRef.current) cancelAnimationFrame(dragCursorRafRef.current) }, [])
+  useEffect(
+    () => () => {
+      if (dragCursorRafRef.current) cancelAnimationFrame(dragCursorRafRef.current)
+    },
+    []
+  )
 
-  const remainingCount = slotIds.filter(id => state[id] == null || state[id] === '').length
+  const remainingCount = slotIds.filter((id) => state[id] == null || state[id] === '').length
   const runLabel = running
     ? 'Stop'
     : moduleType === 'python' && pyodideStatus === 'loading'
-    ? 'Getting Python ready...'
-    : 'Run'
+      ? 'Getting Python ready...'
+      : 'Run'
 
   function renderTargetContent(placedFragment, canReceive, emptyPlaceholder) {
     if (placedFragment) return placedFragment.code
@@ -138,7 +153,8 @@ export default function CodeArrangeTask({
     // impossible), but should still show the invite text while the mirrored
     // drag is active — it's mirroring the teacher's screen, not gating real
     // interaction here.
-    if (canReceive && (!blocked || externalDragCursor)) return touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here'
+    if (canReceive && (!blocked || externalDragCursor))
+      return touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here'
     return emptyPlaceholder
   }
 
@@ -149,7 +165,7 @@ export default function CodeArrangeTask({
       <div
         ref={boardRef}
         style={{ ...sm.fillWrap, position: 'relative' }}
-        onDragOver={event => {
+        onDragOver={(event) => {
           if (!draggingTile) return
           event.preventDefault()
           scheduleDragCursor(event.clientX, event.clientY, draggingTile)
@@ -168,7 +184,7 @@ export default function CodeArrangeTask({
             if (isWholeLineStyle) {
               const slotPart = parts[0]
               const placedFragmentId = state[slotPart.id]
-              const placedFragment = pool.find(fragment => fragment.id === placedFragmentId)
+              const placedFragment = pool.find((fragment) => fragment.id === placedFragmentId)
               const canReceive = !!(activeId && activeId !== placedFragmentId)
               const isDragHighlight = canReceive && dragOverTarget === slotPart.id && !blocked
               const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
@@ -180,18 +196,26 @@ export default function CodeArrangeTask({
                       style={{
                         ...ca.slot,
                         ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
-                        ...((isDragHighlight || isTapHighlight) ? sm.slotHighlight : {}),
+                        ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
                       }}
-                      onDragOver={event => dnd.handleTargetDragOver(event, slotPart.id)}
+                      onDragOver={(event) => dnd.handleTargetDragOver(event, slotPart.id)}
                       onDragLeave={dnd.clearDragOver}
-                      onDrop={event => dnd.handleTargetDrop(event, slotPart.id, state, publishState)}
+                      onDrop={(event) =>
+                        dnd.handleTargetDrop(event, slotPart.id, state, publishState)
+                      }
                       onClick={() => dnd.handleTargetClick(slotPart.id, state, publishState)}
                       draggable={!!placedFragment && !blocked}
-                      onDragStart={event => placedFragment && dnd.handleDragStart(event, placedFragmentId)}
+                      onDragStart={(event) =>
+                        placedFragment && dnd.handleDragStart(event, placedFragmentId)
+                      }
                       onDragEnd={dnd.handleDragEnd}
-                      title={placedFragment && !blocked ? 'Click to pick this line back up' : undefined}
+                      title={
+                        placedFragment && !blocked ? 'Click to pick this line back up' : undefined
+                      }
                     >
-                      <span style={ca.slotCode}>{renderTargetContent(placedFragment, canReceive, 'Empty line')}</span>
+                      <span style={ca.slotCode}>
+                        {renderTargetContent(placedFragment, canReceive, 'Empty line')}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -203,21 +227,25 @@ export default function CodeArrangeTask({
                 <div style={ca.rowMain}>
                   <span style={ca.rowIndex}>{index + 1}</span>
                   <div style={ca.inlineLine}>
-                    {parts.map((part, partIndex) => part?.type === 'slot' ? (
-                      <InlineSlot
-                        key={part.id}
-                        part={part}
-                        pool={pool}
-                        state={state}
-                        dnd={dnd}
-                        blocked={blocked}
-                        activeId={activeId}
-                        publishState={publishState}
-                        renderTargetContent={renderTargetContent}
-                      />
-                    ) : (
-                      <span key={partIndex} style={ca.textPart}>{part?.text ?? ''}</span>
-                    ))}
+                    {parts.map((part, partIndex) =>
+                      part?.type === 'slot' ? (
+                        <InlineSlot
+                          key={part.id}
+                          part={part}
+                          pool={pool}
+                          state={state}
+                          dnd={dnd}
+                          blocked={blocked}
+                          activeId={activeId}
+                          publishState={publishState}
+                          renderTargetContent={renderTargetContent}
+                        />
+                      ) : (
+                        <span key={partIndex} style={ca.textPart}>
+                          {part?.text ?? ''}
+                        </span>
+                      )
+                    )}
                   </div>
                 </div>
               </div>
@@ -226,39 +254,45 @@ export default function CodeArrangeTask({
         </div>
 
         {pool.length > 0 && (
-          <div style={sm.answerPool} onDragOver={dnd.handlePoolDragOver} onDrop={event => dnd.handlePoolDrop(event, state, publishState)}>
+          <div
+            style={sm.answerPool}
+            onDragOver={dnd.handlePoolDragOver}
+            onDrop={(event) => dnd.handlePoolDrop(event, state, publishState)}
+          >
             <div style={sm.poolLabel}>Code tiles</div>
             <div style={sm.poolTiles}>
-              {pool.filter(fragment => !placedIds.has(fragment.id)).map(fragment => (
-                <button
-                  key={fragment.id}
-                  type="button"
-                  style={{
-                    ...ca.tile,
-                    // touchSelectedTile (tap-to-place) is safe to style with the
-                    // "lifted" transform/box-shadow look — there's no native OS
-                    // drag session in progress. draggingTile must NOT get that
-                    // treatment: mutating an element's own transform while it is
-                    // the active source of a native HTML5 drag is a known way to
-                    // destabilise the drag session in Chromium (the browser keeps
-                    // re-hitting-testing the shifted/rescaled box against the
-                    // still-tracked grab point) — this is what made dragging feel
-                    // "wonky"/position-dependent. The lifted drag-image ghost
-                    // (setLiftedDragImage, above) already gives the "picked up"
-                    // visual feedback without touching this element.
-                    ...(touchSelectedTile === fragment.id ? sm.tileSelected : {}),
-                    ...(draggingTile === fragment.id ? ca.tileDragging : {}),
-                  }}
-                  draggable={!blocked}
-                  onDragStart={event => dnd.handleDragStart(event, fragment.id)}
-                  onDragEnd={dnd.handleDragEnd}
-                  onClick={() => dnd.handleTileClick(fragment.id)}
-                  disabled={blocked}
-                >
-                  {fragment.code}
-                </button>
-              ))}
-              {pool.filter(fragment => !placedIds.has(fragment.id)).length === 0 && (
+              {pool
+                .filter((fragment) => !placedIds.has(fragment.id))
+                .map((fragment) => (
+                  <button
+                    key={fragment.id}
+                    type="button"
+                    style={{
+                      ...ca.tile,
+                      // touchSelectedTile (tap-to-place) is safe to style with the
+                      // "lifted" transform/box-shadow look — there's no native OS
+                      // drag session in progress. draggingTile must NOT get that
+                      // treatment: mutating an element's own transform while it is
+                      // the active source of a native HTML5 drag is a known way to
+                      // destabilise the drag session in Chromium (the browser keeps
+                      // re-hitting-testing the shifted/rescaled box against the
+                      // still-tracked grab point) — this is what made dragging feel
+                      // "wonky"/position-dependent. The lifted drag-image ghost
+                      // (setLiftedDragImage, above) already gives the "picked up"
+                      // visual feedback without touching this element.
+                      ...(touchSelectedTile === fragment.id ? sm.tileSelected : {}),
+                      ...(draggingTile === fragment.id ? ca.tileDragging : {}),
+                    }}
+                    draggable={!blocked}
+                    onDragStart={(event) => dnd.handleDragStart(event, fragment.id)}
+                    onDragEnd={dnd.handleDragEnd}
+                    onClick={() => dnd.handleTileClick(fragment.id)}
+                    disabled={blocked}
+                  >
+                    {fragment.code}
+                  </button>
+                ))}
+              {pool.filter((fragment) => !placedIds.has(fragment.id)).length === 0 && (
                 <span style={sm.poolEmpty}>All tiles placed</span>
               )}
             </div>
@@ -272,7 +306,9 @@ export default function CodeArrangeTask({
               className={running ? 'btn-danger' : 'btn-primary'}
               style={ca.runBtn}
               onClick={running ? onStop : onRun}
-              disabled={!running && (!complete || (moduleType === 'python' && pyodideStatus === 'loading'))}
+              disabled={
+                !running && (!complete || (moduleType === 'python' && pyodideStatus === 'loading'))
+              }
             >
               {runLabel}
             </button>
@@ -286,7 +322,13 @@ export default function CodeArrangeTask({
 
         {moduleType === 'html' ? (
           <div style={ca.previewShell}>
-            <CollapsibleIframePreview src={iframeSrc} iframeRef={iframeRef} fill collapsed={false} onToggle={() => {}} />
+            <CollapsibleIframePreview
+              src={iframeSrc}
+              iframeRef={iframeRef}
+              fill
+              collapsed={false}
+              onToggle={() => {}}
+            />
           </div>
         ) : (
           <OutputPanel
@@ -317,7 +359,10 @@ function DragCursorMirror({ task, cursor }) {
   useEffect(() => {
     setStale(false)
     const remaining = DRAG_CURSOR_STALE_MS - (Date.now() - (cursor?.at ?? 0))
-    if (remaining <= 0) { setStale(true); return undefined }
+    if (remaining <= 0) {
+      setStale(true)
+      return undefined
+    }
     const t = setTimeout(() => setStale(true), remaining)
     return () => clearTimeout(t)
   }, [cursor?.at])
@@ -330,7 +375,11 @@ function DragCursorMirror({ task, cursor }) {
   return (
     <>
       <div data-testid="code-arrange-drag-dot" style={{ ...ca.dragDot, left, top }} />
-      {label && <div data-testid="code-arrange-drag-ghost" style={{ ...ca.dragGhost, left, top }}>{label}</div>}
+      {label && (
+        <div data-testid="code-arrange-drag-ghost" style={{ ...ca.dragGhost, left, top }}>
+          {label}
+        </div>
+      )}
     </>
   )
 }
@@ -338,9 +387,18 @@ function DragCursorMirror({ task, cursor }) {
 // A single inline blank rendered in place within the fixed line text: its
 // own small drop target showing the currently placed tile (or "___" while
 // empty), drawing from the task's one shared pool like every other slot.
-function InlineSlot({ part, pool, state, dnd, blocked, activeId, publishState, renderTargetContent }) {
+function InlineSlot({
+  part,
+  pool,
+  state,
+  dnd,
+  blocked,
+  activeId,
+  publishState,
+  renderTargetContent,
+}) {
   const placedFragmentId = state[part.id]
-  const placedFragment = pool.find(fragment => fragment.id === placedFragmentId)
+  const placedFragment = pool.find((fragment) => fragment.id === placedFragmentId)
   const canReceive = !!(activeId && activeId !== placedFragmentId)
   const isDragHighlight = canReceive && dnd.dragOverTarget === part.id && !blocked
   const isTapHighlight = canReceive && !!dnd.touchSelectedTile && !dnd.draggingTile && !blocked
@@ -350,14 +408,14 @@ function InlineSlot({ part, pool, state, dnd, blocked, activeId, publishState, r
       style={{
         ...ca.inlineSlot,
         ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
-        ...((isDragHighlight || isTapHighlight) ? sm.slotHighlight : {}),
+        ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
       }}
-      onDragOver={event => dnd.handleTargetDragOver(event, part.id)}
+      onDragOver={(event) => dnd.handleTargetDragOver(event, part.id)}
       onDragLeave={dnd.clearDragOver}
-      onDrop={event => dnd.handleTargetDrop(event, part.id, state, publishState)}
+      onDrop={(event) => dnd.handleTargetDrop(event, part.id, state, publishState)}
       onClick={() => dnd.handleTargetClick(part.id, state, publishState)}
       draggable={!!placedFragment && !blocked}
-      onDragStart={event => placedFragment && dnd.handleDragStart(event, placedFragmentId)}
+      onDragStart={(event) => placedFragment && dnd.handleDragStart(event, placedFragmentId)}
       onDragEnd={dnd.handleDragEnd}
       title={placedFragment && !blocked ? 'Click to pick this tile back up' : 'Drop a tile here'}
     >

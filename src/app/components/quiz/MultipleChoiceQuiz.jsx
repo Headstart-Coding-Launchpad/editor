@@ -1,9 +1,27 @@
 import React from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
-import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_COLOURS, OPTION_VERDICT_COLOURS, QuestionPanel, shrinkToFit } from './quizUtils'
+import {
+  baseStyles as s,
+  fitScratchQuizScale,
+  normalizeQuizAnswerText,
+  OPTION_COLOURS,
+  OPTION_VERDICT_COLOURS,
+  QuestionPanel,
+  shrinkToFit,
+} from './quizUtils'
 
-export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
+export default function MultipleChoiceQuiz({
+  task,
+  selectedAnswer,
+  onSelectAnswer,
+  submitted,
+  checkPassed,
+  disabled,
+  showQuestion,
+  showResult,
+  showCorrectAnswer,
+}) {
   const options = task?.options ?? []
   const correctId = task?.check?.type === 'answer_equals' ? task.check.value : null
   const revealAnswers = showCorrectAnswer && submitted && disabled && correctId
@@ -23,13 +41,16 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
     const content = optionsGridRef.current
     if (!container || !content) return undefined
 
-    const run = () => shrinkToFit({
-      setScale: scale => {
-        content.style.setProperty('--quiz-option-scale', String(scale))
-        setOptionsScale(scale)
-      },
-      isOverflowing: () => content.scrollHeight > container.clientHeight + 1 || content.scrollWidth > container.clientWidth + 1,
-    })
+    const run = () =>
+      shrinkToFit({
+        setScale: (scale) => {
+          content.style.setProperty('--quiz-option-scale', String(scale))
+          setOptionsScale(scale)
+        },
+        isOverflowing: () =>
+          content.scrollHeight > container.clientHeight + 1 ||
+          content.scrollWidth > container.clientWidth + 1,
+      })
 
     run()
     if (typeof ResizeObserver === 'undefined') return undefined
@@ -45,7 +66,12 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
       <div ref={optionsFrameRef} style={s.optionsFrame}>
-        <div ref={optionsGridRef} style={s.options} role="radiogroup" aria-label={task?.title ?? 'Quiz options'}>
+        <div
+          ref={optionsGridRef}
+          style={s.options}
+          role="radiogroup"
+          aria-label={task?.title ?? 'Quiz options'}
+        >
           {displayedOptions.map((option, index) => {
             const active = selectedAnswer === option.id
             const isCorrect = revealAnswers && option.id === correctId
@@ -54,7 +80,11 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
             // OPTION_COLOURS holds no success or error hue, so a selected card can never
             // be mistaken for a judged one.
             const colour = OPTION_COLOURS[index % OPTION_COLOURS.length]
-            const verdict = isCorrect ? OPTION_VERDICT_COLOURS.correct : isWrong ? OPTION_VERDICT_COLOURS.wrong : null
+            const verdict = isCorrect
+              ? OPTION_VERDICT_COLOURS.correct
+              : isWrong
+                ? OPTION_VERDICT_COLOURS.wrong
+                : null
 
             const bg = verdict ? verdict.background : active ? colour.active : colour.background
             const border = verdict ? verdict.border : colour.border
@@ -78,39 +108,54 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
                   background: bg,
                   borderColor: border,
                   color: textColour,
-                  ...((active || isCorrect || isWrong) ? s.optionActive : {}),
+                  ...(active || isCorrect || isWrong ? s.optionActive : {}),
                 }}
                 onClick={chooseOption}
-                onKeyDown={event => {
+                onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
                     chooseOption()
                   }
                 }}
               >
-                <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
+                <span
+                  style={{
+                    ...s.optionId,
+                    background:
+                      active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active,
+                    color: '#fff',
+                  }}
+                >
                   {option.id}
                 </span>
-                <div style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}>
-                  {usesScratchMarkdown
-                    ? (
-                      <ScratchQuizOptionContent kind={usesBlockMarkdown ? 'stack' : 'inline'}>
-                        {usesBlockMarkdown
-                          ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
-                          : (
-                            <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
-                              <InlineMarkdown content={optionText} />
-                            </span>
-                          )}
-                      </ScratchQuizOptionContent>
-                    )
-                    : usesBlockMarkdown
-                    ? <MarkdownRenderer content={optionText} textScale={1.2 * optionsScale} inheritColor={active || isCorrect || isWrong} />
-                    : (
-                      <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
-                        <InlineMarkdown content={optionText} />
-                      </span>
-                    )}
+                <div
+                  style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}
+                >
+                  {usesScratchMarkdown ? (
+                    <ScratchQuizOptionContent kind={usesBlockMarkdown ? 'stack' : 'inline'}>
+                      {usesBlockMarkdown ? (
+                        <MarkdownRenderer
+                          content={optionText}
+                          textScale={1.2}
+                          inheritColor={active || isCorrect || isWrong}
+                        />
+                      ) : (
+                        <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                          <InlineMarkdown content={optionText} />
+                        </span>
+                      )}
+                    </ScratchQuizOptionContent>
+                  ) : usesBlockMarkdown ? (
+                    <MarkdownRenderer
+                      content={optionText}
+                      textScale={1.2 * optionsScale}
+                      inheritColor={active || isCorrect || isWrong}
+                    />
+                  ) : (
+                    <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                      <InlineMarkdown content={optionText} />
+                    </span>
+                  )}
                 </div>
               </div>
             )
@@ -121,7 +166,11 @@ export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswe
         <div style={s.correctAnswerNote}>
           Correct answer:{' '}
           <span style={s.correctAnswerText}>
-            <InlineMarkdown content={normalizeQuizAnswerText(options.find(o => o.id === correctId)?.text ?? correctId)} />
+            <InlineMarkdown
+              content={normalizeQuizAnswerText(
+                options.find((o) => o.id === correctId)?.text ?? correctId
+              )}
+            />
           </span>
         </div>
       )}
@@ -169,7 +218,7 @@ function ScratchQuizOptionContent({ kind, children }) {
         contentWidth,
         contentHeight,
       })
-      setScale(current => Math.abs(current - nextScale) < 0.01 ? current : nextScale)
+      setScale((current) => (Math.abs(current - nextScale) < 0.01 ? current : nextScale))
     }
 
     measure()
@@ -203,8 +252,10 @@ function ScratchQuizOptionContent({ kind, children }) {
 
 function getMultipleChoiceSuggestion(task, selectedAnswer) {
   if (checkPassedFromTask(task, selectedAnswer)) return ''
-  const option = task?.options?.find(o => o.id === selectedAnswer)
-  return String(option?.feedback ?? option?.hint ?? task?.feedback ?? task?.check?.hint ?? '').trim()
+  const option = task?.options?.find((o) => o.id === selectedAnswer)
+  return String(
+    option?.feedback ?? option?.hint ?? task?.feedback ?? task?.check?.hint ?? ''
+  ).trim()
 }
 
 function checkPassedFromTask(task, selectedAnswer) {

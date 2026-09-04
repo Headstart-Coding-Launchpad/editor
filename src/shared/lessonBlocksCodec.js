@@ -24,7 +24,7 @@ const ARCADE_DESIGN_FIELDS = ['arcadeDesign', 'completeArcadeDesign']
 
 function mapTasks(tasks, transformJsonField) {
   if (!Array.isArray(tasks)) return tasks
-  return tasks.map(task => {
+  return tasks.map((task) => {
     if (!task || typeof task !== 'object') return task
     if (task.type === 'group') {
       return { ...task, subtasks: mapTasks(task.subtasks, transformJsonField) }
@@ -37,11 +37,13 @@ function mapTasks(tasks, transformJsonField) {
       if (next[field] != null) next[field] = transformJsonField(next[field])
     }
     if (Array.isArray(next.codeStages)) {
-      next.codeStages = next.codeStages.map(stage => {
+      next.codeStages = next.codeStages.map((stage) => {
         if (!stage || typeof stage !== 'object') return stage
         const encodedStage = { ...stage }
-        if (encodedStage.blocks != null) encodedStage.blocks = transformJsonField(encodedStage.blocks)
-        if (encodedStage.arcadeDesign != null) encodedStage.arcadeDesign = transformJsonField(encodedStage.arcadeDesign)
+        if (encodedStage.blocks != null)
+          encodedStage.blocks = transformJsonField(encodedStage.blocks)
+        if (encodedStage.arcadeDesign != null)
+          encodedStage.arcadeDesign = transformJsonField(encodedStage.arcadeDesign)
         return encodedStage
       })
     }

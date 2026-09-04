@@ -4,20 +4,38 @@ import { baseStyles } from './quizStyles'
 
 // Styling lives in quizStyles.js. Re-exported here so the quiz components can keep a
 // single import, and so this split stayed a move rather than a rename of 40 call sites.
-export { CONFIDENCE_COLOURS, OPTION_COLOURS, OPTION_VERDICT_COLOURS, baseStyles, interactionStyles, confidenceStyles } from './quizStyles'
+export {
+  CONFIDENCE_COLOURS,
+  OPTION_COLOURS,
+  OPTION_VERDICT_COLOURS,
+  baseStyles,
+  interactionStyles,
+  confidenceStyles,
+} from './quizStyles'
 
 export function getQuizOptionText(task, answerId) {
-  return normalizeQuizAnswerText(task?.options?.find(option => option.id === answerId)?.text ?? '')
+  return normalizeQuizAnswerText(
+    task?.options?.find((option) => option.id === answerId)?.text ?? ''
+  )
 }
 
 export function normalizeQuizAnswerText(value) {
   return String(value ?? '').replace(/\\r\\n|\\n|\\r/g, '\n')
 }
 
-export function fitScratchQuizScale({ preferredScale, availableWidth, availableHeight, contentWidth, contentHeight, minimumScale = 0.6 }) {
+export function fitScratchQuizScale({
+  preferredScale,
+  availableWidth,
+  availableHeight,
+  contentWidth,
+  contentHeight,
+  minimumScale = 0.6,
+}) {
   const limits = [preferredScale]
-  if (availableWidth > 0 && contentWidth > 0) limits.push(Math.max(0, (availableWidth - 8) / contentWidth))
-  if (availableHeight > 0 && contentHeight > 0) limits.push(Math.max(0, (availableHeight - 32) / contentHeight))
+  if (availableWidth > 0 && contentWidth > 0)
+    limits.push(Math.max(0, (availableWidth - 8) / contentWidth))
+  if (availableHeight > 0 && contentHeight > 0)
+    limits.push(Math.max(0, (availableHeight - 32) / contentHeight))
   return Math.max(minimumScale, Math.min(...limits))
 }
 
@@ -28,7 +46,13 @@ export const OPTIONS_MAX_SHRINK_STEPS = 8
 // Steps a font-size scale down (via setScale) until isOverflowing() reports the
 // content fits, or the floor/step budget is reached. Used to shrink quiz answer
 // options to fit the space left after the question, without shrinking the question.
-export function shrinkToFit({ setScale, isOverflowing, minScale = OPTIONS_MIN_SCALE, step = OPTIONS_SCALE_STEP, maxSteps = OPTIONS_MAX_SHRINK_STEPS }) {
+export function shrinkToFit({
+  setScale,
+  isOverflowing,
+  minScale = OPTIONS_MIN_SCALE,
+  step = OPTIONS_SCALE_STEP,
+  maxSteps = OPTIONS_MAX_SHRINK_STEPS,
+}) {
   let scale = 1
   setScale(scale)
   for (let i = 0; i < maxSteps && scale > minScale && isOverflowing(); i++) {
@@ -38,7 +62,6 @@ export function shrinkToFit({ setScale, isOverflowing, minScale = OPTIONS_MIN_SC
   return scale
 }
 
-
 export function stableHash(str) {
   let h = 0
   for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
@@ -46,7 +69,8 @@ export function stableHash(str) {
 }
 
 export function parseQuizAnswerState(selectedAnswer) {
-  if (selectedAnswer && typeof selectedAnswer === 'object' && !Array.isArray(selectedAnswer)) return selectedAnswer
+  if (selectedAnswer && typeof selectedAnswer === 'object' && !Array.isArray(selectedAnswer))
+    return selectedAnswer
   if (typeof selectedAnswer === 'string' && selectedAnswer) {
     try {
       const parsed = JSON.parse(selectedAnswer)
@@ -61,7 +85,14 @@ export function fillDragTileMatchesBlank(tile, blank) {
 }
 
 export function typedValueMatchesBlank(value, blank) {
-  return String(value ?? '').trim().toLowerCase() === String(blank?.answer ?? '').trim().toLowerCase()
+  return (
+    String(value ?? '')
+      .trim()
+      .toLowerCase() ===
+    String(blank?.answer ?? '')
+      .trim()
+      .toLowerCase()
+  )
 }
 
 // Parses fill-blank text into tokens:
@@ -130,7 +161,13 @@ export function parseFillBlankSegments(text, blanks) {
 
     const textStart = i
     i++
-    while (i < text.length && !text.startsWith('___', i) && !text.startsWith('```', i) && text[i] !== '`') i++
+    while (
+      i < text.length &&
+      !text.startsWith('___', i) &&
+      !text.startsWith('```', i) &&
+      text[i] !== '`'
+    )
+      i++
     tokens.push({ type: 'text', text: text.slice(textStart, i) })
   }
 
@@ -151,7 +188,7 @@ export function QuestionPanel({ task }) {
         content: task.explainer,
         textScale: 1.15,
         imageMaxHeight: 'min(240px, 32vh)',
-      }),
-    ),
+      })
+    )
   )
 }

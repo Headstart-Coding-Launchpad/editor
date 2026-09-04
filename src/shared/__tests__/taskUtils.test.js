@@ -27,8 +27,8 @@ import {
 
 const task1 = { id: 't1', title: 'Task 1' }
 const task2 = { id: 't2', title: 'Task 2' }
-const sub1  = { id: 's1', title: 'Group A - 1' }
-const sub2  = { id: 's2', title: 'Group A - 2' }
+const sub1 = { id: 's1', title: 'Group A - 1' }
+const sub2 = { id: 's2', title: 'Group A - 2' }
 const group = { id: 'g1', type: 'group', title: 'Group A', subtasks: [sub1, sub2] }
 
 // ─── flattenTasks ─────────────────────────────────────────────────────────────
@@ -78,9 +78,14 @@ describe('estimated task duration helpers', () => {
   it('totals estimates across standalone tasks and grouped subtasks', () => {
     const timedGroup = {
       ...group,
-      subtasks: [{ ...sub1, estimatedMinutes: 4.5 }, { ...sub2, estimatedMinutes: 6 }],
+      subtasks: [
+        { ...sub1, estimatedMinutes: 4.5 },
+        { ...sub2, estimatedMinutes: 6 },
+      ],
     }
-    expect(getTotalEstimatedMinutes([{ ...task1, estimatedMinutes: 5 }, timedGroup, task2])).toBe(15.5)
+    expect(getTotalEstimatedMinutes([{ ...task1, estimatedMinutes: 5 }, timedGroup, task2])).toBe(
+      15.5
+    )
   })
 
   it('formats minute totals for the builder', () => {
@@ -105,7 +110,9 @@ describe('task priority helpers', () => {
       ...group,
       subtasks: [{ ...sub1, priority: 'optional' }, sub2],
     }
-    expect(getTaskPriorityCounts([{ ...task1, priority: 'optional' }, optionalGroup, task2])).toEqual({
+    expect(
+      getTaskPriorityCounts([{ ...task1, priority: 'optional' }, optionalGroup, task2])
+    ).toEqual({
       core: 2,
       optional: 2,
     })
@@ -154,7 +161,7 @@ describe('explainer pseudo-task helpers', () => {
   it('inserts a pseudo task immediately before the matching task', () => {
     const pseudo = makeExplainerPseudoTask(task2)
     const result = insertPseudoTaskBefore([task1, task2], task2.id, pseudo)
-    expect(result.map(t => t.id)).toEqual([task1.id, pseudo.id, task2.id])
+    expect(result.map((t) => t.id)).toEqual([task1.id, pseudo.id, task2.id])
   })
 
   it('returns the original array unchanged when the target task is not found', () => {
@@ -264,7 +271,12 @@ describe('applyTaskUpdate', () => {
   it('strips obsolete _customTitle metadata from grouped subtask updates', () => {
     const customSub = { ...sub1, _customTitle: true }
     const updated = { ...customSub, explainer: 'Changed' }
-    const result = applyTaskUpdate([{ ...group, subtasks: [customSub, sub2] }], group, customSub, updated)
+    const result = applyTaskUpdate(
+      [{ ...group, subtasks: [customSub, sub2] }],
+      group,
+      customSub,
+      updated
+    )
     expect(result[0].subtasks[0]).not.toHaveProperty('_customTitle')
   })
 
@@ -290,7 +302,9 @@ describe('updateSubtaskTitles', () => {
 
   it('leaves grouped subtask titles independent of the group title', () => {
     const groupWithWrongTitles = {
-      id: 'g2', type: 'group', title: 'My Group',
+      id: 'g2',
+      type: 'group',
+      title: 'My Group',
       subtasks: [
         { id: 'x1', title: 'Wrong' },
         { id: 'x2', title: 'Also Wrong' },
@@ -304,7 +318,9 @@ describe('updateSubtaskTitles', () => {
 
   it('preserves subtask objects whose title is already correct', () => {
     const alreadyCorrect = {
-      id: 'g3', type: 'group', title: 'Group A',
+      id: 'g3',
+      type: 'group',
+      title: 'Group A',
       subtasks: [
         { id: 's1', title: 'Group A - 1' },
         { id: 's2', title: 'Group A - 2' },
@@ -317,7 +333,9 @@ describe('updateSubtaskTitles', () => {
 
   it('keeps original subtask title when group has no title', () => {
     const untitledGroup = {
-      id: 'g4', type: 'group', title: '',
+      id: 'g4',
+      type: 'group',
+      title: '',
       subtasks: [{ id: 'y1', title: 'Keep Me' }],
     }
     const [result] = updateSubtaskTitles([untitledGroup])
@@ -326,7 +344,9 @@ describe('updateSubtaskTitles', () => {
 
   it('strips obsolete _customTitle metadata from subtasks', () => {
     const g = {
-      id: 'g5', type: 'group', title: 'Task',
+      id: 'g5',
+      type: 'group',
+      title: 'Task',
       subtasks: [{ id: 'c1', title: 'My Custom Name', _customTitle: true }],
     }
     const [result] = updateSubtaskTitles([g])
@@ -374,18 +394,18 @@ describe('filterTasksByMode', () => {
 
   it('filters a mixed task list correctly for live mode', () => {
     const result = filterTasksByMode([both, liveOnly, soloOnly], 'live')
-    expect(result.map(t => t.id)).toEqual([1, 2])
+    expect(result.map((t) => t.id)).toEqual([1, 2])
   })
 
   it('filters a mixed task list correctly for solo mode', () => {
     const result = filterTasksByMode([both, liveOnly, soloOnly], 'solo')
-    expect(result.map(t => t.id)).toEqual([1, 3])
+    expect(result.map((t) => t.id)).toEqual([1, 3])
   })
 
   it('keeps group when some subtasks pass the filter', () => {
     const g = { id: 'g1', type: 'group', title: 'G', subtasks: [both, liveOnly, soloOnly] }
     const [result] = filterTasksByMode([g], 'live')
-    expect(result.subtasks.map(t => t.id)).toEqual([1, 2])
+    expect(result.subtasks.map((t) => t.id)).toEqual([1, 2])
   })
 
   it('drops a group when all its subtasks are filtered out', () => {
@@ -405,32 +425,68 @@ describe('filterTasksByMode', () => {
 describe('deriveTaskContext', () => {
   it('identifies python lessons', () => {
     const ctx = deriveTaskContext({ type: 'python' }, {})
-    expect(ctx).toMatchObject({ isPython: true, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: false })
+    expect(ctx).toMatchObject({
+      isPython: true,
+      isScratch: false,
+      isFilesystem: false,
+      isElectronics: false,
+      isHtml: false,
+    })
   })
 
   it('identifies scratch lessons', () => {
     const ctx = deriveTaskContext({ type: 'scratch' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: true, isFilesystem: false, isElectronics: false, isHtml: false })
+    expect(ctx).toMatchObject({
+      isPython: false,
+      isScratch: true,
+      isFilesystem: false,
+      isElectronics: false,
+      isHtml: false,
+    })
   })
 
   it('identifies filesystem lessons', () => {
     const ctx = deriveTaskContext({ type: 'filesystem' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: true, isElectronics: false, isHtml: false })
+    expect(ctx).toMatchObject({
+      isPython: false,
+      isScratch: false,
+      isFilesystem: true,
+      isElectronics: false,
+      isHtml: false,
+    })
   })
 
   it('identifies electronics lessons without treating them as html', () => {
     const ctx = deriveTaskContext({ type: 'electronics' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: true, isHtml: false })
+    expect(ctx).toMatchObject({
+      isPython: false,
+      isScratch: false,
+      isFilesystem: false,
+      isElectronics: true,
+      isHtml: false,
+    })
   })
 
   it('identifies html lessons explicitly', () => {
     const ctx = deriveTaskContext({ type: 'html' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: true })
+    expect(ctx).toMatchObject({
+      isPython: false,
+      isScratch: false,
+      isFilesystem: false,
+      isElectronics: false,
+      isHtml: true,
+    })
   })
 
   it('does not treat unknown lesson types as html', () => {
     const ctx = deriveTaskContext({ type: 'mystery' }, {})
-    expect(ctx).toMatchObject({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isHtml: false })
+    expect(ctx).toMatchObject({
+      isPython: false,
+      isScratch: false,
+      isFilesystem: false,
+      isElectronics: false,
+      isHtml: false,
+    })
   })
 
   it('identifies quiz task type', () => {
@@ -450,7 +506,17 @@ describe('deriveTaskContext', () => {
 
   it('handles null lesson and task gracefully', () => {
     const ctx = deriveTaskContext(null, null)
-    expect(ctx).toEqual({ isPython: false, isScratch: false, isFilesystem: false, isElectronics: false, isArcade: false, isHtml: false, isQuiz: false, isInformation: false, isSessionSandbox: false })
+    expect(ctx).toEqual({
+      isPython: false,
+      isScratch: false,
+      isFilesystem: false,
+      isElectronics: false,
+      isArcade: false,
+      isHtml: false,
+      isQuiz: false,
+      isInformation: false,
+      isSessionSandbox: false,
+    })
   })
 })
 
@@ -527,7 +593,10 @@ describe('buildStageOptions', () => {
   })
 
   it('uses local stage metadata labels and completeCircuit for electronics lessons', () => {
-    const task = { completeCircuit: { components: [], wires: [] }, codeStages: [{ label: 'Wire LED' }, {}] }
+    const task = {
+      completeCircuit: { components: [], wires: [] },
+      codeStages: [{ label: 'Wire LED' }, {}],
+    }
     const opts = buildStageOptions(task, 'electronics')
     expect(opts).toEqual([
       { value: 'starter', label: 'Starter board' },
@@ -558,7 +627,7 @@ describe('buildStageOptions', () => {
 
   it('does not append complete option when task has no complete content', () => {
     const opts = buildStageOptions({ completeCode: '' }, 'python')
-    expect(opts.every(o => o.value !== 'complete')).toBe(true)
+    expect(opts.every((o) => o.value !== 'complete')).toBe(true)
   })
 
   it('appends complete option when html task has completeFiles', () => {
@@ -579,7 +648,10 @@ describe('buildStageOptions', () => {
   })
 
   it('does not treat unknown lesson types as html when checking complete content', () => {
-    const opts = buildStageOptions({ completeFiles: [{ name: 'index.html', content: '' }] }, 'mystery')
+    const opts = buildStageOptions(
+      { completeFiles: [{ name: 'index.html', content: '' }] },
+      'mystery'
+    )
     expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
   })
 })

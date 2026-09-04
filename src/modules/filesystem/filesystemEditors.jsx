@@ -21,16 +21,32 @@ function fileExt(path) {
 }
 
 const s = {
-  label: { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)' },
+  label: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.88rem',
+    color: 'var(--colour-text)',
+  },
   input: {
-    fontFamily: 'var(--font-body)', fontSize: '0.9rem', padding: '6px 10px',
-    border: '1px solid var(--ui-border)', borderRadius: 6, background: '#fff',
-    color: 'var(--colour-text)', width: '100%', boxSizing: 'border-box',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    padding: '6px 10px',
+    border: '1px solid var(--ui-border)',
+    borderRadius: 6,
+    background: '#fff',
+    color: 'var(--colour-text)',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   smallBtn: {
-    background: 'none', border: '1px solid var(--ui-border)', borderRadius: 4,
-    cursor: 'pointer', fontSize: '0.75rem', padding: '2px 5px',
-    fontFamily: 'var(--font-body)', color: 'var(--colour-text)',
+    background: 'none',
+    border: '1px solid var(--ui-border)',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: '0.75rem',
+    padding: '2px 5px',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--colour-text)',
   },
 }
 
@@ -43,8 +59,12 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
   const addRef = useRef(null)
   const renameRef = useRef(null)
 
-  useEffect(() => { if (adding && addRef.current) addRef.current.focus() }, [adding])
-  useEffect(() => { if (renaming && renameRef.current) renameRef.current.focus() }, [renaming])
+  useEffect(() => {
+    if (adding && addRef.current) addRef.current.focus()
+  }, [adding])
+  useEffect(() => {
+    if (renaming && renameRef.current) renameRef.current.focus()
+  }, [renaming])
 
   const children = listChildren(fs, path).sort((a, b) => {
     const aIsDir = a.endsWith('/')
@@ -54,9 +74,15 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
   })
 
   function commitAdd(name) {
-    if (!name.trim()) { setAdding(null); return }
+    if (!name.trim()) {
+      setAdding(null)
+      return
+    }
     const type = adding
-    const raw = adding === 'dir' ? normaliseDirPath(path + name.trim()) : normaliseFilePath(path + name.trim())
+    const raw =
+      adding === 'dir'
+        ? normaliseDirPath(path + name.trim())
+        : normaliseFilePath(path + name.trim())
     onFsChange(createEntry(fs, raw, type))
     setAdding(null)
   }
@@ -79,8 +105,14 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
     <div style={{ marginLeft: depth > 0 ? 16 : 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
         <span
-          style={{ cursor: 'pointer', fontSize: '0.75rem', width: 14, textAlign: 'center', opacity: 0.6 }}
-          onClick={() => setExpanded(v => !v)}
+          style={{
+            cursor: 'pointer',
+            fontSize: '0.75rem',
+            width: 14,
+            textAlign: 'center',
+            opacity: 0.6,
+          }}
+          onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? '▾' : '▸'}
         </span>
@@ -90,27 +122,50 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
             ref={renameRef}
             defaultValue={entryName(path)}
             style={{ ...s.input, padding: '1px 4px', width: 120, fontSize: '0.8rem' }}
-            onBlur={e => commitRename(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') commitRename(e.target.value); if (e.key === 'Escape') setRenaming(false) }}
+            onBlur={(e) => commitRename(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename(e.target.value)
+              if (e.key === 'Escape') setRenaming(false)
+            }}
           />
         ) : (
-          <span style={{ fontSize: '0.82rem', fontFamily: 'var(--font-body)', flex: 1 }}>{name}</span>
+          <span style={{ fontSize: '0.82rem', fontFamily: 'var(--font-body)', flex: 1 }}>
+            {name}
+          </span>
         )}
         <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
           <button
             title="Add file"
             style={{ ...s.smallBtn }}
-            onClick={() => { setExpanded(true); setAdding('file') }}
-          >📄+</button>
+            onClick={() => {
+              setExpanded(true)
+              setAdding('file')
+            }}
+          >
+            📄+
+          </button>
           <button
             title="Add folder"
             style={{ ...s.smallBtn }}
-            onClick={() => { setExpanded(true); setAdding('dir') }}
-          >📁+</button>
+            onClick={() => {
+              setExpanded(true)
+              setAdding('dir')
+            }}
+          >
+            📁+
+          </button>
           {!isRoot && (
             <>
-              <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>✏️</button>
-              <button title="Delete" style={{ ...s.smallBtn, color: '#dc2626' }} onClick={handleDelete}>🗑</button>
+              <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>
+                ✏️
+              </button>
+              <button
+                title="Delete"
+                style={{ ...s.smallBtn, color: '#dc2626' }}
+                onClick={handleDelete}
+              >
+                🗑
+              </button>
             </>
           )}
         </div>
@@ -124,12 +179,15 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
                 ref={addRef}
                 placeholder={adding === 'file' ? 'filename.txt' : 'folder-name'}
                 style={{ ...s.input, padding: '2px 6px', width: 160, fontSize: '0.8rem' }}
-                onBlur={e => commitAdd(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') commitAdd(e.target.value); if (e.key === 'Escape') setAdding(null) }}
+                onBlur={(e) => commitAdd(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitAdd(e.target.value)
+                  if (e.key === 'Escape') setAdding(null)
+                }}
               />
             </div>
           )}
-          {children.map(childPath =>
+          {children.map((childPath) =>
             childPath.endsWith('/') ? (
               <FsTreeEditorNode
                 key={childPath}
@@ -144,9 +202,9 @@ function FsTreeEditorNode({ fs, path, onFsChange, storageAssets = [], depth = 0 
                 key={childPath}
                 path={childPath}
                 entry={fs[childPath]}
-                onRename={newName => onFsChange(renameEntry(fs, childPath, newName))}
+                onRename={(newName) => onFsChange(renameEntry(fs, childPath, newName))}
                 onDelete={() => onFsChange(deleteEntry(fs, childPath))}
-                onUpdate={updatedEntry => onFsChange({ ...fs, [childPath]: updatedEntry })}
+                onUpdate={(updatedEntry) => onFsChange({ ...fs, [childPath]: updatedEntry })}
                 storageAssets={storageAssets}
               />
             )
@@ -161,7 +219,9 @@ function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = 
   const [renaming, setRenaming] = useState(false)
   const [editingContents, setEditingContents] = useState(false)
   const ref = useRef(null)
-  useEffect(() => { if (renaming && ref.current) ref.current.focus() }, [renaming])
+  useEffect(() => {
+    if (renaming && ref.current) ref.current.focus()
+  }, [renaming])
 
   const ext = fileExt(path)
   const isImage = IMAGE_EXTS.has(ext)
@@ -182,33 +242,55 @@ function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = 
             ref={ref}
             defaultValue={entryName(path)}
             style={{ ...s.input, padding: '1px 4px', width: 140, fontSize: '0.8rem' }}
-            onBlur={e => commitRename(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') commitRename(e.target.value); if (e.key === 'Escape') setRenaming(false) }}
+            onBlur={(e) => commitRename(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename(e.target.value)
+              if (e.key === 'Escape') setRenaming(false)
+            }}
           />
         ) : (
-          <span style={{ fontSize: '0.82rem', fontFamily: 'var(--font-body)', flex: 1 }}>{entryName(path)}</span>
+          <span style={{ fontSize: '0.82rem', fontFamily: 'var(--font-body)', flex: 1 }}>
+            {entryName(path)}
+          </span>
         )}
         {hasContentsEditor && (
           <button
             title={editingContents ? 'Hide contents' : 'Edit contents'}
             style={{ ...s.smallBtn, color: editingContents ? 'var(--colour-primary)' : undefined }}
-            onClick={() => setEditingContents(v => !v)}
+            onClick={() => setEditingContents((v) => !v)}
           >
             {editingContents ? '▲' : 'contents'}
           </button>
         )}
-        <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>✏️</button>
-        <button title="Delete" style={{ ...s.smallBtn, color: '#dc2626' }} onClick={() => { if (window.confirm(`Delete "${entryName(path)}"?`)) onDelete() }}>🗑</button>
+        <button title="Rename" style={{ ...s.smallBtn }} onClick={() => setRenaming(true)}>
+          ✏️
+        </button>
+        <button
+          title="Delete"
+          style={{ ...s.smallBtn, color: '#dc2626' }}
+          onClick={() => {
+            if (window.confirm(`Delete "${entryName(path)}"?`)) onDelete()
+          }}
+        >
+          🗑
+        </button>
       </div>
 
       {editingContents && isText && (
         <div style={{ paddingLeft: 18, paddingBottom: 4 }}>
           <textarea
             value={entry?.content ?? ''}
-            onChange={e => onUpdate({ ...entry, content: e.target.value })}
+            onChange={(e) => onUpdate({ ...entry, content: e.target.value })}
             placeholder="File contents…"
             rows={3}
-            style={{ ...s.input, fontSize: '0.8rem', resize: 'vertical', minHeight: 52, fontFamily: 'var(--font-code)', padding: '4px 8px' }}
+            style={{
+              ...s.input,
+              fontSize: '0.8rem',
+              resize: 'vertical',
+              minHeight: 52,
+              fontFamily: 'var(--font-code)',
+              padding: '4px 8px',
+            }}
           />
         </div>
       )}
@@ -218,24 +300,37 @@ function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = 
           {storageAssets.length > 0 ? (
             <select
               value={entry?.src ?? ''}
-              onChange={e => onUpdate({ type: 'file', ...(e.target.value ? { src: e.target.value } : {}) })}
+              onChange={(e) =>
+                onUpdate({ type: 'file', ...(e.target.value ? { src: e.target.value } : {}) })
+              }
               style={{ ...s.input, fontSize: '0.8rem' }}
             >
               <option value="">— select from Firebase Storage —</option>
-              {storageAssets.map(a => (
-                <option key={a.url} value={a.url}>{a.name}</option>
+              {storageAssets.map((a) => (
+                <option key={a.url} value={a.url}>
+                  {a.name}
+                </option>
               ))}
             </select>
           ) : (
             <input
               value={entry?.src ?? ''}
-              onChange={e => onUpdate({ type: 'file', ...(e.target.value ? { src: e.target.value } : {}) })}
+              onChange={(e) =>
+                onUpdate({ type: 'file', ...(e.target.value ? { src: e.target.value } : {}) })
+              }
               placeholder="Image URL or path…"
               style={{ ...s.input, fontSize: '0.8rem' }}
             />
           )}
           {!storageAssets.length && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#9ca3af', marginTop: 3 }}>
+            <div
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                color: '#9ca3af',
+                marginTop: 3,
+              }}
+            >
               Upload images via Lesson Details → Storage Assets to enable the picker.
             </div>
           )}
@@ -251,8 +346,23 @@ export function FsTreeEditor({ label, fs, onFsChange, storageAssets = [] }) {
   return (
     <div>
       <div style={{ ...s.label, marginBottom: 6 }}>{label}</div>
-      <div style={{ border: '1px solid var(--ui-border)', borderRadius: 6, padding: '8px 10px', background: '#fbf9ff', maxHeight: 280, overflowY: 'auto' }}>
-        <FsTreeEditorNode fs={safeFsValue} path="/" onFsChange={onFsChange} storageAssets={storageAssets} depth={0} />
+      <div
+        style={{
+          border: '1px solid var(--ui-border)',
+          borderRadius: 6,
+          padding: '8px 10px',
+          background: '#fbf9ff',
+          maxHeight: 280,
+          overflowY: 'auto',
+        }}
+      >
+        <FsTreeEditorNode
+          fs={safeFsValue}
+          path="/"
+          onFsChange={onFsChange}
+          storageAssets={storageAssets}
+          depth={0}
+        />
       </div>
     </div>
   )
@@ -294,14 +404,28 @@ function fsUiFromCheck(rawCheck) {
   const check = normalizeFsCheck(rawCheck)
 
   if (check.type === 'fs_path') {
-    const subject = check.itemType === 'dir' ? 'folder_path' : check.itemType === 'any' ? 'any_path' : 'file_path'
+    const subject =
+      check.itemType === 'dir' ? 'folder_path' : check.itemType === 'any' ? 'any_path' : 'file_path'
     return { subject, aspect: 'path', operator: check.operator ?? 'exists' }
   }
-  if (check.type === 'fs_file_content') return { subject: 'file', aspect: 'content', operator: check.operator ?? 'contains' }
-  if (check.type === 'fs_file_line_count') return { subject: 'file', aspect: 'line_count', operator: check.operator ?? 'equals' }
-  if (check.type === 'fs_file_location') return { subject: 'file', aspect: 'location', operator: 'in_folder' }
-  if (check.type === 'fs_folder_count') return { subject: 'folder', aspect: check.itemType === 'dir' ? 'folder_count' : 'file_count', operator: check.operator ?? 'equals' }
-  if (check.type === 'fs_opened') return { subject: 'opened', aspect: check.itemType === 'file' ? 'file' : 'folder', operator: 'is_open' }
+  if (check.type === 'fs_file_content')
+    return { subject: 'file', aspect: 'content', operator: check.operator ?? 'contains' }
+  if (check.type === 'fs_file_line_count')
+    return { subject: 'file', aspect: 'line_count', operator: check.operator ?? 'equals' }
+  if (check.type === 'fs_file_location')
+    return { subject: 'file', aspect: 'location', operator: 'in_folder' }
+  if (check.type === 'fs_folder_count')
+    return {
+      subject: 'folder',
+      aspect: check.itemType === 'dir' ? 'folder_count' : 'file_count',
+      operator: check.operator ?? 'equals',
+    }
+  if (check.type === 'fs_opened')
+    return {
+      subject: 'opened',
+      aspect: check.itemType === 'file' ? 'file' : 'folder',
+      operator: 'is_open',
+    }
   return { subject: 'file_path', aspect: 'path', operator: 'exists' }
 }
 
@@ -317,22 +441,24 @@ function getFsSubjectOptions() {
 }
 
 function getFsAspectOptions(subject) {
-  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path') return [
-    { value: 'path', label: 'Path' },
-  ]
-  if (subject === 'file') return [
-    { value: 'content', label: 'Content' },
-    { value: 'line_count', label: 'Line count' },
-    { value: 'location', label: 'Location' },
-  ]
-  if (subject === 'folder') return [
-    { value: 'file_count', label: 'File count' },
-    { value: 'folder_count', label: 'Subfolder count' },
-  ]
-  if (subject === 'opened') return [
-    { value: 'file', label: 'File' },
-    { value: 'folder', label: 'Folder' },
-  ]
+  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path')
+    return [{ value: 'path', label: 'Path' }]
+  if (subject === 'file')
+    return [
+      { value: 'content', label: 'Content' },
+      { value: 'line_count', label: 'Line count' },
+      { value: 'location', label: 'Location' },
+    ]
+  if (subject === 'folder')
+    return [
+      { value: 'file_count', label: 'File count' },
+      { value: 'folder_count', label: 'Subfolder count' },
+    ]
+  if (subject === 'opened')
+    return [
+      { value: 'file', label: 'File' },
+      { value: 'folder', label: 'Folder' },
+    ]
   return []
 }
 
@@ -346,12 +472,14 @@ function defaultFsOperator(subject, aspect) {
 }
 
 function getFsOperatorOptions(subject, aspect) {
-  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path') return [
-    { value: 'exists', label: 'exists' },
-    { value: 'not_exists', label: 'does not exist' },
-  ]
+  if (subject === 'file_path' || subject === 'folder_path' || subject === 'any_path')
+    return [
+      { value: 'exists', label: 'exists' },
+      { value: 'not_exists', label: 'does not exist' },
+    ]
   if (subject === 'file' && aspect === 'content') return CONTENT_OPERATOR_OPTIONS
-  if (subject === 'file' && aspect === 'location') return [{ value: 'in_folder', label: 'is inside' }]
+  if (subject === 'file' && aspect === 'location')
+    return [{ value: 'in_folder', label: 'is inside' }]
   if (subject === 'opened') return [{ value: 'is_open', label: 'is open' }]
   return COUNT_OPERATOR_OPTIONS
 }
@@ -391,7 +519,13 @@ function fsCheckFromUi(subject, aspect, operator, prev = {}) {
     }
   }
   if (subject === 'opened') {
-    return { type: 'fs_opened', operator: 'is_open', itemType: aspect === 'folder' ? 'dir' : aspect, path, ...meta }
+    return {
+      type: 'fs_opened',
+      operator: 'is_open',
+      itemType: aspect === 'folder' ? 'dir' : aspect,
+      path,
+      ...meta,
+    }
   }
   return { type: 'fs_path', operator: 'exists', itemType: 'file', path, ...meta }
 }
@@ -400,10 +534,13 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
   const { subject, aspect, operator } = fsUiFromCheck(check)
   const aspectOptions = getFsAspectOptions(subject)
   const operatorOptions = getFsOperatorOptions(subject, aspect)
-  const needsValue = (subject === 'file' && (aspect === 'content' || aspect === 'line_count')) || subject === 'folder'
+  const needsValue =
+    (subject === 'file' && (aspect === 'content' || aspect === 'line_count')) ||
+    subject === 'folder'
   const needsDir = subject === 'file' && aspect === 'location'
   const needsFlags = subject === 'file' && aspect === 'content' && operator.includes('regex')
-  const valueLabel = subject === 'file' && aspect === 'content' ? 'Expected content' : 'Expected count'
+  const valueLabel =
+    subject === 'file' && aspect === 'content' ? 'Expected content' : 'Expected count'
 
   function setField(field, val) {
     onChange({ ...check, [field]: val })
@@ -414,45 +551,72 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
   }
 
   return (
-    <div style={{ border: '1px solid var(--ui-border)', borderRadius: 6, padding: 10, marginBottom: 8, background: '#fff' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+    <div
+      style={{
+        border: '1px solid var(--ui-border)',
+        borderRadius: 6,
+        padding: 10,
+        marginBottom: 8,
+        background: '#fff',
+      }}
+    >
+      <div
+        style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}
+      >
         <select
           value={subject}
-          onChange={e => {
+          onChange={(e) => {
             const nextSubject = e.target.value
             const nextAspect = getFsAspectOptions(nextSubject)[0]?.value ?? 'file'
             updateFromUi(nextSubject, nextAspect, defaultFsOperator(nextSubject, nextAspect))
           }}
           style={{ ...s.input, flex: '1 1 120px', fontSize: '0.82rem' }}
         >
-          {getFsSubjectOptions().map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+          {getFsSubjectOptions().map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
         {aspectOptions.length > 1 && (
           <select
             value={aspect}
-            onChange={e => {
+            onChange={(e) => {
               const nextAspect = e.target.value
               updateFromUi(subject, nextAspect, defaultFsOperator(subject, nextAspect))
             }}
             style={{ ...s.input, flex: '1 1 140px', fontSize: '0.82rem' }}
           >
-            {aspectOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {aspectOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         )}
         <select
           value={operator}
-          onChange={e => updateFromUi(subject, aspect, e.target.value)}
+          onChange={(e) => updateFromUi(subject, aspect, e.target.value)}
           style={{ ...s.input, flex: '1 1 140px', fontSize: '0.82rem' }}
         >
-          {operatorOptions.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+          {operatorOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
-        <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '1rem' }}>✕</button>
+        <button
+          onClick={onRemove}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: '#dc2626',
+            fontSize: '1rem',
+          }}
+        >
+          ✕
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -460,8 +624,14 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
           Path
           <input
             value={check.path ?? ''}
-            onChange={e => setField('path', e.target.value)}
-            placeholder={needsDir ? '/Documents/notes.txt' : subject === 'folder_path' || (subject === 'opened' && aspect === 'folder') ? '/Documents/' : '/file.txt'}
+            onChange={(e) => setField('path', e.target.value)}
+            placeholder={
+              needsDir
+                ? '/Documents/notes.txt'
+                : subject === 'folder_path' || (subject === 'opened' && aspect === 'folder')
+                  ? '/Documents/'
+                  : '/file.txt'
+            }
             style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
           />
         </label>
@@ -471,7 +641,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
             {valueLabel}
             <input
               value={check.value ?? ''}
-              onChange={e => setField('value', e.target.value)}
+              onChange={(e) => setField('value', e.target.value)}
               placeholder="Text the file should contain…"
               style={{ ...s.input, fontSize: '0.82rem' }}
             />
@@ -483,7 +653,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
             Regex flags (optional)
             <input
               value={check.flags ?? ''}
-              onChange={e => setField('flags', e.target.value)}
+              onChange={(e) => setField('flags', e.target.value)}
               placeholder="e.g. i, m, s"
               style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
             />
@@ -495,7 +665,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
             Parent folder
             <input
               value={check.dir ?? '/'}
-              onChange={e => setField('dir', e.target.value)}
+              onChange={(e) => setField('dir', e.target.value)}
               placeholder="/Documents/"
               style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
             />
@@ -507,7 +677,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
             <select
               className="te-select"
               value={check.mode ?? 'blocking'}
-              onChange={e => setField('mode', e.target.value)}
+              onChange={(e) => setField('mode', e.target.value)}
               title="Feedback behaviour"
             >
               <option value="blocking">Blocking</option>
@@ -516,7 +686,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
             <select
               className="te-select"
               value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
-              onChange={e => setField('show', e.target.value)}
+              onChange={(e) => setField('show', e.target.value)}
               title="When to show feedback"
             >
               <option value="after_attempt">After attempt</option>
@@ -529,7 +699,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
           Hint (optional)
           <input
             value={check.hint ?? ''}
-            onChange={e => setField('hint', e.target.value || undefined)}
+            onChange={(e) => setField('hint', e.target.value || undefined)}
             placeholder="Shown to the student when this check fails…"
             style={{ ...s.input, fontSize: '0.82rem' }}
           />
@@ -555,7 +725,10 @@ export function FsCheckListEditor({ checks, onChange, feedbackEditor = false }) 
 
   function handleAdd() {
     const nextCheck = { type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }
-    const next = [...safeChecks, feedbackEditor ? { ...nextCheck, mode: 'blocking', show: 'after_attempt' } : nextCheck]
+    const next = [
+      ...safeChecks,
+      feedbackEditor ? { ...nextCheck, mode: 'blocking', show: 'after_attempt' } : nextCheck,
+    ]
     onChange(next)
   }
 
@@ -565,12 +738,15 @@ export function FsCheckListEditor({ checks, onChange, feedbackEditor = false }) 
         <FsSingleCheckEditor
           key={i}
           check={c}
-          onChange={updated => handleChange(i, updated)}
+          onChange={(updated) => handleChange(i, updated)}
           onRemove={() => handleRemove(i)}
           feedbackEditor={feedbackEditor}
         />
       ))}
-      <button onClick={handleAdd} style={{ ...s.smallBtn, fontSize: '0.82rem', padding: '4px 10px' }}>
+      <button
+        onClick={handleAdd}
+        style={{ ...s.smallBtn, fontSize: '0.82rem', padding: '4px 10px' }}
+      >
         + Add check
       </button>
     </div>

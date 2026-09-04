@@ -2,25 +2,42 @@ import React from 'react'
 import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MarkdownRenderer, InlineMarkdown } from '../markdown'
-import { SCRATCH_BLOCK_CATALOG, SCRATCH_BLOCK_BY_OPCODE, SCRATCH_MARKDOWN_BLOCK_CATEGORIES, SCRATCH_TOOLBOX_GROUPS, scratchBlockBadgeIcon, scratchBlockDisplaySample } from '../scratchBlockCatalog'
+import {
+  SCRATCH_BLOCK_CATALOG,
+  SCRATCH_BLOCK_BY_OPCODE,
+  SCRATCH_MARKDOWN_BLOCK_CATEGORIES,
+  SCRATCH_TOOLBOX_GROUPS,
+  scratchBlockBadgeIcon,
+  scratchBlockDisplaySample,
+} from '../scratchBlockCatalog'
 import { looksLikeScratchBlocks } from '../markdown/ScratchBlocks'
 import { SCRATCH_BLOCK_DEFINITIONS } from '../../modules/scratch/scratch'
 
-const MOCK_TOPICS = [{
-  id: 'for-loop',
-  title: 'For loops',
-  types: ['python'],
-  category: 'Loop',
-  summary: 'Repeat code.',
-  description: 'Runs a **block** with `python:print()` again.',
-  syntax: 'Use `python:for i in range(3):`.',
-  aliases: ['for loop'],
-  related: [],
-}]
+const MOCK_TOPICS = [
+  {
+    id: 'for-loop',
+    title: 'For loops',
+    types: ['python'],
+    category: 'Loop',
+    summary: 'Repeat code.',
+    description: 'Runs a **block** with `python:print()` again.',
+    syntax: 'Use `python:for i in range(3):`.',
+    aliases: ['for loop'],
+    related: [],
+  },
+]
 
 vi.mock('../topicLibrary', async (importOriginal) => {
   const actual = await importOriginal()
-  return { ...actual, useTopicLibrary: () => ({ topics: MOCK_TOPICS, allTopics: MOCK_TOPICS, loading: false, error: null }) }
+  return {
+    ...actual,
+    useTopicLibrary: () => ({
+      topics: MOCK_TOPICS,
+      allTopics: MOCK_TOPICS,
+      loading: false,
+      error: null,
+    }),
+  }
 })
 
 describe('MarkdownRenderer', () => {
@@ -95,12 +112,9 @@ describe('MarkdownRenderer', () => {
   })
 
   it('renders a table', () => {
-    const content = [
-      '| Name | Age |',
-      '| ---- | --- |',
-      '| Alice | 10 |',
-      '| Bob | 12 |',
-    ].join('\n')
+    const content = ['| Name | Age |', '| ---- | --- |', '| Alice | 10 |', '| Bob | 12 |'].join(
+      '\n'
+    )
     render(<MarkdownRenderer content={content} />)
     expect(screen.getByText('Name')).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
@@ -163,10 +177,9 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByPlaceholderText('Search topics...')).toBeInTheDocument()
     expect(screen.getByText('block').tagName).toBe('STRONG')
     const highlightedTokens = document.querySelectorAll('.language-python')
-    expect(Array.from(highlightedTokens).map(element => element.textContent)).toEqual(expect.arrayContaining([
-      'print()',
-      'for i in range(3):',
-    ]))
+    expect(Array.from(highlightedTokens).map((element) => element.textContent)).toEqual(
+      expect.arrayContaining(['print()', 'for i in range(3):'])
+    )
   })
 
   it('renders Scratch blocks with mouths and nested reporter/boolean shapes', () => {
@@ -187,25 +200,57 @@ describe('MarkdownRenderer', () => {
     ].join('\n')
     const { container } = render(<MarkdownRenderer content={content} />)
 
-    expect(container.querySelector('[data-scratch-opcode="event_whenflagclicked"][data-scratch-shape="hat"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="control_forever"][data-scratch-shape="c"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="control_if"][data-scratch-shape="c"][data-scratch-mouths="2"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="sensing_touchingobject"][data-scratch-shape="boolean"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="operator_gt"][data-scratch-shape="boolean"]')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="operator_random"][data-scratch-shape="reporter"]')).toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-scratch-opcode="event_whenflagclicked"][data-scratch-shape="hat"]'
+      )
+    ).toBeInTheDocument()
+    expect(
+      container.querySelector('[data-scratch-opcode="control_forever"][data-scratch-shape="c"]')
+    ).toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-scratch-opcode="control_if"][data-scratch-shape="c"][data-scratch-mouths="2"]'
+      )
+    ).toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-scratch-opcode="sensing_touchingobject"][data-scratch-shape="boolean"]'
+      )
+    ).toBeInTheDocument()
+    expect(
+      container.querySelector('[data-scratch-opcode="operator_gt"][data-scratch-shape="boolean"]')
+    ).toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-scratch-opcode="operator_random"][data-scratch-shape="reporter"]'
+      )
+    ).toBeInTheDocument()
     expect(container.querySelector('[data-scratch-stack="true"] svg path')).toBeInTheDocument()
     expect(container.querySelector('[data-scratch-unknown="true"]')).not.toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="motion_movesteps"]')).toHaveTextContent(SCRATCH_BLOCK_BY_OPCODE.motion_movesteps.icon)
+    expect(container.querySelector('[data-scratch-opcode="motion_movesteps"]')).toHaveTextContent(
+      SCRATCH_BLOCK_BY_OPCODE.motion_movesteps.icon
+    )
   })
 
   it('renders inline Scratch reporter blocks with their own shape', () => {
-    const { container } = render(<MarkdownRenderer content="Use `scratch:distance to [mouse-pointer]` here." />)
-    expect(container.querySelector('[data-scratch-opcode="sensing_distanceto"][data-scratch-shape="reporter"]')).toBeInTheDocument()
+    const { container } = render(
+      <MarkdownRenderer content="Use `scratch:distance to [mouse-pointer]` here." />
+    )
+    expect(
+      container.querySelector(
+        '[data-scratch-opcode="sensing_distanceto"][data-scratch-shape="reporter"]'
+      )
+    ).toBeInTheDocument()
   })
 
   it('reserves the notch and bottom connector for inline Scratch stack blocks', () => {
-    const { container } = render(<MarkdownRenderer content={'Use `scratch:say [Hello!] for (2) seconds` here.'} />)
-    const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"][data-scratch-shape="stack"]')
+    const { container } = render(
+      <MarkdownRenderer content={'Use `scratch:say [Hello!] for (2) seconds` here.'} />
+    )
+    const block = container.querySelector(
+      '[data-scratch-opcode="looks_sayforsecs"][data-scratch-shape="stack"]'
+    )
     const content = block.querySelector('[data-scratch-block-content="true"]')
     const icon = block.querySelector('[data-scratch-icon-badge="true"]')
 
@@ -218,7 +263,9 @@ describe('MarkdownRenderer', () => {
   })
 
   it('gives long inline Scratch blocks enough width for their fields and labels', () => {
-    const { container } = render(<MarkdownRenderer content={'`scratch:think [Hello!] for (2) seconds`'} />)
+    const { container } = render(
+      <MarkdownRenderer content={'`scratch:think [Hello!] for (2) seconds`'} />
+    )
     const block = container.querySelector('[data-scratch-opcode="looks_thinkforsecs"]')
 
     expect(Number.parseFloat(block.style.width)).toBeGreaterThanOrEqual(300)
@@ -235,7 +282,9 @@ describe('MarkdownRenderer', () => {
     })
 
     try {
-      const { container } = render(<MarkdownRenderer content={'`scratch:say [Hello!] for (2) seconds`'} />)
+      const { container } = render(
+        <MarkdownRenderer content={'`scratch:say [Hello!] for (2) seconds`'} />
+      )
       const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"]')
 
       expect(Number.parseFloat(block.style.width)).toBe(273)
@@ -245,37 +294,50 @@ describe('MarkdownRenderer', () => {
   })
 
   it('treats variable names in set blocks as dropdown fields, not guessed reporter blocks', () => {
-    const { container } = render(<MarkdownRenderer content={'```scratch\nset [score] to (0)\n```'} />)
-    expect(container.querySelector('[data-scratch-opcode="data_setvariableto"]')).toBeInTheDocument()
+    const { container } = render(
+      <MarkdownRenderer content={'```scratch\nset [score] to (0)\n```'} />
+    )
+    expect(
+      container.querySelector('[data-scratch-opcode="data_setvariableto"]')
+    ).toBeInTheDocument()
     expect(container.querySelector('[data-scratch-slot="dropdown"]')).toHaveTextContent('score')
     expect(looksLikeScratchBlocks('score')).toBe(false)
   })
 
   it('renders Scratch event affordances like Blockly fields', () => {
-    const content = [
-      '```scratch',
-      'when green flag clicked',
-      'broadcast [message1]',
-      '```',
-    ].join('\n')
+    const content = ['```scratch', 'when green flag clicked', 'broadcast [message1]', '```'].join(
+      '\n'
+    )
     const { container } = render(<MarkdownRenderer content={content} />)
 
     const flagBlock = container.querySelector('[data-scratch-opcode="event_whenflagclicked"]')
     expect(flagBlock.querySelector('[data-scratch-flag="true"]')).toBeInTheDocument()
     expect(flagBlock).not.toHaveTextContent('green flag')
-    expect(container.querySelector('[data-scratch-opcode="event_broadcast"] [data-scratch-slot="dropdown"]')).toHaveAttribute('data-scratch-slot-tone', 'light')
+    expect(
+      container.querySelector(
+        '[data-scratch-opcode="event_broadcast"] [data-scratch-slot="dropdown"]'
+      )
+    ).toHaveAttribute('data-scratch-slot-tone', 'light')
   })
 
   it('keeps inline Scratch operator booleans tightly block-sized', () => {
-    const { container } = render(<MarkdownRenderer content={'```scratch\nrepeat until <(1) = (2)>\nend\n```'} />)
-    const operator = container.querySelector('[data-scratch-opcode="operator_equals"][data-scratch-shape="boolean"]')
+    const { container } = render(
+      <MarkdownRenderer content={'```scratch\nrepeat until <(1) = (2)>\nend\n```'} />
+    )
+    const operator = container.querySelector(
+      '[data-scratch-opcode="operator_equals"][data-scratch-shape="boolean"]'
+    )
     const valueSlots = operator.querySelectorAll('[data-scratch-slot="value"]')
 
     expect(Number.parseFloat(operator.style.width)).toBeGreaterThanOrEqual(150)
     expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(195)
     expect(valueSlots).toHaveLength(2)
     expect(valueSlots[0]).toHaveAttribute('data-scratch-slot-shadow', 'text')
-    expect(Number.parseFloat(valueSlots[0].querySelector('[data-scratch-slot-field="true"]').style.minWidth)).toBeGreaterThanOrEqual(18)
+    expect(
+      Number.parseFloat(
+        valueSlots[0].querySelector('[data-scratch-slot-field="true"]').style.minWidth
+      )
+    ).toBeGreaterThanOrEqual(18)
   })
 
   it('keeps Scratch C-block mouths snug around nested stack blocks', () => {
@@ -288,18 +350,19 @@ describe('MarkdownRenderer', () => {
       '```',
     ].join('\n')
     const { container } = render(<MarkdownRenderer content={content} />)
-    const repeat = container.querySelector('[data-scratch-opcode="control_repeat_until"][data-scratch-shape="c"]')
+    const repeat = container.querySelector(
+      '[data-scratch-opcode="control_repeat_until"][data-scratch-shape="c"]'
+    )
     const mouthStack = repeat.querySelector('[data-scratch-mouth-stack="children"]')
-    const cSvg = Array.from(repeat.children).find(child => child.tagName.toLowerCase() === 'svg')
+    const cSvg = Array.from(repeat.children).find((child) => child.tagName.toLowerCase() === 'svg')
 
     expect(Number.parseFloat(repeat.style.height)).toBeLessThanOrEqual(143)
     expect(Number.parseFloat(mouthStack.style.left)).toBe(14)
-    expect(Array.from(cSvg.querySelectorAll('[data-scratch-c-path]')).map(path => path.dataset.scratchCPath)).toEqual([
-      'shadow',
-      'fill',
-      'outer',
-      'highlight',
-    ])
+    expect(
+      Array.from(cSvg.querySelectorAll('[data-scratch-c-path]')).map(
+        (path) => path.dataset.scratchCPath
+      )
+    ).toEqual(['shadow', 'fill', 'outer', 'highlight'])
   })
 
   it('snaps the next root block tightly after a Scratch C-block', () => {
@@ -322,20 +385,21 @@ describe('MarkdownRenderer', () => {
 
 describe('Scratch markdown block catalog', () => {
   it('covers every Scratch runtime block definition', () => {
-    const missing = Object.keys(SCRATCH_BLOCK_DEFINITIONS)
-      .filter(opcode => !SCRATCH_BLOCK_BY_OPCODE[opcode])
+    const missing = Object.keys(SCRATCH_BLOCK_DEFINITIONS).filter(
+      (opcode) => !SCRATCH_BLOCK_BY_OPCODE[opcode]
+    )
     expect(missing).toEqual([])
   })
 
   it('covers every block exposed by the toolbox groups', () => {
-    const missing = SCRATCH_TOOLBOX_GROUPS
-      .flatMap(group => group.blocks.map(([opcode]) => opcode))
-      .filter(opcode => !SCRATCH_BLOCK_BY_OPCODE[opcode])
+    const missing = SCRATCH_TOOLBOX_GROUPS.flatMap((group) =>
+      group.blocks.map(([opcode]) => opcode)
+    ).filter((opcode) => !SCRATCH_BLOCK_BY_OPCODE[opcode])
     expect(missing).toEqual([])
   })
 
   it('keeps markdown toolbar samples recognizable as Scratch blocks', () => {
-    const samples = SCRATCH_MARKDOWN_BLOCK_CATEGORIES.flatMap(category => category.blocks)
+    const samples = SCRATCH_MARKDOWN_BLOCK_CATEGORIES.flatMap((category) => category.blocks)
     expect(samples).toHaveLength(SCRATCH_BLOCK_CATALOG.length)
     for (const sample of samples) {
       expect(looksLikeScratchBlocks(sample)).toBe(true)
@@ -361,8 +425,10 @@ describe('Scratch markdown block catalog', () => {
   })
 
   it('exposes icon-prefixed toolbox labels', () => {
-    for (const [opcode, label] of SCRATCH_TOOLBOX_GROUPS.flatMap(group => group.blocks)) {
-      expect(label).toBe(`${SCRATCH_BLOCK_BY_OPCODE[opcode].icon} ${SCRATCH_BLOCK_BY_OPCODE[opcode].label}`)
+    for (const [opcode, label] of SCRATCH_TOOLBOX_GROUPS.flatMap((group) => group.blocks)) {
+      expect(label).toBe(
+        `${SCRATCH_BLOCK_BY_OPCODE[opcode].icon} ${SCRATCH_BLOCK_BY_OPCODE[opcode].label}`
+      )
     }
   })
 
@@ -372,7 +438,9 @@ describe('Scratch markdown block catalog', () => {
       definition.init.call(context)
       const config = context.jsonInit.mock.calls[0]?.[0]
       const message = config?.message0 ?? ''
-      const placeholders = Array.from(String(message).matchAll(/%(\d+)/g), match => Number(match[1]))
+      const placeholders = Array.from(String(message).matchAll(/%(\d+)/g), (match) =>
+        Number(match[1])
+      )
       const maxPlaceholder = Math.max(0, ...placeholders)
 
       expect(config?.args0 ?? []).toHaveLength(maxPlaceholder)

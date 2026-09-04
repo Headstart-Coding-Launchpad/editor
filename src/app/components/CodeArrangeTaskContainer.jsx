@@ -10,7 +10,7 @@ import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../shared/c
 export const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
 
 function fileContent(files, name) {
-  return files?.find(file => file.name === name)?.content ?? ''
+  return files?.find((file) => file.name === name)?.content ?? ''
 }
 
 // Wires the presentational CodeArrangeTask component to the shared student
@@ -56,11 +56,23 @@ function fileContent(files, name) {
 // so a Go-Live viewer sees the tile move as it's dragged rather than only
 // snapping into place on drop — mirrors ScratchWorkspace's cursor/blockDrag.
 export default function CodeArrangeTaskContainer({
-  task, cs, viewingTaskId, currentTaskId,
-  isViewingPrev, isForcedTeacherLive, isTeacherEditing,
-  displayCode, displayFiles, displayOutput, displayRunStatus, displayCheckPassed, displayCheckAttempted,
-  displayCodeArrangeSlots, displayCodeArrangeCursor,
-  teacherLiveCode, teacherLiveFiles,
+  task,
+  cs,
+  viewingTaskId,
+  currentTaskId,
+  isViewingPrev,
+  isForcedTeacherLive,
+  isTeacherEditing,
+  displayCode,
+  displayFiles,
+  displayOutput,
+  displayRunStatus,
+  displayCheckPassed,
+  displayCheckAttempted,
+  displayCodeArrangeSlots,
+  displayCodeArrangeCursor,
+  teacherLiveCode,
+  teacherLiveFiles,
 }) {
   const isHtml = task.moduleType === 'html'
   const entryFile = getCodeArrangeEntryFile(task)
@@ -95,7 +107,7 @@ export default function CodeArrangeTaskContainer({
     }
     setSlotState({})
     cs.handleCodeArrangeSlotsChange?.({})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
   function handleSlotStateChange(next) {
@@ -120,9 +132,13 @@ export default function CodeArrangeTaskContainer({
   // The synced code to mirror while a teacher is watching/editing — resolved
   // fresh on every render so the board tracks the stream as it updates.
   const liveCode = isForcedTeacherLive
-    ? (isHtml ? fileContent(displayFiles, entryFile) : (displayCode ?? ''))
+    ? isHtml
+      ? fileContent(displayFiles, entryFile)
+      : (displayCode ?? '')
     : isTeacherEditing
-      ? (isHtml ? fileContent(teacherLiveFiles, entryFile) : (teacherLiveCode ?? ''))
+      ? isHtml
+        ? fileContent(teacherLiveFiles, entryFile)
+        : (teacherLiveCode ?? '')
       : null
 
   // A Go-Live/presentation viewer prefers the live per-tile slot stream
@@ -132,11 +148,12 @@ export default function CodeArrangeTaskContainer({
   // otherwise leave the board blank until the teacher finishes. isTeacherEditing
   // has no such stream (a different, lower-frequency mechanism), so it always
   // derives from code.
-  const selectedAnswer = isForcedTeacherLive && displayCodeArrangeSlots
-    ? displayCodeArrangeSlots
-    : isLiveMirror
-      ? deriveSlotStateFromCode(task, liveCode ?? '')
-      : slotState
+  const selectedAnswer =
+    isForcedTeacherLive && displayCodeArrangeSlots
+      ? displayCodeArrangeSlots
+      : isLiveMirror
+        ? deriveSlotStateFromCode(task, liveCode ?? '')
+        : slotState
 
   const output = isForcedTeacherLive
     ? (displayOutput ?? '')
@@ -155,17 +172,17 @@ export default function CodeArrangeTaskContainer({
   const inputPrompt = readOnly ? null : cs.inputPrompt
   const checkPassed = isForcedTeacherLive
     ? !!displayCheckPassed
-    : (isLiveMirror || isViewingPrev)
+    : isLiveMirror || isViewingPrev
       ? false
       : cs.checkPassed
   const checkAttempted = isForcedTeacherLive
     ? !!displayCheckAttempted
-    : (isLiveMirror || isViewingPrev)
+    : isLiveMirror || isViewingPrev
       ? false
       : cs.checkAttempted
   const iframeSrc = isForcedTeacherLive
     ? cs.teacherLiveIframeSrc
-    : (isTeacherEditing || isViewingPrev)
+    : isTeacherEditing || isViewingPrev
       ? null
       : cs.iframeSrc
 

@@ -7,16 +7,26 @@ import PaneFocusDropdown, { getPaneOptionsForLessonType } from '../PaneFocusDrop
 describe('getPaneOptionsForLessonType', () => {
   it('offers only Instructions for lesson types without module-specific wiring (e.g. python, html, filesystem)', () => {
     for (const type of ['python', 'html', 'filesystem', 'arcade', undefined]) {
-      expect(getPaneOptionsForLessonType(type)).toEqual([{ id: 'instructions', label: 'Instructions' }])
+      expect(getPaneOptionsForLessonType(type)).toEqual([
+        { id: 'instructions', label: 'Instructions' },
+      ])
     }
   })
 
   it('offers Breadboard/MicroPython in addition to Instructions for electronics', () => {
-    expect(getPaneOptionsForLessonType('electronics').map(o => o.id)).toEqual(['instructions', 'breadboard', 'code'])
+    expect(getPaneOptionsForLessonType('electronics').map((o) => o.id)).toEqual([
+      'instructions',
+      'breadboard',
+      'code',
+    ])
   })
 
   it('offers Blocks/Stage in addition to Instructions for scratch', () => {
-    expect(getPaneOptionsForLessonType('scratch').map(o => o.id)).toEqual(['instructions', 'blocks', 'stage'])
+    expect(getPaneOptionsForLessonType('scratch').map((o) => o.id)).toEqual([
+      'instructions',
+      'blocks',
+      'stage',
+    ])
   })
 })
 
@@ -25,7 +35,9 @@ describe('PaneFocusDropdown', () => {
     const user = userEvent.setup()
     const onHighlight = vi.fn()
     const onForce = vi.fn()
-    render(<PaneFocusDropdown lessonType="electronics" onHighlight={onHighlight} onForce={onForce} />)
+    render(
+      <PaneFocusDropdown lessonType="electronics" onHighlight={onHighlight} onForce={onForce} />
+    )
 
     await user.click(screen.getByRole('button', { name: /Focus/ }))
     expect(screen.getByRole('checkbox', { name: 'Instructions' })).toBeChecked()
@@ -39,7 +51,9 @@ describe('PaneFocusDropdown', () => {
   it('calls onHighlight with exactly the checked panes and closes the dropdown', async () => {
     const user = userEvent.setup()
     const onHighlight = vi.fn()
-    render(<PaneFocusDropdown lessonType="electronics" onHighlight={onHighlight} onForce={vi.fn()} />)
+    render(
+      <PaneFocusDropdown lessonType="electronics" onHighlight={onHighlight} onForce={vi.fn()} />
+    )
 
     await user.click(screen.getByRole('button', { name: /Focus/ }))
     await user.click(screen.getByRole('checkbox', { name: 'Breadboard' }))
@@ -51,7 +65,14 @@ describe('PaneFocusDropdown', () => {
   })
 
   it('uses a custom label when provided (e.g. the whole-class "Focus Class" control)', () => {
-    render(<PaneFocusDropdown lessonType="python" label="Focus Class" onHighlight={vi.fn()} onForce={vi.fn()} />)
+    render(
+      <PaneFocusDropdown
+        lessonType="python"
+        label="Focus Class"
+        onHighlight={vi.fn()}
+        onForce={vi.fn()}
+      />
+    )
     expect(screen.getByRole('button', { name: /Focus Class/ })).toBeInTheDocument()
   })
 })

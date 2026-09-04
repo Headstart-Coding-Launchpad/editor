@@ -5,11 +5,11 @@ import { firestore, functions } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import { AdminBadge, AdminCell, AdminTable } from './AdminUi'
 
-const createAccount  = httpsCallable(functions, 'createAccount')
-const setUserRole    = httpsCallable(functions, 'setUserRole')
+const createAccount = httpsCallable(functions, 'createAccount')
+const setUserRole = httpsCallable(functions, 'setUserRole')
 const disableAccount = httpsCallable(functions, 'disableAccount')
-const enableAccount  = httpsCallable(functions, 'enableAccount')
-const deleteAccount  = httpsCallable(functions, 'deleteAccount')
+const enableAccount = httpsCallable(functions, 'enableAccount')
+const deleteAccount = httpsCallable(functions, 'deleteAccount')
 const updateAccountPassword = httpsCallable(functions, 'updateAccountPassword')
 
 export default function AccountManagement() {
@@ -30,8 +30,11 @@ export default function AccountManagement() {
   useEffect(() => {
     return onSnapshot(
       collection(firestore, 'users'),
-      (snap) => { setSnapshotError(null); setAccounts(snap.docs.map(d => ({ id: d.id, ...d.data() }))) },
-      (err) => setSnapshotError(err.message),
+      (snap) => {
+        setSnapshotError(null)
+        setAccounts(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      },
+      (err) => setSnapshotError(err.message)
     )
   }, [])
 
@@ -89,7 +92,10 @@ export default function AccountManagement() {
         <button
           className="btn-primary"
           style={s.addBtn}
-          onClick={() => { setShowForm(v => !v); setFormError(null) }}
+          onClick={() => {
+            setShowForm((v) => !v)
+            setFormError(null)
+          }}
         >
           {showForm ? 'Cancel' : 'Add Account'}
         </button>
@@ -101,28 +107,52 @@ export default function AccountManagement() {
           <div style={s.formRow}>
             <div style={s.field}>
               <label style={s.label}>Display Name</label>
-              <input style={s.input} value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} placeholder="Ms Smith" />
+              <input
+                style={s.input}
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="Ms Smith"
+              />
             </div>
             <div style={s.field}>
               <label style={s.label}>Email</label>
-              <input style={s.input} type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="teacher@school.co.uk" />
+              <input
+                style={s.input}
+                type="email"
+                required
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="teacher@school.co.uk"
+              />
             </div>
           </div>
           <div style={s.formRow}>
             <div style={s.field}>
               <label style={s.label}>Password</label>
-              <input style={s.input} type="password" required minLength={8} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+              <input
+                style={s.input}
+                type="password"
+                required
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
             </div>
             <div style={s.field}>
               <label style={s.label}>Role</label>
-              <select style={s.select} value={newRole} onChange={e => setNewRole(e.target.value)}>
+              <select style={s.select} value={newRole} onChange={(e) => setNewRole(e.target.value)}>
                 <option value="teacher">Teacher</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
           </div>
           {formError && <p style={s.error}>{formError}</p>}
-          <button className="btn-secondary" style={s.submitBtn} type="submit" disabled={formLoading}>
+          <button
+            className="btn-secondary"
+            style={s.submitBtn}
+            type="submit"
+            disabled={formLoading}
+          >
             {formLoading ? 'Creating…' : 'Create Account'}
           </button>
         </form>
@@ -132,31 +162,42 @@ export default function AccountManagement() {
       {actionError && <p style={s.error}>{actionError}</p>}
 
       <AdminTable headers={['Name', 'Email', 'Role', 'Status', 'Actions']}>
-          {accounts.length === 0 && (
-            <tr><AdminCell colSpan={5} style={{ color: '#888', textAlign: 'center' }}>No accounts yet.</AdminCell></tr>
-          )}
-          {accounts.map(account => (
-            <tr key={account.id}>
-              <AdminCell>{account.displayName || '—'}</AdminCell>
-              <AdminCell>{account.email}</AdminCell>
-              <AdminCell>
-                <select
-                  style={s.roleSelect}
-                  value={account.role}
-                  disabled={account.id === currentUser?.uid}
-                  onChange={e => handleAction(setUserRole, { uid: account.id, role: e.target.value }, 'Set role')}
-                >
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </AdminCell>
-              <AdminCell>
-                <AdminBadge style={{ background: account.disabled ? '#e5e7eb' : '#dcfce7', color: account.disabled ? '#6b7280' : '#15803d' }}>
-                  {account.disabled ? 'Disabled' : 'Active'}
-                </AdminBadge>
-              </AdminCell>
-              <AdminCell>
-                <div style={s.actionsCell}>
+        {accounts.length === 0 && (
+          <tr>
+            <AdminCell colSpan={5} style={{ color: '#888', textAlign: 'center' }}>
+              No accounts yet.
+            </AdminCell>
+          </tr>
+        )}
+        {accounts.map((account) => (
+          <tr key={account.id}>
+            <AdminCell>{account.displayName || '—'}</AdminCell>
+            <AdminCell>{account.email}</AdminCell>
+            <AdminCell>
+              <select
+                style={s.roleSelect}
+                value={account.role}
+                disabled={account.id === currentUser?.uid}
+                onChange={(e) =>
+                  handleAction(setUserRole, { uid: account.id, role: e.target.value }, 'Set role')
+                }
+              >
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+              </select>
+            </AdminCell>
+            <AdminCell>
+              <AdminBadge
+                style={{
+                  background: account.disabled ? '#e5e7eb' : '#dcfce7',
+                  color: account.disabled ? '#6b7280' : '#15803d',
+                }}
+              >
+                {account.disabled ? 'Disabled' : 'Active'}
+              </AdminBadge>
+            </AdminCell>
+            <AdminCell>
+              <div style={s.actionsCell}>
                 {account.disabled ? (
                   <button
                     className="btn-ghost-outline"
@@ -193,31 +234,35 @@ export default function AccountManagement() {
                   style={s.actionBtn}
                   disabled={account.id === currentUser?.uid}
                   onClick={() => {
-                    setPasswordAccountId(id => id === account.id ? null : account.id)
+                    setPasswordAccountId((id) => (id === account.id ? null : account.id))
                     setPasswordValue('')
                   }}
                 >
                   Password
                 </button>
+              </div>
+              {passwordAccountId === account.id && (
+                <div style={s.passwordResetRow}>
+                  <input
+                    style={s.passwordInput}
+                    type="password"
+                    minLength={8}
+                    value={passwordValue}
+                    onChange={(e) => setPasswordValue(e.target.value)}
+                    placeholder="New password"
+                  />
+                  <button
+                    className="btn-secondary"
+                    style={s.actionBtn}
+                    onClick={() => handlePasswordReset(account)}
+                  >
+                    Set
+                  </button>
                 </div>
-                {passwordAccountId === account.id && (
-                  <div style={s.passwordResetRow}>
-                    <input
-                      style={s.passwordInput}
-                      type="password"
-                      minLength={8}
-                      value={passwordValue}
-                      onChange={e => setPasswordValue(e.target.value)}
-                      placeholder="New password"
-                    />
-                    <button className="btn-secondary" style={s.actionBtn} onClick={() => handlePasswordReset(account)}>
-                      Set
-                    </button>
-                  </div>
-                )}
-              </AdminCell>
-            </tr>
-          ))}
+              )}
+            </AdminCell>
+          </tr>
+        ))}
       </AdminTable>
 
       {accounts.length > 0 && (
@@ -229,22 +274,81 @@ export default function AccountManagement() {
 
 const s = {
   section: { display: 'flex', flexDirection: 'column', gap: 16 },
-  header:  { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  title:   { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--colour-text)', margin: 0 },
-  addBtn:  { padding: '8px 18px', fontSize: '0.88rem' },
-  form:    { background: '#f9fafb', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 },
-  formTitle: { fontFamily: 'var(--font-title)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--colour-text)', margin: 0 },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  title: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1.1rem',
+    color: 'var(--colour-text)',
+    margin: 0,
+  },
+  addBtn: { padding: '8px 18px', fontSize: '0.88rem' },
+  form: {
+    background: '#f9fafb',
+    border: '1.5px solid #e5e7eb',
+    borderRadius: 8,
+    padding: '20px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  formTitle: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    color: 'var(--colour-text)',
+    margin: 0,
+  },
   formRow: { display: 'flex', gap: 12 },
-  field:   { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
-  label:   { fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.82rem', color: 'var(--colour-text)' },
-  input:   { fontFamily: 'var(--font-body)', fontSize: '0.9rem', padding: '8px 10px', border: '1.5px solid #d1d5db', borderRadius: 6, outline: 'none', color: 'var(--colour-text)', background: '#fff' },
-  select:  { fontFamily: 'var(--font-body)', fontSize: '0.9rem', padding: '8px 10px', border: '1.5px solid #d1d5db', borderRadius: 6, outline: 'none', color: 'var(--colour-text)', background: '#fff', cursor: 'pointer' },
+  field: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
+  label: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.82rem',
+    color: 'var(--colour-text)',
+  },
+  input: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    padding: '8px 10px',
+    border: '1.5px solid #d1d5db',
+    borderRadius: 6,
+    outline: 'none',
+    color: 'var(--colour-text)',
+    background: '#fff',
+  },
+  select: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    padding: '8px 10px',
+    border: '1.5px solid #d1d5db',
+    borderRadius: 6,
+    outline: 'none',
+    color: 'var(--colour-text)',
+    background: '#fff',
+    cursor: 'pointer',
+  },
   submitBtn: { alignSelf: 'flex-start', padding: '8px 20px', fontSize: '0.9rem' },
-  error:   { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
-  roleSelect: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: '#fff' },
-  actionBtn:  { padding: '4px 10px', fontSize: '0.82rem' },
+  error: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#dc2626', margin: 0 },
+  roleSelect: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    padding: '4px 6px',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    cursor: 'pointer',
+    background: '#fff',
+  },
+  actionBtn: { padding: '4px 10px', fontSize: '0.82rem' },
   actionsCell: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   passwordResetRow: { display: 'flex', gap: 6, marginTop: 8 },
-  passwordInput: { width: 150, fontFamily: 'var(--font-body)', fontSize: '0.85rem', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4 },
-  note:    { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: 0 },
+  passwordInput: {
+    width: 150,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    padding: '5px 8px',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+  },
+  note: { fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#9ca3af', margin: 0 },
 }

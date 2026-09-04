@@ -17,11 +17,11 @@ export function labelCheckKind(kind) {
 
 export function hasCircuitSelectorTarget(selector) {
   return !!(
-    selector?.type?.trim?.()
-    || selector?.componentType?.trim?.()
-    || selector?.typeName?.trim?.()
-    || selector?.label?.trim?.()
-    || selector?.id?.trim?.()
+    selector?.type?.trim?.() ||
+    selector?.componentType?.trim?.() ||
+    selector?.typeName?.trim?.() ||
+    selector?.label?.trim?.() ||
+    selector?.id?.trim?.()
   )
 }
 
@@ -32,19 +32,19 @@ export function hasCircuitEndpointTarget(endpoint) {
 export function validateFilesystemChecks(checks, n, errors, kind = 'completion') {
   const label = labelCheckKind(kind)
   const normalized = normalizeChecks(checks).map(normalizeFsCheck)
-  if (normalized.some(c => c.type?.startsWith('fs_') && !c.path?.trim())) {
+  if (normalized.some((c) => c.type?.startsWith('fs_') && !c.path?.trim())) {
     errors.push(`Task ${n} has a filesystem ${label} but no path`)
   }
-  if (normalized.some(c => c.type === 'fs_file_content' && !hasValue(c.value))) {
+  if (normalized.some((c) => c.type === 'fs_file_content' && !hasValue(c.value))) {
     errors.push(`Task ${n} has a file-content ${label} but no expected value`)
   }
-  if (normalized.some(c => c.type === 'fs_file_line_count' && !hasValue(c.value))) {
+  if (normalized.some((c) => c.type === 'fs_file_line_count' && !hasValue(c.value))) {
     errors.push(`Task ${n} has a file line-count ${label} but no expected count`)
   }
-  if (normalized.some(c => c.type === 'fs_file_location' && !c.dir?.trim())) {
+  if (normalized.some((c) => c.type === 'fs_file_location' && !c.dir?.trim())) {
     errors.push(`Task ${n} has a file-location ${label} but no parent folder`)
   }
-  if (normalized.some(c => c.type === 'fs_folder_count' && !hasValue(c.value))) {
+  if (normalized.some((c) => c.type === 'fs_folder_count' && !hasValue(c.value))) {
     errors.push(`Task ${n} has a folder-count ${label} but no expected count`)
   }
 }
@@ -52,19 +52,45 @@ export function validateFilesystemChecks(checks, n, errors, kind = 'completion')
 export function validateElectronicsChecks(checks, n, errors, kind = 'completion') {
   const label = labelCheckKind(kind)
   const normalized = normalizeChecks(checks)
-  if (normalized.some(c => c.type === 'circuit_has_component' && !hasCircuitSelectorTarget(c.component))) {
+  if (
+    normalized.some(
+      (c) => c.type === 'circuit_has_component' && !hasCircuitSelectorTarget(c.component)
+    )
+  ) {
     errors.push(`Task ${n} has a part-exists ${label} but no part type or label`)
   }
-  if (normalized.some(c => (c.type === 'circuit_component_powered' || c.type === 'circuit_component_unpowered') && !hasCircuitSelectorTarget(c.component))) {
+  if (
+    normalized.some(
+      (c) =>
+        (c.type === 'circuit_component_powered' || c.type === 'circuit_component_unpowered') &&
+        !hasCircuitSelectorTarget(c.component)
+    )
+  ) {
     errors.push(`Task ${n} has a powered-part ${label} but no part type or label`)
   }
-  if (normalized.some(c => c.type === 'circuit_control_affects_power' && (!hasCircuitSelectorTarget(c.control) || !hasCircuitSelectorTarget(c.component)))) {
+  if (
+    normalized.some(
+      (c) =>
+        c.type === 'circuit_control_affects_power' &&
+        (!hasCircuitSelectorTarget(c.control) || !hasCircuitSelectorTarget(c.component))
+    )
+  ) {
     errors.push(`Task ${n} has a control ${label} but no control or controlled part`)
   }
-  if (normalized.some(c => (c.type === 'circuit_path_exists' || c.type === 'circuit_path_includes') && (!hasCircuitEndpointTarget(c.from) || !hasCircuitEndpointTarget(c.to)))) {
+  if (
+    normalized.some(
+      (c) =>
+        (c.type === 'circuit_path_exists' || c.type === 'circuit_path_includes') &&
+        (!hasCircuitEndpointTarget(c.from) || !hasCircuitEndpointTarget(c.to))
+    )
+  ) {
     errors.push(`Task ${n} has a circuit connection ${label} but no source or destination part/pin`)
   }
-  if (normalized.some(c => c.type === 'circuit_path_includes' && !hasCircuitSelectorTarget(c.includes))) {
+  if (
+    normalized.some(
+      (c) => c.type === 'circuit_path_includes' && !hasCircuitSelectorTarget(c.includes)
+    )
+  ) {
     errors.push(`Task ${n} has a circuit connection-includes ${label} but no required part`)
   }
 }

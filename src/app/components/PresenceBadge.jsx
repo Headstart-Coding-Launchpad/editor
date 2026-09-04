@@ -5,8 +5,8 @@ export default function PresenceBadge({ student, session }) {
   const className = isWaiting
     ? 'presence-badge presence-badge--waiting'
     : student.online
-    ? 'presence-badge presence-badge--online'
-    : 'presence-badge presence-badge--offline'
+      ? 'presence-badge presence-badge--online'
+      : 'presence-badge presence-badge--offline'
   const label = isWaiting ? 'Waiting' : student.online ? 'Online' : 'Offline'
   const title = student.online ? 'Student is connected now' : 'Student is offline'
 
