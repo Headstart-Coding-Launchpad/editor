@@ -1,20 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Quicksand:wght@400;600&family=JetBrains+Mono&family=Noto+Color+Emoji&display=swap');
 
 :root {
-  --colour-primary:          #6222CC;
-  --colour-primary-dark:     #4e1aa3;
-  --colour-secondary:        #FBA504;
-  --colour-secondary-dark:   #e09400;
-  --colour-text:             rgb(58, 59, 60);
-  --colour-text-on-primary:  #ffffff;
-  --colour-text-on-secondary:#ffffff;
+  --colour-primary: #6222cc;
+  --colour-primary-dark: #4e1aa3;
+  --colour-secondary: #fba504;
+  --colour-secondary-dark: #e09400;
+  --colour-text: rgb(58, 59, 60);
+  --colour-text-on-primary: #ffffff;
+  --colour-text-on-secondary: #ffffff;
 
-  --font-title:  'Montserrat', sans-serif;
-  --font-body:   'Quicksand', sans-serif;
-  --font-code:   'JetBrains Mono', monospace;
+  --font-title: 'Montserrat', sans-serif;
+  --font-body: 'Quicksand', sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
 
-  --font-weight-title:       700;
-  --font-weight-body:        400;
+  --font-weight-title: 700;
+  --font-weight-body: 400;
   --font-weight-body-medium: 600;
 
   --ui-radius: 8px;
@@ -37,43 +37,47 @@
      screen. Note that --ui-border (purple-tinted) and --ui-border-neutral (grey)
      are currently both in use for the same job; unifying them is a design
      decision, not a refactor, and is left open. */
-  --colour-muted:             #6b7280;
-  --colour-muted-soft:        #9ca3af;
-  --colour-ink-strong:        #374151;
-  --ui-border-neutral:        #e5e7eb;
+  --colour-muted: #6b7280;
+  --colour-muted-soft: #9ca3af;
+  --colour-ink-strong: #374151;
+  --ui-border-neutral: #e5e7eb;
   --ui-border-neutral-strong: #d1d5db;
-  --ui-surface-neutral:       #f9fafb;
-  --ui-surface-neutral-sunk:  #f3f4f6;
+  --ui-surface-neutral: #f9fafb;
+  --ui-surface-neutral-sunk: #f3f4f6;
 
   /* Status families, promoted verbatim from the table in docs/UI_STYLE_GUIDE.md.
      Green and red are reserved for verdicts - pass/fail, online/offline,
      destructive. Anything that is not reporting an outcome should use the brand
      or neutral families instead. */
-  --colour-success:      #22c55e;
+  --colour-success: #22c55e;
   --colour-success-edge: #16a34a;
   --colour-success-text: #166534;
-  --colour-success-bg:   #dcfce7;
-  --colour-error:        #ef4444;
-  --colour-error-edge:   #dc2626;
-  --colour-error-text:   #991b1b;
-  --colour-error-bg:     #fee2e2;
-  --colour-warning:      #f59e0b;
+  --colour-success-bg: #dcfce7;
+  --colour-error: #ef4444;
+  --colour-error-edge: #dc2626;
+  --colour-error-text: #991b1b;
+  --colour-error-bg: #fee2e2;
+  --colour-warning: #f59e0b;
   --colour-warning-edge: #fde047;
   --colour-warning-text: #854d0e;
-  --colour-warning-bg:   #fef9c3;
-  --colour-info:         #2563eb;
-  --colour-info-edge:    #93c5fd;
-  --colour-info-text:    #1e40af;
-  --colour-info-bg:      #eff6ff;
+  --colour-warning-bg: #fef9c3;
+  --colour-info: #2563eb;
+  --colour-info-edge: #93c5fd;
+  --colour-info-text: #1e40af;
+  --colour-info-bg: #eff6ff;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   font-family: var(--font-body);
   font-weight: var(--font-weight-body);
@@ -89,7 +93,13 @@ button {
   border-radius: var(--ui-radius);
   padding: 8px 18px;
   font-size: 15px;
-  transition: background var(--ui-motion), border-color var(--ui-motion), box-shadow var(--ui-motion), color var(--ui-motion), opacity var(--ui-motion), transform 0.1s ease;
+  transition:
+    background var(--ui-motion),
+    border-color var(--ui-motion),
+    box-shadow var(--ui-motion),
+    color var(--ui-motion),
+    opacity var(--ui-motion),
+    transform 0.1s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -125,7 +135,11 @@ a:focus-visible {
   box-shadow: 0 6px 14px rgba(251, 165, 4, 0.24);
 }
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--colour-secondary) 0%, var(--colour-secondary-dark) 100%) !important;
+  background: linear-gradient(
+    180deg,
+    var(--colour-secondary) 0%,
+    var(--colour-secondary-dark) 100%
+  ) !important;
 }
 
 .btn-secondary {
@@ -134,7 +148,11 @@ a:focus-visible {
   box-shadow: 0 6px 14px rgba(98, 34, 204, 0.2);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--colour-primary) 0%, var(--colour-primary-dark) 100%) !important;
+  background: linear-gradient(
+    180deg,
+    var(--colour-primary) 0%,
+    var(--colour-primary-dark) 100%
+  ) !important;
 }
 
 .btn-ghost {
@@ -168,7 +186,7 @@ a:focus-visible {
   background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%) !important;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+input:not([type='checkbox']):not([type='radio']):not([type='color']),
 textarea,
 select {
   border: 1px solid var(--ui-border) !important;
@@ -176,10 +194,13 @@ select {
   background-color: #fff !important;
   color: var(--colour-text) !important;
   font-family: var(--font-body) !important;
-  transition: border-color var(--ui-motion), box-shadow var(--ui-motion), background var(--ui-motion);
+  transition:
+    border-color var(--ui-motion),
+    box-shadow var(--ui-motion),
+    background var(--ui-motion);
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus,
+input:not([type='checkbox']):not([type='radio']):not([type='color']):focus,
 textarea:focus,
 select:focus {
   border-color: var(--colour-primary) !important;
@@ -198,12 +219,15 @@ select {
     calc(100% - 16px) 50%,
     calc(100% - 11px) 50%,
     calc(100% - 30px) 50%;
-  background-size: 5px 5px, 5px 5px, 1px 55%;
+  background-size:
+    5px 5px,
+    5px 5px,
+    1px 55%;
   background-repeat: no-repeat;
 }
 
 .ui-tabs,
-[role="tablist"] {
+[role='tablist'] {
   display: flex !important;
   align-items: center;
   align-self: stretch !important;
@@ -225,7 +249,7 @@ select {
 }
 
 .ui-tab,
-[role="tab"] {
+[role='tab'] {
   border: 0 !important;
   border-radius: var(--ui-radius-sm) !important;
   background: transparent !important;
@@ -235,7 +259,11 @@ select {
   letter-spacing: 0 !important;
   opacity: 1 !important;
   box-shadow: none !important;
-  transition: background var(--ui-motion), color var(--ui-motion), box-shadow var(--ui-motion), transform var(--ui-motion);
+  transition:
+    background var(--ui-motion),
+    color var(--ui-motion),
+    box-shadow var(--ui-motion),
+    transform var(--ui-motion);
 }
 
 .ui-tabs--editor .ui-tab {
@@ -245,20 +273,20 @@ select {
 }
 
 .ui-tab:hover:not(:disabled),
-[role="tab"]:hover:not(:disabled) {
+[role='tab']:hover:not(:disabled) {
   background: rgba(98, 34, 204, 0.08) !important;
   color: var(--colour-primary) !important;
 }
 
 .ui-tab.is-active,
-[role="tab"][aria-selected="true"] {
+[role='tab'][aria-selected='true'] {
   background: var(--colour-primary) !important;
   color: #fff !important;
   box-shadow: 0 6px 14px rgba(98, 34, 204, 0.18) !important;
 }
 
 .ui-tabs--editor .ui-tab.is-active,
-.ui-tabs--editor [role="tab"][aria-selected="true"] {
+.ui-tabs--editor [role='tab'][aria-selected='true'] {
   background: #fafafa !important;
   color: var(--colour-primary) !important;
   box-shadow: none !important;
@@ -266,7 +294,7 @@ select {
 
 /* Hover must not override the active-tab highlight */
 .ui-tab.is-active:hover,
-[role="tab"][aria-selected="true"]:hover {
+[role='tab'][aria-selected='true']:hover {
   background: var(--colour-primary) !important;
   color: #fff !important;
   box-shadow: 0 6px 14px rgba(98, 34, 204, 0.18) !important;
@@ -274,7 +302,7 @@ select {
 }
 
 .ui-tabs--editor .ui-tab.is-active:hover,
-.ui-tabs--editor [role="tab"][aria-selected="true"]:hover {
+.ui-tabs--editor [role='tab'][aria-selected='true']:hover {
   background: #fafafa !important;
   color: var(--colour-primary) !important;
   box-shadow: none !important;
@@ -297,7 +325,8 @@ select {
    Deliberately bold (big scale swing, two-layer glow, fast cadence) — a subtle version
    of this got lost against the surrounding UI in practice. */
 @keyframes teacher-pane-highlight-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     filter: drop-shadow(0 0 0 rgba(245, 158, 11, 0)) drop-shadow(0 0 0 rgba(245, 158, 11, 0));
     outline-color: rgba(245, 158, 11, 0);
@@ -334,64 +363,97 @@ select {
 }
 
 .ui-collapsible__header {
-  background: linear-gradient(135deg, var(--colour-primary) 0%, var(--colour-primary-dark) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    var(--colour-primary) 0%,
+    var(--colour-primary-dark) 100%
+  ) !important;
   border-bottom: 0 !important;
   color: #fff !important;
   box-shadow: none !important;
 }
 
 @keyframes ui-pop {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes scratch-toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 @keyframes ui-modal-in {
-  from { opacity: 0; transform: translateY(14px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-[role="dialog"] {
+[role='dialog'] {
   background: rgba(22, 14, 42, 0.52) !important;
   backdrop-filter: blur(6px);
 }
 
-[role="dialog"] > div {
+[role='dialog'] > div {
   border-radius: var(--ui-radius) !important;
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 28px 80px rgba(25, 12, 54, 0.34) !important;
   animation: ui-modal-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-[role="dialog"] > div > div:first-child {
-  background: linear-gradient(135deg, var(--colour-primary) 0%, var(--colour-primary-dark) 100%) !important;
+[role='dialog'] > div > div:first-child {
+  background: linear-gradient(
+    135deg,
+    var(--colour-primary) 0%,
+    var(--colour-primary-dark) 100%
+  ) !important;
   color: #fff !important;
   border-bottom: none !important;
 }
 
-[role="dialog"] > div > div:first-child > span:first-child,
-[role="dialog"] > div > div:first-child > h2:first-child {
+[role='dialog'] > div > div:first-child > span:first-child,
+[role='dialog'] > div > div:first-child > h2:first-child {
   color: #fff !important;
 }
 
-[role="dialog"] button[title="Close"],
-[role="dialog"] button[aria-label="Close"] {
+[role='dialog'] button[title='Close'],
+[role='dialog'] button[aria-label='Close'] {
   background: rgba(255, 255, 255, 0.14) !important;
   border: 1px solid rgba(255, 255, 255, 0.36) !important;
   color: #fff !important;
 }
 
 @keyframes flash-yellow {
-  0%, 100% { background: #FBA504; box-shadow: 0 0 0 0 rgba(251,165,4,0); }
-  50%       { background: #ffd04d; box-shadow: 0 0 10px 4px rgba(251,165,4,0.55); }
+  0%,
+  100% {
+    background: #fba504;
+    box-shadow: 0 0 0 0 rgba(251, 165, 4, 0);
+  }
+  50% {
+    background: #ffd04d;
+    box-shadow: 0 0 10px 4px rgba(251, 165, 4, 0.55);
+  }
 }
 
 .btn-paused {
-  background: #FBA504;
+  background: #fba504;
   color: #fff;
   border: none;
   animation: flash-yellow 1.2s ease-in-out infinite;
@@ -409,9 +471,15 @@ select {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-dot--success { background: #22c55e; }
-.status-dot--error   { background: #ef4444; }
-.status-dot--idle    { background: var(--colour-muted-soft); }
+.status-dot--success {
+  background: #22c55e;
+}
+.status-dot--error {
+  background: #ef4444;
+}
+.status-dot--idle {
+  background: var(--colour-muted-soft);
+}
 
 /* Teacher live broadcast dot shown in student banner */
 .live-dot {
@@ -429,15 +497,26 @@ select {
   filter: grayscale(0.55) brightness(0.97);
 }
 .live-view-active textarea,
-.live-view-active input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']) {
+.live-view-active
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not(
+    [type='radio']
+  ) {
   background: #e0e0e0 !important;
   color: #888 !important;
 }
 
 /* Student activity dots (typing indicator) */
 @keyframes activity-dot-bounce {
-  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
-  40%           { transform: translateY(-4px); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 .activity-dots {
@@ -456,17 +535,29 @@ select {
   animation: activity-dot-bounce 1.2s ease-in-out infinite;
 }
 
-.activity-dots span:nth-child(2) { animation-delay: 0.2s; }
-.activity-dots span:nth-child(3) { animation-delay: 0.4s; }
+.activity-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.activity-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 /* Student presence badges */
 @keyframes online-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.55; transform: scale(0.82); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
 }
 
 @keyframes offline-flash {
-  0%, 100% {
+  0%,
+  100% {
     background: #fee2e2;
     border-color: #ef4444;
     color: #991b1b;
@@ -577,7 +668,8 @@ select {
 }
 
 @keyframes teacherTimerExpired {
-  0%, 100% {
+  0%,
+  100% {
     background: #fef2f2;
     border-color: #fca5a5;
   }
@@ -991,7 +1083,7 @@ select {
 }
 
 .information-intro__meta span {
-  border: 1px solid rgba(255,255,255,0.42);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 999px;
   padding: 6px 14px;
   font-family: var(--font-body);
@@ -1006,7 +1098,7 @@ select {
   font-family: var(--font-body);
   font-size: 1.35rem;
   line-height: 1.55;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 @media (max-width: 760px) {
@@ -1071,32 +1163,83 @@ select {
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
   box-shadow: var(--ui-shadow-soft);
-  transition: border-color var(--ui-motion), box-shadow var(--ui-motion), transform var(--ui-motion);
+  transition:
+    border-color var(--ui-motion),
+    box-shadow var(--ui-motion),
+    transform var(--ui-motion);
 }
 
 /* ── Syntax highlighting in markdown explainers (rehype-highlight / hljs) ─── */
 /* Colors mirror the CodeMirror headstartHighlight palette in codemirror.js    */
-.hljs { background: transparent; color: var(--colour-text); }
-.hljs-keyword                       { color: #7c3aed; font-weight: bold; }
-.hljs-built_in                      { color: #2563eb; }
-.hljs-type                          { color: #b45309; }
-.hljs-literal                       { color: #7c3aed; }
-.hljs-number                        { color: #0284c7; }
-.hljs-string, .hljs-template-string { color: #059669; }
-.hljs-comment                       { color: var(--colour-muted-soft); font-style: italic; }
-.hljs-operator                      { color: #374151; }
-.hljs-variable, .hljs-params        { color: #111827; }
-.hljs-title.function_               { color: #2563eb; }
-.hljs-title.class_                  { color: #b45309; }
-.hljs-property                      { color: #2563eb; }
-.hljs-attr, .hljs-attribute         { color: #0284c7; }
-.hljs-tag                           { color: #b91c1c; }
-.hljs-name                          { color: #b91c1c; }
-.hljs-selector-tag                  { color: #b91c1c; }
-.hljs-selector-class                { color: #b45309; }
-.hljs-selector-id                   { color: #2563eb; }
-.hljs-selector-attr                 { color: #0284c7; }
-.hljs-meta                          { color: var(--colour-muted-soft); }
+.hljs {
+  background: transparent;
+  color: var(--colour-text);
+}
+.hljs-keyword {
+  color: #7c3aed;
+  font-weight: bold;
+}
+.hljs-built_in {
+  color: #2563eb;
+}
+.hljs-type {
+  color: #b45309;
+}
+.hljs-literal {
+  color: #7c3aed;
+}
+.hljs-number {
+  color: #0284c7;
+}
+.hljs-string,
+.hljs-template-string {
+  color: #059669;
+}
+.hljs-comment {
+  color: var(--colour-muted-soft);
+  font-style: italic;
+}
+.hljs-operator {
+  color: #374151;
+}
+.hljs-variable,
+.hljs-params {
+  color: #111827;
+}
+.hljs-title.function_ {
+  color: #2563eb;
+}
+.hljs-title.class_ {
+  color: #b45309;
+}
+.hljs-property {
+  color: #2563eb;
+}
+.hljs-attr,
+.hljs-attribute {
+  color: #0284c7;
+}
+.hljs-tag {
+  color: #b91c1c;
+}
+.hljs-name {
+  color: #b91c1c;
+}
+.hljs-selector-tag {
+  color: #b91c1c;
+}
+.hljs-selector-class {
+  color: #b45309;
+}
+.hljs-selector-id {
+  color: #2563eb;
+}
+.hljs-selector-attr {
+  color: #0284c7;
+}
+.hljs-meta {
+  color: var(--colour-muted-soft);
+}
 
 /* Scratch editor polish */
 .scratch-workspace .blocklyToolboxDiv {
@@ -1136,7 +1279,8 @@ select {
 
 /* Solo mode — Next button pulse when check passes */
 @keyframes solo-next-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 10px rgba(98, 34, 204, 0.25);
   }
@@ -1152,8 +1296,13 @@ select {
 
 /* Retro terminal cursor and animations */
 @keyframes terminal-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 .terminal-cursor {
@@ -1382,7 +1531,9 @@ select {
   border-radius: 6px;
   font-family: 'JetBrains Mono', monospace;
   font-variant-ligatures: none;
-  font-feature-settings: "liga" 0, "calt" 0;
+  font-feature-settings:
+    'liga' 0,
+    'calt' 0;
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--colour-text);
@@ -1470,7 +1621,10 @@ select {
   background: #fff;
   color: var(--colour-primary);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
 }
 .te-quiz-type-btn--active {
   border-color: var(--colour-primary);
@@ -1881,7 +2035,10 @@ select {
   background: #fff;
   color: var(--colour-text);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
 }
 .te-option-choice-card--active {
   border-color: var(--colour-primary);
@@ -1926,7 +2083,10 @@ select {
   background: #fff;
   color: var(--colour-text);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
 }
 .te-option-toggle-card--active {
   border-color: var(--colour-primary);
@@ -1960,7 +2120,10 @@ select {
   background: #fff;
   color: var(--colour-primary);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
 }
 .te-task-format-btn--active {
   border-color: var(--colour-primary);
@@ -2557,7 +2720,9 @@ select {
   border-right: 1px solid var(--ui-border-neutral);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .te-sprite-mode-btn:last-child {
   border-right: none;
@@ -2689,7 +2854,9 @@ select {
   border-radius: 8px;
   background: #fafafa;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .te-sprite-card:hover,
 .te-sprite-card:focus-visible {
@@ -2851,7 +3018,7 @@ select {
 }
 
 .hsc-loading__spinner::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 6px;
   border-radius: 50%;
@@ -2899,11 +3066,16 @@ select {
 }
 
 @keyframes hsc-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes hsc-spin-dot {
-  to { transform: translateX(-50%) rotate(360deg); transform-origin: 50% 24px; }
+  to {
+    transform: translateX(-50%) rotate(360deg);
+    transform-origin: 50% 24px;
+  }
 }
 
 .sv-editor-header {
@@ -2937,4 +3109,3 @@ select {
   font-size: 14px;
   padding: 9px 20px;
 }
-

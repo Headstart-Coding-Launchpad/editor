@@ -77,7 +77,6 @@ export default function TeacherView({ lessonId }) {
     clearLessonOverride,
     setPaused,
     requestFullscreenForAll,
-    setExplainerShowComplete,
     setActiveStudentView,
     setTeacherLive,
     renameStudent,
@@ -666,28 +665,6 @@ export default function TeacherView({ lessonId }) {
             />
           )}
 
-          {false &&
-            displayedLesson.type === 'python' &&
-            !!task?.completeCode &&
-            !isInSandbox &&
-            task?.taskType !== 'quiz' &&
-            !isInformationTask && (
-              <div style={sc.explainerToggleRow}>
-                <button
-                  type="button"
-                  style={{
-                    ...sc.explainerToggleBtn,
-                    ...(session?.explainerShowComplete ? sc.explainerToggleBtnActive : {}),
-                  }}
-                  onClick={() => setExplainerShowComplete(!session?.explainerShowComplete)}
-                >
-                  {session?.explainerShowComplete
-                    ? 'Showing complete code in students’ explainer — click to revert'
-                    : 'Show complete code in students’ explainer'}
-                </button>
-              </div>
-            )}
-
           {isPreviewing && (
             <TeacherPreviewBanner
               taskNumber={displayIndex + 1}
@@ -854,26 +831,6 @@ export default function TeacherView({ lessonId }) {
       )}
     </div>
   )
-}
-
-const sc = {
-  explainerToggleRow: { flexShrink: 0 },
-  explainerToggleBtn: {
-    fontSize: 12,
-    padding: '5px 12px',
-    background: '#fff',
-    color: 'var(--colour-primary)',
-    border: '1px solid rgba(124,58,237,0.35)',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-  },
-  explainerToggleBtnActive: {
-    background: 'var(--colour-primary)',
-    color: '#fff',
-    borderColor: 'var(--colour-primary)',
-  },
 }
 
 const s = {

@@ -126,11 +126,6 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByText(/A wise saying\./i)).toBeInTheDocument()
   })
 
-  it('uses the optional title prop without crashing', () => {
-    render(<MarkdownRenderer content="Some text." title="My Title" />)
-    expect(screen.getByText('Some text.')).toBeInTheDocument()
-  })
-
   it('applies the textScale prop without crashing', () => {
     render(<MarkdownRenderer content="Scaled text." textScale={1.5} />)
     expect(screen.getByText('Scaled text.')).toBeInTheDocument()

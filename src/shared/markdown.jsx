@@ -310,122 +310,147 @@ function removeCalloutMarker(children) {
     .filter(Boolean)
 }
 
-const components = {
-  h1({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return (
-      <h1 style={{ ...headingBase, color, fontSize: `${1.45 * scale}rem`, margin: '4px 0 10px' }}>
-        {children}
-      </h1>
-    )
-  },
-  h2({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return (
-      <h2 style={{ ...headingBase, color, fontSize: `${1.22 * scale}rem`, margin: '4px 0 8px' }}>
-        {children}
-      </h2>
-    )
-  },
-  h3({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return (
-      <h3 style={{ ...headingBase, color, fontSize: `${1.05 * scale}rem`, margin: '8px 0 6px' }}>
-        {children}
-      </h3>
-    )
-  },
-  h4({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return (
-      <h4 style={{ ...headingBase, color, fontSize: `${0.95 * scale}rem`, margin: '8px 0 4px' }}>
-        {children}
-      </h4>
-    )
-  },
-  code({ node, className, children, ...props }) {
-    const isInBlock = React.useContext(BlockCodeContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const isInline = !isInBlock && !className
-    const text = String(children).replaceAll(INLINE_CODE_LINE_BREAK, '\n')
-    const multiline = text.includes('\n')
-    if (isInline) {
-      if (text.startsWith('scratch:')) {
-        return <InlineScratchBlock text={text.slice('scratch:'.length).trim()} />
-      }
-      const langMatch = text.match(/^(python|html|css|js):(.*)$/s)
-      if (langMatch) {
-        return <InlineHighlightedCode lang={langMatch[1]} code={langMatch[2]} />
-      }
-      return (
-        <code
-          style={{
-            ...CODE_FONT_STYLE,
-            fontSize: '0.88em',
-            background: inheritColor ? 'rgba(0,0,0,0.2)' : '#f0eafa',
-            color: inheritColor ? 'inherit' : '#4e1aa3',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            display: multiline ? 'inline-block' : undefined,
-            whiteSpace: 'pre-wrap',
-            textAlign: 'left',
-          }}
-          {...props}
-        >
-          {text}
-        </code>
-      )
+// react-markdown renders these through the `components` map below, so they really are
+// components - but they have to be written as such (capitalised, declared outside the
+// map) for the hooks they call to be visible to React and its lint rules.
+function useHeadingStyle(sizeRem, margin) {
+  const scale = React.useContext(MarkdownScaleContext)
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
+  return {
+    ...headingBase,
+    color: inheritColor ? 'inherit' : 'var(--colour-primary-dark)',
+    fontSize: `${sizeRem * scale}rem`,
+    margin,
+  }
+}
+
+function Heading1({ children }) {
+  return <h1 style={useHeadingStyle(1.45, '4px 0 10px')}>{children}</h1>
+}
+
+function Heading2({ children }) {
+  return <h2 style={useHeadingStyle(1.22, '4px 0 8px')}>{children}</h2>
+}
+
+function Heading3({ children }) {
+  return <h3 style={useHeadingStyle(1.05, '8px 0 6px')}>{children}</h3>
+}
+
+function Heading4({ children }) {
+  return <h4 style={useHeadingStyle(0.95, '8px 0 4px')}>{children}</h4>
+}
+
+function MarkdownCode({ node: _node, className, children, ...props }) {
+  const isInBlock = React.useContext(BlockCodeContext)
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
+  const isInline = !isInBlock && !className
+  const text = String(children).replaceAll(INLINE_CODE_LINE_BREAK, '\n')
+  const multiline = text.includes('\n')
+  if (isInline) {
+    if (text.startsWith('scratch:')) {
+      return <InlineScratchBlock text={text.slice('scratch:'.length).trim()} />
     }
-    if (className?.includes('language-scratch')) {
-      return <ScratchBlocks code={String(children).replace(/\n$/, '')} />
+    const langMatch = text.match(/^(python|html|css|js):(.*)$/s)
+    if (langMatch) {
+      return <InlineHighlightedCode lang={langMatch[1]} code={langMatch[2]} />
     }
     return (
-      <code className={className} style={CODE_FONT_STYLE} {...props}>
-        {children}
+      <code
+        style={{
+          ...CODE_FONT_STYLE,
+          fontSize: '0.88em',
+          background: inheritColor ? 'rgba(0,0,0,0.2)' : '#f0eafa',
+          color: inheritColor ? 'inherit' : '#4e1aa3',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          display: multiline ? 'inline-block' : undefined,
+          whiteSpace: 'pre-wrap',
+          textAlign: 'left',
+        }}
+        {...props}
+      >
+        {text}
       </code>
     )
-  },
-  pre({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    // Pass through without pre styling when the child is a scratch block
-    const child = React.Children.toArray(children)[0]
-    if (child?.props?.className?.includes('language-scratch')) {
-      return <>{children}</>
-    }
-    const className = child?.props?.className
-    const isPlainCodeBlock = child?.type === 'code' && !className
-    const plainCode = isPlainCodeBlock ? String(child.props.children ?? '') : null
-    if (plainCode && looksLikeScratchBlocks(plainCode)) {
-      return <ScratchBlocks code={plainCode.replace(/\n$/, '')} />
-    }
-    return (
-      <BlockCodeContext.Provider value={true}>
-        <pre
-          style={{
-            background: '#fafafa',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            padding: '12px 14px',
-            overflowX: 'auto',
-            ...CODE_FONT_STYLE,
-            fontSize: `${14 * scale}px`,
-            margin: '10px 0',
-            lineHeight: 1.6,
-          }}
-        >
-          {isPlainCodeBlock ? <code style={CODE_FONT_STYLE}>{plainCode}</code> : children}
-        </pre>
-      </BlockCodeContext.Provider>
-    )
-  },
+  }
+  if (className?.includes('language-scratch')) {
+    return <ScratchBlocks code={String(children).replace(/\n$/, '')} />
+  }
+  return (
+    <code className={className} style={CODE_FONT_STYLE} {...props}>
+      {children}
+    </code>
+  )
+}
+function MarkdownPre({ children }) {
+  const scale = React.useContext(MarkdownScaleContext)
+  // Pass through without pre styling when the child is a scratch block
+  const child = React.Children.toArray(children)[0]
+  if (child?.props?.className?.includes('language-scratch')) {
+    return <>{children}</>
+  }
+  const className = child?.props?.className
+  const isPlainCodeBlock = child?.type === 'code' && !className
+  const plainCode = isPlainCodeBlock ? String(child.props.children ?? '') : null
+  if (plainCode && looksLikeScratchBlocks(plainCode)) {
+    return <ScratchBlocks code={plainCode.replace(/\n$/, '')} />
+  }
+  return (
+    <BlockCodeContext.Provider value={true}>
+      <pre
+        style={{
+          background: '#fafafa',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '12px 14px',
+          overflowX: 'auto',
+          ...CODE_FONT_STYLE,
+          fontSize: `${14 * scale}px`,
+          margin: '10px 0',
+          lineHeight: 1.6,
+        }}
+      >
+        {isPlainCodeBlock ? <code style={CODE_FONT_STYLE}>{plainCode}</code> : children}
+      </pre>
+    </BlockCodeContext.Provider>
+  )
+}
+function MarkdownStrong({ children }) {
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
+  const color = inheritColor ? 'inherit' : 'var(--colour-primary)'
+  return <strong style={{ fontWeight: 700, color }}>{children}</strong>
+}
+function MarkdownImage({ src, alt }) {
+  const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
+  const imageLayout = React.useContext(MarkdownImageLayoutContext)
+  const floating = imageLayout === 'float'
+  return (
+    <img
+      src={src}
+      alt={alt ?? ''}
+      className={floating ? 'markdown-img--float' : undefined}
+      style={{
+        maxWidth: '100%',
+        maxHeight: imageMaxHeight,
+        height: 'auto',
+        objectFit: 'contain',
+        borderRadius: 6,
+        // Float layout's positioning/spacing/width comes from the .markdown-img--float
+        // CSS class instead (it also needs a narrow-screen media query, which an inline
+        // style can't express).
+        ...(floating ? {} : { display: 'block', margin: '10px 0' }),
+      }}
+    />
+  )
+}
+
+const components = {
+  h1: Heading1,
+  h2: Heading2,
+  h3: Heading3,
+  h4: Heading4,
+  code: MarkdownCode,
+  pre: MarkdownPre,
   p({ children }) {
     return <p style={{ margin: '6px 0', lineHeight: 1.65 }}>{children}</p>
   },
@@ -460,42 +485,15 @@ const components = {
       </blockquote>
     )
   },
-  strong({ children }) {
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary)'
-    return <strong style={{ fontWeight: 700, color }}>{children}</strong>
-  },
   em({ children }) {
     return <em>{children}</em>
   },
-  img({ src, alt }) {
-    const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
-    const imageLayout = React.useContext(MarkdownImageLayoutContext)
-    const floating = imageLayout === 'float'
-    return (
-      <img
-        src={src}
-        alt={alt ?? ''}
-        className={floating ? 'markdown-img--float' : undefined}
-        style={{
-          maxWidth: '100%',
-          maxHeight: imageMaxHeight,
-          height: 'auto',
-          objectFit: 'contain',
-          borderRadius: 6,
-          // Float layout's positioning/spacing/width comes from the .markdown-img--float
-          // CSS class instead (it also needs a narrow-screen media query, which an inline
-          // style can't express).
-          ...(floating ? {} : { display: 'block', margin: '10px 0' }),
-        }}
-      />
-    )
-  },
+  strong: MarkdownStrong,
+  img: MarkdownImage,
 }
 
 export function MarkdownRenderer({
   content,
-  title,
   style,
   textScale = 1,
   inheritColor = false,
@@ -514,7 +512,6 @@ export function MarkdownRenderer({
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
   const blocks = parseMarkdownTables(topicEnabled ? expandTopicLinks(content, topics) : content)
-  const heading = String(title ?? '').trim()
 
   React.useEffect(() => {
     if (!openTopicId) return
