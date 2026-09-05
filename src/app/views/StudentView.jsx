@@ -1246,6 +1246,7 @@ export default function StudentView({
             entry={activeShare.entry}
             snapshot={activeShare.snapshot}
             copyTargetTaskId={currentTaskId}
+            isMobile={isMobile}
             onClose={handleCloseSharedWorkspace}
             onCopyToMyEditor={handleCopySharedWorkspace}
           />

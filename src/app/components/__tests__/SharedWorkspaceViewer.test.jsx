@@ -1,78 +1,41 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import SharedWorkspaceViewer from '../SharedWorkspaceViewer'
+import SharedWorkspaceViewer, {
+  seedSharedWorkspace,
+  shareViewerLessonId,
+} from '../SharedWorkspaceViewer'
+import { ephemeralStorage, clearEphemeralStorage } from '../../studentStorage'
 
-// The viewer is judged on what it does NOT do, so the module surfaces are
-// stubbed down to something we can type into and assert against.
-vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange, readOnly }) => (
-    <textarea
-      data-testid="code-editor"
-      value={value}
-      readOnly={readOnly}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  ),
+// The point of this component is that it renders the student's OWN workspace
+// surface. Stubbing LessonTaskContent lets us assert exactly that — which
+// component was rendered, with which lesson and cs — without dragging in every
+// module's editor.
+const lessonTaskContentSpy = vi.fn()
+vi.mock('../LessonTaskContent', () => ({
+  default: (props) => {
+    lessonTaskContentSpy(props)
+    return <div data-testid="lesson-task-content">{props.lesson?.type}</div>
+  },
 }))
 
-vi.mock('../../../modules/scratch/ScratchWorkspace.jsx', () => ({
-  default: ({ initialState }) => (
-    <div data-testid="scratch-workspace">{JSON.stringify(initialState)}</div>
-  ),
-}))
-
-vi.mock('../../../modules/html/TeacherLiveView.jsx', () => ({
-  default: ({ displayState, onChange }) => (
-    <div data-testid="html-view">
-      {displayState.files.map((f) => (
-        <textarea
-          key={f.name}
-          aria-label={f.name}
-          value={f.content}
-          onChange={(e) => onChange(f.name, e.target.value)}
-        />
-      ))}
-    </div>
-  ),
-}))
-
-vi.mock('../../../modules/arcade/TeacherLiveView.jsx', () => ({ default: () => <div /> }))
-vi.mock('../../../modules/electronics/TeacherLiveView.jsx', () => ({ default: () => <div /> }))
-vi.mock('../IframePreview', () => ({
-  default: ({ src }) => <div data-testid="iframe-preview">{src}</div>,
-}))
-vi.mock('../OutputPanel', () => ({
-  default: ({ output }) => <div data-testid="output">{output}</div>,
-}))
-
-const runMock = vi.fn(() => Promise.resolve({ status: 'success' }))
-const buildPreviewSrcMock = vi.fn(() => 'blob:preview')
-
-vi.mock('../../../modules/registry', () => ({
-  getLessonModule: (type) => {
-    if (type === 'python') {
-      return {
-        type: 'python',
-        deserializeState: (raw) => raw,
-        runtime: { run: runMock, init: vi.fn(), stop: vi.fn(), provideInput: vi.fn() },
-      }
+const csSpy = vi.fn()
+vi.mock('../../hooks/useStudentCodeState', () => ({
+  useStudentCodeState: (args) => {
+    csSpy(args)
+    return {
+      code: 'live-code',
+      buildShareSnapshot: () => ({
+        code: 'edited-by-viewer',
+        files: { 'index.html': '<p>edited</p>' },
+      }),
     }
-    if (type === 'html') {
-      return { type: 'html', runtime: { buildPreviewSrc: buildPreviewSrcMock } }
-    }
-    if (type === 'scratch') {
-      return { type: 'scratch', deserializeState: (raw) => raw, runtime: {} }
-    }
-    return null
   },
 }))
 
 const PYTHON_LESSON = { type: 'python', tasks: [{ id: 1, title: 'Loops' }] }
 const HTML_LESSON = { type: 'html', tasks: [{ id: 1, title: 'Page', entryFile: 'index.html' }] }
-const SCRATCH_LESSON = { type: 'scratch', tasks: [{ id: 1, title: 'Blocks' }] }
-
 const ENTRY = { shareId: 'share-1', sharerName: 'Jamie', sharerId: 'stu-1' }
 
 function pythonSnapshot(overrides = {}) {
@@ -89,12 +52,19 @@ function pythonSnapshot(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  runMock.mockResolvedValue({ status: 'success' })
-  buildPreviewSrcMock.mockReturnValue('blob:preview')
+  clearEphemeralStorage()
+  localStorage.clear()
 })
 
 describe('SharedWorkspaceViewer', () => {
-  it('shows whose work it is and reassures the viewer', () => {
+  it('renders the student own workspace surface, not a bespoke viewer', () => {
+    render(
+      <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+    )
+    expect(screen.getByTestId('lesson-task-content')).toBeInTheDocument()
+  })
+
+  it('names whose work it is and reassures the viewer', () => {
     render(
       <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
     )
@@ -102,67 +72,175 @@ describe('SharedWorkspaceViewer', () => {
     expect(screen.getByText(/your own work is safe and unchanged/i)).toBeInTheDocument()
   })
 
-  it('loads the shared code into an editable editor', () => {
-    render(
+  it('renders inline rather than as a fixed overlay dialog', () => {
+    const { container } = render(
       <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
     )
-    const editor = screen.getByTestId('code-editor')
-    expect(editor).toHaveValue('print("theirs")')
-    expect(editor).not.toHaveAttribute('readonly')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(container.firstChild).not.toHaveStyle({ position: 'fixed' })
   })
 
-  // The whole point of the feature: editing and running someone else's work
-  // must not reach localStorage or Firebase by any path.
-  it('writes nothing to localStorage when edited and run', async () => {
-    const setItem = vi.spyOn(Storage.prototype, 'setItem')
-    render(
-      <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
-    )
-
-    await userEvent.type(screen.getByTestId('code-editor'), 'X')
-    await userEvent.click(screen.getByRole('button', { name: /run/i }))
-    await waitFor(() => expect(runMock).toHaveBeenCalled())
-
-    expect(setItem).not.toHaveBeenCalled()
-    setItem.mockRestore()
-  })
-
-  it('runs the shared code and shows its output without touching the task', async () => {
-    runMock.mockImplementation(async (_code, _task, cbs) => {
-      cbs.onOutput('hello from Jamie')
-      return { status: 'success' }
+  // Everything below is the non-destructive guarantee, which now rests on how
+  // the throwaway useStudentCodeState instance is configured.
+  describe('cannot touch the student own work', () => {
+    it('runs in previewMode so persistence never reaches real localStorage', () => {
+      render(
+        <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+      )
+      expect(csSpy.mock.calls[0][0]).toMatchObject({ previewMode: true, phase: 'solo' })
     })
-    render(
-      <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
-    )
 
-    await userEvent.click(screen.getByRole('button', { name: /run/i }))
-    expect(await screen.findByTestId('output')).toHaveTextContent('hello from Jamie')
+    it('namespaces its lessonId so it cannot collide with the student own storage', () => {
+      render(
+        <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+      )
+      const args = csSpy.mock.calls[0][0]
+      expect(args.lessonId).toBe(shareViewerLessonId('share-1'))
+      expect(args.lessonId).not.toBe('python-lesson')
+    })
+
+    it('passes no real session writers, so no path to Firebase exists', () => {
+      render(
+        <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+      )
+      const args = csSpy.mock.calls[0][0]
+      for (const writer of [
+        'writeStudentRun',
+        'writeStudentCode',
+        'writeStudentFiles',
+        'logAttempt',
+        'updateTeacherLive',
+        'writeStudentPresence',
+      ]) {
+        expect(typeof args[writer]).toBe('function')
+        // A no-op resolves and records nothing.
+        expect(args[writer]('anything')).toBeInstanceOf(Promise)
+      }
+    })
+
+    it('writes nothing to real localStorage while rendering', () => {
+      const setItem = vi.spyOn(Storage.prototype, 'setItem')
+      render(
+        <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+      )
+      expect(setItem).not.toHaveBeenCalled()
+      setItem.mockRestore()
+    })
   })
 
-  it('runs the edited copy, not the original snapshot', async () => {
-    render(
-      <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
-    )
-    await userEvent.clear(screen.getByTestId('code-editor'))
-    await userEvent.type(screen.getByTestId('code-editor'), 'print(1)')
-    await userEvent.click(screen.getByRole('button', { name: /run/i }))
+  describe('seeding', () => {
+    it('seeds code modules so the normal load path finds the snapshot', () => {
+      const shareLessonId = shareViewerLessonId('s1')
+      seedSharedWorkspace({
+        shareLessonId,
+        taskId: 1,
+        moduleType: 'python',
+        snapshot: pythonSnapshot(),
+      })
+      expect(
+        ephemeralStorage.loadSavedCode(shareLessonId, 1, 'shared-workspace-viewer')
+      ).toMatchObject({ code: 'print("theirs")' })
+      expect(localStorage.length).toBe(0)
+    })
 
-    await waitFor(() => expect(runMock).toHaveBeenCalledWith('print(1)', expect.anything(), expect.anything()))
+    it('seeds each HTML file separately', () => {
+      const shareLessonId = shareViewerLessonId('s2')
+      seedSharedWorkspace({
+        shareLessonId,
+        taskId: 1,
+        moduleType: 'html',
+        snapshot: { files: { 'index.html': '<p>hi</p>', 'style.css': 'p{}' } },
+      })
+      expect(
+        ephemeralStorage.loadSavedFile(shareLessonId, 1, 'index.html', 'shared-workspace-viewer')
+      ).toBe('<p>hi</p>')
+      expect(
+        ephemeralStorage.loadSavedFile(shareLessonId, 1, 'style.css', 'shared-workspace-viewer')
+      ).toBe('p{}')
+    })
+
+    it('seeds Scratch blocks as parsed workspace state', () => {
+      const shareLessonId = shareViewerLessonId('s3')
+      seedSharedWorkspace({
+        shareLessonId,
+        taskId: 2,
+        moduleType: 'scratch',
+        snapshot: { code: '{"player":{"blocks":[]}}' },
+      })
+      expect(
+        ephemeralStorage.loadSavedCode(shareLessonId, 2, 'shared-workspace-viewer')
+      ).toEqual({ state: { player: { blocks: [] } } })
+    })
+
+    it('seeds filesystem state through the fs slot', () => {
+      const shareLessonId = shareViewerLessonId('s4')
+      seedSharedWorkspace({
+        shareLessonId,
+        taskId: 3,
+        moduleType: 'filesystem',
+        snapshot: { code: '{"/":{"type":"dir"}}' },
+      })
+      expect(ephemeralStorage.loadSavedFs(shareLessonId, 3, 'shared-workspace-viewer')).toEqual({
+        '/': { type: 'dir' },
+      })
+    })
+
+    it('carries an arcade design alongside the code', () => {
+      const shareLessonId = shareViewerLessonId('s5')
+      seedSharedWorkspace({
+        shareLessonId,
+        taskId: 1,
+        moduleType: 'arcade',
+        snapshot: { code: 'x = 1', arcadeDesign: { sprites: ['a'] } },
+      })
+      expect(
+        ephemeralStorage.loadSavedCode(shareLessonId, 1, 'shared-workspace-viewer')
+      ).toMatchObject({ code: 'x = 1', arcadeDesign: { sprites: ['a'] } })
+    })
   })
 
-  it('closes back to the student own work', async () => {
-    const onClose = vi.fn()
-    render(
-      <SharedWorkspaceViewer
-        lesson={PYTHON_LESSON}
-        entry={ENTRY}
-        snapshot={pythonSnapshot()}
-        onClose={onClose}
-      />
-    )
-    await userEvent.click(screen.getByRole('button', { name: /back to my work/i }))
-    expect(onClose).toHaveBeenCalled()
+  describe('module resolution', () => {
+    // A share outlives its task, so in a composed lesson it may be a different
+    // module from whatever the class is on now.
+    it('renders by the snapshot own module, not the viewer current lesson', () => {
+      const composed = {
+        type: 'composed',
+        modules: [
+          { id: 'py', type: 'python', title: 'Python' },
+          { id: 'sc', type: 'scratch', title: 'Scratch' },
+        ],
+        tasks: [
+          { id: 1, title: 'Py', moduleType: 'python', moduleId: 'py' },
+          { id: 2, title: 'Blocks', moduleType: 'scratch', moduleId: 'sc' },
+        ],
+      }
+      render(
+        <SharedWorkspaceViewer
+          lesson={composed}
+          entry={ENTRY}
+          snapshot={{ lessonType: 'scratch', taskId: 2, code: '{}', files: {} }}
+        />
+      )
+      expect(lessonTaskContentSpy.mock.calls[0][0].lesson.type).toBe('scratch')
+      expect(lessonTaskContentSpy.mock.calls[0][0].task).toMatchObject({ id: 2 })
+    })
+
+    it('remounts the workspace per share so module state is never swapped in place', () => {
+      const { rerender } = render(
+        <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+      )
+      expect(lessonTaskContentSpy.mock.calls[0][0].key ?? 'share-1').toBeTruthy()
+      rerender(
+        <SharedWorkspaceViewer
+          lesson={PYTHON_LESSON}
+          entry={{ ...ENTRY, shareId: 'share-2' }}
+          snapshot={pythonSnapshot()}
+        />
+      )
+      // A different share means a different namespaced storage id.
+      const ids = csSpy.mock.calls.map((c) => c[0].lessonId)
+      expect(ids[ids.length - 1]).toBe(shareViewerLessonId('share-2'))
+    })
   })
 
   describe('copy to my editor', () => {
@@ -208,82 +286,42 @@ describe('SharedWorkspaceViewer', () => {
       expect(onCopy).not.toHaveBeenCalled()
     })
 
-    it('copies the edited copy once confirmed', async () => {
+    // Copies what they are looking at now, edits included — not the original.
+    it('copies the viewer current state once confirmed', async () => {
       const onCopy = vi.fn()
-      render(
-        <SharedWorkspaceViewer
-          lesson={PYTHON_LESSON}
-          entry={ENTRY}
-          snapshot={pythonSnapshot()}
-          copyTargetTaskId={1}
-          onCopyToMyEditor={onCopy}
-        />
-      )
-      await userEvent.clear(screen.getByTestId('code-editor'))
-      await userEvent.type(screen.getByTestId('code-editor'), 'mine now')
-      await userEvent.click(screen.getByRole('button', { name: /copy to my editor/i }))
-      await userEvent.click(screen.getByRole('button', { name: /replace my work/i }))
-
-      expect(onCopy).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 'mine now', moduleType: 'python' })
-      )
-    })
-  })
-
-  describe('per-module rendering', () => {
-    it('renders an HTML share with its files and previews on run', async () => {
       render(
         <SharedWorkspaceViewer
           lesson={HTML_LESSON}
           entry={ENTRY}
-          snapshot={{
-            lessonType: 'html',
-            taskId: 1,
-            code: '',
-            files: { 'index.html': '<p>hi</p>' },
-          }}
+          snapshot={{ lessonType: 'html', taskId: 1, code: '', files: {} }}
+          copyTargetTaskId={1}
+          onCopyToMyEditor={onCopy}
         />
       )
-      expect(screen.getByLabelText('index.html')).toHaveValue('<p>hi</p>')
+      await userEvent.click(screen.getByRole('button', { name: /copy to my editor/i }))
+      await userEvent.click(screen.getByRole('button', { name: /replace my work/i }))
 
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-      expect(await screen.findByTestId('iframe-preview')).toHaveTextContent('blob:preview')
-    })
-
-    it('renders a Scratch share in a workspace keyed to the share', () => {
-      render(
-        <SharedWorkspaceViewer
-          lesson={SCRATCH_LESSON}
-          entry={ENTRY}
-          snapshot={{ lessonType: 'scratch', taskId: 1, code: '{"blocks":1}', files: {} }}
-        />
+      expect(onCopy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'edited-by-viewer',
+          moduleType: 'html',
+          files: [expect.objectContaining({ name: 'index.html', content: '<p>edited</p>' })],
+        })
       )
-      expect(screen.getByTestId('scratch-workspace')).toHaveTextContent('"blocks":1')
-      // Scratch runs inside its own workspace — no external Run button.
-      expect(screen.queryByRole('button', { name: /^▶ Run$/ })).not.toBeInTheDocument()
-    })
-
-    // A share outlives its task, so in a composed lesson it may be a different
-    // module from whatever the class is on now.
-    it('renders by the snapshot own module, not the current lesson type', () => {
-      render(
-        <SharedWorkspaceViewer
-          lesson={PYTHON_LESSON}
-          entry={ENTRY}
-          snapshot={{ lessonType: 'scratch', taskId: 1, code: '{"blocks":2}', files: {} }}
-        />
-      )
-      expect(screen.getByTestId('scratch-workspace')).toBeInTheDocument()
-      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     })
   })
-  // It replaces the workspace in place rather than floating over it, so it
-  // reads as the same surface the student already knows.
-  it('renders inline rather than as a fixed overlay dialog', () => {
-    const { container } = render(
-      <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+
+  it('closes back to the student own work', async () => {
+    const onClose = vi.fn()
+    render(
+      <SharedWorkspaceViewer
+        lesson={PYTHON_LESSON}
+        entry={ENTRY}
+        snapshot={pythonSnapshot()}
+        onClose={onClose}
+      />
     )
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(container.firstChild).not.toHaveStyle({ position: 'fixed' })
+    await userEvent.click(screen.getByRole('button', { name: /back to my work/i }))
+    expect(onClose).toHaveBeenCalled()
   })
 })

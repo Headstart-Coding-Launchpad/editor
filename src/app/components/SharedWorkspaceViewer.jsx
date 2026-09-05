@@ -1,29 +1,95 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { resolveSnapshotContext, snapshotFiles } from './SharedWorkspacePreview'
-import { resolveAssetsPath } from '../../shared/assetPaths'
 import { parseScratchState } from '../../shared/workspaceData'
-import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
-import HtmlTeacherLiveView from '../../modules/html/TeacherLiveView.jsx'
-import ArcadeTeacherLiveView from '../../modules/arcade/TeacherLiveView.jsx'
-import ElectronicsTeacherLiveView from '../../modules/electronics/TeacherLiveView.jsx'
-import { CodeEditor } from '../../shared/CodeEditor'
-import IframePreview from './IframePreview'
-import OutputPanel from './OutputPanel'
+import { ephemeralStorage } from '../studentStorage'
+import { useStudentCodeState } from '../hooks/useStudentCodeState'
+import LessonTaskContent from './LessonTaskContent'
 
 /**
  * A classmate's shared workspace, opened as a throwaway copy.
  *
- * Non-destructive BY CONSTRUCTION, not by gating: this component holds its own
- * local React state and is deliberately not wired to useStudentCodeState,
- * createStudentPersistence, or any useSession writer. There is no code path
- * from here to localStorage or Firebase, so editing or running a shared
- * workspace cannot touch the viewer's own saved work, cannot stream as their
- * live code, and cannot log an attempt against their task.
+ * This renders the student's OWN workspace surface — the same LessonTaskContent
+ * and module StudentWorkspace they use for their own work — rather than a
+ * bespoke viewer. Anything else drifts: the teacher-facing views have different
+ * chrome and controls (Electronics being the obvious case), so a hand-built
+ * viewer would never stay identical to what the student already knows. Only the
+ * banner above it says whose work this is.
  *
- * The one bridge into their real work is "Copy to my editor", which is
- * explicit, confirmed, and offered only when the snapshot is for the task they
- * are actually on.
+ * Non-destructive BY CONSTRUCTION. The workspace is driven by a second,
+ * throwaway useStudentCodeState instance that gets:
+ *   - `previewMode: true`, so persistence routes to the in-memory ephemeral
+ *     store and real localStorage is never touched;
+ *   - a namespaced lessonId, so the ephemeral store cannot collide with the
+ *     student's own work or with another share;
+ *   - no-op session writers, so no path exists to Firebase at all;
+ *   - `phase: 'solo'`, so none of the live-session write paths engage.
+ *
+ * The snapshot is seeded into the ephemeral store before the hook mounts, so
+ * each module's normal "load my saved work" path picks it up. That keeps every
+ * lesson type working through its real code path instead of a parallel one.
  */
+
+const SHARE_VIEWER_ACTOR = 'shared-workspace-viewer'
+
+const NOOP = () => {}
+const NOOP_ASYNC = () => Promise.resolve()
+
+// Every session write the hook can make, stubbed. Listed explicitly rather than
+// generated, so a newly added writer shows up as an obvious omission here
+// instead of silently reaching Firebase from a shared workspace.
+const NOOP_SESSION_WRITES = {
+  writeStudentRun: NOOP_ASYNC,
+  logAttempt: NOOP_ASYNC,
+  writeStudentAnswer: NOOP_ASYNC,
+  writeStudentCode: NOOP_ASYNC,
+  writeStudentArcadeDesign: NOOP_ASYNC,
+  writeStudentSpriteState: NOOP_ASYNC,
+  writeStudentCursor: NOOP_ASYNC,
+  writeStudentBlockDrag: NOOP_ASYNC,
+  writeStudentCodeArrangeSlots: NOOP_ASYNC,
+  writeStudentFiles: NOOP_ASYNC,
+  writeStudentOutput: NOOP_ASYNC,
+  writeStudentInteraction: NOOP_ASYNC,
+  recordStudentCarryFallback: NOOP_ASYNC,
+  recordSupportStageReveal: NOOP_ASYNC,
+  writeStudentPersonalSandbox: NOOP_ASYNC,
+  writeStudentPresence: NOOP_ASYNC,
+  registerPresence: NOOP,
+  removeStudent: NOOP_ASYNC,
+  updateTeacherLive: NOOP_ASYNC,
+  setTeacherLive: NOOP_ASYNC,
+  removeTeacherHighlight: NOOP_ASYNC,
+}
+
+export function shareViewerLessonId(shareId) {
+  return `shared-workspace::${shareId}`
+}
+
+// Write the snapshot where the module's own loadTaskContent will look for it.
+export function seedSharedWorkspace({ shareLessonId, taskId, moduleType, snapshot }) {
+  const actor = SHARE_VIEWER_ACTOR
+  if (moduleType === 'html') {
+    for (const file of snapshotFiles(snapshot)) {
+      ephemeralStorage.saveFile(shareLessonId, taskId, file.name, actor, file.content)
+    }
+    return
+  }
+  if (moduleType === 'scratch') {
+    const state = parseScratchState(snapshot?.code)
+    if (state) ephemeralStorage.saveCode(shareLessonId, taskId, actor, { state })
+    return
+  }
+  if (moduleType === 'filesystem') {
+    const fs = parseScratchState(snapshot?.code)
+    if (fs) ephemeralStorage.saveFsState(shareLessonId, taskId, actor, fs)
+    return
+  }
+  ephemeralStorage.saveCode(shareLessonId, taskId, actor, {
+    code: snapshot?.code ?? '',
+    ...(snapshot?.arcadeDesign ? { arcadeDesign: snapshot.arcadeDesign } : {}),
+  })
+}
+
 export default function SharedWorkspaceViewer({
   lesson,
   entry,
@@ -31,246 +97,151 @@ export default function SharedWorkspaceViewer({
   onClose,
   onCopyToMyEditor,
   copyTargetTaskId,
+  isMobile = false,
 }) {
-  const { task, effectiveLesson, moduleType, module } = useMemo(
+  const { task, effectiveLesson, moduleType } = useMemo(
     () => resolveSnapshotContext(lesson, snapshot),
     [lesson, snapshot]
   )
 
-  const [code, setCode] = useState(() => snapshot?.code ?? '')
-  const [files, setFiles] = useState(() => snapshotFiles(snapshot))
-  const [design, setDesign] = useState(() => snapshot?.arcadeDesign ?? null)
-  const [output, setOutput] = useState(() => snapshot?.output ?? '')
-  const [runStatus, setRunStatus] = useState(() => snapshot?.runStatus ?? null)
-  const [running, setRunning] = useState(false)
-  const [iframeSrc, setIframeSrc] = useState(null)
+  const shareId = entry?.shareId ?? 'unknown'
+  const shareLessonId = shareViewerLessonId(shareId)
+  const taskId = snapshot?.taskId ?? task?.id ?? null
+
+  // Seed before the hook's load effect runs. Ref-guarded so it happens once per
+  // share rather than on every render.
+  const seededRef = useRef(null)
+  if (seededRef.current !== shareId) {
+    seededRef.current = shareId
+    seedSharedWorkspace({ shareLessonId, taskId, moduleType, snapshot })
+  }
+
+  const identity = useMemo(
+    () => ({ anonymousId: SHARE_VIEWER_ACTOR, displayName: entry?.sharerName ?? 'Classmate' }),
+    [entry?.sharerName]
+  )
+
+  const cs = useStudentCodeState({
+    lessonId: shareLessonId,
+    lesson: effectiveLesson,
+    currentTaskId: taskId,
+    viewingTaskId: null,
+    phase: 'solo',
+    effectiveIdentity: identity,
+    identity,
+    session: null,
+    connected: false,
+    teacherPresentation: false,
+    previewMode: true,
+    ...NOOP_SESSION_WRITES,
+  })
+
   const [confirmingCopy, setConfirmingCopy] = useState(false)
-  const iframeRef = useRef(null)
 
-  const isScratch = moduleType === 'scratch'
-  const isHtml = moduleType === 'html'
-  const isArcade = moduleType === 'arcade'
-  const isElectronics = moduleType === 'electronics'
-  const isFilesystem = moduleType === 'filesystem'
-
-  const canRunCode = !!module?.runtime?.run && !isHtml && !isScratch && !isFilesystem
-  const canPreview = isHtml && !!module?.runtime?.buildPreviewSrc
   // Copying overwrites the viewer's own editor, so only offer it when the
   // snapshot belongs to the task they are actually working on.
-  const canCopy =
-    !!onCopyToMyEditor && snapshot?.taskId != null && snapshot.taskId === copyTargetTaskId
+  const canCopy = !!onCopyToMyEditor && taskId != null && taskId === copyTargetTaskId
 
-  async function handleRun() {
-    if (canPreview) {
-      setIframeSrc(
-        module.runtime.buildPreviewSrc(
-          { files, entryFile: task?.entryFile ?? 'index.html' },
-          task,
-          {
-            assets: effectiveLesson?.assets ?? [],
-            assetsPath: resolveAssetsPath(effectiveLesson?.assetsPath),
-          }
-        )
-      )
-      return
-    }
-    if (!canRunCode) return
-    setRunning(true)
-    setOutput('')
-    let buffer = ''
-    try {
-      await module.runtime.init?.()
-      const result = await module.runtime.run(code, task, {
-        onOutput: (text) => {
-          buffer += text
-          setOutput(buffer)
-        },
-        onInputRequired: () => module.runtime.provideInput?.(''),
-      })
-      setOutput(buffer)
-      setRunStatus(result?.status ?? 'success')
-    } catch (err) {
-      setOutput(buffer + (err?.message ?? 'Something went wrong running this.'))
-      setRunStatus('error')
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  function handleStop() {
-    module?.runtime?.stop?.()
-    setRunning(false)
-  }
-
-  function renderWorkspace() {
-    if (isScratch) {
-      return (
-        <ScratchWorkspace
-          // Remounted per share: handing a Blockly workspace new state without a
-          // remount has previously mutated the source project in place.
-          key={`shared-scratch-${entry?.shareId}`}
-          task={task}
-          readOnly={false}
-          assetsPath={resolveAssetsPath(effectiveLesson?.assetsPath) || undefined}
-          initialState={parseScratchState(snapshot?.code)}
-          onStateChange={(next) => setCode(JSON.stringify(next))}
-          unrestricted
-        />
-      )
-    }
-    if (isHtml) {
-      return (
-        <HtmlTeacherLiveView
-          lesson={effectiveLesson}
-          displayState={{ files }}
-          readOnly={false}
-          onChange={(name, content) =>
-            setFiles((prev) => prev.map((f) => (f.name === name ? { ...f, content } : f)))
-          }
-        />
-      )
-    }
-    if (isArcade) {
-      return (
-        <ArcadeTeacherLiveView
-          task={task}
-          displayState={code}
-          design={design}
-          readOnly={false}
-          onChange={setCode}
-          onDesignChange={setDesign}
-          onWorkspaceChange={() => {}}
-        />
-      )
-    }
-    if (isElectronics) {
-      return (
-        <ElectronicsTeacherLiveView
-          task={task}
-          displayState={code}
-          readOnly={false}
-          onChange={setCode}
-        />
-      )
-    }
-    const LiveView = module?.TeacherLiveView
-    if (isFilesystem && LiveView) {
-      return (
-        <LiveView
-          task={task}
-          lesson={effectiveLesson}
-          displayState={module.deserializeState ? module.deserializeState(code) : code}
-          readOnly={false}
-          onChange={(next) => setCode(JSON.stringify(next))}
-        />
-      )
-    }
-    return (
-      <div style={s.editorWrap}>
-        <CodeEditor
-          value={code}
-          language={moduleType === 'python' ? 'python' : 'text'}
-          readOnly={false}
-          onChange={setCode}
-          style={{ height: '100%' }}
-        />
-      </div>
-    )
+  function handleConfirmCopy() {
+    setConfirmingCopy(false)
+    // buildShareSnapshot reads this throwaway instance's current state, so the
+    // student copies what they are actually looking at, including their edits.
+    const current = cs.buildShareSnapshot()
+    onCopyToMyEditor({
+      code: current.code,
+      files: snapshotFiles(current),
+      moduleType,
+    })
   }
 
   return (
-    <div style={s.wrap} aria-label="Shared workspace">
-      <div style={s.panel}>
-        <div style={s.header}>
-          <div style={s.headerText}>
-            <span style={s.title}>📤 {entry?.sharerName ?? 'A classmate'}&apos;s workspace</span>
-            <span style={s.subtitle}>
-              {task?.title ? `${task.title} · ` : ''}Try anything you like — your own work is safe
-              and unchanged.
-            </span>
-          </div>
-          <div style={s.headerActions}>
-            {(canRunCode || canPreview) && (
-              <button
-                type="button"
-                className="btn-primary"
-                style={s.headerBtn}
-                onClick={running ? handleStop : handleRun}
-              >
-                {running ? '■ Stop' : '▶ Run'}
-              </button>
-            )}
-            {canCopy && (
-              <button
-                type="button"
-                className="btn-ghost"
-                style={s.headerBtn}
-                onClick={() => setConfirmingCopy(true)}
-              >
-                Copy to my editor
-              </button>
-            )}
-            <button type="button" className="btn-ghost" style={s.headerBtn} onClick={onClose}>
-              ← Back to my work
+    <div style={s.wrap}>
+      <div style={s.banner}>
+        <div style={s.bannerText}>
+          <span style={s.title}>📤 {entry?.sharerName ?? 'A classmate'}&apos;s workspace</span>
+          <span style={s.subtitle}>
+            {task?.title ? `${task.title} · ` : ''}Run it, change it, try anything — your own work
+            is safe and unchanged.
+          </span>
+        </div>
+        <div style={s.bannerActions}>
+          {canCopy && (
+            <button
+              type="button"
+              className="btn-ghost"
+              style={s.bannerBtn}
+              onClick={() => setConfirmingCopy(true)}
+            >
+              Copy to my editor
+            </button>
+          )}
+          <button type="button" className="btn-primary" style={s.bannerBtn} onClick={onClose}>
+            ← Back to my work
+          </button>
+        </div>
+      </div>
+
+      {confirmingCopy && (
+        <div style={s.confirm} role="alertdialog" aria-label="Confirm copy">
+          <span style={s.confirmText}>
+            This replaces your own code for this task with {entry?.sharerName ?? 'their'} version.
+            You cannot undo it.
+          </span>
+          <div style={s.confirmActions}>
+            <button
+              type="button"
+              className="btn-primary"
+              style={s.bannerBtn}
+              onClick={handleConfirmCopy}
+            >
+              Replace my work
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              style={s.bannerBtn}
+              onClick={() => setConfirmingCopy(false)}
+            >
+              Cancel
             </button>
           </div>
         </div>
+      )}
 
-        {confirmingCopy && (
-          <div style={s.confirm} role="alertdialog" aria-label="Confirm copy">
-            <span style={s.confirmText}>
-              This replaces your own code for this task with {entry?.sharerName ?? 'their'} version.
-              You cannot undo it.
-            </span>
-            <div style={s.confirmActions}>
-              <button
-                type="button"
-                className="btn-primary"
-                style={s.headerBtn}
-                onClick={() => {
-                  setConfirmingCopy(false)
-                  onCopyToMyEditor({ code, files, design, moduleType })
-                }}
-              >
-                Replace my work
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={s.headerBtn}
-                onClick={() => setConfirmingCopy(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div style={s.body}>{renderWorkspace()}</div>
-
-        {canPreview && iframeSrc && (
-          <IframePreview src={iframeSrc} iframeRef={iframeRef} height={260} />
-        )}
-        {canRunCode && (
-          <OutputPanel output={output} runStatus={runStatus} running={running} openOnRun />
-        )}
+      <div style={s.body}>
+        <LessonTaskContent
+          // Remounted per share: modules that load state on mount (notably
+          // Blockly) must not be handed a different project in place.
+          key={shareId}
+          lesson={effectiveLesson}
+          task={task}
+          cs={cs}
+          lessonId={shareLessonId}
+          identityId={SHARE_VIEWER_ACTOR}
+          currentTaskId={taskId}
+          viewingTaskId={null}
+          transitionKey={`shared-${shareId}`}
+          previewMode
+          isSandbox={false}
+          isViewingPrev={false}
+          isForcedTeacherLive={false}
+          isMobile={isMobile}
+          isQuizTask={false}
+          isAutoEvaluatedQuiz={false}
+          isInformationTask={false}
+          isCodeArrangeTask={task?.taskType === 'code_arrange'}
+          isTeacherEditing={false}
+          presenterLayout="both"
+        />
       </div>
     </div>
   )
 }
 
 const s = {
-  // Occupies the normal workspace slot rather than floating over it, so a
-  // shared workspace reads as the same surface the student already knows.
-  wrap: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    minHeight: 0,
-    flex: 1,
-  },
-  panel: { display: 'flex', flexDirection: 'column', gap: 10, height: '100%', minHeight: 0 },
-  header: {
+  // Occupies the normal workspace slot rather than floating over it.
+  wrap: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, flex: 1 },
+  banner: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -281,11 +252,11 @@ const s = {
     padding: '6px 10px',
     flexShrink: 0,
   },
-  headerText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
-  title: { fontWeight: 700, fontSize: 15 },
+  bannerText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  title: { fontWeight: 700, fontSize: 14 },
   subtitle: { fontSize: 12, color: 'var(--colour-muted)' },
-  headerActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  headerBtn: { fontSize: 13, padding: '5px 12px' },
+  bannerActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  bannerBtn: { fontSize: 13, padding: '5px 12px' },
   confirm: {
     display: 'flex',
     alignItems: 'center',
@@ -293,12 +264,11 @@ const s = {
     gap: 12,
     flexWrap: 'wrap',
     padding: 10,
-    borderRadius: 8,
-    border: '1px solid var(--colour-danger, #dc2626)',
+    borderBottom: '1px solid var(--colour-danger, #dc2626)',
     background: 'rgba(220, 38, 38, 0.06)',
+    flexShrink: 0,
   },
   confirmText: { fontSize: 12 },
   confirmActions: { display: 'flex', gap: 8 },
-  body: { flex: 1, minHeight: 0, overflow: 'auto' },
-  editorWrap: { height: '100%', minHeight: 240 },
+  body: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
 }
