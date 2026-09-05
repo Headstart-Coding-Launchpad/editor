@@ -68,6 +68,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
 | `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
+| `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
 
 ---
 
@@ -97,7 +98,10 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
-| `StudentCard.jsx` | Compact card: name, online/run/check/support badges, code/output/quiz snippet, expand button |
+| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, code/output/quiz snippet, expand button |
+| `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
+| `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
+| `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; own local state, no persistence, optional "Copy to my editor" |
 | `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link) |
 | `LiveActivityToast.jsx` | Transient live-view notice for editor copy, paste, and click activity |
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
@@ -144,6 +148,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `StageDropdown.jsx` | Teacher request menu for sending starter/stage/complete code to a student |
 | `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand` — reused per-student (StudentModal, "Focus") and whole-class (TeacherView, "Focus Class") |
 | `StudentWorkspaceBody.jsx` | Lesson-type-specific student workspace display inside the teacher modal |
+| `ShareRequestPanel.jsx` | Teacher review of a pending workspace share: fetches the frozen snapshot, previews it read-only, approves or declines |
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
 
 ### Teacher View Sub-modules (`src/app/views/teacher/`)
@@ -162,7 +167,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `useIdentity.js` | Anonymous ID and display name management; localStorage persistence; session timestamp comparison |
 | `useCrossTabPresence.js` | BroadcastChannel-based ping/pong presence check for the same student+lesson open in another tab; returns a boolean, informational only |
-| `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal logging, session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`) |
+| `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal logging, session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`), workspace share request/approve/remove |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
 | `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers, and the Pyodide warm-up effect; composes the sub-hooks below |
@@ -405,6 +410,7 @@ Each `index.js` exports a default object with:
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
 | `useElementSize.js` | `useElementSize() → [ref, {width, height}]` — `ResizeObserver`-based container-size hook (vs. `useIsMobile`'s viewport-only breakpoint); drives `LessonTaskContent.jsx`'s Scratch compact/tab layout (`ScratchWorkspace.jsx` measures its own container directly, not via this hook). Returns a callback ref, not a plain `useRef` — needed because `TaskSlideTransition.jsx` swaps in a fresh DOM node per task without the owning component remounting; a mount-only effect would silently keep observing the detached old node |

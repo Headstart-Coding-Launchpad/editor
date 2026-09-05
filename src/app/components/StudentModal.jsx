@@ -26,6 +26,7 @@ import OverrideDropdown from './student-modal/OverrideDropdown'
 import StageDropdown from './student-modal/StageDropdown'
 import PaneFocusDropdown from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
+import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 
 function getModuleDisplayState(module, raw) {
@@ -68,6 +69,10 @@ export default function StudentModal({
   onRemoveHighlight,
   onRevealSupportStage,
   onPushTeacherPaneCommand,
+  onReadPendingShare,
+  onApproveShare,
+  onDeclineShare,
+  onRequestShareSnapshot,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -632,7 +637,17 @@ export default function StudentModal({
                 const hasTopic = !!(onSendToTopic && topics?.length > 0)
                 const hasMessage = !!onSendMessage
                 const hasVideoCall = !!onSendVideoCallLink
-                if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall) return null
+                // A teacher cannot build the snapshot themselves: currentCode is
+                // only fresh while activeStudentView matches. So this asks the
+                // student's own device for one, then reuses the same preview and
+                // Approve step as a student-initiated share.
+                const hasShare =
+                  !!onRequestShareSnapshot &&
+                  !isInformation &&
+                  !isQuiz &&
+                  student.shareRequestedAt == null &&
+                  student.shareSnapshotRequestedAt == null
+                if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall && !hasShare) return null
                 return (
                   <DropdownMenu label="More" buttonClassName="btn-ghost">
                     {(close) => (
@@ -681,6 +696,17 @@ export default function StudentModal({
                             📹 Send Video Call Link
                           </button>
                         )}
+                        {hasShare && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onRequestShareSnapshot(student.anonymousId)
+                            }}
+                          >
+                            📤 Share this with the class
+                          </button>
+                        )}
                       </>
                     )}
                   </DropdownMenu>
@@ -718,6 +744,19 @@ export default function StudentModal({
             ✕
           </button>
         </div>
+
+        {onReadPendingShare && (
+          <ShareRequestPanel
+            student={student}
+            lesson={taskLesson}
+            onReadPendingShare={onReadPendingShare}
+            onApprove={onApproveShare}
+            onDecline={onDeclineShare}
+            awaitingSnapshot={
+              student.shareSnapshotRequestedAt != null && student.shareRequestedAt == null
+            }
+          />
+        )}
 
         {/* Content */}
         <div

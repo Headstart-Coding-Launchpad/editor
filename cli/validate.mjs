@@ -11,6 +11,7 @@ import {
   isValidStageRole,
   STAGE_ROLES,
   getStarterStage,
+  canTaskAllowSharing,
 } from '../src/shared/taskUtils.js'
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 import {
@@ -122,6 +123,13 @@ export function validateLessonForMcp(lesson) {
     }
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
+    }
+    if (task.allowSharing != null) {
+      if (typeof task.allowSharing !== 'boolean') {
+        errors.push(`Task ${n} allowSharing must be true or false`)
+      } else if (task.allowSharing && !canTaskAllowSharing(task)) {
+        errors.push(`Task ${n} allowSharing is not supported on quiz or information tasks`)
+      }
     }
     // Drafts deliberately allow missing task-specific authoring fields, but
     // still pass the schema/type checks above so Builder can load them safely.

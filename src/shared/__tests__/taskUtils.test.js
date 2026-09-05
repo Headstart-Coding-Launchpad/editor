@@ -4,6 +4,8 @@ import {
   filterTasksByMode,
   getEstimatedMinutes,
   getTaskPriority,
+  canTaskAllowSharing,
+  isSharingAllowed,
   getTaskPriorityCounts,
   getTotalEstimatedMinutes,
   formatEstimatedMinutes,
@@ -653,5 +655,30 @@ describe('buildStageOptions', () => {
       'mystery'
     )
     expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
+  })
+})
+
+describe('workspace sharing helpers', () => {
+  it('allows sharing on code tasks', () => {
+    expect(canTaskAllowSharing({ title: 'Code' })).toBe(true)
+    expect(canTaskAllowSharing({ taskType: 'code_arrange', title: 'Arrange' })).toBe(true)
+  })
+
+  it('refuses sharing on quiz, information, and group tasks', () => {
+    expect(canTaskAllowSharing({ taskType: 'quiz' })).toBe(false)
+    expect(canTaskAllowSharing({ taskType: 'information' })).toBe(false)
+    expect(canTaskAllowSharing({ type: 'group', subtasks: [] })).toBe(false)
+    expect(canTaskAllowSharing(null)).toBe(false)
+  })
+
+  it('treats sharing as off unless explicitly enabled', () => {
+    expect(isSharingAllowed({ title: 'Code' })).toBe(false)
+    expect(isSharingAllowed({ title: 'Code', allowSharing: false })).toBe(false)
+    expect(isSharingAllowed({ title: 'Code', allowSharing: 'true' })).toBe(false)
+    expect(isSharingAllowed({ title: 'Code', allowSharing: true })).toBe(true)
+  })
+
+  it('ignores the flag on task types that cannot share', () => {
+    expect(isSharingAllowed({ taskType: 'quiz', allowSharing: true })).toBe(false)
   })
 })

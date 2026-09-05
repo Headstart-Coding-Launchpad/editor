@@ -4,6 +4,7 @@ import { Field, CarryThroughPicker } from './TaskEditorFields'
 import { CheckListEditor } from './CheckEditors'
 import TestsEditor from './TestsEditor'
 import { getLessonModule } from '../../../modules/registry'
+import { canTaskAllowSharing } from '../../../shared/taskUtils'
 
 export default function TaskOptionsSection({
   task,
@@ -154,6 +155,38 @@ export default function TaskOptionsSection({
               />
             )}
           </Field>
+
+          {canTaskAllowSharing(task) && (
+            <Field label="Workspace sharing">
+              <label
+                className={
+                  task.allowSharing
+                    ? 'te-option-toggle-card te-option-toggle-card--active'
+                    : 'te-option-toggle-card'
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={!!task.allowSharing}
+                  onChange={(e) => set('allowSharing', e.target.checked ? true : undefined)}
+                  className="te-option-choice-input"
+                />
+                <span className="te-option-choice-title">
+                  Allow students to share this workspace
+                </span>
+                <span
+                  className={
+                    task.allowSharing
+                      ? 'te-option-choice-text te-option-choice-text--active'
+                      : 'te-option-choice-text'
+                  }
+                >
+                  Students can offer their work to the class. The teacher approves each share
+                  before anyone else sees it.
+                </span>
+              </label>
+            </Field>
+          )}
 
           {task.check && lessonMod?.supportsIncorrectChecks && (
             <Field label="Feedback checks">

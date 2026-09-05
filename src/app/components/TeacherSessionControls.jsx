@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { sortedShareEntries } from '../sharedWorkspacePayload'
 
 const BREAKPOINT_NARROW = 1300 // collapse secondary buttons into Menu dropdown
 const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside dropdown instead)
@@ -14,6 +15,8 @@ export default function TeacherSessionControls({
   onRestartSession,
   onReturnToAdmin,
   onUpdateVideoCallLink,
+  onRemoveSharedWorkspace,
+  onRemoveAllSharedWorkspaces,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -22,11 +25,19 @@ export default function TeacherSessionControls({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
+  const [sharesOpen, setSharesOpen] = useState(false)
+  const sharesRef = useRef(null)
+
   const [videoLinkOpen, setVideoLinkOpen] = useState(false)
   const [videoLinkValue, setVideoLinkValue] = useState(session?.videoCallLink ?? '')
   const [videoLinkError, setVideoLinkError] = useState(null)
   const [videoLinkSaving, setVideoLinkSaving] = useState(false)
   const videoLinkRef = useRef(null)
+
+  const shareEntries = useMemo(
+    () => sortedShareEntries(session?.sharedWorkspaces),
+    [session?.sharedWorkspaces]
+  )
 
   const narrow = width < BREAKPOINT_NARROW
   const compact = width < BREAKPOINT_COMPACT
@@ -50,6 +61,15 @@ export default function TeacherSessionControls({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!sharesOpen) return
+    function onDown(e) {
+      if (sharesRef.current && !sharesRef.current.contains(e.target)) setSharesOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [sharesOpen])
 
   useEffect(() => {
     if (!videoLinkOpen) return
@@ -183,6 +203,49 @@ export default function TeacherSessionControls({
             Account
           </button>
         </>
+      )}
+
+      {session && onRemoveSharedWorkspace && shareEntries.length > 0 && (
+        <div ref={sharesRef} style={sDD.wrap}>
+          <button
+            className="btn-ghost teacher-session-controls__action"
+            onClick={() => setSharesOpen((v) => !v)}
+            aria-expanded={sharesOpen}
+          >
+            📤 Shared work ({shareEntries.length})
+          </button>
+          {sharesOpen && (
+            <div style={sDD.panel} className="ui-popover">
+              <p style={sShare.note}>
+                Approved shares stay available to the class until you remove them.
+              </p>
+              <ul style={sShare.list}>
+                {shareEntries.map((entry) => (
+                  <li key={entry.shareId} style={sShare.row}>
+                    <span style={sShare.rowText}>
+                      <strong>{entry.sharerName}</strong>
+                      {entry.taskTitle ? ` · ${entry.taskTitle}` : ''}
+                    </span>
+                    <button style={sDD.item} onClick={() => onRemoveSharedWorkspace(entry.shareId)}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {onRemoveAllSharedWorkspaces && shareEntries.length > 1 && (
+                <button
+                  style={{ ...sDD.item, width: '100%' }}
+                  onClick={() => {
+                    onRemoveAllSharedWorkspaces()
+                    setSharesOpen(false)
+                  }}
+                >
+                  Remove all
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {session && onUpdateVideoCallLink && (
@@ -330,4 +393,18 @@ const sVid = {
     display: 'flex',
     gap: 6,
   },
+}
+
+const sShare = {
+  note: { margin: '0 0 6px', fontSize: 12, color: 'var(--colour-muted)' },
+  list: {
+    listStyle: 'none',
+    margin: '0 0 6px',
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  rowText: { fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
 }

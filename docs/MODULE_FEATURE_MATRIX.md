@@ -4,14 +4,14 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 
 ## At a glance
 
-| Module | Student experience | Landing-page playground | Lesson sandbox | View student work live | Directly edit one student's current work | Teacher-editable shared sandbox | Code stages | Student self-serve stage reference | Automatic completion checks | Carry work to a later task |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Python | Code editor, Run/Stop, console output | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Arcade Kit | Python game editor, pixel-game canvas, Run/Stop | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
-| HTML/CSS/JS | Multi-file editor and sandboxed webpage preview | No | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes |
-| Scratch | Block editor, sprites, and stage canvas | No | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes |
-| Filesystem | Virtual file-manager workspace | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
-| Electronics | Breadboard, wiring, components, and optional MicroPython | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes |
+| Module | Student experience | Landing-page playground | Lesson sandbox | View student work live | Directly edit one student's current work | Teacher-editable shared sandbox | Code stages | Student self-serve stage reference | Automatic completion checks | Carry work to a later task | Share workspace with the class |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Python | Code editor, Run/Stop, console output | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Arcade Kit | Python game editor, pixel-game canvas, Run/Stop | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
+| HTML/CSS/JS | Multi-file editor and sandboxed webpage preview | No | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes | Yes |
+| Scratch | Block editor, sprites, and stage canvas | No | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes |
+| Filesystem | Virtual file-manager workspace | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
+| Electronics | Breadboard, wiring, components, and optional MicroPython | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
 
 **Yes** means the feature is implemented. **No** means it is not currently available for that module.
 
@@ -28,6 +28,7 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 | Student self-serve stage reference | After unsuccessful work, Python and HTML can offer an authored Support stage as a read-only reference. For other modules, stages remain author/teacher tools rather than an automatic student reference panel. |
 | Automatic completion checks | Each module supplies its own check editor and evaluator: Python/code checks, HTML element checks, Scratch block/state checks, filesystem checks, circuit checks, or Arcade code checks. |
 | Carry work to a later task | A later task can use a previous task's completed state as its starter: source code for Python/Arcade, files for HTML, blocks for Scratch, filesystem state for Filesystem, and circuit state for Electronics. |
+| Share workspace with the class | On a task authored with `allowSharing`, a student can offer their workspace to the whole class. The teacher previews and approves each share; classmates then open it as a non-destructive copy they can run and edit. Available for every module — quiz and information tasks are excluded because they have no workspace to share. |
 
 ## Module-specific notes
 

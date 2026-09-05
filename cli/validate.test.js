@@ -224,6 +224,48 @@ describe('CLI lesson validation', () => {
     expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
   })
 
+  it('accepts allowSharing on code tasks and rejects it elsewhere', () => {
+    const valid = validateLessonForMcp({
+      id: 'sharing-demo',
+      type: 'python',
+      title: 'Sharing demo',
+      description: 'A lesson with workspace sharing',
+      tasks: [
+        { title: 'Not shareable by omission', starterCode: 'print("hi")' },
+        { title: 'Sharing off', allowSharing: false, starterCode: 'print("hi")' },
+        { title: 'Sharing on', allowSharing: true, starterCode: 'print("hi")' },
+      ],
+    })
+    expect(valid.errors).toEqual([])
+
+    const wrongType = validateLessonForMcp({
+      id: 'sharing-demo',
+      type: 'python',
+      title: 'Sharing demo',
+      description: 'A lesson with workspace sharing',
+      tasks: [{ title: 'Bad flag', allowSharing: 'yes', starterCode: 'print("hi")' }],
+    })
+    expect(wrongType.errors).toContain('Task 1 allowSharing must be true or false')
+
+    const onInformation = validateLessonForMcp({
+      id: 'sharing-demo',
+      type: 'python',
+      title: 'Sharing demo',
+      description: 'A lesson with workspace sharing',
+      tasks: [
+        {
+          title: 'Reading',
+          taskType: 'information',
+          explainer: 'Some reading',
+          allowSharing: true,
+        },
+      ],
+    })
+    expect(onInformation.errors).toContain(
+      'Task 1 allowSharing is not supported on quiz or information tasks'
+    )
+  })
+
   it('validates code stage roles and accepts revealable stages across roles', () => {
     const valid = validateLessonForMcp({
       id: 'stage-role-demo',

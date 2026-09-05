@@ -13,6 +13,7 @@ const firebaseMocks = vi.hoisted(() => ({
     key: 'mockHighlightId',
   })),
   onDisconnect: vi.fn(() => ({ set: vi.fn(), remove: vi.fn() })),
+  get: vi.fn(() => Promise.resolve({ val: () => null })),
 }))
 
 vi.mock('firebase/database', () => ({
@@ -24,6 +25,7 @@ vi.mock('firebase/database', () => ({
   push: (...args) => firebaseMocks.push(...args),
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
   onDisconnect: (...args) => firebaseMocks.onDisconnect(...args),
+  get: (...args) => firebaseMocks.get(...args),
 }))
 
 vi.mock('../../../shared/firebase', () => ({
@@ -43,6 +45,7 @@ describe('useSession', () => {
     firebaseMocks.set.mockResolvedValue(undefined)
     firebaseMocks.update.mockResolvedValue(undefined)
     firebaseMocks.remove.mockResolvedValue(undefined)
+    firebaseMocks.get.mockResolvedValue({ val: () => null })
 
     firebaseMocks.onValue.mockImplementation((refObj, callback) => {
       if (refObj.path === '.info/connected') {
@@ -1033,6 +1036,207 @@ describe('useSession', () => {
         { path: 'sessions/lesson-1/teacherClassPaneCommand' },
         null
       )
+    })
+  })
+  describe('workspace sharing', () => {
+    const snapshot = {
+      lessonType: 'html',
+      taskId: 3,
+      code: '',
+      arcadeDesign: null,
+      files: { 'index.html': '<p>hi</p>' },
+      activeFile: 'index.html',
+      output: '',
+      runStatus: null,
+      capturedAt: 111,
+    }
+
+    it('writes the payload before raising the request flag', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestWorkspaceShare('stu-1', snapshot)
+      })
+
+      const setCall = firebaseMocks.set.mock.calls.find(
+        ([r]) => r.path === 'sharedWorkspacePayloads/lesson-1/pending/stu-1'
+      )
+      expect(setCall).toBeTruthy()
+      // File keys are encoded at the write boundary, like teacherLive.
+      expect(setCall[1].files).toEqual({ index__dot__html: '<p>hi</p>' })
+
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1/students/stu-1'
+      )
+      expect(updateCall[1]).toMatchObject({
+        shareRequestTaskId: 3,
+        shareRequestOrigin: 'student',
+        shareSnapshotRequestedAt: null,
+      })
+      expect(updateCall[1].shareRequestedAt).toEqual(expect.any(Number))
+
+      // Ordering matters: the badge must never appear before the content.
+      const setOrder = firebaseMocks.set.mock.invocationCallOrder[0]
+      const updateOrder = firebaseMocks.update.mock.invocationCallOrder[0]
+      expect(setOrder).toBeLessThan(updateOrder)
+    })
+
+    it('refuses a snapshot past the size limit and writes nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const huge = { ...snapshot, code: 'x'.repeat(600 * 1024) }
+      await act(async () => {
+        await expect(result.current.requestWorkspaceShare('stu-1', huge)).rejects.toThrow(
+          /too large to share/
+        )
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+
+    it('approve copies the payload across before writing the index entry', async () => {
+      firebaseMocks.get.mockResolvedValue({
+        val: () => ({ ...snapshot, files: { index__dot__html: '<p>hi</p>' } }),
+      })
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        students: { 'stu-1': { displayName: 'Jamie', shareRequestOrigin: 'student' } },
+      })
+
+      await act(async () => {
+        await result.current.approveWorkspaceShare('stu-1', { task: { title: 'Task Three' } })
+      })
+
+      const payloadWrite = firebaseMocks.set.mock.calls.findIndex(
+        ([r]) => r.path === 'sharedWorkspacePayloads/lesson-1/approved/mockHighlightId'
+      )
+      const indexWrite = firebaseMocks.set.mock.calls.findIndex(
+        ([r]) => r.path === 'sessions/lesson-1/sharedWorkspaces/mockHighlightId'
+      )
+      expect(payloadWrite).toBeGreaterThanOrEqual(0)
+      expect(indexWrite).toBeGreaterThan(payloadWrite)
+
+      expect(firebaseMocks.set.mock.calls[indexWrite][1]).toMatchObject({
+        sharerId: 'stu-1',
+        sharerName: 'Jamie',
+        taskId: 3,
+        taskTitle: 'Task Three',
+        lessonType: 'html',
+        sharedBy: 'student',
+      })
+    })
+
+    it('approve refuses when the pending payload is gone', async () => {
+      firebaseMocks.get.mockResolvedValue({ val: () => null })
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await expect(result.current.approveWorkspaceShare('stu-1')).rejects.toThrow(
+          /no longer available/
+        )
+      })
+    })
+
+    it('decline clears the request and the pending payload, and nothing else', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.declineWorkspaceShare('stu-1')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/stu-1' },
+        { shareRequestedAt: null, shareRequestTaskId: null, shareRequestOrigin: null }
+      )
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1/pending/stu-1',
+      })
+      // Silent decline: no message, no index entry.
+      expect(firebaseMocks.set.mock.calls.some(([r]) => r.path.includes('sharedWorkspaces'))).toBe(
+        false
+      )
+    })
+
+    it('remove deletes the index entry and the payload together', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.removeSharedWorkspace('share-9')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/sharedWorkspaces/share-9' },
+        null
+      )
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1/approved/share-9',
+      })
+    })
+
+    it('setTaskId clears pending requests but preserves approved shares', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ students: { 'stu-1': { displayName: 'Jamie' } }, currentTaskId: 1 })
+
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      expect(updateCall[1]).toMatchObject({
+        'students/stu-1/shareRequestedAt': null,
+        'students/stu-1/shareRequestTaskId': null,
+        'students/stu-1/shareRequestOrigin': null,
+        'students/stu-1/shareSnapshotRequestedAt': null,
+      })
+      // Approved shares deliberately survive a task change.
+      expect(updateCall[1]).not.toHaveProperty('sharedWorkspaces')
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1/pending/stu-1',
+      })
+    })
+
+    it('endSession clears the index and removes the payload subtree', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.endSession()
+      })
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      expect(updateCall[1]).toMatchObject({ sharedWorkspaces: null })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1',
+      })
+    })
+
+    it('createSession clears the index and removes the payload subtree', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      const setCall = firebaseMocks.set.mock.calls.find(([r]) => r.path === 'sessions/lesson-1')
+      expect(setCall[1]).toMatchObject({ sharedWorkspaces: null })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1',
+      })
+    })
+
+    it('requestShareSnapshot stamps only the snapshot request field', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestShareSnapshot('stu-1')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/stu-1' },
+        { shareSnapshotRequestedAt: expect.any(Number) }
+      )
+    })
+
+    it('reads decode file keys back to real filenames', async () => {
+      firebaseMocks.get.mockResolvedValue({
+        val: () => ({ ...snapshot, files: { index__dot__html: '<p>hi</p>' } }),
+      })
+      const { result } = renderHook(() => useSession('lesson-1'))
+      let loaded
+      await act(async () => {
+        loaded = await result.current.readSharedWorkspace('share-1')
+      })
+      expect(loaded.files).toEqual({ 'index.html': '<p>hi</p>' })
     })
   })
 })

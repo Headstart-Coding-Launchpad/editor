@@ -4,17 +4,9 @@ import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import PresenceBadge from './PresenceBadge'
+import { formatTimeAgo } from '../../shared/timeAgo'
 
-function formatLastRun(ts) {
-  if (!ts) return null
-  const secs = Math.floor((Date.now() - ts) / 1000)
-  if (secs < 10) return 'Just now'
-  if (secs < 60) return `${secs}s ago`
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  return `${hrs}h ago`
-}
+const formatLastRun = formatTimeAgo
 
 // Matches the pane ids each module's StudentWorkspace/LessonTaskContent report — see
 // visiblePanes in LessonTaskContent.jsx. Ids with no entry here (e.g. HTML file names)
@@ -301,6 +293,14 @@ export default function StudentCard({
               Help
             </span>
           )}
+          {student.shareRequestedAt != null && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
+              title="Student wants to share their workspace with the class — open them to review it"
+            >
+              Sharing
+            </span>
+          )}
           {supportRevealCount > 0 && (
             <span
               style={{ ...s.checkBadge, ...s.checkBadgeSupport }}
@@ -527,6 +527,10 @@ const s = {
   },
   checkBadgeSupport: {
     background: '#2563eb',
+    color: '#fff',
+  },
+  checkBadgeShare: {
+    background: '#0d9488',
     color: '#fff',
   },
   checkBadgeTopic: {

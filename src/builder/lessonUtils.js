@@ -8,6 +8,7 @@ import {
 import {
   flattenTasks,
   isValidTaskPriority,
+  canTaskAllowSharing,
   TASK_PRIORITIES,
   isValidStageRole,
   STAGE_ROLES,
@@ -308,6 +309,13 @@ export function validateLesson(lesson) {
     }
     if (task.priority != null && !isValidTaskPriority(task.priority)) {
       errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
+    }
+    if (task.allowSharing != null) {
+      if (typeof task.allowSharing !== 'boolean') {
+        errors.push(`Task ${n} allowSharing must be true or false`)
+      } else if (task.allowSharing && !canTaskAllowSharing(task)) {
+        errors.push(`Task ${n} allowSharing is not supported on quiz or information tasks`)
+      }
     }
     if (task.taskType !== 'information' && task.taskType !== 'quiz') {
       validateStageMetadata(task, n, errors)
