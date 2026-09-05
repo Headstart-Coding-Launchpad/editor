@@ -1,6 +1,6 @@
 export const LAUNCHPAD_CODE_FILE_FORMAT = 'headstart-launchpad-code'
 export const LAUNCHPAD_CODE_FILE_VERSION = 1
-export const LAUNCHPAD_CODE_FILE_EXTENSION = '.launchpad'
+const LAUNCHPAD_CODE_FILE_EXTENSION = '.launchpad'
 
 function normaliseTask(task, index) {
   if (!task || typeof task !== 'object' || typeof task.code !== 'string') return null

@@ -324,7 +324,45 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
   )
 }
 
-export function FeedbackStageOfferControls({ check, stages = [], onChange }) {
+// The "how should this check's feedback behave" pair. Every check editor - builder,
+// electronics, filesystem and scratch - had its own copy of these two selects; only the
+// wrapper style and one option label ever differed.
+//
+// `onChange` receives the whole updated check, so callers that hold checks in a list can
+// splice it straight back in.
+function CheckFeedbackControls({
+  check,
+  onChange,
+  style,
+  afterAttemptLabel = 'After attempt',
+  children,
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', ...style }}>
+      <select
+        className="te-select"
+        value={check.mode ?? 'blocking'}
+        onChange={(e) => onChange({ ...check, mode: e.target.value })}
+        title="Feedback behaviour"
+      >
+        <option value="blocking">Blocking</option>
+        <option value="nudge">Nudge</option>
+      </select>
+      <select
+        className="te-select"
+        value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
+        onChange={(e) => onChange({ ...check, show: e.target.value })}
+        title="When to show feedback"
+      >
+        <option value="after_attempt">{afterAttemptLabel}</option>
+        <option value="on_idle">On idle</option>
+      </select>
+      {children}
+    </div>
+  )
+}
+
+function FeedbackStageOfferControls({ check, stages = [], onChange }) {
   const selectedStageIndex = check.stageOffer?.stageIndex
   const supportStages = stages
     .map((stage, index) => ({ stage, index }))
@@ -545,31 +583,18 @@ function CheckListEditor({
                 />
               </div>
               {feedbackEditor && (
-                <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <select
-                    className="te-select"
-                    value={check.mode ?? 'blocking'}
-                    onChange={(e) => updateCheck(index, { ...check, mode: e.target.value })}
-                    title="Feedback behaviour"
-                  >
-                    <option value="blocking">Blocking</option>
-                    <option value="nudge">Nudge</option>
-                  </select>
-                  <select
-                    className="te-select"
-                    value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
-                    onChange={(e) => updateCheck(index, { ...check, show: e.target.value })}
-                    title="When to show feedback"
-                  >
-                    <option value="after_attempt">After run or submit</option>
-                    <option value="on_idle">On idle</option>
-                  </select>
+                <CheckFeedbackControls
+                  check={check}
+                  onChange={(updated) => updateCheck(index, updated)}
+                  style={{ gridColumn: '1 / -1' }}
+                  afterAttemptLabel="After run or submit"
+                >
                   <FeedbackStageOfferControls
                     check={check}
                     stages={stages}
                     onChange={(updated) => updateCheck(index, updated)}
                   />
-                </div>
+                </CheckFeedbackControls>
               )}
               <div style={{ gridColumn: '1 / -1' }}>
                 <MarkdownFieldEditor
@@ -616,4 +641,5 @@ export {
   makeCheckSkeleton,
   CheckValueEditor,
   CheckListEditor,
+  CheckFeedbackControls,
 }

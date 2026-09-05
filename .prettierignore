@@ -1,0 +1,5 @@
+# Markdown here is hand-maintained (and agent-maintained) prose: docs/, AGENTS.md,
+# CLAUDE.md and the root planning notes. Prettier pads every table cell to the column
+# width, which reflows whole files on any edit and buys nothing - `npm run docs:check`
+# is what actually governs these. Formatting is for code.
+*.md

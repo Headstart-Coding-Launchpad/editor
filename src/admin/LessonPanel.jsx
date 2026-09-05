@@ -35,7 +35,6 @@ import {
   migrateLessonLevel,
   normalizeLevelRecord,
 } from '../shared/lessonLevels'
-import { getLessonModules } from '../modules/registry'
 import { validateLesson } from '../builder/lessonUtils'
 import TeacherReportModal from '../app/components/TeacherReportModal'
 import { AdminCell, AdminTable } from './AdminUi'
@@ -43,10 +42,6 @@ import { AdminCell, AdminTable } from './AdminUi'
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
 }
-
-const LESSON_MODULES = getLessonModules()
-const TYPE_ORDER = LESSON_MODULES.map((module) => module.type)
-const TYPE_LABELS = Object.fromEntries(LESSON_MODULES.map((module) => [module.type, module.label]))
 
 const UNASSIGNED_LEVEL_ID = '__unassigned__'
 const COMMON_LEVEL_EMOJIS = ['⭐', '🌱', '🚀', '💡', '🎯', '🧩', '🏆', '📚', '🛠️', '⚡', '🎨', '🔬']
@@ -59,30 +54,7 @@ const makeBlankLevelForm = () => ({
   icon: DEFAULT_LEVEL_ICON,
 })
 
-function groupByTypeAndLevel(lessons, levels) {
-  const byType = Object.fromEntries(TYPE_ORDER.map((type) => [type, []]))
-  for (const lesson of lessons) {
-    const type = lesson.type || 'unknown'
-    if (!byType[type]) byType[type] = []
-    byType[type].push(lesson)
-  }
-  for (const type of Object.keys(byType)) {
-    byType[type].sort((a, b) => {
-      const levelA = findLessonLevel(a, levels)
-      const levelB = findLessonLevel(b, levels)
-      if (levelA || levelB) return compareLevels(levelA ?? {}, levelB ?? {})
-      return String(a.id).localeCompare(String(b.id))
-    })
-  }
-  const sortedTypes = Object.keys(byType).sort((a, b) => {
-    const ai = TYPE_ORDER.indexOf(a)
-    const bi = TYPE_ORDER.indexOf(b)
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
-  })
-  return sortedTypes.map((type) => ({ type, lessons: byType[type] }))
-}
-
-function makeLevelBuckets(lessons, levels, activeType) {
+function makeLevelBuckets(lessons, levels) {
   const lessonBuckets = new Map()
   for (const lesson of lessons) {
     const level = findLessonLevel(lesson, levels)
@@ -103,7 +75,6 @@ function makeLevelBuckets(lessons, levels, activeType) {
   }
 
   for (const level of levels) {
-    if (activeType != null && (level.scopeType !== 'type' || level.scopeId !== activeType)) continue
     if (!lessonBuckets.has(level.id)) {
       lessonBuckets.set(level.id, {
         id: level.id,
@@ -133,17 +104,6 @@ function makeLevelBuckets(lessons, levels, activeType) {
 
 function displayLevelIcon(icon) {
   return LEGACY_ICON_LABELS[icon] ?? icon ?? ''
-}
-
-function makeTeacherUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
-}
-
-// Ephemeral, unrestricted solo run of the lesson (see LessonRoute.jsx's `preview` handling)
-// — nothing it does is written to real student progress, so it's safe to launch repeatedly
-// while checking a lesson over.
-function makePreviewUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?preview=true`
 }
 
 function findLessonLevel(lesson, levels) {
@@ -226,7 +186,6 @@ export default function LessonPanel({ view = 'lessons' }) {
   const [forkingId, setForkingId] = useState(null)
   const [deletedIds, setDeletedIds] = useState(new Set())
   const [selectedReport, setSelectedReport] = useState(null)
-  const [activeType, setActiveType] = useState(null)
   const [openLevelIds, setOpenLevelIds] = useState(() => new Set())
   const copyTimerRef = useRef(null)
   const migratedRef = useRef(new Set())
@@ -461,18 +420,9 @@ export default function LessonPanel({ view = 'lessons' }) {
     () => lessons.filter((l) => !deletedIds.has(l.id)),
     [lessons, deletedIds]
   )
-  const groups = useMemo(
-    () => groupByTypeAndLevel(visibleLessons, levels),
-    [visibleLessons, levels]
-  )
-
-  const firstPopulatedGroup = groups.find((g) => g.lessons.length > 0)
-  const displayType = activeType ?? firstPopulatedGroup?.type ?? groups[0]?.type ?? null
-  const activeGroup = groups.find((g) => g.type === displayType)
-  const showActiveGroup = activeGroup && (visibleLessons.length > 0 || activeType)
   const filteredLessons = visibleLessons
   const levelBuckets = useMemo(
-    () => makeLevelBuckets(filteredLessons, levels, null),
+    () => makeLevelBuckets(filteredLessons, levels),
     [filteredLessons, levels]
   )
 
@@ -486,16 +436,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }
 
   if (view === 'levels') {
-    return (
-      <LevelManager
-        levels={levels}
-        lessons={visibleLessons}
-        activeType={null}
-        onTypeChange={() => {}}
-        groups={[]}
-        loading={levelsLoading}
-      />
-    )
+    return <LevelManager levels={levels} lessons={visibleLessons} loading={levelsLoading} />
   }
 
   if (view === 'classes') {
@@ -527,21 +468,6 @@ export default function LessonPanel({ view = 'lessons' }) {
       {error && <p style={s.error}>Could not load lessons: {error}</p>}
       {!loading && !error && visibleLessons.length === 0 && (
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
-      )}
-
-      {false && groups.length > 0 && (
-        <div className="ui-tabs">
-          {groups.map(({ type, lessons: groupLessons }) => (
-            <button
-              key={type}
-              className={`ui-tab${displayType === type ? ' is-active' : ''}`}
-              onClick={() => setActiveType(type)}
-            >
-              {TYPE_LABELS[type] ?? type}
-              <span style={s.tabCount}>{groupLessons.length}</span>
-            </button>
-          ))}
-        </div>
       )}
 
       {visibleLessons.length > 0 && (
@@ -812,7 +738,7 @@ function LevelLessonGroup({
                           <AdminCell style={{ whiteSpace: 'nowrap' }}>
                             <div style={s.actions}>
                               <a
-                                href={makeTeacherUrl(lesson.id)}
+                                href={getLessonLinks(lesson.id).teacher}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn-primary"
@@ -821,7 +747,7 @@ function LevelLessonGroup({
                                 Launch as Teacher
                               </a>
                               <a
-                                href={makePreviewUrl(lesson.id)}
+                                href={getLessonLinks(lesson.id).preview}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn-ghost-outline"
@@ -873,16 +799,10 @@ function LevelLessonGroup({
   )
 }
 
-function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loading }) {
+function LevelManager({ levels, lessons, loading }) {
   const [form, setForm] = useState(() => makeBlankLevelForm())
   const [editingLevelId, setEditingLevelId] = useState(null)
   const [saveState, setSaveState] = useState(null)
-
-  useEffect(() => {
-    setEditingLevelId(null)
-    setForm(makeBlankLevelForm())
-    setSaveState(null)
-  }, [activeType])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -981,7 +901,7 @@ function LevelManager({ levels, lessons, activeType, onTypeChange, groups, loadi
 
   const activeLessons = lessons
   const activeBuckets = useMemo(
-    () => makeLevelBuckets(activeLessons, levels, null),
+    () => makeLevelBuckets(activeLessons, levels),
     [activeLessons, levels]
   )
 
@@ -1479,15 +1399,6 @@ const s = {
   headerActions: { display: 'flex', gap: 8 },
   headerBtn: { padding: '6px 14px', fontSize: '0.85rem' },
   group: { display: 'flex', flexDirection: 'column', gap: 0 },
-  tabCount: {
-    background: '#f0eafa',
-    color: 'var(--colour-primary)',
-    borderRadius: 999,
-    padding: '1px 6px',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    marginLeft: 4,
-  },
   table: { tableLayout: 'fixed' },
   stageBadge: {
     display: 'inline-block',

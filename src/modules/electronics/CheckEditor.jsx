@@ -7,7 +7,10 @@ import {
   defaultOperatorForAspect,
   checkFromSubjectOp,
 } from '../../builder/components/task-editor/check-editors/checkEditorUtils'
-import { CheckValueEditor } from '../../builder/components/task-editor/CheckEditors'
+import {
+  CheckFeedbackControls,
+  CheckValueEditor,
+} from '../../builder/components/task-editor/CheckEditors'
 
 // Matches controlAffectsComponentPower's own control-type filter in circuit.js.
 const CONTROL_TYPES = ['slide_switch', 'push_button', 'transistor']
@@ -345,31 +348,6 @@ function CheckFields({ check, onChange }) {
   return null
 }
 
-function FeedbackControls({ check, onChange }) {
-  return (
-    <div style={s.feedbackControls}>
-      <select
-        className="te-select"
-        value={check.mode ?? 'blocking'}
-        onChange={(e) => onChange({ ...check, mode: e.target.value })}
-        title="Feedback behaviour"
-      >
-        <option value="blocking">Blocking</option>
-        <option value="nudge">Nudge</option>
-      </select>
-      <select
-        className="te-select"
-        value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
-        onChange={(e) => onChange({ ...check, show: e.target.value })}
-        title="When to show feedback"
-      >
-        <option value="after_attempt">After attempt</option>
-        <option value="on_idle">On idle</option>
-      </select>
-    </div>
-  )
-}
-
 export default function CheckEditor({
   task,
   onUpdate,
@@ -465,8 +443,9 @@ export default function CheckEditor({
             </select>
             <CheckFields check={activeCheck} onChange={(updated) => updateCheck(index, updated)} />
             {feedbackEditor && (
-              <FeedbackControls
+              <CheckFeedbackControls
                 check={activeCheck}
+                style={s.feedbackControls}
                 onChange={(updated) => updateCheck(index, updated)}
               />
             )}

@@ -10,15 +10,11 @@ import {
   normaliseFilePath,
 } from './filesystem.js'
 import { normalizeFsCheck } from './checks.js'
+import { fileExtension } from '../../shared/textUtils'
+import { CheckFeedbackControls } from '../../builder/components/task-editor/CheckEditors'
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 const TEXT_EXTS = new Set(['txt', 'md', 'csv'])
-
-function fileExt(path) {
-  const name = entryName(path)
-  const dot = name.lastIndexOf('.')
-  return dot !== -1 ? name.slice(dot + 1).toLowerCase() : ''
-}
 
 const s = {
   label: {
@@ -223,7 +219,7 @@ function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = 
     if (renaming && ref.current) ref.current.focus()
   }, [renaming])
 
-  const ext = fileExt(path)
+  const ext = fileExtension(entryName(path))
   const isImage = IMAGE_EXTS.has(ext)
   const isText = TEXT_EXTS.has(ext)
   const hasContentsEditor = isImage || isText
@@ -672,28 +668,7 @@ function FsSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = false
           </label>
         )}
 
-        {feedbackEditor && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <select
-              className="te-select"
-              value={check.mode ?? 'blocking'}
-              onChange={(e) => setField('mode', e.target.value)}
-              title="Feedback behaviour"
-            >
-              <option value="blocking">Blocking</option>
-              <option value="nudge">Nudge</option>
-            </select>
-            <select
-              className="te-select"
-              value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
-              onChange={(e) => setField('show', e.target.value)}
-              title="When to show feedback"
-            >
-              <option value="after_attempt">After attempt</option>
-              <option value="on_idle">On idle</option>
-            </select>
-          </div>
-        )}
+        {feedbackEditor && <CheckFeedbackControls check={check} onChange={onChange} />}
 
         <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
           Hint (optional)

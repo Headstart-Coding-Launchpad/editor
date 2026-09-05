@@ -1,5 +1,6 @@
 import yaml from 'js-yaml'
-import { flattenTasks, getTaskPriority } from './taskUtils'
+import { flattenTasks, getTaskPriority } from './taskUtils.js'
+import { answerTextMatches, parseQuizAnswerState } from './quizAnswers.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -29,30 +30,8 @@ function isNotApplicableTask(task) {
   )
 }
 
-function parseAnswerState(value) {
-  if (value && typeof value === 'object' && !Array.isArray(value)) return value
-  if (typeof value === 'string' && value) {
-    try {
-      const parsed = JSON.parse(value)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
-    } catch {}
-  }
-  return {}
-}
-
-function textMatches(value, expected) {
-  return (
-    String(value ?? '')
-      .trim()
-      .toLowerCase() ===
-    String(expected ?? '')
-      .trim()
-      .toLowerCase()
-  )
-}
-
 function normalizeFillBlankSubmission(task, submission) {
-  const state = parseAnswerState(submission)
+  const state = parseQuizAnswerState(submission)
   const hasDetailedShape = (task?.blanks ?? []).some((blank) => {
     const entry = state[blank.id]
     return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
@@ -76,14 +55,16 @@ function normalizeFillBlankSubmission(task, submission) {
           : (rawValue ?? '')
       const expected = blank.answer ?? ''
       const correct =
-        mode === 'drag' ? String(value ?? '') === String(expected) : textMatches(value, expected)
+        mode === 'drag'
+          ? String(value ?? '') === String(expected)
+          : answerTextMatches(value, expected)
       return [blank.id, { value, expected, correct }]
     })
   )
 }
 
 function normalizeMatchSubmission(task, submission) {
-  const state = parseAnswerState(submission)
+  const state = parseQuizAnswerState(submission)
   const hasDetailedShape = (task?.pairs ?? []).some((pair) => {
     const entry = state[pair.id]
     return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)

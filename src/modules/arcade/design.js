@@ -49,12 +49,12 @@ export function spriteFileName(value, fallback = 'sprite.png') {
   return /\.png$/i.test(name) ? name : `${name}.png`
 }
 
-export function tilemapFileName(map) {
+function tilemapFileName(map) {
   const name = safeName(map?.name, 'world').replace(/\.[^/.]+$/, '')
   return `${name}.tilemap`
 }
 
-export function createPixelFrame(width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, pixels = null) {
+function createPixelFrame(width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, pixels = null) {
   const size = clampSize(width, DEFAULT_WIDTH) * clampSize(height, DEFAULT_HEIGHT)
   return Array.from({ length: size }, (_, index) => normaliseArcadeColour(pixels?.[index]))
 }
@@ -234,7 +234,7 @@ export function generatedArcadeTilemaps(design) {
   })
 }
 
-export function spriteToDataUrl(sprite) {
+function spriteToDataUrl(sprite) {
   const { width, height, frames } = createArcadeDesign({ sprites: [sprite] }).sprites[0]
   const rects = []
   frames.forEach((frame, frameIndex) =>
@@ -280,7 +280,7 @@ export function mapToPythonSnippet(map) {
   return `from headstart_arcade import TileMap\n${identifier} = TileMap(${python(tilemapFileName(normal))})`
 }
 
-export function taskArcadeTools(task) {
+function taskArcadeTools(task) {
   return task?.arcadeTools ?? 'none'
 }
 

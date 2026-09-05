@@ -15,20 +15,6 @@ const WIRE_OVERLAP_PENALTY = 5000
 const WIRE_CROSSING_PENALTY = 900
 const WIRE_BEND_PENALTY = 70
 
-export function wirePath(
-  from,
-  to,
-  componentRects = [],
-  fromRef = '',
-  toRef = '',
-  bounds = null,
-  usedWireSegments = []
-) {
-  return pathFromPoints(
-    wireRoutePoints(from, to, componentRects, fromRef, toRef, bounds, usedWireSegments)
-  )
-}
-
 export function wireRoutePoints(
   from,
   to,
@@ -81,7 +67,7 @@ export function directWirePath(from, to) {
   return `M ${Math.round(from.x)} ${Math.round(from.y)} L ${Math.round(to.x)} ${Math.round(to.y)}`
 }
 
-export function pinExitPoint(point, ref, rect) {
+function pinExitPoint(point, ref, rect) {
   if (!rect) return point
   const side = pinExitSide(point, rect)
   if (side === 'left') return { x: rect.left - WIRE_EXIT_STUB, y: point.y }
@@ -90,7 +76,7 @@ export function pinExitPoint(point, ref, rect) {
   return { x: point.x, y: rect.bottom + WIRE_EXIT_STUB }
 }
 
-export function pinExitSide(point, rect) {
+function pinExitSide(point, rect) {
   const distances = [
     ['left', Math.abs(point.x - rect.left)],
     ['right', Math.abs(point.x - rect.right)],
@@ -101,7 +87,7 @@ export function pinExitSide(point, rect) {
   return distances[0]?.[0] ?? 'bottom'
 }
 
-export function outsideFacingRoute(
+function outsideFacingRoute(
   start,
   end,
   fromRef,
@@ -148,7 +134,7 @@ export function outsideFacingRoute(
   return candidates[0]?.points ?? null
 }
 
-export function compactPathPoints(points, options = {}) {
+function compactPathPoints(points, options = {}) {
   return points.filter((point, index, all) => {
     const previous = all[index - 1]
     const next = all[index + 1]
@@ -162,7 +148,7 @@ export function compactPathPoints(points, options = {}) {
   })
 }
 
-export function isTinyReversal(previous, point, next) {
+function isTinyReversal(previous, point, next) {
   const sameHorizontal = Math.abs(previous.y - point.y) < 0.5 && Math.abs(point.y - next.y) < 0.5
   const sameVertical = Math.abs(previous.x - point.x) < 0.5 && Math.abs(point.x - next.x) < 0.5
   if (sameHorizontal) {
@@ -182,7 +168,7 @@ export function isTinyReversal(previous, point, next) {
   return false
 }
 
-export function routeOrthogonal(start, end, obstacles, bounds = null, usedWireSegments = []) {
+function routeOrthogonal(start, end, obstacles, bounds = null, usedWireSegments = []) {
   const directHitsComponent = obstacles.some((rect) => segmentIntersectsRect(start, end, rect))
   const directIsOrthogonal = isHorizontalSegment(start, end) || isVerticalSegment(start, end)
   if (
@@ -289,7 +275,7 @@ export function routeOrthogonal(start, end, obstacles, bounds = null, usedWireSe
   })
 }
 
-export function simpleOrthogonalRoutes(start, end) {
+function simpleOrthogonalRoutes(start, end) {
   if (isHorizontalSegment(start, end) || isVerticalSegment(start, end)) return [[start, end]]
   return [
     [start, { x: end.x, y: start.y }, end],
@@ -297,13 +283,7 @@ export function simpleOrthogonalRoutes(start, end) {
   ].map((points) => compactPathPoints(points, { preserveIndexes: new Set([1]) }))
 }
 
-export function fallbackOrthogonalRoute(
-  start,
-  end,
-  obstacles,
-  bounds = null,
-  usedWireSegments = []
-) {
+function fallbackOrthogonalRoute(start, end, obstacles, bounds = null, usedWireSegments = []) {
   const minX = 8
   const minY = 8
   const maxX = Math.max(minX, (bounds?.width ?? Math.max(start.x, end.x)) - 8)
@@ -359,7 +339,7 @@ export function fallbackOrthogonalRoute(
   return candidates[0]?.points ?? simpleOrthogonalRoutes(start, end)[0]
 }
 
-export function connectVisibleNeighbours(points, graph, obstacles, keyFor, usedWireSegments) {
+function connectVisibleNeighbours(points, graph, obstacles, keyFor, usedWireSegments) {
   for (let index = 1; index < points.length; index += 1) {
     const a = points[index - 1]
     const b = points[index]
@@ -385,11 +365,11 @@ export function segmentsFromPoints(points) {
   return segments
 }
 
-export function pathHitsObstacles(points, obstacles) {
+function pathHitsObstacles(points, obstacles) {
   return countPathObstacleHits(points, obstacles) > 0
 }
 
-export function countPathObstacleHits(points, obstacles) {
+function countPathObstacleHits(points, obstacles) {
   return segmentsFromPoints(points).reduce(
     (count, segment) =>
       count + obstacles.filter((rect) => segmentIntersectsRect(segment.a, segment.b, rect)).length,
@@ -397,7 +377,7 @@ export function countPathObstacleHits(points, obstacles) {
   )
 }
 
-export function scoreWireRoute(points, usedWireSegments = []) {
+function scoreWireRoute(points, usedWireSegments = []) {
   return segmentsFromPoints(points).reduce(
     (score, segment) => {
       return (
@@ -410,7 +390,7 @@ export function scoreWireRoute(points, usedWireSegments = []) {
   )
 }
 
-export function countBends(points) {
+function countBends(points) {
   let bends = 0
   for (let index = 2; index < points.length; index += 1) {
     const a = points[index - 2]
@@ -424,7 +404,7 @@ export function countBends(points) {
   return bends
 }
 
-export function wireLanePenalty(a, b, usedWireSegments = []) {
+function wireLanePenalty(a, b, usedWireSegments = []) {
   if (!usedWireSegments.length) return 0
   return usedWireSegments.reduce((penalty, segment) => {
     if (segmentsOverlap(a, b, segment.a, segment.b)) return penalty + WIRE_OVERLAP_PENALTY
@@ -433,7 +413,7 @@ export function wireLanePenalty(a, b, usedWireSegments = []) {
   }, 0)
 }
 
-export function segmentsOverlap(a, b, c, d) {
+function segmentsOverlap(a, b, c, d) {
   if (isHorizontalSegment(a, b) && isHorizontalSegment(c, d) && Math.abs(a.y - c.y) < 0.5) {
     return rangesOverlap(a.x, b.x, c.x, d.x)
   }
@@ -443,7 +423,7 @@ export function segmentsOverlap(a, b, c, d) {
   return false
 }
 
-export function segmentsCross(a, b, c, d) {
+function segmentsCross(a, b, c, d) {
   if (isHorizontalSegment(a, b) && isVerticalSegment(c, d)) {
     return between(c.x, a.x, b.x) && between(a.y, c.y, d.y)
   }
@@ -453,15 +433,15 @@ export function segmentsCross(a, b, c, d) {
   return false
 }
 
-export function isHorizontalSegment(a, b) {
+function isHorizontalSegment(a, b) {
   return Math.abs(a.y - b.y) < 0.5
 }
 
-export function isVerticalSegment(a, b) {
+function isVerticalSegment(a, b) {
   return Math.abs(a.x - b.x) < 0.5
 }
 
-export function rangesOverlap(a1, a2, b1, b2) {
+function rangesOverlap(a1, a2, b1, b2) {
   const minA = Math.min(a1, a2)
   const maxA = Math.max(a1, a2)
   const minB = Math.min(b1, b2)
@@ -473,7 +453,7 @@ export function between(value, a, b) {
   return value > Math.min(a, b) && value < Math.max(a, b)
 }
 
-export function shortestPath(graph, startKey, endKey) {
+function shortestPath(graph, startKey, endKey) {
   const distances = new Map([[startKey, 0]])
   const previous = new Map()
   const queue = [startKey]
@@ -503,7 +483,7 @@ export function shortestPath(graph, startKey, endKey) {
   return path[0] === startKey ? path : []
 }
 
-export function segmentIntersectsRect(a, b, rect) {
+function segmentIntersectsRect(a, b, rect) {
   const minX = Math.min(a.x, b.x)
   const maxX = Math.max(a.x, b.x)
   const minY = Math.min(a.y, b.y)
@@ -514,10 +494,10 @@ export function segmentIntersectsRect(a, b, rect) {
   return true
 }
 
-export function pointInsideRect(point, rect) {
+function pointInsideRect(point, rect) {
   return point.x > rect.left && point.x < rect.right && point.y > rect.top && point.y < rect.bottom
 }
 
-export function roundCoord(value) {
+function roundCoord(value) {
   return Math.round(value)
 }

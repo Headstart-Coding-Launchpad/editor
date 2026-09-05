@@ -14,7 +14,7 @@ export const personalSandboxStorageKey = (lessonId, anonymousId, moduleId = null
     anonymousId
   )
 
-export const personalSandboxFileStorageKey = (lessonId, filename, anonymousId, moduleId = null) =>
+const personalSandboxFileStorageKey = (lessonId, filename, anonymousId, moduleId = null) =>
   studentFileStorageKey(
     lessonId,
     moduleId ? `module_${moduleId}_sandbox` : PERSONAL_SANDBOX_KEY,

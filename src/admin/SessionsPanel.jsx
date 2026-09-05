@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { ref, onValue, remove } from 'firebase/database'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db, firestore } from '../shared/firebase'
+import { getLessonLinks } from '../shared/lessonLinks'
 import { formatClock } from '../app/components/TeacherTimers'
 import {
   AdminBadge,
@@ -21,10 +22,6 @@ const STATE_BADGE = {
 }
 
 const OPEN_DURATION_REFRESH_MS = 30000
-
-function makeTeacherUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
-}
 
 export default function SessionsPanel() {
   const [sessionsById, setSessionsById] = useState({})
@@ -116,7 +113,7 @@ export default function SessionsPanel() {
               <AdminCell>
                 <div style={adminUiStyles.lessonCell}>
                   <a
-                    href={makeTeacherUrl(session.lessonId)}
+                    href={getLessonLinks(session.lessonId).teacher}
                     target="_blank"
                     rel="noreferrer"
                     style={adminUiStyles.linkText}

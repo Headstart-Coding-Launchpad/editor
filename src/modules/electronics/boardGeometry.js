@@ -9,8 +9,8 @@ export const GRID_Y = 24
 export const BOARD_PAD = 24
 export const PART_W = 112
 export const PART_H = 70
-export const LCD_PART_W = 196
-export const LCD_PART_H = 118
+const LCD_PART_W = 196
+const LCD_PART_H = 118
 
 export function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
@@ -31,7 +31,7 @@ export function componentAnchorOffset(component) {
   return pinOffset(component, firstPin, 0)
 }
 
-export function basePinOffset(component, pin, pinIndex) {
+function basePinOffset(component, pin, pinIndex) {
   if (component.type === 'microcontroller') {
     const pins = normalizeMicrocontrollerPins(component.pins)
     const leftCount = Math.ceil(pins.length / 2)
@@ -109,7 +109,7 @@ export function rotatedComponentRect(point, component) {
   }
 }
 
-export function rotateOffset(offset, rotation = 0, component = null) {
+function rotateOffset(offset, rotation = 0, component = null) {
   const { width, height } = componentDimensions(component)
   const normalized = normalizeRotation(rotation)
   if (normalized === 0) return offset

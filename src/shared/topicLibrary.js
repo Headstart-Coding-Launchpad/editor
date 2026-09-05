@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { escapeRegExp } from './textUtils.js'
 import { collection, getDocs } from 'firebase/firestore'
 import { firestore } from './firebase'
 
@@ -128,10 +129,6 @@ export function expandTopicLinks(content, topics = []) {
       (_, id, label) => `[${label || titles.get(id.toLowerCase()) || id}](${topicHref(id)})`
     )
   )
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export function findTopicSuggestion(content, topics = []) {

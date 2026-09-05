@@ -4,6 +4,7 @@ import { useAssets } from '../../../shared/useAssets'
 import { useTypeAssets } from '../../../shared/useTypeAssets'
 import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
+import { spriteVisualMode } from '../../../shared/spriteVisuals'
 import { createSpriteFromPreset } from '../../../shared/spritePresets'
 import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
@@ -402,12 +403,6 @@ const SPRITE_TYPE_OPTIONS = SPRITE_TYPES.map((t) => ({
 }))
 
 const SHAPE_ICONS = { cat: '🐱', ball: '🔵', star: '⭐', arrow: '➡️', bat: '🦇', parrot: '🦜' }
-
-function spriteVisualMode(sp) {
-  if (sp.costumes?.some((c) => c.image !== undefined)) return 'costume'
-  if (sp.emoji || sp.costumes?.some((c) => c.emoji !== undefined)) return 'emoji'
-  return 'preset'
-}
 
 export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   const [pickerOpen, setPickerOpen] = React.useState(false)

@@ -8,7 +8,7 @@ const externalStateSpy = vi.fn()
 vi.mock('../ScratchWorkspace', () => ({
   // Empty-deps effect fires once per actual mount (new `key` => new instance),
   // unlike a call in the render body which would also fire on every re-render.
-  default: ({ initialState, externalState }) => {
+  default: function MockScratchWorkspace({ initialState, externalState }) {
     useEffect(() => {
       mountCount()
       // Mirror the real component's contract: initialState is a thunk resolved on mount.

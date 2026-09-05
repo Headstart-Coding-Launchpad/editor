@@ -62,7 +62,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `studentStorage.js` | Student task/file localStorage key construction and saved-work persistence helpers; personal sandbox load/save helpers |
-| `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers |
+| `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, per lesson type |
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers |
 | `studentQuizContent.js` | Pure quiz suggestion helpers: maps wrong answers to option/task/check hint feedback |
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
@@ -81,7 +81,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only) |
 | `CopyCodePanel.jsx` | Student-facing read-only reference code block with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
 | `SupportStagePanel.jsx` | Student-facing read-only code-stage reference panel with reveal control and copy/selection blocking |
-| `OutputPanel.jsx` | Python output with retro typing animation and inline `input()` prompt |
+| `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt |
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
@@ -90,6 +90,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CheckFeedbackBanner.jsx` | Pass/fail popup (floating, top-center, auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; no longer hosts its own Need Help button (see StudentView's top bar) |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message; shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
+| `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, `JoinSessionPrompt`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
 | `VideoCallPrompt.jsx` | Modal shown to one student when a teacher targets them with "📹 Send Video Call Link" from the Student Grid, stamping `students/{id}/videoCallLinkPushedAt` |
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (per-class YouTube recording). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
@@ -164,13 +165,16 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal logging, session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`) |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
 | `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
-| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers; composes the four sub-hooks below |
-| `usePyodideState.js` | Pyodide warm-up effect, `pyodideStatus` state, and `initPyodideIfNeeded()` helper |
+| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers, and the Pyodide warm-up effect; composes the sub-hooks below |
+| `useLatestRef.js` | `useLatestRef(value)` — a ref holding the latest render's value, for stale-closure-safe reads inside async handlers, timers and event listeners |
+| `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
+| `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox into whichever state that lesson type keeps its work in, keyed off the session's push timestamps |
+| `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
 | `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects |
-| `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `readDraggedTileId`, `writeDraggedTileId`, `setLiftedDragImage`, `removeTileFromState` |
+| `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `setLiftedDragImage` and `removeTileFromState` |
 
 ---
 
@@ -211,7 +215,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
-| `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
+| `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation (via `useTypewriterOutput`), and `input()` prompt for builder |
 | `GroupEditor.jsx` | Inline editor for a task group's title and subtask count summary |
 | `ValidationPanel.jsx` | Collapsible errors/warnings panel with tabbed view and per-warning ignore action |
 | `TaskFeedbackPanel.jsx` | Collapsible panel showing teacher-submitted lesson feedback items for the selected task |
@@ -236,7 +240,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
 | `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
 | `CodeArrangeEditor.jsx` | Visual Builder authoring + live preview for `taskType: code_arrange`: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list, entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly |
-| `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, and feedback priority/stage-offer controls |
+| `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, feedback priority/stage-offer controls, and `CheckFeedbackControls` (the shared feedback mode/show pair, also used by the electronics, filesystem and scratch check editors) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
 | `TaskCheckResults.jsx` | Pass/fail check result banner plus a non-mutating student-feedback preview for linked stage offers |
@@ -263,7 +267,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
-| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`, `CHECK_TYPES` — delegates filesystem, Python variable, HTML element, and electronics `circuit_*` checks to their module evaluators; also routes generic `code` checks to the electronics evaluator when `context.circuit` is present, so they run against Micro Controller MicroPython source instead of raw circuit JSON |
+| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks` — delegates filesystem, Python variable, HTML element, and electronics `circuit_*` checks to their module evaluators; also routes generic `code` checks to the electronics evaluator when `context.circuit` is present, so they run against Micro Controller MicroPython source instead of raw circuit JSON |
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
@@ -378,21 +382,24 @@ Each `index.js` exports a default object with:
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
-| `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `normalizeCode`, `parseMultipleContainOptions`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, `evaluateCodeCheck` (shared `code`-family evaluation reused by both `modules/checks.js` and `electronics/circuit.js`, avoiding a circular import), and related helpers — used by `modules/checks.js` and sub-module evaluators |
+| `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, `evaluateCodeCheck` (shared `code`-family evaluation reused by both `modules/checks.js` and `electronics/circuit.js`, avoiding a circular import), and related helpers — used by `modules/checks.js` and sub-module evaluators |
 | `checkAuthoringValidation.js` | `validateFilesystemChecks`/`validateElectronicsChecks` (check-field-completeness validation) plus their shared target-selector helpers — imported by both `builder/lessonUtils.js` and `cli/validate.mjs` so the Builder and the CLI publish path can't validate filesystem/electronics checks differently |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
-| `codemirror.js` | CodeMirror config: `headstartTheme`, `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` — `headstartHighlight` is internal-only, applied inside `createBaseExtensions` |
+| `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
-| `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor`, `MarkdownToolbar`, `getInlineCodeOptions` |
+| `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor` and `getInlineCodeOptions` (the toolbar is internal) |
 | `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
 | `lessonBlocksCodec.js` | Encodes/decodes Firestore-incompatible lesson fields as JSON strings: Scratch block trees for nested depth and Arcade Kit designs for nested sprite-frame arrays |
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, task summary); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
-| `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo }` (bare smart-join URL + `?solo=true` link); used by TeacherView and LessonPanel |
+| `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo, teacher, preview }` (bare smart-join URL, plus `?solo=true`, `?teacher=true` and `?preview=true` links); used by TeacherView, LessonPanel and SessionsPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `youtube.js` | Pure YouTube URL parsing for the `recordingUrl` lesson field: `extractYouTubeId()`, `isValidRecordingUrl()`, `buildYouTubeEmbedSrc()`. Dependency-free (only the built-in `URL`) so it's shared between the browser widget/Builder field and the Node CLI validator |
-| `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting |
+| `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting. `flattenTaskTree()` expands groups as authored; `flattenTasks()` is that with legacy draft tasks filtered out |
+| `textUtils.js` | Small string helpers shared across modules: `escapeRegExp()`, `stableHash()` (deterministic 32-bit hash for stable ids and shuffle seeds), `isPlainObject()`, `fileExtension()` |
+| `quizAnswers.js` | Reading a stored quiz answer: `parseQuizAnswerState()` (object, or the JSON string it was persisted as) and `answerTextMatches()` (case- and whitespace-insensitive compare) — shared by the quiz components, submission building and lesson reports |
+| `spriteVisuals.js` | `spriteVisualMode(sprite)` — whether a Scratch sprite is drawn from a costume image, an emoji, or a preset; used by the admin shared-asset panel and the Builder sprite editor |
 | `composedLesson.js` | Pure composed-lesson module resolution, structural validation, sandbox adaptation, and scoped carry-source helpers |
 | `codeArrange.js` | Pure helpers for the `code_arrange` task type: the one shared task-level tile pool, slot-completeness, assembling the final runnable code string from tile placements (`assembleCodeArrangement`), and its inverse (`deriveSlotStateFromCode`, backtracking over the shared pool using each line's fixed text as anchors) — the run pipeline and check evaluator only ever see the final assembled string |
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |

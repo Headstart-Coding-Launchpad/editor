@@ -32,6 +32,8 @@ vi.mock('../../shared/lessonLinks', () => ({
   getLessonLinks: (id) => ({
     join: `http://localhost/#/lesson/${id}`,
     solo: `http://localhost/#/lesson/${id}?solo=true`,
+    teacher: `http://localhost/#/lesson/${id}?teacher=true`,
+    preview: `http://localhost/#/lesson/${id}?preview=true`,
   }),
 }))
 

@@ -15,7 +15,7 @@ export function labelCheckKind(kind) {
   return kind === 'feedback' ? 'feedback check' : 'check'
 }
 
-export function hasCircuitSelectorTarget(selector) {
+function hasCircuitSelectorTarget(selector) {
   return !!(
     selector?.type?.trim?.() ||
     selector?.componentType?.trim?.() ||
@@ -25,7 +25,7 @@ export function hasCircuitSelectorTarget(selector) {
   )
 }
 
-export function hasCircuitEndpointTarget(endpoint) {
+function hasCircuitEndpointTarget(endpoint) {
   return hasCircuitSelectorTarget(endpoint?.component ?? endpoint) && !!endpoint?.pin?.trim?.()
 }
 

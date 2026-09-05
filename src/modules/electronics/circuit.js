@@ -170,7 +170,7 @@ export const BOARD_SIZE_OPTIONS = [
 
 const DEFAULT_BOARD_SIZE = BOARD_SIZE_OPTIONS[1]
 
-export const DEFAULT_BOARD = {
+const DEFAULT_BOARD = {
   type: 'half-breadboard',
   rows: DEFAULT_BOARD_SIZE.rows,
   cols: DEFAULT_BOARD_SIZE.cols,
@@ -203,7 +203,7 @@ export function serializeCircuit(circuit) {
   return JSON.stringify(normalizeCircuit(circuit))
 }
 
-export function normalizeCircuit(circuit = DEFAULT_CIRCUIT) {
+function normalizeCircuit(circuit = DEFAULT_CIRCUIT) {
   const components = Array.isArray(circuit.components)
     ? circuit.components.map((component) => normalizeComponent(component, circuit))
     : []
@@ -261,11 +261,11 @@ export function normalizeMicrocontrollerPins(value, fallback = MICROCONTROLLER_D
   return pins.length > 0 ? pins : [...MICROCONTROLLER_DEFAULT_PINS]
 }
 
-export function isMicrocontrollerPowerPin(pin) {
+function isMicrocontrollerPowerPin(pin) {
   return MICROCONTROLLER_POWER_PIN_NAMES.has(normalizeGpioPinName(pin).toUpperCase())
 }
 
-export function isMicrocontrollerGroundPin(pin) {
+function isMicrocontrollerGroundPin(pin) {
   return MICROCONTROLLER_GROUND_PIN_NAMES.has(normalizeGpioPinName(pin).toUpperCase())
 }
 
@@ -282,7 +282,7 @@ export function makeNextGpioPinName(existingPins = []) {
   return `GP${existing.size}`
 }
 
-export function getMicrocontrollerComponent(circuit) {
+function getMicrocontrollerComponent(circuit) {
   const normalized = normalizeCircuit(circuit)
   return normalized.components.find((component) => component.type === 'microcontroller') ?? null
 }
@@ -360,7 +360,7 @@ export function getMicrocontrollerInputValues(circuit, componentLike = null) {
   )
 }
 
-export function hasCircuitPath(circuitLike, fromRef, toRef) {
+function hasCircuitPath(circuitLike, fromRef, toRef) {
   if (!fromRef || !toRef) return false
   const graph = buildGraph(parseCircuit(circuitLike), 'signal')
   const queue = [fromRef]
@@ -481,11 +481,7 @@ export function getWireColorForPins(from, to, selected = 'auto') {
   return '#f59e0b'
 }
 
-export function findComponent(circuit, query) {
-  return findComponents(circuit, query)[0] ?? null
-}
-
-export function findComponents(circuit, selector = {}) {
+function findComponents(circuit, selector = {}) {
   const normalized = normalizeCircuit(circuit)
   return normalized.components.filter((component) => componentMatchesSelector(component, selector))
 }

@@ -1,10 +1,9 @@
-function isObject(value) {
-  return value != null && typeof value === 'object' && !Array.isArray(value)
-}
+import { isPlainObject } from './textUtils.js'
+import { flattenTaskTree } from './taskUtils.js'
 
 function sorted(value) {
   if (Array.isArray(value)) return value.map(sorted)
-  if (!isObject(value)) return value
+  if (!isPlainObject(value)) return value
   return Object.fromEntries(
     Object.keys(value)
       .sort()
@@ -26,15 +25,9 @@ function taskWithoutAudit(task, { includeIntent = true } = {}) {
   return includeIntent ? { ...rest, intent: intent ?? '' } : rest
 }
 
-function flattenTasks(tasks = []) {
-  return (Array.isArray(tasks) ? tasks : []).flatMap((item) =>
-    item?.type === 'group' ? (Array.isArray(item.subtasks) ? item.subtasks : []) : [item]
-  )
-}
-
 function withTaskAudit(tasks, priorTasks, timestamp) {
   const previousById = new Map(
-    flattenTasks(priorTasks)
+    flattenTaskTree(priorTasks)
       .filter((task) => task && typeof task === 'object')
       .map((task) => [String(task.id), task])
   )

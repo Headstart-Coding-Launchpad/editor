@@ -2,11 +2,11 @@ import { useState } from 'react'
 
 const DRAG_MIME = 'application/x-headstart-quiz-tile'
 
-export function readDraggedTileId(event) {
+function readDraggedTileId(event) {
   return event.dataTransfer.getData(DRAG_MIME) || event.dataTransfer.getData('text/plain')
 }
 
-export function writeDraggedTileId(event, tileId) {
+function writeDraggedTileId(event, tileId) {
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData(DRAG_MIME, tileId)
   event.dataTransfer.setData('text/plain', tileId)

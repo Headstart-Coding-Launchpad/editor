@@ -36,6 +36,7 @@ import {
   clearEphemeralStorage,
 } from '../studentStorage'
 import {
+  resolveRemoteResetTarget,
   resolveSavedCarrySource,
   selectHtmlTaskFiles,
   selectPythonTaskCode,
@@ -44,6 +45,9 @@ import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceDat
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
+import { useLatestRef } from './useLatestRef'
+import { useSandboxCodePush } from './useSandboxCodePush'
+import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
@@ -144,48 +148,31 @@ export function useStudentCodeState({
   const IDLE_FEEDBACK_DELAY_MS = 900
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
-  const identityRef = useRef(identity)
-  identityRef.current = identity
-  const lessonRef = useRef(lesson)
-  lessonRef.current = lesson
-  const currentTaskIdRef = useRef(currentTaskId)
-  currentTaskIdRef.current = currentTaskId
-  const phaseRef = useRef(phase)
-  phaseRef.current = phase
-  const codeRef = useRef(code)
-  codeRef.current = code
+  const identityRef = useLatestRef(identity)
+  const lessonRef = useLatestRef(lesson)
+  const currentTaskIdRef = useLatestRef(currentTaskId)
+  const phaseRef = useLatestRef(phase)
+  const codeRef = useLatestRef(code)
   // Scratch never routes through the generic `code` state (see loadTaskContent's
   // scratch branch) — handleScratchChange stashes the latest Blockly JSON here
   // instead, so the teacher-live payload publishes real block state rather than
   // whatever `code` happens to be left over from a previous non-Scratch task.
   const scratchCodeRef = useRef('')
-  const arcadeDesignRef = useRef(arcadeDesign)
-  arcadeDesignRef.current = arcadeDesign
+  const arcadeDesignRef = useLatestRef(arcadeDesign)
   const arcadeDesignWriteTimerRef = useRef(null)
   const spriteStateLastSentRef = useRef(0)
   const spriteStatePendingTimerRef = useRef(null)
-  const filesRef = useRef(files)
-  filesRef.current = files
-  const outputRef = useRef(output)
-  outputRef.current = output
-  const runStatusRef = useRef(runStatus)
-  runStatusRef.current = runStatus
-  const sessionRef = useRef(session)
-  sessionRef.current = session
-  const activeStudentViewRef = useRef(session?.activeStudentView)
-  activeStudentViewRef.current = session?.activeStudentView
-  const editorSelectionRef = useRef(editorSelection)
-  editorSelectionRef.current = editorSelection
-  const editorActivityRef = useRef(editorActivity)
-  editorActivityRef.current = editorActivity
-  const inPersonalSandboxRef = useRef(inPersonalSandbox)
-  inPersonalSandboxRef.current = inPersonalSandbox
-  const fsStateRef = useRef(fsState)
-  fsStateRef.current = fsState
-  const activeFileRef = useRef(activeFile)
-  activeFileRef.current = activeFile
-  const fsInteractionRef = useRef(fsInteraction)
-  fsInteractionRef.current = fsInteraction
+  const filesRef = useLatestRef(files)
+  const outputRef = useLatestRef(output)
+  const runStatusRef = useLatestRef(runStatus)
+  const sessionRef = useLatestRef(session)
+  const activeStudentViewRef = useLatestRef(session?.activeStudentView)
+  const editorSelectionRef = useLatestRef(editorSelection)
+  const editorActivityRef = useLatestRef(editorActivity)
+  const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
+  const fsStateRef = useLatestRef(fsState)
+  const activeFileRef = useLatestRef(activeFile)
+  const fsInteractionRef = useLatestRef(fsInteraction)
 
   // ─── Runtime status ───────────────────────────────────────────────────────
 
@@ -706,85 +693,27 @@ export function useStudentCodeState({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
-  // Register Firebase presence so the teacher sees who is connected live.
-  // Also re-registers on reconnect (connected flips true) so the online key
-  // is restored after a temporary network drop without a page refresh.
-  useEffect(() => {
-    if (teacherPresentation) return
-    if (!connected) return
-    if ((phase === 'lesson' || phase === 'sandbox') && identity?.anonymousId) {
-      registerPresence(identity.anonymousId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation, connected])
+  useStudentPresenceReporting({
+    phase,
+    identity,
+    session,
+    connected,
+    teacherPresentation,
+    registerPresence,
+    writeStudentPresence,
+    removeStudent,
+  })
 
-  // Track whether the student's browser window is focused so the teacher can
-  // see "Away" when a student has switched tabs or minimised the window.
-  useEffect(() => {
-    if (teacherPresentation || !identity?.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    const id = identity.anonymousId
-    const onFocus = () => writeStudentPresence?.(id, { windowFocused: true })
-    const onBlur = () => writeStudentPresence?.(id, { windowFocused: false })
-    writeStudentPresence?.(id, { windowFocused: document.hasFocus() })
-    window.addEventListener('focus', onFocus)
-    window.addEventListener('blur', onBlur)
-    return () => {
-      window.removeEventListener('focus', onFocus)
-      window.removeEventListener('blur', onBlur)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
-
-  // Track fullscreen state so the teacher can see who has accepted a
-  // "Fullscreen All" request (see StudentGrid/StudentStatusBanners).
-  useEffect(() => {
-    if (teacherPresentation || !identity?.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    const id = identity.anonymousId
-    const onFullscreenChange = () =>
-      writeStudentPresence?.(id, { isFullscreen: !!document.fullscreenElement })
-    writeStudentPresence?.(id, { isFullscreen: !!document.fullscreenElement })
-    document.addEventListener('fullscreenchange', onFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
-
-  // Track mouse/keyboard activity so the teacher gets a WhatsApp-style
-  // typing indicator. Throttled to one Firebase write per 2 seconds.
-  useEffect(() => {
-    if (teacherPresentation || !identity?.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    const id = identity.anonymousId
-    let lastWrite = 0
-    const record = () => {
-      const now = Date.now()
-      if (now - lastWrite < 2000) return
-      lastWrite = now
-      writeStudentPresence?.(id, { lastActivityAt: now })
-    }
-    window.addEventListener('mousemove', record)
-    window.addEventListener('keydown', record)
-    window.addEventListener('mousedown', record)
-    return () => {
-      window.removeEventListener('mousemove', record)
-      window.removeEventListener('keydown', record)
-      window.removeEventListener('mousedown', record)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
-
-  // Presentation windows must not appear as students
-  useEffect(() => {
-    if (
-      !teacherPresentation ||
-      !identity?.anonymousId ||
-      !session?.students?.[identity.anonymousId]
-    )
-      return
-    removeStudent(identity.anonymousId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, identity?.anonymousId, session?.students])
+  useSandboxCodePush({
+    phase,
+    lesson,
+    session,
+    setCode,
+    setFiles,
+    setActiveFile,
+    setFsState,
+    setScratchSandboxProject,
+  })
 
   // When teacher starts live-viewing this student, publish the current in-memory editor state
   useEffect(() => {
@@ -824,62 +753,8 @@ export function useStudentCodeState({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.activeStudentView])
 
-  // React to sandbox code pushes (Python)
-  useEffect(() => {
-    if (
-      phase !== 'sandbox' ||
-      !['python', 'arcade'].includes(lesson?.type) ||
-      !session?.sandboxCode
-    )
-      return
-    setCode(session.sandboxCode)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox block pushes (Scratch)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'scratch' || !session?.sandboxCode) return
-    try {
-      setScratchSandboxProject(JSON.parse(session.sandboxCode))
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox filesystem pushes
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'filesystem' || !session?.sandboxCode) return
-    try {
-      setFsState(JSON.parse(session.sandboxCode))
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox circuit pushes
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'electronics' || !session?.sandboxCode) return
-    setCode(session.sandboxCode)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox files pushes (HTML)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'html') return
-    if (session?.sandboxFiles) {
-      const decoded = Object.entries(session.sandboxFiles).map(([k, v]) => {
-        const name = decodeFileKey(k)
-        const type = name.endsWith('.html') ? 'html' : name.endsWith('.css') ? 'css' : 'js'
-        return { name, content: v, type }
-      })
-      setFiles(decoded)
-      if (decoded.length > 0) setActiveFile(decoded[0].name)
-    } else if (lesson?.sandboxStarterFiles?.length > 0) {
-      setFiles(lesson.sandboxStarterFiles)
-      setActiveFile(lesson.sandboxStarterFiles[0].name)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxFilesUpdatedAt])
-
-  // React to teacher remotely resetting or completing this student's code
+  // React to teacher remotely resetting or completing this student's code. Which content
+  // the action maps to is resolveRemoteResetTarget's job; this only applies the result.
   useEffect(() => {
     if (!myStudentData?.remoteResetPushedAt || (phase !== 'lesson' && phase !== 'solo')) return
     const action = myStudentData.remoteResetAction
@@ -895,22 +770,19 @@ export function useStudentCodeState({
       return
     }
 
+    const target = resolveRemoteResetTarget(task, action, lesson.type, {
+      fs: DEFAULT_FS,
+      circuit: DEFAULT_CIRCUIT,
+    })
+    if (!target) return
+
     if (lesson.type === 'python' || lesson.type === 'arcade') {
-      let target
-      if (action === 'starter')
-        target = getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
-      else if (action === 'complete') target = task.completeCode ?? ''
-      else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        target = stage?.code ?? getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
-      }
-      setCode(target)
+      setCode(target.code)
       if (lesson.type === 'arcade') {
         const resetDesign = designForCodeTab(task, action)
         setArcadeDesign(resetDesign)
         persistence.savePythonCode(effectiveIdentity?.anonymousId, currentTaskId, {
-          code: target,
+          code: target.code,
           output: '',
           runStatus: null,
           arcadeDesign: resetDesign,
@@ -922,68 +794,19 @@ export function useStudentCodeState({
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'html') {
-      let targetFiles, targetEntry
-      if (action === 'starter') {
-        const starter = getStarterStage(task)?.stage
-        targetFiles = starter?.files ?? task.starterFiles ?? []
-        targetEntry = starter?.entryFile ?? task.entryFile
-      } else if (action === 'complete') {
-        targetFiles = task.completeFiles ?? []
-        targetEntry = task.completeEntryFile ?? task.entryFile
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        const starter = getStarterStage(task)?.stage
-        targetFiles = stage?.files ?? starter?.files ?? task.starterFiles ?? []
-        targetEntry = stage?.entryFile ?? starter?.entryFile ?? task.entryFile
-      }
-      setFiles(targetFiles.map((f) => ({ ...f })))
-      setActiveFile(targetEntry ?? targetFiles[0]?.name ?? '')
+      setFiles(target.files.map((f) => ({ ...f })))
+      setActiveFile(target.entryFile ?? target.files[0]?.name ?? '')
       setIframeSrc(null)
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'scratch') {
-      let targetBlocks
-      if (action === 'starter')
-        targetBlocks = getStarterStage(task)?.stage?.blocks ?? task.starterBlocks ?? null
-      else if (action === 'complete') {
-        targetBlocks = task.completeBlocks ?? null
-        setScratchActiveStageIndex(null)
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stageIndex = stageMatch ? parseInt(stageMatch[1], 10) : null
-        const stage = stageIndex != null ? (task.codeStages ?? [])[stageIndex] : null
-        targetBlocks = stage?.blocks ?? task.starterBlocks ?? null
-        setScratchActiveStageIndex(stage ? stageIndex : null)
-      }
-      if (action === 'starter') setScratchActiveStageIndex(null)
-      setScratchExternalState(targetBlocks)
+      setScratchActiveStageIndex(target.stageIndex)
+      setScratchExternalState(target.blocks)
     } else if (lesson.type === 'filesystem') {
-      let targetFs
-      if (action === 'complete') {
-        targetFs = task.completeFs ?? task.starterFs ?? DEFAULT_FS
-      } else if (action === 'starter') {
-        targetFs = task.starterFs ?? DEFAULT_FS
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetFs = stage?.fs ?? task.starterFs ?? DEFAULT_FS
-      }
-      setFsState(targetFs)
+      setFsState(target.fs)
       resetCheckFeedback()
     } else if (lesson.type === 'electronics') {
-      let targetCircuit
-      if (action === 'complete') {
-        targetCircuit = task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      } else if (action === 'starter') {
-        targetCircuit =
-          getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetCircuit = stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      }
-      setCode(serializeCircuit(targetCircuit))
+      setCode(serializeCircuit(target.circuit))
       resetCheckFeedback()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,3 +1,5 @@
+import { escapeRegExp } from './textUtils.js'
+
 export const SCRATCH_CATEGORY_COLOURS = {
   Events: '#FFAB19',
   Motion: '#4C97FF',
@@ -7,10 +9,6 @@ export const SCRATCH_CATEGORY_COLOURS = {
   Sensing: '#5CB1D6',
   Operators: '#59C059',
   Variables: '#FF8C1A',
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function patternFromSample(sample) {
@@ -820,7 +818,7 @@ export const SCRATCH_MARKDOWN_BLOCK_CATEGORIES = SCRATCH_TOOLBOX_GROUPS.map((gro
   blocks: group.blocks.map(([opcode]) => scratchBlockDisplaySample(opcode)),
 }))
 
-export function scratchBlockDisplayLabel(opcodeOrBlock) {
+function scratchBlockDisplayLabel(opcodeOrBlock) {
   const block =
     typeof opcodeOrBlock === 'string' ? SCRATCH_BLOCK_BY_OPCODE[opcodeOrBlock] : opcodeOrBlock
   if (!block) return ''
@@ -840,19 +838,6 @@ export function scratchBlockDisplaySample(opcodeOrBlock) {
   return `${block.icon} ${block.sample}`
 }
 
-export function scratchBlockDisplayMessage(opcode, message) {
-  const block = SCRATCH_BLOCK_BY_OPCODE[opcode]
-  return block?.icon ? `${block.icon} ${message}` : message
-}
-
-export function scratchBlockTextWithIcon(text, block) {
-  if (!block?.icon) return String(text ?? '')
-  const value = String(text ?? '')
-  return normalizeScratchBlockText(value).startsWith(normalizeScratchBlockText(block.icon))
-    ? value
-    : `${block.icon} ${value}`
-}
-
 export function scratchBlockTextWithoutIcon(text, block) {
   if (!block?.icon) return String(text ?? '')
   const value = String(text ?? '')
@@ -861,7 +846,7 @@ export function scratchBlockTextWithoutIcon(text, block) {
     : value
 }
 
-export function normalizeScratchBlockText(text) {
+function normalizeScratchBlockText(text) {
   return String(text ?? '')
     .trim()
     .replace(/\s+/g, ' ')
@@ -877,8 +862,4 @@ export function findScratchBlock(text) {
       block.patterns.some((pattern) => pattern.test(normalized))
     ) ?? null
   )
-}
-
-export function isKnownScratchBlock(text) {
-  return Boolean(findScratchBlock(text))
 }

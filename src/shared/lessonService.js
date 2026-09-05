@@ -64,13 +64,6 @@ export async function deletePublishedLesson(lessonId) {
   await deleteDoc(doc(firestore, 'lessons', lessonId))
 }
 
-export async function fetchClassList() {
-  const snap = await getDocs(collection(firestore, CLASS_COLLECTION))
-  return snap.docs
-    .map((d) => makeClassRecord({ id: d.id, ...d.data() }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-}
-
 export async function saveClassRecord(input) {
   const record = makeClassRecord(input)
   await setDoc(doc(firestore, CLASS_COLLECTION, record.id), record, { merge: true })

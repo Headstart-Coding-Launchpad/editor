@@ -7,7 +7,7 @@ import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
 
-export const LS_KEY = 'headstart_builder_current'
+const LS_KEY = 'headstart_builder_current'
 
 const blankLesson = () => ({
   id: '',
@@ -223,50 +223,6 @@ function LessonTypeChooser({ onChoose, onUpload }) {
               </span>
             </button>
           </div>
-          {/* Single composed-type creation flow only — kept for potential future per-type quick-create. */}
-          {false && (
-            <div style={s.choiceGrid}>
-              <button style={s.choiceButton} onClick={() => onChoose('python')}>
-                <span style={s.choiceName}>Python</span>
-                <span style={s.choiceDescription}>
-                  Single-file Python tasks with output checks and Pyodide execution.
-                </span>
-              </button>
-              <button style={s.choiceButton} onClick={() => onChoose('arcade')}>
-                <span style={s.choiceName}>Arcade Kit</span>
-                <span style={s.choiceDescription}>
-                  Single-file Python pixel games with a browser canvas, keyboard controls, and
-                  assets.
-                </span>
-              </button>
-              <button style={s.choiceButton} onClick={() => onChoose('html')}>
-                <span style={s.choiceName}>Web</span>
-                <span style={s.choiceDescription}>
-                  HTML, CSS, and JavaScript tasks with files, assets, and iframe preview.
-                </span>
-              </button>
-              <button style={s.choiceButton} onClick={() => onChoose('scratch')}>
-                <span style={s.choiceName}>Scratch</span>
-                <span style={s.choiceDescription}>
-                  Block-based tasks with a Scratch workspace, stage, toolbox limits, and block
-                  checks.
-                </span>
-              </button>
-              <button style={s.choiceButton} onClick={() => onChoose('filesystem')}>
-                <span style={s.choiceName}>Files/Folders</span>
-                <span style={s.choiceDescription}>
-                  Virtual filesystem tasks — create, rename, move, and organise files and folders.
-                </span>
-              </button>
-              <button style={s.choiceButton} onClick={() => onChoose('electronics')}>
-                <span style={s.choiceName}>Electronics</span>
-                <span style={s.choiceDescription}>
-                  Editable breadboard tasks with LEDs, motors, switches, pots, and future
-                  MicroPython support.
-                </span>
-              </button>
-            </div>
-          )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
               Upload existing JSON

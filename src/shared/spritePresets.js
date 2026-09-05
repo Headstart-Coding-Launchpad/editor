@@ -2,8 +2,6 @@
 // shared between the lesson builder (author-side "Add sprite"/"Add backdrop" pickers) and
 // the student-facing Scratch workspace (author-gated "Add sprite"/"Add backdrop" pickers
 // backed by the same admin-curated `lessonTypeAssets/scratch` library).
-export const SPRITE_PRESETS_PATH = 'scratch-assets/sprites.json'
-
 const BLANK_SPRITE = {
   type: 'cat',
   x: 0,
