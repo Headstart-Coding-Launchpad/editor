@@ -8,7 +8,7 @@ import { PART_H, PART_W } from './boardGeometry'
 // and the part artwork below keeps its literal colours because a red LED has to be red.
 export const SHORT_COLOUR = '#ef4444'
 export const DANGER_TEXT = '#991b1b'
-export const DANGER_SURFACE = '#fee2e2'
+const DANGER_SURFACE = '#fee2e2'
 export const DANGER_BORDER = '#fecaca'
 export const WARNING_TEXT = '#854d0e'
 export const WARNING_SURFACE = '#fef9c3'

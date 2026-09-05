@@ -42,7 +42,7 @@ export const FEEDBACK_TIMING = {
   ON_IDLE: 'on_idle',
 }
 
-export const CORE_CHECK_DEFINITIONS = {
+const CORE_CHECK_DEFINITIONS = {
   output: {
     subject: 'Output',
     operators: [
@@ -156,17 +156,17 @@ export function normalizeFeedbackChecks(taskOrChecks) {
   })
 }
 
-export function normalizeFeedbackShow(show) {
+function normalizeFeedbackShow(show) {
   return show === 'on_idle' || show === 'on_pause'
     ? FEEDBACK_TIMING.ON_IDLE
     : FEEDBACK_TIMING.AFTER_ATTEMPT
 }
 
-export function feedbackCheckMatchesTiming(check, timing = FEEDBACK_TIMING.AFTER_ATTEMPT) {
+function feedbackCheckMatchesTiming(check, timing = FEEDBACK_TIMING.AFTER_ATTEMPT) {
   return normalizeFeedbackShow(check?.show) === normalizeFeedbackShow(timing)
 }
 
-export const CHECK_TYPES = {
+const CHECK_TYPES = {
   RUN_REQUIRED: [
     'output',
     'code_no_error',
@@ -372,13 +372,7 @@ export function getStageOfferMatchThreshold(stageOffer) {
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
 
-export function buildCheckFeedbackResult(
-  task,
-  completionPassed,
-  feedbackResults,
-  output,
-  context = {}
-) {
+function buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context = {}) {
   const blockingMatch = getHighestPriorityFeedbackMatch(
     feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
   )

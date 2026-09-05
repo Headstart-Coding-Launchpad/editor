@@ -381,7 +381,7 @@ function blockColour(type) {
   return group?.colour ?? '#6b7280'
 }
 
-export function ScratchBlockPicker({
+function ScratchBlockPicker({
   value,
   onChange,
   allowedTypes = SCRATCH_ALL_BLOCK_TYPES,

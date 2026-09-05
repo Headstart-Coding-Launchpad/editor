@@ -30,66 +30,6 @@ export const FS_CHECK_TYPES = [
   'fs_file_opened',
 ]
 
-export const FS_CHECK_DEFINITIONS = {
-  fs_path: {
-    subject: 'Filesystem path',
-    operators: ['exists', 'not_exists'],
-    fields: ['path', 'itemType'],
-    evaluate: 'on_change',
-  },
-  fs_file_content: {
-    subject: 'File content',
-    operators: [
-      'contains',
-      'not_contains',
-      'equals',
-      'not_equals',
-      'matches_regex',
-      'not_matches_regex',
-    ],
-    fields: ['path', 'operator', 'value', 'flags'],
-    evaluate: 'on_change',
-  },
-  fs_file_line_count: {
-    subject: 'File line count',
-    operators: [
-      'equals',
-      'not_equals',
-      'greater_than',
-      'greater_than_or_equal',
-      'less_than',
-      'less_than_or_equal',
-    ],
-    fields: ['path', 'operator', 'value'],
-    evaluate: 'on_change',
-  },
-  fs_file_location: {
-    subject: 'File location',
-    operators: ['in_folder'],
-    fields: ['path', 'dir'],
-    evaluate: 'on_change',
-  },
-  fs_folder_count: {
-    subject: 'Folder item count',
-    operators: [
-      'equals',
-      'not_equals',
-      'greater_than',
-      'greater_than_or_equal',
-      'less_than',
-      'less_than_or_equal',
-    ],
-    fields: ['path', 'itemType', 'operator', 'value'],
-    evaluate: 'on_change',
-  },
-  fs_opened: {
-    subject: 'Opened filesystem item',
-    operators: ['is_open'],
-    fields: ['path', 'itemType'],
-    evaluate: 'on_change',
-  },
-}
-
 const FS_LEGACY_CHECK_ALIASES = {
   fs_file_exists: { type: 'fs_path', operator: 'exists', itemType: 'file' },
   fs_dir_exists: { type: 'fs_path', operator: 'exists', itemType: 'dir' },

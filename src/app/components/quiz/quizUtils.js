@@ -43,9 +43,9 @@ export function fitScratchQuizScale({
   return Math.max(minimumScale, Math.min(...limits))
 }
 
-export const OPTIONS_MIN_SCALE = 0.65
-export const OPTIONS_SCALE_STEP = 0.05
-export const OPTIONS_MAX_SHRINK_STEPS = 8
+const OPTIONS_MIN_SCALE = 0.65
+const OPTIONS_SCALE_STEP = 0.05
+const OPTIONS_MAX_SHRINK_STEPS = 8
 
 // Steps a font-size scale down (via setScale) until isOverflowing() reports the
 // content fits, or the floor/step budget is reached. Used to shrink quiz answer

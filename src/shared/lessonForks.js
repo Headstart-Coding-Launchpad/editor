@@ -36,7 +36,7 @@ export function makeForkLessonId(sourceLessonId, classId) {
   return `${source}-${safeClassId}`
 }
 
-export function makeForkLessonTitle(sourceTitle, className) {
+function makeForkLessonTitle(sourceTitle, className) {
   const title = String(sourceTitle ?? '').trim()
   const name = String(className ?? '').trim()
   if (!title) throw new Error('Source lesson title is required')
@@ -44,7 +44,7 @@ export function makeForkLessonTitle(sourceTitle, className) {
   return `${title} - ${name}`
 }
 
-export function flattenLessonTasks(tasks = []) {
+function flattenLessonTasks(tasks = []) {
   const result = []
   for (const item of tasks) {
     if (item?.type === 'group') {
@@ -56,7 +56,7 @@ export function flattenLessonTasks(tasks = []) {
   return result
 }
 
-export function makeForkTaskLinks(tasks = []) {
+function makeForkTaskLinks(tasks = []) {
   return flattenLessonTasks(tasks)
     .filter((task) => task?.id != null)
     .map((task) => ({

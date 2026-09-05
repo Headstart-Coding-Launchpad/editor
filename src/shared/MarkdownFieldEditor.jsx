@@ -280,7 +280,7 @@ export function MarkdownFieldEditor({
   )
 }
 
-export function MarkdownToolbar({
+function MarkdownToolbar({
   lessonType,
   inlineCodeLanguages,
   onAction,

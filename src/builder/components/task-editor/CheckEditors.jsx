@@ -362,7 +362,7 @@ function CheckFeedbackControls({
   )
 }
 
-export function FeedbackStageOfferControls({ check, stages = [], onChange }) {
+function FeedbackStageOfferControls({ check, stages = [], onChange }) {
   const selectedStageIndex = check.stageOffer?.stageIndex
   const supportStages = stages
     .map((stage, index) => ({ stage, index }))

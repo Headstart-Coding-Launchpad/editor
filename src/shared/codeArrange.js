@@ -91,7 +91,7 @@ export function isArrangementComplete(task, slotState) {
 // tile currently selected for each of its slots (slot id -> fragment id,
 // looked up in the task's one shared pool) and fixed text segments passed
 // through unchanged, in part order.
-export function assembleLineCode(line, slotState, pool) {
+function assembleLineCode(line, slotState, pool) {
   const state = slotState && typeof slotState === 'object' ? slotState : {}
   return getLineParts(line)
     .map((part) => {

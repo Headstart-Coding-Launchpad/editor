@@ -7,7 +7,7 @@ import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../shared/c
 // studentFileStorageKey()-keyed helpers every other task type already uses
 // (see src/app/studentStorage.js). It cannot collide with an authored HTML
 // filename since authors name real files like "index.html".
-export const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
+const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
 
 function fileContent(files, name) {
   return files?.find((file) => file.name === name)?.content ?? ''

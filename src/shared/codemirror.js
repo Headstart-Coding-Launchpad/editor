@@ -24,7 +24,7 @@ import { javascript } from '@codemirror/lang-javascript'
 
 // ─── Headstart brand theme ───────────────────────────────────────────────────
 
-export const headstartTheme = EditorView.theme(
+const headstartTheme = EditorView.theme(
   {
     '&': {
       fontSize: '15px',

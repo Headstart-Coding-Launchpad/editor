@@ -27,69 +27,6 @@ export const HTML_CHECK_TYPES = [
   'element_style_property',
 ]
 
-export const HTML_CHECK_DEFINITIONS = {
-  html_element: {
-    subject: 'HTML element',
-    operators: ['exists'],
-    fields: ['selector'],
-    evaluate: 'on_run',
-  },
-  html_element_count: {
-    subject: 'HTML element count',
-    operators: [
-      'equals',
-      'not_equals',
-      'greater_than',
-      'greater_than_or_equal',
-      'less_than',
-      'less_than_or_equal',
-    ],
-    fields: ['selector', 'operator', 'value'],
-    evaluate: 'on_run',
-  },
-  html_element_value: {
-    subject: 'HTML element value',
-    operators: [
-      'contains',
-      'not_contains',
-      'equals',
-      'not_equals',
-      'matches_regex',
-      'not_matches_regex',
-    ],
-    fields: ['selector', 'operator', 'value', 'flags'],
-    evaluate: 'on_run',
-  },
-  html_element_attribute: {
-    subject: 'HTML element attribute',
-    operators: [
-      'exists',
-      'equals',
-      'not_equals',
-      'contains',
-      'not_contains',
-      'matches_regex',
-      'not_matches_regex',
-    ],
-    fields: ['selector', 'attribute', 'operator', 'value', 'flags'],
-    evaluate: 'on_run',
-  },
-  html_element_style_property: {
-    subject: 'HTML element style property',
-    operators: [
-      'exists',
-      'equals',
-      'not_equals',
-      'contains',
-      'not_contains',
-      'matches_regex',
-      'not_matches_regex',
-    ],
-    fields: ['selector', 'property', 'operator', 'value', 'flags'],
-    evaluate: 'on_run',
-  },
-}
-
 const HTML_LEGACY_CHECK_ALIASES = {
   element_exists: { type: 'html_element', operator: 'exists' },
   element_count: { type: 'html_element_count', operator: 'equals' },

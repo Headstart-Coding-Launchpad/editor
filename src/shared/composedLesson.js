@@ -54,7 +54,7 @@ export function getTaskModuleId(lesson, taskOrId) {
   return task.moduleId ?? getTaskModuleType(lesson, task)
 }
 
-export function findLessonModuleForTask(lesson, taskOrId) {
+function findLessonModuleForTask(lesson, taskOrId) {
   const moduleId = getTaskModuleId(lesson, taskOrId)
   if (!moduleId) return null
   return getLessonModules(lesson).find((module) => module.id === moduleId) ?? null

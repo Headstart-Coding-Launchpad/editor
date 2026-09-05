@@ -1722,32 +1722,6 @@ export async function runWorkspace(workspace, spriteState, onUpdate, signal) {
   await Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), context)))
 }
 
-export async function runSingleBlock(block, spriteState, onUpdate, signal) {
-  const context = createRunContext(
-    block?.workspace,
-    spriteState,
-    onUpdate,
-    signal,
-    null,
-    [],
-    'sprite'
-  )
-  await runChain(block, context)
-}
-
-export async function runEvent(workspace, eventType, spriteState, onUpdate, signal, option = null) {
-  const context = createRunContext(workspace, spriteState, onUpdate, signal, null, [], 'sprite')
-  let hats = workspace.getBlocksByType(eventType, false)
-  if (eventType === 'event_whenkeypressed') {
-    hats = hats.filter((hat) => keyMatches(hat.getFieldValue('KEY_OPTION'), option))
-  } else if (eventType === 'event_whenbroadcastreceived') {
-    hats = hats.filter(
-      (hat) => String(hat.getFieldValue('BROADCAST_OPTION') ?? '') === String(option ?? '')
-    )
-  }
-  await Promise.all(hats.map((hat) => runChain(hat.getNextBlock(), context)))
-}
-
 // Multi-sprite: run all green-flag hats across every sprite concurrently.
 // spriteWorkspaces: Array of { id, workspace, state, costumes, onUpdate }
 export async function runAllSprites(spriteWorkspaces, signal) {

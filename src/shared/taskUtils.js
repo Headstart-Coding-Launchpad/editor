@@ -5,7 +5,7 @@ export function isLegacyDraftTask(task) {
 // Returns the task tree without legacy draft placeholders. These records are
 // retained in stored lessons for backwards compatibility, but are not part of
 // the active lesson flow.
-export function filterLegacyDraftTasks(tasks) {
+function filterLegacyDraftTasks(tasks) {
   if (!Array.isArray(tasks)) return []
   const hasLegacyDrafts = tasks.some((item) =>
     item?.type === 'group'
@@ -90,7 +90,7 @@ export function getRevealableStages(task) {
     .filter(({ stage }) => isRevealableStage(stage))
 }
 
-export function getStagesByRole(task, role) {
+function getStagesByRole(task, role) {
   return (task?.codeStages ?? [])
     .map((stage, index) => ({ stage, index }))
     .filter(({ stage }) => getStageRole(stage) === role)
@@ -144,7 +144,7 @@ export function findTaskById(tasks, id) {
 // now) immediately before a task whose explainer is currently shrunk/hidden. It's a
 // live UI reflection, never persisted, so its id only needs to be unique and
 // recognisable, not stable across sessions.
-export const EXPLAINER_PSEUDO_PREFIX = '__explainer_slide__'
+const EXPLAINER_PSEUDO_PREFIX = '__explainer_slide__'
 
 export function makeExplainerPseudoTask(task) {
   return {

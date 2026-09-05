@@ -26,10 +26,6 @@ function stageToText(stage, lessonType) {
   return ''
 }
 
-export function getSupportStageText(stage, lessonType) {
-  return stageToText(stage, lessonType)
-}
-
 export default function SupportStagePanel({ stage, lessonType, revealed, sourceLabel }) {
   const text = stageToText(stage, lessonType)
   if (!revealed || !text.trim()) return null

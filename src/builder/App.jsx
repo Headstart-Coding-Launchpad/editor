@@ -7,7 +7,7 @@ import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
 
-export const LS_KEY = 'headstart_builder_current'
+const LS_KEY = 'headstart_builder_current'
 
 const blankLesson = () => ({
   id: '',

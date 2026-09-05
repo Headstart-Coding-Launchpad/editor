@@ -62,7 +62,7 @@ export function normalizeStyleValue(value) {
   )
 }
 
-export function normalizeCode(value, caseSensitive = false) {
+function normalizeCode(value, caseSensitive = false) {
   const s = normalizeCodeWhitespace(value)
   return caseSensitive ? s : s.toLowerCase()
 }
@@ -101,7 +101,7 @@ export function countOutputLines(value) {
 }
 
 // Parses "option1","option2" format into an array. Returns null if not in that format.
-export function parseMultipleContainOptions(value) {
+function parseMultipleContainOptions(value) {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   if (!trimmed.startsWith('"')) return null
@@ -142,7 +142,7 @@ export function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value)
 }
 
-export function deepEqual(a, b) {
+function deepEqual(a, b) {
   if (Array.isArray(a) || Array.isArray(b)) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
     return a.every((item, index) => deepEqual(item, b[index]))
@@ -175,7 +175,7 @@ export function getElementText(el) {
   return INPUT_TAGS.includes(el.tagName) ? el.value : (el.textContent ?? '')
 }
 
-export function parseVariableJson(json, fallback) {
+function parseVariableJson(json, fallback) {
   if (json == null) return fallback
   try {
     return JSON.parse(json)

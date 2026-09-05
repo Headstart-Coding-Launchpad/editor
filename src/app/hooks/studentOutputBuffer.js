@@ -1,5 +1,5 @@
-export const MAX_STREAMED_OUTPUT = 20_000
-export const MAX_DISPLAY_LINES = 100
+const MAX_STREAMED_OUTPUT = 20_000
+const MAX_DISPLAY_LINES = 100
 export const OUTPUT_TRUNCATED_MESSAGE = '[Output truncated - stop the program to continue]'
 
 export function collapseStudentOutputForDisplay(output, maxLines = MAX_DISPLAY_LINES) {
