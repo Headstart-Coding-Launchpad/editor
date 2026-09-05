@@ -277,4 +277,13 @@ describe('SharedWorkspaceViewer', () => {
       expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     })
   })
+  // It replaces the workspace in place rather than floating over it, so it
+  // reads as the same surface the student already knows.
+  it('renders inline rather than as a fixed overlay dialog', () => {
+    const { container } = render(
+      <SharedWorkspaceViewer lesson={PYTHON_LESSON} entry={ENTRY} snapshot={pythonSnapshot()} />
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(container.firstChild).not.toHaveStyle({ position: 'fixed' })
+  })
 })

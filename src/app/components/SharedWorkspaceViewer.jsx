@@ -179,7 +179,7 @@ export default function SharedWorkspaceViewer({
   }
 
   return (
-    <div style={s.overlay} role="dialog" aria-label="Shared workspace">
+    <div style={s.wrap} aria-label="Shared workspace">
       <div style={s.panel}>
         <div style={s.header}>
           <div style={s.headerText}>
@@ -260,24 +260,26 @@ export default function SharedWorkspaceViewer({
 }
 
 const s = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'var(--colour-bg, #fff)',
-    zIndex: 1400,
+  // Occupies the normal workspace slot rather than floating over it, so a
+  // shared workspace reads as the same surface the student already knows.
+  wrap: {
     display: 'flex',
     flexDirection: 'column',
-    padding: 12,
+    height: '100%',
+    minHeight: 0,
+    flex: 1,
   },
   panel: { display: 'flex', flexDirection: 'column', gap: 10, height: '100%', minHeight: 0 },
   header: {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
     flexWrap: 'wrap',
+    background: 'rgba(13, 148, 136, 0.10)',
     borderBottom: '2px solid #0d9488',
-    paddingBottom: 8,
+    padding: '6px 10px',
+    flexShrink: 0,
   },
   headerText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   title: { fontWeight: 700, fontSize: 15 },

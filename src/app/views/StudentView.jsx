@@ -1055,16 +1055,6 @@ export default function StudentView({
 
   return (
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
-      {activeShare && (
-        <SharedWorkspaceViewer
-          lesson={lesson}
-          entry={activeShare.entry}
-          snapshot={activeShare.snapshot}
-          copyTargetTaskId={currentTaskId}
-          onClose={handleCloseSharedWorkspace}
-          onCopyToMyEditor={handleCopySharedWorkspace}
-        />
-      )}
       {isPaused && (
         <div style={s.pauseOverlay}>
           <span style={s.pauseIcon}>⏸</span>
@@ -1250,62 +1240,73 @@ export default function StudentView({
             : s.body
         }
       >
-        <LessonTaskContent
-          lesson={displayedLesson}
-          task={task}
-          cs={cs}
-          lessonId={lessonId}
-          identityId={effectiveIdentity?.anonymousId}
-          sandboxExplainer={session?.sandboxExplainer}
-          activeStudentView={session?.activeStudentView}
-          viewingTaskId={viewingTaskId}
-          currentTaskId={currentTaskId}
-          transitionKey={transitionKey}
-          previewMode={previewMode}
-          isSandbox={isSandbox}
-          isViewingPrev={isViewingPrev}
-          isForcedTeacherLive={isForcedTeacherLive}
-          isMobile={isMobile}
-          isQuizTask={isQuizTask}
-          isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
-          isInformationTask={isInformationTask}
-          isViewingExplainerSlide={viewingExplainerSlide}
-          isCodeArrangeTask={isCodeArrangeTask}
-          displayCode={displayCode}
-          displayArcadeDesign={displayArcadeDesign}
-          displaySpriteState={displaySpriteState}
-          displayCursor={displayCursor}
-          displayBlockDrag={displayBlockDrag}
-          displayCodeArrangeSlots={displayCodeArrangeSlots}
-          displayCodeArrangeCursor={displayCodeArrangeCursor}
-          displayFiles={displayFiles}
-          displayActiveFile={displayActiveFile}
-          displayOutput={displayOutput}
-          displayRunStatus={displayRunStatus}
-          displayCheckPassed={displayCheckPassed}
-          displayCheckAttempted={displayCheckAttempted}
-          displayCheckSuggestion={displayCheckSuggestion}
-          displaySelection={displaySelection}
-          displayFs={displayFs}
-          isTeacherEditing={isTeacherEditing}
-          teacherLiveCode={teacherLiveCode}
-          teacherLiveFiles={teacherLiveFiles}
-          teacherLiveActiveFile={teacherLiveActiveFile}
-          teacherLiveWorkspace={teacherLiveWorkspace}
-          teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-          canOfferNextStage={canOfferNextStage}
-          canOfferCompletePreview={canOfferCompletePreview}
-          canOfferCompleteSolution={canOfferCompleteSolution}
-          canOfferPersonalSandbox={canOfferPersonalSandbox}
-          explainerShowsComplete={explainerShowsComplete}
-          presenterLayout={teacherPresentation ? presenterLayout : 'both'}
-          onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
-          onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
-          openTopicId={phase === 'lesson' ? openTopicId : null}
-          onVisiblePanesChange={handleVisiblePanesChange}
-          highlightedPanes={highlightedPanes}
-          forcedPaneCommand={forcedPaneCommand}
-        />
+        {activeShare ? (
+          <SharedWorkspaceViewer
+            lesson={lesson}
+            entry={activeShare.entry}
+            snapshot={activeShare.snapshot}
+            copyTargetTaskId={currentTaskId}
+            onClose={handleCloseSharedWorkspace}
+            onCopyToMyEditor={handleCopySharedWorkspace}
+          />
+        ) : (
+          <LessonTaskContent
+            lesson={displayedLesson}
+            task={task}
+            cs={cs}
+            lessonId={lessonId}
+            identityId={effectiveIdentity?.anonymousId}
+            sandboxExplainer={session?.sandboxExplainer}
+            activeStudentView={session?.activeStudentView}
+            viewingTaskId={viewingTaskId}
+            currentTaskId={currentTaskId}
+            transitionKey={transitionKey}
+            previewMode={previewMode}
+            isSandbox={isSandbox}
+            isViewingPrev={isViewingPrev}
+            isForcedTeacherLive={isForcedTeacherLive}
+            isMobile={isMobile}
+            isQuizTask={isQuizTask}
+            isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+            isInformationTask={isInformationTask}
+            isViewingExplainerSlide={viewingExplainerSlide}
+            isCodeArrangeTask={isCodeArrangeTask}
+            displayCode={displayCode}
+            displayArcadeDesign={displayArcadeDesign}
+            displaySpriteState={displaySpriteState}
+            displayCursor={displayCursor}
+            displayBlockDrag={displayBlockDrag}
+            displayCodeArrangeSlots={displayCodeArrangeSlots}
+            displayCodeArrangeCursor={displayCodeArrangeCursor}
+            displayFiles={displayFiles}
+            displayActiveFile={displayActiveFile}
+            displayOutput={displayOutput}
+            displayRunStatus={displayRunStatus}
+            displayCheckPassed={displayCheckPassed}
+            displayCheckAttempted={displayCheckAttempted}
+            displayCheckSuggestion={displayCheckSuggestion}
+            displaySelection={displaySelection}
+            displayFs={displayFs}
+            isTeacherEditing={isTeacherEditing}
+            teacherLiveCode={teacherLiveCode}
+            teacherLiveFiles={teacherLiveFiles}
+            teacherLiveActiveFile={teacherLiveActiveFile}
+            teacherLiveWorkspace={teacherLiveWorkspace}
+            teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+            canOfferNextStage={canOfferNextStage}
+            canOfferCompletePreview={canOfferCompletePreview}
+            canOfferCompleteSolution={canOfferCompleteSolution}
+            canOfferPersonalSandbox={canOfferPersonalSandbox}
+            explainerShowsComplete={explainerShowsComplete}
+            presenterLayout={teacherPresentation ? presenterLayout : 'both'}
+            onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+            onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+            openTopicId={phase === 'lesson' ? openTopicId : null}
+            onVisiblePanesChange={handleVisiblePanesChange}
+            highlightedPanes={highlightedPanes}
+            forcedPaneCommand={forcedPaneCommand}
+          />
+        )}
       </div>
     </div>
   )

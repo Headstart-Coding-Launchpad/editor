@@ -17,6 +17,7 @@ export default function ShareRequestPanel({
   onApprove,
   onDecline,
   awaitingSnapshot = false,
+  fill = false,
 }) {
   const requestedAt = student?.shareRequestedAt ?? null
   const [snapshot, setSnapshot] = useState(null)
@@ -51,7 +52,7 @@ export default function ShareRequestPanel({
   if (requestedAt == null) {
     if (!awaitingSnapshot) return null
     return (
-      <div style={s.panel}>
+      <div style={fill ? { ...s.panel, ...s.panelFill } : s.panel}>
         <div style={s.header}>
           <span style={s.title}>📤 Preparing a share</span>
         </div>
@@ -75,7 +76,7 @@ export default function ShareRequestPanel({
   }
 
   return (
-    <div style={s.panel}>
+    <div style={fill ? { ...s.panel, ...s.panelFill } : s.panel}>
       <div style={s.header}>
         <span style={s.title}>
           📤 {byTeacher ? 'Ready to share with the class' : 'Wants to share with the class'}
@@ -93,7 +94,7 @@ export default function ShareRequestPanel({
         <p style={s.note}>That share is no longer available — the student may have withdrawn it.</p>
       )}
       {status === 'ready' && (
-        <div style={s.previewBox}>
+        <div style={fill ? { ...s.previewBox, ...s.previewBoxFill } : s.previewBox}>
           <SharedWorkspacePreview lesson={lesson} snapshot={snapshot} />
         </div>
       )}
@@ -139,6 +140,9 @@ const s = {
     flexDirection: 'column',
     gap: 8,
   },
+  // When the request is the modal's only content it should use the space,
+  // rather than leaving the teacher squinting at a 320px preview.
+  panelFill: { flex: 1, minHeight: 0, marginBottom: 0 },
   header: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   title: { fontWeight: 700, fontSize: 14 },
   taskTag: {
@@ -150,6 +154,7 @@ const s = {
     color: '#fff',
   },
   note: { margin: 0, fontSize: 12, color: 'var(--colour-muted)' },
+  previewBoxFill: { maxHeight: 'none', flex: 1 },
   previewBox: {
     maxHeight: 320,
     overflow: 'auto',
