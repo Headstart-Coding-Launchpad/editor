@@ -106,17 +106,6 @@ function displayLevelIcon(icon) {
   return LEGACY_ICON_LABELS[icon] ?? icon ?? ''
 }
 
-function makeTeacherUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
-}
-
-// Ephemeral, unrestricted solo run of the lesson (see LessonRoute.jsx's `preview` handling)
-// — nothing it does is written to real student progress, so it's safe to launch repeatedly
-// while checking a lesson over.
-function makePreviewUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?preview=true`
-}
-
 function findLessonLevel(lesson, levels) {
   const ref = getLessonLevelRef(lesson)
   if (!ref?.id) return null
@@ -749,7 +738,7 @@ function LevelLessonGroup({
                           <AdminCell style={{ whiteSpace: 'nowrap' }}>
                             <div style={s.actions}>
                               <a
-                                href={makeTeacherUrl(lesson.id)}
+                                href={getLessonLinks(lesson.id).teacher}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn-primary"
@@ -758,7 +747,7 @@ function LevelLessonGroup({
                                 Launch as Teacher
                               </a>
                               <a
-                                href={makePreviewUrl(lesson.id)}
+                                href={getLessonLinks(lesson.id).preview}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn-ghost-outline"

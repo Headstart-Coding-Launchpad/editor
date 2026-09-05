@@ -1,6 +1,10 @@
 import React from 'react'
 import { MarkdownRenderer } from '../../../shared/markdown'
 import { baseStyles } from './quizStyles'
+export { stableHash } from '../../../shared/textUtils'
+export { parseQuizAnswerState } from '../../../shared/quizAnswers'
+import { stableHash } from '../../../shared/textUtils'
+import { answerTextMatches } from '../../../shared/quizAnswers'
 
 // Styling lives in quizStyles.js. Re-exported here so the quiz components can keep a
 // single import, and so this split stayed a move rather than a rename of 40 call sites.
@@ -62,37 +66,12 @@ export function shrinkToFit({
   return scale
 }
 
-export function stableHash(str) {
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
-  return h
-}
-
-export function parseQuizAnswerState(selectedAnswer) {
-  if (selectedAnswer && typeof selectedAnswer === 'object' && !Array.isArray(selectedAnswer))
-    return selectedAnswer
-  if (typeof selectedAnswer === 'string' && selectedAnswer) {
-    try {
-      const parsed = JSON.parse(selectedAnswer)
-      if (parsed && typeof parsed === 'object') return parsed
-    } catch {}
-  }
-  return {}
-}
-
 export function fillDragTileMatchesBlank(tile, blank) {
   return tile?.text === blank?.answer
 }
 
 export function typedValueMatchesBlank(value, blank) {
-  return (
-    String(value ?? '')
-      .trim()
-      .toLowerCase() ===
-    String(blank?.answer ?? '')
-      .trim()
-      .toLowerCase()
-  )
+  return answerTextMatches(value, blank?.answer)
 }
 
 // Parses fill-blank text into tokens:

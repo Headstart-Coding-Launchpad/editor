@@ -19,8 +19,22 @@ describe('getLessonLinks', () => {
     )
   })
 
-  it('returns exactly the join and solo keys', () => {
+  it('returns a teacher link with ?teacher=true appended', () => {
+    const { teacher } = getLessonLinks('py-intro')
+    expect(teacher).toBe(
+      `${window.location.origin}${window.location.pathname}#/lesson/py-intro?teacher=true`
+    )
+  })
+
+  it('returns a preview link with ?preview=true appended', () => {
+    const { preview } = getLessonLinks('py-intro')
+    expect(preview).toBe(
+      `${window.location.origin}${window.location.pathname}#/lesson/py-intro?preview=true`
+    )
+  })
+
+  it('returns exactly the four known link kinds', () => {
     const links = getLessonLinks('py-intro')
-    expect(Object.keys(links).sort()).toEqual(['join', 'solo'])
+    expect(Object.keys(links).sort()).toEqual(['join', 'preview', 'solo', 'teacher'])
   })
 })

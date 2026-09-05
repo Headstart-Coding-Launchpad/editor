@@ -3,16 +3,11 @@ import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
 import { getLessonModules } from '../modules/registry'
+import { spriteVisualMode } from '../shared/spriteVisuals'
 
 const LESSON_TYPES = getLessonModules().map((module) => ({ id: module.type, label: module.label }))
 
 const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
-
-function spriteVisualMode(sp) {
-  if (sp.costumes?.some((c) => c.image !== undefined)) return 'costume'
-  if (sp.emoji || sp.costumes?.some((c) => c.emoji !== undefined)) return 'emoji'
-  return 'preset'
-}
 
 function storagePath(type, filename) {
   return `shared/${type}/assets/${filename}`

@@ -1,3 +1,5 @@
+import { escapeRegExp } from './textUtils.js'
+
 export const SCRATCH_CATEGORY_COLOURS = {
   Events: '#FFAB19',
   Motion: '#4C97FF',
@@ -7,10 +9,6 @@ export const SCRATCH_CATEGORY_COLOURS = {
   Sensing: '#5CB1D6',
   Operators: '#59C059',
   Variables: '#FF8C1A',
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function patternFromSample(sample) {

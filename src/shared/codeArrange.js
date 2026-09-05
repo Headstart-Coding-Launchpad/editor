@@ -1,3 +1,5 @@
+import { stableHash } from './textUtils.js'
+
 // Pure helpers for the "code_arrange" task type: students assemble a program
 // by dragging code tiles into slots, then it actually runs through the real
 // Python/HTML pipeline.
@@ -24,12 +26,6 @@
 // needs to know the code came from drag-and-drop tiles. Keeping that boundary
 // pure and dependency-free here is what makes it easy to unit test and to
 // reuse from both the student workspace and the Lesson Builder preview.
-
-function stableHash(str) {
-  let h = 0
-  for (let i = 0; i < String(str ?? '').length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
-  return h
-}
 
 export function getLines(task) {
   return Array.isArray(task?.lines) ? task.lines : []

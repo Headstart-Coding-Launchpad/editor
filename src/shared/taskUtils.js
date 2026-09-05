@@ -25,11 +25,18 @@ export function filterLegacyDraftTasks(tasks) {
   })
 }
 
-// Returns a flat array of active tasks, expanding groups to their subtasks.
-export function flattenTasks(tasks) {
-  return filterLegacyDraftTasks(tasks).flatMap((item) =>
+// Expands groups to their subtasks, leaving everything else as authored. Callers that
+// want the tasks a student actually sees want flattenTasks; this raw form is for code
+// that must see the lesson exactly as stored (e.g. the audit trail).
+export function flattenTaskTree(tasks = []) {
+  return (Array.isArray(tasks) ? tasks : []).flatMap((item) =>
     item?.type === 'group' ? (Array.isArray(item.subtasks) ? item.subtasks : []) : [item]
   )
+}
+
+// Returns a flat array of active tasks, expanding groups to their subtasks.
+export function flattenTasks(tasks) {
+  return flattenTaskTree(filterLegacyDraftTasks(tasks))
 }
 
 export function getEstimatedMinutes(task) {

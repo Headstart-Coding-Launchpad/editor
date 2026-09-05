@@ -1,16 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAssets } from './useAssets'
+import { fileExtension } from './textUtils'
 import { isImageFile, useImagePreview, ImagePreviewTooltip } from './AssetImagePreview'
 
 const MANUAL_VALUE = '__manual__'
 
-function fileExt(filename) {
-  const dot = filename.lastIndexOf('.')
-  return dot !== -1 ? filename.slice(dot + 1).toLowerCase() : ''
-}
-
 function optionLabel(filename) {
-  const ext = fileExt(filename)
+  const ext = fileExtension(filename)
   return ext ? `${filename}  [${ext}]` : filename
 }
 

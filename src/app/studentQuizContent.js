@@ -1,32 +1,11 @@
 import { getFirstFailedCheckHint } from '../modules/checks'
-
-function parseAnswerState(answer) {
-  if (answer && typeof answer === 'object' && !Array.isArray(answer)) return answer
-  if (typeof answer === 'string' && answer) {
-    try {
-      const parsed = JSON.parse(answer)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
-    } catch {}
-  }
-  return {}
-}
-
-function textMatches(value, expected) {
-  return (
-    String(value ?? '')
-      .trim()
-      .toLowerCase() ===
-    String(expected ?? '')
-      .trim()
-      .toLowerCase()
-  )
-}
+import { answerTextMatches, parseQuizAnswerState } from '../shared/quizAnswers'
 
 export function buildQuizSubmission(task, answer) {
   const quizType = task?.quizType ?? 'multiple_choice'
 
   if (quizType === 'fill_blank') {
-    const state = parseAnswerState(answer)
+    const state = parseQuizAnswerState(answer)
     const mode = task?.mode ?? 'drag'
     const tiles = [
       ...(task?.blanks ?? []).map((blank) => ({ id: blank.id, text: blank.answer })),
@@ -44,14 +23,16 @@ export function buildQuizSubmission(task, answer) {
             : (rawValue ?? '')
         const expected = blank.answer ?? ''
         const correct =
-          mode === 'drag' ? String(value ?? '') === String(expected) : textMatches(value, expected)
+          mode === 'drag'
+            ? String(value ?? '') === String(expected)
+            : answerTextMatches(value, expected)
         return [blank.id, { value, expected, correct }]
       })
     )
   }
 
   if (quizType === 'match') {
-    const state = parseAnswerState(answer)
+    const state = parseQuizAnswerState(answer)
     return Object.fromEntries(
       (task?.pairs ?? []).map((pair) => {
         const placedId = state[pair.id]

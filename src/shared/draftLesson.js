@@ -1,18 +1,16 @@
+import { isPlainObject } from './textUtils.js'
+
 const TASK_TYPES = new Set(['information', 'quiz', 'code_arrange'])
 const QUIZ_TYPES = new Set(['multiple_choice', 'match', 'fill_blank', 'short_answer', 'confidence'])
 
-function isObject(value) {
-  return value != null && typeof value === 'object' && !Array.isArray(value)
-}
-
 function requireArrayOfObjects(value, label, errors) {
-  if (value != null && (!Array.isArray(value) || value.some((item) => !isObject(item)))) {
+  if (value != null && (!Array.isArray(value) || value.some((item) => !isPlainObject(item)))) {
     errors.push(`${label} must be an array of objects when provided`)
   }
 }
 
 function validateTaskShape(task, label, draft, errors) {
-  if (!isObject(task)) {
+  if (!isPlainObject(task)) {
     errors.push(`${label} must be an object`)
     return
   }
@@ -45,8 +43,8 @@ function validateTaskShape(task, label, draft, errors) {
   }
   if (
     task.check != null &&
-    !isObject(task.check) &&
-    !(Array.isArray(task.check) && task.check.every(isObject))
+    !isPlainObject(task.check) &&
+    !(Array.isArray(task.check) && task.check.every(isPlainObject))
   ) {
     errors.push(`${label} check must be an object or an array of objects when provided`)
   }
@@ -55,7 +53,7 @@ function validateTaskShape(task, label, draft, errors) {
       errors.push(`${label} ${field} must be a string when provided`)
   }
   for (const field of ['starterFs', 'completeFs', 'starterCircuit', 'completeCircuit']) {
-    if (task[field] != null && !isObject(task[field]))
+    if (task[field] != null && !isPlainObject(task[field]))
       errors.push(`${label} ${field} must be an object when provided`)
   }
 }
@@ -69,7 +67,7 @@ export function validateDraftLessonStructure(lesson, errors) {
   if (!Array.isArray(lesson.tasks)) return
   lesson.tasks.forEach((item, index) => {
     const label = `Task ${index + 1}`
-    if (!isObject(item)) {
+    if (!isPlainObject(item)) {
       errors.push(`${label} must be an object`)
       return
     }

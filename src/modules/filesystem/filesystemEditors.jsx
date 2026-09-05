@@ -10,15 +10,10 @@ import {
   normaliseFilePath,
 } from './filesystem.js'
 import { normalizeFsCheck } from './checks.js'
+import { fileExtension } from '../../shared/textUtils'
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 const TEXT_EXTS = new Set(['txt', 'md', 'csv'])
-
-function fileExt(path) {
-  const name = entryName(path)
-  const dot = name.lastIndexOf('.')
-  return dot !== -1 ? name.slice(dot + 1).toLowerCase() : ''
-}
 
 const s = {
   label: {
@@ -223,7 +218,7 @@ function FsFileRow({ path, entry, onRename, onDelete, onUpdate, storageAssets = 
     if (renaming && ref.current) ref.current.focus()
   }, [renaming])
 
-  const ext = fileExt(path)
+  const ext = fileExtension(entryName(path))
   const isImage = IMAGE_EXTS.has(ext)
   const isText = TEXT_EXTS.has(ext)
   const hasContentsEditor = isImage || isText
