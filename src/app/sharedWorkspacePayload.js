@@ -87,3 +87,16 @@ export function sortedShareEntries(sharedWorkspaces) {
     .map(([shareId, entry]) => ({ shareId, ...entry }))
     .sort((a, b) => (b.sharedAt ?? 0) - (a.sharedAt ?? 0))
 }
+
+// Firebase errors reach the student verbatim otherwise. "PERMISSION_DENIED:
+// Permission denied" means the rules in database.rules.json have not been
+// deployed (`firebase deploy --only database`) — a deployment problem, not
+// anything the student did or can fix.
+export function describeShareError(err) {
+  const raw = err?.message ?? ''
+  if (/permission[_ ]denied/i.test(raw)) {
+    return 'Sharing is not set up on this server yet — let your teacher know.'
+  }
+  if (/too large to share/i.test(raw)) return raw
+  return 'Could not share this workspace. Try again in a moment.'
+}

@@ -5,6 +5,7 @@ import {
   isSnapshotWithinLimit,
   measureSnapshotBytes,
   sortedShareEntries,
+  describeShareError,
   SHARE_PAYLOAD_MAX_BYTES,
 } from '../sharedWorkspacePayload'
 
@@ -202,6 +203,24 @@ describe('teacher-initiated share origin', () => {
   it('marks a teacher-started share distinctly from a student one', () => {
     expect(buildShareIndexEntry({ sharerId: 'a', sharedBy: 'teacher' }).sharedBy).toBe('teacher')
     expect(buildShareIndexEntry({ sharerId: 'a', sharedBy: 'student' }).sharedBy).toBe('student')
+  })
+})
+
+describe('describeShareError', () => {
+  it('translates an undeployed-rules failure into something a student can act on', () => {
+    const msg = describeShareError(new Error('PERMISSION_DENIED: Permission denied'))
+    expect(msg).not.toMatch(/PERMISSION_DENIED/)
+    expect(msg).toMatch(/let your teacher know/i)
+  })
+
+  it('keeps the size message, which the student can actually act on', () => {
+    const msg = describeShareError(new Error('This workspace is too large to share (limit 512KB).'))
+    expect(msg).toMatch(/too large to share/)
+  })
+
+  it('falls back to a neutral message for anything else', () => {
+    expect(describeShareError(new Error('socket hang up'))).toMatch(/try again/i)
+    expect(describeShareError(undefined)).toMatch(/try again/i)
   })
 })
 

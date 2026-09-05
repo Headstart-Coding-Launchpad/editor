@@ -34,6 +34,7 @@ import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
+import { describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
@@ -719,7 +720,7 @@ export default function StudentView({
     try {
       await requestWorkspaceShare(identity.anonymousId, cs.buildShareSnapshot())
     } catch (err) {
-      setShareError(err?.message ?? 'Could not share this workspace.')
+      setShareError(describeShareError(err))
     }
   }
 
@@ -733,8 +734,8 @@ export default function StudentView({
         return
       }
       setActiveShare({ entry, snapshot })
-    } catch {
-      setShareError('Could not open that shared workspace.')
+    } catch (err) {
+      setShareError(describeShareError(err))
     } finally {
       setShareLoading(false)
     }

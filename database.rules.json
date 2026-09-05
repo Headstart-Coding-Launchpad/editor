@@ -77,7 +77,10 @@
         // from $lessonId; no student rule here, so students cannot write it.
         "sharedWorkspaces": {
           "$shareId": {
-            ".validate": "newData.hasChildren(['sharerId', 'taskId', 'sharedAt'])"
+            // taskId and lessonType are deliberately NOT required: RTDB drops
+            // null children, so a share captured with no resolved task would
+            // fail validation and surface as PERMISSION_DENIED on approve.
+            ".validate": "newData.hasChildren(['sharerId', 'sharedAt'])"
           }
         }
       }

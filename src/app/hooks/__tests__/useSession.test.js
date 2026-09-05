@@ -12,7 +12,12 @@ const firebaseMocks = vi.hoisted(() => ({
     path: `${parentRef.path}/mockHighlightId`,
     key: 'mockHighlightId',
   })),
-  onDisconnect: vi.fn(() => ({ set: vi.fn(), remove: vi.fn() })),
+  // The real onDisconnect().set()/.remove() return promises; callers may chain
+  // .catch() on them.
+  onDisconnect: vi.fn(() => ({
+    set: vi.fn(() => Promise.resolve()),
+    remove: vi.fn(() => Promise.resolve()),
+  })),
   get: vi.fn(() => Promise.resolve({ val: () => null })),
 }))
 
@@ -1237,6 +1242,55 @@ describe('useSession', () => {
         loaded = await result.current.readSharedWorkspace('share-1')
       })
       expect(loaded.files).toEqual({ 'index.html': '<p>hi</p>' })
+    })
+    // Regression: share payloads live outside the session node and are cleared
+    // with a second write. If that write fails (most commonly because
+    // database.rules.json has not been deployed) it must not take down session
+    // lifecycle — creating, ending, or advancing must still work.
+    describe('payload cleanup failures are non-fatal', () => {
+      function failPayloadRemoves() {
+        firebaseMocks.remove.mockImplementation((r) =>
+          r.path.startsWith('sharedWorkspacePayloads')
+            ? Promise.reject(new Error('PERMISSION_DENIED: Permission denied'))
+            : Promise.resolve()
+        )
+      }
+
+      it('endSession still ends the session', async () => {
+        failPayloadRemoves()
+        const { result } = renderHook(() => useSession('lesson-1'))
+        await act(async () => {
+          await expect(result.current.endSession()).resolves.not.toThrow()
+        })
+        const updateCall = firebaseMocks.update.mock.calls.find(
+          ([r]) => r.path === 'sessions/lesson-1'
+        )
+        expect(updateCall[1]).toMatchObject({ state: 'ended' })
+      })
+
+      it('createSession still creates the session', async () => {
+        failPayloadRemoves()
+        const { result } = renderHook(() => useSession('lesson-1'))
+        await act(async () => {
+          await expect(result.current.createSession()).resolves.not.toThrow()
+        })
+        expect(
+          firebaseMocks.set.mock.calls.find(([r]) => r.path === 'sessions/lesson-1')
+        ).toBeTruthy()
+      })
+
+      it('setTaskId still advances the task', async () => {
+        failPayloadRemoves()
+        const { result } = renderHook(() => useSession('lesson-1'))
+        fireSession({ students: { 'stu-1': { displayName: 'Jamie' } }, currentTaskId: 1 })
+        await act(async () => {
+          await expect(result.current.setTaskId(2)).resolves.not.toThrow()
+        })
+        const updateCall = firebaseMocks.update.mock.calls.find(
+          ([r]) => r.path === 'sessions/lesson-1'
+        )
+        expect(updateCall[1]).toMatchObject({ currentTaskId: 2 })
+      })
     })
   })
 })

@@ -312,6 +312,8 @@ Lifecycle:
 - `createSession` / `restartSession` / `endSession` set `sharedWorkspaces` to `null` and remove the whole `sharedWorkspacePayloads/{lessonId}` subtree.
 - `endSession` also registers `onDisconnect().remove()` on `sharedWorkspacePayloads/{lessonId}`. This is separate from the session node's own disconnect cleanup — payloads live outside `sessions`, so without it they outlive the session that owned them.
 
+**Deploying the rules is required.** `sharedWorkspacePayloads` is a new top-level node, so until `firebase deploy --only database` runs, every write to it is denied by default and the first thing a student's Share button does fails. The session-node writes (`sharedWorkspaces`, the per-student `share*` fields) are already covered by the existing `sessions/$lessonId` rules and keep working, which makes a partial deploy look like "only sharing is broken". Payload cleanup in `createSession`/`endSession`/`setTaskId` is deliberately best-effort (`removeSharePayloadsQuietly`) so an undeployed or failing rule cannot break session lifecycle.
+
 Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
 
 
