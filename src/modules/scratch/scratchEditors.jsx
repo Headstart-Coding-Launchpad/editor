@@ -1,6 +1,7 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { MarkdownFieldEditor } from '../../builder/components/ExplainerEditor'
+import { CheckFeedbackControls } from '../../builder/components/task-editor/CheckEditors'
 import {
   SCRATCH_BLOCK_BY_OPCODE,
   SCRATCH_TOOLBOX_GROUPS,
@@ -949,31 +950,6 @@ function preserveScratchMeta(check = {}) {
   }
 }
 
-function FeedbackControls({ check, onChange }) {
-  return (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <select
-        className="te-select"
-        value={check.mode ?? 'blocking'}
-        onChange={(e) => onChange({ ...check, mode: e.target.value })}
-        title="Feedback behaviour"
-      >
-        <option value="blocking">Blocking</option>
-        <option value="nudge">Nudge</option>
-      </select>
-      <select
-        className="te-select"
-        value={check.show === 'on_pause' ? 'on_idle' : (check.show ?? 'after_attempt')}
-        onChange={(e) => onChange({ ...check, show: e.target.value })}
-        title="When to show feedback"
-      >
-        <option value="after_attempt">After attempt</option>
-        <option value="on_idle">On idle</option>
-      </select>
-    </div>
-  )
-}
-
 function ScratchCheckEditor({
   check,
   onChange,
@@ -1119,7 +1095,7 @@ function ScratchCheckEditor({
         )}
       </div>
 
-      {feedbackEditor && <FeedbackControls check={check} onChange={onChange} />}
+      {feedbackEditor && <CheckFeedbackControls check={check} onChange={onChange} />}
 
       {/* Row 2: type-specific fields */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

@@ -81,7 +81,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only) |
 | `CopyCodePanel.jsx` | Student-facing read-only reference code block with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
 | `SupportStagePanel.jsx` | Student-facing read-only code-stage reference panel with reveal control and copy/selection blocking |
-| `OutputPanel.jsx` | Python output with retro typing animation and inline `input()` prompt |
+| `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt |
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
@@ -90,6 +90,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CheckFeedbackBanner.jsx` | Pass/fail popup (floating, top-center, auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; no longer hosts its own Need Help button (see StudentView's top bar) |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message; shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
+| `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, `JoinSessionPrompt`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
 | `VideoCallPrompt.jsx` | Modal shown to one student when a teacher targets them with "📹 Send Video Call Link" from the Student Grid, stamping `students/{id}/videoCallLinkPushedAt` |
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (per-class YouTube recording). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
@@ -166,6 +167,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers; composes the four sub-hooks below |
 | `usePyodideState.js` | Pyodide warm-up effect, `pyodideStatus` state, and `initPyodideIfNeeded()` helper |
+| `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
 | `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
@@ -211,7 +213,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
-| `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation, and `input()` prompt for builder |
+| `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation (via `useTypewriterOutput`), and `input()` prompt for builder |
 | `GroupEditor.jsx` | Inline editor for a task group's title and subtask count summary |
 | `ValidationPanel.jsx` | Collapsible errors/warnings panel with tabbed view and per-warning ignore action |
 | `TaskFeedbackPanel.jsx` | Collapsible panel showing teacher-submitted lesson feedback items for the selected task |
@@ -236,7 +238,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
 | `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
 | `CodeArrangeEditor.jsx` | Visual Builder authoring + live preview for `taskType: code_arrange`: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list, entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly |
-| `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, and feedback priority/stage-offer controls |
+| `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, feedback priority/stage-offer controls, and `CheckFeedbackControls` (the shared feedback mode/show pair, also used by the electronics, filesystem and scratch check editors) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
 | `TaskCheckResults.jsx` | Pass/fail check result banner plus a non-mutating student-feedback preview for linked stage offers |

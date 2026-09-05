@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import { useTypewriterOutput } from '../../app/hooks/useTypewriterOutput'
 
 const CODE_FONT_STYLE = {
   fontFamily: "'JetBrains Mono', monospace",
@@ -22,7 +23,7 @@ export default function BuilderOutputPanel({
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(true)
-  const [displayedOutput, setDisplayedOutput] = useState('')
+  const displayedOutput = useTypewriterOutput(output)
 
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -37,47 +38,6 @@ export default function BuilderOutputPanel({
   }, [running])
 
   // Retro typing animation effect
-  useEffect(() => {
-    if (!output) {
-      setDisplayedOutput('')
-      return
-    }
-
-    if (displayedOutput === output) return
-
-    const timer = setTimeout(() => {
-      setDisplayedOutput((prev) => {
-        if (prev === output) return prev
-
-        let current = prev
-        if (!output.startsWith(prev)) {
-          current = ''
-        }
-
-        const remaining = output.slice(current.length)
-        if (remaining.length === 0) return current
-
-        // Speed adjustment so long outputs don't take forever
-        let chunkSize = 1
-        if (remaining.length > 500) {
-          chunkSize = 25
-        } else if (remaining.length > 200) {
-          chunkSize = 12
-        } else if (remaining.length > 100) {
-          chunkSize = 6
-        } else if (remaining.length > 50) {
-          chunkSize = 3
-        } else if (remaining.length > 20) {
-          chunkSize = 2
-        }
-
-        return current + remaining.slice(0, chunkSize)
-      })
-    }, 12)
-
-    return () => clearTimeout(timer)
-  }, [output, displayedOutput])
-
   // Scroll to bottom when output grows
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
