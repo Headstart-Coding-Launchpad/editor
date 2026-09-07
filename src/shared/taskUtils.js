@@ -58,6 +58,18 @@ export function getTaskPriority(task) {
   return isValidTaskPriority(task?.priority) ? task.priority : 'core'
 }
 
+// Workspace sharing is opt-in per task. Quiz and information tasks have no
+// workspace to share, so the flag is meaningless (and rejected) on them.
+export function canTaskAllowSharing(task) {
+  if (!task || typeof task !== 'object') return false
+  if (task.type === 'group') return false
+  return task.taskType !== 'quiz' && task.taskType !== 'information'
+}
+
+export function isSharingAllowed(task) {
+  return task?.allowSharing === true && canTaskAllowSharing(task)
+}
+
 // Code stages now have one purpose each. `core`, `extension`, and `solution`
 // remain understood so existing lessons keep loading, but the builder only
 // creates the three roles below.

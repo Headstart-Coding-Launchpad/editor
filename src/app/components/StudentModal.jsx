@@ -26,6 +26,7 @@ import OverrideDropdown from './student-modal/OverrideDropdown'
 import StageDropdown from './student-modal/StageDropdown'
 import PaneFocusDropdown from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
+import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 
 function getModuleDisplayState(module, raw) {
@@ -68,6 +69,10 @@ export default function StudentModal({
   onRemoveHighlight,
   onRevealSupportStage,
   onPushTeacherPaneCommand,
+  onReadPendingShare,
+  onApproveShare,
+  onDeclineShare,
+  onRequestShareSnapshot,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -356,6 +361,13 @@ export default function StudentModal({
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
   const activeFileObj = files.find((f) => f.name === activeFile) ?? files[0]
 
+  // While a share is pending, the modal shows only the frozen snapshot the
+  // class would receive — not this student's live workspace.
+  const awaitingShareSnapshot =
+    student.shareSnapshotRequestedAt != null && student.shareRequestedAt == null
+  const showShareRequest =
+    !!onReadPendingShare && (student.shareRequestedAt != null || awaitingShareSnapshot)
+
   const hasOverride = !!student.checkOverridePushedAt
   const remoteSelection =
     !isLive || (!isPython && student.currentSelection?.file !== activeFile)
@@ -632,7 +644,17 @@ export default function StudentModal({
                 const hasTopic = !!(onSendToTopic && topics?.length > 0)
                 const hasMessage = !!onSendMessage
                 const hasVideoCall = !!onSendVideoCallLink
-                if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall) return null
+                // A teacher cannot build the snapshot themselves: currentCode is
+                // only fresh while activeStudentView matches. So this asks the
+                // student's own device for one, then reuses the same preview and
+                // Approve step as a student-initiated share.
+                const hasShare =
+                  !!onRequestShareSnapshot &&
+                  !isInformation &&
+                  !isQuiz &&
+                  student.shareRequestedAt == null &&
+                  student.shareSnapshotRequestedAt == null
+                if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall && !hasShare) return null
                 return (
                   <DropdownMenu label="More" buttonClassName="btn-ghost">
                     {(close) => (
@@ -681,6 +703,17 @@ export default function StudentModal({
                             📹 Send Video Call Link
                           </button>
                         )}
+                        {hasShare && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onRequestShareSnapshot(student.anonymousId)
+                            }}
+                          >
+                            📤 Share this with the class
+                          </button>
+                        )}
                       </>
                     )}
                   </DropdownMenu>
@@ -719,111 +752,129 @@ export default function StudentModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div
-          style={
-            isInformation
-              ? s.bodyInformation
-              : isQuiz && !isSessionSandbox
-                ? s.bodyQuiz
-                : isCodeArrangeTask
-                  ? s.bodyCodeArrange
-                  : isPython
-                    ? s.bodyPython
-                    : isScratch
-                      ? s.bodyScratch
-                      : ModuleTeacherLiveView
-                        ? s.bodyFilesystem
-                        : s.bodyHtml
-          }
-        >
-          {teacherEditState === 'editing' && isScratch ? (
-            <ScratchWorkspace
-              key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
-              task={task}
-              readOnly={false}
-              assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-              initialState={parseScratchState(student.currentCode)}
-              onStateChange={handleScratchStateChange}
-            />
-          ) : teacherEditState === 'editing' && isHtml ? (
-            <HtmlTeacherLiveView
-              lesson={taskLesson}
-              displayState={{ files: teacherFiles }}
-              readOnly={false}
-              onChange={handleTeacherFileChange}
-              onTabChange={handleTeacherHtmlTabChange}
-            />
-          ) : teacherEditState === 'editing' && isArcade ? (
-            <ArcadeTeacherLiveView
-              task={task}
-              student={student}
-              displayState={teacherCode}
-              design={teacherArcadeDesign}
-              activeWorkspace={teacherWorkspace}
-              readOnly={false}
-              onChange={handleTeacherCodeChange}
-              onDesignChange={handleTeacherArcadeDesignChange}
-              onWorkspaceChange={handleTeacherWorkspaceChange}
-            />
-          ) : teacherEditState === 'editing' && isElectronics ? (
-            <ElectronicsTeacherLiveView
-              task={task}
-              displayState={teacherCode}
-              readOnly={false}
-              onChange={handleTeacherCodeChange}
-              onTabChange={handleTeacherWorkspaceChange}
-            />
-          ) : teacherEditState === 'editing' ? (
-            <div style={s.editorWrap}>
-              <CodeEditor
-                value={teacherCode}
-                language="python"
-                readOnly={false}
-                onChange={handleTeacherCodeChange}
-                style={{ height: '100%' }}
-              />
+        {/* A pending share takes over the body. Showing the frozen snapshot and
+            the live workspace at once invited approving one while looking at
+            the other — they are different content, and only the snapshot is
+            what the class would actually receive. */}
+        {showShareRequest ? (
+          <ShareRequestPanel
+            student={student}
+            lesson={taskLesson}
+            fill
+            onReadPendingShare={onReadPendingShare}
+            onApprove={onApproveShare}
+            onDecline={onDeclineShare}
+            awaitingSnapshot={awaitingShareSnapshot}
+          />
+        ) : (
+          <>
+            {/* Content */}
+            <div
+              style={
+                isInformation
+                  ? s.bodyInformation
+                  : isQuiz && !isSessionSandbox
+                    ? s.bodyQuiz
+                    : isCodeArrangeTask
+                      ? s.bodyCodeArrange
+                      : isPython
+                        ? s.bodyPython
+                        : isScratch
+                          ? s.bodyScratch
+                          : ModuleTeacherLiveView
+                            ? s.bodyFilesystem
+                            : s.bodyHtml
+              }
+            >
+              {teacherEditState === 'editing' && isScratch ? (
+                <ScratchWorkspace
+                  key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+                  task={task}
+                  readOnly={false}
+                  assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+                  initialState={parseScratchState(student.currentCode)}
+                  onStateChange={handleScratchStateChange}
+                />
+              ) : teacherEditState === 'editing' && isHtml ? (
+                <HtmlTeacherLiveView
+                  lesson={taskLesson}
+                  displayState={{ files: teacherFiles }}
+                  readOnly={false}
+                  onChange={handleTeacherFileChange}
+                  onTabChange={handleTeacherHtmlTabChange}
+                />
+              ) : teacherEditState === 'editing' && isArcade ? (
+                <ArcadeTeacherLiveView
+                  task={task}
+                  student={student}
+                  displayState={teacherCode}
+                  design={teacherArcadeDesign}
+                  activeWorkspace={teacherWorkspace}
+                  readOnly={false}
+                  onChange={handleTeacherCodeChange}
+                  onDesignChange={handleTeacherArcadeDesignChange}
+                  onWorkspaceChange={handleTeacherWorkspaceChange}
+                />
+              ) : teacherEditState === 'editing' && isElectronics ? (
+                <ElectronicsTeacherLiveView
+                  task={task}
+                  displayState={teacherCode}
+                  readOnly={false}
+                  onChange={handleTeacherCodeChange}
+                  onTabChange={handleTeacherWorkspaceChange}
+                />
+              ) : teacherEditState === 'editing' ? (
+                <div style={s.editorWrap}>
+                  <CodeEditor
+                    value={teacherCode}
+                    language="python"
+                    readOnly={false}
+                    onChange={handleTeacherCodeChange}
+                    style={{ height: '100%' }}
+                  />
+                </div>
+              ) : (
+                <StudentWorkspaceBody
+                  lesson={taskLesson}
+                  task={task}
+                  student={student}
+                  session={session}
+                  isInformation={isInformation}
+                  isQuiz={isQuiz}
+                  isSessionSandbox={isSessionSandbox}
+                  isPython={isPython}
+                  isScratch={isScratch}
+                  isHtml={isHtml}
+                  isCodeArrangeTask={isCodeArrangeTask}
+                  ModuleTeacherLiveView={ModuleTeacherLiveView}
+                  moduleDisplayState={moduleDisplayState}
+                  files={files}
+                  activeFile={activeFile}
+                  setActiveFile={setActiveFile}
+                  activeFileObj={activeFileObj}
+                  remoteSelection={remoteSelection}
+                  scratchState={scratchState}
+                  spriteState={spriteState}
+                  cursorState={cursorState}
+                  blockDragState={blockDragState}
+                  iframeSrc={iframeSrc}
+                  iframeRef={iframeRef}
+                  canHighlight={canHighlight}
+                  pendingHighlight={pendingHighlight}
+                  highlights={highlightsForActiveFile}
+                  onMirrorSelectionChange={handleMirrorSelectionChange}
+                  onDismissHighlight={handleDismissHighlight}
+                  highlightEmoji={highlightEmoji}
+                  onHighlightEmojiChange={setHighlightEmoji}
+                  highlightNote={highlightNote}
+                  onHighlightNoteChange={setHighlightNote}
+                  onSendHighlight={() => handleSendHighlight(activeFile)}
+                  onCancelHighlight={handleCancelHighlight}
+                />
+              )}
             </div>
-          ) : (
-            <StudentWorkspaceBody
-              lesson={taskLesson}
-              task={task}
-              student={student}
-              session={session}
-              isInformation={isInformation}
-              isQuiz={isQuiz}
-              isSessionSandbox={isSessionSandbox}
-              isPython={isPython}
-              isScratch={isScratch}
-              isHtml={isHtml}
-              isCodeArrangeTask={isCodeArrangeTask}
-              ModuleTeacherLiveView={ModuleTeacherLiveView}
-              moduleDisplayState={moduleDisplayState}
-              files={files}
-              activeFile={activeFile}
-              setActiveFile={setActiveFile}
-              activeFileObj={activeFileObj}
-              remoteSelection={remoteSelection}
-              scratchState={scratchState}
-              spriteState={spriteState}
-              cursorState={cursorState}
-              blockDragState={blockDragState}
-              iframeSrc={iframeSrc}
-              iframeRef={iframeRef}
-              canHighlight={canHighlight}
-              pendingHighlight={pendingHighlight}
-              highlights={highlightsForActiveFile}
-              onMirrorSelectionChange={handleMirrorSelectionChange}
-              onDismissHighlight={handleDismissHighlight}
-              highlightEmoji={highlightEmoji}
-              onHighlightEmojiChange={setHighlightEmoji}
-              highlightNote={highlightNote}
-              onHighlightNoteChange={setHighlightNote}
-              onSendHighlight={() => handleSendHighlight(activeFile)}
-              onCancelHighlight={handleCancelHighlight}
-            />
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Topic library dialog */}

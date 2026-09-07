@@ -18,6 +18,14 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-05
+
+### New `allowSharing` task field for student workspace sharing
+
+Tasks can now opt in to student workspace sharing with `allowSharing: true`. When set, students working on that task get a **Share with class** button; the teacher is notified, previews the exact snapshot, and approves or declines it. Approved workspaces go into a class-wide **Shared work** gallery that persists across task changes until the teacher removes them, and classmates open them as a non-destructive sandbox copy they can run and edit without touching their own work.
+
+The field is off unless explicitly set, so existing lessons are unaffected and need no changes. It is valid on any code task in any lesson type, and rejected by CLI and Builder validation on `quiz` and `information` tasks, which have no workspace to share. Set it on tasks where seeing a classmate's approach helps — open-ended builds, creative tasks, "solve it your own way" problems — and leave it off where you want independent work. See `docs/authoring/lesson-schema.md`.
+
 ## 2026-09-04
 
 ### Topic library removed from Scratch lessons

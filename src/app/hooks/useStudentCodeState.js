@@ -50,6 +50,7 @@ import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { getLessonModule } from '../../modules/registry'
@@ -2032,6 +2033,24 @@ export function useStudentCodeState({
     }
   }
 
+  // Workspace sharing captures the student's own current state. Built here
+  // rather than in the view because the module-specific sources (Scratch's
+  // scratchCodeRef, filesystem's fsStateRef) only exist inside this hook.
+  function buildShareSnapshot() {
+    return buildSharedWorkspaceSnapshot({
+      lesson: lessonRef.current,
+      taskId: currentTaskIdRef.current,
+      code: codeRef.current,
+      scratchCode: scratchCodeRef.current,
+      fsState: fsStateRef.current,
+      arcadeDesign: arcadeDesignRef.current,
+      files: filesRef.current,
+      activeFile: activeFileRef.current,
+      output: outputRef.current,
+      runStatus: runStatusRef.current,
+    })
+  }
+
   return {
     // State
     code,
@@ -2135,6 +2154,7 @@ export function useStudentCodeState({
     resetForTaskChange,
     exitPersonalSandbox,
     currentTeacherLivePayload,
+    buildShareSnapshot,
     canPublishTeacherLive,
     publishTeacherLive,
     updateTeacherLiveFn: updateTeacherLive,

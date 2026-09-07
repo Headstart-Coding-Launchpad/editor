@@ -16,6 +16,7 @@ import {
   makeExplainerPseudoTask,
   isExplainerPseudoTaskId,
   insertPseudoTaskBefore,
+  isSharingAllowed,
 } from '../../shared/taskUtils'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
@@ -32,6 +33,9 @@ import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
+import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
+import { describeShareError } from '../sharedWorkspacePayload'
+import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
   getSavedNonPythonTaskCount,
@@ -40,7 +44,7 @@ import {
 } from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
-import { decodeSessionFiles } from '../../shared/workspaceData'
+import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -95,6 +99,9 @@ export default function StudentView({
     updateTeacherLive,
     removeStudent,
     requestHelp,
+    requestWorkspaceShare,
+    cancelWorkspaceShare,
+    readSharedWorkspace,
     setStudentTopic,
     acceptTeacherEdit,
     declineTeacherEdit,
@@ -304,6 +311,13 @@ export default function StudentView({
 
   // ─── Topic library tracking ────────────────────────────────────────────────
 
+  // Declared with the other view state: everything below the phase early
+  // returns runs conditionally, so a hook there would break hook ordering.
+  const [shareError, setShareError] = useState(null)
+  // The shared workspace this student is currently looking at, if any:
+  // { entry, snapshot }. Local only — opening a share never touches their work.
+  const [activeShare, setActiveShare] = useState(null)
+  const [shareLoading, setShareLoading] = useState(false)
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -326,6 +340,26 @@ export default function StudentView({
     if (!videoCallLinkPushedAt) return
     setShowVideoCallPrompt(true)
   }, [videoCallLinkPushedAt])
+
+  // ─── Teacher-requested share snapshot ──────────────────────────────────────
+  // The teacher can put a student's work in front of the class without them
+  // asking. They still cannot build the snapshot (currentCode is only fresh for
+  // the watched student), so their request lands here and this device answers
+  // with a fresh one. Silent to the student: no prompt, no consent step.
+  const shareSnapshotRequestedAt =
+    session?.students?.[identity?.anonymousId]?.shareSnapshotRequestedAt
+  const answeredSnapshotRequestRef = useRef(null)
+
+  useEffect(() => {
+    if (!shareSnapshotRequestedAt || !identity?.anonymousId) return
+    if (answeredSnapshotRequestRef.current === shareSnapshotRequestedAt) return
+    answeredSnapshotRequestRef.current = shareSnapshotRequestedAt
+    requestWorkspaceShare(identity.anonymousId, cs.buildShareSnapshot(), 'teacher').catch(() => {
+      // Nothing to show the student — the teacher sees the request stall and
+      // can try again.
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareSnapshotRequestedAt, identity?.anonymousId])
 
   function handleTopicOpen(topicId) {
     if (identity?.anonymousId && phase === 'lesson')
@@ -660,6 +694,83 @@ export default function StudentView({
   const canRequestHelp = phase === 'lesson' && !!identity?.anonymousId
   const myNeedsHelp = !!session?.students?.[identity?.anonymousId]?.needsHelp
   const handleNeedHelp = () => requestHelp(identity.anonymousId)
+
+  // ─── Workspace sharing ────────────────────────────────────────────────────
+  // Opt-in per task via `allowSharing`. Live lessons only: solo, sandbox,
+  // builder preview, and teacher presentation have no class to share with.
+  const myStudentNode = session?.students?.[identity?.anonymousId]
+  const sharePending = myStudentNode?.shareRequestedAt != null
+  const canShareWorkspace =
+    phase === 'lesson' &&
+    !!identity?.anonymousId &&
+    !teacherPresentation &&
+    !isForcedTeacherLive &&
+    isSharingAllowed(task)
+
+  // The gallery is available in a live lesson whether or not this particular
+  // task allows sharing — shares outlive the task they came from.
+  const canSeeSharedWork =
+    (phase === 'lesson' || phase === 'sandbox') &&
+    !teacherPresentation &&
+    !isForcedTeacherLive &&
+    !!identity?.anonymousId
+
+  async function handleShareWorkspace() {
+    setShareError(null)
+    try {
+      await requestWorkspaceShare(identity.anonymousId, cs.buildShareSnapshot())
+    } catch (err) {
+      setShareError(describeShareError(err))
+    }
+  }
+
+  async function handleOpenSharedWorkspace(entry) {
+    setShareError(null)
+    setShareLoading(true)
+    try {
+      const snapshot = await readSharedWorkspace(entry.shareId)
+      if (!snapshot) {
+        setShareError('That shared workspace is no longer available.')
+        return
+      }
+      setActiveShare({ entry, snapshot })
+    } catch (err) {
+      setShareError(describeShareError(err))
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  function handleCloseSharedWorkspace() {
+    setActiveShare(null)
+  }
+
+  // The one deliberate bridge from a shared workspace into the student's own
+  // work. Routed through the normal change handlers so it persists exactly like
+  // their own typing would; everything else in the viewer is throwaway.
+  function handleCopySharedWorkspace({ code, files, moduleType }) {
+    if (moduleType === 'html') {
+      for (const file of files ?? []) cs.handleFileChange(file.name, file.content)
+    } else if (moduleType === 'scratch') {
+      const parsed = parseScratchState(code)
+      if (parsed) cs.handleScratchChange(parsed)
+    } else if (moduleType === 'filesystem') {
+      const parsed = parseScratchState(code)
+      if (parsed) cs.handleFsChange(parsed)
+    } else {
+      cs.handleCodeChange(code ?? '')
+    }
+    setActiveShare(null)
+  }
+
+  async function handleCancelShare() {
+    setShareError(null)
+    try {
+      await cancelWorkspaceShare(identity.anonymousId)
+    } catch {
+      // Withdrawing is best-effort; the teacher can still decline it.
+    }
+  }
   const isQuizTask = task?.taskType === 'quiz'
   const isAutoEvaluatedQuiz =
     isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
@@ -889,6 +1000,33 @@ export default function StudentView({
             {myNeedsHelp ? '✋ Help requested' : '✋ Need Help'}
           </button>
         )}
+        {canShareWorkspace && (
+          <button
+            type="button"
+            className="btn-ghost"
+            style={s.needHelpBtn}
+            onClick={sharePending ? handleCancelShare : handleShareWorkspace}
+            title={
+              sharePending
+                ? 'Waiting for your teacher to check it — click to withdraw'
+                : 'Offer your work to the class (your teacher approves it first)'
+            }
+          >
+            {sharePending ? '⏳ Waiting for teacher' : '📤 Share with class'}
+          </button>
+        )}
+        {canSeeSharedWork && (
+          <SharedWorkspacePanel
+            sharedWorkspaces={session?.sharedWorkspaces}
+            viewerId={identity?.anonymousId}
+            onOpen={handleOpenSharedWorkspace}
+          />
+        )}
+        {shareError && (
+          <span style={s.shareError} role="alert">
+            {shareError}
+          </span>
+        )}
         {taskProgressControl}
         {!isSolo && !isForcedTeacherLive && currentPythonTask && (
           <button
@@ -1102,62 +1240,74 @@ export default function StudentView({
             : s.body
         }
       >
-        <LessonTaskContent
-          lesson={displayedLesson}
-          task={task}
-          cs={cs}
-          lessonId={lessonId}
-          identityId={effectiveIdentity?.anonymousId}
-          sandboxExplainer={session?.sandboxExplainer}
-          activeStudentView={session?.activeStudentView}
-          viewingTaskId={viewingTaskId}
-          currentTaskId={currentTaskId}
-          transitionKey={transitionKey}
-          previewMode={previewMode}
-          isSandbox={isSandbox}
-          isViewingPrev={isViewingPrev}
-          isForcedTeacherLive={isForcedTeacherLive}
-          isMobile={isMobile}
-          isQuizTask={isQuizTask}
-          isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
-          isInformationTask={isInformationTask}
-          isViewingExplainerSlide={viewingExplainerSlide}
-          isCodeArrangeTask={isCodeArrangeTask}
-          displayCode={displayCode}
-          displayArcadeDesign={displayArcadeDesign}
-          displaySpriteState={displaySpriteState}
-          displayCursor={displayCursor}
-          displayBlockDrag={displayBlockDrag}
-          displayCodeArrangeSlots={displayCodeArrangeSlots}
-          displayCodeArrangeCursor={displayCodeArrangeCursor}
-          displayFiles={displayFiles}
-          displayActiveFile={displayActiveFile}
-          displayOutput={displayOutput}
-          displayRunStatus={displayRunStatus}
-          displayCheckPassed={displayCheckPassed}
-          displayCheckAttempted={displayCheckAttempted}
-          displayCheckSuggestion={displayCheckSuggestion}
-          displaySelection={displaySelection}
-          displayFs={displayFs}
-          isTeacherEditing={isTeacherEditing}
-          teacherLiveCode={teacherLiveCode}
-          teacherLiveFiles={teacherLiveFiles}
-          teacherLiveActiveFile={teacherLiveActiveFile}
-          teacherLiveWorkspace={teacherLiveWorkspace}
-          teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-          canOfferNextStage={canOfferNextStage}
-          canOfferCompletePreview={canOfferCompletePreview}
-          canOfferCompleteSolution={canOfferCompleteSolution}
-          canOfferPersonalSandbox={canOfferPersonalSandbox}
-          explainerShowsComplete={explainerShowsComplete}
-          presenterLayout={teacherPresentation ? presenterLayout : 'both'}
-          onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
-          onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
-          openTopicId={phase === 'lesson' ? openTopicId : null}
-          onVisiblePanesChange={handleVisiblePanesChange}
-          highlightedPanes={highlightedPanes}
-          forcedPaneCommand={forcedPaneCommand}
-        />
+        {activeShare ? (
+          <SharedWorkspaceViewer
+            lesson={lesson}
+            entry={activeShare.entry}
+            snapshot={activeShare.snapshot}
+            copyTargetTaskId={currentTaskId}
+            isMobile={isMobile}
+            onClose={handleCloseSharedWorkspace}
+            onCopyToMyEditor={handleCopySharedWorkspace}
+          />
+        ) : (
+          <LessonTaskContent
+            lesson={displayedLesson}
+            task={task}
+            cs={cs}
+            lessonId={lessonId}
+            identityId={effectiveIdentity?.anonymousId}
+            sandboxExplainer={session?.sandboxExplainer}
+            activeStudentView={session?.activeStudentView}
+            viewingTaskId={viewingTaskId}
+            currentTaskId={currentTaskId}
+            transitionKey={transitionKey}
+            previewMode={previewMode}
+            isSandbox={isSandbox}
+            isViewingPrev={isViewingPrev}
+            isForcedTeacherLive={isForcedTeacherLive}
+            isMobile={isMobile}
+            isQuizTask={isQuizTask}
+            isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+            isInformationTask={isInformationTask}
+            isViewingExplainerSlide={viewingExplainerSlide}
+            isCodeArrangeTask={isCodeArrangeTask}
+            displayCode={displayCode}
+            displayArcadeDesign={displayArcadeDesign}
+            displaySpriteState={displaySpriteState}
+            displayCursor={displayCursor}
+            displayBlockDrag={displayBlockDrag}
+            displayCodeArrangeSlots={displayCodeArrangeSlots}
+            displayCodeArrangeCursor={displayCodeArrangeCursor}
+            displayFiles={displayFiles}
+            displayActiveFile={displayActiveFile}
+            displayOutput={displayOutput}
+            displayRunStatus={displayRunStatus}
+            displayCheckPassed={displayCheckPassed}
+            displayCheckAttempted={displayCheckAttempted}
+            displayCheckSuggestion={displayCheckSuggestion}
+            displaySelection={displaySelection}
+            displayFs={displayFs}
+            isTeacherEditing={isTeacherEditing}
+            teacherLiveCode={teacherLiveCode}
+            teacherLiveFiles={teacherLiveFiles}
+            teacherLiveActiveFile={teacherLiveActiveFile}
+            teacherLiveWorkspace={teacherLiveWorkspace}
+            teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+            canOfferNextStage={canOfferNextStage}
+            canOfferCompletePreview={canOfferCompletePreview}
+            canOfferCompleteSolution={canOfferCompleteSolution}
+            canOfferPersonalSandbox={canOfferPersonalSandbox}
+            explainerShowsComplete={explainerShowsComplete}
+            presenterLayout={teacherPresentation ? presenterLayout : 'both'}
+            onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+            onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+            openTopicId={phase === 'lesson' ? openTopicId : null}
+            onVisiblePanesChange={handleVisiblePanesChange}
+            highlightedPanes={highlightedPanes}
+            forcedPaneCommand={forcedPaneCommand}
+          />
+        )}
       </div>
     </div>
   )
@@ -1231,6 +1381,11 @@ const s = {
     fontSize: 13,
     padding: '5px 12px',
     flexShrink: 0,
+  },
+  shareError: {
+    fontSize: 12,
+    color: 'var(--colour-danger)',
+    maxWidth: 260,
   },
   pauseOverlay: {
     position: 'fixed',

@@ -68,6 +68,46 @@
               ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')"
             }
           }
+        },
+
+        // Approved workspace shares, index only: who shared, which task, when.
+        // Deliberately small, because every client streams the whole session
+        // node. The workspace content itself lives in sharedWorkspacePayloads
+        // below and is fetched on demand. Teacher/admin write is inherited
+        // from $lessonId; no student rule here, so students cannot write it.
+        "sharedWorkspaces": {
+          "$shareId": {
+            // taskId and lessonType are deliberately NOT required: RTDB drops
+            // null children, so a share captured with no resolved task would
+            // fail validation and surface as PERMISSION_DENIED on approve.
+            ".validate": "newData.hasChildren(['sharerId', 'sharedAt'])"
+          }
+        }
+      }
+    },
+
+    // Workspace share content, kept outside "sessions" so it is never pushed
+    // to every client by the session-wide onValue subscription. Read one entry
+    // at a time with get() when a teacher previews a request or a student opens
+    // a gallery entry.
+    "sharedWorkspacePayloads": {
+      "$lessonId": {
+        // Teachers/admins manage the whole subtree (approve, remove, clear).
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+
+        // A pending snapshot has not been approved yet. Only its author and
+        // the teacher may read it - this is what actually enforces the
+        // approval gate, rather than hiding a button on the client.
+        "pending": {
+          "$anonymousId": {
+            ".read": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')",
+            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+          }
+        },
+
+        // Once approved, the class can read it. Only teachers/admins write.
+        "approved": {
+          ".read": true
         }
       }
     }

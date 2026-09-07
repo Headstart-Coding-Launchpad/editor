@@ -48,6 +48,17 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
         "codeArrangeCursor": "object | null ({ tileId, x, y, at } — watched code_arrange student's in-progress tile-drag position, x/y normalized 0-1 against the task's own board container, throttled ~20Hz like Scratch's cursor; null once the drag ends)",
         "updatedAt": 1234567890
       },
+      "sharedWorkspaces": {
+        "{shareId}": {
+          "sharerId": "{anonymousId}",
+          "sharerName": "Jamie",
+          "taskId": 3,
+          "taskTitle": "Looping over a list",
+          "lessonType": "python",
+          "sharedBy": "student | teacher",
+          "sharedAt": 1234567890
+        }
+      },
       "sandboxCode": "string | null",
       "sandboxCodePushedAt": 1234567890,
       "sandboxFiles": { "index__dot__html": "..." },
@@ -166,6 +177,10 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "createdAt": 1234567890
             }
           },
+          "shareRequestedAt": "number | null (student is offering this workspace to the class; drives the 'Sharing' badge on StudentCard)",
+          "shareRequestTaskId": "number | string | null",
+          "shareRequestOrigin": "student | teacher | null",
+          "shareSnapshotRequestedAt": "number | null (teacher asking this device for a fresh snapshot — see Workspace Sharing below)",
           "teacherPaneCommand": {
             "mode": "highlight | force",
             "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
@@ -232,6 +247,76 @@ Student writes:
 
 Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields, `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, and their own `supportRevealLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
 
+## Workspace Sharing
+
+Students can offer their workspace to the whole class on tasks authored with `allowSharing: true`. The teacher approves every share before anyone else sees it. Approved shares land in a class-wide gallery and stay there until the teacher removes them.
+
+Two nodes, deliberately split. Do not collapse them into one.
+
+```json
+{
+  "sessions": {
+    "{lessonId}": {
+      "sharedWorkspaces": { "{shareId}": { "sharerId": "...", "sharerName": "Jamie", "taskId": 3, "taskTitle": "...", "lessonType": "python", "sharedBy": "student | teacher", "sharedAt": 1234567890 } }
+    }
+  },
+  "sharedWorkspacePayloads": {
+    "{lessonId}": {
+      "pending":  { "{anonymousId}": { "snapshot" : "..." } },
+      "approved": { "{shareId}":     { "snapshot" : "..." } }
+    }
+  }
+}
+```
+
+**Why the split.** Every client subscribes to the whole session node (`onValue(ref(db, 'sessions/{lessonId}'))` in `useSession.js`), so anything stored there is pushed to the teacher and all 30 students on every unrelated session write. `sharedWorkspaces` is therefore an index only — a few hundred bytes per entry, enough to render the gallery list, the toast, and the teacher's manage-shares popover. The workspace content lives in the top-level `sharedWorkspacePayloads` node, which nobody subscribes to and which is read one entry at a time with `get()`.
+
+**Why the student writes the snapshot.** `students/{id}/currentCode` and `currentFiles` are only fresh while `activeStudentView` matches that student, and a student pressing Share is almost never the watched one. The teacher therefore cannot build a snapshot. Every snapshot is written by the sharer's own client via `buildShareSnapshot()` (`useStudentCodeState.js`), which reads the module-specific sources — Scratch's `scratchCodeRef`, filesystem's `fsStateRef` — that only exist inside that hook.
+
+Snapshot shape (file keys encoded with `encodeFileKey` at the write boundary, exactly like `teacherLive`):
+
+```json
+{
+  "lessonType": "python",
+  "taskId": 3,
+  "code": "string (module state; filesystem/scratch/electronics serialize into this)",
+  "files": { "index__dot__html": "..." },
+  "activeFile": "index.html",
+  "arcadeDesign": "object | null",
+  "output": "string",
+  "runStatus": "success | error | null",
+  "capturedAt": 1234567890
+}
+```
+
+A share is frozen. Live-only interaction state (`cursor`, `blockDrag`, `spriteState`, `selection`, `activity`, `codeArrangeSlots`) is deliberately **not** captured — meaningless once frozen, and it would inflate a payload that travels to the whole class. Client-side cap of 512KB (`SHARE_PAYLOAD_MAX_BYTES`); an oversized snapshot is refused before anything is written.
+
+Student writes:
+
+- `requestWorkspaceShare(anonymousId, snapshot, origin)` — writes `pending/{anonymousId}` **first**, then stamps `shareRequestedAt` / `shareRequestTaskId` / `shareRequestOrigin`. Ordering matters: a teacher must never see a request badge for a request whose payload has not landed.
+- `cancelWorkspaceShare(anonymousId)` — student withdraws their own pending request.
+- Answering a teacher snapshot request: when `shareSnapshotRequestedAt` changes, the student's client silently calls `requestWorkspaceShare(..., 'teacher')` with a fresh snapshot. There is no student prompt or consent step for this (unlike `teacherEditRequestedAt`).
+
+Teacher writes:
+
+- `requestShareSnapshot(anonymousId)` — stamps `shareSnapshotRequestedAt`, asking that device for a current snapshot ("📤 Share this with the class" in `StudentModal`'s More menu).
+- `readPendingShare(anonymousId)` — one-shot `get()` for the approval preview.
+- `approveWorkspaceShare(anonymousId, { student, task })` — copies `pending/{anonymousId}` to `approved/{shareId}` **first**, then writes the `sharedWorkspaces/{shareId}` index entry, then clears the request. A student must never see a gallery row whose payload is missing.
+- `declineWorkspaceShare(anonymousId)` — clears the request fields and the pending payload. Silent by design: the student is told nothing, the button simply becomes available again.
+- `removeSharedWorkspace(shareId)` / `removeAllSharedWorkspaces()` — deletes index entry and approved payload together.
+- `readSharedWorkspace(shareId)` — one-shot `get()` when a student opens a gallery entry.
+
+Lifecycle:
+
+- `setTaskId` clears the four per-student share request fields and removes each `pending/{anonymousId}` payload — pending requests are per-task. It deliberately does **not** touch `sharedWorkspaces` or `approved` payloads, so approved shares survive task changes.
+- `createSession` / `restartSession` / `endSession` set `sharedWorkspaces` to `null` and remove the whole `sharedWorkspacePayloads/{lessonId}` subtree.
+- `endSession` also registers `onDisconnect().remove()` on `sharedWorkspacePayloads/{lessonId}`. This is separate from the session node's own disconnect cleanup — payloads live outside `sessions`, so without it they outlive the session that owned them.
+
+**Deploying the rules is required.** `sharedWorkspacePayloads` is a new top-level node, so until `firebase deploy --only database` runs, every write to it is denied by default and the first thing a student's Share button does fails. The session-node writes (`sharedWorkspaces`, the per-student `share*` fields) are already covered by the existing `sessions/$lessonId` rules and keep working, which makes a partial deploy look like "only sharing is broken". Payload cleanup in `createSession`/`endSession`/`setTaskId` is deliberately best-effort (`removeSharePayloadsQuietly`) so an undeployed or failing rule cannot break session lifecycle.
+
+Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
+
+
 ## onDisconnect Rules
 
 - `activeStudentView` is cleared when the teacher disconnects.
@@ -239,6 +324,7 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 - Student `online` key is removed on disconnect, not set to false.
 - Session node is deleted when the teacher calls `endSession()` and disconnects.
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
+- `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 

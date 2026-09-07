@@ -156,6 +156,39 @@ Usually changes with:
 - `docs/agents/runtime-model.md`
 - `docs/architecture/runtime-flows.md`
 
+## Workspace Sharing
+
+Changes include the student share button, the teacher approval flow, the shared-work gallery, the non-destructive viewer, or the `allowSharing` task field.
+
+Two invariants that constrain almost every change here:
+
+- Workspace content must never be stored under `sessions/{lessonId}` — the whole session node streams to every client. Content goes in `sharedWorkspacePayloads/{lessonId}`, read on demand; only the small index belongs in the session node.
+- Snapshots must be written by the sharer's own client. A teacher cannot build one, because `currentCode` is only fresh while `activeStudentView` matches.
+
+Usually changes with:
+
+- `src/app/sharedWorkspacePayload.js`
+- `src/app/hooks/useSession.js`
+- `src/app/hooks/useStudentCodeState.js` (`buildShareSnapshot`)
+- `src/app/views/StudentView.jsx`
+- `src/app/views/TeacherView.jsx`
+- `src/app/components/SharedWorkspacePanel.jsx`
+- `src/app/components/SharedWorkspacePreview.jsx`
+- `src/app/components/SharedWorkspaceViewer.jsx`
+- `src/app/components/StudentCard.jsx`
+- `src/app/components/StudentGrid.jsx`
+- `src/app/components/StudentModal.jsx`
+- `src/app/components/student-modal/ShareRequestPanel.jsx`
+- `src/app/components/TeacherSessionControls.jsx`
+- `src/shared/taskUtils.js` (`canTaskAllowSharing` / `isSharingAllowed`)
+- `database.rules.json`
+- `cli/validate.mjs` and `src/builder/lessonUtils.js` (both validate `allowSharing`)
+- `src/builder/components/task-editor/TaskOptionsSection.jsx`
+- `docs/agents/runtime-model.md`
+- `docs/agents/classroom-behaviours.md`
+- `docs/authoring/lesson-schema.md`, `lesson-schema-yaml.md`, `CHANGELOG.md`
+- `docs/MODULE_FEATURE_MATRIX.md`
+
 ## Builder
 
 Changes include task editing, lesson metadata, preview, validation, publish/export, assets, or topic suggestions.

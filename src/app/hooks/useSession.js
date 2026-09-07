@@ -6,14 +6,24 @@ import {
   update,
   remove,
   push,
+  get,
   serverTimestamp,
   onDisconnect,
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
-import { encodeFileKey } from '../../shared/fileKeys'
+import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
+import {
+  buildShareIndexEntry,
+  isSnapshotWithinLimit,
+  SHARE_PAYLOAD_MAX_BYTES,
+} from '../sharedWorkspacePayload'
 
 function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
+}
+
+function decodeFileKeys(files) {
+  return Object.fromEntries(Object.entries(files ?? {}).map(([k, v]) => [decodeFileKey(k), v]))
 }
 
 function encodeWorkspaceFiles(files) {
@@ -100,7 +110,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       supportRevealLog: null,
       fullscreenRequestedAt: null,
       videoCallLink: null,
+      sharedWorkspaces: null,
     })
+    // The payload node lives outside the session, so resetting the session
+    // does not clear it on its own.
+    await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
   }
 
   async function restartSession() {
@@ -137,10 +151,19 @@ export function useSession(lessonId, { enabled = true } = {}) {
       supportRevealLog: null,
       fullscreenRequestedAt: null,
       videoCallLink: null,
+      sharedWorkspaces: null,
     })
+    await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
     onDisconnect(ref(db, `sessions/${lessonId}`)).remove()
+    // Share payloads sit outside the session node, so they need their own
+    // disconnect cleanup or they outlive the session that owned them.
+    onDisconnect(ref(db, `sharedWorkspacePayloads/${lessonId}`))
+      .remove()
+      .catch(() => {
+        // Non-fatal: worst case a payload subtree outlives its session.
+      })
   }
 
   // Only http(s) links are accepted — this gets rendered as a clickable link/button to
@@ -178,6 +201,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherClassPaneCommand: null,
       [`taskStartTimes/${taskId}`]: now,
     }
+    const pendingShareIds = []
     for (const anonymousId of Object.keys(session?.students ?? {})) {
       updates[`students/${anonymousId}/checkPassed`] = null
       updates[`students/${anonymousId}/lastRunStatus`] = null
@@ -218,8 +242,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherHighlights`] = null
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
+      // Pending share requests are per-task. Approved shares live in
+      // sharedWorkspaces (session level) and deliberately survive this wipe.
+      updates[`students/${anonymousId}/shareRequestedAt`] = null
+      updates[`students/${anonymousId}/shareRequestTaskId`] = null
+      updates[`students/${anonymousId}/shareRequestOrigin`] = null
+      updates[`students/${anonymousId}/shareSnapshotRequestedAt`] = null
+      pendingShareIds.push(anonymousId)
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+    await Promise.all(
+      pendingShareIds.map((anonymousId) =>
+        removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}/pending/${anonymousId}`)
+      )
+    )
   }
 
   function buildOverrideRecord(anonymousId, taskId) {
@@ -409,6 +445,134 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function dismissHelp(anonymousId) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/needsHelp`), null)
+  }
+
+  // ─── Workspace sharing ────────────────────────────────────────────────────
+  //
+  // Two nodes, deliberately split (see docs/agents/runtime-model.md):
+  //   sessions/{lessonId}/sharedWorkspaces      — small index, streams to all
+  //   sharedWorkspacePayloads/{lessonId}/...    — content, fetched on demand
+  //
+  // Every client subscribes to the whole session node, so putting workspace
+  // content there would push it to all 30 students on every unrelated write.
+
+  // Share payloads live outside the session node, so clearing them is a second
+  // write that can fail independently (most commonly: database.rules.json not
+  // deployed yet). Session lifecycle must not break because auxiliary cleanup
+  // failed, so every caller below is best-effort.
+  async function removeSharePayloadsQuietly(path) {
+    try {
+      await remove(ref(db, path))
+    } catch (err) {
+      console.warn('[sharing] could not clear share payloads at', path, err)
+    }
+  }
+
+  function pendingSharePath(anonymousId) {
+    return `sharedWorkspacePayloads/${lessonId}/pending/${anonymousId}`
+  }
+
+  function approvedSharePath(shareId) {
+    return `sharedWorkspacePayloads/${lessonId}/approved/${shareId}`
+  }
+
+  function encodeSnapshot(snapshot) {
+    return {
+      ...snapshot,
+      files: encodeFileKeys(snapshot.files ?? {}),
+    }
+  }
+
+  function decodeSnapshot(snapshot) {
+    if (!snapshot) return null
+    return { ...snapshot, files: decodeFileKeys(snapshot.files) }
+  }
+
+  // Student writes the payload first, then raises the flag. A teacher must
+  // never see a request badge for a request whose content has not landed.
+  async function requestWorkspaceShare(anonymousId, snapshot, origin = 'student') {
+    if (!isSnapshotWithinLimit(snapshot)) {
+      throw new Error(
+        `This workspace is too large to share (limit ${Math.round(SHARE_PAYLOAD_MAX_BYTES / 1024)}KB).`
+      )
+    }
+    await set(ref(db, pendingSharePath(anonymousId)), encodeSnapshot(snapshot))
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      shareRequestedAt: Date.now(),
+      shareRequestTaskId: snapshot.taskId ?? null,
+      shareRequestOrigin: origin,
+      shareSnapshotRequestedAt: null,
+    })
+  }
+
+  async function cancelWorkspaceShare(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      shareRequestedAt: null,
+      shareRequestTaskId: null,
+      shareRequestOrigin: null,
+    })
+    await remove(ref(db, pendingSharePath(anonymousId)))
+  }
+
+  // Teacher asks a student's client for a fresh snapshot. Needed because
+  // currentCode is only up to date while activeStudentView matches, so the
+  // teacher cannot build a snapshot for an unwatched student.
+  async function requestShareSnapshot(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      shareSnapshotRequestedAt: Date.now(),
+    })
+  }
+
+  async function readPendingShare(anonymousId) {
+    const snap = await get(ref(db, pendingSharePath(anonymousId)))
+    return decodeSnapshot(snap.val())
+  }
+
+  async function readSharedWorkspace(shareId) {
+    const snap = await get(ref(db, approvedSharePath(shareId)))
+    return decodeSnapshot(snap.val())
+  }
+
+  // Copy the payload across before writing the index entry, so a student never
+  // sees a gallery row whose content is not there yet.
+  async function approveWorkspaceShare(anonymousId, { student, task } = {}) {
+    const snap = await get(ref(db, pendingSharePath(anonymousId)))
+    const payload = snap.val()
+    if (!payload) throw new Error('That share is no longer available.')
+
+    const shareId = push(ref(db, `sessions/${lessonId}/sharedWorkspaces`)).key
+    await set(ref(db, approvedSharePath(shareId)), payload)
+    await set(
+      ref(db, `sessions/${lessonId}/sharedWorkspaces/${shareId}`),
+      buildShareIndexEntry({
+        sharerId: anonymousId,
+        sharerName: student?.displayName ?? session?.students?.[anonymousId]?.displayName,
+        task,
+        taskId: payload.taskId ?? null,
+        lessonType: payload.lessonType ?? null,
+        sharedBy:
+          session?.students?.[anonymousId]?.shareRequestOrigin === 'teacher'
+            ? 'teacher'
+            : 'student',
+      })
+    )
+    await cancelWorkspaceShare(anonymousId)
+    return shareId
+  }
+
+  // Declining is silent by design — the request simply clears.
+  async function declineWorkspaceShare(anonymousId) {
+    await cancelWorkspaceShare(anonymousId)
+  }
+
+  async function removeSharedWorkspace(shareId) {
+    await set(ref(db, `sessions/${lessonId}/sharedWorkspaces/${shareId}`), null)
+    await remove(ref(db, approvedSharePath(shareId)))
+  }
+
+  async function removeAllSharedWorkspaces() {
+    await set(ref(db, `sessions/${lessonId}/sharedWorkspaces`), null)
+    await remove(ref(db, `sharedWorkspacePayloads/${lessonId}/approved`))
   }
 
   async function sendMessageToStudent(anonymousId, message) {
@@ -850,6 +1014,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
     overrideStudentCheck,
     recordClassAdvanceOverrides,
     dismissHelp,
+    requestWorkspaceShare,
+    cancelWorkspaceShare,
+    requestShareSnapshot,
+    readPendingShare,
+    readSharedWorkspace,
+    approveWorkspaceShare,
+    declineWorkspaceShare,
+    removeSharedWorkspace,
+    removeAllSharedWorkspaces,
     sendToTopic,
     sendMessageToStudent,
     updateVideoCallLink,

@@ -336,4 +336,15 @@ describe('StudentCard', () => {
       expect(screen.queryByRole('button', { name: /expand/i })).not.toBeInTheDocument()
     })
   })
+  describe('workspace share badge', () => {
+    it('shows Sharing when the student has a pending share request', () => {
+      render(<StudentCard {...mkProps({}, { shareRequestedAt: 1700000000000 })} />)
+      expect(screen.getByText('Sharing')).toBeInTheDocument()
+    })
+
+    it('does not show Sharing when there is no pending request', () => {
+      render(<StudentCard {...mkProps()} />)
+      expect(screen.queryByText('Sharing')).not.toBeInTheDocument()
+    })
+  })
 })

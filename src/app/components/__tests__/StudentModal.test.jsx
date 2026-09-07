@@ -539,3 +539,61 @@ describe('StudentModal — teacher pane highlight/force', () => {
     expect(screen.queryByRole('button', { name: /Focus/ })).not.toBeInTheDocument()
   })
 })
+
+describe('pending workspace share', () => {
+  const SNAPSHOT = {
+    lessonType: 'python',
+    taskId: 1,
+    code: 'print("frozen")',
+    files: {},
+    output: '',
+    runStatus: null,
+  }
+
+  function shareProps(studentOverrides = {}) {
+    return mkProps(
+      {
+        onReadPendingShare: vi.fn(() => Promise.resolve(SNAPSHOT)),
+        onApproveShare: vi.fn(() => Promise.resolve()),
+        onDeclineShare: vi.fn(() => Promise.resolve()),
+      },
+      { shareRequestedAt: 1700000000000, shareRequestOrigin: 'student', ...studentOverrides }
+    )
+  }
+
+  // Showing the frozen snapshot beside the live workspace invited approving one
+  // while reading the other. Only the snapshot is what the class receives.
+  it('replaces the live workspace with the frozen request', async () => {
+    render(<StudentModal {...shareProps()} />)
+
+    expect(await screen.findByText(/wants to share with the class/i)).toBeInTheDocument()
+    expect(screen.getByText(/not their live work/i)).toBeInTheDocument()
+    // The live body renders this student's own run output; the preview does not
+    // (the snapshot has none), so it marks whether the live workspace is shown.
+    expect(screen.queryByTestId('output-panel')).not.toBeInTheDocument()
+    expect(screen.queryByText('hello')).not.toBeInTheDocument()
+  })
+
+  it('restores the live workspace once there is no pending request', () => {
+    render(<StudentModal {...shareProps({ shareRequestedAt: null })} />)
+
+    expect(screen.queryByText(/wants to share with the class/i)).not.toBeInTheDocument()
+    expect(screen.getByTestId('output-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument()
+  })
+
+  it('shows the live workspace when sharing is not wired up at all', () => {
+    render(<StudentModal {...mkProps()} />)
+    expect(screen.getByTestId('output-panel')).toBeInTheDocument()
+  })
+
+  it('takes over while waiting for a teacher-requested snapshot', () => {
+    render(
+      <StudentModal
+        {...shareProps({ shareRequestedAt: null, shareSnapshotRequestedAt: 1700000000001 })}
+      />
+    )
+    expect(screen.getByText(/preparing a share/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('output-panel')).not.toBeInTheDocument()
+  })
+})

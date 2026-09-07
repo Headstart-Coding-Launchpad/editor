@@ -93,6 +93,15 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Go Live / Stop Live — one-to-one keystroke streaming with selection highlight and activity indicators
 - Remote Reset — silently replace student's code with starter code, complete code, or a named intermediate stage
 - Rename and remove students
+- Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
+- Share a student's workspace with the class without them asking ("Share this with the class")
+
+### Workspace Sharing
+- On tasks authored with `allowSharing`, students can offer their work to the whole class
+- Every share is teacher-approved before anyone else sees it; declining is silent
+- Approved shares collect in a "Shared work" gallery, tagged by task, and persist until the teacher removes them
+- Classmates open a share as a non-destructive copy they can edit and run; their own work is untouched, with an explicit "Copy to my editor" if they want it
+- Supported on all lesson types except quiz and information tasks
 
 ### Teacher Broadcast
 - Broadcast teacher's or a pinned student's screen to all students simultaneously

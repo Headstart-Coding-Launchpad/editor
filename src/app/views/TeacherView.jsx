@@ -85,6 +85,12 @@ export default function TeacherView({ lessonId }) {
     overrideStudentCheck,
     recordClassAdvanceOverrides,
     dismissHelp,
+    readPendingShare,
+    approveWorkspaceShare,
+    declineWorkspaceShare,
+    requestShareSnapshot,
+    removeSharedWorkspace,
+    removeAllSharedWorkspaces,
     sendToTopic,
     sendMessageToStudent,
     updateVideoCallLink,
@@ -607,6 +613,8 @@ export default function TeacherView({ lessonId }) {
               onRestartSession={restartSession}
               onReturnToAdmin={() => navigate('/admin')}
               onUpdateVideoCallLink={updateVideoCallLink}
+              onRemoveSharedWorkspace={removeSharedWorkspace}
+              onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
             />
           </>
         }
@@ -770,6 +778,10 @@ export default function TeacherView({ lessonId }) {
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
             onPushTeacherPaneCommand={pushTeacherPaneCommand}
+            onReadPendingShare={readPendingShare}
+            onApproveShare={approveWorkspaceShare}
+            onDeclineShare={declineWorkspaceShare}
+            onRequestShareSnapshot={requestShareSnapshot}
             onRevealSupportStage={recordSupportStageReveal}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             onRequestFullscreenAll={requestFullscreenForAll}

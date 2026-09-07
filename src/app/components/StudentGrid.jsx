@@ -36,6 +36,10 @@ export default function StudentGrid({
   onRemoveHighlight,
   onRevealSupportStage,
   onPushTeacherPaneCommand,
+  onReadPendingShare,
+  onApproveShare,
+  onDeclineShare,
+  onRequestShareSnapshot,
   onRequestFullscreenAll,
   collapsed,
   onToggle,
@@ -291,6 +295,10 @@ export default function StudentGrid({
           onRemoveHighlight={onRemoveHighlight}
           onRevealSupportStage={onRevealSupportStage}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
+          onReadPendingShare={onReadPendingShare}
+          onApproveShare={onApproveShare}
+          onDeclineShare={onDeclineShare}
+          onRequestShareSnapshot={onRequestShareSnapshot}
         />
       )}
     </div>

@@ -185,6 +185,26 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - Task localStorage saves are skipped while in personal sandbox.
 - Checks still run so the teacher can watch output, but results do not affect lesson progress.
 
+## Workspace Sharing
+
+- Opt-in per task: the student's "📤 Share with class" button only exists where the author set `allowSharing: true`.
+- Live lessons only. Never shown in solo, sandbox, builder preview, teacher presentation, or to a forced teacher-live viewer.
+- The student's own client builds the snapshot (`buildShareSnapshot` in `useStudentCodeState`), because `currentCode` is only fresh for the watched student. See the Workspace Sharing section of `docs/agents/runtime-model.md`.
+- The button shows "⏳ Waiting for teacher" while a request is pending; clicking again withdraws it.
+- Declining is silent — the button simply becomes available again, with no message. A student cannot tell a decline from a withdrawal.
+- The teacher reviews a frozen snapshot in `ShareRequestPanel`, deliberately labelled as such: it is not the live watch view, and may already differ from what the student is doing now.
+- While a share is pending, that panel **replaces** the student modal's live workspace body rather than sitting above it. Showing both invited approving one while reading the other, and only the snapshot is what the class would receive. The live workspace returns once the request is approved or declined.
+- The teacher can also start a share from the More menu without the student asking. That stamps `shareSnapshotRequestedAt`; the student's device answers silently with a fresh snapshot and the same preview/Approve step follows. No student consent step, unlike `teacherEditRequestedAt`.
+- Approved shares appear in a "📤 Shared work (n)" gallery, tagged with the task they came from, and survive task changes until the teacher removes them.
+- A new approved share raises a toast. Dismissal is tracked client-side only — one student dismissing must not clear it for the class, the same constraint as `teacherClassPaneCommand`. Shares already present when a student joins count as seen, so joining mid-lesson does not fire a backlog.
+- A student never gets a toast for their own share.
+- A shared workspace opens **in place of** the student's own workspace, in the same layout slot, with a banner naming whose work it is and a "Back to my work" control.
+- It renders the student's **own** surface — the same `LessonTaskContent` and module `StudentWorkspace` they use for their own work — not a bespoke viewer and not the teacher-facing `TeacherLiveView`. Those have different chrome and controls (Electronics most visibly), so anything hand-built drifts from what the student knows. `SharedWorkspaceViewer` therefore delegates to `LessonTaskContent` and parity is structural rather than maintained by hand.
+- Opening a shared workspace is non-destructive **by construction**. The surface is driven by a second, throwaway `useStudentCodeState` instance configured so no write can escape it: `previewMode: true` routes persistence to the in-memory ephemeral store instead of real localStorage; the `lessonId` is namespaced (`shared-workspace::{shareId}`) so the ephemeral store cannot collide with the student's own work or another share; every session writer is a no-op, so no path to Firebase exists; and `phase: 'solo'` keeps the live-session write paths disengaged.
+- The snapshot is seeded into the ephemeral store (`seedSharedWorkspace`) **before** that hook mounts, so each module's normal "load my saved work" path picks it up. That is what keeps every lesson type working through its real code path rather than a parallel one — code modules seed `{ code }`, Scratch seeds `{ state }`, HTML seeds one entry per file, Filesystem seeds the fs slot, Arcade adds `arcadeDesign`.
+- The viewer renders by the snapshot's own `lessonType` and `taskId`, not the viewer's current task — a share outlives its task, and in a composed lesson may be a different module entirely.
+- "Copy to my editor" is the only bridge into the student's real work. It is confirmed first, and offered only when the snapshot's task matches the task they are on.
+
 ## Pyodide
 
 - Runs in a Web Worker and must not block the main thread.
