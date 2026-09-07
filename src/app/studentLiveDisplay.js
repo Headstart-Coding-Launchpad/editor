@@ -51,6 +51,10 @@ export function deriveStudentLiveDisplay({
   )
   const isForcedTeacherLive =
     isTeacherLiveViewer || isPresentationStudentViewer || isStudentGoLiveViewer
+  // Students watching a broadcast can't lift the code out of it. Deliberately narrower
+  // than isForcedTeacherLive: isPresentationStudentViewer is the *presenting teacher*
+  // watching a pinned student, and a teacher keeps normal selection on their own screen.
+  const isLiveCopyBlocked = isTeacherLiveViewer || isStudentGoLiveViewer
   const teacherLiveFiles = toTeacherLiveFiles(teacherLive?.files)
 
   return {
@@ -63,6 +67,7 @@ export function deriveStudentLiveDisplay({
       teacherLive.source === 'teacher'
     ),
     isForcedTeacherLive,
+    isLiveCopyBlocked,
     displayedTaskId: isForcedTeacherLive
       ? (teacherLive?.taskId ?? currentTaskId)
       : (viewingTaskId ?? currentTaskId),
