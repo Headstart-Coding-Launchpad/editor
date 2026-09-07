@@ -573,3 +573,56 @@ describe('LessonTaskContent forcedPaneCommand', () => {
     expect(receivedProp).toBe(command)
   })
 })
+
+describe('LessonTaskContent live copy blocking', () => {
+  const baseProps = {
+    lesson: { type: 'python' },
+    task: { id: 1, title: 'Say hello' },
+    cs: {},
+    currentTaskId: 1,
+    isSandbox: false,
+    isViewingPrev: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+    isForcedTeacherLive: true,
+  }
+
+  function renderWorkspace(props) {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    const { container } = render(<LessonTaskContent {...baseProps} {...props} />)
+    return container.querySelector('.live-view-active')
+  }
+
+  it('marks the mirrored workspace unselectable while a student watches a broadcast', () => {
+    const editorArea = renderWorkspace({ isLiveCopyBlocked: true })
+
+    expect(editorArea).toHaveClass('live-copy-blocked')
+  })
+
+  it('cancels a copy raised from inside the mirrored workspace', () => {
+    const editorArea = renderWorkspace({ isLiveCopyBlocked: true })
+
+    // Raised from a descendant, so this also covers the real case: a copy fired
+    // inside CodeMirror's contenteditable bubbling out to the workspace wrapper.
+    const source = editorArea.querySelector('*') ?? editorArea
+    const copyEvent = new Event('copy', { bubbles: true, cancelable: true })
+    source.dispatchEvent(copyEvent)
+
+    expect(source).not.toBe(editorArea)
+    expect(copyEvent.defaultPrevented).toBe(true)
+  })
+
+  it('leaves the workspace selectable for a presenting teacher watching a student', () => {
+    const editorArea = renderWorkspace({ isLiveCopyBlocked: false })
+
+    expect(editorArea).not.toHaveClass('live-copy-blocked')
+
+    const copyEvent = new Event('copy', { bubbles: true, cancelable: true })
+    editorArea.dispatchEvent(copyEvent)
+
+    expect(copyEvent.defaultPrevented).toBe(false)
+  })
+})

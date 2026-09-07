@@ -16,6 +16,11 @@ import { useElementSize } from '../../shared/useElementSize'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
+function blockClipboardEvent(event) {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
 // Lesson types whose module StudentWorkspace reports its own visiblePanes (a togglable
 // pane/tab/run-state that's meaningful to show on the teacher's student list) via the
@@ -55,6 +60,7 @@ export default function LessonTaskContent({
   isSandbox,
   isViewingPrev,
   isForcedTeacherLive,
+  isLiveCopyBlocked = false,
   isMobile,
   isQuizTask,
   isAutoEvaluatedQuiz,
@@ -499,6 +505,12 @@ export default function LessonTaskContent({
   // scrolling like the other fluid-workspace types (python/html/scratch/electronics/arcade
   // editors) — it's plain flowing content (program lines + tile pool) that can outgrow the
   // available height, so it needs the editor area itself to scroll instead of clipping it.
+  // While a student is watching a broadcast the workspace goes unselectable, so the
+  // teacher's (or a pinned peer's) code can't be lifted out of it. CSS user-select alone
+  // doesn't cover CodeMirror: its content stays contenteditable while read-only, so
+  // Ctrl+A / Ctrl+C still builds a real selection the browser will happily copy.
+  // Cancelling copy/cut as they bubble out of the workspace closes that route (and
+  // right-click Copy) in one place, silently, rather than per module.
   const editorArea = (
     <div
       style={
@@ -510,7 +522,15 @@ export default function LessonTaskContent({
             }
           : editorAreaStyle
       }
-      className={isForcedTeacherLive ? 'live-view-active' : undefined}
+      className={[
+        isForcedTeacherLive ? 'live-view-active' : null,
+        isLiveCopyBlocked ? 'live-copy-blocked' : null,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || undefined}
+      onCopy={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCut={isLiveCopyBlocked ? blockClipboardEvent : undefined}
     >
       {workspaceContent}
     </div>

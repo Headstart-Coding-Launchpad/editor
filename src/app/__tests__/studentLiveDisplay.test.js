@@ -156,4 +156,75 @@ describe('deriveStudentLiveDisplay', () => {
     expect(teacherDisplay.isForcedTeacherLive).toBe(false)
     expect(teacherDisplay.displayCode).toBe('local code')
   })
+
+  it('blocks copying for students watching a teacher broadcast or a pinned classmate', () => {
+    const teacherViewer = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: teacherBroadcast,
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    const classmateViewer = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: {
+        active: true,
+        source: 'student',
+        sourceStudentId: 'stu-2',
+        taskId: 3,
+        code: 'classmate code',
+      },
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(teacherViewer.isLiveCopyBlocked).toBe(true)
+    expect(classmateViewer.isLiveCopyBlocked).toBe(true)
+  })
+
+  it('leaves copying alone for the presenting teacher and outside a broadcast', () => {
+    const presentingTeacher = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: true,
+      phase: 'lesson',
+      teacherLive: { active: true, source: 'student', taskId: 3, code: 'student screen' },
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    const broadcastSource = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: {
+        active: true,
+        source: 'student',
+        sourceStudentId: 'stu-1',
+        taskId: 3,
+        code: 'own code',
+      },
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    const noBroadcast = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: null,
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(presentingTeacher.isPresentationStudentViewer).toBe(true)
+    expect(presentingTeacher.isForcedTeacherLive).toBe(true)
+    expect(presentingTeacher.isLiveCopyBlocked).toBe(false)
+    expect(broadcastSource.isLiveCopyBlocked).toBe(false)
+    expect(noBroadcast.isLiveCopyBlocked).toBe(false)
+  })
 })

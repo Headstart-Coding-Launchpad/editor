@@ -505,6 +505,18 @@ select {
   color: #888 !important;
 }
 
+/* Watching a broadcast: the mirrored workspace (code editor, file tabs, console
+   output) is unselectable so the teacher's or a pinned peer's code can't be lifted
+   out of it. Scoped to the editor area only - the instructions/explainer panel sits
+   outside this wrapper and stays selectable. The teacher's own mirrored selection is
+   a .cm-remoteSelection decoration, not a native selection, so it still renders. */
+.live-copy-blocked,
+.live-copy-blocked * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  user-select: none !important;
+}
+
 /* Student activity dots (typing indicator) */
 @keyframes activity-dot-bounce {
   0%,
