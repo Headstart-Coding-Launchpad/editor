@@ -215,6 +215,18 @@ function initSpriteStates(sprites) {
   return out
 }
 
+// A snapshot for sprite_property_delta/sprite_property_changed checks must survive the run
+// that follows it unchanged. Run-block handlers (see scratch.js's motion/looks cases) mutate
+// each sprite's state object in place (e.g. `state.x += steps`) before eventually replacing it
+// via onUpdate — so a shallow `{ ...spriteStatesRef.current }` copy still shares every sprite's
+// state object with the live run and gets mutated right along with it, making every delta/changed
+// check compare a state against itself. Clone one level deeper so the snapshot is untouched.
+export function cloneSpriteStates(states) {
+  const out = {}
+  for (const [id, state] of Object.entries(states)) out[id] = { ...state }
+  return out
+}
+
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 
 function drawScratchSpriteAtOrigin(ctx, type, r) {
@@ -2096,7 +2108,7 @@ export default function ScratchWorkspace({
     clearClones()
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
-    preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
+    preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
     runningRef.current = true
     setRunning(true)
     setCheckAttempted(false)
@@ -2116,7 +2128,7 @@ export default function ScratchWorkspace({
     stopAll()
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
-    preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
+    preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
     runningRef.current = true
     setRunning(true)
     setCheckAttempted(false)
@@ -2138,7 +2150,7 @@ export default function ScratchWorkspace({
     const prev = keySignalsRef.current.get(key)
     if (prev) prev.stopped = true
     const shouldFinishRun = !runningRef.current
-    if (shouldFinishRun) preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
+    if (shouldFinishRun) preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
     const signal = createSignal()
     keySignalsRef.current.set(key, signal)
     try {
@@ -2184,7 +2196,9 @@ export default function ScratchWorkspace({
 
   function handleCheck() {
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const completionPassed = scratchChecks.every((c) => evalSingleCheck(c, sws, signalRef.current))
+    const completionPassed = scratchChecks.every((c) =>
+      evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
+    )
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
@@ -2336,7 +2350,7 @@ export default function ScratchWorkspace({
         if (signalRef.current) signalRef.current.stopped = true
         lastCheckRef.current = null
         lastCheckSuggestionRef.current = ''
-        preRunSpriteStatesRef.current = { ...spriteStatesRef.current }
+        preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
         runningRef.current = true
         setRunning(true)
         setCheckAttempted(false)

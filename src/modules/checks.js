@@ -372,7 +372,25 @@ export function getStageOfferMatchThreshold(stageOffer) {
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
 
-function buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context = {}) {
+// Like getFirstFailedCheckHint, but evaluates each completion check with the caller's own
+// evaluator instead of the generic core-only evaluateSingleCheck — needed for module check
+// types (e.g. Scratch's block_run/sprite_property_delta) that evaluateSingleCheck can't
+// evaluate itself, and would otherwise unconditionally report as failed.
+function getFirstFailedCheckHintCustom(check, isCheckPassed) {
+  const failed = normalizeChecks(check).find(
+    (c) => !isCheckPassed(c) && String(c.hint ?? '').trim()
+  )
+  return failed ? String(failed.hint).trim() : ''
+}
+
+function buildCheckFeedbackResult(
+  task,
+  completionPassed,
+  feedbackResults,
+  output,
+  context = {},
+  isCompletionCheckPassed = null
+) {
   const blockingMatch = getHighestPriorityFeedbackMatch(
     feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
   )
@@ -393,7 +411,9 @@ function buildCheckFeedbackResult(task, completionPassed, feedbackResults, outpu
         : ''
       : matchedFeedbackHint
         ? String(matchedFeedbackHint.hint).trim()
-        : getFirstFailedCheckHint(task?.check, output, context)
+        : isCompletionCheckPassed
+          ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckPassed)
+          : getFirstFailedCheckHint(task?.check, output, context)
 
   return {
     passed,
@@ -428,7 +448,14 @@ export function evaluateCheckWithCustomFeedback(
       ...c,
       passed: isFeedbackCheckPassed(c),
     }))
-  return buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context)
+  return buildCheckFeedbackResult(
+    task,
+    completionPassed,
+    feedbackResults,
+    output,
+    context,
+    isFeedbackCheckPassed
+  )
 }
 
 export function getFirstFailedCheckHint(check, output, context = {}) {

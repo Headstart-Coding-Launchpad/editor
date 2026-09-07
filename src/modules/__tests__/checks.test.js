@@ -873,6 +873,32 @@ describe('evaluateCheckWithFeedback', () => {
     expect(result.passed).toBe(false)
     expect(result.suggestion).toBe('Start with movement.')
   })
+
+  it('picks the hint from the completion check that the custom evaluator actually failed, not always the first one', () => {
+    // Regression: with no feedbackChecks, the suggestion fallback used to run
+    // task.check through the generic core-only evaluateSingleCheck, which does not
+    // recognize Scratch check types and reports every one of them as failed —
+    // always surfacing the first check's hint regardless of which one actually failed.
+    const task = {
+      check: [
+        { type: 'block_run', opcode: 'motion_movesteps', hint: 'Change the number to negative.' },
+        { type: 'sprite_property_delta', property: 'x', hint: 'Press the green flag again.' },
+      ],
+    }
+    // Simulate: block_run passes (student already entered a negative value), only the
+    // delta check still fails.
+    const passResults = { block_run: true, sprite_property_delta: false }
+    const result = evaluateCheckWithCustomFeedback(
+      task,
+      false,
+      (check) => passResults[check.type],
+      '',
+      {},
+      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
+    )
+
+    expect(result.suggestion).toBe('Press the green flag again.')
+  })
 })
 
 // ─── DOM checks with null iframeDoc ───────────────────────────────────────────

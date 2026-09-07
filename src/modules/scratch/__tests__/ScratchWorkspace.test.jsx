@@ -8,6 +8,7 @@ import {
   isValidNewVariableName,
   computeBlockScale,
   computeStageScale,
+  cloneSpriteStates,
 } from '../ScratchWorkspace'
 
 describe('computeBlockScale', () => {
@@ -121,6 +122,33 @@ describe('isValidNewVariableName', () => {
   it('accepts a trimmed, non-colliding name', () => {
     expect(isValidNewVariableName('  combo  ', existing)).toBe(true)
     expect(isValidNewVariableName('combo', [])).toBe(true)
+  })
+})
+
+describe('cloneSpriteStates', () => {
+  it('returns per-sprite state objects that are not the same reference as the originals', () => {
+    const original = { sprite1: { x: 0, y: 0 }, sprite2: { x: 5, y: -5 } }
+    const clone = cloneSpriteStates(original)
+
+    expect(clone).toEqual(original)
+    expect(clone.sprite1).not.toBe(original.sprite1)
+    expect(clone.sprite2).not.toBe(original.sprite2)
+  })
+
+  it('is unaffected when the run mutates the live sprite state object in place afterwards', () => {
+    // Regression: run-block handlers (scratch.js's motion cases) mutate a sprite's state
+    // object directly, e.g. `state.x += steps`, before eventually swapping in a fresh clone
+    // via onUpdate. A pre-run snapshot taken with a shallow `{ ...spriteStatesRef.current }`
+    // copy still shares each sprite's state object with the live run, so that in-place
+    // mutation corrupts the "before" snapshot too — making sprite_property_delta/_changed
+    // checks always compare a state against itself (delta always 0, "changed" always false).
+    const live = { sprite1: { x: 0, y: 0 } }
+    const preRunSnapshot = cloneSpriteStates(live)
+
+    live.sprite1.x += -10 // simulates runBlock's `state.x += steps` in-place mutation
+
+    expect(live.sprite1.x).toBe(-10)
+    expect(preRunSnapshot.sprite1.x).toBe(0)
   })
 })
 
