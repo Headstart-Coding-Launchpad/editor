@@ -49,7 +49,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `LandingPage.jsx` | Entry screen: student enters a lesson ID, opens `.launchpad` code, or chooses a standalone playground |
 | `CodeFileWorkspace.jsx` | Lightweight standalone Python editor/runner for one or many imported `.launchpad` code tasks |
-| `PlaygroundView.jsx` | Local-only Python, Arcade Kit, and Electronics playground route built from the existing student workspaces |
+| `PlaygroundView.jsx` | Local-only Python, Arcade Kit, Electronics, and Scratch playground route built from the existing student workspaces |
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
 | `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView. `?live=true` is a deprecated no-op (bare URL now smart-joins); `?solo=true` forces solo unconditionally; `?preview=true` (auth-gated like `?teacher=true`) renders an ephemeral, unrestricted-navigation solo StudentView, used by the Admin Portal's Preview link |
 | `StudentView.jsx` | Main student experience: all phases (loading → choice → waiting → name-entry → lesson/sandbox/solo → ended); `forceSolo` prop (from `?solo=true`) is combined with the lesson's `soloOnly` flag into the internal `soloMode` |

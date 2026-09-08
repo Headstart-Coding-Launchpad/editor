@@ -23,7 +23,7 @@ flowchart TD
   Admin --> Protected["ProtectedRoute admin"]
   Builder --> BuilderApp["Builder route"]
   Account --> AccountSettings["Teacher/admin password settings"]
-  Playground --> PlaygroundView["Standalone Python/Arcade Kit/Electronics playgrounds"]
+  Playground --> PlaygroundView["Standalone Python/Arcade Kit/Electronics/Scratch playgrounds"]
 ```
 
 The app stays frontend-only. Firebase supplies auth, durable lesson/admin data, live session data, storage, and account-management functions.

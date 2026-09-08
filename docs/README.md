@@ -58,7 +58,7 @@ Design intent and contract for `src/modules/<type>/` lesson modules, including s
 **Load when:** adding or changing a lesson type, changing the module interface, or touching registry-driven classroom/builder behavior.
 
 ### [architecture/composed-lessons-spec.md](architecture/composed-lessons-spec.md)
-Implemented technical specification for backward-compatible multi-workspace composed lessons, lesson-module-scoped carry-through and sandboxes, plus local-only Python, Arcade Kit, and Electronics playgrounds — this is the shipped default multi-workspace mechanism, not a proposal.
+Implemented technical specification for backward-compatible multi-workspace composed lessons, lesson-module-scoped carry-through and sandboxes, plus local-only Python, Arcade Kit, Electronics, and Scratch playgrounds — this is the shipped default multi-workspace mechanism, not a proposal.
 
 **Load when:** implementing or reviewing composed lessons, module-aware task routing, scoped sandbox persistence, or the first standalone playgrounds.
 

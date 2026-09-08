@@ -24,7 +24,7 @@ describe('PlaygroundView', () => {
     playgroundType = 'python'
   })
 
-  it.each(['python', 'arcade', 'electronics'])(
+  it.each(['python', 'arcade', 'electronics', 'scratch'])(
     'does not seed an explainer for the %s playground',
     (type) => {
       const lesson = renderPlayground(type)
@@ -37,6 +37,13 @@ describe('PlaygroundView', () => {
     const lesson = renderPlayground('arcade')
 
     expect(lesson.tasks[0].arcadeTools).toBe('both')
+  })
+
+  it('starts the Scratch playground with a blank workspace', () => {
+    const lesson = renderPlayground('scratch')
+
+    expect(lesson.tasks[0].starterBlocks).toBeNull()
+    expect(lesson).toMatchObject({ id: '__playground__scratch', isPlayground: true, type: 'scratch' })
   })
 
   it('uses an app-only persistence namespace and never lesson assets', () => {

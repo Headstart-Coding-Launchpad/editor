@@ -957,18 +957,18 @@ describe('StudentView', () => {
       const user = userEvent.setup()
       render(
         <StudentView
-          lessonId="scratch-1-1"
+          lessonId="filesystem-1-1"
           forceSolo
           lesson={{
-            id: 'scratch-1-1',
-            title: 'Scratch 1.1',
-            type: 'scratch',
-            tasks: [{ id: 1, title: 'Only task', starterBlocks: null }],
+            id: 'filesystem-1-1',
+            title: 'Filesystem 1.1',
+            type: 'filesystem',
+            tasks: [{ id: 1, title: 'Only task' }],
           }}
         />
       )
 
-      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await waitFor(() => expect(screen.getByText('Filesystem')).toBeInTheDocument())
       await user.click(screen.getByRole('button', { name: 'Next' }))
 
       expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()

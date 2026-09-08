@@ -48,7 +48,7 @@ Usually changes with:
 
 ## Composed Lessons And Playgrounds
 
-Changes include multi-workspace composed lessons, lesson-module-scoped carry-through/sandboxes, module routing for tasks, or the standalone Python/Arcade Kit/Electronics playgrounds.
+Changes include multi-workspace composed lessons, lesson-module-scoped carry-through/sandboxes, module routing for tasks, or the standalone Python/Arcade Kit/Electronics/Scratch playgrounds.
 
 Usually changes with:
 

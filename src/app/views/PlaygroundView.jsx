@@ -24,11 +24,26 @@ function makeLesson(type) {
             starterCircuit: cloneCircuit(DEFAULT_CIRCUIT),
             microcontroller: { enabled: false, boardType: null, starterCode: '' },
           }
-        : {
-            id: 1,
-            title: 'Python playground',
-            starterCode: '',
-          }
+        : type === 'scratch'
+          ? {
+              id: 1,
+              title: 'Scratch playground',
+              starterBlocks: null,
+            }
+          : {
+              id: 1,
+              title: 'Python playground',
+              starterCode: '',
+            }
+
+  const playgroundTitle =
+    type === 'arcade'
+      ? 'Arcade Kit'
+      : type === 'electronics'
+        ? 'Electronics'
+        : type === 'scratch'
+          ? 'Scratch'
+          : 'Python'
 
   return {
     // This is intentionally not a valid lesson ID. Playground work must never
@@ -36,7 +51,7 @@ function makeLesson(type) {
     id: `__playground__${type}`,
     isPlayground: true,
     type,
-    title: `${type === 'arcade' ? 'Arcade Kit' : type === 'electronics' ? 'Electronics' : 'Python'} Playground`,
+    title: `${playgroundTitle} Playground`,
     description: 'A private, local coding space.',
     tasks: [task],
   }

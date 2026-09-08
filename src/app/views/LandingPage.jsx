@@ -135,6 +135,13 @@ export default function LandingPage() {
             <button
               className="btn-ghost-outline"
               type="button"
+              onClick={() => handleOpenPlayground('scratch')}
+            >
+              Scratch
+            </button>
+            <button
+              className="btn-ghost-outline"
+              type="button"
               onClick={() => setPlaygroundPickerOpen(false)}
             >
               Cancel
