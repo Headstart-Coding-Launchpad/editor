@@ -915,6 +915,44 @@ describe('StudentView', () => {
       expect(screen.queryByText('Lesson complete!')).not.toBeInTheDocument()
     })
 
+    it('resolves Open Playground from the last code task, not a trailing non-code task, on a composed lesson', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="composed-solo-complete-1"
+          forceSolo
+          lesson={{
+            id: 'composed-solo-complete-1',
+            title: 'Composed Solo Complete',
+            type: 'composed',
+            tasks: [
+              { id: 1, title: 'Scratch task', moduleType: 'scratch', starterBlocks: null },
+              { id: 2, title: 'Python task', moduleType: 'python', starterCode: 'print("hi")' },
+              { id: 3, title: 'Recap', taskType: 'information' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await waitFor(() => expect(screen.getByText('Recap')).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      // The lesson's last real task (Recap) has no module of its own — the button
+      // must fall back to the last *code* task (Python), not disappear or point at
+      // whatever the raw composed lesson's meaningless top-level `.type` resolves to.
+      const playgroundBtn = screen.getByRole('button', { name: 'Open Playground' })
+      const originalHash = window.location.hash
+      await user.click(playgroundBtn)
+      expect(window.location.hash).toBe('#/playground/python')
+      window.location.hash = originalHash
+    })
+
     it('shows no Open Playground link for a lesson type without a playground', async () => {
       const user = userEvent.setup()
       render(
