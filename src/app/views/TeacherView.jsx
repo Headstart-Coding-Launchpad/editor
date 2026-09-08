@@ -77,6 +77,7 @@ export default function TeacherView({ lessonId }) {
     clearLessonOverride,
     setPaused,
     requestFullscreenForAll,
+    requestFullscreenForStudent,
     setActiveStudentView,
     setTeacherLive,
     renameStudent,
@@ -785,6 +786,7 @@ export default function TeacherView({ lessonId }) {
             onRevealSupportStage={recordSupportStageReveal}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             onRequestFullscreenAll={requestFullscreenForAll}
+            onRequestFullscreenStudent={requestFullscreenForStudent}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
           />

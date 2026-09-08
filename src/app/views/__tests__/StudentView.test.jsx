@@ -583,6 +583,27 @@ describe('StudentView', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('also shows the prompt for a per-student fullscreen request, not just the class-wide one', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ students: { 'student-1': { fullscreenRequestedAt: 999 } } })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => {
+        expect(screen.getByText('Your teacher would like you to go fullscreen')).toBeInTheDocument()
+      })
+    })
+
+    it('does not show the prompt for a fullscreen request targeted at a different student', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ students: { 'someone-else': { fullscreenRequestedAt: 999 } } })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      expect(
+        screen.queryByText('Your teacher would like you to go fullscreen')
+      ).not.toBeInTheDocument()
+    })
+
     it('exits fullscreen automatically once the session ends', async () => {
       const exitFullscreen = vi.fn().mockResolvedValue(undefined)
       document.exitFullscreen = exitFullscreen
