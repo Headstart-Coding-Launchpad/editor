@@ -17,7 +17,7 @@ export function isComposedLesson(lesson) {
   return lesson?.type === 'composed'
 }
 
-function isCodeTask(task) {
+export function isCodeTask(task) {
   return task?.taskType !== 'information' && task?.taskType !== 'quiz'
 }
 
@@ -112,6 +112,14 @@ export function getEffectiveLessonForModule(lesson, moduleId) {
 export function getEffectiveLessonForTask(lesson, taskOrId) {
   if (!isComposedLesson(lesson)) return lesson
   return getEffectiveLessonForModule(lesson, getTaskModuleId(lesson, taskOrId))
+}
+
+// Distinct module types actually used by a composed lesson's code tasks, in
+// first-appearance order — for surfaces that need to describe "what kind of
+// lesson is this" now that a single top-level `.type` can't answer that.
+export function getComposedModuleTypes(lesson) {
+  if (!isComposedLesson(lesson)) return []
+  return [...new Set(getLessonModules(lesson).map((module) => module.type))]
 }
 
 export function getModuleCarrySourceIds(lesson, taskOrId) {

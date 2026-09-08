@@ -20,7 +20,7 @@ import {
   isCompletionPseudoTaskId,
   isSharingAllowed,
 } from '../../shared/taskUtils'
-import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
+import { PLAYGROUND_LESSON_TYPES, getTaskModuleType, isCodeTask } from '../../shared/composedLesson'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -823,9 +823,16 @@ export default function StudentView({
           (t) => t.id === (viewingExplainerSlide ? explainerPseudoTask.id : currentTaskId)
         )
       : currentIndex
-  const canOpenPlayground = isSolo && PLAYGROUND_LESSON_TYPES.includes(activeLesson?.type)
+  // Composed lessons can mix module types, so the lesson's own `.type` (or the type of
+  // whichever task the student happens to be on) isn't a reliable answer to "what
+  // playground should this lead to." Resolve it from the last *code* task instead —
+  // the module the student actually finished the lesson working in — skipping any
+  // trailing information/quiz tasks that have no module of their own.
+  const lastCodeTask = [...flatTasks].reverse().find(isCodeTask)
+  const lastCodeTaskType = lastCodeTask ? getTaskModuleType(lesson, lastCodeTask) : null
+  const canOpenPlayground = isSolo && PLAYGROUND_LESSON_TYPES.includes(lastCodeTaskType)
   function handleOpenPlayground() {
-    window.location.hash = `#/playground/${activeLesson.type}`
+    window.location.hash = `#/playground/${lastCodeTaskType}`
   }
   const unifiedCompleteStage = getCompleteStage(task)?.stage
   const hasCompleteSolution =

@@ -13,7 +13,7 @@ import {
   LEVEL_COLLECTION,
   normalizeLevelRecord,
 } from '../../shared/lessonLevels'
-import { getLessonModules } from '../../shared/composedLesson'
+import { getLessonModules, isComposedLesson, getComposedModuleTypes } from '../../shared/composedLesson'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -112,7 +112,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
     )
   }, [])
 
-  const lessonTypeLabel = getLessonTypeLabel(lesson.type)
+  const lessonTypeLabel = getLessonTypeLabel(lesson)
   const scope = getLessonLevelScope(lesson)
   const availableLevels = levels
     .filter((level) => level.scopeType === scope.scopeType && level.scopeId === scope.scopeId)
@@ -326,11 +326,19 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
   )
 }
 
-function getLessonTypeLabel(type) {
+function singleModuleLabel(type) {
   if (type === 'python') return 'Python'
   if (type === 'arcade') return 'Arcade Kit'
   if (type === 'scratch') return 'Scratch'
   if (type === 'filesystem') return 'Files & Folders'
   if (type === 'electronics') return 'Electronics'
   return 'Web'
+}
+
+// A composed lesson's own `.type` is just 'composed' — describe it by the
+// mix of modules its code tasks actually use instead.
+function getLessonTypeLabel(lesson) {
+  if (!isComposedLesson(lesson)) return singleModuleLabel(lesson.type)
+  const types = getComposedModuleTypes(lesson)
+  return types.length ? types.map(singleModuleLabel).join(' + ') : 'Composed'
 }
