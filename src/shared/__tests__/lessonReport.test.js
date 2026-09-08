@@ -4,6 +4,7 @@ import {
   anonymizeSessionReport,
   attachTeacherFeedback,
   buildSessionReport,
+  encodeSessionReportForFirestore,
   reportToYamlText,
 } from '../lessonReport'
 
@@ -709,5 +710,43 @@ describe('anonymizeSessionReport', () => {
       { studentLabel: 'Student 1', tasks: [] },
       { studentLabel: 'Student 2', tasks: [] },
     ])
+  })
+})
+
+describe('encodeSessionReportForFirestore', () => {
+  it('re-stringifies object-shaped submissions so Firestore never sees a raw array-in-array', () => {
+    // Blockly's mutator/extraState serialization can nest an array directly
+    // inside another array — a shape Firestore rejects outright.
+    const nestedArraySubmission = {
+      sprite1: { blocks: { blocks: [{ extraState: { params: [['x', 'y']] } }] } },
+    }
+    const report = {
+      students: [
+        {
+          studentLabel: 'Student 1',
+          tasks: [
+            {
+              taskId: 1,
+              distinctAttempts: [
+                { attemptNumber: 1, passed: false, submission: nestedArraySubmission },
+                { attemptNumber: 2, passed: true, submission: 'print("hi")' },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const encoded = encodeSessionReportForFirestore(report)
+
+    const [first, second] = encoded.students[0].tasks[0].distinctAttempts
+    expect(typeof first.submission).toBe('string')
+    expect(JSON.parse(first.submission)).toEqual(nestedArraySubmission)
+    expect(second.submission).toBe('print("hi")')
+  })
+
+  it('passes through reports with no students unchanged', () => {
+    expect(encodeSessionReportForFirestore(null)).toBe(null)
+    expect(encodeSessionReportForFirestore({ sessionId: 'x' })).toEqual({ sessionId: 'x' })
   })
 })

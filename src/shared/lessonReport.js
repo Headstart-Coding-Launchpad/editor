@@ -115,6 +115,38 @@ function normalizeSubmission(task, submission) {
   return submission ?? null
 }
 
+// Inverse of normalizeCodeSubmission, applied right at the Firestore write
+// boundary (see saveSessionReport). A submitted Scratch workspace state can
+// serialize with an array nested directly inside another array (Blockly's
+// mutator/extraState shape for some block types) — a shape Firestore rejects
+// outright, failing the whole report write. Re-stringifying every
+// object-shaped submission here undoes normalizeCodeSubmission's parse and
+// sidesteps that, mirroring the starterBlocks/completeBlocks codec in
+// lessonBlocksCodec.js. Reports are never read back into objects for further
+// processing (TeacherReportModal renders a string submission as-is), so this
+// is safe to apply unconditionally.
+function encodeSubmissionForFirestore(submission) {
+  if (submission && typeof submission === 'object') return JSON.stringify(submission)
+  return submission
+}
+
+export function encodeSessionReportForFirestore(report) {
+  if (!Array.isArray(report?.students)) return report
+  return {
+    ...report,
+    students: report.students.map((student) => ({
+      ...student,
+      tasks: (student.tasks ?? []).map((task) => ({
+        ...task,
+        distinctAttempts: (task.distinctAttempts ?? []).map((attempt) => ({
+          ...attempt,
+          submission: encodeSubmissionForFirestore(attempt.submission),
+        })),
+      })),
+    })),
+  }
+}
+
 function entryReportPassed(task, entry) {
   if (isNotApplicableTask(task)) return null
   return !!entry.passed
