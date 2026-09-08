@@ -347,4 +347,34 @@ describe('StudentCard', () => {
       expect(screen.queryByText('Sharing')).not.toBeInTheDocument()
     })
   })
+
+  describe('live viewing-a-share badge', () => {
+    const sessionWithShare = {
+      ...ACTIVE_SESSION,
+      sharedWorkspaces: { 'share-1': { sharerName: 'Alex' } },
+    }
+
+    it("shows who a connected student is currently viewing another student's share", () => {
+      render(
+        <StudentCard
+          {...mkProps({ session: sessionWithShare }, { viewingShareId: 'share-1', online: true })}
+        />
+      )
+      expect(screen.getByTitle('Viewing Alex shared work')).toBeInTheDocument()
+    })
+
+    it('does not show the badge once the student is offline, even if the field is stale', () => {
+      render(
+        <StudentCard
+          {...mkProps({ session: sessionWithShare }, { viewingShareId: 'share-1', online: false })}
+        />
+      )
+      expect(screen.queryByTitle('Viewing Alex shared work')).not.toBeInTheDocument()
+    })
+
+    it('does not show the badge when no share is being viewed', () => {
+      render(<StudentCard {...mkProps({ session: sessionWithShare }, { online: true })} />)
+      expect(screen.queryByTitle('Viewing Alex shared work')).not.toBeInTheDocument()
+    })
+  })
 })

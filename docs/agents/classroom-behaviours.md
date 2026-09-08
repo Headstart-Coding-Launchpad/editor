@@ -221,6 +221,8 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - The snapshot is seeded into the ephemeral store (`seedSharedWorkspace`) **before** that hook mounts, so each module's normal "load my saved work" path picks it up. That is what keeps every lesson type working through its real code path rather than a parallel one — code modules seed `{ code }`, Scratch seeds `{ state }`, HTML seeds one entry per file, Filesystem seeds the fs slot, Arcade adds `arcadeDesign`.
 - The viewer renders by the snapshot's own `lessonType` and `taskId`, not the viewer's current task — a share outlives its task, and in a composed lesson may be a different module entirely.
 - "Copy to my editor" is the only bridge into the student's real work. It is confirmed first, and offered only when the snapshot's task matches the task they are on.
+- A student currently viewing a share writes their real `writeStudentInteraction({ viewingShareId })` to `sessions/{lessonId}/students/{anonymousId}` — separate from the throwaway viewer state above, which never reaches Firebase. `StudentCard` shows a "👀 {sharerName}" badge live on the roster while `student.online && student.viewingShareId`; gating on `online` means a stale field from a dropped connection just stops rendering rather than sticking. Set on open, cleared (`null`) on close or on copying into their own editor.
+- The teacher gets the same read-only look at an approved share that students get: `TeacherSessionControls`' "📤 Shared work" dropdown has an **Open** button per entry (alongside Remove) that fetches the snapshot and renders it in a modal via the same `SharedWorkspaceViewer`, just without `onCopyToMyEditor` — a teacher has no editor of their own to copy into.
 
 ## Pyodide
 

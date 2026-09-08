@@ -17,6 +17,7 @@ export default function TeacherSessionControls({
   onUpdateVideoCallLink,
   onRemoveSharedWorkspace,
   onRemoveAllSharedWorkspaces,
+  onOpenSharedWorkspace,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -226,9 +227,25 @@ export default function TeacherSessionControls({
                       <strong>{entry.sharerName}</strong>
                       {entry.taskTitle ? ` · ${entry.taskTitle}` : ''}
                     </span>
-                    <button style={sDD.item} onClick={() => onRemoveSharedWorkspace(entry.shareId)}>
-                      Remove
-                    </button>
+                    <span style={sShare.rowActions}>
+                      {onOpenSharedWorkspace && (
+                        <button
+                          style={sDD.item}
+                          onClick={() => {
+                            setSharesOpen(false)
+                            onOpenSharedWorkspace(entry)
+                          }}
+                        >
+                          Open
+                        </button>
+                      )}
+                      <button
+                        style={sDD.item}
+                        onClick={() => onRemoveSharedWorkspace(entry.shareId)}
+                      >
+                        Remove
+                      </button>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -407,4 +424,5 @@ const sShare = {
   },
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   rowText: { fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
+  rowActions: { display: 'flex', gap: 4, flexShrink: 0 },
 }

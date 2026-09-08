@@ -874,11 +874,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentOutput`), output)
   }
 
-  async function writeStudentInteraction(anonymousId, { selection, activity, activeFile } = {}) {
+  async function writeStudentInteraction(
+    anonymousId,
+    { selection, activity, activeFile, viewingShareId } = {}
+  ) {
     const updates = {}
     if (selection !== undefined) updates.currentSelection = selection
     if (activity !== undefined) updates.currentActivity = activity
     if (activeFile !== undefined) updates.currentActiveFile = activeFile
+    if (viewingShareId !== undefined) updates.viewingShareId = viewingShareId
     if (Object.keys(updates).length > 0) {
       await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
     }

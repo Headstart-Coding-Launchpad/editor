@@ -749,6 +749,12 @@ export default function StudentView({
         return
       }
       setActiveShare({ entry, snapshot })
+      // Lets the teacher's roster show who currently has a share open, live —
+      // separate from the throwaway viewer state itself, which never reaches
+      // Firebase by design (see SharedWorkspaceViewer).
+      if (identity?.anonymousId) {
+        writeStudentInteraction(identity.anonymousId, { viewingShareId: entry.shareId })
+      }
     } catch (err) {
       setShareError(describeShareError(err))
     } finally {
@@ -758,6 +764,9 @@ export default function StudentView({
 
   function handleCloseSharedWorkspace() {
     setActiveShare(null)
+    if (identity?.anonymousId) {
+      writeStudentInteraction(identity.anonymousId, { viewingShareId: null })
+    }
   }
 
   // The one deliberate bridge from a shared workspace into the student's own
@@ -775,7 +784,7 @@ export default function StudentView({
     } else {
       cs.handleCodeChange(code ?? '')
     }
-    setActiveShare(null)
+    handleCloseSharedWorkspace()
   }
 
   async function handleCancelShare() {

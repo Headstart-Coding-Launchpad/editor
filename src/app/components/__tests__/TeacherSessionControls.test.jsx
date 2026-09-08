@@ -145,4 +145,39 @@ describe('TeacherSessionControls', () => {
       await waitFor(() => expect(onUpdateVideoCallLink).toHaveBeenCalledWith(''))
     })
   })
+
+  describe('shared work dropdown', () => {
+    const sessionWithShares = {
+      state: 'active',
+      sharedWorkspaces: {
+        'share-1': { sharerName: 'Alex', taskTitle: 'Task 1', sharedAt: 1 },
+      },
+    }
+
+    it('opens the share via onOpenSharedWorkspace and closes the dropdown, same gallery students get', () => {
+      const onOpenSharedWorkspace = vi.fn()
+      renderControls({
+        session: sessionWithShares,
+        onRemoveSharedWorkspace: vi.fn(),
+        onOpenSharedWorkspace,
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: '📤 Shared work (1)' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+
+      expect(onOpenSharedWorkspace).toHaveBeenCalledWith(
+        expect.objectContaining({ shareId: 'share-1', sharerName: 'Alex' })
+      )
+      expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+    })
+
+    it('hides the Open button when onOpenSharedWorkspace is not provided', () => {
+      renderControls({ session: sessionWithShares, onRemoveSharedWorkspace: vi.fn() })
+
+      fireEvent.click(screen.getByRole('button', { name: '📤 Shared work (1)' }))
+
+      expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    })
+  })
 })
