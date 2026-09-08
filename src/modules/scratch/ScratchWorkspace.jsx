@@ -633,7 +633,13 @@ function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {
 }
 
 // Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation.
-function evalSingleCheckPartial(check, spriteWorkspaces) {
+// A check with no spriteName passes if ANY sprite satisfies it (see evalSingleCheck
+// below), so it must only report 'fail' once EVERY sprite has ruled it out — one
+// unrelated sprite whose starter blocks happen to share the sequence's first opcode
+// (e.g. the near-universal "when green flag clicked" hat) would otherwise flag a
+// 'violation' against its own unrelated next block and fail the check for everyone,
+// before the student has touched the sprite the check actually targets.
+export function evalSingleCheckPartial(check, spriteWorkspaces) {
   if (!check?.type) return 'fail'
   try {
     const bySprite = (fn) => {
@@ -644,7 +650,7 @@ function evalSingleCheckPartial(check, spriteWorkspaces) {
       }
       const results = spriteWorkspaces.map((sp) => fn(sp.workspace))
       if (results.some((r) => r === 'pass')) return 'pass'
-      if (results.some((r) => r === 'fail')) return 'fail'
+      if (results.length > 0 && results.every((r) => r === 'fail')) return 'fail'
       return 'pending'
     }
     return bySprite((ws) => partialEvaluateScratchCheck(check, ws))
