@@ -16,8 +16,11 @@ import {
   makeExplainerPseudoTask,
   isExplainerPseudoTaskId,
   insertPseudoTaskBefore,
+  makeCompletionPseudoTask,
+  isCompletionPseudoTaskId,
   isSharingAllowed,
 } from '../../shared/taskUtils'
+import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -426,6 +429,10 @@ export default function StudentView({
     return () => clearTimeout(timer)
   }, [rawExplainerHidden])
   const [viewingExplainerSlide, setViewingExplainerSlide] = useState(false)
+  // Synthetic "lesson complete" screen shown after Next off the last solo task — like
+  // the explainer slide, this never touches currentTaskId (which stays pinned to the
+  // real last task) so it can't interfere with persistence, Firebase, or checks.
+  const [viewingCompletionScreen, setViewingCompletionScreen] = useState(false)
 
   // Auto-open the explainer slide on arrival at a task whose explainer is (already)
   // hidden — landing on the task shows the explainer first, and the student proceeds
@@ -515,8 +522,14 @@ export default function StudentView({
       setViewingTaskId(null)
       return
     }
+    if (isCompletionPseudoTaskId(taskId)) {
+      setViewingCompletionScreen(true)
+      setViewingTaskId(null)
+      return
+    }
     if (taskId === currentTaskId) {
       setViewingExplainerSlide(false)
+      setViewingCompletionScreen(false)
       return
     }
     if (teacherPresentation) {
@@ -548,6 +561,7 @@ export default function StudentView({
     cs.saveCurrentWork()
     setViewingTaskId(null)
     setViewingExplainerSlide(false)
+    setViewingCompletionScreen(false)
     cs.resetForTaskChange()
     setCurrentTaskId(taskId)
   }
@@ -784,17 +798,35 @@ export default function StudentView({
   // is open, rather than briefly falling back to the real task's own index.
   const explainerPseudoTask =
     (explainerPseudoActive || viewingExplainerSlide) && task ? makeExplainerPseudoTask(task) : null
-  const flatTasksForNav = explainerPseudoTask
-    ? insertPseudoTaskBefore(flatTasks, currentTaskId, explainerPseudoTask)
-    : flatTasks
-  // SoloNav's Previous/Next step relative to a single index, so while the slide is showing,
-  // that index must point at the pseudo entry itself (one slot before the real task) rather
-  // than the real task's own slot — otherwise Next would skip past the real task entirely.
-  const currentIndexForNav = explainerPseudoTask
-    ? flatTasksForNav.findIndex(
-        (t) => t.id === (viewingExplainerSlide ? explainerPseudoTask.id : currentTaskId)
-      )
-    : currentIndex
+  // Solo mode only — a live/presentation session ends when the teacher ends it, not when
+  // the student runs out of tasks, so there's nothing to append there. Only present once
+  // the student has actually reached the last real task, so Next can step past it; SoloNav's
+  // displayTotal (below) keeps the "Task X of Y" label reading the real count until then.
+  const completionPseudoTask =
+    isSolo && (currentIndex === flatTasks.length - 1 || viewingCompletionScreen)
+      ? makeCompletionPseudoTask()
+      : null
+  const flatTasksForNav = [
+    ...(explainerPseudoTask
+      ? insertPseudoTaskBefore(flatTasks, currentTaskId, explainerPseudoTask)
+      : flatTasks),
+    ...(completionPseudoTask ? [completionPseudoTask] : []),
+  ]
+  // SoloNav's Previous/Next step relative to a single index, so while the slide (or the
+  // completion screen) is showing, that index must point at the pseudo entry itself
+  // rather than the real task's own slot — otherwise Next would skip past it entirely.
+  // The completion pseudo task is always last, so its index is just the array length.
+  const currentIndexForNav = viewingCompletionScreen
+    ? flatTasksForNav.length - 1
+    : explainerPseudoTask
+      ? flatTasksForNav.findIndex(
+          (t) => t.id === (viewingExplainerSlide ? explainerPseudoTask.id : currentTaskId)
+        )
+      : currentIndex
+  const canOpenPlayground = isSolo && PLAYGROUND_LESSON_TYPES.includes(activeLesson?.type)
+  function handleOpenPlayground() {
+    window.location.hash = `#/playground/${activeLesson.type}`
+  }
   const unifiedCompleteStage = getCompleteStage(task)?.stage
   const hasCompleteSolution =
     displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
@@ -1042,6 +1074,9 @@ export default function StudentView({
           <SoloNav
             flatTasks={flatTasksForNav}
             currentIndex={currentIndexForNav}
+            displayTotal={
+              flatTasksForNav.length - (completionPseudoTask && !viewingCompletionScreen ? 1 : 0)
+            }
             cs={cs}
             canNavigateNextSolo={canNavigateNextSolo}
             onNavigate={handleSoloNavigate}
@@ -1236,7 +1271,9 @@ export default function StudentView({
       />
       <div
         style={
-          isSolo && !isSandbox && (isQuizTask || isInformationTask || viewingExplainerSlide)
+          isSolo &&
+          !isSandbox &&
+          (isQuizTask || isInformationTask || viewingExplainerSlide || viewingCompletionScreen)
             ? { ...s.body, overflow: 'hidden' }
             : s.body
         }
@@ -1272,6 +1309,8 @@ export default function StudentView({
             isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
             isInformationTask={isInformationTask}
             isViewingExplainerSlide={viewingExplainerSlide}
+            isViewingCompletionScreen={viewingCompletionScreen}
+            onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
             isCodeArrangeTask={isCodeArrangeTask}
             displayCode={displayCode}
             displayArcadeDesign={displayArcadeDesign}

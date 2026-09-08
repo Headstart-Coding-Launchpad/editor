@@ -179,6 +179,19 @@ export function insertPseudoTaskBefore(flatTasks, beforeTaskId, pseudoTask) {
   return [...flatTasks.slice(0, index), pseudoTask, ...flatTasks.slice(index)]
 }
 
+// Synthetic "lesson complete" pseudo-task, appended after the last task in solo-mode
+// nav. Like the explainer pseudo-task, it's a live UI reflection only — never
+// persisted — so its id only needs to be a stable, recognisable constant.
+const COMPLETION_PSEUDO_ID = '__lesson_complete__'
+
+export function makeCompletionPseudoTask() {
+  return { id: COMPLETION_PSEUDO_ID, title: 'Lesson Complete', isCompletionPseudo: true }
+}
+
+export function isCompletionPseudoTaskId(id) {
+  return id === COMPLETION_PSEUDO_ID
+}
+
 // Find the group containing a given task ID. Returns null for standalone tasks.
 export function findGroupForTask(tasks, taskId) {
   if (!tasks) return null

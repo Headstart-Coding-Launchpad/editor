@@ -192,6 +192,16 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - Task localStorage saves are skipped while in personal sandbox.
 - Checks still run so the teacher can watch output, but results do not affect lesson progress.
 
+## Solo Lesson Completion Screen
+
+- Solo mode only (never live/presentation) — a live session ends when the teacher ends it, not when the student runs out of tasks.
+- A synthetic "lesson complete" nav entry (`makeCompletionPseudoTask`/`isCompletionPseudoTaskId` in `src/shared/taskUtils.js`) is reachable via Next off the last real task, same splice-into-nav mechanism as the Scratch explainer pseudo-task above, but appended *after* the last task instead of before one, and applies to every lesson type, not just Scratch.
+- Purely ephemeral render state (`viewingCompletionScreen` in `StudentView.jsx`) — like the explainer slide, it never touches `currentTaskId`, so it can't interfere with persistence, Firebase, or checks. `currentTaskId` stays pinned to the real last task throughout.
+- Only spliced into `flatTasksForNav` once the student has actually reached the last real task (`currentIndex === flatTasks.length - 1`) or is already viewing it — not for the whole lesson — so it doesn't inflate "Task X of Y" until it's actually reachable. `SoloNav`'s `displayTotal` prop keeps that label showing the real task count right up until the completion screen itself is being viewed.
+- Rendered by `LessonTaskContent.jsx` via `isViewingCompletionScreen`, gated identically to `isViewingExplainerSlide` throughout that file (no side explainer, no code pane, no support-stage reveals) but showing `LessonCompleteScreen.jsx` instead of `InformationTask` — a fixed "Lesson complete!" message, not authored content.
+- Shows an "Open Playground" button when the current task's *effective* module type (`activeLesson.type`, composed-aware) is one of `PLAYGROUND_LESSON_TYPES` (`src/shared/composedLesson.js`: `python`, `arcade`, `electronics` — the types with a `/playground/:type` route). No button for `html`/`scratch`/`filesystem`, which have no playground.
+- The button navigates via `window.location.hash` (same pattern as the teacher's Account Settings link in `TeacherSessionControls.jsx`), not `useNavigate`, so `StudentView.jsx` doesn't take on a React Router dependency.
+
 ## Workspace Sharing
 
 - Opt-in per task: the student's "📤 Share with class" button only exists where the author set `allowSharing: true`.

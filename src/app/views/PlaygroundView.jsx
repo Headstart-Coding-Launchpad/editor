@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom'
 import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
 import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
+import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
 
-const PLAYGROUND_TYPES = new Set(['python', 'arcade', 'electronics'])
+const PLAYGROUND_TYPES = new Set(PLAYGROUND_LESSON_TYPES)
 
 function makeLesson(type) {
   const task =

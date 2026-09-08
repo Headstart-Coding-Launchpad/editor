@@ -857,4 +857,84 @@ describe('StudentView', () => {
       expect(screen.getByText('Task 1 of 1')).toBeInTheDocument()
     })
   })
+
+  describe('solo lesson completion screen', () => {
+    // A dedicated lessonId (distinct from the "python-1-1" id reused throughout this
+    // file) avoids cross-test localStorage bleed — saved code is keyed by lessonId +
+    // taskId + student id, and other tests write real code under "python-1-1"/task 1.
+    const twoTaskPythonLesson = {
+      id: 'python-solo-complete-1',
+      title: 'Python Solo Complete',
+      type: 'python',
+      tasks: [
+        { id: 1, title: 'First task', starterCode: 'print("one")' },
+        { id: 2, title: 'Second task', starterCode: 'print("two")' },
+      ],
+    }
+
+    it('shows a completion screen with a working Open Playground link after Next off the last task', async () => {
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("two")'))
+      // Reaching the last real task keeps the real count in the label (Next becomes
+      // reachable past it, but the completion screen isn't "counted" until you're on it).
+      expect(screen.getByText('Task 2 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      expect(screen.getByText('Task 3 of 3')).toBeInTheDocument()
+
+      const playgroundBtn = screen.getByRole('button', { name: 'Open Playground' })
+      await user.click(playgroundBtn)
+      expect(window.location.hash).toBe('#/playground/python')
+
+      window.location.hash = originalHash
+    })
+
+    it('returns to the last task when Previous is clicked from the completion screen', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      await user.click(screen.getByRole('button', { name: 'Previous' }))
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("two")'))
+      expect(screen.queryByText('Lesson complete!')).not.toBeInTheDocument()
+    })
+
+    it('shows no Open Playground link for a lesson type without a playground', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="scratch-1-1"
+          forceSolo
+          lesson={{
+            id: 'scratch-1-1',
+            title: 'Scratch 1.1',
+            type: 'scratch',
+            tasks: [{ id: 1, title: 'Only task', starterBlocks: null }],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Open Playground' })).not.toBeInTheDocument()
+    })
+  })
 })

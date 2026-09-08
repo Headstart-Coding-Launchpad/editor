@@ -8,6 +8,10 @@ export default function SoloNav({
   canNavigateNextSolo,
   onNavigate,
   compact = false,
+  // Total shown in the "Task X of Y" label, when it must differ from flatTasks.length
+  // (e.g. the lesson-complete pseudo-task inflates flatTasks by one only once it's
+  // actually reachable, but the label should still read the real task count until then).
+  displayTotal = flatTasks.length,
 }) {
   const isMobile = useIsMobile()
   const navStyle = compact ? s.soloNavCompact : s.soloNav
@@ -33,8 +37,8 @@ export default function SoloNav({
       ) : (
         <span style={labelStyle}>
           {isMobile
-            ? `${currentIndex + 1}/${flatTasks.length}`
-            : `Task ${currentIndex + 1} of ${flatTasks.length}`}
+            ? `${currentIndex + 1}/${displayTotal}`
+            : `Task ${currentIndex + 1} of ${displayTotal}`}
         </span>
       )}
       {!cs.inPersonalSandbox && (

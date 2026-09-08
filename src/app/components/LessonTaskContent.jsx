@@ -4,6 +4,7 @@ import { getLessonModule } from '../../modules/registry'
 import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
+import LessonCompleteScreen from './LessonCompleteScreen'
 import QuizTask from './QuizTask'
 import CodeArrangeTaskContainer from './CodeArrangeTaskContainer'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
@@ -66,6 +67,8 @@ export default function LessonTaskContent({
   isAutoEvaluatedQuiz,
   isInformationTask,
   isViewingExplainerSlide,
+  isViewingCompletionScreen,
+  onOpenPlayground,
   isCodeArrangeTask,
   displayCode,
   displayArcadeDesign,
@@ -142,13 +145,15 @@ export default function LessonTaskContent({
     !cs.inPersonalSandbox &&
     !isQuizTask &&
     !isInformationTask &&
-    !isViewingExplainerSlide
+    !isViewingExplainerSlide &&
+    !isViewingCompletionScreen
   const useFluidWorkspace =
     supportsSideExplainer &&
     !isMobile &&
     !isQuizTask &&
     !isInformationTask &&
-    !isViewingExplainerSlide
+    !isViewingExplainerSlide &&
+    !isViewingCompletionScreen
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
@@ -231,6 +236,7 @@ export default function LessonTaskContent({
     !isQuizTask &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
+    !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
     !isTeacherEditing &&
@@ -246,6 +252,7 @@ export default function LessonTaskContent({
     !isQuizTask &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
+    !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
     !isTeacherEditing &&
@@ -267,6 +274,7 @@ export default function LessonTaskContent({
     !isQuizTask &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
+    !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
     !isTeacherEditing &&
@@ -286,14 +294,14 @@ export default function LessonTaskContent({
   const taskContentStyle =
     !isSandbox && isQuizTask
       ? s.taskContentQuiz
-      : !isSandbox && (isInformationTask || isViewingExplainerSlide)
+      : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
         ? s.taskContentInfo
         : (modStyles.taskContentStyle ?? s.taskContentFallback)
 
   const editorAreaStyle =
     !isSandbox && isQuizTask
       ? s.editorAreaQuiz
-      : !isSandbox && (isInformationTask || isViewingExplainerSlide)
+      : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
         ? s.editorAreaInfo
         : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
 
@@ -420,7 +428,9 @@ export default function LessonTaskContent({
           )
         })()}
 
-      {!isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
+      {!isSandbox && isViewingCompletionScreen ? (
+        <LessonCompleteScreen lessonTitle={lesson?.title} onOpenPlayground={onOpenPlayground} />
+      ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
       ) : !isSandbox && isQuizTask ? (
         <QuizTask

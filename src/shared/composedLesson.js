@@ -9,6 +9,10 @@ export const LESSON_MODULE_TYPES = [
   'electronics',
 ]
 
+// Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx).
+// HTML, Scratch, and Filesystem lessons have no playground today.
+export const PLAYGROUND_LESSON_TYPES = ['python', 'arcade', 'electronics']
+
 export function isComposedLesson(lesson) {
   return lesson?.type === 'composed'
 }

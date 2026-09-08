@@ -116,6 +116,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherReportsPanel.jsx` | Persistent list of past session reports for a lesson, reachable any time from the Reports button; queries `sessionReports` ordered by `startedAt` desc and opens `TeacherReportModal` per report |
 | `EditLessonModal.jsx` | Reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit a lesson's tasks from TeacherView; "Apply for This Session" broadcasts via the session's `lessonOverrideTasks` (teacher and admin), "Save Permanently" (admin only) also writes Firestore |
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow |
+| `LessonCompleteScreen.jsx` | "Lesson complete!" screen shown after Next off the last task in solo mode, with an Open Playground button for playground-supported lesson types — see `docs/agents/classroom-behaviours.md` |
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
 | `PanelTabs.jsx` | Generic `role="tablist"` tab switcher (`PanelTabs`, `PanelTabPanel`); inactive panels are hidden via `display:none`, never unmounted; styled by `.ui-tabs`/`.ui-tab` in index.css |
 | `TaskSlideTransition.jsx` | Animated slide transition wrapper used when switching between tasks; optional `panelStyle` prop overrides the entering panel's own `.task-slide-panel` CSS (`min-height: 0`) — used by Scratch's layout, see `docs/agents/classroom-behaviours.md` |

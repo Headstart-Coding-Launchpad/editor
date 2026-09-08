@@ -15,6 +15,8 @@ import {
   makeExplainerPseudoTask,
   isExplainerPseudoTaskId,
   insertPseudoTaskBefore,
+  makeCompletionPseudoTask,
+  isCompletionPseudoTaskId,
   updateTaskInTasks,
   applyTaskUpdate,
   updateSubtaskTitles,
@@ -171,6 +173,23 @@ describe('explainer pseudo-task helpers', () => {
     const input = [task1, task2]
     const result = insertPseudoTaskBefore(input, 'missing', pseudo)
     expect(result).toBe(input)
+  })
+})
+
+// ─── completion pseudo-task helpers ────────────────────────────────────────────
+
+describe('completion pseudo-task helpers', () => {
+  it('builds a stable, recognisable pseudo task', () => {
+    const pseudo = makeCompletionPseudoTask()
+    expect(pseudo.title).toBe('Lesson Complete')
+    expect(pseudo.isCompletionPseudo).toBe(true)
+    expect(isCompletionPseudoTaskId(pseudo.id)).toBe(true)
+  })
+
+  it('rejects real/invalid ids', () => {
+    expect(isCompletionPseudoTaskId(task1.id)).toBe(false)
+    expect(isCompletionPseudoTaskId(undefined)).toBe(false)
+    expect(isCompletionPseudoTaskId(null)).toBe(false)
   })
 })
 
