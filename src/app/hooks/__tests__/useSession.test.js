@@ -416,6 +416,30 @@ describe('useSession', () => {
     })
   })
 
+  describe('writeStudentInteraction viewingShareId', () => {
+    it('writes viewingShareId when a student opens a shared workspace', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInteraction('student-abc', { viewingShareId: 'share-1' })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { viewingShareId: 'share-1' }
+      )
+    })
+
+    it('clears viewingShareId (explicit null) when the student closes it', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInteraction('student-abc', { viewingShareId: null })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { viewingShareId: null }
+      )
+    })
+  })
+
   describe('setTeacherLive', () => {
     it('encodes dotted file keys before writing, so HTML lessons do not break Realtime Database key rules', async () => {
       const { result } = renderHook(() => useSession('html-1-1'))

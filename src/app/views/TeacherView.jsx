@@ -48,6 +48,8 @@ import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getLessonModule } from '../../modules/registry'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
+import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
+import { describeShareError } from '../sharedWorkspacePayload'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -92,6 +94,7 @@ export default function TeacherView({ lessonId }) {
     requestShareSnapshot,
     removeSharedWorkspace,
     removeAllSharedWorkspaces,
+    readSharedWorkspace,
     sendToTopic,
     sendMessageToStudent,
     updateVideoCallLink,
@@ -125,6 +128,10 @@ export default function TeacherView({ lessonId }) {
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [lastReport, setLastReport] = useState(null)
   const [showReportsPanel, setShowReportsPanel] = useState(false)
+  // The teacher's own read-only look at an approved share — same gallery students get,
+  // opened from TeacherSessionControls' "Shared work" dropdown.
+  const [openTeacherShare, setOpenTeacherShare] = useState(null)
+  const [teacherShareError, setTeacherShareError] = useState(null)
   const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 860)
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1100)
   const [code, setCode] = useState('')
@@ -489,6 +496,20 @@ export default function TeacherView({ lessonId }) {
     )
   }
 
+  async function handleOpenTeacherShare(entry) {
+    setTeacherShareError(null)
+    try {
+      const snapshot = await readSharedWorkspace(entry.shareId)
+      if (!snapshot) {
+        setTeacherShareError('That shared workspace is no longer available.')
+        return
+      }
+      setOpenTeacherShare({ entry, snapshot })
+    } catch (err) {
+      setTeacherShareError(describeShareError(err))
+    }
+  }
+
   const isSandbox = session?.state === 'sandbox'
   const isInSandbox = isSandbox || sandboxStaging
   const visibleTasks = filterTasksByMode(lesson?.tasks ?? [], 'live')
@@ -616,6 +637,7 @@ export default function TeacherView({ lessonId }) {
               onUpdateVideoCallLink={updateVideoCallLink}
               onRemoveSharedWorkspace={removeSharedWorkspace}
               onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
+              onOpenSharedWorkspace={handleOpenTeacherShare}
             />
           </>
         }
@@ -843,6 +865,35 @@ export default function TeacherView({ lessonId }) {
           onClose={() => setShowEditLessonModal(false)}
         />
       )}
+
+      {teacherShareError && !openTeacherShare && (
+        <div style={s.teacherShareErrorToast} role="alert">
+          {teacherShareError}
+          <button
+            type="button"
+            className="btn-ghost"
+            style={s.teacherShareErrorDismiss}
+            onClick={() => setTeacherShareError(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Teacher's own read-only look at an approved share — no onCopyToMyEditor,
+          since a teacher has no editor of their own to copy into. */}
+      {openTeacherShare && (
+        <div style={s.teacherShareOverlay}>
+          <div style={s.teacherShareModal}>
+            <SharedWorkspaceViewer
+              lesson={lesson}
+              entry={openTeacherShare.entry}
+              snapshot={openTeacherShare.snapshot}
+              onClose={() => setOpenTeacherShare(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -853,6 +904,43 @@ const s = {
     flexDirection: 'column',
     height: '100%',
   },
+  teacherShareOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.45)',
+    zIndex: 1000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  teacherShareModal: {
+    background: '#fff',
+    borderRadius: 12,
+    width: 'min(1100px, 92vw)',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  teacherShareErrorToast: {
+    position: 'fixed',
+    right: 16,
+    bottom: 16,
+    zIndex: 1200,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 14px',
+    borderRadius: 10,
+    background: '#fff',
+    border: '1px solid var(--colour-error, #dc2626)',
+    boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+  },
+  teacherShareErrorDismiss: { fontSize: 12, padding: '2px 6px' },
   body: {
     flex: 1,
     display: 'grid',

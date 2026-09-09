@@ -301,6 +301,14 @@ export default function StudentCard({
               Sharing
             </span>
           )}
+          {student.online && student.viewingShareId && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
+              title={`Viewing ${session?.sharedWorkspaces?.[student.viewingShareId]?.sharerName ?? "a classmate's"} shared work`}
+            >
+              👀 {session?.sharedWorkspaces?.[student.viewingShareId]?.sharerName ?? 'Viewing share'}
+            </span>
+          )}
           {supportRevealCount > 0 && (
             <span
               style={{ ...s.checkBadge, ...s.checkBadgeSupport }}
