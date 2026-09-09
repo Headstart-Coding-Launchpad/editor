@@ -27,6 +27,7 @@ import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
+import TaskRatingPanel from './teacher/TaskRatingPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
 import { DEFAULT_FS } from '../../modules/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
@@ -108,6 +109,7 @@ export default function TeacherView({ lessonId }) {
     pushTeacherHighlight,
     removeTeacherHighlight,
     recordSupportStageReveal,
+    setTaskRating,
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
@@ -788,6 +790,14 @@ export default function TeacherView({ lessonId }) {
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}
           />
+          {task && !isInformationTask && !isInSandbox && (
+            <TaskRatingPanel
+              taskId={task.id}
+              taskTitle={task.title}
+              existingRating={session?.taskRatingLog?.[task.id] ?? null}
+              onSave={setTaskRating}
+            />
+          )}
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}

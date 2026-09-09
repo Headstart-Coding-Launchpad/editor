@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { anonymizeSessionReport, reportToYamlText } from '../../shared/lessonReport'
+import { FeedbackFields, StarRatingDisplay } from './StarRatingFeedbackFields'
 
 function formatDuration(ms) {
   if (ms == null) return '—'
@@ -157,8 +158,6 @@ function StudentSection({ student }) {
   )
 }
 
-const STAR_VALUES = [1, 2, 3, 4, 5]
-
 function TeacherFeedbackForm({ onSave }) {
   const [rating, setRating] = useState(0)
   const [whatWorkedWell, setWhatWorkedWell] = useState('')
@@ -180,44 +179,15 @@ function TeacherFeedbackForm({ onSave }) {
         Optional: rate this lesson run and leave any notes for next time.
       </p>
 
-      <div style={s.feedbackField}>
-        <span style={s.feedbackLabel}>How did this lesson go?</span>
-        <div style={s.feedbackStarsRow} role="radiogroup" aria-label="Lesson rating">
-          {STAR_VALUES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={rating === value}
-              aria-label={`${value} star${value === 1 ? '' : 's'}`}
-              style={s.feedbackStarBtn}
-              onClick={() => setRating((current) => (current === value ? 0 : value))}
-            >
-              {value <= rating ? '★' : '☆'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <label style={s.feedbackField}>
-        <span style={s.feedbackLabel}>What worked well?</span>
-        <textarea
-          style={s.feedbackTextarea}
-          rows={2}
-          value={whatWorkedWell}
-          onChange={(e) => setWhatWorkedWell(e.target.value)}
-        />
-      </label>
-
-      <label style={s.feedbackField}>
-        <span style={s.feedbackLabel}>What didn't work, or was broken?</span>
-        <textarea
-          style={s.feedbackTextarea}
-          rows={2}
-          value={whatDidntWork}
-          onChange={(e) => setWhatDidntWork(e.target.value)}
-        />
-      </label>
+      <FeedbackFields
+        ratingLabel="How did this lesson go?"
+        rating={rating}
+        onRatingChange={setRating}
+        whatWorkedWell={whatWorkedWell}
+        onWhatWorkedWellChange={setWhatWorkedWell}
+        whatDidntWork={whatDidntWork}
+        onWhatDidntWorkChange={setWhatDidntWork}
+      />
 
       <button
         className="btn-primary"
@@ -280,18 +250,7 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
             <section>
               <h3 style={s.sectionTitle}>Teacher Feedback</h3>
               <div style={s.feedbackBox}>
-                {displayReport.teacherFeedback.rating != null && (
-                  <div
-                    style={s.feedbackStars}
-                    aria-label={`Rated ${displayReport.teacherFeedback.rating} out of 5 stars`}
-                  >
-                    {STAR_VALUES.map((value) => (
-                      <span key={value}>
-                        {value <= displayReport.teacherFeedback.rating ? '★' : '☆'}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <StarRatingDisplay value={displayReport.teacherFeedback.rating} />
                 {displayReport.teacherFeedback.whatWorkedWell && (
                   <div style={s.feedbackField}>
                     <span style={s.feedbackLabel}>What worked well</span>
@@ -318,7 +277,14 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
             <table style={s.table}>
               <thead>
                 <tr>
-                  {['Task', 'Completed', 'Avg Attempts', 'Avg Time', 'Common Failures'].map((h) => (
+                  {[
+                    'Task',
+                    'Completed',
+                    'Avg Attempts',
+                    'Avg Time',
+                    'Common Failures',
+                    'Teacher Rating',
+                  ].map((h) => (
                     <th key={h} style={s.th}>
                       {h}
                     </th>
@@ -340,6 +306,25 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
                     <td style={s.td}>{task.avgAttempts ?? '-'}</td>
                     <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
                     <td style={s.td}>{formatSummaryFailures(task)}</td>
+                    <td style={s.td}>
+                      {task.teacherRating ? (
+                        <div style={s.teacherRatingCell}>
+                          <StarRatingDisplay value={task.teacherRating.rating} size="small" />
+                          {task.teacherRating.whatWorkedWell && (
+                            <div style={s.teacherRatingNote}>
+                              👍 {task.teacherRating.whatWorkedWell}
+                            </div>
+                          )}
+                          {task.teacherRating.whatDidntWork && (
+                            <div style={s.teacherRatingNote}>
+                              👎 {task.teacherRating.whatDidntWork}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -434,6 +419,13 @@ const s = {
     lineHeight: 1.25,
   },
   muted: { fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#9ca3af' },
+  teacherRatingCell: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 140 },
+  teacherRatingNote: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    color: '#6b7280',
+    whiteSpace: 'normal',
+  },
   feedbackBox: {
     border: '1px solid #e5e7eb',
     borderRadius: 8,
@@ -443,31 +435,11 @@ const s = {
     gap: 10,
     background: '#f9fafb',
   },
-  feedbackStars: { fontSize: '1.1rem', color: '#f59e0b', letterSpacing: 2 },
   feedbackFormIntro: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.82rem',
     color: '#6b7280',
     margin: 0,
-  },
-  feedbackStarsRow: { display: 'flex', gap: 4 },
-  feedbackStarBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '1.5rem',
-    lineHeight: 1,
-    color: '#f59e0b',
-    padding: 0,
-  },
-  feedbackTextarea: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.85rem',
-    border: '1px solid #d1d5db',
-    borderRadius: 8,
-    padding: '8px 10px',
-    resize: 'vertical',
-    minHeight: 44,
   },
   feedbackSaveBtn: { alignSelf: 'flex-start', fontSize: 13, padding: '6px 14px' },
   feedbackField: { display: 'flex', flexDirection: 'column', gap: 4 },

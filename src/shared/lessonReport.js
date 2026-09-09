@@ -285,6 +285,20 @@ function summarizeSupportReveals(perStudent) {
   }
 }
 
+// Teacher's live per-task rating (see setTaskRating in useSession.js and
+// TaskRatingPanel.jsx). Mirrors attachTeacherFeedback's shape/validation but
+// for a single task rather than the whole session, and reads straight off the
+// live session snapshot rather than being merged in as a separate step, since
+// the rating is already written to RTDB by the time the report is built.
+function normalizeTaskRating(raw) {
+  if (!raw) return null
+  const rating = Number.isInteger(raw.rating) && raw.rating >= 1 && raw.rating <= 5 ? raw.rating : null
+  const whatWorkedWell = String(raw.whatWorkedWell ?? '').trim()
+  const whatDidntWork = String(raw.whatDidntWork ?? '').trim()
+  if (rating == null && !whatWorkedWell && !whatDidntWork) return null
+  return { rating, whatWorkedWell, whatDidntWork, submittedAt: raw.submittedAt ?? null }
+}
+
 function getFinalResult(task, entries, override) {
   if (isNotApplicableTask(task)) return entries.length > 0 ? 'not_applicable' : 'not_attempted'
   if (entries.some((entry) => entry.passed)) return 'passed'
@@ -394,6 +408,7 @@ export function buildSessionReport({ session, lesson }) {
   const overrideLog = session?.overrideLog ?? {}
   const carryFallbackLog = session?.carryFallbackLog ?? {}
   const supportRevealLog = session?.supportRevealLog ?? {}
+  const taskRatingLog = session?.taskRatingLog ?? {}
   const anonymousIds = Array.from(
     new Set([
       ...Object.keys(studentsSnapshot),
@@ -472,6 +487,7 @@ export function buildSessionReport({ session, lesson }) {
     const completedCount = perStudent.filter((t) => t.completed).length
     const totalAttempts = perStudent.reduce((sum, t) => sum + t.attempts, 0)
     const typeFields = getTypeFields(task)
+    const teacherRating = normalizeTaskRating(taskRatingLog[task.id])
 
     const failureCounts = new Map()
     for (const t of perStudent) {
@@ -514,6 +530,7 @@ export function buildSessionReport({ session, lesson }) {
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
+        ...(teacherRating ? { teacherRating } : {}),
       }
     }
 
@@ -532,6 +549,7 @@ export function buildSessionReport({ session, lesson }) {
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
+        ...(teacherRating ? { teacherRating } : {}),
       }
     }
 
@@ -557,6 +575,7 @@ export function buildSessionReport({ session, lesson }) {
       ),
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
+      ...(teacherRating ? { teacherRating } : {}),
     }
     if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
       summary.blankFailures = summarizeFillBlankFailures(task, perStudent)

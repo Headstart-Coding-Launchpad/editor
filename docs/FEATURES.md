@@ -72,6 +72,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Share a live join link with students
 - Lesson elapsed timer and per-task countdown that flashes when time expires
 - Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
+- Rate any task live, while teaching it: a collapsible "Rate This Task" panel above the check conditions lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
 ### Task Navigator
 - Task list with group collapse

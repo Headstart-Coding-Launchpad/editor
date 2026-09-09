@@ -112,7 +112,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
 | `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
 | `TeacherFeedbackModal.jsx` | Two-tab modal for submitting lesson feedback (per-task, stored in Firestore subcollection) or platform feedback (stored in `platformFeedback` collection) |
-| `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results, distinct attempts, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
+| `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results (including any live `teacherRating` on a task), distinct attempts, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
+| `StarRatingFeedbackFields.jsx` | Shared 1-5 star rating input/display + "what worked well"/"what didn't work" textareas, used by both `TeacherReportModal`'s end-of-session lesson rating and `TaskRatingPanel`'s live per-task rating |
 | `TeacherReportsPanel.jsx` | Persistent list of past session reports for a lesson, reachable any time from the Reports button; queries `sessionReports` ordered by `startedAt` desc and opens `TeacherReportModal` per report |
 | `EditLessonModal.jsx` | Reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit a lesson's tasks from TeacherView; "Apply for This Session" broadcasts via the session's `lessonOverrideTasks` (teacher and admin), "Save Permanently" (admin only) also writes Firestore |
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow |
@@ -158,6 +159,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `TeacherEditorPanel.jsx` | Module-generic teacher editor/live-view panel, including starter/stage/complete tabs |
 | `CheckConditionsPanel.jsx` | Collapsible teacher-facing display of current task check conditions |
+| `TaskRatingPanel.jsx` | Collapsible panel, rendered above `CheckConditionsPanel`, letting the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher as they move between tasks |
 | `checkFormatting.js` | Human-readable check formatting helper used by `CheckConditionsPanel` |
 
 ---
@@ -168,7 +170,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `useIdentity.js` | Anonymous ID and display name management; localStorage persistence; session timestamp comparison |
 | `useCrossTabPresence.js` | BroadcastChannel-based ping/pong presence check for the same student+lesson open in another tab; returns a boolean, informational only |
-| `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal logging, session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`), workspace share request/approve/remove |
+| `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal/task rating logging (`setTaskRating`), session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`), workspace share request/approve/remove |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
 | `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers, and the Pyodide warm-up effect; composes the sub-hooks below |
@@ -397,7 +399,7 @@ Each `index.js` exports a default object with:
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor` and `getInlineCodeOptions` (the toolbar is internal) |
 | `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
 | `lessonBlocksCodec.js` | Encodes/decodes Firestore-incompatible lesson fields as JSON strings: Scratch block trees for nested depth and Arcade Kit designs for nested sprite-frame arrays |
-| `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, task summary); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
+| `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, task summary); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo, teacher, preview }` (bare smart-join URL, plus `?solo=true`, `?teacher=true` and `?preview=true` links); used by TeacherView, LessonPanel and SessionsPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |

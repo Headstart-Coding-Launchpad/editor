@@ -122,6 +122,15 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           }
         }
       },
+      "taskRatingLog": {
+        "{taskId}": {
+          "taskId": 3,
+          "rating": "1-5 | null",
+          "whatWorkedWell": "string",
+          "whatDidntWork": "string",
+          "submittedAt": "ServerValue.TIMESTAMP"
+        }
+      },
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
@@ -201,6 +210,7 @@ Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
+- `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` in the main task panel while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
 - `activeStudentView`, `teacherLive`
 - `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
@@ -328,9 +338,11 @@ Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admi
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 
-Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`.
+Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`. A task summary also carries `teacherRating` (`{ rating, whatWorkedWell, whatDidntWork, submittedAt }`) when the teacher rated that task live during the session via `TaskRatingPanel.jsx` — omitted entirely for a task the teacher left unrated, same "attach only if non-blank" rule as the whole-session `teacherFeedback` below.
 
-Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
+Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskRatingLog` (live per-task teacher ratings), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
+
+The whole-session `teacherFeedback` (rating plus "what worked well"/"what didn't work" notes for the lesson as a whole) is a separate, later step: unlike `taskRatingLog`, it isn't written live to RTDB — the teacher submits it in `TeacherReportModal`'s `TeacherFeedbackForm` right after the report is first built, and `attachTeacherFeedback(report, feedback)` (`src/shared/lessonReport.js`) merges it onto the already-saved report, which is then re-saved via `saveSessionReport`. Both features share the same star-rating + notes UI (`StarRatingFeedbackFields.jsx`) and the same "omit if every field is blank" validation, but `teacherFeedback` sits at the report root while `teacherRating` sits per task inside `taskSummary`.
 
 Override records make moved-on tasks complete without claiming a real pass. If a student had at least one failed attempt before the teacher moved them on, the task reports `finalResult: overridden_failed`; if they had no attempt, it reports `finalResult: overridden_unattempted`. `distinctAttempts[].passed` remains `false` unless an actual check passed.
 
@@ -399,7 +411,8 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "respondedCount": "number (confidence/open short-answer summaries)",
       "ratingDistribution": { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
       "blankFailures": [{ "blankId": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
-      "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }]
+      "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
+      "teacherRating": { "rating": "1-5 | null", "whatWorkedWell": "string", "whatDidntWork": "string", "submittedAt": 1234567890 }
     }
   ]
 }

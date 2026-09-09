@@ -108,6 +108,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       taskStartTimes: {},
       students: {},
       supportRevealLog: null,
+      taskRatingLog: null,
       fullscreenRequestedAt: null,
       videoCallLink: null,
       sharedWorkspaces: null,
@@ -149,6 +150,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       students: null,
       overrideLog: null,
       supportRevealLog: null,
+      taskRatingLog: null,
       fullscreenRequestedAt: null,
       videoCallLink: null,
       sharedWorkspaces: null,
@@ -948,6 +950,29 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  // Teacher-authored, task-scoped rating captured live during the session (see
+  // src/app/views/teacher/TaskRatingPanel.jsx). Last write wins per task; writing
+  // an all-blank rating removes the entry instead of leaving an empty stub, so
+  // TaskRatingPanel's "already rated" indicator stays accurate.
+  async function setTaskRating(taskId, { rating, whatWorkedWell, whatDidntWork } = {}) {
+    if (taskId == null) return
+    const path = `sessions/${lessonId}/taskRatingLog/${taskId}`
+    const normalizedRating = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null
+    const trimmedWorked = String(whatWorkedWell ?? '').trim()
+    const trimmedDidnt = String(whatDidntWork ?? '').trim()
+    if (normalizedRating == null && !trimmedWorked && !trimmedDidnt) {
+      await remove(ref(db, path))
+      return
+    }
+    await set(ref(db, path), {
+      taskId,
+      rating: normalizedRating,
+      whatWorkedWell: trimmedWorked,
+      whatDidntWork: trimmedDidnt,
+      submittedAt: serverTimestamp(),
+    })
+  }
+
   async function writeStudentPresence(
     anonymousId,
     { windowFocused, lastActivityAt, visiblePanes, isFullscreen } = {}
@@ -1107,6 +1132,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentInteraction,
     recordStudentCarryFallback,
     recordSupportStageReveal,
+    setTaskRating,
     writeStudentPersonalSandbox,
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
