@@ -16,6 +16,7 @@ import {
 } from './lessonBlocksCodec'
 import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
 import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
+import { encodeSessionReportForFirestore } from './lessonReport'
 
 export async function fetchLessonById(lessonId) {
   if (!lessonId) return null
@@ -111,7 +112,10 @@ export function applyLessonOverride(lesson, overrideTasks) {
 // One doc per session run, doc ID = the report's sessionId (session.startedAt).
 
 export async function saveSessionReport(lessonId, sessionId, report) {
-  await setDoc(doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId), report)
+  await setDoc(
+    doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId),
+    encodeSessionReportForFirestore(report)
+  )
 }
 
 export async function fetchSessionReports(lessonId) {
