@@ -1446,9 +1446,15 @@ export function useStudentCodeState({
 
   const SPRITE_STATE_THROTTLE_MS = 120
 
-  function handleScratchSpriteState(spriteStates, cloneStates, backdropName) {
+  function handleScratchSpriteState(spriteStates, cloneStates, backdropName, selectedSpriteId) {
     if (!identity) return
-    const payload = { spriteStates, cloneStates, backdropName, updatedAt: Date.now() }
+    const payload = {
+      spriteStates,
+      cloneStates,
+      backdropName,
+      selectedSpriteId: selectedSpriteId ?? null,
+      updatedAt: Date.now(),
+    }
     const flush = () => {
       spriteStateLastSentRef.current = Date.now()
       if (canPublishTeacherLive()) publishTeacherLive({ spriteState: payload })

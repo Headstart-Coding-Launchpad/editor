@@ -30,6 +30,7 @@ export default function ScratchTeacherLiveView({
       externalCursor={cursorState}
       externalBlockDrag={blockDragState}
       unrestricted={isSessionSandbox}
+      remoteSelectedSpriteId={spriteState?.selectedSpriteId ?? null}
     />
   )
 }

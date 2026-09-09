@@ -83,6 +83,13 @@ export const NARROW_BREAKPOINT_HEIGHT = 600
 // original threshold — breaks that loop without moving the documented 1000px entry point.
 const COMPACT_EXIT_HYSTERESIS = 48
 const SCRATCH_PANEL_TABS_SURFACE = 'scratch_panel'
+// Separate persisted tab surface for the always-compact "watch one student" view
+// (forceCompact — see ScratchTeacherLiveView). It must not share scratch_panel with
+// the student's own editor / the teacher's live-edit surface: since both write the
+// same localStorage key, a teacher who last left their own (or a student's) editor
+// on the Stage tab would then open every subsequent watch-student modal landing on
+// Stage too — no blocks visible at all until they noticed and clicked back to Blocks.
+const SCRATCH_WATCH_PANEL_TABS_SURFACE = 'scratch_watch_panel'
 // Block canvas auto-zoom range. There's no manual zoom any more (wheel/on-canvas controls
 // were removed as confusing) — scale is purely a function of available space, continuously
 // recalculated (see computeBlockScale). MAX matches the old fixed default scale, so a wide
@@ -736,6 +743,7 @@ export default function ScratchWorkspace({
   hideStage = false,
   selectedSpriteId: controlledSpriteId = null,
   onSpriteSelect = null,
+  remoteSelectedSpriteId = null, // seeds/highlights the source student's own selection, read-only mirrors only
   spritePanelTarget = null,
   onAddSprite = null,
   spritePanelEditor = null,
@@ -852,7 +860,7 @@ export default function ScratchWorkspace({
   const backdropAddWrapRef = useRef(null)
 
   const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(
-    selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null)
+    remoteSelectedSpriteId ?? selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null)
   )
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
 
@@ -864,13 +872,24 @@ export default function ScratchWorkspace({
 
   function setSelectedSpriteId(id) {
     if (!canSelectSpriteId(id)) return
-    if (controlledSpriteId !== null) onSpriteSelect?.(id)
-    else setInternalSelectedSpriteId(id)
+    if (controlledSpriteId !== null) {
+      onSpriteSelect?.(id)
+      return
+    }
+    setInternalSelectedSpriteId(id)
+    // Sprite property changes already report the selection alongside them (see
+    // commitSpriteStates) — this covers the case where the student switches tabs
+    // without moving anything, so a teacher watching still sees it change live.
+    onSpriteStatesChangeRef.current?.(spriteStatesRef.current, clonesRef.current, backdropNameRef.current, id)
   }
+
+  const activePaneSurface = forceCompact
+    ? SCRATCH_WATCH_PANEL_TABS_SURFACE
+    : SCRATCH_PANEL_TABS_SURFACE
 
   function handleActivePaneChange(id) {
     setActivePane(id)
-    saveLayoutTab(SCRATCH_PANEL_TABS_SURFACE, id)
+    saveLayoutTab(activePaneSurface, id)
   }
 
   const [status, setStatus] = useState('loading')
@@ -896,9 +915,7 @@ export default function ScratchWorkspace({
   // for the separate, measurement-driven Blocks/Stage tab switcher used at narrow sizes.
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [compact, setCompact] = useState(forceCompact)
-  const [activePane, setActivePane] = useState(
-    () => loadLayoutTab(SCRATCH_PANEL_TABS_SURFACE) || 'blocks'
-  )
+  const [activePane, setActivePane] = useState(() => loadLayoutTab(activePaneSurface) || 'blocks')
   const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
@@ -1236,7 +1253,12 @@ export default function ScratchWorkspace({
   function commitSpriteStates(nextStates) {
     spriteStatesRef.current = nextStates
     setSpriteStates(nextStates)
-    onSpriteStatesChangeRef.current?.(nextStates, clonesRef.current, backdropNameRef.current)
+    onSpriteStatesChangeRef.current?.(
+      nextStates,
+      clonesRef.current,
+      backdropNameRef.current,
+      selectedSpriteId
+    )
   }
 
   function updateSpriteStateOverride(id, updates) {
@@ -2667,6 +2689,7 @@ export default function ScratchWorkspace({
       type="button"
       style={{
         ...s.spriteTileCompact,
+        position: 'relative',
         ...('__stage__' === selectedSpriteId ? s.spriteTileCompactActive : {}),
       }}
       onClick={() => setSelectedSpriteId('__stage__')}
@@ -2688,6 +2711,9 @@ export default function ScratchWorkspace({
         </svg>
       </div>
       <span style={s.spriteTileCompactName}>Stage</span>
+      {remoteSelectedSpriteId === '__stage__' && (
+        <span style={s.spriteTileLiveDot} title="Student is viewing this" />
+      )}
     </button>
   ) : null
 
@@ -2812,6 +2838,7 @@ export default function ScratchWorkspace({
             type="button"
             style={{
               ...s.spriteTileCompact,
+              position: 'relative',
               ...(sp.id === selectedSpriteId ? s.spriteTileCompactActive : {}),
             }}
             onClick={() => setSelectedSpriteId(sp.id)}
@@ -2827,6 +2854,9 @@ export default function ScratchWorkspace({
               />
             </div>
             <span style={s.spriteTileCompactName}>{sp.name}</span>
+            {sp.id === remoteSelectedSpriteId && (
+              <span style={s.spriteTileLiveDot} title="Student is viewing this" />
+            )}
           </button>
         ))}
       </div>
@@ -2890,8 +2920,14 @@ export default function ScratchWorkspace({
         </div>
       )}
 
-      {/* Sprite panel above editor when stage is hidden and no external selector */}
-      {hideStage && !onSpriteSelect && spritePanelCompact}
+      {/* Sprite panel above editor when stage is hidden and no external selector — also
+          shown in the always-compact "watch one student" view (forceCompact), which has
+          nowhere else to put sprite selection: it doesn't set hideStage or pass its own
+          spritePanelTarget/onSpriteSelect, so without this a multi-sprite task left the
+          teacher with no way to see or change which sprite's blocks they were looking at. */}
+      {(hideStage || (forceCompact && (selectableSprites.length > 1 || task?.enableStageCode))) &&
+        !onSpriteSelect &&
+        spritePanelCompact}
       {spritePanelTarget && createPortal(spritePanelFull, spritePanelTarget)}
 
       {/* Blocks/Stage tab switcher — compact layouts only. Both panes below stay mounted
@@ -3605,6 +3641,17 @@ const s = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  spriteTileLiveDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 9,
+    height: 9,
+    borderRadius: '50%',
+    background: '#22c55e',
+    border: '2px solid #fff',
+    boxShadow: '0 0 0 1px rgba(34,197,94,0.5)',
   },
   spritePropBarCompact: {
     display: 'flex',
