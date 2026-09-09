@@ -167,6 +167,27 @@ describe('TeacherReportModal', () => {
     })
   })
 
+  it('renders a per-task teacher rating in the task summary table', () => {
+    const reportWithTaskRating = {
+      ...report,
+      taskSummary: [
+        {
+          ...report.taskSummary[0],
+          teacherRating: {
+            rating: 3,
+            whatWorkedWell: 'Students got it quickly',
+            whatDidntWork: 'Instructions were unclear',
+            submittedAt: 1300,
+          },
+        },
+      ],
+    }
+    render(<TeacherReportModal report={reportWithTaskRating} onClose={vi.fn()} />)
+    expect(screen.getByLabelText('Rated 3 out of 5 stars')).toBeInTheDocument()
+    expect(screen.getByText(/Students got it quickly/)).toBeInTheDocument()
+    expect(screen.getByText(/Instructions were unclear/)).toBeInTheDocument()
+  })
+
   it('does not show the editable form once the report already has feedback', () => {
     const onSaveFeedback = vi.fn()
     const reportWithFeedback = {

@@ -727,6 +727,44 @@ describe('useSession', () => {
     })
   })
 
+  describe('setTaskRating', () => {
+    it('writes a task rating record', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 1 })
+
+      await act(async () => {
+        await result.current.setTaskRating(1, {
+          rating: 4,
+          whatWorkedWell: 'Good pacing',
+          whatDidntWork: 'Check was flaky',
+        })
+      })
+
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/taskRatingLog/1' },
+        {
+          taskId: 1,
+          rating: 4,
+          whatWorkedWell: 'Good pacing',
+          whatDidntWork: 'Check was flaky',
+          submittedAt: { '.sv': 'timestamp' },
+        }
+      )
+    })
+
+    it('removes the record instead of writing an all-blank rating', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 1 })
+
+      await act(async () => {
+        await result.current.setTaskRating(1, { rating: null, whatWorkedWell: '', whatDidntWork: '' })
+      })
+
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'sessions/lesson-1/taskRatingLog/1' })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+  })
+
   describe('writeStudentCode', () => {
     it('writes code to the student currentCode path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

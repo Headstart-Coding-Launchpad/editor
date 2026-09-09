@@ -611,6 +611,40 @@ describe('buildSessionReport', () => {
     })
   })
 
+  it('folds a live per-task teacher rating into that task\'s summary', () => {
+    const withTaskRating = {
+      ...session,
+      taskRatingLog: {
+        1: {
+          taskId: 1,
+          rating: 4,
+          whatWorkedWell: 'Good pacing',
+          whatDidntWork: 'Check was flaky',
+          submittedAt: 1300,
+        },
+      },
+    }
+    const report = buildSessionReport({ session: withTaskRating, lesson })
+
+    expect(taskById(report.taskSummary, 1).teacherRating).toEqual({
+      rating: 4,
+      whatWorkedWell: 'Good pacing',
+      whatDidntWork: 'Check was flaky',
+      submittedAt: 1300,
+    })
+    expect(taskById(report.taskSummary, 3)).not.toHaveProperty('teacherRating')
+  })
+
+  it('omits teacherRating for a task rating log entry left entirely blank', () => {
+    const withBlankRating = {
+      ...session,
+      taskRatingLog: { 1: { taskId: 1, rating: null, whatWorkedWell: '', whatDidntWork: '' } },
+    }
+    const report = buildSessionReport({ session: withBlankRating, lesson })
+
+    expect(taskById(report.taskSummary, 1)).not.toHaveProperty('teacherRating')
+  })
+
   it('does not include student names or anonymous IDs', () => {
     const report = buildSessionReport({ session, lesson })
     expect(report.students).toEqual([
