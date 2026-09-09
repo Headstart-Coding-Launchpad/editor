@@ -41,6 +41,7 @@ export default function StudentGrid({
   onDeclineShare,
   onRequestShareSnapshot,
   onRequestFullscreenAll,
+  onRequestFullscreenStudent,
   collapsed,
   onToggle,
 }) {
@@ -299,6 +300,7 @@ export default function StudentGrid({
           onApproveShare={onApproveShare}
           onDeclineShare={onDeclineShare}
           onRequestShareSnapshot={onRequestShareSnapshot}
+          onRequestFullscreen={onRequestFullscreenStudent}
         />
       )}
     </div>

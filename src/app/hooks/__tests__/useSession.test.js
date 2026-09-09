@@ -403,6 +403,19 @@ describe('useSession', () => {
     })
   })
 
+  describe('requestFullscreenForStudent', () => {
+    it('writes a fullscreenRequestedAt timestamp under just that student, not the whole session', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestFullscreenForStudent('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { fullscreenRequestedAt: expect.any(Number) }
+      )
+    })
+  })
+
   describe('setTeacherLive', () => {
     it('encodes dotted file keys before writing, so HTML lessons do not break Realtime Database key rules', async () => {
       const { result } = renderHook(() => useSession('html-1-1'))

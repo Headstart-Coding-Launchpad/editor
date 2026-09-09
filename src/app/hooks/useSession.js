@@ -389,6 +389,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}`), { fullscreenRequestedAt: Date.now() })
   }
 
+  // Same one-click-prompt mechanism as requestFullscreenForAll, targeted at a single
+  // student — the per-student mirror of the class-wide broadcast above.
+  async function requestFullscreenForStudent(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      fullscreenRequestedAt: Date.now(),
+    })
+  }
+
   async function setExplainerShowComplete(showComplete) {
     await update(ref(db, `sessions/${lessonId}`), { explainerShowComplete: !!showComplete })
   }
@@ -1004,6 +1012,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearLessonOverride,
     setPaused,
     requestFullscreenForAll,
+    requestFullscreenForStudent,
     setExplainerShowComplete,
     setActiveStudentView,
     setTeacherLive,

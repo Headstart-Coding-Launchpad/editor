@@ -73,11 +73,13 @@ export default function StudentModal({
   onApproveShare,
   onDeclineShare,
   onRequestShareSnapshot,
+  onRequestFullscreen,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
+  const [fullscreenRequested, setFullscreenRequested] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -313,6 +315,12 @@ export default function StudentModal({
 
   function handleDismissHighlight(highlightId) {
     onRemoveHighlight?.(student.anonymousId, highlightId)
+  }
+
+  function handleRequestFullscreen() {
+    onRequestFullscreen?.(student.anonymousId)
+    setFullscreenRequested(true)
+    setTimeout(() => setFullscreenRequested(false), 2000)
   }
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
@@ -654,7 +662,16 @@ export default function StudentModal({
                   !isQuiz &&
                   student.shareRequestedAt == null &&
                   student.shareSnapshotRequestedAt == null
-                if (!hasEdit && !hasTopic && !hasMessage && !hasVideoCall && !hasShare) return null
+                const hasFullscreen = !!onRequestFullscreen
+                if (
+                  !hasEdit &&
+                  !hasTopic &&
+                  !hasMessage &&
+                  !hasVideoCall &&
+                  !hasShare &&
+                  !hasFullscreen
+                )
+                  return null
                 return (
                   <DropdownMenu label="More" buttonClassName="btn-ghost">
                     {(close) => (
@@ -712,6 +729,18 @@ export default function StudentModal({
                             }}
                           >
                             📤 Share this with the class
+                          </button>
+                        )}
+                        {hasFullscreen && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              handleRequestFullscreen()
+                            }}
+                            title="Each student must click a prompt to accept — this can't force it"
+                          >
+                            {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
                           </button>
                         )}
                       </>

@@ -258,7 +258,14 @@ export default function StudentView({
   const otherTabOpen =
     useCrossTabPresence(lessonId, teacherPresentation ? null : identity?.anonymousId) &&
     !otherTabDismissed
-  const fullscreenRequestedAt = session?.fullscreenRequestedAt ?? null
+  // Whichever request is more recent wins — a class-wide "Fullscreen All" and a
+  // per-student ask (see requestFullscreenForStudent) share the same one-click
+  // prompt, just at different broadcast scopes.
+  const fullscreenRequestedAt =
+    Math.max(
+      session?.fullscreenRequestedAt ?? 0,
+      session?.students?.[identity?.anonymousId]?.fullscreenRequestedAt ?? 0
+    ) || null
   const fullscreenPromptVisible =
     !teacherPresentation &&
     !!fullscreenRequestedAt &&
