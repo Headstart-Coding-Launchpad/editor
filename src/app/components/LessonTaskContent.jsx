@@ -13,6 +13,10 @@ import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControl
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
 import { getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
+import {
+  TEACHER_LIVE_REFERENCE_TYPES,
+  teacherLiveReferenceDisplayState,
+} from '../studentLiveDisplay'
 import { useElementSize } from '../../shared/useElementSize'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
@@ -20,6 +24,18 @@ import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scra
 function blockClipboardEvent(event) {
   event.preventDefault()
   event.stopPropagation()
+}
+
+// Adapts Presentation View's independent live-reference broadcast
+// (sessions/{lessonId}/teacherLiveReference — separate from teacherLive, which drives
+// the all-or-nothing "Go Live" force takeover) into the {label, code|files|fs} shape
+// SupportStagePanel's stageToText expects per lesson type.
+function teacherLiveReferenceStageFrom(teacherLive, lessonType) {
+  const displayState = teacherLiveReferenceDisplayState(teacherLive, lessonType)
+  if (displayState == null) return null
+  if (lessonType === 'html') return { label: "Teacher's live code", files: displayState.files }
+  const shapeKey = lessonType === 'filesystem' ? 'fs' : 'code'
+  return { label: "Teacher's live code", [shapeKey]: displayState }
 }
 
 const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
@@ -92,6 +108,7 @@ export default function LessonTaskContent({
   teacherLiveActiveFile,
   teacherLiveWorkspace,
   teacherLiveArcadeDesign,
+  teacherLiveReferencePayload,
   canOfferNextStage,
   canOfferCompletePreview,
   canOfferCompleteSolution,
@@ -245,6 +262,23 @@ export default function LessonTaskContent({
       ? (getRevealableStages(task).find(({ index }) => index === cs.activeSupportStageIndex) ??
         null)
       : null
+  const supportsTeacherLiveReference = TEACHER_LIVE_REFERENCE_TYPES.includes(
+    lessonMod?.type ?? lesson.type
+  )
+  const teacherLiveReferenceStage =
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isViewingExplainerSlide &&
+    !isViewingCompletionScreen &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    supportsTeacherLiveReference &&
+    cs.teacherLiveReferenceActive
+      ? teacherLiveReferenceStageFrom(teacherLiveReferencePayload, lesson.type)
+      : null
   const authoredCompleteStage = getCompleteStage(task)?.stage
   const completeReferenceStage =
     !isSandbox &&
@@ -282,7 +316,10 @@ export default function LessonTaskContent({
       ? (task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null)
       : null
   const displayedReferenceStage =
-    completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage
+    completeReferenceStage ??
+    targetedReferenceStage ??
+    teacherLiveReferenceStage ??
+    activeSupportStage
   const targetedOfferStage = cs.targetedStageOffer
     ? (task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null)
     : null
@@ -408,21 +445,32 @@ export default function LessonTaskContent({
       {displayedReferenceStage &&
         (() => {
           const reveal =
-            completeReferenceStage || targetedReferenceStage
+            completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage
               ? null
               : cs.supportStageReveals?.[activeSupportStage?.index]
           const sourceLabel = completeReferenceStage
             ? 'Complete reference'
             : targetedReferenceStage
               ? 'Shown for your feedback'
-              : reveal?.source === 'teacher'
-                ? 'Opened by your teacher'
-                : 'Shown after a failed attempt'
+              : teacherLiveReferenceStage
+                ? "Live from your teacher's screen"
+                : reveal?.source === 'teacher'
+                  ? 'Opened by your teacher'
+                  : 'Shown after a failed attempt'
           return (
             <SupportStagePanel
-              stage={completeReferenceStage ?? targetedReferenceStage ?? activeSupportStage.stage}
+              stage={
+                completeReferenceStage ??
+                targetedReferenceStage ??
+                teacherLiveReferenceStage ??
+                activeSupportStage.stage
+              }
               lessonType={lesson.type}
-              revealed={completeReferenceStage || targetedReferenceStage ? true : !!reveal}
+              revealed={
+                completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage
+                  ? true
+                  : !!reveal
+              }
               sourceLabel={sourceLabel}
             />
           )

@@ -18,6 +18,8 @@ function useHarness({
   code,
   scratchCode,
   updateTeacherLive,
+  teacherPresentation = true,
+  setTeacherLiveReference,
 }) {
   const identityRef = useRef(null)
   const sessionRef = useRef(initialSession)
@@ -38,7 +40,7 @@ function useHarness({
   sessionRef.current = session
 
   const publish = useTeacherLivePublish({
-    teacherPresentation: true,
+    teacherPresentation,
     identityRef,
     sessionRef,
     lessonRef,
@@ -67,6 +69,7 @@ function useHarness({
     checkSuggestion: null,
     fsState: null,
     updateTeacherLive,
+    setTeacherLiveReference,
   })
 
   return { ...publish, setSession, scratchCodeRef, codeRef }
@@ -119,5 +122,71 @@ describe('useTeacherLivePublish — Scratch code source', () => {
 
     const lastPayload = updateTeacherLive.mock.calls.at(-1)[0]
     expect(lastPayload.code).toBe('print("hi")')
+  })
+})
+
+describe('useTeacherLivePublish — soft support-reference channel', () => {
+  it('publishes to setTeacherLiveReference while Presentation is open, independent of teacherLive', () => {
+    const setTeacherLiveReference = vi.fn()
+    const lesson = { type: 'python', tasks: [{ id: 1 }] }
+
+    renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: null }, // Go Live is off
+        lesson,
+        currentTaskId: 1,
+        code: 'print("hi")',
+        scratchCode: '',
+        updateTeacherLive: vi.fn(),
+        setTeacherLiveReference,
+      })
+    )
+
+    expect(setTeacherLiveReference).toHaveBeenCalled()
+    const lastPayload = setTeacherLiveReference.mock.calls.at(-1)[0]
+    expect(lastPayload.code).toBe('print("hi")')
+    expect(lastPayload.taskId).toBe(1)
+  })
+
+  it('does not publish when Presentation View is not open', () => {
+    const setTeacherLiveReference = vi.fn()
+    const lesson = { type: 'python', tasks: [{ id: 1 }] }
+
+    renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: null },
+        lesson,
+        currentTaskId: 1,
+        code: 'print("hi")',
+        scratchCode: '',
+        updateTeacherLive: vi.fn(),
+        teacherPresentation: false,
+        setTeacherLiveReference,
+      })
+    )
+
+    expect(setTeacherLiveReference).not.toHaveBeenCalled()
+  })
+
+  it('clears the reference channel when Presentation View unmounts', () => {
+    const setTeacherLiveReference = vi.fn()
+    const lesson = { type: 'python', tasks: [{ id: 1 }] }
+
+    const { unmount } = renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: null },
+        lesson,
+        currentTaskId: 1,
+        code: 'print("hi")',
+        scratchCode: '',
+        updateTeacherLive: vi.fn(),
+        setTeacherLiveReference,
+      })
+    )
+
+    setTeacherLiveReference.mockClear()
+    unmount()
+
+    expect(setTeacherLiveReference).toHaveBeenCalledWith(null)
   })
 })

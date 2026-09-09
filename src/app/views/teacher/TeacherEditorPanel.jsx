@@ -3,6 +3,10 @@ import InformationTask from '../../components/InformationTask'
 import QuizTask from '../../components/QuizTask'
 import TeacherCodeTabs from '../../components/TeacherCodeTabs'
 import { getLessonModule } from '../../../modules/registry'
+import {
+  TEACHER_LIVE_REFERENCE_TYPES,
+  teacherLiveReferenceDisplayState,
+} from '../../studentLiveDisplay'
 
 export default function TeacherEditorPanel({
   lesson,
@@ -19,6 +23,9 @@ export default function TeacherEditorPanel({
   liveState,
   onChange,
   onActivity,
+  teacherLiveReference,
+  teacherLiveReferenceVisibleToAll,
+  onToggleLiveReference,
 }) {
   const mod = getLessonModule(lesson?.type)
   const usesUnifiedStages = mod?.type === 'python' || mod?.type === 'html'
@@ -28,7 +35,17 @@ export default function TeacherEditorPanel({
     return <QuizTask task={task} showQuestion disabled />
   if (!mod?.TeacherLiveView) return null
 
-  const displayState = mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
+  // Presentation View's live-reference broadcast, shown read-only via the "Live" tab —
+  // only offered while it's actually broadcasting this task (see useTeacherLivePublish.js).
+  const liveReferenceAvailable =
+    TEACHER_LIVE_REFERENCE_TYPES.includes(mod.type) &&
+    !!teacherLiveReference?.active &&
+    teacherLiveReference?.taskId === task?.id
+  const isLiveTab = !isInSandbox && teacherCodeTab === 'live'
+  const displayState = isLiveTab
+    ? (teacherLiveReferenceDisplayState(teacherLiveReference, mod.type) ??
+      mod.getDisplayState(task, activeTeacherStage, liveState, 'starter'))
+    : mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
   const readOnly = !isInSandbox
   const LiveView = mod.TeacherLiveView
   const showCompleteTab =
@@ -60,6 +77,10 @@ export default function TeacherEditorPanel({
           starterLabel={mod.stageLabels?.starterLabel}
           completeLabel={mod.stageLabels?.completeLabel}
           unifiedStages={usesUnifiedStages}
+          showLiveTab={liveReferenceAvailable}
+          onLive={() => setTeacherCodeTab('live')}
+          liveReferenceVisibleToAll={!!teacherLiveReferenceVisibleToAll}
+          onToggleLiveReference={onToggleLiveReference}
         />
       )}
       <LiveView

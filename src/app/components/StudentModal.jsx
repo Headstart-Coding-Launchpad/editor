@@ -20,6 +20,7 @@ import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getLessonModule } from '../../modules/registry'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
@@ -68,6 +69,7 @@ export default function StudentModal({
   onAddHighlight,
   onRemoveHighlight,
   onRevealSupportStage,
+  onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onReadPendingShare,
   onApproveShare,
@@ -424,6 +426,11 @@ export default function StudentModal({
     !isInformation && !isQuiz && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
 
+  const supportsTeacherLiveReference = TEACHER_LIVE_REFERENCE_TYPES.includes(taskLesson?.type)
+  const teacherLiveReferenceVisible = !!student.teacherLiveReferenceVisible
+  const teacherLiveReferenceMatchesTask =
+    !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
+
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') handleClose()
@@ -505,10 +512,39 @@ export default function StudentModal({
             </div>
 
             {/* Stage reference reveal dropdown */}
-            {onRevealSupportStage && revealableStages.length > 0 && (
+            {((onRevealSupportStage && revealableStages.length > 0) ||
+              (onSetTeacherLiveReference &&
+                !isInformation &&
+                !isQuiz &&
+                supportsTeacherLiveReference)) && (
               <DropdownMenu label="Reveal" buttonClassName="btn-ghost">
                 {(close) => (
                   <>
+                    {onSetTeacherLiveReference &&
+                      !isInformation &&
+                      !isQuiz &&
+                      supportsTeacherLiveReference && (
+                        <button
+                          style={sTo.toolBtn}
+                          disabled={!teacherLiveReferenceMatchesTask}
+                          title={
+                            teacherLiveReferenceMatchesTask
+                              ? undefined
+                              : "Will work once you're presenting this task in Presentation View"
+                          }
+                          onClick={() => {
+                            close()
+                            onSetTeacherLiveReference(
+                              student.anonymousId,
+                              !teacherLiveReferenceVisible
+                            )
+                          }}
+                        >
+                          {teacherLiveReferenceVisible
+                            ? '✓ Live ref: your live code (on)'
+                            : "Show your live code"}
+                        </button>
+                      )}
                     {revealableStages.map(({ stage, index }) => {
                       const alreadyRevealed = !!revealedSupportStages[index]
                       return (

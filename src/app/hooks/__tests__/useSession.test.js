@@ -470,6 +470,47 @@ describe('useSession', () => {
     })
   })
 
+  describe('setTeacherLiveReference', () => {
+    it('writes to a separate teacherLiveReference node, encoding dotted file keys', async () => {
+      const { result } = renderHook(() => useSession('html-1-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReference({
+          taskId: 1,
+          files: { 'index.html': '<main />' },
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/html-1-1/teacherLiveReference' },
+        expect.objectContaining({
+          active: true,
+          taskId: 1,
+          files: { index__dot__html: '<main />' },
+        })
+      )
+    })
+
+    it('registers an onDisconnect cleanup so it never outlives the Presentation window', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReference({ taskId: 1, code: 'print("hi")' })
+      })
+      expect(firebaseMocks.onDisconnect).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/teacherLiveReference',
+      })
+    })
+
+    it('clears the teacherLiveReference node when called with null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReference(null)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLiveReference' },
+        null
+      )
+    })
+  })
+
   describe('updateTeacherLive', () => {
     it('encodes dotted file keys before writing via update', async () => {
       const { result } = renderHook(() => useSession('html-2-1'))
@@ -1328,6 +1369,54 @@ describe('useSession', () => {
         )
         expect(updateCall[1]).toMatchObject({ currentTaskId: 2 })
       })
+    })
+  })
+
+  describe('setTeacherLiveReferenceForStudent', () => {
+    it('writes true to the student teacherLiveReferenceVisible path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', true)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        true
+      )
+    })
+
+    it('writes null (not false) when turned off', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', false)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        null
+      )
+    })
+  })
+
+  describe('setTeacherLiveReferenceForClass', () => {
+    it('writes true to the session teacherLiveReferenceVisibleToAll path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForClass(true)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
+        true
+      )
+    })
+
+    it('writes null (not false) when turned off', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForClass(false)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
+        null
+      )
     })
   })
 })

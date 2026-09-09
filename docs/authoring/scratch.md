@@ -157,6 +157,15 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
   `math_number` / `NUM`.
 - Join two stack blocks with `next: { block: ... }`. For a nested value or
   statement input, use `inputs.INPUT_NAME.block` instead.
+- **A workspace state is stored as a JSON string, not a nested object.**
+  `starterBlocks`, `completeBlocks`, and `codeStages[].blocks` each take the
+  serialised text of the shape below, not the shape itself. Firestore rejects a
+  document nested deeper than 20 levels, and `next: { block: ... }` costs two
+  levels per joined block — a connected chain of four or more blocks breaks the
+  cap on its own, and the upsert fails with "Input object is deeper than 20
+  levels or contains a cycle." Serialising collapses the whole workspace to a
+  single value, so chain length stops mattering. A toolbox stack
+  (`prebuiltStacks[].stack`) is one shallow block and stays a real object.
 
 ### A filled toolbox stack
 
@@ -226,8 +235,10 @@ the key `__stage__`.
 }
 ```
 
-Use that same object as `starterBlocks`, `completeBlocks`, or a stage's
-`blocks` value. For example, this support stage supplies a connected
+Serialise that object to a JSON string and use the string as `starterBlocks`,
+`completeBlocks`, or a stage’s `blocks` value. The JSON examples in this
+section show the object shape for readability; what is authored into the lesson
+is its `JSON.stringify` form. For example, this support stage supplies a connected
 green-flag-and-say stack for `sprite1`; a `solution` stage uses the identical
 shape and differs only in `role`.
 

@@ -94,4 +94,46 @@ describe('TeacherCodeTabs', () => {
     expect(onSendToAll).not.toHaveBeenCalled()
     vi.restoreAllMocks()
   })
+
+  it('does not render the Live tab unless showLiveTab is set', () => {
+    renderTabs()
+    expect(screen.queryByRole('tab', { name: 'Live' })).not.toBeInTheDocument()
+  })
+
+  it('renders the Live tab and delegates onLive', () => {
+    const props = renderTabs({ showLiveTab: true, onLive: vi.fn() })
+    const liveTab = screen.getByRole('tab', { name: 'Live' })
+    fireEvent.click(liveTab)
+    expect(props.onLive).toHaveBeenCalledOnce()
+  })
+
+  it('shows the class-broadcast toggle instead of send-to-all while on the Live tab', () => {
+    const onToggleLiveReference = vi.fn()
+    const onSendToAll = vi.fn()
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: true,
+      onSendToAll,
+      onToggleLiveReference,
+    })
+    expect(screen.queryByRole('button', { name: 'Send to all' })).not.toBeInTheDocument()
+    const toggleBtn = screen.getByRole('button', { name: 'Show live code to class' })
+    fireEvent.click(toggleBtn)
+    expect(onToggleLiveReference).toHaveBeenCalledWith(true)
+    expect(onSendToAll).not.toHaveBeenCalled()
+  })
+
+  it('toggles the class broadcast off when already visible to the class', () => {
+    const onToggleLiveReference = vi.fn()
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: true,
+      liveReferenceVisibleToAll: true,
+      onToggleLiveReference,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Live ref: class on' }))
+    expect(onToggleLiveReference).toHaveBeenCalledWith(false)
+  })
 })

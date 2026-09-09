@@ -100,6 +100,7 @@ export default function StudentView({
     setTaskId,
     setTeacherLive,
     updateTeacherLive,
+    setTeacherLiveReference,
     removeStudent,
     requestHelp,
     requestWorkspaceShare,
@@ -218,6 +219,7 @@ export default function StudentView({
     removeStudent,
     updateTeacherLive,
     setTeacherLive,
+    setTeacherLiveReference,
     removeTeacherHighlight,
   })
 
@@ -1358,6 +1360,7 @@ export default function StudentView({
             teacherLiveActiveFile={teacherLiveActiveFile}
             teacherLiveWorkspace={teacherLiveWorkspace}
             teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+            teacherLiveReferencePayload={session?.teacherLiveReference}
             canOfferNextStage={canOfferNextStage}
             canOfferCompletePreview={canOfferCompletePreview}
             canOfferCompleteSolution={canOfferCompleteSolution}

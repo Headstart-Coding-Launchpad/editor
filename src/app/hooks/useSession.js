@@ -433,6 +433,25 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  // Presentation View's code as a soft, dismissible support reference — a
+  // separate node from teacherLive, published continuously while Presentation
+  // is open regardless of whether the "Go Live" force takeover (teacherLive)
+  // is toggled on. See docs/agents/classroom-behaviours.md.
+  async function setTeacherLiveReference(payload) {
+    const r2 = ref(db, `sessions/${lessonId}/teacherLiveReference`)
+    if (!payload) {
+      await set(r2, null)
+      return
+    }
+    await set(r2, {
+      active: true,
+      updatedAt: Date.now(),
+      ...payload,
+      ...(payload.files != null ? { files: encodeFileKeys(payload.files) } : {}),
+    })
+    onDisconnect(r2).set(null)
+  }
+
   async function renameStudent(anonymousId, newName) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/displayName`), newName)
   }
@@ -950,6 +969,22 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  // Visibility flags for showing Presentation View's live broadcast as a
+  // support reference (see docs/agents/classroom-behaviours.md). These are
+  // toggles, not one-shot commands — the actual content always comes live
+  // from session.teacherLive; the flag just decides whether a student is
+  // allowed to see it.
+  async function setTeacherLiveReferenceForStudent(anonymousId, visible) {
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveReferenceVisible`),
+      visible || null
+    )
+  }
+
+  async function setTeacherLiveReferenceForClass(visible) {
+    await set(ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`), visible || null)
+  }
+
   async function requestHelp(anonymousId) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/needsHelp`), true)
   }
@@ -1021,6 +1056,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setActiveStudentView,
     setTeacherLive,
     updateTeacherLive,
+    setTeacherLiveReference,
     renameStudent,
     removeStudent,
     pushResetToStudent,
@@ -1072,6 +1108,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordStudentCarryFallback,
     recordSupportStageReveal,
     writeStudentPersonalSandbox,
+    setTeacherLiveReferenceForStudent,
+    setTeacherLiveReferenceForClass,
     writeStudentPresence,
     requestHelp,
     setStudentTopic,

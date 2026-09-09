@@ -44,6 +44,7 @@ export function useTeacherLivePublish({
   iframeStorageAssets = null,
   // Callbacks
   updateTeacherLive,
+  setTeacherLiveReference,
 }) {
   const [teacherLiveIframeSrc, setTeacherLiveIframeSrc] = useState(null)
   const [htmlPreviewCollapsed, setHtmlPreviewCollapsed] = useState(true)
@@ -168,6 +169,28 @@ export function useTeacherLivePublish({
     checkSuggestion,
     fsState,
   ])
+
+  // Publish the soft support-reference channel whenever Presentation View is open,
+  // independent of whether the "Go Live" force takeover (teacherLive) is toggled on —
+  // see setTeacherLiveReference in useSession.js.
+  useEffect(() => {
+    if (!teacherPresentation || !setTeacherLiveReference) return
+    setTeacherLiveReference(currentTeacherLivePayload())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherPresentation, currentTaskId, code, JSON.stringify(files), fsState])
+
+  // Clear it the moment Presentation View closes, so it never outlives the window.
+  // setTeacherLiveReference is deliberately excluded from the deps below — like every
+  // other useSession callback in this file, it's a new function identity on every
+  // render (useSession's functions aren't memoized, and its owner re-renders on any
+  // realtime session change). Depending on it here would re-fire this cleanup on
+  // every unrelated session update, wiping teacherLiveReference to null far more often
+  // than Presentation View actually closes.
+  useEffect(() => {
+    if (!teacherPresentation || !setTeacherLiveReference) return
+    return () => setTeacherLiveReference(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherPresentation])
 
   return {
     teacherLiveIframeSrc,

@@ -414,6 +414,97 @@ describe('StudentView', () => {
     expect(mocks.buildIframeSrc).toHaveBeenCalled()
   })
 
+  describe('teacher-live-code support reference', () => {
+    function mkSession(sessionOverrides = {}) {
+      mocks.useSession.mockReturnValue({
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': {} },
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        recordSupportStageReveal: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      })
+    }
+
+    it('shows the reference when this student is targeted and the broadcast matches the task', async () => {
+      mkSession({
+        students: { 'student-1': { teacherLiveReferenceVisible: true } },
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("live")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      expect(
+        await screen.findByLabelText("Teacher's live code stage reference")
+      ).toHaveTextContent('print("live")')
+    })
+
+    it('shows the reference to everyone when the whole-class flag is on', async () => {
+      mkSession({
+        teacherLiveReferenceVisibleToAll: true,
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("all")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      expect(
+        await screen.findByLabelText("Teacher's live code stage reference")
+      ).toHaveTextContent('print("all")')
+    })
+
+    it('does not show a reference for a different task than the one being presented', async () => {
+      mkSession({
+        students: { 'student-1': { teacherLiveReferenceVisible: true } },
+        teacherLiveReference: { active: true, taskId: 2, code: 'print("other task")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+    })
+
+    it('does not show a reference when neither the per-student nor whole-class flag is set', async () => {
+      mkSession({
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("unrequested")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+    })
+
+    it('is suppressed by a concurrent full "Go Live" force takeover (teacherLive is a separate node)', async () => {
+      mkSession({
+        students: { 'student-1': { teacherLiveReferenceVisible: true } },
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("reference")' },
+        teacherLive: { active: true, source: 'teacher', taskId: 1, code: 'print("forced")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("forced")'))
+      expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+    })
+  })
+
   describe('teacher pane highlight/force', () => {
     function mkScratchSession(sessionOverrides = {}) {
       return {

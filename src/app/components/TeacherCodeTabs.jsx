@@ -12,7 +12,12 @@ export default function TeacherCodeTabs({
   starterLabel = 'Starter code',
   completeLabel = 'Complete code',
   unifiedStages = false,
+  showLiveTab = false,
+  onLive,
+  liveReferenceVisibleToAll = false,
+  onToggleLiveReference,
 }) {
+  const isLiveTab = activeTab === 'live'
   return (
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Teacher code workspace">
       {!unifiedStages && (
@@ -54,45 +59,78 @@ export default function TeacherCodeTabs({
           {completeLabel}
         </button>
       )}
-      {hasStudents && onSendToAll && (
+      {showLiveTab && (
+        <button
+          type="button"
+          className={`ui-tab${isLiveTab ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={isLiveTab}
+          onClick={onLive}
+        >
+          Live
+        </button>
+      )}
+      {hasStudents && isLiveTab && onToggleLiveReference ? (
         <div style={tabActions}>
           <button
             type="button"
-            style={sendStageBtn}
-            title="Send this stage's code to all students"
-            onClick={() => {
-              // A non-starter stage (support/complete role) is always safe to "reveal" — a
-              // read-only reference — rather than force-reset every student's saved work to
-              // it, regardless of whether this module type uses the unified tab layout. This
-              // is the same safe path the per-student Reveal action already uses for every
-              // module type (see StudentModal.jsx's onRevealSupportStage).
-              const stage = activeTab.startsWith('stage_')
-                ? stages[parseInt(activeTab.replace('stage_', ''), 10)]
-                : null
-              const isRevealableStage = stage && getStageRole(stage) !== 'starter'
-              const action = isRevealableStage
-                ? `reveal_stage_${activeTab.replace('stage_', '')}`
-                : activeTab === 'complete'
-                  ? 'complete'
-                  : activeTab.startsWith('stage_')
-                    ? activeTab
-                    : 'starter'
-              const verb = isRevealableStage ? 'Reveal' : 'Send'
-              if (
-                window.confirm(
-                  `${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : (stage?.label ?? activeTab)} to all students?`
-                )
-              ) {
-                onSendToAll(action)
-              }
+            style={{
+              ...sendStageBtn,
+              ...(liveReferenceVisibleToAll ? sendStageBtnActive : {}),
             }}
+            title={
+              liveReferenceVisibleToAll
+                ? 'Stop sharing your live code with the class'
+                : 'Show your live code to the whole class as a reference'
+            }
+            onClick={() => onToggleLiveReference(!liveReferenceVisibleToAll)}
           >
-            {activeTab.startsWith('stage_') &&
-            getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter'
-              ? 'Reveal to all'
-              : 'Send to all'}
+            {liveReferenceVisibleToAll ? 'Live ref: class on' : 'Show live code to class'}
           </button>
         </div>
+      ) : (
+        hasStudents &&
+        onSendToAll &&
+        !isLiveTab && (
+          <div style={tabActions}>
+            <button
+              type="button"
+              style={sendStageBtn}
+              title="Send this stage's code to all students"
+              onClick={() => {
+                // A non-starter stage (support/complete role) is always safe to "reveal" — a
+                // read-only reference — rather than force-reset every student's saved work to
+                // it, regardless of whether this module type uses the unified tab layout. This
+                // is the same safe path the per-student Reveal action already uses for every
+                // module type (see StudentModal.jsx's onRevealSupportStage).
+                const stage = activeTab.startsWith('stage_')
+                  ? stages[parseInt(activeTab.replace('stage_', ''), 10)]
+                  : null
+                const isRevealableStage = stage && getStageRole(stage) !== 'starter'
+                const action = isRevealableStage
+                  ? `reveal_stage_${activeTab.replace('stage_', '')}`
+                  : activeTab === 'complete'
+                    ? 'complete'
+                    : activeTab.startsWith('stage_')
+                      ? activeTab
+                      : 'starter'
+                const verb = isRevealableStage ? 'Reveal' : 'Send'
+                if (
+                  window.confirm(
+                    `${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : (stage?.label ?? activeTab)} to all students?`
+                  )
+                ) {
+                  onSendToAll(action)
+                }
+              }}
+            >
+              {activeTab.startsWith('stage_') &&
+              getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter'
+                ? 'Reveal to all'
+                : 'Send to all'}
+            </button>
+          </div>
+        )
       )}
     </div>
   )
@@ -116,4 +154,9 @@ const sendStageBtn = {
   fontFamily: 'var(--font-body)',
   fontWeight: 600,
   whiteSpace: 'nowrap',
+}
+
+const sendStageBtnActive = {
+  background: 'rgba(124,58,237,0.22)',
+  borderColor: 'rgba(124,58,237,0.5)',
 }

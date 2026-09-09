@@ -90,6 +90,111 @@ describe('LessonTaskContent', () => {
   })
 })
 
+describe('LessonTaskContent teacher-live-code support reference', () => {
+  const baseProps = {
+    task: { id: 1, title: 'Say hello' },
+    currentTaskId: 1,
+    isSandbox: false,
+    isViewingPrev: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+  }
+
+  it('renders Presentation View live code as a reference for Python', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        cs={{ inPersonalSandbox: false, teacherLiveReferenceActive: true }}
+        isForcedTeacherLive={false}
+        teacherLiveReferencePayload={{ code: 'print("live")' }}
+      />
+    )
+
+    expect(screen.getByLabelText("Teacher's live code stage reference")).toHaveTextContent(
+      'print("live")'
+    )
+    expect(screen.getByText("Live from your teacher's screen")).toBeInTheDocument()
+  })
+
+  it('converts the teacherLive files map into text for HTML', () => {
+    getLessonModule.mockReturnValue({
+      type: 'html',
+      StudentWorkspace: () => <div>Workspace</div>,
+      getLayoutStyles: () => ({}),
+    })
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'html' }}
+        cs={{ inPersonalSandbox: false, teacherLiveReferenceActive: true }}
+        isForcedTeacherLive={false}
+        teacherLiveReferencePayload={{ files: { 'index.html': '<h1>Hi</h1>' } }}
+      />
+    )
+
+    expect(screen.getByLabelText("Teacher's live code stage reference")).toHaveTextContent(
+      '<h1>Hi</h1>'
+    )
+  })
+
+  it('parses the JSON-encoded teacherLive code into an fs object for Filesystem', () => {
+    getLessonModule.mockReturnValue(FILESYSTEM_MODULE)
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'filesystem' }}
+        cs={{ inPersonalSandbox: false, teacherLiveReferenceActive: true }}
+        isForcedTeacherLive={false}
+        teacherLiveReferencePayload={{ code: JSON.stringify({ 'notes.txt': 'hi' }) }}
+      />
+    )
+
+    expect(screen.getByLabelText("Teacher's live code stage reference")).toHaveTextContent(
+      'notes.txt'
+    )
+  })
+
+  it('does not render when teacherLiveReferenceActive is false', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        cs={{ inPersonalSandbox: false, teacherLiveReferenceActive: false }}
+        isForcedTeacherLive={false}
+        teacherLiveReferencePayload={{ code: 'print("live")' }}
+      />
+    )
+
+    expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+  })
+
+  it('is suppressed during a full Go-Live takeover (isForcedTeacherLive)', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        cs={{ inPersonalSandbox: false, teacherLiveReferenceActive: true }}
+        isForcedTeacherLive={true}
+        teacherLiveReferencePayload={{ code: 'print("live")' }}
+      />
+    )
+
+    expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+  })
+})
+
 describe('LessonTaskContent feedback popup visibility', () => {
   const baseProps = {
     lesson: { type: 'python' },

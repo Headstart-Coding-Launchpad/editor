@@ -96,6 +96,7 @@ export function useStudentCodeState({
   removeStudent,
   updateTeacherLive,
   setTeacherLive,
+  setTeacherLiveReference,
   removeTeacherHighlight,
 }) {
   const [code, setCode] = useState('')
@@ -241,6 +242,39 @@ export function useStudentCodeState({
   }, [currentTaskId, supportStageReveals, supportStageVisibility])
   const offeredSupportStageIndex = supportStageOffers[currentTaskId] ?? null
 
+  // Teacher-live-code support reference: Presentation View's independent
+  // teacherLiveReference broadcast (separate from teacherLive, which drives
+  // the all-or-nothing "Go Live" force takeover) shown as a dismissible
+  // reference. Deriving this reactively — rather than via an explicit
+  // "clear" write — is what makes it auto-clear the instant Presentation
+  // closes or moves to a different task.
+  const teacherLiveReferenceRequested =
+    !!myStudentData?.teacherLiveReferenceVisible || !!session?.teacherLiveReferenceVisibleToAll
+  const teacherLiveReferenceActive =
+    teacherLiveReferenceRequested &&
+    !!session?.teacherLiveReference?.active &&
+    session?.teacherLiveReference?.taskId === currentTaskId
+
+  // Log the first time this becomes visible for this task, matching the
+  // existing "note the reveal happened once" semantics used for authored
+  // stage reveals — recordSupportStageReveal already no-ops on repeats.
+  useEffect(() => {
+    if (!teacherLiveReferenceActive) return
+    if (teacherPresentation || phase !== 'lesson') return
+    if (!effectiveIdentity?.anonymousId) return
+    recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, 'teacherLive', {
+      source: 'teacher',
+      stageLabel: "Teacher's live code",
+    })
+  }, [
+    teacherLiveReferenceActive,
+    teacherPresentation,
+    phase,
+    effectiveIdentity?.anonymousId,
+    currentTaskId,
+    recordSupportStageReveal,
+  ])
+
   const teacherHighlights = useMemo(() => {
     const raw = myStudentData?.teacherHighlights
     if (!raw) return []
@@ -327,6 +361,7 @@ export function useStudentCodeState({
     fsState,
     iframeStorageAssets: htmlIframeStorageAssets,
     updateTeacherLive,
+    setTeacherLiveReference,
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
@@ -2085,6 +2120,7 @@ export function useStudentCodeState({
     supportStageReveals,
     activeSupportStageIndex,
     offeredSupportStageIndex,
+    teacherLiveReferenceActive,
     targetedStageOffer,
     targetedPreviewStageIndex,
     selectedAnswer,

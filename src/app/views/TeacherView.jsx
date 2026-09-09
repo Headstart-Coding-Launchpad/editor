@@ -108,6 +108,8 @@ export default function TeacherView({ lessonId }) {
     pushTeacherHighlight,
     removeTeacherHighlight,
     recordSupportStageReveal,
+    setTeacherLiveReferenceForStudent,
+    setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
     pushClassPaneCommand,
   } = useSession(lessonId)
@@ -277,6 +279,24 @@ export default function TeacherView({ lessonId }) {
   useEffect(() => {
     setTeacherCodeTab('starter')
   }, [currentTaskId, previewTaskId])
+
+  // Fall back off the Live tab if Presentation View's broadcast for the displayed task ends
+  // (window closed, task changed there, etc.) — the tab itself disappears once this happens,
+  // so staying on 'live' would otherwise leave the editor showing a stale/empty snapshot.
+  useEffect(() => {
+    if (teacherCodeTab !== 'live') return
+    const displayedTaskId = previewTaskId ?? currentTaskId
+    const stillLive =
+      session?.teacherLiveReference?.active &&
+      session.teacherLiveReference.taskId === displayedTaskId
+    if (!stillLive) setTeacherCodeTab('starter')
+  }, [
+    teacherCodeTab,
+    previewTaskId,
+    currentTaskId,
+    session?.teacherLiveReference?.active,
+    session?.teacherLiveReference?.taskId,
+  ])
 
   async function handleTaskChange(taskId) {
     const leavingTaskId = session?.currentTaskId ?? currentTaskId
@@ -764,6 +784,9 @@ export default function TeacherView({ lessonId }) {
             liveState={liveState}
             onChange={onChange}
             onActivity={setEditorActivity}
+            teacherLiveReference={session?.teacherLiveReference}
+            teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
+            onToggleLiveReference={setTeacherLiveReferenceForClass}
           />
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
@@ -806,6 +829,7 @@ export default function TeacherView({ lessonId }) {
             onDeclineShare={declineWorkspaceShare}
             onRequestShareSnapshot={requestShareSnapshot}
             onRevealSupportStage={recordSupportStageReveal}
+            onSetTeacherLiveReference={setTeacherLiveReferenceForStudent}
             onTogglePaused={() => setPaused(!session?.isPaused)}
             onRequestFullscreenAll={requestFullscreenForAll}
             onRequestFullscreenStudent={requestFullscreenForStudent}

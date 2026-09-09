@@ -35,6 +35,7 @@ export default function StudentGrid({
   onAddHighlight,
   onRemoveHighlight,
   onRevealSupportStage,
+  onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onReadPendingShare,
   onApproveShare,
@@ -295,6 +296,7 @@ export default function StudentGrid({
           onAddHighlight={onAddHighlight}
           onRemoveHighlight={onRemoveHighlight}
           onRevealSupportStage={onRevealSupportStage}
+          onSetTeacherLiveReference={onSetTeacherLiveReference}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
           onReadPendingShare={onReadPendingShare}
           onApproveShare={onApproveShare}
