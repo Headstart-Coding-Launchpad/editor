@@ -895,6 +895,74 @@ describe('evaluateScratchCheck', () => {
           )
         ).toBe('fail')
       })
+
+      describe('a block not yet inserted between two already-connected required blocks', () => {
+        // Regression: starter content for "insert X between these two" tasks connects
+        // the two surrounding blocks directly to each other — that gap must read as
+        // still-building, not a wrong placement, before the student has touched anything.
+        function makeChain(typeValuePairs) {
+          const blocks = typeValuePairs.map(([type, vals]) => makeBlock(type, vals ?? {}))
+          for (let i = 0; i < blocks.length; i++) {
+            const next = blocks[i + 1] ?? null
+            blocks[i].getNextBlock = () => next
+            if (i > 0) blocks[i].previousConnection = { isConnected: () => true }
+          }
+          return { getAllBlocks: () => blocks }
+        }
+
+        const sequence = [
+          { opcode: 'motion_movesteps', fieldValues: { STEPS: '10' } },
+          'control_wait',
+          { opcode: 'motion_movesteps', fieldValues: { STEPS: '-10' } },
+        ]
+
+        it('returns pending on unmodified starter content — nothing has been placed wrong, the required block just is not there yet', () => {
+          const ws = makeChain([
+            ['event_whenflagclicked', {}],
+            ['motion_movesteps', { STEPS: '10' }],
+            ['motion_movesteps', { STEPS: '-10' }],
+          ])
+          expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence }, ws)).toBe(
+            'pending'
+          )
+        })
+
+        it('returns fail once the required block has been placed before the first move instead of between', () => {
+          const ws = makeChain([
+            ['event_whenflagclicked', {}],
+            ['control_wait', {}],
+            ['motion_movesteps', { STEPS: '10' }],
+            ['motion_movesteps', { STEPS: '-10' }],
+          ])
+          expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence }, ws)).toBe(
+            'fail'
+          )
+        })
+
+        it('returns fail once the required block has been placed after the second move instead of between', () => {
+          const ws = makeChain([
+            ['event_whenflagclicked', {}],
+            ['motion_movesteps', { STEPS: '10' }],
+            ['motion_movesteps', { STEPS: '-10' }],
+            ['control_wait', {}],
+          ])
+          expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence }, ws)).toBe(
+            'fail'
+          )
+        })
+
+        it('returns pass once the required block is correctly inserted between the two', () => {
+          const ws = makeChain([
+            ['event_whenflagclicked', {}],
+            ['motion_movesteps', { STEPS: '10' }],
+            ['control_wait', {}],
+            ['motion_movesteps', { STEPS: '-10' }],
+          ])
+          expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence }, ws)).toBe(
+            'pass'
+          )
+        })
+      })
     })
 
     describe('block_count', () => {

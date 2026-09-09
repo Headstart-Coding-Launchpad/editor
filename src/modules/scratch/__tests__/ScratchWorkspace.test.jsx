@@ -9,7 +9,27 @@ import {
   computeBlockScale,
   computeStageScale,
   cloneSpriteStates,
+  evalSingleCheckPartial,
 } from '../ScratchWorkspace'
+
+// Workspace stub where blocks form named chains, for blocks_in_order checks.
+function makeChainWorkspace(chains) {
+  const allBlocks = []
+  for (const chain of chains) {
+    const cb = chain.map((type) => ({
+      type,
+      getNextBlock: null,
+      previousConnection: { isConnected: () => false },
+    }))
+    for (let i = 0; i < cb.length; i++) {
+      const next = cb[i + 1] ?? null
+      cb[i].getNextBlock = () => next
+      if (i > 0) cb[i].previousConnection = { isConnected: () => true }
+    }
+    allBlocks.push(...cb)
+  }
+  return { getAllBlocks: () => allBlocks }
+}
 
 describe('computeBlockScale', () => {
   it('returns the default (max) scale at/above the wide reference size', () => {
@@ -101,6 +121,56 @@ describe('student-added sprite/backdrop check-invisibility', () => {
   it('handles an empty/missing list', () => {
     expect(filterCheckableSpriteWorkspaces([])).toEqual([])
     expect(filterCheckableSpriteWorkspaces(undefined)).toEqual([])
+  })
+})
+
+describe('evalSingleCheckPartial multi-sprite aggregation (no spriteName)', () => {
+  it('does not fail because one unrelated sprite happens to violate the sequence', () => {
+    // sprite1 is what the check targets and hasn't been touched yet (still 'pending').
+    // sprite2 is unrelated, but starts with the same hat block and then diverges —
+    // that alone must not fail a check that can still be satisfied via sprite1.
+    const check = {
+      type: 'blocks_in_order',
+      sequence: ['event_whenflagclicked', 'motion_movesteps'],
+    }
+    const spriteWorkspaces = [
+      { name: 'sprite1', workspace: makeChainWorkspace([['event_whenflagclicked']]) },
+      {
+        name: 'sprite2',
+        workspace: makeChainWorkspace([['event_whenflagclicked', 'looks_say']]),
+      },
+    ]
+
+    expect(evalSingleCheckPartial(check, spriteWorkspaces)).toBe('pending')
+  })
+
+  it('still fails once every sprite has ruled the check out', () => {
+    const check = {
+      type: 'blocks_in_order',
+      sequence: ['event_whenflagclicked', 'motion_movesteps'],
+    }
+    const spriteWorkspaces = [
+      { name: 'sprite1', workspace: makeChainWorkspace([['event_whenflagclicked', 'looks_say']]) },
+      { name: 'sprite2', workspace: makeChainWorkspace([['event_whenflagclicked', 'looks_say']]) },
+    ]
+
+    expect(evalSingleCheckPartial(check, spriteWorkspaces)).toBe('fail')
+  })
+
+  it('still passes as soon as any sprite satisfies the sequence', () => {
+    const check = {
+      type: 'blocks_in_order',
+      sequence: ['event_whenflagclicked', 'motion_movesteps'],
+    }
+    const spriteWorkspaces = [
+      { name: 'sprite1', workspace: makeChainWorkspace([['event_whenflagclicked', 'looks_say']]) },
+      {
+        name: 'sprite2',
+        workspace: makeChainWorkspace([['event_whenflagclicked', 'motion_movesteps']]),
+      },
+    ]
+
+    expect(evalSingleCheckPartial(check, spriteWorkspaces)).toBe('pass')
   })
 })
 
