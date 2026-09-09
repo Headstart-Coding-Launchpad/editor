@@ -119,6 +119,19 @@ function containsSubsequence(haystack, needle) {
   return false
 }
 
+function chainContainsBlock(chain, opcode, fieldValues) {
+  return chain.some((block) => block.type === opcode && blockMatchesFieldValues(block, fieldValues))
+}
+
+// True if `block` matches some sequence item other than the one at `skipIndex` — i.e. it
+// genuinely belongs to the required sequence, just not at this position.
+function blockMatchesOtherSequenceItem(block, normalized, skipIndex) {
+  return normalized.some(
+    (item, idx) =>
+      idx !== skipIndex && block.type === item.opcode && blockMatchesFieldValues(block, item.fieldValues)
+  )
+}
+
 // Returns 'on_track', 'violation', or 'unrelated' for a chain against a required sequence.
 // Used by partialEvaluateScratchCheck to distinguish "still building" from "placed wrong block".
 function findChainStatus(chain, sequence) {
@@ -128,8 +141,27 @@ function findChainStatus(chain, sequence) {
     if (!blockMatchesFieldValues(chain[i], normalized[0].fieldValues)) continue
     // Found sequence start at index i — verify that subsequent blocks continue correctly.
     for (let j = 1; j < normalized.length && i + j < chain.length; j++) {
-      if (chain[i + j].type !== normalized[j].opcode) return 'violation'
-      if (!blockMatchesFieldValues(chain[i + j], normalized[j].fieldValues)) return 'violation'
+      const block = chain[i + j]
+      if (block.type === normalized[j].opcode && blockMatchesFieldValues(block, normalized[j].fieldValues))
+        continue
+      // The next required block isn't here. That's only a genuine violation once
+      // something is actually wrong — either the block sitting here doesn't belong to
+      // the sequence at all (a foreign block), or the required block has already been
+      // placed somewhere else in the chain (wrongly positioned — e.g. the pause before
+      // the first move, or after the second, that an authored hint like "not before the
+      // first one or after the second" is meant to catch). If the block here legitimately
+      // belongs to the sequence AND the required one hasn't been placed anywhere yet, the
+      // student just hasn't gotten to it — still on track, not a violation. Starter
+      // content commonly begins with exactly this gap, since "insert a block between
+      // these two" starts from the two blocks already connected to each other.
+      const sittingBlockBelongsToSequence = blockMatchesOtherSequenceItem(block, normalized, j)
+      const requiredBlockPlacedElsewhere = chainContainsBlock(
+        chain,
+        normalized[j].opcode,
+        normalized[j].fieldValues
+      )
+      if (!sittingBlockBelongsToSequence || requiredBlockPlacedElsewhere) return 'violation'
+      return 'on_track'
     }
     return 'on_track'
   }
