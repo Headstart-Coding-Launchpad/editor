@@ -36,6 +36,7 @@ const cs = {
   handleEditorActivity: vi.fn(),
   handleInputSubmit: vi.fn(),
   handleInputChange: vi.fn(),
+  publishOutputCollapsed: vi.fn(),
   dismissHighlight: vi.fn(),
   readSavedTaskCode: vi.fn(),
 }
@@ -64,6 +65,28 @@ describe('Python StudentWorkspace onVisiblePanesChange reporting (teacher live-s
 
     fireEvent.click(screen.getByText('Run'))
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'console'])
+  })
+
+  it('publishes the collapse-state change alongside the local toggle, for any live-viewing student to mirror', () => {
+    cs.publishOutputCollapsed.mockClear()
+    render(
+      <StudentWorkspace
+        task={{}}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+
+    fireEvent.click(screen.getByText('Run'))
+    expect(cs.publishOutputCollapsed).toHaveBeenCalledWith(false)
   })
 
   it('never reports "console" for submit-mode tasks, since the output pane never renders', () => {
@@ -116,5 +139,82 @@ describe('Python StudentWorkspace input() live-mirror wiring', () => {
 
     const props = outputPanelSpy.mock.calls.at(-1)[0]
     expect(props.onInputChange).toBe(cs.handleInputChange)
+  })
+})
+
+describe('Python StudentWorkspace forced-live output-collapse lock', () => {
+  it('mirrors displayOutputCollapsed=true (collapsed) while forced-live', () => {
+    const onVisiblePanesChange = vi.fn()
+    render(
+      <StudentWorkspace
+        task={{}}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        displayOutputCollapsed={true}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
+  })
+
+  it('mirrors displayOutputCollapsed=false (expanded) while forced-live', () => {
+    const onVisiblePanesChange = vi.fn()
+    render(
+      <StudentWorkspace
+        task={{}}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        displayOutputCollapsed={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'console'])
+  })
+
+  it('does not let a forced-live viewer expand the collapsed panel themselves (locked, not just seeded)', () => {
+    cs.publishOutputCollapsed.mockClear()
+    const onVisiblePanesChange = vi.fn()
+    render(
+      <StudentWorkspace
+        task={{}}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        displayOutputCollapsed={true}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+
+    // The collapsed rail is still shown (so the viewer knows the panel exists)
+    // but is inert while forced-live — clicking it must not change anything.
+    fireEvent.click(screen.getByTitle('Output (collapsed by the presenter)'))
+
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
+    expect(cs.publishOutputCollapsed).not.toHaveBeenCalled()
   })
 })

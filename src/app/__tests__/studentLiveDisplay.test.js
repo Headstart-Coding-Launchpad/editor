@@ -45,6 +45,7 @@ describe('deriveStudentLiveDisplay', () => {
     activity: { type: 'paste' },
     codeArrangeSlots: { slot1: 'fragment-a' },
     codeArrangeCursor: { tileId: 'fragment-a', x: 0.4, y: 0.6, at: 123 },
+    outputCollapsed: true,
   }
 
   it('shows a teacher broadcast to students in a live lesson', () => {
@@ -77,6 +78,7 @@ describe('deriveStudentLiveDisplay', () => {
       y: 0.6,
       at: 123,
     })
+    expect(display.displayOutputCollapsed).toBe(true)
   })
 
   it('reports no live code_arrange state when not forced-teacher-live', () => {
@@ -93,6 +95,22 @@ describe('deriveStudentLiveDisplay', () => {
     expect(display.isForcedTeacherLive).toBe(false)
     expect(display.displayCodeArrangeSlots).toBeNull()
     expect(display.displayCodeArrangeCursor).toBeNull()
+    expect(display.displayOutputCollapsed).toBeNull()
+  })
+
+  it('defaults displayOutputCollapsed to false (expanded) when forced-live but the source never set it', () => {
+    const display = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: { ...teacherBroadcast, outputCollapsed: undefined },
+      identityId: 'student-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(display.isForcedTeacherLive).toBe(true)
+    expect(display.displayOutputCollapsed).toBe(false)
   })
 
   it('keeps the broadcasting student on their own workspace while classmates watch', () => {

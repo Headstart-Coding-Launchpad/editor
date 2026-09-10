@@ -46,6 +46,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
         "blockDrag": "object | null ({ spriteId, blockId, x, y, at } — watched Scratch student's in-progress block-drag position within a sprite's Blockly workspace, read live off Blockly's own drag tracking and throttled with the cursor, ~20Hz; null once the drag ends)",
         "codeArrangeSlots": "object | null (watched code_arrange student's live tile placements — { slotId: fragmentId, ... }, same shape as students.{id}.currentCodeArrangeSlots; a forced-teacher-live viewer prefers this over deriving the board from code/files)",
         "codeArrangeCursor": "object | null ({ tileId, x, y, at } — watched code_arrange student's in-progress tile-drag position, x/y normalized 0-1 against the task's own board container, throttled ~20Hz like Scratch's cursor; null once the drag ends)",
+        "outputCollapsed": "boolean (source's output/preview panel expand-collapse state — Python/Electronics console, HTML iframe preview; mirrored continuously to forced-live viewers via publishOutputCollapsed, a standalone update() merge rather than part of the main payload/dependency-tracked publish effect — see useTeacherLivePublish.js. A forced-live viewer's own toggle is locked/hidden while mirroring: see displayOutputCollapsed in studentLiveDisplay.js)",
         "updatedAt": 1234567890
       },
       "sharedWorkspaces": {

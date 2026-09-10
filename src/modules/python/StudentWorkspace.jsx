@@ -21,6 +21,7 @@ export default function StudentWorkspace({
   displayCode,
   displayOutput,
   displayRunStatus,
+  displayOutputCollapsed,
   displayCheckPassed,
   displayCheckAttempted,
   displaySelection,
@@ -28,9 +29,24 @@ export default function StudentWorkspace({
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
-  const [outputCollapsed, setOutputCollapsed] = useState(
+  const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev
   )
+  // While forced-live, the panel state is locked to whatever the broadcast
+  // source (teacher/watched student) has it set to — continuous, not a
+  // one-time seed — so a live-viewing student can't diverge from it. See
+  // publishOutputCollapsed (useTeacherLivePublish.js) for the source side.
+  const outputCollapsed = isForcedTeacherLive
+    ? (displayOutputCollapsed ?? false)
+    : localOutputCollapsed
+
+  function setOutputCollapsed(next) {
+    setLocalOutputCollapsed((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next
+      cs.publishOutputCollapsed(resolved)
+      return resolved
+    })
+  }
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const code = isForcedTeacherLive
@@ -177,13 +193,15 @@ export default function StudentWorkspace({
         fill
         collapsible={false}
         leadingActions={
-          <CollapseTabButton
-            onClick={() => setOutputCollapsed(true)}
-            direction="right"
-            title="Collapse Output"
-            ariaLabel="Collapse Output"
-            style={s.outputCollapseBtn}
-          />
+          !isForcedTeacherLive && (
+            <CollapseTabButton
+              onClick={() => setOutputCollapsed(true)}
+              direction="right"
+              title="Collapse Output"
+              ariaLabel="Collapse Output"
+              style={s.outputCollapseBtn}
+            />
+          )
         }
       />
       {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.testResults !== null && (
@@ -222,10 +240,10 @@ export default function StudentWorkspace({
       collapsedRightWidth={44}
       collapsedRight={
         <CollapsedPanelRail
-          onClick={() => setOutputCollapsed(false)}
+          onClick={isForcedTeacherLive ? undefined : () => setOutputCollapsed(false)}
           label="Output"
           direction="left"
-          title="Show Output"
+          title={isForcedTeacherLive ? 'Output (collapsed by the presenter)' : 'Show Output'}
           ariaLabel="Show Output"
         />
       }

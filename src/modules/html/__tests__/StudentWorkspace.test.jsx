@@ -59,6 +59,7 @@ function makeCs(overrides = {}) {
     inPersonalSandbox: false,
     handleHtmlRuntimeError: vi.fn(),
     readSavedTaskFile: vi.fn(),
+    publishOutputCollapsed: vi.fn(),
     ...overrides,
   }
 }
@@ -183,5 +184,67 @@ describe('HTML StudentWorkspace collapsed preview source (desktop)', () => {
 
     const collapsedButton = screen.getByText('show-preview')
     expect(collapsedButton).toHaveAttribute('data-src', 'CURRENT_TASK_SRC')
+  })
+})
+
+describe('HTML StudentWorkspace — forced-live preview-collapse lock', () => {
+  it('mirrors displayOutputCollapsed instead of cs.htmlPreviewCollapsed while forced-live, and ignores toggle clicks', () => {
+    const cs = makeCs({ htmlPreviewCollapsed: false })
+    render(
+      <StudentWorkspace
+        lesson={lesson}
+        task={{}}
+        cs={cs}
+        isSandbox={false}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        displayOutputCollapsed={true}
+        isMobile
+        displayFiles={files}
+        displayActiveFile="index.html"
+        isTeacherEditing={false}
+        onVisiblePanesChange={vi.fn()}
+      />
+    )
+
+    // cs.htmlPreviewCollapsed says expanded, but the live source says collapsed —
+    // the live value wins while forced.
+    expect(screen.getByText('show-preview')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('show-preview'))
+    expect(cs.setHtmlPreviewCollapsed).not.toHaveBeenCalled()
+    expect(cs.publishOutputCollapsed).not.toHaveBeenCalled()
+  })
+
+  it('publishes local toggles via cs.publishOutputCollapsed when not forced-live', () => {
+    let stored = false
+    const cs = makeCs({
+      htmlPreviewCollapsed: false,
+      setHtmlPreviewCollapsed: vi.fn((updater) => {
+        stored = typeof updater === 'function' ? updater(stored) : updater
+      }),
+    })
+    render(
+      <StudentWorkspace
+        lesson={lesson}
+        task={{}}
+        cs={cs}
+        isSandbox={false}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile
+        displayFiles={files}
+        displayActiveFile="index.html"
+        isTeacherEditing={false}
+        onVisiblePanesChange={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByText('hide-preview'))
+
+    expect(cs.setHtmlPreviewCollapsed).toHaveBeenCalled()
+    expect(cs.publishOutputCollapsed).toHaveBeenCalledWith(true)
   })
 })

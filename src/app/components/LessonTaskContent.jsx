@@ -97,6 +97,7 @@ export default function LessonTaskContent({
   displayActiveFile,
   displayOutput,
   displayRunStatus,
+  displayOutputCollapsed,
   displayCheckPassed,
   displayCheckAttempted,
   displayCheckSuggestion,
@@ -535,6 +536,7 @@ export default function LessonTaskContent({
           displayActiveFile={displayActiveFile}
           displayOutput={displayOutput}
           displayRunStatus={displayRunStatus}
+          displayOutputCollapsed={displayOutputCollapsed}
           displayCheckPassed={displayCheckPassed}
           displayCheckAttempted={displayCheckAttempted}
           displaySelection={displaySelection}

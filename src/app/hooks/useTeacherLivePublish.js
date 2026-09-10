@@ -107,6 +107,19 @@ export function useTeacherLivePublish({
     updateTeacherLive(currentTeacherLivePayload(extra))
   }
 
+  // Mirrors the source's output/preview panel collapse state to forced-live
+  // viewers, continuously (not just a one-time seed) — see
+  // studentLiveDisplay.js's displayOutputCollapsed. Deliberately a small
+  // standalone merge-update rather than routed through the full
+  // currentTeacherLivePayload()/publish-effect machinery above: updateTeacherLive
+  // is a Firebase `update()` (merge, not overwrite), so this one field persists
+  // across every other payload publish without needing to be threaded through
+  // every call site that builds a payload.
+  function publishOutputCollapsed(collapsed) {
+    if (!canPublishTeacherLive()) return
+    updateTeacherLive({ outputCollapsed: collapsed })
+  }
+
   // Rebuild the teacher-live preview src when the teacher's live state updates
   useEffect(() => {
     // In a composed lesson the viewer can be on a different workspace from the
@@ -199,5 +212,6 @@ export function useTeacherLivePublish({
     canPublishTeacherLive,
     currentTeacherLivePayload,
     publishTeacherLive,
+    publishOutputCollapsed,
   }
 }

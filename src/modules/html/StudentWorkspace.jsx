@@ -23,6 +23,7 @@ export default function StudentWorkspace({
   displayActiveFile,
   displayRunStatus,
   displaySelection,
+  displayOutputCollapsed,
   isTeacherEditing,
   teacherLiveFiles = [],
   teacherLiveActiveFile,
@@ -88,9 +89,23 @@ export default function StudentWorkspace({
     !!task.copyCode.trim()
   const errorLine =
     !readOnly && cs.htmlErrorLocation?.file === activeFile ? cs.htmlErrorLocation.line : null
+  // While forced-live, the preview's collapse state is locked to the broadcast
+  // source's, continuously — same pattern as python/StudentWorkspace.jsx and
+  // ElectronicsWorkspace.jsx. See publishOutputCollapsed (useTeacherLivePublish.js).
+  const previewCollapsed = isForcedTeacherLive
+    ? (displayOutputCollapsed ?? false)
+    : cs.htmlPreviewCollapsed
+  function setPreviewCollapsed(next) {
+    if (isForcedTeacherLive) return
+    cs.setHtmlPreviewCollapsed((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next
+      cs.publishOutputCollapsed(resolved)
+      return resolved
+    })
+  }
   // Preview is never rendered at all in submit-mode tasks (rightCollapsed forced, width 0
-  // below), so it's never meaningfully "visible" there regardless of htmlPreviewCollapsed.
-  const previewPaneVisible = task?.interactionMode !== 'submit' && !cs.htmlPreviewCollapsed
+  // below), so it's never meaningfully "visible" there regardless of previewCollapsed.
+  const previewPaneVisible = task?.interactionMode !== 'submit' && !previewCollapsed
 
   useEffect(() => {
     onVisiblePanesChange?.([
@@ -141,8 +156,8 @@ export default function StudentWorkspace({
               src={previewSrc}
               iframeRef={cs.iframeRef}
               fill
-              collapsed={cs.htmlPreviewCollapsed}
-              onToggle={() => cs.setHtmlPreviewCollapsed((v) => !v)}
+              collapsed={previewCollapsed}
+              onToggle={isForcedTeacherLive ? undefined : () => setPreviewCollapsed((v) => !v)}
               onConsoleError={readOnly ? undefined : cs.handleHtmlRuntimeError}
               animate
             />
@@ -159,7 +174,7 @@ export default function StudentWorkspace({
     <>
       <SplitPane
         style={s.htmlSplitPane}
-        rightCollapsed={task?.interactionMode === 'submit' || cs.htmlPreviewCollapsed}
+        rightCollapsed={task?.interactionMode === 'submit' || previewCollapsed}
         collapsedRightWidth={task?.interactionMode === 'submit' ? 0 : 44}
         collapsedRight={
           task?.interactionMode === 'submit' ? null : (
@@ -167,7 +182,7 @@ export default function StudentWorkspace({
               src={previewSrc}
               iframeRef={cs.iframeRef}
               collapsed
-              onToggle={() => cs.setHtmlPreviewCollapsed(false)}
+              onToggle={isForcedTeacherLive ? undefined : () => setPreviewCollapsed(false)}
               onConsoleError={
                 isViewingPrev || isForcedTeacherLive ? undefined : cs.handleHtmlRuntimeError
               }
@@ -215,7 +230,7 @@ export default function StudentWorkspace({
             iframeRef={cs.iframeRef}
             fill
             collapsed={false}
-            onToggle={() => cs.setHtmlPreviewCollapsed(true)}
+            onToggle={isForcedTeacherLive ? undefined : () => setPreviewCollapsed(true)}
             onConsoleError={readOnly ? undefined : cs.handleHtmlRuntimeError}
             animate
           />
