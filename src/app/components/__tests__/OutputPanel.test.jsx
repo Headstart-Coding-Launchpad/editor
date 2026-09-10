@@ -10,7 +10,7 @@ describe('OutputPanel input prompt focus', () => {
       <OutputPanel output="Name?" inputPrompt="Name?" onInputSubmit={vi.fn()} collapsible={false} />
     )
 
-    expect(screen.getByPlaceholderText('Type your input and press Enter')).toHaveFocus()
+    expect(screen.getByPlaceholderText('Type your input…')).toHaveFocus()
   })
 
   it('focuses the input when an expanded collapsible output panel shows a prompt', async () => {
@@ -28,7 +28,34 @@ describe('OutputPanel input prompt focus', () => {
 
     await user.click(screen.getByText('Output'))
 
-    expect(screen.getByPlaceholderText('Type your input and press Enter')).toHaveFocus()
+    expect(screen.getByPlaceholderText('Type your input…')).toHaveFocus()
+  })
+
+  it('submits the typed value when the submit button is tapped, not just on Enter', async () => {
+    const user = userEvent.setup()
+    const onInputSubmit = vi.fn()
+
+    render(
+      <OutputPanel output="Name?" inputPrompt="Name?" onInputSubmit={onInputSubmit} collapsible={false} />
+    )
+
+    await user.type(screen.getByPlaceholderText('Type your input…'), 'Jamie')
+    await user.click(screen.getByRole('button', { name: 'Submit input' }))
+
+    expect(onInputSubmit).toHaveBeenCalledWith('Jamie')
+  })
+
+  it('still submits on Enter (the button supplements it, does not replace it)', async () => {
+    const user = userEvent.setup()
+    const onInputSubmit = vi.fn()
+
+    render(
+      <OutputPanel output="Name?" inputPrompt="Name?" onInputSubmit={onInputSubmit} collapsible={false} />
+    )
+
+    await user.type(screen.getByPlaceholderText('Type your input…'), 'Jamie{Enter}')
+
+    expect(onInputSubmit).toHaveBeenCalledWith('Jamie')
   })
 
   it('can stay closed while running and only open when output arrives', async () => {
