@@ -288,7 +288,12 @@ export default function StudentModal({
   }
 
   function handleClose() {
-    if (teacherEditState !== 'idle') handleCancelEdit()
+    // Closing while actively editing must not silently discard the teacher's
+    // in-progress work — commit it the same as clicking "Done Editing".
+    // Only a still-pending edit *request* (nothing typed yet) has nothing to
+    // save, so that path still cancels.
+    if (teacherEditState === 'editing') handleCommitEdit()
+    else if (teacherEditState === 'requesting') handleCancelEdit()
     if (stageRequestState !== 'idle') handleCancelStage()
     onClose?.()
   }
