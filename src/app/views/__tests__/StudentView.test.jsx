@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../StudentView'
+import { runPython, stopPython } from '../../../modules/python/pyodide'
 
 const mocks = vi.hoisted(() => ({
   fetchLessonById: vi.fn(),
@@ -57,7 +58,7 @@ vi.mock('../../../modules/python/PythonEditor', () => ({
 }))
 
 vi.mock('../../components/OutputPanel', () => ({
-  default: () => <div>Output</div>,
+  default: ({ output }) => <div>Output{output}</div>,
 }))
 
 vi.mock('../../components/TaskProgressDots', () => ({
@@ -1085,6 +1086,57 @@ describe('StudentView', () => {
 
       expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Open Playground' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('python execution across task navigation', () => {
+    afterEach(() => {
+      runPython.mockReset()
+      stopPython.mockReset()
+    })
+
+    it('stops a still-running python execution when the student moves to another task', async () => {
+      const user = userEvent.setup()
+      let resolveRun
+      runPython.mockImplementation((code, { onOutput }) => {
+        onOutput('task one output\n')
+        return new Promise((resolve) => {
+          resolveRun = resolve
+        })
+      })
+      // Mirrors stopPython(): terminating the worker resolves the pending run as 'stopped'.
+      stopPython.mockImplementation(() => resolveRun?.({ status: 'stopped' }))
+
+      render(
+        <StudentView
+          lessonId="python-solo-nav-stop-1"
+          forceSolo
+          lesson={{
+            id: 'python-solo-nav-stop-1',
+            title: 'Python Solo Nav Stop',
+            type: 'python',
+            tasks: [
+              { id: 1, title: 'First task', starterCode: 'print("one")' },
+              { id: 2, title: 'Second task', starterCode: 'print("two")' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+      // The workspace's Run button becomes a Stop button while execution is in flight.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByText(/task one output/)).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(stopPython).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("two")'))
+      // Run must be usable again on the new task, not stuck showing Stop as "still running".
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+      // The first task's buffered output must not bleed into the task navigated to.
+      expect(screen.queryByText(/task one output/)).not.toBeInTheDocument()
     })
   })
 })

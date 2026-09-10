@@ -639,6 +639,13 @@ export function useStudentCodeState({
 
   // Exposed to StudentView for coordination (save before task change, navigation)
   function resetForTaskChange() {
+    // A python/electronics run left mid-flight (e.g. a loop or input() wait) must not
+    // keep executing once the student has moved to a different task.
+    if (running || runningTests) {
+      getLessonModule(lesson?.type)?.runtime?.stop()
+    }
+    setRunning(false)
+    setRunningTests(false)
     setOutput('')
     setRunStatus(null)
     setErrorLine(null)
@@ -1048,7 +1055,10 @@ export function useStudentCodeState({
 
       if (result.status === 'stopped') {
         flushRuntimeCodeUpdate()
-        setOutput(outputBuffer.display)
+        // Only repaint the buffered output if the student is still on the task that
+        // produced it — a stop triggered by navigating away must not overwrite the
+        // freshly reset state for the task they moved to.
+        if (currentTaskId === currentTaskIdRef.current) setOutput(outputBuffer.display)
         if (lesson.type === 'electronics')
           persistence.savePythonCode(actor.anonymousId, currentTaskId, {
             code: latestRuntimeCode,
@@ -1293,9 +1303,13 @@ export function useStudentCodeState({
           : 'success'
       const displayedOutput =
         results.find((r) => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
-      setTestResults(results)
-      setOutput(displayedOutput)
-      setRunStatus(finalStatus)
+      // A stop triggered by navigating away must not overwrite the freshly reset
+      // state for the task the student moved to.
+      if (finalStatus !== 'stopped' || currentTaskId === currentTaskIdRef.current) {
+        setTestResults(results)
+        setOutput(displayedOutput)
+        setRunStatus(finalStatus)
+      }
       if (finalStatus !== 'stopped') applyCheckFeedback(allPassed)
       if (finalStatus !== 'stopped') updateSupportStageForAttempt(allPassed)
 
