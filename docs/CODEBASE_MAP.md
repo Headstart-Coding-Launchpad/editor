@@ -279,7 +279,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
-| `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status |
+| `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status; shows a tap-to-insert row of common Python symbols above the editor on touch devices (`useIsTouchDevice`) while interactive, inserting via `CodeEditor`'s `insertAtCursor` ref API |
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
@@ -376,7 +376,7 @@ Each `index.js` exports a default object with:
 
 | File | Role |
 |---|---|
-| `CodeEditor.jsx` | Shared CodeMirror React wrapper: language/readOnly via compartments, no remount on prop change; `errorLineField`/`setErrorLine` drive the red runtime-error-line highlight, cleared on any document change |
+| `CodeEditor.jsx` | Shared CodeMirror React wrapper: language/readOnly via compartments, no remount on prop change; `errorLineField`/`setErrorLine` drive the red runtime-error-line highlight, cleared on any document change; `forwardRef` exposes an imperative `insertAtCursor(text)` (no-op while `readOnly`) for external "insert at cursor" UI, e.g. `PythonEditor.jsx`'s touch symbol row |
 | `SplitPane.jsx` | Draggable two-pane splitter: [15%, 85%] clamped, collapsible right pane with fixed width option |
 | `AssetBrowser.jsx` | Read-only lesson asset browser: file tree, click-to-copy paths, image hover preview |
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |
@@ -416,6 +416,7 @@ Each `index.js` exports a default object with:
 | `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
+| `useIsTouchDevice.js` | `useIsTouchDevice() → boolean` — touch-capability hook (`ontouchstart`/`maxTouchPoints`), not a viewport-width check like `useIsMobile` — catches touch devices with a wide viewport (iPad Pro landscape); drives `PythonEditor.jsx`'s on-screen symbol-insert row |
 | `useElementSize.js` | `useElementSize() → [ref, {width, height}]` — `ResizeObserver`-based container-size hook (vs. `useIsMobile`'s viewport-only breakpoint); drives `LessonTaskContent.jsx`'s Scratch compact/tab layout (`ScratchWorkspace.jsx` measures its own container directly, not via this hook). Returns a callback ref, not a plain `useRef` — needed because `TaskSlideTransition.jsx` swaps in a fresh DOM node per task without the owning component remounting; a mount-only effect would silently keep observing the detached old node |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
 | `launchpadCodeFile.js` | Versioned `.launchpad` Python code-file creation, validation, parsing, naming, and browser download helpers |
