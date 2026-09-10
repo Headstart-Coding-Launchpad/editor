@@ -296,7 +296,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
       />
     )
 
-    expect(screen.getByPlaceholderText('Type your input and press Enter')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Type your input…')).toBeInTheDocument()
   })
 
   it('prefers the live displayCodeArrangeSlots stream over deriving from displayCode while forced-live ("Go Live")', () => {
@@ -418,6 +418,6 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
       />
     )
 
-    expect(screen.queryByPlaceholderText('Type your input and press Enter')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Type your input…')).not.toBeInTheDocument()
   })
 })

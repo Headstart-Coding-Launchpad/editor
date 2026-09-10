@@ -118,9 +118,15 @@ export default function OutputPanel({
                 style={s.input}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Type your input and press Enter"
+                placeholder="Type your input…"
                 autoFocus
               />
+              {/* Enter still submits; this button covers on-screen keyboards
+                  (e.g. iPad Safari) where Enter/Return may not be reachable
+                  or wired to submit a form the way it is on a hardware keyboard. */}
+              <button type="submit" style={s.inputSubmitBtn} aria-label="Submit input">
+                ↵
+              </button>
             </form>
           )}
         </pre>
@@ -220,5 +226,20 @@ const s = {
     background: 'transparent',
     color: 'var(--colour-text)',
     padding: '2px 4px',
+  },
+  inputSubmitBtn: {
+    flexShrink: 0,
+    width: 28,
+    height: 28,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '15px',
+    lineHeight: 1,
+    border: 'none',
+    borderRadius: 6,
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    cursor: 'pointer',
   },
 }
