@@ -190,3 +190,50 @@ describe('useTeacherLivePublish — soft support-reference channel', () => {
     expect(setTeacherLiveReference).toHaveBeenCalledWith(null)
   })
 })
+
+describe('useTeacherLivePublish — publishOutputCollapsed', () => {
+  it('merge-updates just outputCollapsed while a broadcast is active', () => {
+    const updateTeacherLive = vi.fn()
+    const lesson = { type: 'python', tasks: [{ id: 1 }] }
+
+    const { result } = renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: { active: true, source: 'teacher' } },
+        lesson,
+        currentTaskId: 1,
+        code: 'print("hi")',
+        scratchCode: '',
+        updateTeacherLive,
+      })
+    )
+
+    updateTeacherLive.mockClear()
+    act(() => {
+      result.current.publishOutputCollapsed(true)
+    })
+
+    expect(updateTeacherLive).toHaveBeenCalledWith({ outputCollapsed: true })
+  })
+
+  it('does nothing when there is no active broadcast to publish to', () => {
+    const updateTeacherLive = vi.fn()
+    const lesson = { type: 'python', tasks: [{ id: 1 }] }
+
+    const { result } = renderHook(() =>
+      useHarness({
+        initialSession: { teacherLive: null },
+        lesson,
+        currentTaskId: 1,
+        code: 'print("hi")',
+        scratchCode: '',
+        updateTeacherLive,
+      })
+    )
+
+    act(() => {
+      result.current.publishOutputCollapsed(true)
+    })
+
+    expect(updateTeacherLive).not.toHaveBeenCalled()
+  })
+})

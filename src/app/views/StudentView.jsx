@@ -680,6 +680,7 @@ export default function StudentView({
     displayCheckSuggestion,
     displaySelection,
     displayActivity,
+    displayOutputCollapsed,
     isLiveCopyBlocked,
   } = deriveStudentLiveDisplay({
     teacherPresentation,
@@ -1352,6 +1353,7 @@ export default function StudentView({
             displayCheckAttempted={displayCheckAttempted}
             displayCheckSuggestion={displayCheckSuggestion}
             displaySelection={displaySelection}
+            displayOutputCollapsed={displayOutputCollapsed}
             isLiveCopyBlocked={isLiveCopyBlocked}
             displayFs={displayFs}
             isTeacherEditing={isTeacherEditing}

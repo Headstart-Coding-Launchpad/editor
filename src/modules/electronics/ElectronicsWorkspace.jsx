@@ -85,6 +85,13 @@ export default function ElectronicsWorkspace({
   forcedTabToken,
   onActivity,
   isInSandbox,
+  // Forced-live viewers lock the output panel's collapse state to the
+  // broadcast source's, continuously (not a one-time seed) — see
+  // python/StudentWorkspace.jsx's identical pattern and
+  // publishOutputCollapsed (useTeacherLivePublish.js). null/undefined means
+  // "not forced" — the component's own local toggle state applies.
+  forcedOutputCollapsed = null,
+  onOutputCollapsedChange,
 }) {
   const boardRef = useRef(null)
   const boardWrapRef = useRef(null)
@@ -101,10 +108,18 @@ export default function ElectronicsWorkspace({
   // Mirrors `hasCodeTab` below, not `showCodeTab`: a task whose Micro Controller comes
   // from the circuit rather than `task.microcontroller.enabled` still gets the MicroPython
   // tab, so it should get the output panel open alongside it.
-  const [outputCollapsed, setOutputCollapsed] = useState(
+  const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () =>
       !(showCodeTab || circuit.components.some((component) => component.type === 'microcontroller'))
   )
+  const outputCollapsed = forcedOutputCollapsed ?? localOutputCollapsed
+  function setOutputCollapsed(next) {
+    setLocalOutputCollapsed((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next
+      onOutputCollapsedChange?.(resolved)
+      return resolved
+    })
+  }
   const selectedTab = activeTab ?? tab
   const selected = circuit.components.find((c) => c.id === selectedId) ?? null
   // "Fixed" locks a part's structure for students; setup mode still edits it freely.
@@ -1247,7 +1262,11 @@ export default function ElectronicsWorkspace({
       rightCollapsed={outputCollapsed}
       collapsedRightWidth={44}
       collapsedRight={
-        <button style={s.outputRail} onClick={() => setOutputCollapsed(false)}>
+        <button
+          style={s.outputRail}
+          onClick={forcedOutputCollapsed !== null ? undefined : () => setOutputCollapsed(false)}
+          title={forcedOutputCollapsed !== null ? 'Output (collapsed by the presenter)' : undefined}
+        >
           Output
         </button>
       }
@@ -1260,9 +1279,11 @@ export default function ElectronicsWorkspace({
           hasCheck
           fill
           leadingActions={
-            <button style={s.collapseOutput} onClick={() => setOutputCollapsed(true)}>
-              Hide
-            </button>
+            forcedOutputCollapsed === null && (
+              <button style={s.collapseOutput} onClick={() => setOutputCollapsed(true)}>
+                Hide
+              </button>
+            )
           }
         />
       }

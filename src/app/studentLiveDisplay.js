@@ -121,5 +121,11 @@ export function deriveStudentLiveDisplay({
       : checkSuggestion,
     displaySelection: isForcedTeacherLive ? (teacherLive.selection ?? null) : null,
     displayActivity: isForcedTeacherLive ? (teacherLive.activity ?? null) : editorActivity,
+    // A forced-live viewer's output/preview panel mirrors the source's
+    // expanded/collapsed state continuously (locked, not just a one-time
+    // seed) — see publishOutputCollapsed in useTeacherLivePublish.js. Only
+    // meaningful while forced-live; null otherwise since the component uses
+    // its own local toggle state in that case.
+    displayOutputCollapsed: isForcedTeacherLive ? !!teacherLive.outputCollapsed : null,
   }
 }

@@ -644,3 +644,53 @@ describe('ElectronicsWorkspace — layout', () => {
     expect(screen.getByRole('button', { name: 'Breadboard' })).toBeInTheDocument()
   })
 })
+
+describe('ElectronicsWorkspace — forced-live output-collapse lock', () => {
+  it('mirrors forcedOutputCollapsed=true (collapsed) and ignores clicks on the collapsed rail', () => {
+    const onOutputCollapsedChange = vi.fn()
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        forcedOutputCollapsed
+        onOutputCollapsedChange={onOutputCollapsedChange}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Output' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hide' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Output' }))
+    expect(onOutputCollapsedChange).not.toHaveBeenCalled()
+  })
+
+  it('mirrors forcedOutputCollapsed=false (expanded) and hides the Hide toggle', () => {
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        forcedOutputCollapsed={false}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: 'Output' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Hide' })).toBeNull()
+  })
+
+  it('publishes local toggles via onOutputCollapsedChange when not forced', () => {
+    const onOutputCollapsedChange = vi.fn()
+    render(
+      <ElectronicsWorkspace
+        circuit={DEFAULT_CIRCUIT}
+        onChange={vi.fn()}
+        showCodeTab
+        onOutputCollapsedChange={onOutputCollapsedChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(onOutputCollapsedChange).toHaveBeenCalledWith(true)
+  })
+})

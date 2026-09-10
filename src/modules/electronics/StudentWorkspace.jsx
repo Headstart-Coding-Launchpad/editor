@@ -13,6 +13,7 @@ export default function StudentWorkspace({
   displayCode,
   displayOutput,
   displayRunStatus,
+  displayOutputCollapsed,
   displayCheckPassed,
   isTeacherEditing,
   teacherLiveCode,
@@ -95,6 +96,8 @@ export default function StudentWorkspace({
       runStatus={isForcedTeacherLive ? displayRunStatus : cs.runStatus}
       running={cs.running}
       checkPassed={isForcedTeacherLive ? displayCheckPassed : cs.checkPassed}
+      forcedOutputCollapsed={isForcedTeacherLive ? (displayOutputCollapsed ?? false) : null}
+      onOutputCollapsedChange={cs.publishOutputCollapsed}
       activeTab={isTeacherEditing ? teacherLiveWorkspace : undefined}
       onTabChange={handleTabChange}
       highlightedTabs={highlightedPanes}

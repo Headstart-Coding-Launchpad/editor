@@ -330,6 +330,7 @@ export function useStudentCodeState({
     canPublishTeacherLive,
     currentTeacherLivePayload,
     publishTeacherLive,
+    publishOutputCollapsed,
   } = useTeacherLivePublish({
     teacherPresentation,
     identityRef,
@@ -2122,6 +2123,7 @@ export function useStudentCodeState({
     teacherLiveIframeSrc,
     htmlPreviewCollapsed,
     setHtmlPreviewCollapsed,
+    publishOutputCollapsed,
     inputPrompt,
     checkPassed,
     checkAttempted,

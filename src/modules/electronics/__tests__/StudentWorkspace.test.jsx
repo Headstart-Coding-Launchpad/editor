@@ -16,6 +16,7 @@ function makeCs(code) {
     handleSubmit: vi.fn(),
     handleResetCode: vi.fn(),
     readSavedTaskCode: vi.fn(() => null),
+    publishOutputCollapsed: vi.fn(),
   }
 }
 
@@ -91,5 +92,45 @@ describe('electronics StudentWorkspace — output panel default', () => {
 
     // The collapsed state renders an "Output" rail button instead of the panel.
     expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument()
+  })
+})
+
+describe('electronics StudentWorkspace — forced-live output-collapse threading', () => {
+  it('locks the panel to displayOutputCollapsed while forced-live, and publishes local toggles via cs.publishOutputCollapsed', () => {
+    const cs = makeCs(serializeCircuit(DEFAULT_CIRCUIT))
+    render(
+      <StudentWorkspace
+        lesson={{ type: 'electronics', tasks: [] }}
+        task={{ microcontroller: { enabled: true } }}
+        cs={cs}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        displayOutputCollapsed={true}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Output' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Output' }))
+    expect(cs.publishOutputCollapsed).not.toHaveBeenCalled()
+  })
+
+  it('calls cs.publishOutputCollapsed on a local toggle when not forced-live', () => {
+    const cs = makeCs(serializeCircuit(DEFAULT_CIRCUIT))
+    render(
+      <StudentWorkspace
+        lesson={{ type: 'electronics', tasks: [] }}
+        task={{ microcontroller: { enabled: true } }}
+        cs={cs}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(cs.publishOutputCollapsed).toHaveBeenCalledWith(true)
   })
 })
