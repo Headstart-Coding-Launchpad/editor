@@ -286,6 +286,52 @@ workspace (or a prebuilt stack), then save the lesson. The examples above are
 the serialization shape used by that loader and serializer, so hand-authored
 values can be mixed with builder-authored ones.
 
+### A dropdown-menu block field
+
+A field picked from the block's own dropdown menu (a Blockly `field_dropdown`)
+is not a text/number value, so it does not use an input shadow. It goes
+directly in the block's own `fields` object, keyed by the field name:
+
+```json
+{ "type": "motion_setrotationstyle", "fields": { "STYLE": "left-right" } }
+```
+
+**The stored value is the option's underlying value, not its visible label —
+and for a sprite-target menu that value is the sprite's `id`, not its `name`.**
+`motion_goto`'s `TO` field (and `motion_glideto`'s, alongside its own `SECS`
+shadow) offers "random position", "mouse pointer", and every sprite on stage:
+
+```json
+{
+  "type": "motion_glideto",
+  "fields": { "TO": "sprite1" },
+  "inputs": {
+    "SECS": { "shadow": { "type": "math_number", "fields": { "NUM": "1" } } }
+  }
+}
+```
+
+| `TO` value | Menu option |
+|---|---|
+| `_random_` | random position |
+| `_mouse_` | mouse pointer |
+| a sprite's `id` (e.g. `sprite1`, `rocket` — see `sprites[].id` above; not the display `name`) | that sprite |
+
+The same `_random_` / `_mouse_` / sprite-`id` shape also backs
+`control_create_clone_of`'s `CLONE_OPTION` (which adds a `_myself_` option
+instead of `_random_`), `sensing_touchingobject`'s `TOUCHINGOBJECTMENU`
+(which adds `_edge_`), and `sensing_distanceto`'s `DISTANCETOMENU` (no
+`_random_` option). A costume/backdrop-target menu —
+`looks_switchcostumeto`'s `COSTUME`, `looks_switchbackdropto` /
+`event_whenbackdropswitchesto`'s `BACKDROP` — takes the costume/backdrop's
+`name` directly, since those have no separate id.
+
+A fixed-option menu with no sprite/costume/backdrop involved — e.g.
+`motion_setrotationstyle`'s `STYLE` (`left-right` / `don't rotate` / `all
+around`), `looks_seteffectto` / `looks_changeeffectby`'s `EFFECT`, or
+`operator_mathop`'s `OPERATOR` — takes the option's label text verbatim,
+exactly as it reads on the block.
+
 ---
 
 ## Public Sprite Presets
