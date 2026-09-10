@@ -3,7 +3,7 @@
  * Accepts the language type, current value, an onChange callback, and a readOnly flag.
  * Creates a single EditorView and updates it imperatively to avoid full re-mounts.
  */
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import {
@@ -148,20 +148,23 @@ export const errorLineField = StateField.define({
   provide: (field) => EditorView.decorations.from(field),
 })
 
-export function CodeEditor({
-  value = '',
-  language = 'python',
-  readOnly = false,
-  onChange,
-  onSelectionChange,
-  onActivity,
-  remoteSelection = null,
-  teacherHighlights = [],
-  onHighlightDismiss,
-  errorLine = null,
-  onRunShortcut,
-  style,
-}) {
+export const CodeEditor = React.forwardRef(function CodeEditor(
+  {
+    value = '',
+    language = 'python',
+    readOnly = false,
+    onChange,
+    onSelectionChange,
+    onActivity,
+    remoteSelection = null,
+    teacherHighlights = [],
+    onHighlightDismiss,
+    errorLine = null,
+    onRunShortcut,
+    style,
+  },
+  ref
+) {
   const containerRef = useRef(null)
   const viewRef = useRef(null)
   const onChangeRef = useRef(onChange)
@@ -289,6 +292,26 @@ export function CodeEditor({
     view.dispatch({ effects: setErrorLine.of(errorLine) })
   }, [errorLine])
 
+  // Lets an on-screen "insert symbol" button row (see PythonEditor.jsx) type
+  // into the editor the same way a keyboard keypress would, without either
+  // side needing to know about CodeMirror's EditorView internals.
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertAtCursor(text) {
+        const view = viewRef.current
+        if (!view || readOnly) return
+        const { from, to } = view.state.selection.main
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        })
+        view.focus()
+      },
+    }),
+    [readOnly]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -302,4 +325,4 @@ export function CodeEditor({
       }}
     />
   )
-}
+})
