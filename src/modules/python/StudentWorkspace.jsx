@@ -79,6 +79,7 @@ export default function StudentWorkspace({
             runStatus: cs.runStatus,
             inputPrompt: cs.inputPrompt,
             onInputSubmit: cs.handleInputSubmit,
+            onInputChange: cs.handleInputChange,
             checkPassed: cs.checkPassed,
             hasCheck: !!task?.check || task?.tests?.length > 0,
             running: cs.running || cs.runningTests,

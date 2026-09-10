@@ -174,6 +174,9 @@ export default function StudentWorkspaceBody({
             runStatus={student.lastRunStatus}
             hasCheck={!!task?.check}
             checkPassed={student.checkPassed}
+            inputPrompt={student.currentInputPrompt ?? null}
+            inputReadOnly
+            mirroredInputValue={student.currentInput ?? ''}
           />
         )}
       </>

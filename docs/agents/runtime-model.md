@@ -144,6 +144,8 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "currentCodeArrangeSlots": "object | null (watched code_arrange student's live tile placements — { slotId: fragmentId, ... }, same shape CodeArrangeTask uses locally; updated on every tile move, independent of currentCode/currentFiles which only sync once the arrangement is fully assembled)",
           "currentFiles": { "index__dot__html": "..." },
           "currentOutput": "string",
+          "currentInputPrompt": "string | null (watched Python student's pending input() prompt text, if any — the only sync of that state; OutputPanel's own inputPrompt is otherwise local-only runtime state)",
+          "currentInput": "string (watched Python student's not-yet-submitted input() text, per keystroke; cleared to '' on submit or when the prompt clears)",
           "currentAnswer": "b",
           "currentActiveFile": "index.html",
           "currentSelection": { "from": 0, "to": 5, "file": "index.html" },
@@ -239,7 +241,7 @@ Student writes:
 
 - On run: own `currentCode` / `currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`.
 - On a graded check result (lesson phase only, not sandbox): own `attemptLog/{taskId}/{pushId}` via `logAttempt` — deduplicated client-side, so an unchanged resubmission only bumps `retries` on the existing entry rather than pushing a new one, and no further entries are written once a task has passed. The moment an attempt (new or retried-in-place) first becomes `passed`, `passedAt` is stamped alongside it — this is the timestamp `buildSessionReport` uses (together with `taskStartTimes`) to compute time-on-task. `attemptLog` is a sibling of `students`, not nested inside it, so it is untouched by `setTaskId`'s per-task field wipe and is still present in the teacher's in-memory `session` snapshot at the moment `endSession()` runs — that snapshot is what `buildSessionReport` (`src/shared/lessonReport.js`) reads to build the Firestore report described under "Session Reports" below.
-- When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
+- When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`, and while an `input()` prompt is pending, `currentInputPrompt`/`currentInput` per keystroke of the not-yet-submitted answer (`writeStudentInputState`) — cleared on submit or when the prompt otherwise clears.
 - When watched, Arcade design changes are saved locally immediately and publish a throttled `currentArcadeDesign` snapshot. Pixel/map edits never stream unless that student is `activeStudentView`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - When watched, `code_arrange` tasks (Python or HTML module): `currentCodeArrangeSlots` on every tile placement/move, independent of the Python/HTML rules above — `currentCode`/`currentFiles` for the task only update once the arrangement is fully assembled (see `CodeArrangeTaskContainer.jsx`).

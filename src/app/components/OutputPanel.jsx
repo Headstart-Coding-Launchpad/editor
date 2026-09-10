@@ -13,6 +13,13 @@ export default function OutputPanel({
   runStatus = null,
   inputPrompt = null,
   onInputSubmit,
+  onInputChange,
+  // Read-only mirror mode: a teacher watching a student sees the student's
+  // own not-yet-submitted input() text, but must never be able to edit it —
+  // this renders the same prompt row as plain text instead of a live <input>,
+  // driven entirely by the given value rather than local state.
+  inputReadOnly = false,
+  mirroredInputValue = '',
   checkPassed = false,
   hasCheck = false,
   running = false,
@@ -53,15 +60,20 @@ export default function OutputPanel({
   }, [displayedOutput, inputPrompt])
 
   useEffect(() => {
-    if (inputPrompt !== null && !contentCollapsed) {
+    if (inputPrompt !== null && !contentCollapsed && !inputReadOnly) {
       inputRef.current?.focus()
     }
-  }, [inputPrompt, contentCollapsed])
+  }, [inputPrompt, contentCollapsed, inputReadOnly])
 
   function handleInputSubmit(e) {
     e.preventDefault()
     onInputSubmit?.(inputValue)
     setInputValue('')
+  }
+
+  function handleInputValueChange(e) {
+    setInputValue(e.target.value)
+    onInputChange?.(e.target.value)
   }
 
   const statusColour =
@@ -110,14 +122,22 @@ export default function OutputPanel({
           )}
           {showCursor && <span className="terminal-cursor" />}
 
-          {inputPrompt !== null && (
+          {inputPrompt !== null && inputReadOnly && (
+            <div style={s.inputRow}>
+              <span style={s.prompt}>&gt;</span>
+              <span style={s.input}>{mirroredInputValue}</span>
+              <span className="terminal-cursor" />
+            </div>
+          )}
+
+          {inputPrompt !== null && !inputReadOnly && (
             <form onSubmit={handleInputSubmit} style={s.inputRow}>
               <span style={s.prompt}>&gt;</span>
               <input
                 ref={inputRef}
                 style={s.input}
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={handleInputValueChange}
                 placeholder="Type your input and press Enter"
                 autoFocus
               />

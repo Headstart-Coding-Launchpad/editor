@@ -6,8 +6,12 @@ import StudentWorkspace from '../StudentWorkspace'
 vi.mock('../PythonEditor', () => ({
   default: () => <div>python-editor</div>,
 }))
+const outputPanelSpy = vi.fn()
 vi.mock('../../../app/components/OutputPanel', () => ({
-  default: () => <div>output-panel</div>,
+  default: (props) => {
+    outputPanelSpy(props)
+    return <div>output-panel</div>
+  },
 }))
 vi.mock('../../../app/components/CopyCodePanel', () => ({
   default: () => <div>copy-code-panel</div>,
@@ -31,6 +35,7 @@ const cs = {
   handleEditorSelection: vi.fn(),
   handleEditorActivity: vi.fn(),
   handleInputSubmit: vi.fn(),
+  handleInputChange: vi.fn(),
   dismissHighlight: vi.fn(),
   readSavedTaskCode: vi.fn(),
 }
@@ -83,5 +88,33 @@ describe('Python StudentWorkspace onVisiblePanesChange reporting (teacher live-s
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
     fireEvent.click(screen.getByText('Submit'))
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
+  })
+})
+
+describe('Python StudentWorkspace input() live-mirror wiring', () => {
+  it('wires cs.handleInputChange through to OutputPanel while interactive', () => {
+    outputPanelSpy.mockClear()
+    render(
+      <StudentWorkspace
+        task={{}}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+
+    // Output starts collapsed (not mounted inside SplitPane's right pane) —
+    // expand it via Run, same as the visible-panes tests above.
+    fireEvent.click(screen.getByText('Run'))
+
+    const props = outputPanelSpy.mock.calls.at(-1)[0]
+    expect(props.onInputChange).toBe(cs.handleInputChange)
   })
 })

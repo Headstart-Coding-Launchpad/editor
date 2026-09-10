@@ -903,6 +903,18 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentOutput`), output)
   }
 
+  // Mirrors an in-progress input() prompt live: currentInputPrompt lets a
+  // watching teacher know a prompt is pending at all (OutputPanel's own
+  // inputPrompt is purely local runtime state, never otherwise synced),
+  // currentInput is the value typed so far, per keystroke — same
+  // watched-only-while-activeStudentView-matches gating as currentCode.
+  async function writeStudentInputState(anonymousId, { prompt, value } = {}) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      currentInputPrompt: prompt ?? null,
+      currentInput: value ?? '',
+    })
+  }
+
   async function writeStudentInteraction(
     anonymousId,
     { selection, activity, activeFile, viewingShareId } = {}
@@ -1129,6 +1141,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentCodeArrangeSlots,
     writeStudentFiles,
     writeStudentOutput,
+    writeStudentInputState,
     writeStudentInteraction,
     recordStudentCarryFallback,
     recordSupportStageReveal,

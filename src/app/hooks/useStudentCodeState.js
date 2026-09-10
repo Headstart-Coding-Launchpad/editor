@@ -87,6 +87,7 @@ export function useStudentCodeState({
   writeStudentCodeArrangeSlots,
   writeStudentFiles,
   writeStudentOutput,
+  writeStudentInputState,
   writeStudentInteraction,
   recordStudentCarryFallback,
   recordSupportStageReveal,
@@ -1041,11 +1042,15 @@ export function useStudentCodeState({
             setErrorLine(line)
           }
         },
-        onInputRequired: (prompt) => setInputPrompt(prompt),
+        onInputRequired: (prompt) => {
+          setInputPrompt(prompt)
+          if (isWatched) writeStudentInputState(actor.anonymousId, { prompt, value: '' })
+        },
         onCodeUpdate: scheduleRuntimeCodeUpdate,
         getRuntimeCode: () => codeRef.current,
       })
       setInputPrompt(null)
+      if (isWatched) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
 
       // Cancel any pending RAF and sync final output immediately
       if (outputRafIdRef.current !== null) {
@@ -1245,7 +1250,19 @@ export function useStudentCodeState({
   function handleInputSubmit(value) {
     appendOutputRef.current?.(value + '\n')
     setInputPrompt(null)
+    if (identity && session?.activeStudentView === identity.anonymousId) {
+      writeStudentInputState(identity.anonymousId, { prompt: null, value: '' })
+    }
     getLessonModule(lesson?.type)?.runtime?.provideInput(value)
+  }
+
+  // Mirrors the student's not-yet-submitted input() text to a watching
+  // teacher, per keystroke — same activeStudentView gating AGENTS.md
+  // requires for any per-keystroke Firebase write (see handleCodeChange).
+  function handleInputChange(value) {
+    if (identity && session?.activeStudentView === identity.anonymousId) {
+      writeStudentInputState(identity.anonymousId, { prompt: inputPrompt, value })
+    }
   }
 
   async function handleRunTests() {
@@ -2175,6 +2192,7 @@ export function useStudentCodeState({
     handleFsChange,
     handleFsInteraction,
     handleInputSubmit,
+    handleInputChange,
     handleHtmlRuntimeError,
     handleResetCode,
     handleShowCodeStage,
