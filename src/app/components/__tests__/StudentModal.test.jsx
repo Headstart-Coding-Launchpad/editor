@@ -263,6 +263,77 @@ describe('StudentModal', () => {
       fireEvent.click(screen.getByRole('dialog'))
       expect(props.onClose).toHaveBeenCalledOnce()
     })
+
+    describe('while actively editing student work', () => {
+      async function renderEditing() {
+        const user = userEvent.setup()
+        const onRequestTeacherEdit = vi.fn()
+        const onCommitTeacherEdit = vi.fn()
+        const onCancelTeacherEdit = vi.fn()
+        const props = mkProps({ onRequestTeacherEdit, onCommitTeacherEdit, onCancelTeacherEdit })
+        const { rerender } = render(<StudentModal {...props} />)
+
+        await user.click(screen.getByRole('button', { name: /^More/ }))
+        await user.click(screen.getByRole('button', { name: /Edit Code/i }))
+
+        // Student accepts the edit request, moving teacherEditState to 'editing'.
+        rerender(
+          <StudentModal
+            {...props}
+            student={{
+              ...props.student,
+              teacherEditRequestedAt: 1,
+              teacherEditAcceptedAt: 2,
+            }}
+          />
+        )
+
+        return { props, onCommitTeacherEdit, onCancelTeacherEdit }
+      }
+
+      it('auto-saves the edit (commits, does not cancel) when the backdrop is clicked', async () => {
+        const { props, onCommitTeacherEdit, onCancelTeacherEdit } = await renderEditing()
+
+        fireEvent.click(screen.getByRole('dialog'))
+
+        expect(onCommitTeacherEdit).toHaveBeenCalledWith('student-1', {
+          code: BASE_STUDENT.currentCode,
+        })
+        expect(onCancelTeacherEdit).not.toHaveBeenCalled()
+        expect(props.onClose).toHaveBeenCalledOnce()
+      })
+
+      it('auto-saves the edit (commits, does not cancel) when Escape is pressed', async () => {
+        const user = userEvent.setup()
+        const { props, onCommitTeacherEdit, onCancelTeacherEdit } = await renderEditing()
+
+        await user.keyboard('{Escape}')
+
+        expect(onCommitTeacherEdit).toHaveBeenCalledWith('student-1', {
+          code: BASE_STUDENT.currentCode,
+        })
+        expect(onCancelTeacherEdit).not.toHaveBeenCalled()
+        expect(props.onClose).toHaveBeenCalledOnce()
+      })
+    })
+
+    it('cancels (does not commit) when closing while only a pending edit request', async () => {
+      const user = userEvent.setup()
+      const onRequestTeacherEdit = vi.fn()
+      const onCommitTeacherEdit = vi.fn()
+      const onCancelTeacherEdit = vi.fn()
+      const props = mkProps({ onRequestTeacherEdit, onCommitTeacherEdit, onCancelTeacherEdit })
+      render(<StudentModal {...props} />)
+
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      await user.click(screen.getByRole('button', { name: /Edit Code/i }))
+
+      fireEvent.click(screen.getByRole('dialog'))
+
+      expect(onCancelTeacherEdit).toHaveBeenCalledWith('student-1')
+      expect(onCommitTeacherEdit).not.toHaveBeenCalled()
+      expect(props.onClose).toHaveBeenCalledOnce()
+    })
   })
 
   describe('navigation buttons', () => {
