@@ -1,8 +1,10 @@
 import React from 'react'
 import InformationTask from '../../components/InformationTask'
 import QuizTask from '../../components/QuizTask'
+import CodeArrangeTask from '../../components/CodeArrangeTask'
 import TeacherCodeTabs from '../../components/TeacherCodeTabs'
 import { getLessonModule } from '../../../modules/registry'
+import { buildSolutionSlotState } from '../../../shared/codeArrange'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
@@ -33,6 +35,20 @@ export default function TeacherEditorPanel({
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
   if (!isInSandbox && task?.taskType === 'quiz')
     return <QuizTask task={task} showQuestion disabled />
+  // Arrange tasks assemble from drag-and-drop tiles, not starter/stage code —
+  // showing the authored solution as a read-only tile board (mirroring how
+  // other task types show their Complete state) instead of falling through to
+  // the module's code editor, which would just show an empty starter box.
+  if (!isInSandbox && task?.taskType === 'code_arrange')
+    return (
+      <CodeArrangeTask
+        task={task}
+        moduleType={mod?.type === 'html' ? 'html' : 'python'}
+        selectedAnswer={buildSolutionSlotState(task)}
+        disabled
+        showQuestion={false}
+      />
+    )
   if (!mod?.TeacherLiveView) return null
 
   // Presentation View's live-reference broadcast, shown read-only via the "Live" tab —
