@@ -789,6 +789,33 @@ describe('useSession', () => {
     })
   })
 
+  describe('writeStudentInputState', () => {
+    it('writes the pending input() prompt and typed-so-far value', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInputState('student-abc', {
+          prompt: 'Name?',
+          value: 'Jam',
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { currentInputPrompt: 'Name?', currentInput: 'Jam' }
+      )
+    })
+
+    it('defaults to a cleared prompt/value when passed nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInputState('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { currentInputPrompt: null, currentInput: '' }
+      )
+    })
+  })
+
   describe('writeStudentCodeArrangeSlots', () => {
     it('writes slot state to the student currentCodeArrangeSlots path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

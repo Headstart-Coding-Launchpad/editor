@@ -40,7 +40,16 @@ vi.mock('../QuizTask', () => ({
 }))
 
 vi.mock('../OutputPanel', () => ({
-  default: ({ output }) => <div data-testid="output-panel">{output}</div>,
+  default: ({ output, inputPrompt, inputReadOnly, mirroredInputValue }) => (
+    <div data-testid="output-panel">
+      {output}
+      {inputPrompt !== null && inputPrompt !== undefined && (
+        <div data-testid="output-panel-input-prompt" data-readonly={inputReadOnly ? 'true' : 'false'}>
+          {mirroredInputValue}
+        </div>
+      )}
+    </div>
+  ),
 }))
 
 vi.mock('../ExplainerPanel', () => ({
@@ -220,6 +229,28 @@ describe('StudentModal', () => {
   it('does not render the check badge when checkPassed is false', () => {
     render(<StudentModal {...mkProps()} />)
     expect(screen.queryByText('✅')).not.toBeInTheDocument()
+  })
+
+  describe('watching a student mid-input()', () => {
+    it('mirrors the pending prompt and typed-so-far value as read-only', () => {
+      render(
+        <StudentModal
+          {...mkProps(
+            {},
+            { currentInputPrompt: 'Name?', currentInput: 'Jam' }
+          )}
+        />
+      )
+
+      const mirrored = screen.getByTestId('output-panel-input-prompt')
+      expect(mirrored).toHaveTextContent('Jam')
+      expect(mirrored).toHaveAttribute('data-readonly', 'true')
+    })
+
+    it('shows nothing extra when the student has no pending input() prompt', () => {
+      render(<StudentModal {...mkProps()} />)
+      expect(screen.queryByTestId('output-panel-input-prompt')).not.toBeInTheDocument()
+    })
   })
 
   describe('live badge', () => {

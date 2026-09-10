@@ -58,6 +58,68 @@ describe('OutputPanel input prompt focus', () => {
     expect(onInputSubmit).toHaveBeenCalledWith('Jamie')
   })
 
+  it('calls onInputChange with each keystroke, alongside local state', async () => {
+    const user = userEvent.setup()
+    const onInputChange = vi.fn()
+
+    render(
+      <OutputPanel
+        output="Name?"
+        inputPrompt="Name?"
+        onInputSubmit={vi.fn()}
+        onInputChange={onInputChange}
+        collapsible={false}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Type your input…'), 'Jo')
+
+    expect(onInputChange).toHaveBeenCalledWith('J')
+    expect(onInputChange).toHaveBeenLastCalledWith('Jo')
+  })
+
+  describe('inputReadOnly mirror mode', () => {
+    it('shows the mirrored value as plain text, not an editable input', () => {
+      render(
+        <OutputPanel
+          output="Name?"
+          inputPrompt="Name?"
+          inputReadOnly
+          mirroredInputValue="Jam"
+          collapsible={false}
+        />
+      )
+
+      expect(screen.getByText('Jam')).toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('Type your input…')).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('updates as the mirrored value changes across renders', () => {
+      const { rerender } = render(
+        <OutputPanel
+          output="Name?"
+          inputPrompt="Name?"
+          inputReadOnly
+          mirroredInputValue="Ja"
+          collapsible={false}
+        />
+      )
+      expect(screen.getByText('Ja')).toBeInTheDocument()
+
+      rerender(
+        <OutputPanel
+          output="Name?"
+          inputPrompt="Name?"
+          inputReadOnly
+          mirroredInputValue="Jamie"
+          collapsible={false}
+        />
+      )
+      expect(screen.getByText('Jamie')).toBeInTheDocument()
+    })
+  })
+
   it('can stay closed while running and only open when output arrives', async () => {
     const { rerender } = render(
       <OutputPanel title="Console" running={false} openOnRun={false} openOnOutput />

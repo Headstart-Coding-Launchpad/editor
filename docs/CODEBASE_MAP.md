@@ -82,7 +82,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only) |
 | `CopyCodePanel.jsx` | Student-facing read-only reference code block with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
 | `SupportStagePanel.jsx` | Student-facing read-only code-stage reference panel with reveal control and copy/selection blocking |
-| `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt |
+| `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt; `onInputChange` fires per keystroke (for live-mirroring to a watching teacher); `inputReadOnly`+`mirroredInputValue` swap the prompt row to a plain-text, externally-driven mirror instead of an editable input, used by `StudentWorkspaceBody.jsx` |
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
@@ -149,7 +149,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `MessageCompose.jsx` | Personal teacher message composer for one student |
 | `StageDropdown.jsx` | Teacher request menu for sending starter/stage/complete code to a student |
 | `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand` — reused per-student (StudentModal, "Focus") and whole-class (TeacherView, "Focus Class") |
-| `StudentWorkspaceBody.jsx` | Lesson-type-specific student workspace display inside the teacher modal |
+| `StudentWorkspaceBody.jsx` | Lesson-type-specific student workspace display inside the teacher modal; Python's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt |
 | `ShareRequestPanel.jsx` | Teacher review of a pending workspace share: fetches the frozen snapshot, previews it read-only, approves or declines |
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
 
