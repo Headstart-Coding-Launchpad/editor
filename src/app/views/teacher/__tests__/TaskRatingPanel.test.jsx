@@ -57,6 +57,35 @@ describe('TaskRatingPanel', () => {
     expect(header).toHaveStyle({ position: 'sticky', top: '0px' })
   })
 
+  it('does not wipe unsaved edits when existingRating is re-fetched with unchanged content', () => {
+    const { rerender } = render(
+      <TaskRatingPanel
+        taskId={1}
+        taskTitle="Task One"
+        existingRating={{ rating: 2, whatWorkedWell: '', whatDidntWork: '' }}
+        onSave={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByText(/Task One/))
+    fireEvent.change(screen.getByLabelText('What worked well?'), {
+      target: { value: 'Still typing this' },
+    })
+
+    // Simulates the live session listener firing again with a new object
+    // reference but the same saved content (e.g. a student did something
+    // unrelated to this rating).
+    rerender(
+      <TaskRatingPanel
+        taskId={1}
+        taskTitle="Task One"
+        existingRating={{ rating: 2, whatWorkedWell: '', whatDidntWork: '' }}
+        onSave={vi.fn()}
+      />
+    )
+
+    expect(screen.getByLabelText('What worked well?')).toHaveValue('Still typing this')
+  })
+
   it('resets the form to the new task\'s rating when taskId changes', () => {
     const { rerender } = render(
       <TaskRatingPanel

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FeedbackFields, StarRatingDisplay } from '../../components/StarRatingFeedbackFields'
 
 // Lets the teacher rate the current task (stars + what worked / what didn't) live,
@@ -24,7 +24,17 @@ export default function TaskRatingPanel({ taskId, taskTitle, existingRating, onS
 
   // Reset the form to whatever's already saved whenever the teacher moves to a
   // different task, so this one panel instance can follow them through the lesson.
+  // `existingRating` comes from the live session RTDB listener, which hands back
+  // a brand-new object on every session update — including ones with nothing to
+  // do with this rating (a student joining, running code, etc). Resetting on
+  // object identity alone wiped out whatever the teacher was mid-typing any time
+  // a student so much as breathed. Only reset when the task changes or the
+  // rating's actual saved content changes, not on every unrelated snapshot.
+  const lastSyncedKeyRef = useRef()
   useEffect(() => {
+    const key = `${taskId}:${JSON.stringify(existingRating)}`
+    if (key === lastSyncedKeyRef.current) return
+    lastSyncedKeyRef.current = key
     setRating(existingRating?.rating ?? 0)
     setWhatWorkedWell(existingRating?.whatWorkedWell ?? '')
     setWhatDidntWork(existingRating?.whatDidntWork ?? '')
