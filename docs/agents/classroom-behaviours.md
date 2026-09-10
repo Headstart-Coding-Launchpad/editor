@@ -239,6 +239,7 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - `stopPython()` terminates the worker to kill infinite loops.
 - A replacement worker is pre-warmed immediately.
 - `input()` is handled with a Python AST transform and resolves when `provideInput()` is called.
+- `useStudentCodeState`'s `resetForTaskChange()` calls `runtime.stop()` (and force-clears `running`/`runningTests`) whenever a run is still in flight when the student navigates to another task — a python/electronics execution must not keep running (or its output bleed into the new task) after the task changes. The `'stopped'` result from a run that raced with navigation is only repainted into `output`/`runStatus` if `currentTaskId` still matches the task that was running.
 
 ## Runtime Error-Line Highlight
 
