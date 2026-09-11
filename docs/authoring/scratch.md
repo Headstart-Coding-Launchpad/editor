@@ -62,6 +62,8 @@ modules:
     allowAddBackdrop: false   # optional — show a student-facing "Add backdrop" picker (default false)
     addBackdropPresetIds: []  # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultBackdrops` ids; omitted/empty = whole library
     allowCreateVariable: false # optional — add a "Make a Variable" button to the Variables flyout (default false)
+    allowRemoveSprite: false  # optional — let students remove sprites they added themselves (default false)
+    allowRemoveStarterSprites: false # optional — also let removal target author-placed sprites, not just student-added ones (default false; ignored unless allowRemoveSprite is true)
     enableStageCode: false    # optional — give the Stage its own workspace (blocks keyed "__stage__"); carried through automatically when the task carries blocks from an earlier task
     check:
       type: sprite_property
@@ -360,6 +362,7 @@ Three per-task toggles let students extend their own project beyond what the aut
 - `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library.
 - `allowAddBackdrop` / `addBackdropPresetIds` — same pattern for backdrops, sourced from `lessonTypeAssets/scratch.defaultBackdrops` (`DefaultBackdropsEditor`).
 - `allowCreateVariable` — adds a "Make a Variable" button to the Variables toolbox flyout. The student is prompted for a name (must be non-empty and not collide, case-insensitively, with any existing variable name); the new variable becomes available immediately in every variable dropdown block (`data_variable`, `data_setvariableto`, etc.) for every sprite in the task.
+- `allowRemoveSprite` — shows a ✕ on each sprite's tile in the student's sprite panel. By default this only ever lets a student remove a sprite *they* added via the "Add sprite" picker above (`studentAdded: true`) — author-placed starter sprites always stay protected, even with this flag on. Set `allowRemoveStarterSprites: true` alongside it to lift that restriction and let removal target every sprite, author-placed or not (used by the freeform Scratch Playground, which has no starter code to protect). A workspace can never be emptied entirely — the ✕ is disabled once only one sprite remains — and removal asks the student to confirm first, since it deletes that sprite's code and costumes.
 
 **Checks never see these.** A student-added sprite, a student-added backdrop, or a student-created variable is decorative only:
 

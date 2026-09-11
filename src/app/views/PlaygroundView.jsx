@@ -30,6 +30,8 @@ function makeLesson(type) {
               title: 'Scratch playground',
               starterBlocks: null,
               allowAddSprite: true,
+              allowRemoveSprite: true,
+              allowRemoveStarterSprites: true,
             }
           : {
               id: 1,
