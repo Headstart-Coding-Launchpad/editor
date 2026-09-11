@@ -5,6 +5,7 @@ import {
   wrapScratchBubbleText,
   isSpriteCheckable,
   filterCheckableSpriteWorkspaces,
+  isSpriteRemovable,
   isValidNewVariableName,
   computeBlockScale,
   computeStageScale,
@@ -121,6 +122,29 @@ describe('student-added sprite/backdrop check-invisibility', () => {
   it('handles an empty/missing list', () => {
     expect(filterCheckableSpriteWorkspaces([])).toEqual([])
     expect(filterCheckableSpriteWorkspaces(undefined)).toEqual([])
+  })
+})
+
+describe('isSpriteRemovable', () => {
+  const starterSprite = { id: 'sprite1', name: 'Rocket' }
+  const addedSprite = { id: 'sprite2', name: 'Extra', studentAdded: true }
+
+  it('never allows removal when the task does not opt in', () => {
+    expect(isSpriteRemovable(starterSprite, {})).toBe(false)
+    expect(isSpriteRemovable(addedSprite, {})).toBe(false)
+    expect(isSpriteRemovable(addedSprite, { allowRemoveStarterSprites: true })).toBe(false)
+  })
+
+  it('only allows removing student-added sprites by default, never author-placed ones', () => {
+    const task = { allowRemoveSprite: true }
+    expect(isSpriteRemovable(addedSprite, task)).toBe(true)
+    expect(isSpriteRemovable(starterSprite, task)).toBe(false)
+  })
+
+  it('allows removing author-placed sprites too when allowRemoveStarterSprites is set', () => {
+    const task = { allowRemoveSprite: true, allowRemoveStarterSprites: true }
+    expect(isSpriteRemovable(starterSprite, task)).toBe(true)
+    expect(isSpriteRemovable(addedSprite, task)).toBe(true)
   })
 })
 

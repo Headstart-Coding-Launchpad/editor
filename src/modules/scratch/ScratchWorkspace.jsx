@@ -180,6 +180,17 @@ export function filterCheckableSpriteWorkspaces(spriteWorkspaces) {
   return (spriteWorkspaces ?? []).filter(isSpriteCheckable)
 }
 
+// A sprite is removable when the task explicitly allows it (`allowRemoveSprite`) and the
+// sprite itself is either student-added, or the task additionally opts every sprite in via
+// `allowRemoveStarterSprites` — used by the freeform Playground, which has no author-placed
+// "starter code" sprites to protect. Kept as a pure export, exercised without mounting the
+// full Blockly-backed workspace, mirroring isSpriteCheckable above.
+export function isSpriteRemovable(sprite, task) {
+  if (!task?.allowRemoveSprite) return false
+  if (task?.allowRemoveStarterSprites) return true
+  return sprite?.studentAdded === true
+}
+
 // A student-typed variable name must be non-empty and must not collide (case-insensitively)
 // with an existing author-defined or already-created variable — collisions would let a
 // student variable accidentally satisfy a `variable_equals`/`variable_compare` check that
@@ -781,6 +792,7 @@ export default function ScratchWorkspace({
   const canAddSprite = !readOnly && !!task?.allowAddSprite
   const canAddBackdrop = !readOnly && !!task?.allowAddBackdrop
   const canCreateVariable = !readOnly && !!task?.allowCreateVariable
+  const canRemoveSprite = !readOnly && !!task?.allowRemoveSprite
   const { defaultSprites: libSprites, defaultBackdrops: libBackdrops } = useTypeAssets(
     canAddSprite || canAddBackdrop ? 'scratch' : null
   )
@@ -795,6 +807,7 @@ export default function ScratchWorkspace({
   const [spritePickerOpen, setSpritePickerOpen] = useState(false)
   const [backdropPickerOpen, setBackdropPickerOpen] = useState(false)
   const [variablePrompt, setVariablePrompt] = useState(null) // { value, error } | null
+  const [removeSpritePrompt, setRemoveSpritePrompt] = useState(null) // { id, name } | null
   const normInitStatesRef = useRef(null)
 
   // initialStates/initialState may be a function: it is resolved lazily inside the
@@ -1364,6 +1377,26 @@ export default function ScratchWorkspace({
     backdropNameRef.current = newBackdrop.name
     setBackdropName(newBackdrop.name)
     setBackdropPickerOpen(false)
+    requestAnimationFrame(persistMetaNow)
+  }
+
+  // Disposes the sprite's Blockly workspace and drops it from every place a live sprite is
+  // tracked, then persists immediately — like handleAddSprite, a removal produces no Blockly
+  // block-change event of its own to trigger the usual debounced save. Gating on
+  // isSpriteRemovable happens at the call site (the ✕ button is only rendered when allowed).
+  function handleRemoveSprite(spriteId) {
+    workspaceRefs.current[spriteId]?.dispose?.()
+    delete workspaceRefs.current[spriteId]
+    delete blocksDivRefs.current[spriteId]
+    setSprites((prev) => prev.filter((sp) => sp.id !== spriteId))
+    const nextStates = { ...spriteStatesRef.current }
+    delete nextStates[spriteId]
+    commitSpriteStates(nextStates)
+    if (selectedSpriteId === spriteId) {
+      const fallback = sprites.find((sp) => sp.id !== spriteId)?.id ?? '__stage__'
+      setSelectedSpriteId(fallback)
+    }
+    setRemoveSpritePrompt(null)
     requestAnimationFrame(persistMetaNow)
   }
 
@@ -2746,13 +2779,14 @@ export default function ScratchWorkspace({
               )}
             </div>
             <span style={s.spriteTileName}>{sp.name}</span>
-            {!readOnly && onRemoveSprite && (
+            {!readOnly && (onRemoveSprite || (canRemoveSprite && isSpriteRemovable(sp, task))) && (
               <button
                 type="button"
                 className="te-sprite-remove-circle"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onRemoveSprite(sp.id)
+                  if (onRemoveSprite) onRemoveSprite(sp.id)
+                  else setRemoveSpritePrompt({ id: sp.id, name: sp.name })
                 }}
                 disabled={sprites.length <= 1}
                 title="Remove sprite"
@@ -2917,6 +2951,32 @@ export default function ScratchWorkspace({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {removeSpritePrompt && (
+        <div style={s.modalOverlay} onClick={() => setRemoveSpritePrompt(null)}>
+          <div style={s.variableModal} onClick={(e) => e.stopPropagation()}>
+            <span style={s.askLabel}>Remove {removeSpritePrompt.name}?</span>
+            <span style={s.removePromptHint}>Its code and costumes will be deleted.</span>
+            <div style={s.variableModalRow}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setRemoveSpritePrompt(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={s.askBtn}
+                onClick={() => handleRemoveSprite(removeSpritePrompt.id)}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -3526,6 +3586,11 @@ const s = {
     boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
   },
   variableModalRow: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 },
+  removePromptHint: {
+    fontFamily: 'var(--font-body)',
+    fontSize: 12,
+    color: 'var(--colour-text-muted)',
+  },
   spritePropBar: {
     display: 'flex',
     gap: 8,
