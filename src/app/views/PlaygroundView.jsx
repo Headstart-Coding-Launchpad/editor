@@ -29,6 +29,7 @@ function makeLesson(type) {
               id: 1,
               title: 'Scratch playground',
               starterBlocks: null,
+              allowAddSprite: true,
             }
           : {
               id: 1,

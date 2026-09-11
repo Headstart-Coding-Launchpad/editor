@@ -211,6 +211,8 @@ The first standalone playground release covered Python, Arcade Kit, and Electron
 
 A later release added the Scratch playground: Scratch's toolbox already defaults to the full block set for an unauthored task (no per-task `toolbox` field needed), and a blank workspace (`starterBlocks: null`) with no authored sprites falls back to the module's default sprite, so it needed no new persistence design beyond the existing `starterBlocks`/`sprites`/`backdrops` state shape. HTML remains outside the playground scope — its multi-file/asset persistence still needs its own UX and storage design.
 
+The Scratch playground task also sets `allowAddSprite: true`, reusing the existing student-facing "Add sprite" picker (see `docs/authoring/scratch.md`) so students can add extra sprites from the admin-curated library beyond the module's default sprite. No playground-specific picker or persistence was needed — student-added sprites already persist through the same `__meta__.addedSprites` mechanism as in authored lessons.
+
 ## 8. Standalone playgrounds
 
 Add login-less routes:
