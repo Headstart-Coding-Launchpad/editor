@@ -34,6 +34,18 @@ function makeBlock(type, inputValues = {}) {
   }
 }
 
+// Block stub for a field_dropdown value (e.g. motion_goto's TO) — the field lives directly on
+// the block, not behind a connected shadow block like a number/text input does.
+function makeDropdownBlock(type, fieldValues = {}) {
+  return {
+    type,
+    previousConnection: { isConnected: () => false },
+    getNextBlock: () => null,
+    getInputTargetBlock: () => null,
+    getFieldValue: (name) => (name in fieldValues ? String(fieldValues[name]) : null),
+  }
+}
+
 // Workspace stub where blocks form named chains for blocks_in_order checks.
 // chains is an array of opcode-string arrays, each representing one connected stack.
 function makeChainWorkspace(chains) {
@@ -639,6 +651,49 @@ describe('evaluateScratchCheck', () => {
           null
         )
       ).toBe(true)
+    })
+  })
+
+  describe('fieldValues against a dropdown field (e.g. motion_goto TO)', () => {
+    it('returns true when a direct field_dropdown value matches', () => {
+      const ws = { getAllBlocks: () => [makeDropdownBlock('motion_goto', { TO: 'sprite2' })] }
+      expect(
+        evaluateScratchCheck(
+          { type: 'block_used', opcode: 'motion_goto', fieldValues: { TO: 'sprite2' } },
+          ws,
+          null
+        )
+      ).toBe(true)
+    })
+
+    it('returns false when a direct field_dropdown value does not match', () => {
+      const ws = { getAllBlocks: () => [makeDropdownBlock('motion_goto', { TO: 'sprite2' })] }
+      expect(
+        evaluateScratchCheck(
+          { type: 'block_used', opcode: 'motion_goto', fieldValues: { TO: '_random_' } },
+          ws,
+          null
+        )
+      ).toBe(false)
+    })
+
+    it('matches a dropdown field within a blocks_in_order sequence', () => {
+      const dropdownBlock = makeDropdownBlock('motion_goto', { TO: 'sprite2' })
+      const flagBlock = {
+        type: 'event_whenflagclicked',
+        previousConnection: { isConnected: () => false },
+        getNextBlock: () => dropdownBlock,
+      }
+      dropdownBlock.previousConnection = { isConnected: () => true }
+      const ws = { getAllBlocks: () => [flagBlock, dropdownBlock] }
+      const check = {
+        type: 'blocks_in_order',
+        sequence: [
+          'event_whenflagclicked',
+          { opcode: 'motion_goto', fieldValues: { TO: 'sprite2' } },
+        ],
+      }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
     })
   })
 
