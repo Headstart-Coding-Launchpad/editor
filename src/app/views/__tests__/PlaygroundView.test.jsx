@@ -46,6 +46,12 @@ describe('PlaygroundView', () => {
     expect(lesson).toMatchObject({ id: '__playground__scratch', isPlayground: true, type: 'scratch' })
   })
 
+  it('lets students add extra sprites in the Scratch playground', () => {
+    const lesson = renderPlayground('scratch')
+
+    expect(lesson.tasks[0].allowAddSprite).toBe(true)
+  })
+
   it('uses an app-only persistence namespace and never lesson assets', () => {
     const lesson = renderPlayground('python')
 
