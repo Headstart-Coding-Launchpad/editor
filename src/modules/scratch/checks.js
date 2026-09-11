@@ -45,6 +45,11 @@ function traverseChain(startBlock) {
 }
 
 function getInputValue(block, inputName) {
+  // Dropdown/checkbox fields (e.g. motion_goto's TO) live directly on the block, not as a
+  // connected input — check those before falling back to shadow-block value inputs (e.g. a
+  // number/text input like STEPS, which plugs in a math_number/text shadow block).
+  const directValue = block.getFieldValue?.(inputName)
+  if (directValue !== null && directValue !== undefined) return directValue
   const inputBlock = block.getInputTargetBlock?.(inputName)
   if (!inputBlock) return null
   return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
