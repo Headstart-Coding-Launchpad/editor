@@ -85,6 +85,9 @@ export default function LessonTaskContent({
   isViewingExplainerSlide,
   isViewingCompletionScreen,
   onOpenPlayground,
+  soloCompanion,
+  onTrySoloChallenge,
+  onReplayLesson,
   isCodeArrangeTask,
   displayCode,
   displayArcadeDesign,
@@ -478,7 +481,13 @@ export default function LessonTaskContent({
         })()}
 
       {!isSandbox && isViewingCompletionScreen ? (
-        <LessonCompleteScreen lessonTitle={lesson?.title} onOpenPlayground={onOpenPlayground} />
+        <LessonCompleteScreen
+          lessonTitle={lesson?.title}
+          onOpenPlayground={onOpenPlayground}
+          soloCompanion={soloCompanion}
+          onTrySoloChallenge={onTrySoloChallenge}
+          onReplayLesson={onReplayLesson}
+        />
       ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
       ) : !isSandbox && isQuizTask ? (

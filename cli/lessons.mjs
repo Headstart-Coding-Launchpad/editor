@@ -300,6 +300,44 @@ export async function deleteLesson(id) {
   return { success: true, id }
 }
 
+const SOLO_ID_SUFFIX = '-solo'
+
+// One-off backfill for lessons that already follow the informal `<id>-solo` naming
+// convention but predate the `companionOf` link field. Dry-run by default (apply=false)
+// so an admin can review the plan before writing; never overwrites an existing
+// `companionOf` value, and flags `-solo`-suffixed lessons with no matching parent id
+// instead of guessing.
+export async function linkSoloCompanions({ apply = false } = {}) {
+  const snap = await db.collection('lessons').get()
+  const byId = new Map(snap.docs.map((doc) => [doc.id, doc.data()]))
+
+  const linked = []
+  const alreadyLinked = []
+  const orphaned = []
+
+  for (const [id, data] of byId) {
+    if (!id.endsWith(SOLO_ID_SUFFIX)) continue
+    const parentId = id.slice(0, -SOLO_ID_SUFFIX.length)
+    if (data.companionOf) {
+      alreadyLinked.push({ id, companionOf: data.companionOf })
+      continue
+    }
+    if (!byId.has(parentId)) {
+      orphaned.push({ id })
+      continue
+    }
+    linked.push({ id, companionOf: parentId })
+  }
+
+  if (apply) {
+    for (const { id, companionOf } of linked) {
+      await db.collection('lessons').doc(id).update({ companionOf })
+    }
+  }
+
+  return { applied: apply, linked, alreadyLinked, orphaned }
+}
+
 export async function forkLesson(
   sourceLessonId,
   classId,

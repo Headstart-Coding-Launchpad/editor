@@ -562,6 +562,67 @@ describe('LessonPanel', () => {
     expect(screen.getByText('Maple')).toBeInTheDocument()
   })
 
+  it('collapses a linked solo companion beneath its parent lesson until expanded', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        PYTHON_LESSON,
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-solo',
+          title: 'Intro to Python - Solo Challenge',
+          companionOf: 'py-intro',
+        },
+      ],
+    })
+
+    await openFirstLevel(user)
+
+    const familyToggle = screen.getByRole('button', { name: '1 solo challenge' })
+    expect(familyToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('button', { name: /Intro to Python - Solo Challenge/i })
+    ).not.toBeInTheDocument()
+
+    await user.click(familyToggle)
+
+    expect(familyToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('button', { name: /Intro to Python - Solo Challenge/i })
+    ).toBeInTheDocument()
+    expect(screen.getByText('Solo Challenge')).toBeInTheDocument()
+  })
+
+  it('shows both a class-fork and solo-challenge count in one combined toggle', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        PYTHON_LESSON,
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-maple',
+          title: 'Intro to Python - Maple',
+          fork: { sourceLessonId: 'py-intro', classId: 'maple', className: 'Maple' },
+        },
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-solo',
+          title: 'Intro to Python - Solo Challenge',
+          companionOf: 'py-intro',
+        },
+      ],
+      classes: [{ id: 'maple', name: 'Maple', archived: false }],
+    })
+
+    await openFirstLevel(user)
+
+    expect(
+      screen.getByRole('button', { name: '1 class fork · 1 solo challenge' })
+    ).toBeInTheDocument()
+  })
+
   it('blocks uploaded lessons that fail builder validation', async () => {
     const user = userEvent.setup()
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})

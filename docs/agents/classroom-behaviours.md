@@ -204,13 +204,22 @@ Shows a read-only complete solution in the same reference panel as Support, with
 
 ## Solo Lesson Completion Screen
 
-- Solo mode only (never live/presentation) — a live session ends when the teacher ends it, not when the student runs out of tasks.
+- This specific screen is solo mode only (never live/presentation) — a live session ends when the teacher ends it, not when the student runs out of tasks, so there's no equivalent "reached the end" moment mid-session. The live analogue is the "Session ended" screen below.
 - A synthetic "lesson complete" nav entry (`makeCompletionPseudoTask`/`isCompletionPseudoTaskId` in `src/shared/taskUtils.js`) is reachable via Next off the last real task, same splice-into-nav mechanism as the Scratch explainer pseudo-task above, but appended *after* the last task instead of before one, and applies to every lesson type, not just Scratch.
 - Purely ephemeral render state (`viewingCompletionScreen` in `StudentView.jsx`) — like the explainer slide, it never touches `currentTaskId`, so it can't interfere with persistence, Firebase, or checks. `currentTaskId` stays pinned to the real last task throughout.
 - Only spliced into `flatTasksForNav` once the student has actually reached the last real task (`currentIndex === flatTasks.length - 1`) or is already viewing it — not for the whole lesson — so it doesn't inflate "Task X of Y" until it's actually reachable. `SoloNav`'s `displayTotal` prop keeps that label showing the real task count right up until the completion screen itself is being viewed.
 - Rendered by `LessonTaskContent.jsx` via `isViewingCompletionScreen`, gated identically to `isViewingExplainerSlide` throughout that file (no side explainer, no code pane, no support-stage reveals) but showing `LessonCompleteScreen.jsx` instead of `InformationTask` — a fixed "Lesson complete!" message, not authored content.
 - Shows an "Open Playground" button when the *last code task in the lesson* (skipping any trailing information/quiz tasks, via `isCodeTask`) resolves — through `getTaskModuleType`, composed-aware — to one of `PLAYGROUND_LESSON_TYPES` (`src/shared/composedLesson.js`: `python`, `arcade`, `electronics`, `scratch` — the types with a `/playground/:type` route). No button for `html`/`filesystem`, which have no playground. Deliberately not `activeLesson.type`/`currentTaskId`: on a composed lesson those are frozen on the last *real* task at completion time, which may be a trailing non-code task with no module of its own, or an earlier module than the one the student actually finished coding in.
-- The button navigates via `window.location.hash` (same pattern as the teacher's Account Settings link in `TeacherSessionControls.jsx`), not `useNavigate`, so `StudentView.jsx` doesn't take on a React Router dependency.
+- Also shows "Go Through the Lesson Again" (navigates back to the first task via the normal `handleSoloNavigate` path — backward navigation is never restricted, so this doesn't touch saved progress) and, when the lesson has a linked solo companion (see below), "Try the Solo Challenge".
+- The buttons navigate via `window.location.hash` (same pattern as the teacher's Account Settings link in `TeacherSessionControls.jsx`), not `useNavigate`, so `StudentView.jsx` doesn't take on a React Router dependency.
+
+## Linked Solo Challenge Lessons
+
+- A "solo challenge" lesson links to a parent lesson via `companionOf` on its own envelope (`docs/authoring/lesson-schema.md`, "Solo Companion Metadata") — the link lives only on the solo lesson; the parent is never modified.
+- `StudentView.jsx` resolves the companion once per `lessonId` via `findSoloCompanion()` in `src/shared/lessonService.js` (a `where('companionOf', '==', lessonId)` Firestore query) and stores it as `soloCompanion` state.
+- Offered as "Try the Solo Challenge" on both completion surfaces: the solo Lesson Complete screen above, and the live "Session ended" screen (`SessionEndedScreen.jsx`) — since a live session's real "finished" moment is the teacher ending it, not the student running out of tasks (see above). Clicking it sets `window.location.hash` to `#/lesson/<companion-id>?solo=true`, which remounts `StudentView` for the new lesson id in solo mode; because identity persists in `localStorage` (not per-lesson), this skips the choice/name-entry screens entirely.
+- The Session Ended screen also gains an "Open Playground" button in the same shape as the solo completion screen's, but computed from the lesson's `live`-filtered tasks (`liveFlatTasks` in `StudentView.jsx`) rather than whatever `taskDisplayMode` is active — the ended screen renders from an early return before that filtering runs.
+- Admin's lesson list groups a solo-companion lesson under its parent the same way class forks are grouped (`isFamilyChild`/`makeLessonFamilyGroups` in `src/admin/LessonPanel.jsx`), with a green "Solo Challenge" pill distinguishing it from the blue class-fork pill.
 
 ## Workspace Sharing
 

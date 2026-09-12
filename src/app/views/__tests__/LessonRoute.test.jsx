@@ -1,7 +1,7 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import { describe, it, expect, vi } from 'vitest'
+import React, { useEffect } from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import LessonRoute from '../LessonRoute'
 import { useAuth } from '../../../auth/useAuth'
 
@@ -11,8 +11,22 @@ vi.mock('../TeacherView', () => ({
   default: ({ lessonId }) => <div>TeacherView {lessonId}</div>,
 }))
 
+const studentViewMounts = []
+
+// Mount-only (empty deps): records a fresh instance, not a re-render with new props —
+// this is what actually distinguishes a remount (local state reset, e.g.
+// `viewingCompletionScreen`) from React Router reusing the same StudentView instance
+// across a lessonId param change (see the `key={lessonId}` fix in LessonRoute.jsx).
+function MockStudentView(props) {
+  useEffect(() => {
+    studentViewMounts.push(props.lessonId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-only
+  }, [])
+  return <div>StudentView {JSON.stringify(props)}</div>
+}
+
 vi.mock('../StudentView', () => ({
-  default: (props) => <div>StudentView {JSON.stringify(props)}</div>,
+  default: MockStudentView,
 }))
 
 function renderRoute(search) {
@@ -26,7 +40,52 @@ function renderRoute(search) {
   )
 }
 
+// Renders LessonRoute alongside a link that navigates to a different lesson's URL
+// (same route pattern, different :lessonId) — the exact shape of the "Try the Solo
+// Challenge" navigation, which sets window.location.hash to a different /lesson/:id.
+function NavigateLink({ to }) {
+  const navigate = useNavigate()
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      Navigate
+    </button>
+  )
+}
+
+function renderRouteWithNavigation(from, to) {
+  return render(
+    <MemoryRouter initialEntries={[from]}>
+      <Routes>
+        <Route
+          path="/lesson/:lessonId"
+          element={
+            <>
+              <LessonRoute />
+              <NavigateLink to={to} />
+            </>
+          }
+        />
+      </Routes>
+    </MemoryRouter>
+  )
+}
+
 describe('LessonRoute', () => {
+  beforeEach(() => {
+    studentViewMounts.length = 0
+  })
+
+  it('remounts StudentView (resetting its local state) when navigating to a different lesson id', async () => {
+    useAuth.mockReturnValue({ user: null, role: null, loading: false })
+    renderRouteWithNavigation('/lesson/parent-1', '/lesson/companion-1')
+
+    expect(studentViewMounts).toEqual(['parent-1'])
+
+    fireEvent.click(screen.getByText('Navigate'))
+
+    await waitFor(() => expect(studentViewMounts).toEqual(['parent-1', 'companion-1']))
+  })
+
   it('renders the plain StudentView for a bare student link', () => {
     useAuth.mockReturnValue({ user: null, role: null, loading: false })
     renderRoute('')

@@ -56,6 +56,7 @@ tasks: []                     # required — ordered task list (see below)
 | `description` | Yes | string | Short entry screen summary. |
 | `draft` | No | boolean | Enables incomplete real tasks for authoring. Final publishing refuses `true`. |
 | `soloOnly` | No | boolean | Default `false`. When `true`, hard-forces solo mode always — the live/wait choice screen is never offered, regardless of URL or an existing live session. See `docs/authoring/lesson-schema.md` and `docs/agents/runtime-model.md`. |
+| `companionOf` | No | string | Set only on a `soloOnly` "solo challenge" lesson, to the `id` of the parent lesson it extends. Links the two in the Admin list and offers this lesson as a "Try the Solo Challenge" continuation when students finish the parent. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`. |
 | `version` | No | positive integer | Current save version, managed by LaunchPad; callers must not set it. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |

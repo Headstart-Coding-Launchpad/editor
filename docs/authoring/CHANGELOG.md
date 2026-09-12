@@ -18,6 +18,12 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-12
+
+### New `companionOf` lesson field links a solo challenge to its parent lesson
+
+A `soloOnly` "solo challenge" lesson can now set `companionOf: "<parent-lesson-id>"` to link it to the lesson it extends. The Admin lesson list groups a solo lesson under its linked parent (collapsible, same pattern as class forks), and students who finish the parent lesson — live or solo — are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The field is set only on the solo lesson; the parent lesson document is unchanged. Set it via the Builder's new "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, or the CLI. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`.
+
 ## 2026-09-11
 
 ### New `allowRemoveSprite` / `allowRemoveStarterSprites` Scratch task fields

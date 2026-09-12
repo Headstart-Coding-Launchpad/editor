@@ -201,6 +201,20 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           </label>
         </Field>
 
+        <Field
+          label="Solo challenge companion of"
+          hint="If this lesson is a solo challenge extending another lesson, set the parent lesson's id here. Students who finish that parent lesson (live or solo) are offered a 'Try the Solo Challenge' button straight into this lesson."
+        >
+          <input
+            style={s.input}
+            value={lesson.companionOf ?? ''}
+            onChange={(e) =>
+              set('companionOf', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') || null)
+            }
+            placeholder="python-intro"
+          />
+        </Field>
+
         {lesson.fork?.sourceLessonId && (
           <Field label="Class fork">
             <div style={s.summaryText}>

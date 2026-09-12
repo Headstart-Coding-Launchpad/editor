@@ -3,7 +3,7 @@ import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
 import { useLessonLoader } from '../hooks/useLessonLoader'
-import { applyLessonOverride } from '../../shared/lessonService'
+import { applyLessonOverride, findSoloCompanion } from '../../shared/lessonService'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import { useCrossTabPresence } from '../hooks/useCrossTabPresence'
@@ -445,6 +445,27 @@ export default function StudentView({
   // real last task) so it can't interfere with persistence, Firebase, or checks.
   const [viewingCompletionScreen, setViewingCompletionScreen] = useState(false)
 
+  // Looked up once per lesson so the completion screen can offer a linked solo
+  // challenge lesson (see `companionOf` in the lesson schema) regardless of whether
+  // this student finished the lesson live or solo.
+  const [soloCompanion, setSoloCompanion] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    setSoloCompanion(null)
+    findSoloCompanion(lessonId).then((companion) => {
+      if (!cancelled) setSoloCompanion(companion)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [lessonId])
+  function handleTrySoloChallenge() {
+    window.location.hash = `#/lesson/${soloCompanion.id}?solo=true`
+  }
+  function handleReplayLesson() {
+    handleSoloNavigate(flatTasks[0]?.id)
+  }
+
   // Auto-open the explainer slide on arrival at a task whose explainer is (already)
   // hidden — landing on the task shows the explainer first, and the student proceeds
   // via the normal Next/dot controls (which then land on the real task) rather than
@@ -601,6 +622,18 @@ export default function StudentView({
     return <LoadingScreen message={`Lesson "${lessonId}" not found.`} />
   }
 
+  // Computed independently of `phase` (unlike the main lastCodeTaskType/canOpenPlayground
+  // below, which reflect whichever taskDisplayMode the student is currently in) because the
+  // "Session ended" screen renders from an early return, before the live/solo task-filtering
+  // below runs, and always reflects a lesson the student was doing live.
+  const liveFlatTasks = flattenTasks(filterTasksByMode(lesson.tasks, 'live'))
+  const lastLiveCodeTask = [...liveFlatTasks].reverse().find(isCodeTask)
+  const lastLiveCodeTaskType = lastLiveCodeTask ? getTaskModuleType(lesson, lastLiveCodeTask) : null
+  const canOpenPlaygroundAtEnd = PLAYGROUND_LESSON_TYPES.includes(lastLiveCodeTaskType)
+  function handleOpenPlaygroundAtEnd() {
+    window.location.hash = `#/playground/${lastLiveCodeTaskType}`
+  }
+
   if (phase === 'choice') {
     return (
       <ChoiceScreen
@@ -644,6 +677,9 @@ export default function StudentView({
         savedOtherTaskCount={savedOtherTaskCount}
         onDownloadAllCode={handleDownloadAllCode}
         onContinueSolo={() => setPhase('solo')}
+        soloCompanion={soloCompanion}
+        onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
+        onOpenPlayground={canOpenPlaygroundAtEnd ? handleOpenPlaygroundAtEnd : undefined}
       />
     )
   }
@@ -1339,6 +1375,9 @@ export default function StudentView({
             isViewingExplainerSlide={viewingExplainerSlide}
             isViewingCompletionScreen={viewingCompletionScreen}
             onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
+            soloCompanion={soloCompanion}
+            onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
+            onReplayLesson={handleReplayLesson}
             isCodeArrangeTask={isCodeArrangeTask}
             displayCode={displayCode}
             displayArcadeDesign={displayArcadeDesign}

@@ -120,48 +120,62 @@ function isLessonFork(lesson) {
   return Boolean(lesson?.fork?.sourceLessonId)
 }
 
+function isSoloCompanion(lesson) {
+  return Boolean(lesson?.companionOf)
+}
+
+function isFamilyChild(lesson) {
+  return isLessonFork(lesson) || isSoloCompanion(lesson)
+}
+
+function getFamilySourceId(lesson) {
+  return lesson?.fork?.sourceLessonId ?? lesson?.companionOf ?? null
+}
+
 function getForkClassLabel(lesson, classes) {
   if (!isLessonFork(lesson)) return 'Stock'
   const cls = classes.find((item) => item.id === lesson.fork.classId)
   return cls?.name ?? lesson.fork.className ?? lesson.fork.classId ?? 'Class fork'
 }
 
+function sortFamilyChildren(children) {
+  return children.sort((a, b) =>
+    String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title))
+  )
+}
+
 function makeLessonFamilyGroups(lessons) {
   const byId = new Map(lessons.map((lesson) => [lesson.id, lesson]))
-  const forksBySource = new Map()
+  const childrenBySource = new Map()
   const families = []
 
   for (const lesson of lessons) {
-    if (!isLessonFork(lesson)) continue
-    const sourceId = lesson.fork.sourceLessonId
-    if (!forksBySource.has(sourceId)) forksBySource.set(sourceId, [])
-    forksBySource.get(sourceId).push(lesson)
+    if (!isFamilyChild(lesson)) continue
+    const sourceId = getFamilySourceId(lesson)
+    if (!childrenBySource.has(sourceId)) childrenBySource.set(sourceId, [])
+    childrenBySource.get(sourceId).push(lesson)
   }
 
   const stockLessons = lessons
-    .filter((lesson) => !isLessonFork(lesson))
+    .filter((lesson) => !isFamilyChild(lesson))
     .sort((a, b) => String(a.id).localeCompare(String(b.id)))
 
   for (const lesson of stockLessons) {
-    const forks = (forksBySource.get(lesson.id) ?? []).sort((a, b) =>
-      String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title))
-    )
+    const children = sortFamilyChildren(childrenBySource.get(lesson.id) ?? [])
     families.push({
       id: lesson.id,
       title: lesson.title ?? lesson.id,
-      items: [lesson, ...forks],
+      items: [lesson, ...children],
     })
-    forksBySource.delete(lesson.id)
+    childrenBySource.delete(lesson.id)
   }
 
-  for (const [sourceId, forks] of forksBySource) {
+  for (const [sourceId, children] of childrenBySource) {
     const source = byId.get(sourceId)
     families.push({
       id: sourceId,
-      title: source?.title ?? forks[0]?.fork?.sourceLessonTitle ?? sourceId,
-      items: forks.sort((a, b) =>
-        String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title))
-      ),
+      title: source?.title ?? children[0]?.fork?.sourceLessonTitle ?? sourceId,
+      items: sortFamilyChildren(children),
     })
   }
 
@@ -631,7 +645,7 @@ function LevelLessonGroup({
   forkingId,
 }) {
   const [openLessonIds, setOpenLessonIds] = useState(() => new Set())
-  const [openForkFamilyIds, setOpenForkFamilyIds] = useState(() => new Set())
+  const [openFamilyIds, setOpenFamilyIds] = useState(() => new Set())
 
   function handleToggleLesson(lessonId) {
     setOpenLessonIds((prev) => {
@@ -642,8 +656,8 @@ function LevelLessonGroup({
     })
   }
 
-  function handleToggleForkFamily(familyId) {
-    setOpenForkFamilyIds((prev) => {
+  function handleToggleFamily(familyId) {
+    setOpenFamilyIds((prev) => {
       const next = new Set(prev)
       if (next.has(familyId)) next.delete(familyId)
       else next.add(familyId)
@@ -684,10 +698,20 @@ function LevelLessonGroup({
                 <React.Fragment key={family.id}>
                   {family.items.map((lesson, index) => {
                     const isFork = isLessonFork(lesson)
-                    const hasStockLesson = !isLessonFork(family.items[0])
-                    const forkCount = hasStockLesson ? family.items.length - 1 : 0
-                    const forksOpen = openForkFamilyIds.has(family.id)
-                    if (isFork && hasStockLesson && !forksOpen) return null
+                    const isSolo = isSoloCompanion(lesson)
+                    const isChild = isFork || isSolo
+                    const hasStockLesson = !isFamilyChild(family.items[0])
+                    const forkCount = hasStockLesson ? family.items.filter(isLessonFork).length : 0
+                    const soloCount = hasStockLesson ? family.items.filter(isSoloCompanion).length : 0
+                    const familyOpen = openFamilyIds.has(family.id)
+                    if (isChild && hasStockLesson && !familyOpen) return null
+
+                    const familyToggleLabel = [
+                      forkCount > 0 ? `${forkCount} class ${forkCount === 1 ? 'fork' : 'forks'}` : null,
+                      soloCount > 0 ? `${soloCount} solo ${soloCount === 1 ? 'challenge' : 'challenges'}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
 
                     const lessonReports = reports.filter((report) => report.lessonId === lesson.id)
                     const lessonFeedback = feedback.filter((item) => item.lessonId === lesson.id)
@@ -699,7 +723,7 @@ function LevelLessonGroup({
                             <div style={s.lessonTitleCell}>
                               <button
                                 type="button"
-                                style={{ ...s.lessonToggle, ...(isFork ? s.forkLessonToggle : {}) }}
+                                style={{ ...s.lessonToggle, ...(isChild ? s.forkLessonToggle : {}) }}
                                 onClick={() => handleToggleLesson(lesson.id)}
                                 aria-expanded={lessonOpen}
                               >
@@ -711,17 +735,18 @@ function LevelLessonGroup({
                                     {getForkClassLabel(lesson, classes)}
                                   </span>
                                 )}
+                                {isSolo && <span style={s.soloCompanionPill}>Solo Challenge</span>}
                               </button>
-                              {!isFork && forkCount > 0 && index === 0 && (
+                              {!isChild && (forkCount > 0 || soloCount > 0) && index === 0 && (
                                 <button
                                   type="button"
                                   style={s.forkFamilyToggle}
-                                  onClick={() => handleToggleForkFamily(family.id)}
-                                  aria-expanded={forksOpen}
-                                  aria-label={`${forkCount} class ${forkCount === 1 ? 'fork' : 'forks'}`}
+                                  onClick={() => handleToggleFamily(family.id)}
+                                  aria-expanded={familyOpen}
+                                  aria-label={familyToggleLabel}
                                 >
-                                  {forkCount} class {forkCount === 1 ? 'fork' : 'forks'}
-                                  <span aria-hidden="true">{forksOpen ? '-' : '+'}</span>
+                                  {familyToggleLabel}
+                                  <span aria-hidden="true">{familyOpen ? '-' : '+'}</span>
                                 </button>
                               )}
                             </div>
@@ -1477,6 +1502,17 @@ const s = {
     borderRadius: 999,
     background: '#eff6ff',
     color: '#1d4ed8',
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    padding: '1px 7px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  soloCompanionPill: {
+    border: '1px solid #bbf7d0',
+    borderRadius: 999,
+    background: '#f0fdf4',
+    color: '#15803d',
     fontSize: '0.68rem',
     fontWeight: 700,
     padding: '1px 7px',

@@ -35,6 +35,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `fork` | No | object | Metadata for admin-created class forks. Forked lesson IDs must be `{sourceLessonId}-{classId}` and the fork is still a normal public lesson with its own URL. |
 | `recordingUrl` | No | string | Unlisted YouTube link to that class's recorded live session, set per-class on the class's forked lesson (see Fork Metadata). Shown to solo students as a small pop-out player; not shown during live sessions or teacher presentation. The YouTube video must be set to **Unlisted** (not Private) — students never sign in with Google. Parsed/validated with `src/shared/youtube.js`; only `youtube.com`/`youtu.be` links are accepted. |
 | `soloOnly` | No | boolean | Default `false`/absent. When `true`, the lesson is hard-forced to solo mode always — the live/wait choice screen is never offered to students, regardless of which URL they open (even `?solo=true` is redundant, and even if a live session exists for the lesson, students stay in solo mode). Authored via the Builder's "Solo-only lesson" checkbox in `LessonMetaPanel.jsx`, alongside `draft`. See `docs/agents/runtime-model.md` for how this interacts with the URL/session join flow. |
+| `companionOf` | No | string | Set on a `soloOnly` "solo challenge" lesson to the `id` of the parent lesson it extends (see Solo Companion Metadata). Authored via the Builder's "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, next to the "Solo-only lesson" checkbox. |
 | `tasks` | Yes | array | Ordered task list. IDs are sequential integers starting at `1`. May contain group objects. |
 
 ### Fork Metadata
@@ -56,6 +57,20 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 ```
 
 Class forks are created by admins through Admin or the CLI. Creating the same fork again overwrites the lesson document, resets the title to `{source title} - {class name}`, keeps `stage: "published"`, and rebuilds 1:1 `taskLinks`. Reports and feedback start empty for the overwritten fork.
+
+### Solo Companion Metadata
+
+```json
+{
+  "id": "python-l3-09-solo",
+  "soloOnly": true,
+  "companionOf": "python-l3-09"
+}
+```
+
+A "solo challenge" lesson is a normal lesson (own `id`, own URL, `soloOnly: true`) that extends another lesson. Setting `companionOf` to the parent lesson's `id` links the two: the Admin lesson list groups the solo lesson under its parent, and students who finish the parent lesson (live or solo) are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The link is one-directional and lives on the solo lesson only — the parent lesson document is not modified. At most one solo companion is resolved per parent lesson; if more than one lesson sets the same `companionOf`, only one is shown.
+
+Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `companionOf` for existing lessons that already follow the informal `<id>-solo` naming convention (add `--apply` to write it); it never overwrites an existing `companionOf` and flags `-solo`-suffixed lessons with no matching parent id for manual review.
 
 ---
 
