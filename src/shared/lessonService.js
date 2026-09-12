@@ -4,9 +4,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   setDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
@@ -30,6 +32,19 @@ export async function fetchLessonList() {
   const items = snap.docs.map((d) => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
   items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
   return items
+}
+
+// Finds the "solo challenge" lesson linked to a parent lesson, if any, via the
+// linked lesson's `companionOf` field. Returns only the fields needed to offer
+// it as a lesson-complete continuation.
+export async function findSoloCompanion(lessonId) {
+  if (!lessonId) return null
+  const snap = await getDocs(
+    query(collection(firestore, 'lessons'), where('companionOf', '==', lessonId), limit(1))
+  )
+  if (snap.empty) return null
+  const [docSnap] = snap.docs
+  return { id: docSnap.id, title: docSnap.data()?.title ?? docSnap.id }
 }
 
 // Publishes a full lesson document. Callers should validate the lesson before

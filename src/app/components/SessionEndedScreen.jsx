@@ -5,6 +5,9 @@ export default function SessionEndedScreen({
   savedOtherTaskCount = 0,
   onDownloadAllCode,
   onContinueSolo,
+  soloCompanion,
+  onTrySoloChallenge,
+  onOpenPlayground,
 }) {
   return (
     <div style={s.centreScreen}>
@@ -36,15 +39,25 @@ export default function SessionEndedScreen({
       <p
         style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}
       >
-        Want to keep practising on your own?
+        What would you like to do next?
       </p>
       <button
         className="btn-primary"
         style={{ padding: '12px 32px', fontSize: 15 }}
         onClick={onContinueSolo}
       >
-        Continue Solo
+        Go Through the Lesson Again
       </button>
+      {soloCompanion && onTrySoloChallenge && (
+        <button className="btn-ghost-outline" style={s.secondaryButton} onClick={onTrySoloChallenge}>
+          Try the Solo Challenge
+        </button>
+      )}
+      {onOpenPlayground && (
+        <button className="btn-ghost-outline" style={s.secondaryButton} onClick={onOpenPlayground}>
+          Open Playground
+        </button>
+      )}
     </div>
   )
 }
@@ -81,4 +94,5 @@ const s = {
     lineHeight: 1.5,
   },
   downloadButton: { alignSelf: 'center', padding: '10px 20px', fontSize: 14 },
+  secondaryButton: { padding: '12px 32px', fontSize: 15 },
 }

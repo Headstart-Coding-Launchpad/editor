@@ -297,6 +297,22 @@ await yargs(hideBin(process.argv))
       )
 
       .command(
+        'link-solo',
+        'Backfill companionOf on existing <id>-solo lessons by matching id pairs (dry-run unless --apply)',
+        {
+          apply: {
+            type: 'boolean',
+            default: false,
+            describe: 'Write the backfilled companionOf field; omit to only print the plan',
+          },
+        },
+        cmd(async ({ apply }) => {
+          const { linkSoloCompanions } = await loadLessons()
+          print(await linkSoloCompanions({ apply }))
+        })
+      )
+
+      .command(
         'fork <sourceLessonId>',
         'Create or overwrite a published class fork of a stock lesson',
         {

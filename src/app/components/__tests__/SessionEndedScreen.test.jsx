@@ -38,4 +38,41 @@ describe('SessionEndedScreen', () => {
     render(<SessionEndedScreen onContinueSolo={vi.fn()} />)
     expect(screen.queryByText(/saved only on this device/i)).not.toBeInTheDocument()
   })
+
+  it('always offers to go through the lesson again', () => {
+    const onContinueSolo = vi.fn()
+    render(<SessionEndedScreen onContinueSolo={onContinueSolo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Through the Lesson Again' }))
+    expect(onContinueSolo).toHaveBeenCalledOnce()
+  })
+
+  it('does not offer the solo challenge or playground when neither is available', () => {
+    render(<SessionEndedScreen onContinueSolo={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Open Playground/i })).not.toBeInTheDocument()
+  })
+
+  it('offers the linked solo challenge when one exists', () => {
+    const onTrySoloChallenge = vi.fn()
+    render(
+      <SessionEndedScreen
+        onContinueSolo={vi.fn()}
+        soloCompanion={{ id: 'py-intro-solo', title: 'Python Challenge' }}
+        onTrySoloChallenge={onTrySoloChallenge}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try the Solo Challenge' }))
+    expect(onTrySoloChallenge).toHaveBeenCalledOnce()
+  })
+
+  it('offers the playground when one is available for the lesson type', () => {
+    const onOpenPlayground = vi.fn()
+    render(<SessionEndedScreen onContinueSolo={vi.fn()} onOpenPlayground={onOpenPlayground} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Playground' }))
+    expect(onOpenPlayground).toHaveBeenCalledOnce()
+  })
 })

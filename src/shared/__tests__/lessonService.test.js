@@ -14,6 +14,9 @@ vi.mock('firebase/firestore', () => ({
   getDocs: (...args) => mockGetDocs(...args),
   setDoc: (...args) => mockSetDoc(...args),
   deleteDoc: (...args) => mockDeleteDoc(...args),
+  query: vi.fn((...args) => ({ query: args })),
+  where: vi.fn((field, op, value) => ({ field, op, value })),
+  limit: vi.fn((n) => ({ limit: n })),
   writeBatch: () => ({
     delete: (...args) => mockBatchDelete(...args),
     commit: (...args) => mockBatchCommit(...args),
@@ -27,6 +30,7 @@ vi.mock('../firebase', () => ({
 const {
   fetchLessonById,
   fetchLessonList,
+  findSoloCompanion,
   applyLessonOverride,
   publishLesson,
   publishLessonTasks,
@@ -81,6 +85,42 @@ describe('lessonService', () => {
       { id: 'a', title: 'Alpha' },
       { id: 'b', title: 'Zoo' },
     ])
+  })
+})
+
+describe('findSoloCompanion', () => {
+  it('returns null when lessonId is falsy', async () => {
+    await expect(findSoloCompanion('')).resolves.toBeNull()
+    await expect(findSoloCompanion(null)).resolves.toBeNull()
+  })
+
+  it('returns null when no lesson links to this one', async () => {
+    mockGetDocs.mockResolvedValue({ empty: true, docs: [] })
+    await expect(findSoloCompanion('python-1-1')).resolves.toBeNull()
+  })
+
+  it('returns the linked solo companion id and title', async () => {
+    mockGetDocs.mockResolvedValue({
+      empty: false,
+      docs: [{ id: 'python-1-1-solo', data: () => ({ title: 'Python Challenge' }) }],
+    })
+
+    await expect(findSoloCompanion('python-1-1')).resolves.toEqual({
+      id: 'python-1-1-solo',
+      title: 'Python Challenge',
+    })
+  })
+
+  it('falls back to the id when the companion has no title', async () => {
+    mockGetDocs.mockResolvedValue({
+      empty: false,
+      docs: [{ id: 'python-1-1-solo', data: () => ({}) }],
+    })
+
+    await expect(findSoloCompanion('python-1-1')).resolves.toEqual({
+      id: 'python-1-1-solo',
+      title: 'python-1-1-solo',
+    })
   })
 })
 

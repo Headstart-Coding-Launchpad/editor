@@ -7,6 +7,7 @@ import { runPython, stopPython } from '../../../modules/python/pyodide'
 
 const mocks = vi.hoisted(() => ({
   fetchLessonById: vi.fn(),
+  findSoloCompanion: vi.fn(),
   useSession: vi.fn(),
   useIdentity: vi.fn(),
   scratchWorkspace: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('../../../shared/useIsMobile', () => ({
 
 vi.mock('../../../shared/lessonService', () => ({
   fetchLessonById: (...args) => mocks.fetchLessonById(...args),
+  findSoloCompanion: (...args) => mocks.findSoloCompanion(...args),
   applyLessonOverride: (lesson, overrideTasks) =>
     overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson,
 }))
@@ -152,6 +154,7 @@ describe('StudentView', () => {
   beforeEach(() => {
     mocks.scratchWorkspace.mockClear()
     mocks.buildIframeSrc.mockClear()
+    mocks.findSoloCompanion.mockReset().mockResolvedValue(null)
     mocks.fetchLessonById.mockResolvedValue({
       id: 'python-1-1',
       title: 'Python 1.1',
@@ -717,6 +720,91 @@ describe('StudentView', () => {
     })
   })
 
+  describe('session ended screen', () => {
+    // Mirrors the fullscreen describe block above: the phase machine only transitions
+    // to 'ended' from 'lesson'/'sandbox' (see useStudentPhase.js), so a session that
+    // starts already 'ended' resolves to 'choice' instead — mount live first, then
+    // rerender with state 'ended' to trigger the real transition.
+    function mkLiveSession(overrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...overrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      }
+    }
+
+    it('offers the linked solo challenge when the live session ends', async () => {
+      mocks.findSoloCompanion.mockResolvedValue({
+        id: 'python-1-1-solo',
+        title: 'Python Challenge',
+      })
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      const challengeBtn = await screen.findByRole('button', { name: 'Try the Solo Challenge' })
+      await user.click(challengeBtn)
+      expect(window.location.hash).toBe('#/lesson/python-1-1-solo?solo=true')
+
+      window.location.hash = originalHash
+    })
+
+    it('shows no solo challenge button when the lesson has no linked companion', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      await screen.findByText('Session ended')
+      expect(
+        screen.queryByRole('button', { name: /Try the Solo Challenge/i })
+      ).not.toBeInTheDocument()
+    })
+
+    it('offers Open Playground for the lesson type on the session ended screen', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      const playgroundBtn = await screen.findByRole('button', { name: 'Open Playground' })
+      await user.click(playgroundBtn)
+      expect(window.location.hash).toBe('#/playground/python')
+
+      window.location.hash = originalHash
+    })
+  })
+
   describe('persistent Need Help control', () => {
     function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
       return {
@@ -1086,6 +1174,60 @@ describe('StudentView', () => {
 
       expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Open Playground' })).not.toBeInTheDocument()
+    })
+
+    it('shows no solo challenge link when the lesson has no linked companion', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+    })
+
+    it('offers a linked solo challenge and navigates straight into it in solo mode', async () => {
+      mocks.findSoloCompanion.mockResolvedValue({
+        id: 'python-solo-complete-1-solo',
+        title: 'Python Challenge',
+      })
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      const challengeBtn = await screen.findByRole('button', { name: 'Try the Solo Challenge' })
+      await user.click(challengeBtn)
+      expect(window.location.hash).toBe('#/lesson/python-solo-complete-1-solo?solo=true')
+
+      window.location.hash = originalHash
+    })
+
+    it('goes back to the first task when "Go Through the Lesson Again" is clicked', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      await user.click(screen.getByRole('button', { name: 'Go Through the Lesson Again' }))
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      expect(screen.queryByText('Lesson complete!')).not.toBeInTheDocument()
     })
   })
 

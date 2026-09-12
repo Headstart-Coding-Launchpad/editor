@@ -32,11 +32,17 @@ export default function LessonRoute() {
     }
     if (isPreview)
       return (
-        <StudentView lessonId={lessonId} forceSolo previewMode allowUnrestrictedTaskNavigation />
+        <StudentView
+          key={lessonId}
+          lessonId={lessonId}
+          forceSolo
+          previewMode
+          allowUnrestrictedTaskNavigation
+        />
       )
-    if (isPresent) return <StudentView lessonId={lessonId} teacherPresentation />
+    if (isPresent) return <StudentView key={lessonId} lessonId={lessonId} teacherPresentation />
     return <TeacherView lessonId={lessonId} />
   }
 
-  return <StudentView lessonId={lessonId} forceSolo={forceSolo} />
+  return <StudentView key={lessonId} lessonId={lessonId} forceSolo={forceSolo} />
 }
