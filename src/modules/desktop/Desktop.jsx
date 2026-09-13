@@ -12,11 +12,11 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
     return () => window.clearInterval(id)
   }, [])
 
-  const iconApps = (availableApps ?? Object.keys(apps)).filter(appId => apps[appId])
+  const iconApps = (availableApps ?? Object.keys(apps)).filter((appId) => apps[appId])
 
   function openOrFocusApp(appId) {
     if (disabled) return
-    const existing = state.windows.find(w => w.appId === appId)
+    const existing = state.windows.find((w) => w.appId === appId)
     onStateChange(existing ? focusWindow(state, existing.id) : openWindow(state, appId))
   }
 
@@ -56,7 +56,7 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
             pointerEvents: 'none',
           }}
         >
-          {iconApps.map(appId => (
+          {iconApps.map((appId) => (
             <button
               key={appId}
               onClick={() => openOrFocusApp(appId)}
@@ -76,13 +76,20 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
               }}
             >
               <span style={{ fontSize: '2rem', lineHeight: 1 }}>{apps[appId]?.icon ?? '🗔'}</span>
-              <span style={{ fontSize: '0.72rem', textAlign: 'center', color: 'var(--colour-text)' }}>
+              <span
+                style={{ fontSize: '0.72rem', textAlign: 'center', color: 'var(--colour-text)' }}
+              >
                 {apps[appId]?.title ?? appId}
               </span>
             </button>
           ))}
         </div>
-        <WindowManager state={state} onStateChange={onStateChange} apps={apps} disabled={disabled} />
+        <WindowManager
+          state={state}
+          onStateChange={onStateChange}
+          apps={apps}
+          disabled={disabled}
+        />
       </div>
 
       <div
@@ -96,7 +103,7 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
           flex: '0 0 auto',
         }}
       >
-        {state.windows.map(win => {
+        {state.windows.map((win) => {
           const app = apps[win.appId]
           if (!app) return null
           return (
@@ -122,7 +129,14 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
             </button>
           )
         })}
-        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--colour-text)', fontVariantNumeric: 'tabular-nums' }}>
+        <span
+          style={{
+            marginLeft: 'auto',
+            fontSize: '0.78rem',
+            color: 'var(--colour-text)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
           {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>

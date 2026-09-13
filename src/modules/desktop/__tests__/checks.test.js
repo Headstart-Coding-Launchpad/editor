@@ -16,18 +16,54 @@ function desktop(overrides = {}) {
 describe('evaluateDesktopCheck', () => {
   it('fs_recycle_bin is_in / not_in', () => {
     const state = desktop({ recycleBin: [{ path: '/notes.txt' }] })
-    expect(evaluateDesktopCheck({ type: 'fs_recycle_bin', operator: 'is_in', path: '/notes.txt' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'fs_recycle_bin', operator: 'is_in', path: '/missing.txt' }, state)).toBe(false)
-    expect(evaluateDesktopCheck({ type: 'fs_recycle_bin', operator: 'not_in', path: '/missing.txt' }, state)).toBe(true)
+    expect(
+      evaluateDesktopCheck({ type: 'fs_recycle_bin', operator: 'is_in', path: '/notes.txt' }, state)
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'fs_recycle_bin', operator: 'is_in', path: '/missing.txt' },
+        state
+      )
+    ).toBe(false)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'fs_recycle_bin', operator: 'not_in', path: '/missing.txt' },
+        state
+      )
+    ).toBe(true)
   })
 
   it('window_state opened/closed/minimized/maximized', () => {
-    const state = desktop({ windows: [{ appId: 'fileManager', minimized: false, maximized: true }] })
-    expect(evaluateDesktopCheck({ type: 'window_state', operator: 'opened', appId: 'fileManager' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'window_state', operator: 'closed', appId: 'fileManager' }, state)).toBe(false)
-    expect(evaluateDesktopCheck({ type: 'window_state', operator: 'closed', appId: 'textEditor' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'window_state', operator: 'maximized', appId: 'fileManager' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'window_state', operator: 'minimized', appId: 'fileManager' }, state)).toBe(false)
+    const state = desktop({
+      windows: [{ appId: 'fileManager', minimized: false, maximized: true }],
+    })
+    expect(
+      evaluateDesktopCheck(
+        { type: 'window_state', operator: 'opened', appId: 'fileManager' },
+        state
+      )
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'window_state', operator: 'closed', appId: 'fileManager' },
+        state
+      )
+    ).toBe(false)
+    expect(
+      evaluateDesktopCheck({ type: 'window_state', operator: 'closed', appId: 'textEditor' }, state)
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'window_state', operator: 'maximized', appId: 'fileManager' },
+        state
+      )
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'window_state', operator: 'minimized', appId: 'fileManager' },
+        state
+      )
+    ).toBe(false)
   })
 
   it('windows_arranged_side_by_side accepts a tolerant side-by-side layout', () => {
@@ -48,7 +84,13 @@ describe('evaluateDesktopCheck', () => {
         { appId: 'b', x: 200, y: 0, width: 700, height: 600, minimized: false, maximized: false },
       ],
     })
-    expect(evaluateDesktopCheck({ type: 'windows_arranged_side_by_side', appIds: ['a', 'b'] }, overlapping, { viewport: { width: 1200 } })).toBe(false)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'windows_arranged_side_by_side', appIds: ['a', 'b'] },
+        overlapping,
+        { viewport: { width: 1200 } }
+      )
+    ).toBe(false)
 
     const minimized = desktop({
       windows: [
@@ -56,40 +98,80 @@ describe('evaluateDesktopCheck', () => {
         { appId: 'b', x: 600, y: 0, width: 600, height: 600, minimized: false, maximized: false },
       ],
     })
-    expect(evaluateDesktopCheck({ type: 'windows_arranged_side_by_side', appIds: ['a', 'b'] }, minimized, { viewport: { width: 1200 } })).toBe(false)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'windows_arranged_side_by_side', appIds: ['a', 'b'] },
+        minimized,
+        { viewport: { width: 1200 } }
+      )
+    ).toBe(false)
   })
 
   it('browser_visited visited / not_visited', () => {
     const state = desktop({ browserVisited: ['wildlife-facts'] })
-    expect(evaluateDesktopCheck({ type: 'browser_visited', operator: 'visited', pageId: 'wildlife-facts' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'browser_visited', operator: 'visited', pageId: 'sponsored-ad' }, state)).toBe(false)
-    expect(evaluateDesktopCheck({ type: 'browser_visited', operator: 'not_visited', pageId: 'sponsored-ad' }, state)).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'browser_visited', operator: 'visited', pageId: 'wildlife-facts' },
+        state
+      )
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'browser_visited', operator: 'visited', pageId: 'sponsored-ad' },
+        state
+      )
+    ).toBe(false)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'browser_visited', operator: 'not_visited', pageId: 'sponsored-ad' },
+        state
+      )
+    ).toBe(true)
   })
 
   it('search_query contains / not_contains / equals is case-insensitive', () => {
     const state = desktop({ lastSearchQuery: 'Blue Whale Facts' })
-    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'contains', text: 'whale' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'not_contains', text: 'shark' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'equals', text: 'blue whale facts' }, state)).toBe(true)
-    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'equals', text: 'whale' }, state)).toBe(false)
+    expect(
+      evaluateDesktopCheck({ type: 'search_query', operator: 'contains', text: 'whale' }, state)
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck({ type: 'search_query', operator: 'not_contains', text: 'shark' }, state)
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck(
+        { type: 'search_query', operator: 'equals', text: 'blue whale facts' },
+        state
+      )
+    ).toBe(true)
+    expect(
+      evaluateDesktopCheck({ type: 'search_query', operator: 'equals', text: 'whale' }, state)
+    ).toBe(false)
   })
 
   it('search_query with no lastSearchQuery is false', () => {
     const state = desktop()
-    expect(evaluateDesktopCheck({ type: 'search_query', operator: 'contains', text: 'whale' }, state)).toBe(false)
+    expect(
+      evaluateDesktopCheck({ type: 'search_query', operator: 'contains', text: 'whale' }, state)
+    ).toBe(false)
   })
 
   it('is registered with the central check dispatcher via context.desktop', () => {
     const state = desktop({ windows: [{ appId: 'fileManager', minimized: false }] })
-    expect(evaluateSingleCheck({ type: 'window_state', operator: 'opened', appId: 'fileManager' }, '', { desktop: state })).toBe(true)
+    expect(
+      evaluateSingleCheck({ type: 'window_state', operator: 'opened', appId: 'fileManager' }, '', {
+        desktop: state,
+      })
+    ).toBe(true)
   })
 
   it('fs_* checks still route through context.fs when evaluated in a desktop context', () => {
     const state = desktop({ fs: { '/': { type: 'dir' }, '/Documents/': { type: 'dir' } } })
-    expect(evaluateSingleCheck(
-      { type: 'fs_path', operator: 'exists', itemType: 'dir', path: '/Documents/' },
-      '',
-      { fs: state.fs, desktop: state }
-    )).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'fs_path', operator: 'exists', itemType: 'dir', path: '/Documents/' },
+        '',
+        { fs: state.fs, desktop: state }
+      )
+    ).toBe(true)
   })
 })

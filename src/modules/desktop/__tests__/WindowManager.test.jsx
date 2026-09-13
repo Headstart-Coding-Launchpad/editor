@@ -11,7 +11,7 @@ import { makeDefaultDesktop } from '../desktopState.js'
 // that fix it stay in place: the wrapper lets clicks fall through everywhere there's no
 // window, and each Window re-enables pointer events on itself.
 describe('WindowManager pointer-events layering', () => {
-  it("the wrapper lets clicks fall through to the desktop icon layer beneath", () => {
+  it('the wrapper lets clicks fall through to the desktop icon layer beneath', () => {
     const state = makeDefaultDesktop([])
     const { container } = render(<WindowManager state={state} onStateChange={vi.fn()} apps={{}} />)
     expect(container.firstChild).toHaveStyle({ pointerEvents: 'none' })

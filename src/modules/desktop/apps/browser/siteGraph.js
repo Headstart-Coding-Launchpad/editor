@@ -33,17 +33,25 @@ export const DEFAULT_SITE_GRAPH = {
       url: 'https://kidsearch.example',
       title: 'KidSearch',
       kind: 'search',
-      content: 'A safe search engine for practising research skills. Try searching for something below.',
+      content:
+        'A safe search engine for practising research skills. Try searching for something below.',
       links: [],
     },
   },
 }
 
 export function normaliseSiteGraph(raw) {
-  if (!raw || typeof raw !== 'object' || !raw.pages || typeof raw.pages !== 'object' || Object.keys(raw.pages).length === 0) {
+  if (
+    !raw ||
+    typeof raw !== 'object' ||
+    !raw.pages ||
+    typeof raw.pages !== 'object' ||
+    Object.keys(raw.pages).length === 0
+  ) {
     return DEFAULT_SITE_GRAPH
   }
-  const homepageId = raw.homepageId && raw.pages[raw.homepageId] ? raw.homepageId : Object.keys(raw.pages)[0]
+  const homepageId =
+    raw.homepageId && raw.pages[raw.homepageId] ? raw.homepageId : Object.keys(raw.pages)[0]
   return { homepageId, pages: raw.pages }
 }
 

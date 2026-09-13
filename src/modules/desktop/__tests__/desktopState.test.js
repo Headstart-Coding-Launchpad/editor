@@ -58,7 +58,7 @@ describe('desktopState', () => {
     state = openWindow(state, 'textEditor')
     const [first, second] = state.windows
     const focused = focusWindow(state, first.id)
-    expect(focused.windows.find(w => w.id === first.id).zIndex).toBeGreaterThan(second.zIndex)
+    expect(focused.windows.find((w) => w.id === first.id).zIndex).toBeGreaterThan(second.zIndex)
   })
 
   it('moveWindow and resizeWindow update only the targeted window', () => {
@@ -93,33 +93,39 @@ describe('desktopState', () => {
     const minimizedFirst = setWindowMinimized(opened, opened.windows[0].id, true)
     const reopened = openWindow(minimizedFirst, 'fileManager')
     expect(reopened.windows).toHaveLength(2)
-    expect(reopened.windows.find(w => w.appId === 'fileManager').minimized).toBe(false)
+    expect(reopened.windows.find((w) => w.appId === 'fileManager').minimized).toBe(false)
   })
 
   it('openWindow with a filePath opens a separate window per file, but reuses one for the same file', () => {
     let state = makeDefaultDesktop()
     state = openWindow(state, 'textEditor', { filePath: '/a.txt' })
     state = openWindow(state, 'textEditor', { filePath: '/b.txt' })
-    expect(state.windows.filter(w => w.appId === 'textEditor')).toHaveLength(2)
+    expect(state.windows.filter((w) => w.appId === 'textEditor')).toHaveLength(2)
 
     const reopened = openWindow(state, 'textEditor', { filePath: '/a.txt' })
-    expect(reopened.windows.filter(w => w.appId === 'textEditor')).toHaveLength(2)
+    expect(reopened.windows.filter((w) => w.appId === 'textEditor')).toHaveLength(2)
   })
 
   it('openWindow with no filePath still dedupes to a single window per app', () => {
     let state = makeDefaultDesktop()
     state = openWindow(state, 'imageViewer')
     const reopened = openWindow(state, 'imageViewer')
-    expect(reopened.windows.filter(w => w.appId === 'imageViewer')).toHaveLength(1)
+    expect(reopened.windows.filter((w) => w.appId === 'imageViewer')).toHaveLength(1)
   })
 
   it('isWindowDirty is false for windows with no draftContent, and compares draftContent against saved fs otherwise', () => {
     const fs = { '/a.txt': { type: 'file', content: 'saved' } }
     expect(isWindowDirty({ appId: 'fileManager' }, fs)).toBe(false)
-    expect(isWindowDirty({ appId: 'textEditor', filePath: '/a.txt', draftContent: 'saved' }, fs)).toBe(false)
-    expect(isWindowDirty({ appId: 'textEditor', filePath: '/a.txt', draftContent: 'edited' }, fs)).toBe(true)
+    expect(
+      isWindowDirty({ appId: 'textEditor', filePath: '/a.txt', draftContent: 'saved' }, fs)
+    ).toBe(false)
+    expect(
+      isWindowDirty({ appId: 'textEditor', filePath: '/a.txt', draftContent: 'edited' }, fs)
+    ).toBe(true)
     expect(isWindowDirty({ appId: 'textEditor', filePath: null, draftContent: '' }, fs)).toBe(false)
-    expect(isWindowDirty({ appId: 'textEditor', filePath: null, draftContent: 'untitled text' }, fs)).toBe(true)
+    expect(
+      isWindowDirty({ appId: 'textEditor', filePath: null, draftContent: 'untitled text' }, fs)
+    ).toBe(true)
   })
 
   it('arrangeSideBySide places two windows edge to edge across the viewport', () => {
@@ -127,8 +133,8 @@ describe('desktopState', () => {
     state = openWindow(state, 'textEditor')
     const [a, b] = state.windows
     const arranged = arrangeSideBySide(state, a.id, b.id, { width: 1000, height: 600 })
-    const wa = arranged.windows.find(w => w.id === a.id)
-    const wb = arranged.windows.find(w => w.id === b.id)
+    const wa = arranged.windows.find((w) => w.id === a.id)
+    const wb = arranged.windows.find((w) => w.id === b.id)
     expect(wa.x).toBe(0)
     expect(wa.width).toBe(500)
     expect(wb.x).toBe(500)

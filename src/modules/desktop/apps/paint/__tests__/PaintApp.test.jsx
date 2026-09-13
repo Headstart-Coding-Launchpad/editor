@@ -8,12 +8,23 @@ const FAKE_DATA_URL = 'data:image/png;base64,FAKE'
 
 function stubCanvas() {
   const ctx = {
-    fillRect: vi.fn(), beginPath: vi.fn(), arc: vi.fn(), fill: vi.fn(),
-    moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), drawImage: vi.fn(),
+    fillRect: vi.fn(),
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    fill: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
+    drawImage: vi.fn(),
   }
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx)
   vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(FAKE_DATA_URL)
-  vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: 640, height: 420 })
+  vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    top: 0,
+    width: 640,
+    height: 420,
+  })
   return ctx
 }
 
@@ -23,7 +34,15 @@ function setup(overrides = {}) {
   state = { ...state, windows: [win] }
   const onStateChange = vi.fn()
   const onInteraction = vi.fn()
-  render(<PaintApp win={win} state={state} onStateChange={onStateChange} disabled={false} onInteraction={onInteraction} />)
+  render(
+    <PaintApp
+      win={win}
+      state={state}
+      onStateChange={onStateChange}
+      disabled={false}
+      onInteraction={onInteraction}
+    />
+  )
   return { state, win, onStateChange, onInteraction }
 }
 
@@ -54,10 +73,20 @@ describe('PaintApp', () => {
 
   it('Save on an existing file commits directly without a dialog', () => {
     let state = makeDefaultDesktop(['paint'])
-    state = { ...state, fs: { ...state.fs, '/drawing.png': { type: 'file', content: 'data:image/png;base64,OLD' } } }
+    state = {
+      ...state,
+      fs: { ...state.fs, '/drawing.png': { type: 'file', content: 'data:image/png;base64,OLD' } },
+    }
     const win = { ...state.windows[0], appId: 'paint', filePath: '/drawing.png' }
     const onStateChange = vi.fn()
-    render(<PaintApp win={win} state={{ ...state, windows: [win] }} onStateChange={onStateChange} disabled={false} />)
+    render(
+      <PaintApp
+        win={win}
+        state={{ ...state, windows: [win] }}
+        onStateChange={onStateChange}
+        disabled={false}
+      />
+    )
     fireEvent.click(screen.getByText('💾 Save'))
     const nextState = onStateChange.mock.calls[0][0]
     expect(nextState.fs['/drawing.png'].content).toBe(FAKE_DATA_URL)
@@ -87,7 +116,14 @@ describe('PaintApp', () => {
     }
     const win = { ...state.windows[0], appId: 'paint' }
     const onStateChange = vi.fn()
-    render(<PaintApp win={win} state={{ ...state, windows: [win] }} onStateChange={onStateChange} disabled={false} />)
+    render(
+      <PaintApp
+        win={win}
+        state={{ ...state, windows: [win] }}
+        onStateChange={onStateChange}
+        disabled={false}
+      />
+    )
 
     fireEvent.click(screen.getByText('📂 Open'))
     fireEvent.click(screen.getByText('bad.png'))

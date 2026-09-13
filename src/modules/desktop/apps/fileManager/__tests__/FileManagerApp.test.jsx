@@ -34,12 +34,14 @@ describe('FileManagerApp', () => {
     const state = {
       ...baseState(),
       fs: { '/': { type: 'dir' }, '/Documents/': { type: 'dir' } },
-      recycleBin: [{
-        path: '/Documents/notes.txt',
-        entries: { '/Documents/notes.txt': { type: 'file', content: 'hello' } },
-        originalParent: '/Documents/',
-        deletedAt: 1,
-      }],
+      recycleBin: [
+        {
+          path: '/Documents/notes.txt',
+          entries: { '/Documents/notes.txt': { type: 'file', content: 'hello' } },
+          originalParent: '/Documents/',
+          deletedAt: 1,
+        },
+      ],
     }
     const onStateChange = vi.fn()
     render(<FileManagerApp state={state} onStateChange={onStateChange} startsInDir="/Documents/" />)

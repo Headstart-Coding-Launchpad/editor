@@ -48,17 +48,22 @@ const MIN_COMBINED_WIDTH_SHARE = 0.75
 const MAX_OVERLAP_SHARE = 0.15
 
 function findWindow(windows, appId) {
-  return (windows ?? []).find(w => w.appId === appId) ?? null
+  return (windows ?? []).find((w) => w.appId === appId) ?? null
 }
 
 function evaluateWindowState(check, windows) {
   const win = findWindow(windows, check.appId)
   switch (check.operator) {
-    case 'opened': return !!win
-    case 'closed': return !win
-    case 'minimized': return !!win?.minimized
-    case 'maximized': return !!win?.maximized
-    default: return false
+    case 'opened':
+      return !!win
+    case 'closed':
+      return !win
+    case 'minimized':
+      return !!win?.minimized
+    case 'maximized':
+      return !!win?.maximized
+    default:
+      return false
   }
 }
 
@@ -67,7 +72,8 @@ function evaluateArrangedSideBySide(check, windows, context) {
   if (!appA || !appB) return false
   const winA = findWindow(windows, appA)
   const winB = findWindow(windows, appB)
-  if (!winA || !winB || winA.minimized || winB.minimized || winA.maximized || winB.maximized) return false
+  if (!winA || !winB || winA.minimized || winB.minimized || winA.maximized || winB.maximized)
+    return false
 
   const viewportWidth = context?.viewport?.width ?? 1200
   if (winA.width / viewportWidth < MIN_WINDOW_WIDTH_SHARE) return false
@@ -78,7 +84,10 @@ function evaluateArrangedSideBySide(check, windows, context) {
   const combinedSpan = rightEdge - leftEdge
   if (combinedSpan / viewportWidth < MIN_COMBINED_WIDTH_SHARE) return false
 
-  const overlap = Math.max(0, Math.min(winA.x + winA.width, winB.x + winB.width) - Math.max(winA.x, winB.x))
+  const overlap = Math.max(
+    0,
+    Math.min(winA.x + winA.width, winB.x + winB.width) - Math.max(winA.x, winB.x)
+  )
   const narrower = Math.min(winA.width, winB.width)
   if (overlap / narrower > MAX_OVERLAP_SHARE) return false
 
@@ -95,10 +104,13 @@ function evaluateSearchQuery(check, lastSearchQuery) {
   const expected = (check.text ?? '').trim().toLowerCase()
   if (!expected) return false
   switch (check.operator) {
-    case 'equals': return query === expected
-    case 'not_contains': return !query.includes(expected)
+    case 'equals':
+      return query === expected
+    case 'not_contains':
+      return !query.includes(expected)
     case 'contains':
-    default: return query.includes(expected)
+    default:
+      return query.includes(expected)
   }
 }
 
@@ -112,7 +124,7 @@ export function evaluateDesktopCheck(check, desktop, context = {}) {
 
   switch (check.type) {
     case 'fs_recycle_bin': {
-      const isIn = recycleBin.some(item => item.path === check.path)
+      const isIn = recycleBin.some((item) => item.path === check.path)
       return check.operator === 'not_in' ? !isIn : isIn
     }
     case 'window_state':

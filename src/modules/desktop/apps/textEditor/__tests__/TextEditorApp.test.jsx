@@ -11,7 +11,15 @@ function setup(overrides = {}) {
   state = { ...state, windows: [win] }
   const onStateChange = vi.fn()
   const onInteraction = vi.fn()
-  render(<TextEditorApp win={win} state={state} onStateChange={onStateChange} disabled={false} onInteraction={onInteraction} />)
+  render(
+    <TextEditorApp
+      win={win}
+      state={state}
+      onStateChange={onStateChange}
+      disabled={false}
+      onInteraction={onInteraction}
+    />
+  )
   return { state, win, onStateChange, onInteraction }
 }
 
@@ -23,7 +31,9 @@ describe('TextEditorApp', () => {
 
   it('typing updates draftContent on the window via onStateChange, without touching fs', () => {
     const { onStateChange, state } = setup()
-    fireEvent.change(screen.getByLabelText('Text editor content'), { target: { value: 'hello world' } })
+    fireEvent.change(screen.getByLabelText('Text editor content'), {
+      target: { value: 'hello world' },
+    })
     const nextState = onStateChange.mock.calls[0][0]
     expect(nextState.windows[0].draftContent).toBe('hello world')
     expect(nextState.fs['/notes.txt'].content).toBe('hello')

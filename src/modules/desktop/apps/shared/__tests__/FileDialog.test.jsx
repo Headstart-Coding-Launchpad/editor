@@ -13,7 +13,15 @@ const fs = {
 describe('FileDialog', () => {
   it('open mode lists files filtered by extension and confirms on double-click', () => {
     const onConfirm = vi.fn()
-    render(<FileDialog fs={fs} mode="open" filterExtensions={['.png']} onConfirm={onConfirm} onCancel={() => {}} />)
+    render(
+      <FileDialog
+        fs={fs}
+        mode="open"
+        filterExtensions={['.png']}
+        onConfirm={onConfirm}
+        onCancel={() => {}}
+      />
+    )
     expect(screen.queryByText('notes.txt')).not.toBeInTheDocument()
     fireEvent.doubleClick(screen.getByText('photo.png'))
     expect(onConfirm).toHaveBeenCalledWith('/photo.png')
@@ -29,18 +37,36 @@ describe('FileDialog', () => {
 
   it('saveAs mode confirms with the typed file name in the current folder', () => {
     const onConfirm = vi.fn()
-    render(<FileDialog fs={fs} mode="saveAs" defaultFileName="draft.txt" onConfirm={onConfirm} onCancel={() => {}} />)
+    render(
+      <FileDialog
+        fs={fs}
+        mode="saveAs"
+        defaultFileName="draft.txt"
+        onConfirm={onConfirm}
+        onCancel={() => {}}
+      />
+    )
     fireEvent.click(screen.getByText('Save'))
     expect(onConfirm).toHaveBeenCalledWith('/draft.txt')
   })
 
   it('New Folder creates a folder via onFsChange', () => {
     const onFsChange = vi.fn()
-    render(<FileDialog fs={fs} mode="saveAs" onFsChange={onFsChange} onConfirm={() => {}} onCancel={() => {}} />)
+    render(
+      <FileDialog
+        fs={fs}
+        mode="saveAs"
+        onFsChange={onFsChange}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />
+    )
     fireEvent.click(screen.getByText('+ New Folder'))
     fireEvent.change(screen.getByPlaceholderText('Folder name'), { target: { value: 'Projects' } })
     fireEvent.click(screen.getByText('Create'))
-    expect(onFsChange).toHaveBeenCalledWith(expect.objectContaining({ '/Projects/': { type: 'dir' } }))
+    expect(onFsChange).toHaveBeenCalledWith(
+      expect.objectContaining({ '/Projects/': { type: 'dir' } })
+    )
   })
 
   it('navigating into a folder updates the path bar', () => {

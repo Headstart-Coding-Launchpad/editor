@@ -15,14 +15,19 @@ export default function TextEditorApp({ win, state, onStateChange, disabled, onI
   const [showSaveDialog, setShowSaveDialog] = useState(false)
 
   function updateWindow(patch) {
-    onStateChange({ ...state, windows: state.windows.map(w => w.id === win.id ? { ...w, ...patch } : w) })
+    onStateChange({
+      ...state,
+      windows: state.windows.map((w) => (w.id === win.id ? { ...w, ...patch } : w)),
+    })
   }
 
   function commitSave(path, content) {
     onStateChange({
       ...state,
       fs: { ...fs, [path]: { type: 'file', content } },
-      windows: state.windows.map(w => w.id === win.id ? { ...w, filePath: path, draftContent: content } : w),
+      windows: state.windows.map((w) =>
+        w.id === win.id ? { ...w, filePath: path, draftContent: content } : w
+      ),
     })
     onInteraction?.({ currentDir: parentPath(path), openFile: path })
   }
@@ -56,20 +61,38 @@ export default function TextEditorApp({ win, state, onStateChange, disabled, onI
   return (
     <div style={s.wrap} onKeyDown={handleKeyDown}>
       <div style={s.toolbar}>
-        <button className="btn-ghost-outline" style={s.toolbarBtn} disabled={disabled} onClick={() => setShowOpenDialog(true)}>
+        <button
+          className="btn-ghost-outline"
+          style={s.toolbarBtn}
+          disabled={disabled}
+          onClick={() => setShowOpenDialog(true)}
+        >
           📂 Open
         </button>
-        <button className="btn-ghost-outline" style={s.toolbarBtn} disabled={disabled} onClick={handleSave}>
+        <button
+          className="btn-ghost-outline"
+          style={s.toolbarBtn}
+          disabled={disabled}
+          onClick={handleSave}
+        >
           💾 Save
         </button>
-        <button className="btn-ghost-outline" style={s.toolbarBtn} disabled={disabled} onClick={() => setShowSaveDialog(true)}>
+        <button
+          className="btn-ghost-outline"
+          style={s.toolbarBtn}
+          disabled={disabled}
+          onClick={() => setShowSaveDialog(true)}
+        >
           Save As…
         </button>
-        <span style={s.fileLabel}>{filePath ? entryName(filePath) : 'Untitled'}{dirty ? ' •' : ''}</span>
+        <span style={s.fileLabel}>
+          {filePath ? entryName(filePath) : 'Untitled'}
+          {dirty ? ' •' : ''}
+        </span>
       </div>
       <textarea
         value={draftContent}
-        onChange={e => updateWindow({ draftContent: e.target.value })}
+        onChange={(e) => updateWindow({ draftContent: e.target.value })}
         disabled={disabled}
         spellCheck={false}
         aria-label="Text editor content"
@@ -91,8 +114,11 @@ export default function TextEditorApp({ win, state, onStateChange, disabled, onI
           title="Save As"
           defaultFileName={filePath ? entryName(filePath) : 'Untitled.txt'}
           initialDir={filePath ? parentPath(filePath) : '/'}
-          onFsChange={nextFs => onStateChange({ ...state, fs: nextFs })}
-          onConfirm={path => { commitSave(path, draftContent); setShowSaveDialog(false) }}
+          onFsChange={(nextFs) => onStateChange({ ...state, fs: nextFs })}
+          onConfirm={(path) => {
+            commitSave(path, draftContent)
+            setShowSaveDialog(false)
+          }}
           onCancel={() => setShowSaveDialog(false)}
         />
       )}
@@ -102,11 +128,29 @@ export default function TextEditorApp({ win, state, onStateChange, disabled, onI
 
 const s = {
   wrap: { display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' },
-  toolbar: { display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderBottom: '1px solid var(--ui-border)' },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 8px',
+    borderBottom: '1px solid var(--ui-border)',
+  },
   toolbarBtn: { fontSize: '0.78rem', padding: '3px 10px' },
-  fileLabel: { marginLeft: 'auto', fontSize: '0.78rem', color: '#6b7280', fontFamily: 'var(--font-body)' },
+  fileLabel: {
+    marginLeft: 'auto',
+    fontSize: '0.78rem',
+    color: '#6b7280',
+    fontFamily: 'var(--font-body)',
+  },
   textarea: {
-    flex: 1, minHeight: 0, resize: 'none', border: 'none', outline: 'none', padding: '10px 12px',
-    fontFamily: 'var(--font-code)', fontSize: '0.85rem', lineHeight: 1.5,
+    flex: 1,
+    minHeight: 0,
+    resize: 'none',
+    border: 'none',
+    outline: 'none',
+    padding: '10px 12px',
+    fontFamily: 'var(--font-code)',
+    fontSize: '0.85rem',
+    lineHeight: 1.5,
   },
 }

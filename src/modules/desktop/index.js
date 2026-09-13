@@ -1,4 +1,9 @@
-import { makeDefaultDesktop, normaliseDesktop, serializeDesktop, deserializeDesktop } from './desktopState.js'
+import {
+  makeDefaultDesktop,
+  normaliseDesktop,
+  serializeDesktop,
+  deserializeDesktop,
+} from './desktopState.js'
 import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
@@ -44,7 +49,8 @@ const desktopModule = {
 
   // ── Authoring ────────────────────────────────────────────────────────────────
   makeCodeTaskFields: (task) => ({
-    starterDesktop: task.starterDesktop ?? makeDefaultDesktop(task.availableApps ?? ['fileManager']),
+    starterDesktop:
+      task.starterDesktop ?? makeDefaultDesktop(task.availableApps ?? ['fileManager']),
     carryDesktopFrom: task.carryDesktopFrom ?? null,
     availableApps: task.availableApps ?? ['fileManager'],
   }),
@@ -52,7 +58,9 @@ const desktopModule = {
   makeNewStage: (task, existing) => ({
     label: `Stage ${existing.length + 1}`,
     role: 'support',
-    desktop: task.starterDesktop ? { ...task.starterDesktop } : makeDefaultDesktop(task.availableApps),
+    desktop: task.starterDesktop
+      ? { ...task.starterDesktop }
+      : makeDefaultDesktop(task.availableApps),
   }),
 
   initCompleteTab: null,
@@ -63,7 +71,10 @@ const desktopModule = {
   carryThroughField: 'carryDesktopFrom',
   carryThroughLabel: 'Carry desktop from task',
   getCarryThroughUpdates: (sourceTask) => ({
-    starterDesktop: sourceTask.completeDesktop ?? sourceTask.starterDesktop ?? makeDefaultDesktop(sourceTask.availableApps),
+    starterDesktop:
+      sourceTask.completeDesktop ??
+      sourceTask.starterDesktop ??
+      makeDefaultDesktop(sourceTask.availableApps),
   }),
   getNewStarterUpdates: () => ({
     starterDesktop: makeDefaultDesktop(),
@@ -81,17 +92,27 @@ const desktopModule = {
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: makeDefaultDesktop(),
-  initialState: (task) => normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps ?? ['fileManager'])),
+  initialState: (task) =>
+    normaliseDesktop(
+      task.starterDesktop ?? makeDefaultDesktop(task.availableApps ?? ['fileManager'])
+    ),
   serializeState: (state) => serializeDesktop(state),
   deserializeState: (raw) => deserializeDesktop(raw),
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => {
     if (lesson?.sandboxStarterDesktop != null) {
-      try { return normaliseDesktop(JSON.parse(JSON.stringify(lesson.sandboxStarterDesktop))) } catch {}
+      try {
+        return normaliseDesktop(JSON.parse(JSON.stringify(lesson.sandboxStarterDesktop)))
+      } catch {}
     }
-    const desktop = task?.starterDesktop ?? makeDefaultDesktop(task?.availableApps ?? ['fileManager'])
-    try { return normaliseDesktop(JSON.parse(JSON.stringify(desktop))) } catch { return makeDefaultDesktop() }
+    const desktop =
+      task?.starterDesktop ?? makeDefaultDesktop(task?.availableApps ?? ['fileManager'])
+    try {
+      return normaliseDesktop(JSON.parse(JSON.stringify(desktop)))
+    } catch {
+      return makeDefaultDesktop()
+    }
   },
 
   // ── Runtime ──────────────────────────────────────────────────────────────────

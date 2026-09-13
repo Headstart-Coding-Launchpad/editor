@@ -7,7 +7,13 @@ import { makeDefaultDesktop } from '../../../desktopState.js'
 const SITE_GRAPH = {
   homepageId: 'home',
   pages: {
-    home: { url: 'https://kidsearch.example', title: 'KidSearch', kind: 'search', content: 'Search away.', links: [] },
+    home: {
+      url: 'https://kidsearch.example',
+      title: 'KidSearch',
+      kind: 'search',
+      content: 'Search away.',
+      links: [],
+    },
     'wildlife-facts': {
       url: 'https://wildlife.example/facts',
       title: 'Wildlife Facts',
@@ -33,7 +39,16 @@ function setup(overrides = {}) {
   state = { ...state, windows: [win] }
   const onStateChange = vi.fn()
   const onInteraction = vi.fn()
-  render(<BrowserApp win={win} state={state} onStateChange={onStateChange} disabled={false} siteGraph={SITE_GRAPH} onInteraction={onInteraction} />)
+  render(
+    <BrowserApp
+      win={win}
+      state={state}
+      onStateChange={onStateChange}
+      disabled={false}
+      siteGraph={SITE_GRAPH}
+      onInteraction={onInteraction}
+    />
+  )
   return { state, win, onStateChange, onInteraction }
 }
 
@@ -80,7 +95,9 @@ describe('BrowserApp', () => {
   it('typing an unknown address shows a not-found message', () => {
     setup()
     fireEvent.focus(screen.getByLabelText('Address bar'))
-    fireEvent.change(screen.getByLabelText('Address bar'), { target: { value: 'https://nope.example' } })
+    fireEvent.change(screen.getByLabelText('Address bar'), {
+      target: { value: 'https://nope.example' },
+    })
     fireEvent.submit(screen.getByLabelText('Address bar').closest('form'))
     expect(screen.getByText(/can't find that page/)).toBeInTheDocument()
   })

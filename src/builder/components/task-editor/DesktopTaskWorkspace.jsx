@@ -11,9 +11,14 @@ const APP_OPTIONS = [
 ]
 
 export default function DesktopTaskWorkspace({
-  task, lesson, onUpdate,
-  codeTab, codeStages,
-  handleCodeTabChange, handleAddStage, handleRemoveStage,
+  task,
+  lesson,
+  onUpdate,
+  codeTab,
+  codeStages,
+  handleCodeTabChange,
+  handleAddStage,
+  handleRemoveStage,
   resetToStarterBtn,
 }) {
   const isCompleteTab = codeTab === 'complete'
@@ -29,20 +34,20 @@ export default function DesktopTaskWorkspace({
 
   function toggleApp(appId) {
     const next = availableApps.includes(appId)
-      ? availableApps.filter(id => id !== appId)
+      ? availableApps.filter((id) => id !== appId)
       : [...availableApps, appId]
     set('availableApps', next.length ? next : ['fileManager'])
   }
 
   function updateStage(idx, updates) {
     const existing = task.codeStages ?? []
-    const updated = existing.map((s, i) => i === idx ? { ...s, ...updates } : s)
+    const updated = existing.map((s, i) => (i === idx ? { ...s, ...updates } : s))
     onUpdate({ ...task, codeStages: updated })
   }
 
   function replaceStage(idx, nextStage) {
     const existing = task.codeStages ?? []
-    const updated = existing.map((s, i) => i === idx ? nextStage : s)
+    const updated = existing.map((s, i) => (i === idx ? nextStage : s))
     onUpdate({ ...task, codeStages: updated })
   }
 
@@ -64,18 +69,39 @@ export default function DesktopTaskWorkspace({
         testLabel="Complete desktop"
       />
       {isStageTab && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff', border: '1px solid #e5e7eb', borderTop: 0, borderBottom: 0, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600 }}>Stage label:</span>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 10px',
+            background: '#f5f3ff',
+            border: '1px solid #e5e7eb',
+            borderTop: 0,
+            borderBottom: 0,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.8rem',
+              color: '#6b7280',
+              fontWeight: 600,
+            }}
+          >
+            Stage label:
+          </span>
           <input
             className="te-input"
             style={{ width: 200, padding: '4px 8px', fontSize: '0.82rem' }}
             value={activeStage?.label ?? ''}
-            onChange={e => updateStage(activeStageIndex, { label: e.target.value })}
+            onChange={(e) => updateStage(activeStageIndex, { label: e.target.value })}
             placeholder={`Stage ${activeStageIndex + 1}`}
           />
           <StageMetadataEditor
             stage={activeStage}
-            onChange={nextStage => replaceStage(activeStageIndex, nextStage)}
+            onChange={(nextStage) => replaceStage(activeStageIndex, nextStage)}
           />
         </div>
       )}
@@ -84,7 +110,14 @@ export default function DesktopTaskWorkspace({
           <FsTreeEditor
             label={`Stage desktop filesystem: ${activeStage?.label ?? `Stage ${activeStageIndex + 1}`}`}
             fs={activeStage?.desktop?.fs}
-            onFsChange={newFs => updateStage(activeStageIndex, { desktop: { ...(activeStage?.desktop ?? makeDefaultDesktop(availableApps)), fs: newFs } })}
+            onFsChange={(newFs) =>
+              updateStage(activeStageIndex, {
+                desktop: {
+                  ...(activeStage?.desktop ?? makeDefaultDesktop(availableApps)),
+                  fs: newFs,
+                },
+              })
+            }
             storageAssets={lesson.storageAssets ?? []}
           />
         ) : isCompleteTab ? (
@@ -103,7 +136,12 @@ export default function DesktopTaskWorkspace({
             <FsTreeEditor
               label="Complete desktop filesystem (reference solution)"
               fs={task.completeDesktop?.fs}
-              onFsChange={newFs => set('completeDesktop', { ...(task.completeDesktop ?? makeDefaultDesktop(availableApps)), fs: newFs })}
+              onFsChange={(newFs) =>
+                set('completeDesktop', {
+                  ...(task.completeDesktop ?? makeDefaultDesktop(availableApps)),
+                  fs: newFs,
+                })
+              }
               storageAssets={lesson.storageAssets ?? []}
             />
           </>
@@ -112,31 +150,72 @@ export default function DesktopTaskWorkspace({
             <FsTreeEditor
               label="Starter desktop filesystem"
               fs={task.starterDesktop?.fs}
-              onFsChange={newFs => set('starterDesktop', { ...(task.starterDesktop ?? makeDefaultDesktop(availableApps)), fs: newFs })}
+              onFsChange={(newFs) =>
+                set('starterDesktop', {
+                  ...(task.starterDesktop ?? makeDefaultDesktop(availableApps)),
+                  fs: newFs,
+                })
+              }
               storageAssets={lesson.storageAssets ?? []}
             />
             <div>
-              <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  color: 'var(--colour-text)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
                 Starts in (optional)
                 <input
                   className="te-input"
                   value={task.startsInDir ?? ''}
-                  onChange={e => set('startsInDir', e.target.value || undefined)}
+                  onChange={(e) => set('startsInDir', e.target.value || undefined)}
                   placeholder="e.g. /Documents/"
                   style={{ fontFamily: 'var(--font-code)' }}
                 />
               </label>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '4px 0 0' }}>
+              <p
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.78rem',
+                  color: '#6b7280',
+                  margin: '4px 0 0',
+                }}
+              >
                 Directory the File Manager window opens in. Leave blank to start at the root.
               </p>
             </div>
             <div>
-              <label style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--colour-text)', display: 'block', marginBottom: 6 }}>
+              <label
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  color: 'var(--colour-text)',
+                  display: 'block',
+                  marginBottom: 6,
+                }}
+              >
                 Available apps
               </label>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                {APP_OPTIONS.map(opt => (
-                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--colour-text)' }}>
+                {APP_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.85rem',
+                      color: 'var(--colour-text)',
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={availableApps.includes(opt.id)}
@@ -147,10 +226,18 @@ export default function DesktopTaskWorkspace({
                   </label>
                 ))}
               </div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#6b7280', margin: '6px 0 0' }}>
-                Icons for the checked apps appear on the desktop. Opening a file from File Manager always
-                launches Text Editor or Image Viewer as needed, even if unchecked here. The File Manager
-                window opens by default with a seeded <code>/Downloads/</code> folder and its own Recycle Bin.
+              <p
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.78rem',
+                  color: '#6b7280',
+                  margin: '6px 0 0',
+                }}
+              >
+                Icons for the checked apps appear on the desktop. Opening a file from File Manager
+                always launches Text Editor or Image Viewer as needed, even if unchecked here. The
+                File Manager window opens by default with a seeded <code>/Downloads/</code> folder
+                and its own Recycle Bin.
               </p>
             </div>
           </div>

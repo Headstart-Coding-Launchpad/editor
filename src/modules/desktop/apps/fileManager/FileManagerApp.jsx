@@ -28,7 +28,7 @@ function searchFs(fs, query) {
   const q = query.trim().toLowerCase()
   if (!q) return []
   return Object.keys(fs)
-    .filter(path => path !== '/' && entryName(path).toLowerCase().includes(q))
+    .filter((path) => path !== '/' && entryName(path).toLowerCase().includes(q))
     .sort()
 }
 
@@ -87,16 +87,29 @@ export default function FileManagerApp({
       <input
         type="search"
         value={query}
-        onChange={e => setQuery(e.target.value)}
+        onChange={(e) => setQuery(e.target.value)}
         placeholder="Search files…"
         aria-label="Search files"
-        style={{ fontSize: '0.78rem', padding: '3px 8px', border: '1px solid var(--ui-border)', borderRadius: 4, width: 140, fontFamily: 'var(--font-body)' }}
+        style={{
+          fontSize: '0.78rem',
+          padding: '3px 8px',
+          border: '1px solid var(--ui-border)',
+          borderRadius: 4,
+          width: 140,
+          fontFamily: 'var(--font-body)',
+        }}
       />
       <select
         value={sortBy}
-        onChange={e => setSortBy(e.target.value)}
+        onChange={(e) => setSortBy(e.target.value)}
         aria-label="Sort by"
-        style={{ fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--ui-border)', borderRadius: 4, fontFamily: 'var(--font-body)' }}
+        style={{
+          fontSize: '0.78rem',
+          padding: '3px 6px',
+          border: '1px solid var(--ui-border)',
+          borderRadius: 4,
+          fontFamily: 'var(--font-body)',
+        }}
       >
         <option value="name">Name</option>
         <option value="type">Type</option>
@@ -104,7 +117,7 @@ export default function FileManagerApp({
       <button
         className="btn-ghost-outline"
         style={{ fontSize: '0.78rem', padding: '3px 10px' }}
-        onClick={() => setShowRecycleBin(v => !v)}
+        onClick={() => setShowRecycleBin((v) => !v)}
       >
         🗑 Recycle Bin{recycleBin.length ? ` (${recycleBin.length})` : ''}
       </button>
@@ -114,26 +127,49 @@ export default function FileManagerApp({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {query.trim() && (
-        <div style={{ borderBottom: '1px solid var(--ui-border)', maxHeight: 140, overflowY: 'auto', background: '#fbf9ff' }}>
+        <div
+          style={{
+            borderBottom: '1px solid var(--ui-border)',
+            maxHeight: 140,
+            overflowY: 'auto',
+            background: '#fbf9ff',
+          }}
+        >
           {searchResults.length === 0 ? (
-            <div style={{ padding: '8px 12px', fontSize: '0.8rem', color: '#9ca3af', fontFamily: 'var(--font-body)' }}>
+            <div
+              style={{
+                padding: '8px 12px',
+                fontSize: '0.8rem',
+                color: '#9ca3af',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
               No files match "{query}"
             </div>
           ) : (
-            searchResults.map(path => (
+            searchResults.map((path) => (
               <button
                 key={path}
                 onClick={() => {
                   const target = path.endsWith('/') ? path : parentPath(path)
                   setJumpDir(target)
-                  setJumpKey(k => k + 1)
+                  setJumpKey((k) => k + 1)
                   setCurrentDir(target)
                   setQuery('')
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-                  padding: '6px 12px', background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: '0.8rem', fontFamily: 'var(--font-body)', color: 'var(--colour-text)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '6px 12px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-body)',
+                  color: 'var(--colour-text)',
                 }}
               >
                 <span>{path.endsWith('/') ? ICON_DIR : ICON_FILE}</span>
@@ -160,25 +196,77 @@ export default function FileManagerApp({
           />
         </div>
         {showRecycleBin && (
-          <div style={{ width: 220, borderLeft: '1px solid var(--ui-border)', overflowY: 'auto', background: '#fbf9ff', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '8px 12px', fontSize: '0.8rem', fontWeight: 600, fontFamily: 'var(--font-body)', borderBottom: '1px solid var(--ui-border)' }}>
+          <div
+            style={{
+              width: 220,
+              borderLeft: '1px solid var(--ui-border)',
+              overflowY: 'auto',
+              background: '#fbf9ff',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                padding: '8px 12px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                fontFamily: 'var(--font-body)',
+                borderBottom: '1px solid var(--ui-border)',
+              }}
+            >
               Recycle Bin
             </div>
             {recycleBin.length === 0 ? (
-              <div style={{ padding: '10px 12px', fontSize: '0.78rem', color: '#9ca3af', fontFamily: 'var(--font-body)' }}>Empty</div>
+              <div
+                style={{
+                  padding: '10px 12px',
+                  fontSize: '0.78rem',
+                  color: '#9ca3af',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                Empty
+              </div>
             ) : (
-              recycleBin.map(item => (
-                <div key={item.path} style={{ padding: '6px 12px', borderBottom: '1px solid #ece7f8', fontFamily: 'var(--font-body)' }}>
-                  <div style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              recycleBin.map((item) => (
+                <div
+                  key={item.path}
+                  style={{
+                    padding: '6px 12px',
+                    borderBottom: '1px solid #ece7f8',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  <div
+                    style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
                     <span>{item.path.endsWith('/') ? ICON_DIR : ICON_FILE}</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entryName(item.path)}</span>
+                    <span
+                      style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      {entryName(item.path)}
+                    </span>
                   </div>
                   {!disabled && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                      <button className="btn-ghost-outline" style={{ fontSize: '0.7rem', padding: '2px 6px' }} onClick={() => handleRestore(item.path)}>
+                      <button
+                        className="btn-ghost-outline"
+                        style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                        onClick={() => handleRestore(item.path)}
+                      >
                         Restore
                       </button>
-                      <button className="btn-ghost-outline" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#dc2626', borderColor: '#fca5a5' }} onClick={() => handlePurge(item.path)}>
+                      <button
+                        className="btn-ghost-outline"
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '2px 6px',
+                          color: '#dc2626',
+                          borderColor: '#fca5a5',
+                        }}
+                        onClick={() => handlePurge(item.path)}
+                      >
                         Delete forever
                       </button>
                     </div>

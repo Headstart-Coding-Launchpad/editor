@@ -43,7 +43,9 @@ describe('studentStorage', () => {
     const desktop = { fs: { '/': { type: 'dir' } }, recycleBin: [], windows: [] }
     saveDesktopState('desktop-1', 4, 'anon-id', desktop)
     expect(loadSavedDesktop('desktop-1', 4, 'anon-id')).toEqual(desktop)
-    expect(localStorage.getItem(studentTaskStorageKey('desktop-1', 4, 'anon-id'))).toBe(JSON.stringify({ desktop }))
+    expect(localStorage.getItem(studentTaskStorageKey('desktop-1', 4, 'anon-id'))).toBe(
+      JSON.stringify({ desktop })
+    )
   })
 
   it('persists and restores a desktop personal sandbox, namespaced the same way as other sandbox state', () => {

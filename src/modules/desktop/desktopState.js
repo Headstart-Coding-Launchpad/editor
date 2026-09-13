@@ -24,14 +24,16 @@ export const DEFAULT_WINDOW = { x: 80, y: 60, width: 640, height: 420 }
 export function makeDefaultWindows(availableApps = ['fileManager']) {
   const first = availableApps[0]
   if (!first) return []
-  return [{
-    id: `${first}-1`,
-    appId: first,
-    ...DEFAULT_WINDOW,
-    minimized: false,
-    maximized: false,
-    zIndex: 1,
-  }]
+  return [
+    {
+      id: `${first}-1`,
+      appId: first,
+      ...DEFAULT_WINDOW,
+      minimized: false,
+      maximized: false,
+      zIndex: 1,
+    },
+  ]
 }
 
 export function makeDefaultDesktop(availableApps = ['fileManager']) {
@@ -72,45 +74,49 @@ export function deserializeDesktop(raw) {
 // ── window operations (all pure — return a new desktop state) ────────────────
 
 export function focusWindow(state, windowId) {
-  const maxZ = Math.max(0, ...state.windows.map(w => w.zIndex ?? 0))
+  const maxZ = Math.max(0, ...state.windows.map((w) => w.zIndex ?? 0))
   return {
     ...state,
-    windows: state.windows.map(w => w.id === windowId ? { ...w, zIndex: maxZ + 1 } : w),
+    windows: state.windows.map((w) => (w.id === windowId ? { ...w, zIndex: maxZ + 1 } : w)),
   }
 }
 
 export function moveWindow(state, windowId, x, y) {
   return {
     ...state,
-    windows: state.windows.map(w => w.id === windowId ? { ...w, x, y } : w),
+    windows: state.windows.map((w) => (w.id === windowId ? { ...w, x, y } : w)),
   }
 }
 
 export function resizeWindow(state, windowId, width, height) {
   return {
     ...state,
-    windows: state.windows.map(w => w.id === windowId ? { ...w, width, height } : w),
+    windows: state.windows.map((w) => (w.id === windowId ? { ...w, width, height } : w)),
   }
 }
 
 export function setWindowMinimized(state, windowId, minimized) {
   return {
     ...state,
-    windows: state.windows.map(w => w.id === windowId ? { ...w, minimized, maximized: minimized ? false : w.maximized } : w),
+    windows: state.windows.map((w) =>
+      w.id === windowId ? { ...w, minimized, maximized: minimized ? false : w.maximized } : w
+    ),
   }
 }
 
 export function setWindowMaximized(state, windowId, maximized) {
   return {
     ...state,
-    windows: state.windows.map(w => w.id === windowId ? { ...w, maximized, minimized: false } : w),
+    windows: state.windows.map((w) =>
+      w.id === windowId ? { ...w, maximized, minimized: false } : w
+    ),
   }
 }
 
 export function closeWindow(state, windowId) {
   return {
     ...state,
-    windows: state.windows.filter(w => w.id !== windowId),
+    windows: state.windows.filter((w) => w.id !== windowId),
   }
 }
 
@@ -130,9 +136,9 @@ export function isWindowDirty(win, fs) {
 // behaviour; passing a filePath lets several Text Editor windows be open at once.
 export function openWindow(state, appId, overrides = {}) {
   const filePath = overrides.filePath ?? null
-  const existing = state.windows.find(w => w.appId === appId && (w.filePath ?? null) === filePath)
+  const existing = state.windows.find((w) => w.appId === appId && (w.filePath ?? null) === filePath)
   if (existing) return setWindowMinimized(focusWindow(state, existing.id), existing.id, false)
-  const maxZ = Math.max(0, ...state.windows.map(w => w.zIndex ?? 0))
+  const maxZ = Math.max(0, ...state.windows.map((w) => w.zIndex ?? 0))
   const win = {
     id: `${appId}-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
     appId,
@@ -159,11 +165,34 @@ export function recordSearchQuery(state, query) {
 }
 
 // Arranges two windows side by side across the given viewport width/height.
-export function arrangeSideBySide(state, windowIdA, windowIdB, viewport = { width: 1200, height: 700 }) {
+export function arrangeSideBySide(
+  state,
+  windowIdA,
+  windowIdB,
+  viewport = { width: 1200, height: 700 }
+) {
   const half = Math.floor(viewport.width / 2)
-  let windows = state.windows.map(w => {
-    if (w.id === windowIdA) return { ...w, x: 0, y: 0, width: half, height: viewport.height, minimized: false, maximized: false }
-    if (w.id === windowIdB) return { ...w, x: half, y: 0, width: viewport.width - half, height: viewport.height, minimized: false, maximized: false }
+  let windows = state.windows.map((w) => {
+    if (w.id === windowIdA)
+      return {
+        ...w,
+        x: 0,
+        y: 0,
+        width: half,
+        height: viewport.height,
+        minimized: false,
+        maximized: false,
+      }
+    if (w.id === windowIdB)
+      return {
+        ...w,
+        x: half,
+        y: 0,
+        width: viewport.width - half,
+        height: viewport.height,
+        minimized: false,
+        maximized: false,
+      }
     return w
   })
   return { ...state, windows }

@@ -44,7 +44,10 @@ describe('recycleBin', () => {
     const fsWithConflict = { ...fs, '/Documents/notes.txt': { type: 'file', content: 'newer' } }
     const restored = restoreEntry(fsWithConflict, recycleBin, '/Documents/notes.txt')
     expect(restored.fs['/Documents/notes.txt']).toEqual({ type: 'file', content: 'newer' })
-    expect(restored.fs['/Documents/notes.txt (restored)']).toEqual({ type: 'file', content: 'hello' })
+    expect(restored.fs['/Documents/notes.txt (restored)']).toEqual({
+      type: 'file',
+      content: 'hello',
+    })
     expect(restored.recycleBin).toHaveLength(0)
   })
 

@@ -1,17 +1,32 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SITE_GRAPH, normaliseSiteGraph, getPage, searchPages, findPageByUrl } from '../siteGraph.js'
+import {
+  DEFAULT_SITE_GRAPH,
+  normaliseSiteGraph,
+  getPage,
+  searchPages,
+  findPageByUrl,
+} from '../siteGraph.js'
 
 const SAMPLE = {
   homepageId: 'home',
   pages: {
-    home: { url: 'https://kidsearch.example', title: 'KidSearch', kind: 'search', content: 'Search away.', links: [] },
+    home: {
+      url: 'https://kidsearch.example',
+      title: 'KidSearch',
+      kind: 'search',
+      content: 'Search away.',
+      links: [],
+    },
     'wildlife-facts': {
       url: 'https://wildlife.example/facts',
       title: 'Wildlife Facts',
       kind: 'page',
       content: 'Blue whales are the largest animal ever known to have lived.',
       links: [{ label: 'Back home', to: 'home' }],
-      searchable: { keywords: ['whale', 'animal', 'wildlife'], snippet: 'Facts about blue whales and other wildlife.' },
+      searchable: {
+        keywords: ['whale', 'animal', 'wildlife'],
+        snippet: 'Facts about blue whales and other wildlife.',
+      },
     },
     'sponsored-ad': {
       url: 'https://buy-whale-plushies.example',
@@ -21,7 +36,11 @@ const SAMPLE = {
       sponsored: true,
       searchable: { keywords: ['whale'], snippet: 'Shop cute whale merchandise.' },
     },
-    'broken-page': { url: 'https://wildlife.example/missing', title: 'Missing Page', kind: 'broken' },
+    'broken-page': {
+      url: 'https://wildlife.example/missing',
+      title: 'Missing Page',
+      kind: 'broken',
+    },
     'poster-download': {
       url: 'https://wildlife.example/poster',
       title: 'Ocean Poster',
@@ -55,7 +74,7 @@ describe('siteGraph', () => {
 
   it('searchPages only matches pages with a searchable field', () => {
     const results = searchPages(SAMPLE, 'whale')
-    const ids = results.map(r => r.pageId)
+    const ids = results.map((r) => r.pageId)
     expect(ids).toContain('wildlife-facts')
     expect(ids).toContain('sponsored-ad')
     expect(ids).not.toContain('broken-page')
@@ -69,9 +88,9 @@ describe('siteGraph', () => {
 
   it('searchPages ranks a title match above a snippet-only match', () => {
     const results = searchPages(SAMPLE, 'wildlife')
-    const ids = results.map(r => r.pageId)
+    const ids = results.map((r) => r.pageId)
     expect(ids[ids.length - 1]).not.toBe(undefined)
-    expect(results.find(r => r.pageId === 'wildlife-facts')).toBeTruthy()
+    expect(results.find((r) => r.pageId === 'wildlife-facts')).toBeTruthy()
   })
 
   it('searchPages returns nothing for an empty query', () => {

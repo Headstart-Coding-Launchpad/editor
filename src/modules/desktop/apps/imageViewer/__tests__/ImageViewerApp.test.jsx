@@ -18,7 +18,17 @@ function setup(filePath) {
   state = { ...state, windows: [win] }
   const onStateChange = vi.fn()
   const onInteraction = vi.fn()
-  render(<ImageViewerApp win={win} state={state} onStateChange={onStateChange} disabled={false} onInteraction={onInteraction} assetsPath="/assets" assets={['a.png', 'b.png']} />)
+  render(
+    <ImageViewerApp
+      win={win}
+      state={state}
+      onStateChange={onStateChange}
+      disabled={false}
+      onInteraction={onInteraction}
+      assetsPath="/assets"
+      assets={['a.png', 'b.png']}
+    />
+  )
   return { state, win, onStateChange, onInteraction }
 }
 

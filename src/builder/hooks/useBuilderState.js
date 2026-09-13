@@ -89,7 +89,10 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     }
     if (moduleType === 'desktop') {
       return {
-        starterDesktop: prevTask?.completeDesktop ?? prevTask?.starterDesktop ?? makeDefaultDesktop(prevTask?.availableApps),
+        starterDesktop:
+          prevTask?.completeDesktop ??
+          prevTask?.starterDesktop ??
+          makeDefaultDesktop(prevTask?.availableApps),
         carryDesktopFrom: prevTask?.id ?? null,
         availableApps: prevTask?.availableApps ?? ['fileManager'],
       }

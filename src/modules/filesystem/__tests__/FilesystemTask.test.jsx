@@ -77,12 +77,16 @@ describe('FilesystemTask', () => {
 describe('imagePreviewSrc', () => {
   it('prefers an authored asset src over inline content', () => {
     const entry = { type: 'file', src: 'avatar.png', content: 'data:image/png;base64,AAAA' }
-    expect(imagePreviewSrc('/avatar.png', entry, 'https://assets.example/', [])).toBe('https://assets.example/avatar.png')
+    expect(imagePreviewSrc('/avatar.png', entry, 'https://assets.example/', [])).toBe(
+      'https://assets.example/avatar.png'
+    )
   })
 
   it('resolves a matching lesson asset by name', () => {
     const entry = { type: 'file' }
-    expect(imagePreviewSrc('/Pictures/avatar.png', entry, 'https://assets.example/', ['avatar.png'])).toBe('https://assets.example/avatar.png')
+    expect(
+      imagePreviewSrc('/Pictures/avatar.png', entry, 'https://assets.example/', ['avatar.png'])
+    ).toBe('https://assets.example/avatar.png')
   })
 
   it('falls back to an inline data: URL (e.g. a Paint drawing) when there is no asset', () => {

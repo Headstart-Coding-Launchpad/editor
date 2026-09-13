@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react'
-import { listChildren, createEntry, entryName, parentPath, normaliseDirPath, normaliseFilePath } from '../../../filesystem/filesystem.js'
+import {
+  listChildren,
+  createEntry,
+  entryName,
+  parentPath,
+  normaliseDirPath,
+  normaliseFilePath,
+} from '../../../filesystem/filesystem.js'
 
 const ICON_DIR = '📁'
 const ICON_FILE = '📄'
@@ -7,7 +14,7 @@ const ICON_FILE = '📄'
 function matchesFilter(path, filterExtensions) {
   if (!filterExtensions) return true
   const lower = path.toLowerCase()
-  return filterExtensions.some(ext => lower.endsWith(ext))
+  return filterExtensions.some((ext) => lower.endsWith(ext))
 }
 
 // Shared Open / Save As dialog for apps that need an explicit file-picking step
@@ -33,9 +40,11 @@ export default function FileDialog({
 
   const entries = useMemo(() => {
     const children = listChildren(fs, currentDir)
-    const dirs = children.filter(p => p.endsWith('/')).sort((a, b) => entryName(a).localeCompare(entryName(b)))
+    const dirs = children
+      .filter((p) => p.endsWith('/'))
+      .sort((a, b) => entryName(a).localeCompare(entryName(b)))
     const files = children
-      .filter(p => !p.endsWith('/') && matchesFilter(p, filterExtensions))
+      .filter((p) => !p.endsWith('/') && matchesFilter(p, filterExtensions))
       .sort((a, b) => entryName(a).localeCompare(entryName(b)))
     return { dirs, files }
   }, [fs, currentDir, filterExtensions])
@@ -51,7 +60,10 @@ export default function FileDialog({
     const name = newFolderName.trim()
     if (!name) return
     const path = normaliseDirPath(currentDir + name)
-    if (fs[path]) { setError(`"${name}" already exists`); return }
+    if (fs[path]) {
+      setError(`"${name}" already exists`)
+      return
+    }
     onFsChange?.(createEntry(fs, path, 'dir'))
     setNewFolderName('')
     setCreatingFolder(false)
@@ -60,12 +72,18 @@ export default function FileDialog({
 
   function handleConfirm() {
     if (mode === 'open') {
-      if (!selectedFile) { setError('Choose a file to open'); return }
+      if (!selectedFile) {
+        setError('Choose a file to open')
+        return
+      }
       onConfirm(selectedFile)
       return
     }
     const name = fileName.trim()
-    if (!name) { setError('Enter a file name'); return }
+    if (!name) {
+      setError('Enter a file name')
+      return
+    }
     const path = normaliseFilePath(currentDir + name)
     if (fs[path] && !window.confirm(`"${name}" already exists. Replace it?`)) return
     onConfirm(path)
@@ -73,7 +91,11 @@ export default function FileDialog({
 
   return (
     <div style={s.overlay}>
-      <div role="dialog" aria-label={title ?? (mode === 'open' ? 'Open File' : 'Save As')} style={s.dialog}>
+      <div
+        role="dialog"
+        aria-label={title ?? (mode === 'open' ? 'Open File' : 'Save As')}
+        style={s.dialog}
+      >
         <div style={s.header}>{title ?? (mode === 'open' ? 'Open File' : 'Save As')}</div>
 
         <div style={s.pathBar}>
@@ -89,13 +111,13 @@ export default function FileDialog({
         </div>
 
         <div style={s.list}>
-          {entries.dirs.map(path => (
+          {entries.dirs.map((path) => (
             <button key={path} style={s.entryRow} onClick={() => navigate(path)}>
               <span>{ICON_DIR}</span>
               <span style={s.entryName}>{entryName(path)}</span>
             </button>
           ))}
-          {entries.files.map(path => (
+          {entries.files.map((path) => (
             <button
               key={path}
               style={{ ...s.entryRow, background: selectedFile === path ? '#ede9fe' : 'none' }}
@@ -121,16 +143,31 @@ export default function FileDialog({
               className="te-input"
               autoFocus
               value={newFolderName}
-              onChange={e => setNewFolderName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setCreatingFolder(false) }}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateFolder()
+                if (e.key === 'Escape') setCreatingFolder(false)
+              }}
               placeholder="Folder name"
               style={s.input}
             />
-            <button className="btn-ghost-outline" style={s.smallBtn} onClick={handleCreateFolder}>Create</button>
-            <button className="btn-ghost-outline" style={s.smallBtn} onClick={() => setCreatingFolder(false)}>Cancel</button>
+            <button className="btn-ghost-outline" style={s.smallBtn} onClick={handleCreateFolder}>
+              Create
+            </button>
+            <button
+              className="btn-ghost-outline"
+              style={s.smallBtn}
+              onClick={() => setCreatingFolder(false)}
+            >
+              Cancel
+            </button>
           </div>
         ) : (
-          <button className="btn-ghost-outline" style={{ ...s.smallBtn, alignSelf: 'flex-start' }} onClick={() => setCreatingFolder(true)}>
+          <button
+            className="btn-ghost-outline"
+            style={{ ...s.smallBtn, alignSelf: 'flex-start' }}
+            onClick={() => setCreatingFolder(true)}
+          >
             + New Folder
           </button>
         )}
@@ -141,7 +178,10 @@ export default function FileDialog({
             <input
               className="te-input"
               value={fileName}
-              onChange={e => { setFileName(e.target.value); setError('') }}
+              onChange={(e) => {
+                setFileName(e.target.value)
+                setError('')
+              }}
               style={s.input}
             />
           </label>
@@ -150,8 +190,12 @@ export default function FileDialog({
         {error && <div style={s.error}>{error}</div>}
 
         <div style={s.footer}>
-          <button className="btn-ghost-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-primary" onClick={handleConfirm}>{mode === 'open' ? 'Open' : 'Save'}</button>
+          <button className="btn-ghost-outline" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="btn-primary" onClick={handleConfirm}>
+            {mode === 'open' ? 'Open' : 'Save'}
+          </button>
         </div>
       </div>
     </div>
@@ -160,30 +204,86 @@ export default function FileDialog({
 
 const s = {
   overlay: {
-    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+    position: 'absolute',
+    inset: 0,
+    background: 'rgba(0,0,0,0.25)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
   },
   dialog: {
-    width: 380, maxHeight: '80%', background: '#fff', borderRadius: 8,
-    boxShadow: '0 12px 32px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column',
-    fontFamily: 'var(--font-body)', overflow: 'hidden',
+    width: 380,
+    maxHeight: '80%',
+    background: '#fff',
+    borderRadius: 8,
+    boxShadow: '0 12px 32px rgba(0,0,0,0.3)',
+    display: 'flex',
+    flexDirection: 'column',
+    fontFamily: 'var(--font-body)',
+    overflow: 'hidden',
   },
-  header: { padding: '10px 14px', fontWeight: 600, fontSize: '0.9rem', borderBottom: '1px solid var(--ui-border)' },
-  pathBar: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderBottom: '1px solid var(--ui-border)' },
+  header: {
+    padding: '10px 14px',
+    fontWeight: 600,
+    fontSize: '0.9rem',
+    borderBottom: '1px solid var(--ui-border)',
+  },
+  pathBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '8px 14px',
+    borderBottom: '1px solid var(--ui-border)',
+  },
   pathBtn: { fontSize: '0.75rem', padding: '3px 8px' },
-  pathLabel: { fontSize: '0.78rem', color: '#6b7280', fontFamily: 'var(--font-code)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  list: { flex: 1, minHeight: 120, maxHeight: 260, overflowY: 'auto', borderBottom: '1px solid var(--ui-border)' },
+  pathLabel: {
+    fontSize: '0.78rem',
+    color: '#6b7280',
+    fontFamily: 'var(--font-code)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  list: {
+    flex: 1,
+    minHeight: 120,
+    maxHeight: 260,
+    overflowY: 'auto',
+    borderBottom: '1px solid var(--ui-border)',
+  },
   entryRow: {
-    display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-    padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem',
-    fontFamily: 'var(--font-body)', color: 'var(--colour-text)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    textAlign: 'left',
+    padding: '6px 14px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.82rem',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--colour-text)',
   },
   entryName: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   empty: { padding: '14px', fontSize: '0.8rem', color: '#9ca3af' },
   newFolderRow: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px' },
   smallBtn: { fontSize: '0.75rem', padding: '4px 10px', margin: '8px 14px 0' },
-  fileNameLabel: { display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 14px 0', fontSize: '0.8rem', fontWeight: 600 },
-  input: { fontSize: '0.82rem', padding: '5px 8px', border: '1px solid var(--ui-border)', borderRadius: 4, fontFamily: 'var(--font-body)' },
+  fileNameLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    padding: '10px 14px 0',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+  },
+  input: {
+    fontSize: '0.82rem',
+    padding: '5px 8px',
+    border: '1px solid var(--ui-border)',
+    borderRadius: 4,
+    fontFamily: 'var(--font-body)',
+  },
   error: { padding: '6px 14px 0', fontSize: '0.78rem', color: '#dc2626' },
   footer: { display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 14px' },
 }

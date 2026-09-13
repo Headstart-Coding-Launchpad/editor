@@ -20,7 +20,7 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
 
   useEffect(() => {
     if (!containerRef.current || typeof ResizeObserver === 'undefined') return undefined
-    const observer = new ResizeObserver(entries => {
+    const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (entry) setBounds({ width: entry.contentRect.width, height: entry.contentRect.height })
     })
@@ -39,7 +39,11 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
   // `draftContent` (File Manager, Image Viewer) are never dirty and close immediately.
   function requestClose(win) {
     if (disabled) return
-    if (isWindowDirty(win, state.fs) && !window.confirm('You have unsaved changes. Close this window anyway?')) return
+    if (
+      isWindowDirty(win, state.fs) &&
+      !window.confirm('You have unsaved changes. Close this window anyway?')
+    )
+      return
     onStateChange(closeWindow(state, win.id))
   }
 
@@ -52,8 +56,17 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
     // click site-wide (confirmed: icons are unclickable in a real browser even with zero
     // windows open, though jsdom-based tests never catch it since jsdom doesn't do real
     // hit-testing/stacking). Each Window re-enables pointerEvents: 'auto' on itself.
-    <div ref={containerRef} style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      {sortedWindows.map(win => {
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      {sortedWindows.map((win) => {
         const app = apps[win.appId]
         if (!app) return null
         return (
@@ -67,8 +80,12 @@ export default function WindowManager({ state, onStateChange, apps, disabled = f
             onFocus={() => focus(win.id)}
             onMove={(x, y) => !disabled && onStateChange(moveWindow(state, win.id, x, y))}
             onResize={(w, h) => !disabled && onStateChange(resizeWindow(state, win.id, w, h))}
-            onMinimize={minimized => !disabled && onStateChange(setWindowMinimized(state, win.id, minimized))}
-            onMaximize={maximized => !disabled && onStateChange(setWindowMaximized(state, win.id, maximized))}
+            onMinimize={(minimized) =>
+              !disabled && onStateChange(setWindowMinimized(state, win.id, minimized))
+            }
+            onMaximize={(maximized) =>
+              !disabled && onStateChange(setWindowMaximized(state, win.id, maximized))
+            }
             onClose={() => requestClose(win)}
           >
             {app.render({ win, state, onStateChange, disabled, focused: focusedId === win.id })}

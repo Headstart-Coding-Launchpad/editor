@@ -37,7 +37,7 @@ export function softDeleteEntry(fs, recycleBin, path) {
 // path at deletion time). Restores to the original location, or — if something now
 // occupies that path — appends " (restored)" to avoid clobbering the newer item.
 export function restoreEntry(fs, recycleBin, path) {
-  const item = recycleBin.find(i => i.path === path)
+  const item = recycleBin.find((i) => i.path === path)
   if (!item) return { fs, recycleBin }
 
   let nextFs = fs
@@ -60,17 +60,17 @@ export function restoreEntry(fs, recycleBin, path) {
 
   return {
     fs: nextFs,
-    recycleBin: recycleBin.filter(i => i.path !== path),
+    recycleBin: recycleBin.filter((i) => i.path !== path),
   }
 }
 
 // Permanently removes an item from the recycle bin without restoring it ("Empty Recycle Bin").
 export function purgeEntry(recycleBin, path) {
-  return recycleBin.filter(i => i.path !== path)
+  return recycleBin.filter((i) => i.path !== path)
 }
 
 export function isInRecycleBin(recycleBin, path) {
-  return recycleBin.some(i => i.path === path)
+  return recycleBin.some((i) => i.path === path)
 }
 
 // createEntry re-exported for callers that need to build a fresh item without going
