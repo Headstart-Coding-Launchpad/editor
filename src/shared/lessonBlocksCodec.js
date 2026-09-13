@@ -51,10 +51,17 @@ function mapTasks(tasks, transformJsonField) {
   })
 }
 
+// Values that are already JSON strings are left as they are, so encoding is safe to repeat
+// and lesson files that store workspaces as serialised text (as the Scratch authoring docs
+// used to require) are not encoded twice.
+function stringifyJsonField(v) {
+  return typeof v === 'string' ? v : JSON.stringify(v)
+}
+
 // Call on a lesson (or { tasks } fragment) right before setDoc/updateDoc.
 export function encodeLessonBlocksForFirestore(lesson) {
   if (!lesson?.tasks) return lesson
-  return { ...lesson, tasks: mapTasks(lesson.tasks, JSON.stringify) }
+  return { ...lesson, tasks: mapTasks(lesson.tasks, stringifyJsonField) }
 }
 
 function safeParseJsonField(v) {

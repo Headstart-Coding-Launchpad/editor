@@ -84,7 +84,8 @@ describe('TeacherView with a Python Turtle task', () => {
 
   it('shows the turtle starter code as a string, not an HTML files object', async () => {
     await renderTeacherView(turtleLesson())
-    expect(captured.editor.liveState).toBe('turtle.forward(10)')
+    // The starter code loads in an effect after the task is set, so wait for it.
+    await waitFor(() => expect(captured.editor.liveState).toBe('turtle.forward(10)'))
   })
 
   it('stages, launches and pushes a turtle sandbox as code', async () => {

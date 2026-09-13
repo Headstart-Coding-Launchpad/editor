@@ -454,7 +454,6 @@ Each `index.js` exports a default object with:
 
 | File | Role |
 |---|---|
-| `scripts/yaml-to-json.mjs` | CLI tool: converts a YAML lesson file to lesson JSON — `node scripts/yaml-to-json.mjs input.yaml [output.json]` |
 | `scripts/download-scratch-sprites.mjs` | One-off tool: downloads Scratch's official sprite/costume assets from the Scratch CDN into `public/scratch-assets/sprites/` |
 | `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
 

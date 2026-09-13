@@ -27,8 +27,11 @@ import { validateDraftLessonStructure } from '../shared/draftLesson'
 import {
   getModuleCarrySourceIds,
   getTaskModuleType,
+  LESSON_MODULE_TYPES,
   validateComposedStructure,
 } from '../shared/composedLesson'
+
+const VALID_LESSON_TYPES = [...LESSON_MODULE_TYPES, 'composed']
 import {
   hasValue,
   labelCheckKind,
@@ -277,9 +280,16 @@ export function validateLesson(lesson) {
 
   if (!id) errors.push('Lesson ID is required')
   else if (!/^[a-z0-9-]+$/.test(id)) errors.push('Lesson ID must be lowercase with hyphens only')
+  if (!type) errors.push('Lesson type is required')
+  else if (!VALID_LESSON_TYPES.includes(type)) {
+    errors.push(`Lesson type must be one of: ${VALID_LESSON_TYPES.join(', ')}`)
+  }
   if (!title) errors.push('Lesson title is required')
   if (lesson.fork != null) validateLessonFork(lesson, errors)
-  if (!tasks || tasks.length === 0) errors.push('Lesson must have at least one task')
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    errors.push('Lesson must have at least one task')
+    return { errors, warnings }
+  }
   validateDraftLessonStructure(lesson, errors)
   errors.push(...validateComposedStructure(lesson))
 

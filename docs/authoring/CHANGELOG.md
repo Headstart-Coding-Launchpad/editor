@@ -20,6 +20,20 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-13
 
+### CLI reads and writes lessons the same way as the Builder
+
+- `lessons get`, `lessons upsert`, `lessons publish-yaml`, `lessons fork` and the
+  `tasks` commands now decode and encode
+  Scratch block trees and Arcade designs at the Firestore boundary, like the
+  web app. Long Scratch scripts and Arcade sprite art can now be published from
+  the CLI (Firestore rejected them before), and `lessons get` returns blocks as
+  objects rather than JSON strings for lessons saved in the Builder.
+- `lessons delete` also removes the lesson's session reports and feedback, like
+  deleting from Admin. The result includes a `cleared` count.
+- The Builder now rejects an unknown lesson `type`, as the CLI already did.
+- The broken `scripts/yaml-to-json.mjs` script is removed. Use
+  `node cli/cli.mjs lessons yaml-to-json` instead.
+
 ### Turtle lessons now validate and publish correctly
 
 - The CLI accepts `type: turtle` and `moduleType: turtle`; it previously

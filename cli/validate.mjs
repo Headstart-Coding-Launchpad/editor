@@ -3,6 +3,7 @@ import {
   checkAllowedForSubmit,
   checkRequiresRun,
   evaluateSingleCheck,
+  normalizeChecks,
 } from '../src/modules/checks.js'
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
 import {
@@ -12,6 +13,7 @@ import {
   STAGE_ROLES,
   getStarterStage,
   canTaskAllowSharing,
+  flattenTasks,
 } from '../src/shared/taskUtils.js'
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 import {
@@ -30,23 +32,6 @@ import { isValidRecordingUrl } from '../src/shared/youtube.js'
 // Derived from the shared module list so a newly registered module type can't be
 // rejected by the CLI while the Builder accepts it (turtle was, before this).
 const VALID_TYPES = [...LESSON_MODULE_TYPES, 'composed']
-
-function flattenTasks(tasks) {
-  const result = []
-  for (const item of tasks) {
-    if (item.type === 'group') {
-      for (const sub of Array.isArray(item.subtasks) ? item.subtasks : []) result.push(sub)
-    } else {
-      result.push(item)
-    }
-  }
-  return result
-}
-
-function normalizeChecks(check) {
-  if (!check) return []
-  return Array.isArray(check) ? check : [check]
-}
 
 function validateStageMetadata(task, n, errors) {
   if (!Array.isArray(task.codeStages)) return

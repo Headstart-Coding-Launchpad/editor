@@ -142,6 +142,16 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
     expect(decodeLessonBlocksFromFirestore(lesson)).toEqual(lesson)
   })
 
+  it('does not encode a workspace that is already a JSON string a second time', () => {
+    const blocks = { sprite1: { blocks: { blocks: [{ type: 'motion_movesteps' }] } } }
+    const lesson = { id: 'l1', tasks: [{ id: 1, starterBlocks: JSON.stringify(blocks) }] }
+
+    const encoded = encodeLessonBlocksForFirestore(lesson)
+    expect(encoded.tasks[0].starterBlocks).toBe(JSON.stringify(blocks))
+    expect(encodeLessonBlocksForFirestore(encoded)).toEqual(encoded)
+    expect(decodeLessonBlocksFromFirestore(encoded).tasks[0].starterBlocks).toEqual(blocks)
+  })
+
   it('passes through lessons/fragments with no tasks unchanged', () => {
     expect(encodeLessonBlocksForFirestore(null)).toBeNull()
     expect(encodeLessonBlocksForFirestore({ title: 'x' })).toEqual({ title: 'x' })
