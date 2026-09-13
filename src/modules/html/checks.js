@@ -1,12 +1,9 @@
 import {
-  wildcardContains,
-  wildcardEquals,
   normalizeOutput,
   normalizeStyleValue,
   getElementText,
-  matchesContainValue,
-  matchesRegex,
   compareValues,
+  compareText,
 } from '../../shared/checkHelpers.js'
 
 export const HTML_CHECK_TYPES = [
@@ -70,18 +67,7 @@ export function evaluateHtmlCheck(check, output, context = {}) {
       if (!el || !el.hasAttribute(check.attribute)) return false
       const raw = el.getAttribute(check.attribute) ?? ''
       if (check.operator === 'exists' || check.value == null || check.value === '') return true
-      if (check.operator === 'contains')
-        return matchesContainValue(raw, check.value, normalizeOutput)
-      if (check.operator === 'not_contains')
-        return !wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'equals')
-        return wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'not_equals')
-        return !wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'matches_regex') return matchesRegex(raw, check.value, check.flags)
-      if (check.operator === 'not_matches_regex')
-        return !matchesRegex(raw, check.value, check.flags)
-      return false
+      return compareText(raw, check.operator, check.value, { flags: check.flags }) ?? false
     } catch {
       return false
     }
@@ -97,19 +83,13 @@ export function evaluateHtmlCheck(check, output, context = {}) {
         style?.getPropertyValue(check.property) || el.style?.getPropertyValue(check.property) || ''
       if (check.operator === 'exists' || check.value == null || check.value === '')
         return String(raw).trim().length > 0
-      if (check.operator === 'contains')
-        return matchesContainValue(raw, check.value, normalizeStyleValue)
-      if (check.operator === 'not_contains')
-        return !wildcardContains(normalizeStyleValue(raw), normalizeStyleValue(check.value))
-      if (check.operator === 'equals')
-        return wildcardEquals(normalizeStyleValue(raw), normalizeStyleValue(check.value))
-      if (check.operator === 'not_equals')
-        return !wildcardEquals(normalizeStyleValue(raw), normalizeStyleValue(check.value))
-      if (check.operator === 'matches_regex')
-        return matchesRegex(normalizeStyleValue(raw), check.value, check.flags)
-      if (check.operator === 'not_matches_regex')
-        return !matchesRegex(normalizeStyleValue(raw), check.value, check.flags)
-      return false
+      return (
+        compareText(raw, check.operator, check.value, {
+          normalize: normalizeStyleValue,
+          normalizeRegex: normalizeStyleValue,
+          flags: check.flags,
+        }) ?? false
+      )
     } catch {
       return false
     }
@@ -136,19 +116,12 @@ export function evaluateHtmlCheck(check, output, context = {}) {
       const el = context.iframeDoc.querySelector(check.selector)
       if (!el) return false
       const raw = getElementText(el)
-      if (check.operator === 'contains')
-        return matchesContainValue(raw, check.value, normalizeOutput)
-      if (check.operator === 'not_contains')
-        return !wildcardContains(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'equals')
-        return wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'not_equals')
-        return !wildcardEquals(normalizeOutput(raw), normalizeOutput(check.value))
-      if (check.operator === 'matches_regex')
-        return matchesRegex(normalizeOutput(raw, true), check.value, check.flags)
-      if (check.operator === 'not_matches_regex')
-        return !matchesRegex(normalizeOutput(raw, true), check.value, check.flags)
-      return false
+      return (
+        compareText(raw, check.operator, check.value, {
+          normalizeRegex: (value) => normalizeOutput(value, true),
+          flags: check.flags,
+        }) ?? false
+      )
     } catch {
       return false
     }

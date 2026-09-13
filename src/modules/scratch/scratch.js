@@ -1066,6 +1066,7 @@ export const DEFAULT_TOOLBOX = {
         { kind: 'block', type: 'motion_glidesecstoxy' },
         { kind: 'block', type: 'motion_glideto' },
         { kind: 'block', type: 'motion_ifonedge_bounce' },
+        { kind: 'block', type: 'motion_setrotationstyle' },
         { kind: 'block', type: 'motion_setx' },
         { kind: 'block', type: 'motion_sety' },
         { kind: 'block', type: 'motion_changexby' },

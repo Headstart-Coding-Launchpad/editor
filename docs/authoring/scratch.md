@@ -393,7 +393,15 @@ check:
   fieldValues:          # optional — require specific input values
     TIMES: "10"
 ```
-`fieldValues` keys are the Blockly input names (e.g. `STEPS`, `DEGREES`, `MESSAGE`). Omit to match any value. Values can be plain strings for equality/wildcard matching, or objects with `operator` and `value`, for example `STEPS: { operator: greater_than_or_equal, value: "10" }`.
+`fieldValues` keys are the Blockly input names (e.g. `STEPS`, `DEGREES`, `MESSAGE`). Omit to match any value. Values can be plain strings (meaning `equals`), or objects with `operator`, `value` and optional `flags`, for example `STEPS: { operator: greater_than_or_equal, value: "10" }`.
+
+Comparisons follow the same rules as every other check:
+
+- Text ignores case and surrounding spaces.
+- `*` matches anything, and `"a","b"` passes `contains` if any option is present (`not_contains` only if none are).
+- When both values are numbers they compare as numbers, so `"10"` equals `"10.0"`.
+- `greater_than`, `less_than` and the other numeric operators need both values to be numbers.
+- `matches_regex` uses `flags` (e.g. `i`); an invalid pattern fails.
 
 ### `sprite_property`
 ```yaml
@@ -539,7 +547,7 @@ Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_cou
 - `looks_switchcostumeto` · `looks_nextcostume`
 - `looks_costumenumber` · `looks_costumenumbername`
 - `looks_switchbackdropto` · `looks_nextbackdrop` · `looks_backdropnumbername`
-- `looks_seteffectto` · `looks_changeeffectby` · `looks_cleargraphiceffects`
+- `looks_seteffectto` · `looks_changeeffectby` · `looks_cleargraphiceffects`: all seven effects (`color`, `fisheye`, `whirl`, `pixelate`, `mosaic`, `brightness`, `ghost`) draw on the stage using Scratch 3's own maths. For costume images hosted on another site (for example Firebase Storage URLs), `fisheye` and `whirl` can't be drawn, because the browser won't let the page read those pixels; the other five still work.
 
 **Sound**
 - `sound_play` · `sound_playuntildone` · `sound_stopallsounds`

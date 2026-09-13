@@ -20,6 +20,33 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-13
 
+### Check comparisons now behave the same in every module
+
+Text operators (`contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`,
+`not_matches_regex`) now share one implementation across output, quiz answers, file content,
+HTML element checks and Scratch block inputs. Existing checks can change verdict in these cases:
+
+- **`not_contains` with an option list** (`"a","b"`) now passes only when none of the options
+  appear. It used to search for the literal quoted text, so it almost always passed. This affects
+  output, answer and HTML element, attribute and style checks.
+- **An invalid regex** now fails `not_matches_regex` too, instead of passing for every student.
+- **Filesystem `fs_file_content` `equals` / `not_equals`** now support `*` wildcards.
+- **Scratch `fieldValues`** on `block_used`, `block_run` and `blocks_in_order`:
+  - `equals` and `contains` ignore case and surrounding spaces.
+  - `contains` supports `*` and option lists.
+  - Numbers compare numerically (`10` equals `10.0`).
+  - Regex honours `flags`.
+
+Review Scratch checks that relied on case-sensitive field matching, and any `not_contains` check
+written with an option list.
+
+### Scratch graphic effects draw on the stage
+
+`set/change [effect] effect` blocks used to update sprite state without changing how the sprite
+looked. All seven effects now render. `fisheye` and `whirl` are skipped for costume images hosted
+on another site. `motion_setrotationstyle` is now in the default toolbox (it was already in the
+catalog and runtime). See `docs/authoring/scratch.md`.
+
 ### CLI reads and writes lessons the same way as the Builder
 
 - `lessons get`, `lessons upsert`, `lessons publish-yaml`, `lessons fork` and the
