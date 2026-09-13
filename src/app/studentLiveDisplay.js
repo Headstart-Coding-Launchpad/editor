@@ -4,7 +4,14 @@ import { decodeFileKey } from '../shared/fileKeys'
 // reference (sessions/{lessonId}/teacherLiveReference). Scratch's live "code" is a
 // serialized Blockly project, not text, so it's excluded — see
 // docs/agents/classroom-behaviours.md.
-export const TEACHER_LIVE_REFERENCE_TYPES = ['python', 'html', 'arcade', 'electronics', 'filesystem']
+export const TEACHER_LIVE_REFERENCE_TYPES = [
+  'python',
+  'html',
+  'arcade',
+  'turtle',
+  'electronics',
+  'filesystem',
+]
 
 export function toTeacherLiveFiles(files) {
   return files
@@ -103,6 +110,7 @@ export function deriveStudentLiveDisplay({
       : (viewingTaskId ?? currentTaskId),
     displayCode: isForcedTeacherLive ? (teacherLive.code ?? '') : code,
     displayArcadeDesign: isForcedTeacherLive ? (teacherLive.arcadeDesign ?? null) : null,
+    displayTurtleResult: isForcedTeacherLive ? (teacherLive.turtleResult ?? null) : null,
     displaySpriteState: isForcedTeacherLive ? (teacherLive.spriteState ?? null) : null,
     displayCursor: isForcedTeacherLive ? (teacherLive.cursor ?? null) : null,
     displayBlockDrag: isForcedTeacherLive ? (teacherLive.blockDrag ?? null) : null,

@@ -81,6 +81,7 @@ export function useStudentCodeState({
   writeStudentAnswer,
   writeStudentCode,
   writeStudentArcadeDesign,
+  writeStudentTurtleResult,
   writeStudentSpriteState,
   writeStudentCursor,
   writeStudentBlockDrag,
@@ -106,6 +107,10 @@ export function useStudentCodeState({
   const [activeFile, setActiveFile] = useState('')
   const [output, setOutput] = useState('')
   const [runStatus, setRunStatus] = useState(null)
+  // Turtle module only: the { state, commands, calls } snapshot from the most recent run,
+  // used by TurtleStudentWorkspace to redraw its canvas. Ephemeral/in-memory only (Phase 1) —
+  // not persisted or synced to teacher-live yet, so it resets wherever output does.
+  const [turtleResult, setTurtleResult] = useState(null)
   const [running, setRunning] = useState(false)
   const [runningTests, setRunningTests] = useState(false)
   const [iframeSrc, setIframeSrc] = useState(null)
@@ -162,6 +167,12 @@ export function useStudentCodeState({
   // whatever `code` happens to be left over from a previous non-Scratch task.
   const scratchCodeRef = useRef('')
   const arcadeDesignRef = useLatestRef(arcadeDesign)
+  // Turtle module only — mirrors turtleResult so currentTeacherLivePayload (built inside
+  // useTeacherLivePublish, which only receives refs) can read the latest snapshot without
+  // a stale closure. See setTurtleResult(result.turtle ?? null) below: it's set in the same
+  // handler/render pass as setRunStatus, so the "publish on tracked value change" effect
+  // (keyed on runStatus) always sees the fresh value the next time it fires.
+  const turtleResultRef = useLatestRef(turtleResult)
   const arcadeDesignWriteTimerRef = useRef(null)
   const spriteStateLastSentRef = useRef(0)
   const spriteStatePendingTimerRef = useRef(null)
@@ -341,6 +352,7 @@ export function useStudentCodeState({
     codeRef,
     scratchCodeRef,
     arcadeDesignRef,
+    turtleResultRef,
     filesRef,
     activeFileRef,
     outputRef,
@@ -444,7 +456,7 @@ export function useStudentCodeState({
     const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
     if (task?.taskType === 'quiz' || task?.taskType === 'information') return
 
-    if (currentLesson.type === 'python') {
+    if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
       persistence.savePythonCode(id.anonymousId, taskId, {
         code: codeRef.current,
         output: outputRef.current,
@@ -471,7 +483,7 @@ export function useStudentCodeState({
     const id = identityRef.current
     const currentLesson = lessonRef.current
     if (!id || teacherPresentation || !currentLesson) return
-    if (currentLesson.type === 'python') {
+    if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
       savePersonalSandboxCode(
         lessonId,
         id.anonymousId,
@@ -542,7 +554,7 @@ export function useStudentCodeState({
       resetCheckFeedback()
       return
     }
-    if (lesson.type === 'python') {
+    if (lesson.type === 'python' || lesson.type === 'turtle') {
       setCode(
         selectPythonTaskCode({
           tasks: lesson.tasks,
@@ -649,6 +661,7 @@ export function useStudentCodeState({
     setRunning(false)
     setRunningTests(false)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
@@ -767,7 +780,12 @@ export function useStudentCodeState({
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
+    if (
+      lesson.type === 'python' ||
+      lesson.type === 'arcade' ||
+      lesson.type === 'electronics' ||
+      lesson.type === 'turtle'
+    ) {
       writeStudentCode(identity.anonymousId, code)
       writeStudentOutput(identity.anonymousId, output)
     } else if (lesson.type === 'html') {
@@ -821,7 +839,7 @@ export function useStudentCodeState({
     })
     if (!target) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       setCode(target.code)
       if (lesson.type === 'arcade') {
         const resetDesign = designForCodeTab(task, action)
@@ -836,6 +854,7 @@ export function useStudentCodeState({
           writeStudentArcadeDesign?.(identity.anonymousId, resetDesign)
       }
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'html') {
@@ -870,6 +889,7 @@ export function useStudentCodeState({
         nextFiles.some((file) => file.name === current) ? current : (nextFiles[0]?.name ?? '')
       )
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       if (effectiveIdentity?.anonymousId) {
@@ -877,10 +897,14 @@ export function useStudentCodeState({
       }
     } else if (
       newCode !== undefined &&
-      (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')
+      (lesson?.type === 'python' ||
+        lesson?.type === 'arcade' ||
+        lesson?.type === 'electronics' ||
+        lesson?.type === 'turtle')
     ) {
       setCode(newCode ?? '')
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       const nextDesign =
@@ -914,7 +938,7 @@ export function useStudentCodeState({
   function handleEnterPersonalSandbox() {
     if (!identity || teacherPresentation || !lesson) return
     const id = identity.anonymousId
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? lesson.sandboxStarter ?? '')
       if (lesson.type === 'arcade') {
@@ -938,6 +962,7 @@ export function useStudentCodeState({
       setCode(saved?.code ?? serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
     }
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -951,6 +976,7 @@ export function useStudentCodeState({
     setInPersonalSandbox(false)
     if (session) writeStudentPersonalSandbox(identity.anonymousId, false)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -969,13 +995,14 @@ export function useStudentCodeState({
 
     setRunning(true)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setTestResults(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
     if (!alreadySolved) resetRunFeedback()
 
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle') {
       lastOutputWriteRef.current = 0
       if (outputRafIdRef.current !== null) {
         cancelAnimationFrame(outputRafIdRef.current)
@@ -1090,7 +1117,13 @@ export function useStudentCodeState({
         typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
       if (nextCode !== code) setCode(nextCode)
 
-      const checkContext = { status, code: nextCode, variables: result.variables ?? {} }
+      setTurtleResult(result.turtle ?? null)
+      const checkContext = {
+        status,
+        code: nextCode,
+        variables: result.variables ?? {},
+        turtle: result.turtle ?? null,
+      }
       const hasTests = task?.tests?.length > 0
       let passed = alreadySolved
         ? true
@@ -1147,6 +1180,11 @@ export function useStudentCodeState({
           status,
           checkPassed: hasTests ? undefined : passed,
         })
+        // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
+        // Arcade's design — so it's synced here alongside writeStudentRun, not only on
+        // explicit edits. Lets a teacher open StudentModal and see the student's actual
+        // drawing, not just their code.
+        if (lesson.type === 'turtle') writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
       }
       if (
         !teacherPresentation &&
@@ -1276,6 +1314,7 @@ export function useStudentCodeState({
 
     setRunningTests(true)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setTestResults(null)
     resetRunFeedback()
@@ -1386,7 +1425,10 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
     if (
       effectiveIdentity &&
-      (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')
+      (lesson?.type === 'python' ||
+        lesson?.type === 'arcade' ||
+        lesson?.type === 'electronics' ||
+        lesson?.type === 'turtle')
     ) {
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
         code: newCode,
@@ -1398,7 +1440,12 @@ export function useStudentCodeState({
     if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, newCode)
     }
-    if (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics') {
+    if (
+      lesson?.type === 'python' ||
+      lesson?.type === 'arcade' ||
+      lesson?.type === 'electronics' ||
+      lesson?.type === 'turtle'
+    ) {
       scheduleIdleFeedback(() =>
         lessonRef.current?.type === 'electronics'
           ? { code: newCode, circuit: newCode }
@@ -1682,10 +1729,11 @@ export function useStudentCodeState({
     if (inPersonalSandboxRef.current) {
       if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.'))
         return
-      if (lesson.type === 'python' || lesson.type === 'arcade') {
+      if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
         setCode(lesson.sandboxStarter ?? '')
         if (lesson.type === 'arcade') setArcadeDesign(null)
         setOutput('')
+        setTurtleResult(null)
         setRunStatus(null)
       } else if (lesson.type === 'html') {
         const starterFiles = (lesson.sandboxStarterFiles ?? []).map((f) => ({ ...f }))
@@ -1699,6 +1747,7 @@ export function useStudentCodeState({
       } else if (lesson.type === 'electronics') {
         setCode(serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
         setOutput('')
+        setTurtleResult(null)
         setRunStatus(null)
         resetCheckFeedback()
       }
@@ -1707,7 +1756,7 @@ export function useStudentCodeState({
     if (!window.confirm('Reset your code to the starter code? Your current work will be lost.'))
       return
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       setCode(getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '')
       if (lesson.type === 'arcade') handleArcadeDesignChange(designForCodeTab(task, 'starter'))
       if (canPublishTeacherLive())
@@ -1719,6 +1768,7 @@ export function useStudentCodeState({
           checkAttempted: false,
         })
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'html') {
@@ -1758,11 +1808,12 @@ export function useStudentCodeState({
     const stage = task.codeStages?.[stageIndex]
     if (!stage) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       const stageCode = stage.code ?? ''
       setCode(stageCode)
       if (lesson.type === 'arcade') setArcadeDesign(designForCodeTab(task, `stage_${stageIndex}`))
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
         code: stageCode,
@@ -1808,7 +1859,8 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const stage = task?.codeStages?.[stageIndex]
     if (!stage) return
-    if (!['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lesson?.type)) return
+    if (!['python', 'html', 'arcade', 'turtle', 'electronics', 'scratch'].includes(lesson?.type))
+      return
     if (!isRevealableStage(stage)) return
 
     const record = {
@@ -1930,10 +1982,11 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       const completeCode = getCompleteStage(task)?.stage?.code ?? task.completeCode ?? ''
       setCode(completeCode)
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       applyCheckFeedback(true)
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
@@ -2132,6 +2185,7 @@ export function useStudentCodeState({
     activeFile,
     output,
     runStatus,
+    turtleResult,
     running,
     runningTests,
     testResults,

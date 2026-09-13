@@ -12,6 +12,7 @@ import {
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
+import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
 import {
   buildShareIndexEntry,
   isSnapshotWithinLimit,
@@ -861,6 +862,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  async function writeStudentTurtleResult(anonymousId, turtleResult) {
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentTurtleResult`),
+      compactTurtleResultForSync(turtleResult)
+    )
+  }
+
   async function writeStudentSpriteState(anonymousId, spriteState) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`),
@@ -1135,6 +1143,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentAnswer,
     writeStudentCode,
     writeStudentArcadeDesign,
+    writeStudentTurtleResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,

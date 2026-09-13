@@ -194,6 +194,11 @@ Arcade Kit module code-task authoring reference: the single-file task model, ass
 
 **Load when:** authoring or editing an Arcade Kit module code task.
 
+### [authoring/turtle.md](authoring/turtle.md)
+Turtle module code-task authoring reference: the single-file task model, supported turtle commands, coordinate system, and check types (Phase 1 — see the doc for what's not yet implemented).
+
+**Load when:** authoring or editing a Turtle module code task.
+
 ### [authoring/quiz-tasks.md](authoring/quiz-tasks.md)
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
 

@@ -1281,4 +1281,84 @@ describe('StudentView', () => {
       expect(screen.queryByText(/task one output/)).not.toBeInTheDocument()
     })
   })
+
+  describe('turtle execution', () => {
+    afterEach(() => {
+      runPython.mockReset()
+      stopPython.mockReset()
+    })
+
+    // Regression test: handleRun's python-vs-html branch in useStudentCodeState.js
+    // originally didn't include 'turtle', so Run fell through to the HTML iframe
+    // branch and crashed on mod.runtime.buildPreviewSrc (turtle has none — it runs
+    // through the shared Pyodide worker like python, not an iframe).
+    it('runs a turtle task through the Pyodide worker without falling into the HTML iframe branch', async () => {
+      const user = userEvent.setup()
+      runPython.mockImplementation(() =>
+        Promise.resolve({
+          status: 'success',
+          variables: {},
+          turtle: {
+            state: { x: 0, y: 0, heading: 0, penDown: true, color: 'black' },
+            commands: [{ type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' }],
+            calls: [{ name: 'forward', args: [100] }],
+          },
+        })
+      )
+
+      render(
+        <StudentView
+          lessonId="turtle-solo-1"
+          forceSolo
+          lesson={{
+            id: 'turtle-solo-1',
+            title: 'Turtle Solo',
+            type: 'turtle',
+            tasks: [{ id: 1, title: 'Draw a line', starterCode: 'turtle.forward(100)' }],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+
+      await waitFor(() => expect(runPython).toHaveBeenCalledTimes(1))
+      // The bug threw synchronously inside handleRun before this point was ever reached.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+    })
+
+    it('stops a still-running turtle execution without an unhandled rejection', async () => {
+      const user = userEvent.setup()
+      let resolveRun
+      runPython.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveRun = resolve
+          })
+      )
+      stopPython.mockImplementation(() => resolveRun?.({ status: 'stopped', variables: {} }))
+
+      render(
+        <StudentView
+          lessonId="turtle-solo-stop-1"
+          forceSolo
+          lesson={{
+            id: 'turtle-solo-stop-1',
+            title: 'Turtle Solo Stop',
+            type: 'turtle',
+            tasks: [{ id: 1, title: 'Draw a line', starterCode: 'turtle.forward(100)' }],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Stop' }))
+
+      expect(stopPython).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+    })
+  })
 })

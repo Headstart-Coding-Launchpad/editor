@@ -3,6 +3,7 @@ import { findTaskById, flattenTasks } from './taskUtils.js'
 export const LESSON_MODULE_TYPES = [
   'python',
   'arcade',
+  'turtle',
   'html',
   'scratch',
   'filesystem',

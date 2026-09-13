@@ -532,7 +532,7 @@ export function validateLesson(lesson) {
           ? quizHasStarter(task)
           : task.taskType === 'code_arrange'
             ? Array.isArray(task.lines) && task.lines.length > 0
-            : type === 'python' || type === 'arcade'
+            : type === 'python' || type === 'arcade' || type === 'turtle'
               ? !!task.starterCode
               : type === 'scratch'
                 ? !!task.starterBlocks

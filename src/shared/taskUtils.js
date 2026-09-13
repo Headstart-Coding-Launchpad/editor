@@ -274,7 +274,7 @@ export function buildStageOptions(task, lessonType) {
     ['starter', 'complete'].includes(stage?.role)
   )
   if (
-    ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lessonType) &&
+    ['python', 'html', 'arcade', 'turtle', 'electronics', 'scratch'].includes(lessonType) &&
     task?.taskType !== 'quiz' &&
     isUnified
   ) {

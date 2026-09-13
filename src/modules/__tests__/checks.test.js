@@ -1610,3 +1610,23 @@ describe('resolveTestCheck', () => {
     expect(result.value).toBe('Hello {username}')
   })
 })
+
+describe('turtle check dispatch', () => {
+  it('routes turtle_* check types to evaluateTurtleCheck via context.turtle', () => {
+    const context = {
+      turtle: {
+        state: { x: 100, y: 0, heading: 0, penDown: true, color: 'black' },
+        commands: [{ type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' }],
+        calls: [{ name: 'forward', args: [100] }],
+      },
+    }
+    expect(evaluateSingleCheck({ type: 'turtle_position', x: 100, y: 0 }, '', context)).toBe(true)
+    expect(
+      evaluateSingleCheck(
+        { type: 'turtle_command_used', command: 'forward', minCount: 1 },
+        '',
+        context
+      )
+    ).toBe(true)
+  })
+})

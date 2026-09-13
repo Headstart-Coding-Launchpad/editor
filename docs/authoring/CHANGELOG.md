@@ -20,6 +20,25 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-12
 
+### New Turtle module task type
+
+Added `moduleType: turtle` — a single-file Python task type for turtle
+graphics, running a hand-built shim of the real `turtle` module (`import
+turtle` works as written) inside the shared Pyodide worker, drawing onto a
+responsive canvas with a fixed logical coordinate space matching real
+turtle's centre-origin, y-up convention. Supports the core movement/pen
+command set (forward/backward/left/right/penup/pendown/pencolor/goto/
+setheading/home/reset), plus circle, begin_fill/end_fill/fillcolor/color,
+stamp, write, bgcolor, and colormode. New check types: `turtle_position`,
+`turtle_heading`, `turtle_path_closed`, `turtle_segment_count`,
+`turtle_path_length`, `turtle_command_used`, `turtle_color_used` (takes an
+optional `kind: "pen" | "fill"`), and `turtle_stamp_count`. The student's
+drawing now also syncs live to the teacher — both when watching an
+individual student and when "Go Live" broadcasts a turtle task to the whole
+class — via the same channels that already sync live code. Multiple
+`Turtle()` instances, per-task canvas size, and a reference-image comparison
+feature are not implemented. See `docs/authoring/turtle.md`.
+
 ### New `companionOf` lesson field links a solo challenge to its parent lesson
 
 A `soloOnly` "solo challenge" lesson can now set `companionOf: "<parent-lesson-id>"` to link it to the lesson it extends. The Admin lesson list groups a solo lesson under its linked parent (collapsible, same pattern as class forks), and students who finish the parent lesson — live or solo — are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The field is set only on the solo lesson; the parent lesson document is unchanged. Set it via the Builder's new "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, or the CLI. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`.

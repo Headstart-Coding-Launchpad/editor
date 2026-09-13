@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { getLessonModule } from '../registry.js'
 import { buildMicroPythonProgram } from '../electronics/index.js'
 
-const LESSON_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics']
+const LESSON_TYPES = ['python', 'arcade', 'turtle', 'html', 'scratch', 'filesystem', 'electronics']
 
 describe('module interface contract', () => {
   for (const type of LESSON_TYPES) {
@@ -179,6 +179,24 @@ describe('module interface contract', () => {
         'student game code'
       )
       expect(mod.getDisplayState(task, null, { files: [] }, 'starter')).toBe('game.run()')
+    })
+  })
+
+  describe('turtle-specific', () => {
+    const mod = getLessonModule('turtle')
+    it('creates a starter that imports the real turtle module', () => {
+      const result = mod.makeCodeTaskFields({})
+      expect(result.starterCode).toContain('import turtle')
+      expect(result.codeStages).toHaveLength(1)
+    })
+
+    it('does not support text-based interaction modes (draw-and-check, like Arcade)', () => {
+      expect(mod.supportsInteractionMode).toBe(false)
+      expect(mod.supportsTests).toBe(false)
+    })
+
+    it('includes python in explainerInlineCodeLanguages (turtle scripts are Python)', () => {
+      expect(mod.explainerInlineCodeLanguages).toContain('python')
     })
   })
 

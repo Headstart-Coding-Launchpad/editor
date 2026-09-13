@@ -2,6 +2,7 @@ import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem/checks.js'
 import { evaluatePythonCheck, PYTHON_CHECK_TYPES } from './python/checks.js'
 import { evaluateHtmlCheck, HTML_CHECK_TYPES } from './html/checks.js'
 import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics/circuit.js'
+import { TURTLE_CHECK_TYPES, evaluateTurtleCheck } from './turtle/checks.js'
 import {
   wildcardContains,
   wildcardEquals,
@@ -218,6 +219,7 @@ const CHECK_TYPES = {
   ],
   FS: FS_CHECK_TYPES,
   ELECTRONICS: ELECTRONICS_CHECK_TYPES,
+  TURTLE: TURTLE_CHECK_TYPES,
 }
 
 export function checkRequiresRun(check) {
@@ -257,6 +259,10 @@ export function evaluateSingleCheck(check, output, context = {}) {
 
   if (ELECTRONICS_CHECK_TYPES.includes(check.type)) {
     return evaluateElectronicsCheck(check, context.circuit ?? context.code)
+  }
+
+  if (TURTLE_CHECK_TYPES.includes(check.type)) {
+    return evaluateTurtleCheck(check, context)
   }
 
   // Generic `code` checks are shared across Python/HTML/Arcade. When evaluated
