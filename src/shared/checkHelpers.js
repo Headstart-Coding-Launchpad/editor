@@ -39,12 +39,17 @@ export function compareValues(actual, operator = 'equals', expected) {
 }
 
 export function normalizeOutput(value, caseSensitive = false) {
-  const s = String(value ?? '').replace(/\r\n?/g, '\n').trim()
+  const s = String(value ?? '')
+    .replace(/\r\n?/g, '\n')
+    .trim()
   return caseSensitive ? s : s.toLowerCase()
 }
 
 export function normalizeExactOutput(value) {
-  return String(value ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').toLowerCase()
+  return String(value ?? '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/\n+$/, '')
+    .toLowerCase()
 }
 
 // Normalizes CSS property values for comparison: reduces url(...) to just the
@@ -53,11 +58,11 @@ export function normalizeExactOutput(value) {
 export function normalizeStyleValue(value) {
   return normalizeOutput(value).replace(
     /url\(\s*['"]?([^'")\s]+)['"]?\s*\)/g,
-    (_, href) => `url(${href.split('/').pop()})`,
+    (_, href) => `url(${href.split('/').pop()})`
   )
 }
 
-export function normalizeCode(value, caseSensitive = false) {
+function normalizeCode(value, caseSensitive = false) {
   const s = normalizeCodeWhitespace(value)
   return caseSensitive ? s : s.toLowerCase()
 }
@@ -96,7 +101,7 @@ export function countOutputLines(value) {
 }
 
 // Parses "option1","option2" format into an array. Returns null if not in that format.
-export function parseMultipleContainOptions(value) {
+function parseMultipleContainOptions(value) {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   if (!trimmed.startsWith('"')) return null
@@ -115,7 +120,7 @@ export function matchesContainValue(rawValue, checkValue, normalizeFn) {
   const opts = parseMultipleContainOptions(checkValue)
   if (opts) {
     const actual = normalizeFn(rawValue)
-    return opts.some(opt => wildcardContains(actual, normalizeFn(opt)))
+    return opts.some((opt) => wildcardContains(actual, normalizeFn(opt)))
   }
   return wildcardContains(normalizeFn(rawValue), normalizeFn(checkValue))
 }
@@ -124,7 +129,9 @@ export function parseCheckValue(value) {
   if (typeof value !== 'string') return value
   const trimmed = value.trim()
   if (!trimmed) return ''
-  try { return JSON.parse(trimmed) } catch {}
+  try {
+    return JSON.parse(trimmed)
+  } catch {}
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed)
   if (trimmed === 'True' || trimmed === 'False') return trimmed === 'True'
   if (trimmed === 'None') return null
@@ -135,7 +142,7 @@ export function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value)
 }
 
-export function deepEqual(a, b) {
+function deepEqual(a, b) {
   if (Array.isArray(a) || Array.isArray(b)) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
     return a.every((item, index) => deepEqual(item, b[index]))
@@ -145,13 +152,21 @@ export function deepEqual(a, b) {
     const aKeys = Object.keys(a)
     const bKeys = Object.keys(b)
     if (aKeys.length !== bKeys.length) return false
-    return aKeys.every(key => Object.prototype.hasOwnProperty.call(b, key) && deepEqual(a[key], b[key]))
+    return aKeys.every(
+      (key) => Object.prototype.hasOwnProperty.call(b, key) && deepEqual(a[key], b[key])
+    )
   }
   return String(a) === String(b)
 }
 
 export function valueEquals(actual, expected) {
-  if (Array.isArray(actual) || Array.isArray(expected) || isPlainObject(actual) || isPlainObject(expected)) return deepEqual(actual, expected)
+  if (
+    Array.isArray(actual) ||
+    Array.isArray(expected) ||
+    isPlainObject(actual) ||
+    isPlainObject(expected)
+  )
+    return deepEqual(actual, expected)
   return String(actual) === String(expected)
 }
 
@@ -160,9 +175,13 @@ export function getElementText(el) {
   return INPUT_TAGS.includes(el.tagName) ? el.value : (el.textContent ?? '')
 }
 
-export function parseVariableJson(json, fallback) {
+function parseVariableJson(json, fallback) {
   if (json == null) return fallback
-  try { return JSON.parse(json) } catch { return fallback }
+  try {
+    return JSON.parse(json)
+  } catch {
+    return fallback
+  }
 }
 
 export function getVariableEntry(variables, name) {
@@ -182,7 +201,7 @@ export function getVariableEntry(variables, name) {
 // strings, so use a whitespace-free fallback only for unquoted fragments.
 function codeContains(code, value) {
   const options = parseMultipleContainOptions(value)
-  if (options) return options.some(option => codeContainsFragment(code, option))
+  if (options) return options.some((option) => codeContainsFragment(code, option))
   return codeContainsFragment(code, value)
 }
 
@@ -193,7 +212,9 @@ function codeContainsFragment(code, value) {
 }
 
 function stripAllCodeWhitespace(value) {
-  return String(value ?? '').replace(/\s/g, '').toLowerCase()
+  return String(value ?? '')
+    .replace(/\s/g, '')
+    .toLowerCase()
 }
 
 const CODE_CHECK_ALIAS_OPERATORS = {
@@ -219,10 +240,14 @@ export function evaluateCodeCheck(check, code) {
   const source = code ?? ''
   if (operator === 'contains') return codeContains(source, check.value)
   if (operator === 'not_contains') return !codeContains(source, check.value)
-  if (operator === 'equals') return wildcardEquals(normalizeCode(source), normalizeCode(check.value))
-  if (operator === 'not_equals') return !wildcardEquals(normalizeCode(source), normalizeCode(check.value))
-  if (operator === 'matches_regex') return matchesRegex(normalizeCode(source, true), check.value, check.flags)
-  if (operator === 'not_matches_regex') return !matchesRegex(normalizeCode(source, true), check.value, check.flags)
+  if (operator === 'equals')
+    return wildcardEquals(normalizeCode(source), normalizeCode(check.value))
+  if (operator === 'not_equals')
+    return !wildcardEquals(normalizeCode(source), normalizeCode(check.value))
+  if (operator === 'matches_regex')
+    return matchesRegex(normalizeCode(source, true), check.value, check.flags)
+  if (operator === 'not_matches_regex')
+    return !matchesRegex(normalizeCode(source, true), check.value, check.flags)
   return false
 }
 

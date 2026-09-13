@@ -41,9 +41,24 @@ node cli/cli.mjs topics publish-yaml topics.yaml   # upsert all topics to Firest
 node cli/cli.mjs topics yaml-to-json topics.yaml   # validate without Firebase
 node cli/cli.mjs topics json-to-yaml topics.json topics.yaml
 node cli/cli.mjs topics get for-loop --format yaml
+node cli/cli.mjs topics upsert topic.yaml          # upsert a single topic
 ```
 
 `topics publish-yaml` upserts every topic in the file; it does not delete topics absent from the file.
+
+### Single-Topic Upsert
+
+`topics upsert [file]` (reads from stdin when `file` is omitted) writes **one topic** and expects a **bare topic object** — not the `topics:` array wrapper used by `publish-yaml` and `upsert-library`:
+
+```yaml
+id: for-loop
+title: For loops
+types: [python]
+category: Loop
+summary: Repeats indented code once for each item in a sequence.
+```
+
+A single-item `topics:` array (or bare single-item array) is also accepted as a convenience and is unwrapped automatically; any other array length is rejected with `Expected exactly one topic, received N`. Use `upsert-library` or `publish-yaml` to write more than one topic in a call.
 
 ---
 
@@ -67,7 +82,7 @@ node cli/cli.mjs topics get for-loop --format yaml
 |---|:---:|---|---|
 | `id` | Yes | string | Unique slug. Used in `[[wiki-links]]` and URL hash. Lowercase letters, digits, dots, underscores, and hyphens only. |
 | `title` | Yes | string | Display name in the library list and hover card. |
-| `types` | No | string array | Lesson types this topic applies to. Empty or omitted = all types. Valid values: `"python"`, `"html"`, `"scratch"`. |
+| `types` | No | string array | Lesson types this topic applies to. Empty or omitted = all types. Valid values: `"python"`, `"html"`, `"scratch"` — but see the Scratch note under Type Filtering below: `"scratch"` is currently a no-op. |
 | `category` | No | string | Short label under the title (e.g. `"Function"`, `"Concept"`, `"CSS property"`). |
 | `summary` | No | string | One-sentence description in the hover card. **Plain text only — no Markdown.** |
 | `description` | No | string | Full body text rendered with the Markdown renderer. |
@@ -81,11 +96,13 @@ node cli/cli.mjs topics get for-loop --format yaml
 
 | `types` value | When shown |
 |---|---|
-| `[]` or omitted | All lesson types |
+| `[]` or omitted | All lesson types (except Scratch — see note) |
 | `["python"]` | Python lessons only |
 | `["html"]` | HTML lessons only |
-| `["scratch"]` | Scratch lessons only |
-| `["python", "scratch"]` | Python and Scratch lessons |
+| `["scratch"]` | Never — see note |
+| `["python", "scratch"]` | Python lessons only — the Scratch half never applies |
+
+**Scratch note**: the topic library is not offered on Scratch lessons at all — no inline `[[wiki-link]]` rendering, no hover cards, no browse dialog — regardless of a topic's `types`. This applies even to a topic with an empty/omitted `types` (normally "all types"). `"scratch"` in `types` is accepted but has no effect; don't rely on it for a topic you want Scratch students to see.
 
 ---
 

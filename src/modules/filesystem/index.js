@@ -3,25 +3,11 @@ import StudentWorkspace from './StudentWorkspace.jsx'
 import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import FilesystemTeacherLiveView from './TeacherLiveView.jsx'
+import { flexLayoutStyles } from '../sharedStyles.js'
 
 export { DEFAULT_FS }
 
-const taskContentStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-  minHeight: 0,
-  overflow: 'visible',
-}
-
-const editorAreaStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-  minHeight: 0,
-}
+const { taskContentStyle, editorAreaStyle } = flexLayoutStyles
 
 const filesystemModule = {
   type: 'filesystem',
@@ -61,9 +47,17 @@ const filesystemModule = {
 
   carryThroughField: 'carryFsFrom',
   carryThroughLabel: 'Carry filesystem from task',
-  getCarryThroughUpdates: (sourceTask) => ({
-    starterFs: sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS,
-  }),
+  // Also patches codeStages[0].fs (see python/index.js's getCarryThroughUpdates for why).
+  getCarryThroughUpdates: (sourceTask, targetTask) => {
+    const fs = sourceTask.completeFs ?? sourceTask.starterFs ?? DEFAULT_FS
+    const updates = { starterFs: fs }
+    if (targetTask?.codeStages?.length) {
+      updates.codeStages = targetTask.codeStages.map((stage, i) =>
+        i === 0 ? { ...stage, fs: { ...fs } } : stage
+      )
+    }
+    return updates
+  },
   getNewStarterUpdates: () => ({
     starterFs: DEFAULT_FS,
   }),
@@ -83,16 +77,26 @@ const filesystemModule = {
   initialState: (task) => task.starterFs ?? DEFAULT_FS,
   serializeState: (state) => JSON.stringify(state),
   deserializeState: (raw) => {
-    try { return JSON.parse(raw) } catch { return DEFAULT_FS }
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return DEFAULT_FS
+    }
   },
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => {
     if (lesson?.sandboxStarterFs != null) {
-      try { return JSON.parse(JSON.stringify(lesson.sandboxStarterFs)) } catch {}
+      try {
+        return JSON.parse(JSON.stringify(lesson.sandboxStarterFs))
+      } catch {}
     }
     const fs = task?.starterFs ?? DEFAULT_FS
-    try { return JSON.parse(JSON.stringify(fs)) } catch { return DEFAULT_FS }
+    try {
+      return JSON.parse(JSON.stringify(fs))
+    } catch {
+      return DEFAULT_FS
+    }
   },
 
   // ── Runtime ──────────────────────────────────────────────────────────────────

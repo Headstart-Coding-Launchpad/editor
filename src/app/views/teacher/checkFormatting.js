@@ -6,7 +6,8 @@ export function formatCheckValue(c) {
   if (c.type === 'output_not_equals') return `output does not equal "${c.value}"`
   if (c.type === 'output_matches_regex') return `output matches /${c.value}/`
   if (c.type === 'output_line_count') return `${c.value} output line${c.value === 1 ? '' : 's'}`
-  if (c.type === 'output_line_count_at_least') return `at least ${c.value} output line${c.value === 1 ? '' : 's'}`
+  if (c.type === 'output_line_count_at_least')
+    return `at least ${c.value} output line${c.value === 1 ? '' : 's'}`
   if (c.type === 'output_not_empty') return 'output is not empty'
   if (c.type === 'output_empty') return 'output is empty'
   // Code
@@ -21,20 +22,29 @@ export function formatCheckValue(c) {
   if (c.type === 'variable_equals') return `variable "${c.name}" equals ${c.value}`
   if (c.type === 'variable_dict_contains') return `variable "${c.name}" dict contains ${c.value}`
   if (c.type === 'variable_dict_equals') return `variable "${c.name}" dict equals ${c.value}`
-  if (c.type === 'variable_dict_key_value') return `variable "${c.name}"["${c.key}"] equals ${c.value}`
+  if (c.type === 'variable_dict_key_value')
+    return `variable "${c.name}"["${c.key}"] equals ${c.value}`
   if (c.type === 'variable_array_contains') return `variable "${c.name}" array contains ${c.value}`
   if (c.type === 'variable_array_equals') return `variable "${c.name}" array equals ${c.value}`
-  if (c.type === 'variable_array_nth_item') return `variable "${c.name}"[${c.index}] equals ${c.value}`
+  if (c.type === 'variable_array_nth_item')
+    return `variable "${c.name}"[${c.index}] equals ${c.value}`
   // Element
   if (c.type === 'element_exists') return `element "${c.selector}" exists`
   if (c.type === 'element_count') return `${c.value} elements matching "${c.selector}"`
   if (c.type === 'element_value') return `"${c.selector}" contains "${c.value}"`
   if (c.type === 'element_value_equals') return `"${c.selector}" equals "${c.value}"`
-  if (c.type === 'element_value_not_contains') return `"${c.selector}" does not contain "${c.value}"`
+  if (c.type === 'element_value_not_contains')
+    return `"${c.selector}" does not contain "${c.value}"`
   if (c.type === 'element_value_not_equals') return `"${c.selector}" does not equal "${c.value}"`
   if (c.type === 'element_value_matches_regex') return `"${c.selector}" matches /${c.value}/`
-  if (c.type === 'element_attribute') return c.value ? `"${c.selector}" [${c.attribute}]="${c.value}"` : `"${c.selector}" has [${c.attribute}]`
-  if (c.type === 'element_style_property') return c.value ? `"${c.selector}" ${c.property}: ${c.value}` : `"${c.selector}" has ${c.property}`
+  if (c.type === 'element_attribute')
+    return c.value
+      ? `"${c.selector}" [${c.attribute}]="${c.value}"`
+      : `"${c.selector}" has [${c.attribute}]`
+  if (c.type === 'element_style_property')
+    return c.value
+      ? `"${c.selector}" ${c.property}: ${c.value}`
+      : `"${c.selector}" has ${c.property}`
   // Quiz
   if (c.type === 'answer_equals') return `answer equals "${c.value}"`
   if (c.type === 'answer_contains') return `answer contains "${c.value}"`
@@ -51,5 +61,10 @@ export function formatCheckValue(c) {
   if (c.type === 'fs_dir_opened') return `dir opened: ${c.path}`
   if (c.type === 'fs_file_opened') return `file opened: ${c.path}`
   // Fallback
-  return [c.name && `name: ${c.name}`, c.value != null && `value: ${c.value}`].filter(Boolean).join(', ') || (c.type ?? '')
+  return (
+    [c.name && `name: ${c.name}`, c.value != null && `value: ${c.value}`]
+      .filter(Boolean)
+      .join(', ') ||
+    (c.type ?? '')
+  )
 }

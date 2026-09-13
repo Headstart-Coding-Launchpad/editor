@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { ref, onValue, remove } from 'firebase/database'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db, firestore } from '../shared/firebase'
+import { getLessonLinks } from '../shared/lessonLinks'
 import { formatClock } from '../app/components/TeacherTimers'
 import {
   AdminBadge,
@@ -16,13 +17,11 @@ import {
 const STATE_LABELS = { waiting: 'Waiting', active: 'Active', sandbox: 'Sandbox' }
 const STATE_BADGE = {
   waiting: { background: '#fef9c3', color: '#854d0e' },
-  active:  { background: '#dcfce7', color: '#15803d' },
+  active: { background: '#dcfce7', color: '#15803d' },
   sandbox: { background: '#dbeafe', color: '#1d4ed8' },
 }
 
-function makeTeacherUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}?teacher=true`
-}
+const OPEN_DURATION_REFRESH_MS = 30000
 
 export default function SessionsPanel() {
   const [sessionsById, setSessionsById] = useState({})
@@ -37,19 +36,26 @@ export default function SessionsPanel() {
     const r = ref(db, 'sessions')
     return onValue(
       r,
-      snap => { setSessionsById(snap.exists() ? snap.val() : {}); setLoading(false); setError(null) },
-      err => { setError(err.message); setLoading(false) },
+      (snap) => {
+        setSessionsById(snap.exists() ? snap.val() : {})
+        setLoading(false)
+        setError(null)
+      },
+      (err) => {
+        setError(err.message)
+        setLoading(false)
+      }
     )
   }, [])
 
   useEffect(() => {
-    return onSnapshot(collection(firestore, 'lessons'), snap => {
-      setTitlesById(Object.fromEntries(snap.docs.map(d => [d.id, d.data().title])))
+    return onSnapshot(collection(firestore, 'lessons'), (snap) => {
+      setTitlesById(Object.fromEntries(snap.docs.map((d) => [d.id, d.data().title])))
     })
   }, [])
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(Date.now()), 30000)
+    const intervalId = window.setInterval(() => setNow(Date.now()), OPEN_DURATION_REFRESH_MS)
     return () => window.clearInterval(intervalId)
   }, [])
 
@@ -64,16 +70,21 @@ export default function SessionsPanel() {
           isPaused: !!session.isPaused,
           createdAt: session.createdAt ?? null,
           studentCount: studentIds.length,
-          onlineCount: studentIds.filter(id => students[id]?.online).length,
+          onlineCount: studentIds.filter((id) => students[id]?.online).length,
         }
       })
-      .filter(s => s.state && s.state !== 'ended')
+      .filter((s) => s.state && s.state !== 'ended')
       .sort((a, b) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity))
   }, [sessionsById])
 
   async function handleClose(lessonId) {
     const title = titlesById[lessonId] || lessonId
-    if (!confirm(`Close the open session for "${title}"?\n\nAny connected students will be disconnected immediately.`)) return
+    if (
+      !confirm(
+        `Close the open session for "${title}"?\n\nAny connected students will be disconnected immediately.`
+      )
+    )
+      return
     setCloseError(null)
     setClosingId(lessonId)
     try {
@@ -86,10 +97,7 @@ export default function SessionsPanel() {
   }
 
   return (
-    <AdminSection
-      title="Open Sessions"
-      subtitle="Live and waiting sessions left open by teachers"
-    >
+    <AdminSection title="Open Sessions" subtitle="Live and waiting sessions left open by teachers">
       {loading && <AdminMessage>Loading sessions…</AdminMessage>}
       {error && <AdminMessage tone="error">Could not load sessions: {error}</AdminMessage>}
       {closeError && <AdminMessage tone="error">{closeError}</AdminMessage>}
@@ -100,11 +108,16 @@ export default function SessionsPanel() {
 
       {openSessions.length > 0 && (
         <AdminTable headers={['Lesson', 'State', 'Students', 'Open for', 'Actions']}>
-          {openSessions.map(session => (
+          {openSessions.map((session) => (
             <tr key={session.lessonId}>
               <AdminCell>
                 <div style={adminUiStyles.lessonCell}>
-                  <a href={makeTeacherUrl(session.lessonId)} target="_blank" rel="noreferrer" style={adminUiStyles.linkText}>
+                  <a
+                    href={getLessonLinks(session.lessonId).teacher}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={adminUiStyles.linkText}
+                  >
                     {titlesById[session.lessonId] || session.lessonId}
                   </a>
                   <AdminLessonIdPill>{session.lessonId}</AdminLessonIdPill>
@@ -120,7 +133,9 @@ export default function SessionsPanel() {
                 {session.onlineCount} online · {session.studentCount} joined
               </AdminCell>
               <AdminCell>
-                {session.createdAt ? formatClock(Math.floor((now - session.createdAt) / 1000)) : '—'}
+                {session.createdAt
+                  ? formatClock(Math.floor((now - session.createdAt) / 1000))
+                  : '—'}
               </AdminCell>
               <AdminCell>
                 <button

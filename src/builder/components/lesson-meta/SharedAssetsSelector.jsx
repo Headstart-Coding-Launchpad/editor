@@ -6,9 +6,9 @@ export default function SharedAssetsSelector({ typeStorageAssets, sharedAssetNam
 
   function toggle(name) {
     if (selected === null) {
-      onChange(typeStorageAssets.map(a => a.name).filter(n => n !== name))
+      onChange(typeStorageAssets.map((a) => a.name).filter((n) => n !== name))
     } else if (selected.has(name)) {
-      onChange([...selected].filter(n => n !== name))
+      onChange([...selected].filter((n) => n !== name))
     } else {
       onChange([...selected, name])
     }
@@ -17,16 +17,14 @@ export default function SharedAssetsSelector({ typeStorageAssets, sharedAssetNam
   return (
     <div style={s.storageSection}>
       <span style={s.fieldLabel}>Shared assets in web editor</span>
-      <p style={s.summaryText}>Choose which shared assets are available in this lesson&rsquo;s asset browser.</p>
-      {typeStorageAssets.map(asset => {
+      <p style={s.summaryText}>
+        Choose which shared assets are available in this lesson&rsquo;s asset browser.
+      </p>
+      {typeStorageAssets.map((asset) => {
         const checked = selected === null ? true : selected.has(asset.name)
         return (
           <label key={asset.name} style={s.showInEditorLabel}>
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => toggle(asset.name)}
-            />
+            <input type="checkbox" checked={checked} onChange={() => toggle(asset.name)} />
             {asset.name}
           </label>
         )

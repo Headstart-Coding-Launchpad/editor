@@ -46,6 +46,23 @@ Usually changes with:
 - `docs/CODEBASE_MAP.md`
 - `docs/TESTING.md`
 
+## Composed Lessons And Playgrounds
+
+Changes include multi-workspace composed lessons, lesson-module-scoped carry-through/sandboxes, module routing for tasks, or the standalone Python/Arcade Kit/Electronics/Scratch playgrounds.
+
+Usually changes with:
+
+- `src/shared/composedLesson.js`
+- `src/shared/lessonLevels.js`
+- `src/builder/components/TaskEditor.jsx`
+- `src/builder/views/BuilderView.jsx`
+- `src/builder/App.jsx`
+- `src/app/components/StudentModal.jsx`
+- `src/app/views/StudentView.jsx`
+- `docs/architecture/composed-lessons-spec.md`
+- `docs/authoring/AUTHORING_GUIDE.md`
+- `docs/FEATURES.md`
+
 ## Completion And Feedback Checks
 
 Changes include new check types, operator aliases, feedback suggestions, or builder check editor behavior.
@@ -138,6 +155,39 @@ Usually changes with:
 - `docs/agents/classroom-behaviours.md`
 - `docs/agents/runtime-model.md`
 - `docs/architecture/runtime-flows.md`
+
+## Workspace Sharing
+
+Changes include the student share button, the teacher approval flow, the shared-work gallery, the non-destructive viewer, or the `allowSharing` task field.
+
+Two invariants that constrain almost every change here:
+
+- Workspace content must never be stored under `sessions/{lessonId}` — the whole session node streams to every client. Content goes in `sharedWorkspacePayloads/{lessonId}`, read on demand; only the small index belongs in the session node.
+- Snapshots must be written by the sharer's own client. A teacher cannot build one, because `currentCode` is only fresh while `activeStudentView` matches.
+
+Usually changes with:
+
+- `src/app/sharedWorkspacePayload.js`
+- `src/app/hooks/useSession.js`
+- `src/app/hooks/useStudentCodeState.js` (`buildShareSnapshot`)
+- `src/app/views/StudentView.jsx`
+- `src/app/views/TeacherView.jsx`
+- `src/app/components/SharedWorkspacePanel.jsx`
+- `src/app/components/SharedWorkspacePreview.jsx`
+- `src/app/components/SharedWorkspaceViewer.jsx`
+- `src/app/components/StudentCard.jsx`
+- `src/app/components/StudentGrid.jsx`
+- `src/app/components/StudentModal.jsx`
+- `src/app/components/student-modal/ShareRequestPanel.jsx`
+- `src/app/components/TeacherSessionControls.jsx`
+- `src/shared/taskUtils.js` (`canTaskAllowSharing` / `isSharingAllowed`)
+- `database.rules.json`
+- `cli/validate.mjs` and `src/builder/lessonUtils.js` (both validate `allowSharing`)
+- `src/builder/components/task-editor/TaskOptionsSection.jsx`
+- `docs/agents/runtime-model.md`
+- `docs/agents/classroom-behaviours.md`
+- `docs/authoring/lesson-schema.md`, `lesson-schema-yaml.md`, `CHANGELOG.md`
+- `docs/MODULE_FEATURE_MATRIX.md`
 
 ## Builder
 

@@ -1,99 +1,176 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
-import { baseStyles as s, fitScratchQuizScale, normalizeQuizAnswerText, OPTION_COLOURS, QuestionPanel } from './quizUtils'
+import {
+  baseStyles as s,
+  fitScratchQuizScale,
+  normalizeQuizAnswerText,
+  OPTION_COLOURS,
+  OPTION_VERDICT_COLOURS,
+  QuestionPanel,
+  shrinkToFit,
+} from './quizUtils'
 
-export default function MultipleChoiceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
+export default function MultipleChoiceQuiz({
+  task,
+  selectedAnswer,
+  onSelectAnswer,
+  submitted,
+  checkPassed,
+  disabled,
+  showQuestion,
+  showResult,
+  showCorrectAnswer,
+}) {
   const options = task?.options ?? []
   const correctId = task?.check?.type === 'answer_equals' ? task.check.value : null
   const revealAnswers = showCorrectAnswer && submitted && disabled && correctId
   const locked = disabled || (submitted && checkPassed)
+  const optionsFrameRef = React.useRef(null)
+  const optionsGridRef = React.useRef(null)
+  const [optionsScale, setOptionsScale] = React.useState(1)
 
-  const shuffledOptions = useMemo(() => {
-    const arr = [...options]
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[arr[i], arr[j]] = [arr[j], arr[i]]
-    }
-    return arr
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.id])
+  // Options render in the order the lesson author wrote them. They are shuffled once, by
+  // the authoring agent, when the lesson is written; shuffling again per mount gave every
+  // student in the room a different order, which is why neither the colour nor the letter
+  // could be used to refer to an answer out loud.
+  const displayedOptions = options
+
+  React.useLayoutEffect(() => {
+    const container = optionsFrameRef.current
+    const content = optionsGridRef.current
+    if (!container || !content) return undefined
+
+    const run = () =>
+      shrinkToFit({
+        setScale: (scale) => {
+          content.style.setProperty('--quiz-option-scale', String(scale))
+          setOptionsScale(scale)
+        },
+        isOverflowing: () =>
+          content.scrollHeight > container.clientHeight + 1 ||
+          content.scrollWidth > container.clientWidth + 1,
+      })
+
+    run()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    // Only observe the frame, not the grid itself: the grid is what we resize,
+    // and font-size changes (unlike transform: scale) affect layout, so
+    // observing it here would re-trigger this same observer on our own writes.
+    const observer = new ResizeObserver(run)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [displayedOptions])
 
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
-      <div style={s.options} role="radiogroup" aria-label={task?.title ?? 'Quiz options'}>
-        {shuffledOptions.map((option, index) => {
-          const active = selectedAnswer === option.id
-          const isCorrect = revealAnswers && option.id === correctId
-          const isWrong = revealAnswers && active && option.id !== correctId
-          const colour = OPTION_COLOURS[index % OPTION_COLOURS.length]
+      <div ref={optionsFrameRef} style={s.optionsFrame}>
+        <div
+          ref={optionsGridRef}
+          style={s.options}
+          role="radiogroup"
+          aria-label={task?.title ?? 'Quiz options'}
+        >
+          {displayedOptions.map((option, index) => {
+            const active = selectedAnswer === option.id
+            const isCorrect = revealAnswers && option.id === correctId
+            const isWrong = revealAnswers && active && option.id !== correctId
+            // Decoration by position; a verdict only once the answer has been submitted.
+            // OPTION_COLOURS holds no success or error hue, so a selected card can never
+            // be mistaken for a judged one.
+            const colour = OPTION_COLOURS[index % OPTION_COLOURS.length]
+            const verdict = isCorrect
+              ? OPTION_VERDICT_COLOURS.correct
+              : isWrong
+                ? OPTION_VERDICT_COLOURS.wrong
+                : null
 
-          const bg = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : active ? colour.active : colour.background
-          const border = isCorrect ? '#16a34a' : isWrong ? '#dc2626' : colour.border
-          const textColour = isCorrect || isWrong || active ? '#fff' : colour.text
-          const optionText = normalizeQuizAnswerText(option.text)
-          const usesBlockMarkdown = hasFencedCodeBlock(optionText)
-          const usesScratchMarkdown = isScratchMarkdown(optionText)
-          const chooseOption = () => {
-            if (!locked) onSelectAnswer?.(option.id)
-          }
+            const bg = verdict ? verdict.background : active ? colour.active : colour.background
+            const border = verdict ? verdict.border : colour.border
+            const textColour = verdict ? verdict.text : active ? '#fff' : colour.text
+            const optionText = normalizeQuizAnswerText(option.text)
+            const usesBlockMarkdown = hasFencedCodeBlock(optionText)
+            const usesScratchMarkdown = isScratchMarkdown(optionText)
+            const chooseOption = () => {
+              if (!locked) onSelectAnswer?.(option.id)
+            }
 
-          return (
-            <div
-              key={option.id}
-              role="radio"
-              aria-checked={active}
-              aria-disabled={locked || undefined}
-              tabIndex={locked ? -1 : 0}
-              style={{
-                ...s.option,
-                background: bg,
-                borderColor: border,
-                color: textColour,
-                ...((active || isCorrect || isWrong) ? s.optionActive : {}),
-              }}
-              onClick={chooseOption}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  chooseOption()
-                }
-              }}
-            >
-              <span style={{ ...s.optionId, background: active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active, color: '#fff' }}>
-                {option.id}
-              </span>
-              <div style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}>
-                {usesScratchMarkdown
-                  ? (
+            return (
+              <div
+                key={option.id}
+                role="radio"
+                aria-checked={active}
+                aria-disabled={locked || undefined}
+                tabIndex={locked ? -1 : 0}
+                style={{
+                  ...s.option,
+                  background: bg,
+                  borderColor: border,
+                  color: textColour,
+                  ...(active || isCorrect || isWrong ? s.optionActive : {}),
+                }}
+                onClick={chooseOption}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    chooseOption()
+                  }
+                }}
+              >
+                <span
+                  style={{
+                    ...s.optionId,
+                    background:
+                      active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active,
+                    color: '#fff',
+                  }}
+                >
+                  {option.id}
+                </span>
+                <div
+                  style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}
+                >
+                  {usesScratchMarkdown ? (
                     <ScratchQuizOptionContent kind={usesBlockMarkdown ? 'stack' : 'inline'}>
-                      {usesBlockMarkdown
-                        ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
-                        : (
-                          <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
-                            <InlineMarkdown content={optionText} />
-                          </span>
-                        )}
+                      {usesBlockMarkdown ? (
+                        <MarkdownRenderer
+                          content={optionText}
+                          textScale={1.2}
+                          inheritColor={active || isCorrect || isWrong}
+                        />
+                      ) : (
+                        <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                          <InlineMarkdown content={optionText} />
+                        </span>
+                      )}
                     </ScratchQuizOptionContent>
-                  )
-                  : usesBlockMarkdown
-                  ? <MarkdownRenderer content={optionText} textScale={1.2} inheritColor={active || isCorrect || isWrong} />
-                  : (
+                  ) : usesBlockMarkdown ? (
+                    <MarkdownRenderer
+                      content={optionText}
+                      textScale={1.2 * optionsScale}
+                      inheritColor={active || isCorrect || isWrong}
+                    />
+                  ) : (
                     <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
                       <InlineMarkdown content={optionText} />
                     </span>
                   )}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
       {revealAnswers && !checkPassed && (
         <div style={s.correctAnswerNote}>
           Correct answer:{' '}
           <span style={s.correctAnswerText}>
-            <InlineMarkdown content={normalizeQuizAnswerText(options.find(o => o.id === correctId)?.text ?? correctId)} />
+            <InlineMarkdown
+              content={normalizeQuizAnswerText(
+                options.find((o) => o.id === correctId)?.text ?? correctId
+              )}
+            />
           </span>
         </div>
       )}
@@ -141,7 +218,7 @@ function ScratchQuizOptionContent({ kind, children }) {
         contentWidth,
         contentHeight,
       })
-      setScale(current => Math.abs(current - nextScale) < 0.01 ? current : nextScale)
+      setScale((current) => (Math.abs(current - nextScale) < 0.01 ? current : nextScale))
     }
 
     measure()
@@ -175,8 +252,10 @@ function ScratchQuizOptionContent({ kind, children }) {
 
 function getMultipleChoiceSuggestion(task, selectedAnswer) {
   if (checkPassedFromTask(task, selectedAnswer)) return ''
-  const option = task?.options?.find(o => o.id === selectedAnswer)
-  return String(option?.feedback ?? option?.hint ?? task?.feedback ?? task?.check?.hint ?? '').trim()
+  const option = task?.options?.find((o) => o.id === selectedAnswer)
+  return String(
+    option?.feedback ?? option?.hint ?? task?.feedback ?? task?.check?.hint ?? ''
+  ).trim()
 }
 
 function checkPassedFromTask(task, selectedAnswer) {

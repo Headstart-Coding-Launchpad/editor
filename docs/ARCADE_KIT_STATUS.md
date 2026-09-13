@@ -120,8 +120,11 @@ installed or used outside Headstart unchanged.
 - **No runtime-state completion flow for games.** Existing code checks and
   stages work, but Arcade Run does not yet report score, collision, or
   rendered-pixel results to completion checks.
-- **No dedicated Arcade asset picker.** Asset names must currently be typed or
-  copied into Sprite("…"); there is no button that inserts the selected name.
+- **No insert button for uploaded/static assets.** Their names must currently
+  be typed or copied into Sprite("…"). Sprites and tilemaps made in the
+  Builder's own pixel-editor design tools are unaffected by this — those
+  already insert on click (see `StudentWorkspace.jsx`'s generated-asset and
+  generated-tilemap buttons).
 - **No authored example lesson or included starter asset pack.** ship.png in
   early examples is illustrative only; authors must upload that asset or use
   their own name.

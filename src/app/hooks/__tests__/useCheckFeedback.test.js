@@ -17,9 +17,15 @@ describe('useCheckFeedback', () => {
   describe('resetCheckFeedback', () => {
     it('clears all check state', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(true) })
-      act(() => { result.current.setTestResults([{ id: 1, passed: true }]) })
-      act(() => { result.current.resetCheckFeedback() })
+      act(() => {
+        result.current.applyCheckFeedback(true)
+      })
+      act(() => {
+        result.current.setTestResults([{ id: 1, passed: true }])
+      })
+      act(() => {
+        result.current.resetCheckFeedback()
+      })
       expect(result.current.checkPassed).toBe(false)
       expect(result.current.checkAttempted).toBe(false)
       expect(result.current.checkSuggestion).toBe('')
@@ -31,7 +37,9 @@ describe('useCheckFeedback', () => {
   describe('applyCheckFeedback', () => {
     it('sets passed=true without a suggestion by default', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(true) })
+      act(() => {
+        result.current.applyCheckFeedback(true)
+      })
       expect(result.current.checkPassed).toBe(true)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('')
@@ -40,7 +48,9 @@ describe('useCheckFeedback', () => {
 
     it('keeps a passing suggestion for non-blocking nudges', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(true, 'Nice improvement: try a clearer name.') })
+      act(() => {
+        result.current.applyCheckFeedback(true, 'Nice improvement: try a clearer name.')
+      })
       expect(result.current.checkPassed).toBe(true)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('Nice improvement: try a clearer name.')
@@ -49,7 +59,9 @@ describe('useCheckFeedback', () => {
 
     it('sets passed=false with a suggestion', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(false, 'Try again') })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'Try again')
+      })
       expect(result.current.checkPassed).toBe(false)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('Try again')
@@ -58,43 +70,63 @@ describe('useCheckFeedback', () => {
 
     it('trims whitespace from suggestion', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(false, '  hint  ') })
+      act(() => {
+        result.current.applyCheckFeedback(false, '  hint  ')
+      })
       expect(result.current.checkSuggestion).toBe('hint')
     })
 
     it('increments repeatedSuggestionCount for the same suggestion', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(false, 'same hint') })
-      act(() => { result.current.applyCheckFeedback(false, 'same hint') })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'same hint')
+      })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'same hint')
+      })
       expect(result.current.repeatedSuggestionCount).toBe(2)
     })
 
     it('resets repeatedSuggestionCount when suggestion changes', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(false, 'hint A') })
-      act(() => { result.current.applyCheckFeedback(false, 'hint A') })
-      act(() => { result.current.applyCheckFeedback(false, 'hint B') })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'hint A')
+      })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'hint A')
+      })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'hint B')
+      })
       expect(result.current.repeatedSuggestionCount).toBe(1)
     })
 
     it('resets repeatedSuggestionCount on pass', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(false, 'hint') })
-      act(() => { result.current.applyCheckFeedback(true) })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'hint')
+      })
+      act(() => {
+        result.current.applyCheckFeedback(true)
+      })
       expect(result.current.repeatedSuggestionCount).toBe(0)
     })
 
     it('returns the normalised suggestion string', () => {
       const { result } = renderHook(() => useCheckFeedback())
       let returned
-      act(() => { returned = result.current.applyCheckFeedback(false, '  tip  ') })
+      act(() => {
+        returned = result.current.applyCheckFeedback(false, '  tip  ')
+      })
       expect(returned).toBe('tip')
     })
 
     it('returns the normalised suggestion when passing', () => {
       const { result } = renderHook(() => useCheckFeedback())
       let returned
-      act(() => { returned = result.current.applyCheckFeedback(true, '  keep nudging  ') })
+      act(() => {
+        returned = result.current.applyCheckFeedback(true, '  keep nudging  ')
+      })
       expect(returned).toBe('keep nudging')
     })
   })
@@ -107,28 +139,42 @@ describe('useCheckFeedback', () => {
 
     it('can be set true via setCompletePreviewShown', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.setCompletePreviewShown(true) })
+      act(() => {
+        result.current.setCompletePreviewShown(true)
+      })
       expect(result.current.completePreviewShown).toBe(true)
     })
 
     it('resets to false when the check passes', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.setCompletePreviewShown(true) })
-      act(() => { result.current.applyCheckFeedback(true) })
+      act(() => {
+        result.current.setCompletePreviewShown(true)
+      })
+      act(() => {
+        result.current.applyCheckFeedback(true)
+      })
       expect(result.current.completePreviewShown).toBe(false)
     })
 
     it('is not reset by a failing applyCheckFeedback call', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.setCompletePreviewShown(true) })
-      act(() => { result.current.applyCheckFeedback(false, 'try again') })
+      act(() => {
+        result.current.setCompletePreviewShown(true)
+      })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'try again')
+      })
       expect(result.current.completePreviewShown).toBe(true)
     })
 
     it('resets to false via resetCheckFeedback', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.setCompletePreviewShown(true) })
-      act(() => { result.current.resetCheckFeedback() })
+      act(() => {
+        result.current.setCompletePreviewShown(true)
+      })
+      act(() => {
+        result.current.resetCheckFeedback()
+      })
       expect(result.current.completePreviewShown).toBe(false)
     })
   })
@@ -138,10 +184,14 @@ describe('useCheckFeedback', () => {
       const { result } = renderHook(() => useCheckFeedback())
       expect(result.current.stagePromptAccepted).toBe(false)
 
-      act(() => { result.current.markStagePromptAccepted() })
+      act(() => {
+        result.current.markStagePromptAccepted()
+      })
       expect(result.current.stagePromptAccepted).toBe(true)
 
-      act(() => { result.current.applyCheckFeedback(false, 'Try again') })
+      act(() => {
+        result.current.applyCheckFeedback(false, 'Try again')
+      })
       expect(result.current.stagePromptAccepted).toBe(false)
     })
   })
@@ -149,17 +199,26 @@ describe('useCheckFeedback', () => {
   describe('checkPassedRef', () => {
     it('mirrors checkPassed synchronously', () => {
       const { result } = renderHook(() => useCheckFeedback())
-      act(() => { result.current.applyCheckFeedback(true) })
+      act(() => {
+        result.current.applyCheckFeedback(true)
+      })
       expect(result.current.checkPassedRef.current).toBe(true)
     })
   })
 
   describe('checkOverride effect', () => {
     it('applies override when checkOverridePushedAt changes', () => {
-      let myStudentData = { checkOverridePushedAt: 100, checkOverridePassed: true, checkOverrideHint: '' }
-      const { result, rerender } = renderHook(({ data }) => useCheckFeedback({ myStudentData: data }), {
-        initialProps: { data: null },
-      })
+      let myStudentData = {
+        checkOverridePushedAt: 100,
+        checkOverridePassed: true,
+        checkOverrideHint: '',
+      }
+      const { result, rerender } = renderHook(
+        ({ data }) => useCheckFeedback({ myStudentData: data }),
+        {
+          initialProps: { data: null },
+        }
+      )
 
       rerender({ data: myStudentData })
       expect(result.current.checkPassed).toBe(true)
@@ -168,10 +227,17 @@ describe('useCheckFeedback', () => {
     })
 
     it('applies override with hint when passed=false', () => {
-      const myStudentData = { checkOverridePushedAt: 200, checkOverridePassed: false, checkOverrideHint: 'Review line 3' }
-      const { result, rerender } = renderHook(({ data }) => useCheckFeedback({ myStudentData: data }), {
-        initialProps: { data: null },
-      })
+      const myStudentData = {
+        checkOverridePushedAt: 200,
+        checkOverridePassed: false,
+        checkOverrideHint: 'Review line 3',
+      }
+      const { result, rerender } = renderHook(
+        ({ data }) => useCheckFeedback({ myStudentData: data }),
+        {
+          initialProps: { data: null },
+        }
+      )
 
       rerender({ data: myStudentData })
       expect(result.current.checkPassed).toBe(false)
@@ -180,20 +246,32 @@ describe('useCheckFeedback', () => {
 
     it('does not fire when checkOverridePushedAt is absent', () => {
       const myStudentData = { checkOverridePassed: true }
-      const { result, rerender } = renderHook(({ data }) => useCheckFeedback({ myStudentData: data }), {
-        initialProps: { data: null },
-      })
+      const { result, rerender } = renderHook(
+        ({ data }) => useCheckFeedback({ myStudentData: data }),
+        {
+          initialProps: { data: null },
+        }
+      )
 
       rerender({ data: myStudentData })
       expect(result.current.checkPassed).toBe(false)
     })
 
     it('re-fires when checkOverridePushedAt changes again', () => {
-      const { result, rerender } = renderHook(({ data }) => useCheckFeedback({ myStudentData: data }), {
-        initialProps: { data: null },
-      })
+      const { result, rerender } = renderHook(
+        ({ data }) => useCheckFeedback({ myStudentData: data }),
+        {
+          initialProps: { data: null },
+        }
+      )
 
-      rerender({ data: { checkOverridePushedAt: 100, checkOverridePassed: false, checkOverrideHint: 'hint 1' } })
+      rerender({
+        data: {
+          checkOverridePushedAt: 100,
+          checkOverridePassed: false,
+          checkOverrideHint: 'hint 1',
+        },
+      })
       expect(result.current.checkSuggestion).toBe('hint 1')
 
       rerender({ data: { checkOverridePushedAt: 200, checkOverridePassed: true } })

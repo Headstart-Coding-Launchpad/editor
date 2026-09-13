@@ -5,26 +5,33 @@ export default function ValidationPanel({ errors, warnings }) {
   const [activeTab, setActiveTab] = useState(errors.length ? 'errors' : 'warnings')
   const [ignoredWarnings, setIgnoredWarnings] = useState(() => new Set())
 
-  const visibleWarnings = warnings.filter(w => !ignoredWarnings.has(w))
+  const visibleWarnings = warnings.filter((w) => !ignoredWarnings.has(w))
 
   const summaryParts = []
   if (errors.length) summaryParts.push(`${errors.length} error${errors.length !== 1 ? 's' : ''}`)
-  if (visibleWarnings.length) summaryParts.push(`${visibleWarnings.length} warning${visibleWarnings.length !== 1 ? 's' : ''}`)
+  if (visibleWarnings.length)
+    summaryParts.push(`${visibleWarnings.length} warning${visibleWarnings.length !== 1 ? 's' : ''}`)
   const summary = summaryParts.join(', ') || 'No issues'
 
   const items = activeTab === 'errors' ? errors : visibleWarnings
   const count = activeTab === 'errors' ? errors.length : visibleWarnings.length
 
   return (
-    <section style={s.validation}>
+    <section style={s.validation} className="ui-collapsible">
       <button
         type="button"
         style={s.header}
-        onClick={() => setOpen(o => !o)}
+        className="ui-collapsible__header"
+        onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
         <span style={s.headerTitle}>Validation</span>
-        <span style={{ ...s.summary, color: errors.length ? '#ef4444' : visibleWarnings.length ? '#f59e0b' : '#22c55e' }}>
+        <span
+          style={{
+            ...s.summary,
+            color: errors.length ? '#fecaca' : visibleWarnings.length ? '#fde68a' : '#bbf7d0',
+          }}
+        >
           {summary}
         </span>
         <span style={{ ...s.chevron, transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
@@ -32,15 +39,21 @@ export default function ValidationPanel({ errors, warnings }) {
 
       {open && (
         <>
-          <div style={s.tabs}>
+          <div className="ui-tabs" role="tablist" aria-label="Validation results">
             <button
-              style={{ ...s.tab, ...(activeTab === 'errors' ? s.tabActive : {}) }}
+              style={s.tab}
+              className={`ui-tab${activeTab === 'errors' ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={activeTab === 'errors'}
               onClick={() => setActiveTab('errors')}
             >
               Errors <span style={s.countBadge}>{errors.length}</span>
             </button>
             <button
-              style={{ ...s.tab, ...(activeTab === 'warnings' ? s.tabActive : {}) }}
+              style={s.tab}
+              className={`ui-tab${activeTab === 'warnings' ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={activeTab === 'warnings'}
               onClick={() => setActiveTab('warnings')}
             >
               Warnings <span style={s.countBadge}>{visibleWarnings.length}</span>
@@ -49,18 +62,19 @@ export default function ValidationPanel({ errors, warnings }) {
 
           <div style={s.body}>
             {count === 0 ? (
-              <p style={s.empty}>
-                No {activeTab === 'errors' ? 'errors' : 'warnings'} found.
-              </p>
+              <p style={s.empty}>No {activeTab === 'errors' ? 'errors' : 'warnings'} found.</p>
             ) : (
               items.map((item, i) => (
-                <div key={`${activeTab}-${i}`} style={activeTab === 'errors' ? s.errorItem : s.warningItem}>
+                <div
+                  key={`${activeTab}-${i}`}
+                  style={activeTab === 'errors' ? s.errorItem : s.warningItem}
+                >
                   <span style={{ flex: 1 }}>{item}</span>
                   {activeTab === 'warnings' && (
                     <button
                       type="button"
                       style={s.ignoreBtn}
-                      onClick={() => setIgnoredWarnings(prev => new Set([...prev, item]))}
+                      onClick={() => setIgnoredWarnings((prev) => new Set([...prev, item]))}
                       title="Ignore this warning until you change task"
                     >
                       Ignore
@@ -78,7 +92,6 @@ export default function ValidationPanel({ errors, warnings }) {
 
 const s = {
   validation: {
-    borderTop: '1px solid #e5e7eb',
     display: 'flex',
     flexDirection: 'column',
     flexShrink: 0,
@@ -88,8 +101,6 @@ const s = {
     alignItems: 'center',
     gap: 8,
     padding: '10px 14px',
-    background: '#fafafa',
-    border: 'none',
     cursor: 'pointer',
     textAlign: 'left',
     width: '100%',
@@ -98,7 +109,7 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
     fontSize: '0.82rem',
-    color: 'var(--colour-text)',
+    color: '#fff',
     flexShrink: 0,
   },
   summary: {
@@ -111,34 +122,17 @@ const s = {
   },
   chevron: {
     marginLeft: 'auto',
-    color: '#6b7280',
+    color: '#fff',
+    opacity: 0.8,
     fontSize: '1rem',
     lineHeight: 1,
     flexShrink: 0,
   },
-  tabs: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    padding: 10,
-    gap: 6,
-    borderBottom: '1px solid #e5e7eb',
-    background: '#fafafa',
-  },
   tab: {
-    border: '1px solid #e5e7eb',
-    background: '#fff',
-    color: 'var(--colour-text)',
-    borderRadius: 6,
     padding: '7px 8px',
     fontFamily: 'var(--font-body)',
     fontSize: '0.82rem',
-    fontWeight: 700,
     cursor: 'pointer',
-  },
-  tabActive: {
-    borderColor: 'var(--colour-primary)',
-    color: 'var(--colour-primary)',
-    background: '#f7f2ff',
   },
   countBadge: {
     display: 'inline-flex',

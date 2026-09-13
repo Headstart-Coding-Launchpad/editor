@@ -22,7 +22,10 @@ describe('electronics MicroPython runtime', () => {
   })
 
   it('streams private GPIO writes back to the circuit while keeping sentinels out of output', async () => {
-    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP0', 'GP1'] }
+    const microcontroller = {
+      ...makeComponent('microcontroller', 1, { row: 2, col: 2 }),
+      pins: ['3V3', 'GND', 'GP0', 'GP1'],
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [microcontroller],
@@ -51,7 +54,10 @@ describe('electronics MicroPython runtime', () => {
   })
 
   it('passes GPIO input readings into the MicroPython worker', async () => {
-    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP14'] }
+    const microcontroller = {
+      ...makeComponent('microcontroller', 1, { row: 2, col: 2 }),
+      pins: ['3V3', 'GND', 'GP14'],
+    }
     const button = makeComponent('push_button', 1, { row: 2, col: 8 })
     const circuit = {
       ...DEFAULT_CIRCUIT,
@@ -68,11 +74,16 @@ describe('electronics MicroPython runtime', () => {
     await electronicsModule.runtime.run(circuit, {}, {})
 
     expect(runPython.mock.calls[0][1].gpioInputs.GP14).toBe(1)
-    expect(runPython.mock.calls[0][1].asyncNames).toEqual(expect.arrayContaining(['sleep', 'sleep_ms']))
+    expect(runPython.mock.calls[0][1].asyncNames).toEqual(
+      expect.arrayContaining(['sleep', 'sleep_ms'])
+    )
   })
 
   it('only drives pins configured as outputs', async () => {
-    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP0', 'GP14'] }
+    const microcontroller = {
+      ...makeComponent('microcontroller', 1, { row: 2, col: 2 }),
+      pins: ['3V3', 'GND', 'GP0', 'GP14'],
+    }
     const circuit = {
       ...DEFAULT_CIRCUIT,
       components: [microcontroller],
@@ -92,7 +103,10 @@ describe('electronics MicroPython runtime', () => {
   })
 
   it('applies LCD API events only to a powered display wired to its I²C pins', async () => {
-    const microcontroller = { ...makeComponent('microcontroller', 1, { row: 2, col: 2 }), pins: ['3V3', 'GND', 'GP0', 'GP1'] }
+    const microcontroller = {
+      ...makeComponent('microcontroller', 1, { row: 2, col: 2 }),
+      pins: ['3V3', 'GND', 'GP0', 'GP1'],
+    }
     const lcd = makeComponent('lcd1602', 1, { row: 2, col: 9 })
     const circuit = {
       ...DEFAULT_CIRCUIT,
@@ -109,11 +123,18 @@ describe('electronics MicroPython runtime', () => {
 
     runPython.mockImplementation(async (_program, callbacks) => {
       callbacks.onOutput('[lcd {"sda":"GP0","scl":"GP1","action":"init"}]\n', 'stdout')
-      callbacks.onOutput('[lcd {"sda":"GP0","scl":"GP1","action":"print","text":"Hello"}]\n', 'stdout')
+      callbacks.onOutput(
+        '[lcd {"sda":"GP0","scl":"GP1","action":"print","text":"Hello"}]\n',
+        'stdout'
+      )
       return { status: 'success' }
     })
 
-    const result = await electronicsModule.runtime.run(circuit, {}, { onCodeUpdate, onOutput, getRuntimeCode: () => JSON.stringify(circuit) })
+    const result = await electronicsModule.runtime.run(
+      circuit,
+      {},
+      { onCodeUpdate, onOutput, getRuntimeCode: () => JSON.stringify(circuit) }
+    )
 
     expect(onOutput).not.toHaveBeenCalled()
     expect(parseCircuit(result.updatedCode).controls.lcd16021.lines[0]).toBe('Hello           ')

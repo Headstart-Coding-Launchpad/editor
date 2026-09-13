@@ -1,12 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react'
 
-export default function IframePreview({ src, iframeRef, height = 300, fill = false, leadingActions = null, rightActions = null, onConsoleError }) {
+export default function IframePreview({
+  src,
+  iframeRef,
+  height = 300,
+  fill = false,
+  leadingActions = null,
+  rightActions = null,
+  onConsoleError,
+}) {
   const [tab, setTab] = useState('preview')
   const [logs, setLogs] = useState([])
   const logEndRef = useRef(null)
 
   // Clear console on each new run
-  useEffect(() => { setLogs([]) }, [src])
+  useEffect(() => {
+    setLogs([])
+  }, [src])
 
   // Auto-scroll console to bottom when new entries arrive
   useEffect(() => {
@@ -18,13 +28,20 @@ export default function IframePreview({ src, iframeRef, height = 300, fill = fal
     function onMessage(e) {
       if (!e.data || e.data.source !== 'hsc-console') return
       if (iframeRef?.current && e.source !== iframeRef.current.contentWindow) return
-      setLogs(prev => [...prev, {
-        id: Date.now() + Math.random(),
-        level: e.data.level,
-        args: e.data.args,
-      }])
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.random(),
+          level: e.data.level,
+          args: e.data.args,
+        },
+      ])
       if (e.data.level === 'error') {
-        onConsoleError?.(src, { filename: e.data.filename, lineno: e.data.lineno, loadId: e.data.id })
+        onConsoleError?.(src, {
+          filename: e.data.filename,
+          lineno: e.data.lineno,
+          loadId: e.data.id,
+        })
       }
     }
     window.addEventListener('message', onMessage)
@@ -35,7 +52,7 @@ export default function IframePreview({ src, iframeRef, height = 300, fill = fal
     ? { ...s.wrap, flex: 1, minHeight: 0, flexShrink: 1 }
     : { ...s.wrap, height }
 
-  const errCount = logs.filter(l => l.level === 'error').length
+  const errCount = logs.filter((l) => l.level === 'error').length
 
   return (
     <div style={wrapStyle}>
@@ -73,7 +90,7 @@ export default function IframePreview({ src, iframeRef, height = 300, fill = fal
           {logs.length === 0 ? (
             <div style={s.empty}>No console output yet — press Run to see output here</div>
           ) : (
-            logs.map(entry => (
+            logs.map((entry) => (
               <div key={entry.id} style={{ ...s.logRow, ...rowStyle(entry.level) }}>
                 <span style={{ ...s.levelTag, ...tagStyle(entry.level) }}>{entry.level}</span>
                 <span style={s.logText}>{entry.args.join(' ')}</span>
@@ -89,19 +106,27 @@ export default function IframePreview({ src, iframeRef, height = 300, fill = fal
 
 function rowStyle(level) {
   switch (level) {
-    case 'error': return { background: 'rgba(239,68,68,0.06)', color: '#b91c1c' }
-    case 'warn':  return { background: 'rgba(245,158,11,0.06)', color: '#92400e' }
-    case 'info':  return { color: '#1e40af' }
-    default:      return { color: 'var(--colour-text)' }
+    case 'error':
+      return { background: 'rgba(239,68,68,0.06)', color: '#b91c1c' }
+    case 'warn':
+      return { background: 'rgba(245,158,11,0.06)', color: '#92400e' }
+    case 'info':
+      return { color: '#1e40af' }
+    default:
+      return { color: 'var(--colour-text)' }
   }
 }
 
 function tagStyle(level) {
   switch (level) {
-    case 'error': return { background: '#fee2e2', color: '#b91c1c' }
-    case 'warn':  return { background: '#fef3c7', color: '#92400e' }
-    case 'info':  return { background: '#dbeafe', color: '#1e40af' }
-    default:      return { background: '#f3f4f6', color: '#374151' }
+    case 'error':
+      return { background: '#fee2e2', color: '#b91c1c' }
+    case 'warn':
+      return { background: '#fef3c7', color: '#92400e' }
+    case 'info':
+      return { background: '#dbeafe', color: '#1e40af' }
+    default:
+      return { background: '#f3f4f6', color: '#374151' }
   }
 }
 

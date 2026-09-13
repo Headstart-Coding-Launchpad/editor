@@ -1,7 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 
-export default function ExplainerPanel({ title, content, collapsible = true, fill = false, markdownTextScale = 1, topicType = null, onTopicOpen, onTopicClose, openTopicId, disableCopy = false }) {
+export default function ExplainerPanel({
+  title,
+  content,
+  collapsible = true,
+  fill = false,
+  markdownTextScale = 1,
+  topicType = null,
+  showLibrary = true,
+  onTopicOpen,
+  onTopicClose,
+  openTopicId,
+  disableCopy = false,
+  imageLayout = 'stacked',
+  onCollapsedChange,
+  highlighted = false,
+}) {
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
@@ -10,6 +25,13 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
   const contentRef = useRef(null)
   const isCollapsed = collapsible && collapsed
   const canExpandOverlay = !fill
+
+  // Reports this accordion's own open/closed state upward — used by LessonTaskContent so
+  // the teacher's student list can show whether the info/explainer pane is open, on lesson
+  // types (and the mobile fallback) that use this accordion instead of the side-rail collapse.
+  useEffect(() => {
+    if (collapsible) onCollapsedChange?.(collapsed)
+  }, [collapsible, collapsed, onCollapsedChange])
 
   const updateScrollState = useCallback(() => {
     const el = contentRef.current
@@ -58,15 +80,20 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
     >
       {collapsible ? (
         <button
+          className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={s.titleBar}
-          onClick={() => setCollapsed(c => !c)}
+          onClick={() => setCollapsed((c) => !c)}
           aria-expanded={!collapsed}
         >
           <h2 style={s.titleText}>{title}</h2>
           <span style={s.toggleIcon}>{collapsed ? '▼' : '▲'}</span>
         </button>
       ) : (
-        title && <div style={s.titleBar}><h2 style={s.titleText}>{title}</h2></div>
+        title && (
+          <div style={s.titleBar}>
+            <h2 style={s.titleText}>{title}</h2>
+          </div>
+        )
       )}
 
       {!isCollapsed && (
@@ -84,11 +111,26 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
             }}
             onScroll={updateScrollState}
           >
-            <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} />
+            <MarkdownRenderer
+              content={content}
+              textScale={markdownTextScale}
+              topicType={topicType}
+              showLibrary={showLibrary}
+              onTopicOpen={onTopicOpen}
+              onTopicClose={onTopicClose}
+              openTopicId={openTopicId}
+              disableCopy={disableCopy}
+              imageLayout={imageLayout}
+            />
           </div>
           {!expanded && canExpandOverlay && canScroll && !atBottom && (
             <div style={s.showMoreBar}>
-              <button type="button" className="btn-primary" style={s.showMoreBtn} onClick={handleShowMore}>
+              <button
+                type="button"
+                className="btn-primary"
+                style={s.showMoreBtn}
+                onClick={handleShowMore}
+              >
                 show more
               </button>
             </div>
@@ -101,12 +143,27 @@ export default function ExplainerPanel({ title, content, collapsible = true, fil
           <div style={s.expandedShell}>
             <div style={s.expandedTitleBar}>
               <h2 style={s.titleText}>{title}</h2>
-              <button type="button" className="btn-primary" style={s.expandedHideBtn} onClick={() => setExpanded(false)}>
+              <button
+                type="button"
+                className="btn-primary"
+                style={s.expandedHideBtn}
+                onClick={() => setExpanded(false)}
+              >
                 hide
               </button>
             </div>
             <div style={s.contentExpanded}>
-              <MarkdownRenderer content={content} textScale={markdownTextScale} topicType={topicType} showLibrary onTopicOpen={onTopicOpen} onTopicClose={onTopicClose} openTopicId={openTopicId} disableCopy={disableCopy} />
+              <MarkdownRenderer
+                content={content}
+                textScale={markdownTextScale}
+                topicType={topicType}
+                showLibrary={showLibrary}
+                onTopicOpen={onTopicOpen}
+                onTopicClose={onTopicClose}
+                openTopicId={openTopicId}
+                disableCopy={disableCopy}
+                imageLayout={imageLayout}
+              />
             </div>
           </div>
         </>
@@ -136,11 +193,15 @@ const s = {
     background: 'transparent',
   },
   panelFill: {
-    flex: 1,
+    // Sizes to its content and shrinks only when there is not room, rather than always
+    // stretching. An information task with two bullet points used to leave roughly 85%
+    // of the viewport as empty panel below the text, and information is the second most
+    // common task type in the product. Long content still fills and scrolls internally.
+    flex: '0 1 auto',
     minHeight: 0,
+    maxHeight: '100%',
     display: 'flex',
     flexDirection: 'column',
-    maxHeight: 'none',
   },
   titleBar: {
     width: '100%',
@@ -151,6 +212,9 @@ const s = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    // Composed lessons use longer, emoji-prefixed titles than a single-type lesson does,
+    // and the title ran straight into the collapse chevron with no gap at all.
+    gap: 10,
     cursor: 'pointer',
     textAlign: 'left',
   },
@@ -161,6 +225,8 @@ const s = {
     fontSize: '1.05rem',
     color: '#fff',
     lineHeight: 1.25,
+    minWidth: 0,
+    overflowWrap: 'anywhere',
   },
   toggleIcon: {
     fontSize: '0.75rem',

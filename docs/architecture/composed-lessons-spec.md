@@ -1,7 +1,7 @@
 # Composed Lessons Technical Specification
 
-**Status:** Proposed implementation specification  
-**Scope:** `composed` lessons and standalone Python, Arcade Kit, and Electronics playgrounds.  
+**Status:** Implemented — composed lessons and the standalone playgrounds described here are shipped and are the default multi-workspace lesson mechanism. The Scratch playground shipped in a later release than the rest of this spec; see §7.3.  
+**Scope:** `composed` lessons and standalone Python, Arcade Kit, Electronics, and Scratch playgrounds.  
 **Out of scope:** Virtual OS/VFS work, automatic code translation between modules, and pedagogical sequencing rules.
 
 ## 1. Purpose
@@ -207,7 +207,11 @@ A Scratch lesson module uses the existing Blockly workspace, sprites, backdrops,
 
 ### 7.3 Standalone playground scope
 
-The first standalone playground release covers Python, Arcade Kit, and Electronics only. HTML and Scratch remain eligible as composed lesson modules but are explicitly outside this playground release. Adding standalone HTML or Scratch later is a separate decision, because their multi-file/asset and project/toolbox persistence requirements need their own UX and storage design.
+The first standalone playground release covered Python, Arcade Kit, and Electronics only. HTML and Scratch were eligible as composed lesson modules but explicitly outside that first playground release, pending their own UX and storage design.
+
+A later release added the Scratch playground: Scratch's toolbox already defaults to the full block set for an unauthored task (no per-task `toolbox` field needed), and a blank workspace (`starterBlocks: null`) with no authored sprites falls back to the module's default sprite, so it needed no new persistence design beyond the existing `starterBlocks`/`sprites`/`backdrops` state shape. HTML remains outside the playground scope — its multi-file/asset persistence still needs its own UX and storage design.
+
+The Scratch playground task also sets `allowAddSprite: true`, reusing the existing student-facing "Add sprite" picker (see `docs/authoring/scratch.md`) so students can add extra sprites from the admin-curated library beyond the module's default sprite. No playground-specific picker or persistence was needed — student-added sprites already persist through the same `__meta__.addedSprites` mechanism as in authored lessons.
 
 ## 8. Standalone playgrounds
 
@@ -218,6 +222,7 @@ Add login-less routes:
 | `/playground/python` | Python editor and output |
 | `/playground/arcade` | Arcade Kit editor and game preview |
 | `/playground/electronics` | Electronics workspace and MicroPython controls |
+| `/playground/scratch` | Scratch block editor, sprites, and stage canvas |
 
 The landing page exposes a Playgrounds entry point. Playgrounds use the corresponding existing module workspace and local-only saved state, but have no lesson ID, task checks, teacher controls, session reports, teacher-live writes, lesson assets, or Realtime Database session.
 
@@ -250,4 +255,4 @@ Release is acceptable when:
 - module-specific checks, stages, resets, teacher live view, and sandbox state work for each supported type;
 - invalid task placement and cross-lesson-module carry-through fail in both CLI and Builder validation;
 - HTML files and Scratch projects remain isolated across lesson-module boundaries; and
-- the three playgrounds restore and reset only their own local state.
+- each playground restores and resets only its own local state.

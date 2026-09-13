@@ -53,7 +53,9 @@ describe('TaskSlideTransition', () => {
     expect(screen.getByText('Task one content')).toBeInTheDocument()
     expect(screen.getByText('Task two content')).toBeInTheDocument()
 
-    act(() => { vi.runAllTimers() })
+    act(() => {
+      vi.runAllTimers()
+    })
 
     expect(screen.queryByText('Task one content')).not.toBeInTheDocument()
     expect(screen.getByText('Task two content')).toBeInTheDocument()
@@ -81,6 +83,16 @@ describe('TaskSlideTransition', () => {
       </TaskSlideTransition>
     )
     expect(container.firstChild).toHaveClass('task-slide-viewport')
+  })
+
+  it('leaves the entering panel unstyled when panelStyle is omitted (default for every other caller)', () => {
+    render(
+      <TaskSlideTransition transitionKey="task-1">
+        <span>Content</span>
+      </TaskSlideTransition>
+    )
+    const enteringPanel = screen.getByText('Content').closest('.task-slide-panel--entering')
+    expect(enteringPanel.style.minHeight).toBe('')
   })
 
   it('does not show a leaving panel when transitionKey is unchanged', () => {

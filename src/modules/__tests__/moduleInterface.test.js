@@ -2,7 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { getLessonModule } from '../registry.js'
 import { buildMicroPythonProgram } from '../electronics/index.js'
 
-const LESSON_TYPES = ['python', 'arcade', 'html', 'scratch', 'filesystem', 'electronics', 'desktop']
+const LESSON_TYPES = [
+  'python',
+  'arcade',
+  'turtle',
+  'html',
+  'scratch',
+  'filesystem',
+  'electronics',
+  'desktop',
+]
 
 describe('module interface contract', () => {
   for (const type of LESSON_TYPES) {
@@ -93,7 +102,7 @@ describe('module interface contract', () => {
       })
 
       it('has serializeState and deserializeState (function or null)', () => {
-        const isFnOrNull = v => v === null || typeof v === 'function'
+        const isFnOrNull = (v) => v === null || typeof v === 'function'
         expect(isFnOrNull(mod.serializeState)).toBe(true)
         expect(isFnOrNull(mod.deserializeState)).toBe(true)
       })
@@ -175,8 +184,28 @@ describe('module interface contract', () => {
     it('uses source code rather than a non-string live state in the teacher editor', () => {
       const task = { starterCode: 'game.run()' }
 
-      expect(mod.getDisplayState(task, null, 'student game code', 'starter')).toBe('student game code')
+      expect(mod.getDisplayState(task, null, 'student game code', 'starter')).toBe(
+        'student game code'
+      )
       expect(mod.getDisplayState(task, null, { files: [] }, 'starter')).toBe('game.run()')
+    })
+  })
+
+  describe('turtle-specific', () => {
+    const mod = getLessonModule('turtle')
+    it('creates a starter that imports the real turtle module', () => {
+      const result = mod.makeCodeTaskFields({})
+      expect(result.starterCode).toContain('import turtle')
+      expect(result.codeStages).toHaveLength(1)
+    })
+
+    it('does not support text-based interaction modes (draw-and-check, like Arcade)', () => {
+      expect(mod.supportsInteractionMode).toBe(false)
+      expect(mod.supportsTests).toBe(false)
+    })
+
+    it('includes python in explainerInlineCodeLanguages (turtle scripts are Python)', () => {
+      expect(mod.explainerInlineCodeLanguages).toContain('python')
     })
   })
 
@@ -224,11 +253,9 @@ describe('module interface contract', () => {
 
   describe('electronics-specific', () => {
     it('keeps the MicroPython Pin shim out of the async student-code transform', () => {
-      const program = buildMicroPythonProgram([
-        'from machine import Pin',
-        'led = Pin("GP0", Pin.OUT)',
-        'led.on()',
-      ].join('\n'))
+      const program = buildMicroPythonProgram(
+        ['from machine import Pin', 'led = Pin("GP0", Pin.OUT)', 'led.on()'].join('\n')
+      )
 
       expect(program.split('\n')[0]).toMatch(/^exec\("import sys, types/)
       expect(program).not.toContain('\nclass _Pin:')

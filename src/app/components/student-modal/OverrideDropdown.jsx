@@ -7,7 +7,7 @@ export default function OverrideDropdown({ student, task, onOverrideCheck }) {
   const hasOverride = !!student.checkOverridePushedAt
 
   function applyOverride(passed, hint) {
-    onOverrideCheck(student.anonymousId, passed, passed ? null : (hint || null), task?.id)
+    onOverrideCheck(student.anonymousId, passed, passed ? null : hint || null, task?.id)
     setShowFailModal(false)
     setFailHint('')
   }
@@ -15,20 +15,32 @@ export default function OverrideDropdown({ student, task, onOverrideCheck }) {
   return (
     <>
       <DropdownMenu
-        label={hasOverride ? (student.checkOverridePassed ? 'Override: Pass' : 'Override: Fail') : 'Override'}
+        label={
+          hasOverride
+            ? student.checkOverridePassed
+              ? 'Override: Pass'
+              : 'Override: Fail'
+            : 'Override'
+        }
         buttonClassName="btn-ghost"
       >
-        {close => (
+        {(close) => (
           <>
             <button
               style={s.passBtn}
-              onClick={() => { close(); applyOverride(true, null) }}
+              onClick={() => {
+                close()
+                applyOverride(true, null)
+              }}
             >
               ✓ Pass
             </button>
             <button
               style={s.failBtn}
-              onClick={() => { close(); setShowFailModal(true) }}
+              onClick={() => {
+                close()
+                setShowFailModal(true)
+              }}
             >
               ✕ Fail
             </button>
@@ -37,11 +49,27 @@ export default function OverrideDropdown({ student, task, onOverrideCheck }) {
       </DropdownMenu>
 
       {showFailModal && (
-        <div style={s.modalOverlay} onClick={e => { if (e.target === e.currentTarget) { setShowFailModal(false); setFailHint('') } }}>
+        <div
+          style={s.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowFailModal(false)
+              setFailHint('')
+            }
+          }}
+        >
           <div style={s.modal}>
             <div style={s.modalHeader}>
               <span style={s.modalTitle}>Override: Fail</span>
-              <button style={s.modalClose} onClick={() => { setShowFailModal(false); setFailHint('') }}>✕</button>
+              <button
+                style={s.modalClose}
+                onClick={() => {
+                  setShowFailModal(false)
+                  setFailHint('')
+                }}
+              >
+                ✕
+              </button>
             </div>
             <div style={s.modalBody}>
               <p style={s.modalHint}>Optional hint for student (supports Markdown):</p>
@@ -49,16 +77,27 @@ export default function OverrideDropdown({ student, task, onOverrideCheck }) {
                 style={s.hintTextarea}
                 placeholder="e.g. Check your indentation, or try using a `for` loop…"
                 value={failHint}
-                onChange={e => setFailHint(e.target.value)}
+                onChange={(e) => setFailHint(e.target.value)}
                 rows={5}
                 autoFocus
               />
             </div>
             <div style={s.modalFooter}>
-              <button className="btn-ghost-outline" style={{ fontSize: 13 }} onClick={() => { setShowFailModal(false); setFailHint('') }}>
+              <button
+                className="btn-ghost-outline"
+                style={{ fontSize: 13 }}
+                onClick={() => {
+                  setShowFailModal(false)
+                  setFailHint('')
+                }}
+              >
                 Cancel
               </button>
-              <button className="btn-danger" style={{ fontSize: 13 }} onClick={() => applyOverride(false, failHint)}>
+              <button
+                className="btn-danger"
+                style={{ fontSize: 13 }}
+                onClick={() => applyOverride(false, failHint)}
+              >
                 Apply Fail
               </button>
             </div>

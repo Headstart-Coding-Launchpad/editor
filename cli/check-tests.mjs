@@ -1,4 +1,8 @@
-import { evaluateSingleCheck, normalizeChecks, normalizeFeedbackChecks } from '../src/modules/checks.js'
+import {
+  evaluateSingleCheck,
+  normalizeChecks,
+  normalizeFeedbackChecks,
+} from '../src/modules/checks.js'
 import { findTaskById } from '../src/shared/taskUtils.js'
 
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
@@ -32,8 +36,9 @@ function evaluateCase(task, taskId, testCase, caseIndex) {
 
   const context = { code: testCase.code }
   const completionChecks = normalizeChecks(task.check)
-  const completionPassed = completionChecks.length > 0
-    && completionChecks.every(check => evaluateSingleCheck(check, '', context))
+  const completionPassed =
+    completionChecks.length > 0 &&
+    completionChecks.every((check) => evaluateSingleCheck(check, '', context))
   const actualCompletion = completionResult(completionPassed)
   const feedback = normalizeFeedbackChecks(task).map((check, index) => ({
     index: index + 1,
@@ -44,7 +49,7 @@ function evaluateCase(task, taskId, testCase, caseIndex) {
     show: check.show,
     result: completionResult(evaluateSingleCheck(check, '', context)),
   }))
-  const matchedFeedback = feedback.filter(check => check.result === 'pass')
+  const matchedFeedback = feedback.filter((check) => check.result === 'pass')
   const mismatches = []
   if (actualCompletion !== testCase.completion) {
     mismatches.push(`completion: expected ${testCase.completion}, got ${actualCompletion}`)
@@ -85,7 +90,7 @@ export function testLessonChecks(lesson, casesFile) {
     })
   }
 
-  const failed = cases.filter(testCase => testCase.mismatches.length > 0)
+  const failed = cases.filter((testCase) => testCase.mismatches.length > 0)
   return {
     success: failed.length === 0,
     lessonId: lesson.id ?? null,

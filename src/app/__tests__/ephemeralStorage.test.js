@@ -11,7 +11,9 @@ describe('ephemeralStorage', () => {
   it('round-trips code saves without touching localStorage', () => {
     const states = { player: { blocks: { languageVersion: 0, blocks: [] } } }
     ephemeralStorage.saveCode('lesson-1', 1, 'teacher-presenter', { state: states })
-    expect(ephemeralStorage.loadSavedCode('lesson-1', 1, 'teacher-presenter')).toEqual({ state: states })
+    expect(ephemeralStorage.loadSavedCode('lesson-1', 1, 'teacher-presenter')).toEqual({
+      state: states,
+    })
     expect(localStorage.length).toBe(0)
   })
 
@@ -52,7 +54,9 @@ describe('persistence write→read round trip in presentation mode', () => {
       previewMode: false,
       inPersonalSandboxRef: { current: false },
     })
-    const states = { player: { blocks: { languageVersion: 0, blocks: [{ type: 'event_whenflagclicked' }] } } }
+    const states = {
+      player: { blocks: { languageVersion: 0, blocks: [{ type: 'event_whenflagclicked' }] } },
+    }
     persistence.saveScratch('teacher-presenter', 13, states)
     expect(persistence.readSavedCode('teacher-presenter', 13)).toEqual({ state: states })
     expect(persistence.readSavedCode('teacher-presenter', 14)).toBeNull()

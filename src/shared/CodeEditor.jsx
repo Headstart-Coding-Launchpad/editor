@@ -3,9 +3,9 @@
  * Accepts the language type, current value, an onChange callback, and a readOnly flag.
  * Creates a single EditorView and updates it imperatively to avoid full re-mounts.
  */
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
-import { Decoration, EditorView, WidgetType } from '@codemirror/view'
+import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import {
   createBaseExtensions,
   readOnlyCompartment,
@@ -40,13 +40,20 @@ const remoteSelectionField = StateField.define({
       const from = Math.min(Math.max(selection.from ?? 0, 0), max)
       const to = Math.min(Math.max(selection.to ?? from, 0), max)
       if (from === to) {
-        return Decoration.set([Decoration.widget({ widget: new RemoteCursorWidget(), side: 1 }).range(from)])
+        return Decoration.set([
+          Decoration.widget({ widget: new RemoteCursorWidget(), side: 1 }).range(from),
+        ])
       }
-      return Decoration.set([Decoration.mark({ class: 'cm-remoteSelection' }).range(Math.min(from, to), Math.max(from, to))])
+      return Decoration.set([
+        Decoration.mark({ class: 'cm-remoteSelection' }).range(
+          Math.min(from, to),
+          Math.max(from, to)
+        ),
+      ])
     }
     return markers
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 })
 
 // Teacher-authored markup highlights: unlike remoteSelection, this holds
@@ -102,13 +109,18 @@ const teacherHighlightsField = StateField.define({
         const to = Math.min(Math.max(h.to ?? from, 0), max)
         if (from >= to) continue
         ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(from, to))
-        ranges.push(Decoration.widget({ widget: new TeacherHighlightWidget(h.id, h.emoji, h.note), side: 1 }).range(to))
+        ranges.push(
+          Decoration.widget({
+            widget: new TeacherHighlightWidget(h.id, h.emoji, h.note),
+            side: 1,
+          }).range(to)
+        )
       }
       marks = Decoration.set(ranges, true)
     }
     return marks
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 })
 
 // Runtime error-line highlight: a single whole-line marker showing where the
@@ -133,32 +145,38 @@ export const errorLineField = StateField.define({
     if (transaction.docChanged) return Decoration.none
     return deco
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 })
 
-export function CodeEditor({
-  value = '',
-  language = 'python',
-  readOnly = false,
-  onChange,
-  onSelectionChange,
-  onActivity,
-  remoteSelection = null,
-  teacherHighlights = [],
-  onHighlightDismiss,
-  errorLine = null,
-  style,
-}) {
+export const CodeEditor = React.forwardRef(function CodeEditor(
+  {
+    value = '',
+    language = 'python',
+    readOnly = false,
+    onChange,
+    onSelectionChange,
+    onActivity,
+    remoteSelection = null,
+    teacherHighlights = [],
+    onHighlightDismiss,
+    errorLine = null,
+    onRunShortcut,
+    style,
+  },
+  ref
+) {
   const containerRef = useRef(null)
-  const viewRef      = useRef(null)
-  const onChangeRef  = useRef(onChange)
+  const viewRef = useRef(null)
+  const onChangeRef = useRef(onChange)
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onActivityRef = useRef(onActivity)
   const onHighlightDismissRef = useRef(onHighlightDismiss)
+  const onRunShortcutRef = useRef(onRunShortcut)
   onChangeRef.current = onChange
   onSelectionChangeRef.current = onSelectionChange
   onActivityRef.current = onActivity
   onHighlightDismissRef.current = onHighlightDismiss
+  onRunShortcutRef.current = onRunShortcut
 
   // Mount the editor once
   useEffect(() => {
@@ -172,7 +190,17 @@ export function CodeEditor({
           remoteSelectionField,
           teacherHighlightsField,
           errorLineField,
-          EditorView.updateListener.of(update => {
+          keymap.of([
+            {
+              key: 'Mod-Enter',
+              run: () => {
+                if (!onRunShortcutRef.current) return false
+                onRunShortcutRef.current()
+                return true
+              },
+            },
+          ]),
+          EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
             }
@@ -182,9 +210,15 @@ export function CodeEditor({
             }
           }),
           EditorView.domEventHandlers({
-            copy: () => { onActivityRef.current?.({ type: 'copy', at: Date.now() }); return false },
-            paste: () => { onActivityRef.current?.({ type: 'paste', at: Date.now() }); return false },
-            mousedown: event => {
+            copy: () => {
+              onActivityRef.current?.({ type: 'copy', at: Date.now() })
+              return false
+            },
+            paste: () => {
+              onActivityRef.current?.({ type: 'paste', at: Date.now() })
+              return false
+            },
+            mousedown: (event) => {
               const badge = event.target.closest?.('.cm-teacherHighlightBadge')
               if (badge) {
                 onHighlightDismissRef.current?.(badge.dataset.highlightId)
@@ -204,7 +238,7 @@ export function CodeEditor({
       view.destroy()
       viewRef.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Keep readOnly compartment in sync
@@ -258,6 +292,26 @@ export function CodeEditor({
     view.dispatch({ effects: setErrorLine.of(errorLine) })
   }, [errorLine])
 
+  // Lets an on-screen "insert symbol" button row (see PythonEditor.jsx) type
+  // into the editor the same way a keyboard keypress would, without either
+  // side needing to know about CodeMirror's EditorView internals.
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertAtCursor(text) {
+        const view = viewRef.current
+        if (!view || readOnly) return
+        const { from, to } = view.state.selection.main
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        })
+        view.focus()
+      },
+    }),
+    [readOnly]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -271,4 +325,4 @@ export function CodeEditor({
       }}
     />
   )
-}
+})

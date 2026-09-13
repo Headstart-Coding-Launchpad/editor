@@ -76,7 +76,10 @@ describe('createBackdropFromPreset', () => {
   it('avoids duplicate names when the same backdrop is added twice', () => {
     const preset = { id: 'space', name: 'Space', image: 'backdrops/space.png' }
     const first = createBackdropFromPreset([{ id: 'backdrop1', name: 'Backdrop 1' }], preset)
-    const second = createBackdropFromPreset([{ id: 'backdrop1', name: 'Backdrop 1' }, first], preset)
+    const second = createBackdropFromPreset(
+      [{ id: 'backdrop1', name: 'Backdrop 1' }, first],
+      preset
+    )
 
     expect(second.id).toBe('backdrop3')
     expect(second.name).toBe('Space 2')

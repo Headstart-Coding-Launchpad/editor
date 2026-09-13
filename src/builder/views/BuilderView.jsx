@@ -14,7 +14,10 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildPrintHtml } from '../printLesson'
 import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
-import { decodeLessonBlocksFromFirestore, encodeLessonBlocksForFirestore } from '../../shared/lessonBlocksCodec'
+import {
+  decodeLessonBlocksFromFirestore,
+  encodeLessonBlocksForFirestore,
+} from '../../shared/lessonBlocksCodec'
 import { applyLessonAuditMetadata } from '../../shared/lessonAudit'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
@@ -28,10 +31,16 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   const [taskFeedback, setTaskFeedback] = useState([])
   const { role } = useAuth()
   const navigate = useNavigate()
-  const { allTopics, loading: topicsLoading, error: topicsError } = useTopicLibrary(lesson.type === 'composed' ? null : lesson.type)
+  const {
+    allTopics,
+    loading: topicsLoading,
+    error: topicsError,
+  } = useTopicLibrary(lesson.type === 'composed' ? null : lesson.type)
   const hasTopicReferences = collectLessonTopicReferences(lesson).length > 0
 
-  const { defaultSprites } = useTypeAssets(['scratch', 'composed'].includes(lesson.type) ? 'scratch' : null)
+  const { defaultSprites } = useTypeAssets(
+    ['scratch', 'composed'].includes(lesson.type) ? 'scratch' : null
+  )
 
   const {
     selectedTaskId,
@@ -57,15 +66,22 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   } = useBuilderState({ lesson, onUpdate, defaultSprites })
 
   useEffect(() => {
-    if (!selectedTaskId || !lesson?.id) { setTaskFeedback([]); return }
-    getDocs(query(
-      collection(firestore, 'lessons', lesson.id, 'feedback'),
-      where('taskId', '==', selectedTaskId)
-    )).then(snap => {
-      const items = snap.docs.map(d => d.data())
-      items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
-      setTaskFeedback(items)
-    }).catch(() => setTaskFeedback([]))
+    if (!selectedTaskId || !lesson?.id) {
+      setTaskFeedback([])
+      return
+    }
+    getDocs(
+      query(
+        collection(firestore, 'lessons', lesson.id, 'feedback'),
+        where('taskId', '==', selectedTaskId)
+      )
+    )
+      .then((snap) => {
+        const items = snap.docs.map((d) => d.data())
+        items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
+        setTaskFeedback(items)
+      })
+      .catch(() => setTaskFeedback([]))
   }, [lesson?.id, selectedTaskId])
 
   function handleDownload() {
@@ -77,11 +93,14 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       const ok = confirm('Warnings:\n\n' + warnings.join('\n') + '\n\nDownload anyway?')
       if (!ok) return
     }
-    const exported = { ...lesson, tasks: normalizeTasksForExport(lesson.tasks, { preserveIds: true }) }
+    const exported = {
+      ...lesson,
+      tasks: normalizeTasksForExport(lesson.tasks, { preserveIds: true }),
+    }
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
     a.download = `${lesson.id || 'lesson'}.json`
     a.click()
     URL.revokeObjectURL(url)
@@ -89,7 +108,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   }
 
   async function handleSave() {
-    if (!lesson.id) { alert('Cannot save — lesson ID is required.'); return }
+    if (!lesson.id) {
+      alert('Cannot save — lesson ID is required.')
+      return
+    }
     if (errors.length) {
       alert('Cannot save: please fix these errors.\n\n' + errors.join('\n'))
       return
@@ -99,7 +121,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       return
     }
     if (hasTopicReferences && topicsError) {
-      alert('Could not verify Topic Library entries, so the lesson was not saved: ' + topicsError.message)
+      alert(
+        'Could not verify Topic Library entries, so the lesson was not saved: ' +
+          topicsError.message
+      )
       return
     }
     const topicValidation = validateLessonTopics(lesson, hasTopicReferences ? allTopics : [])
@@ -109,10 +134,17 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     }
     setSaveStatus('saving')
     try {
-      const exported = JSON.parse(JSON.stringify({ ...lesson, tasks: normalizeTasksForExport(lesson.tasks, { preserveIds: true }) }))
+      const exported = JSON.parse(
+        JSON.stringify({
+          ...lesson,
+          tasks: normalizeTasksForExport(lesson.tasks, { preserveIds: true }),
+        })
+      )
       const lessonRef = doc(firestore, 'lessons', lesson.id)
       const existingSnap = await getDoc(lessonRef)
-      const existing = existingSnap.exists() ? decodeLessonBlocksFromFirestore(existingSnap.data()) : null
+      const existing = existingSnap.exists()
+        ? decodeLessonBlocksFromFirestore(existingSnap.data())
+        : null
       const audited = applyLessonAuditMetadata(existing, exported)
       if (audited.material) await setDoc(lessonRef, encodeLessonBlocksForFirestore(audited.lesson))
       if (audited.material) onUpdate(audited.lesson)
@@ -128,7 +160,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
 
   function handlePrint() {
     const win = window.open('', '_blank')
-    if (!win) { alert('Pop-up blocked — please allow pop-ups for this page and try again.'); return }
+    if (!win) {
+      alert('Pop-up blocked — please allow pop-ups for this page and try again.')
+      return
+    }
     win.document.write(buildPrintHtml(lesson))
     win.document.close()
     win.focus()
@@ -136,15 +171,16 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   }
 
   function handleUpload() {
-    if (dirty && !confirm('You have unsaved changes — download your lesson first.\n\nContinue?')) return
+    if (dirty && !confirm('You have unsaved changes — download your lesson first.\n\nContinue?'))
+      return
     const input = document.createElement('input')
-    input.type   = 'file'
+    input.type = 'file'
     input.accept = '.json'
-    input.onchange = e => {
+    input.onchange = (e) => {
       const file = e.target.files[0]
       if (!file) return
       const reader = new FileReader()
-      reader.onload = ev => {
+      reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result)
           if (!parsed.id || !parsed.tasks) throw new Error('Unrecognised format')
@@ -161,7 +197,16 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   }
 
   if (previewing) {
-    return <PreviewView lesson={lesson} onClose={taskId => { setPreviewing(false); if (taskId) selectTask(taskId) }} initialTaskId={selectedTaskId} />
+    return (
+      <PreviewView
+        lesson={lesson}
+        onClose={(taskId) => {
+          setPreviewing(false)
+          if (taskId) selectTask(taskId)
+        }}
+        initialTaskId={selectedTaskId}
+      />
+    )
   }
 
   return (
@@ -182,10 +227,20 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       />
 
       {lesson.draft === true && (
-        <div style={s.draftBanner}>DRAFT LESSON — incomplete tasks are allowed. Clear Draft only after full validation passes.</div>
+        <div style={s.draftBanner}>
+          DRAFT LESSON — incomplete tasks are allowed. Clear Draft only after full validation
+          passes.
+        </div>
       )}
 
-      <div style={{ ...s.body, gridTemplateColumns: metaOpen ? '320px 280px minmax(0, 1fr)' : '40px 280px minmax(0, 1fr)' }}>
+      <div
+        style={{
+          ...s.body,
+          gridTemplateColumns: metaOpen
+            ? '320px 280px minmax(0, 1fr)'
+            : '40px 280px minmax(0, 1fr)',
+        }}
+      >
         <aside style={metaOpen ? s.metaPane : s.metaPaneCollapsed}>
           {metaOpen ? (
             <LessonMetaPanel
@@ -196,7 +251,12 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             />
           ) : (
             <div style={s.collapsedMetaStrip}>
-              <button type="button" style={s.expandMetaBtn} onClick={() => setMetaOpen(true)} title="Expand lesson details">
+              <button
+                type="button"
+                style={s.expandMetaBtn}
+                onClick={() => setMetaOpen(true)}
+                title="Expand lesson details"
+              >
                 ›
               </button>
             </div>
@@ -228,10 +288,10 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
           {selectedGroup && !selectedTask ? (
             <GroupEditor
               group={selectedGroup}
-              onUpdate={updatedGroup => {
-                handleLessonUpdate(prev => ({
+              onUpdate={(updatedGroup) => {
+                handleLessonUpdate((prev) => ({
                   ...prev,
-                  tasks: prev.tasks.map(t =>
+                  tasks: prev.tasks.map((t) =>
                     t.type === 'group' && t.id === updatedGroup.id ? updatedGroup : t
                   ),
                 }))
@@ -245,8 +305,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                 lesson={lessonForEditor}
                 composedLesson={lesson.type === 'composed' ? lesson : null}
                 parentGroup={selectedTaskGroup}
-                onUpdate={updated => {
-                  handleLessonUpdate(prev => ({
+                onUpdate={(updated) => {
+                  handleLessonUpdate((prev) => ({
                     ...prev,
                     tasks: applyTaskUpdate(prev.tasks, selectedTaskGroup, selectedTask, updated),
                   }))
@@ -267,8 +327,14 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
 
 const s = {
   draftBanner: {
-    padding: '7px 14px', background: '#fffbeb', borderBottom: '1px solid #fde68a', color: '#92400e',
-    fontFamily: 'var(--font-body)', fontSize: '0.84rem', fontWeight: 700, letterSpacing: '.02em',
+    padding: '7px 14px',
+    background: '#fffbeb',
+    borderBottom: '1px solid #fde68a',
+    color: '#92400e',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+    letterSpacing: '.02em',
   },
   page: { display: 'flex', flexDirection: 'column', height: '100%' },
   body: {

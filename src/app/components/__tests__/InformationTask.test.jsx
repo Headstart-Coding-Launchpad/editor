@@ -53,6 +53,22 @@ describe('InformationTask', () => {
       render(<InformationTask task={task} lesson={lesson} />)
       expect(screen.getByText('Desc')).toBeInTheDocument()
     })
+
+    it('describes a composed lesson by its mix of modules rather than the raw "composed" type', () => {
+      const task = { informationType: 'introduction', title: 'Intro' }
+      const composed = {
+        id: 'composed-intro',
+        type: 'composed',
+        title: 'Composed Lesson',
+        tasks: [
+          { id: 1, title: 'Scratch task', moduleType: 'scratch', starterBlocks: null },
+          { id: 2, title: 'Python task', moduleType: 'python', starterCode: '' },
+        ],
+      }
+      render(<InformationTask task={task} lesson={composed} />)
+      expect(screen.getByText('Scratch + Python')).toBeInTheDocument()
+      expect(screen.queryByText('composed')).not.toBeInTheDocument()
+    })
   })
 
   describe('recap (two pane view) type', () => {
@@ -89,7 +105,11 @@ describe('InformationTask', () => {
     })
 
     it('disables text selection in both panes when disableCopy is set', () => {
-      const task = { informationType: 'recap', leftContent: 'Left pane text', explainer: 'Right pane text' }
+      const task = {
+        informationType: 'recap',
+        leftContent: 'Left pane text',
+        explainer: 'Right pane text',
+      }
       render(<InformationTask task={task} lesson={lesson} disableCopy />)
       expect(findUserSelectNoneAncestor(screen.getByText('Left pane text'))).not.toBeNull()
       expect(findUserSelectNoneAncestor(screen.getByText('Right pane text'))).not.toBeNull()

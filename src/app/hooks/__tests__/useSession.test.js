@@ -3,24 +3,34 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useSession } from '../useSession'
 
 const firebaseMocks = vi.hoisted(() => ({
-  ref:         vi.fn((_db, path) => ({ path })),
-  onValue:     vi.fn(),
-  set:         vi.fn(() => Promise.resolve()),
-  update:      vi.fn(() => Promise.resolve()),
-  remove:      vi.fn(() => Promise.resolve()),
-  push:        vi.fn(parentRef => ({ path: `${parentRef.path}/mockHighlightId`, key: 'mockHighlightId' })),
-  onDisconnect: vi.fn(() => ({ set: vi.fn(), remove: vi.fn() })),
+  ref: vi.fn((_db, path) => ({ path })),
+  onValue: vi.fn(),
+  set: vi.fn(() => Promise.resolve()),
+  update: vi.fn(() => Promise.resolve()),
+  remove: vi.fn(() => Promise.resolve()),
+  push: vi.fn((parentRef) => ({
+    path: `${parentRef.path}/mockHighlightId`,
+    key: 'mockHighlightId',
+  })),
+  // The real onDisconnect().set()/.remove() return promises; callers may chain
+  // .catch() on them.
+  onDisconnect: vi.fn(() => ({
+    set: vi.fn(() => Promise.resolve()),
+    remove: vi.fn(() => Promise.resolve()),
+  })),
+  get: vi.fn(() => Promise.resolve({ val: () => null })),
 }))
 
 vi.mock('firebase/database', () => ({
-  ref:          (...args) => firebaseMocks.ref(...args),
-  onValue:      (...args) => firebaseMocks.onValue(...args),
-  set:          (...args) => firebaseMocks.set(...args),
-  update:       (...args) => firebaseMocks.update(...args),
-  remove:       (...args) => firebaseMocks.remove(...args),
-  push:         (...args) => firebaseMocks.push(...args),
+  ref: (...args) => firebaseMocks.ref(...args),
+  onValue: (...args) => firebaseMocks.onValue(...args),
+  set: (...args) => firebaseMocks.set(...args),
+  update: (...args) => firebaseMocks.update(...args),
+  remove: (...args) => firebaseMocks.remove(...args),
+  push: (...args) => firebaseMocks.push(...args),
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
   onDisconnect: (...args) => firebaseMocks.onDisconnect(...args),
+  get: (...args) => firebaseMocks.get(...args),
 }))
 
 vi.mock('../../../shared/firebase', () => ({
@@ -29,17 +39,18 @@ vi.mock('../../../shared/firebase', () => ({
 
 describe('useSession', () => {
   let sessionCallback = null
-  let connCallback    = null
+  let connCallback = null
 
   beforeEach(() => {
     vi.clearAllMocks()
     sessionCallback = null
-    connCallback    = null
+    connCallback = null
 
     firebaseMocks.ref.mockImplementation((_db, path) => ({ path }))
     firebaseMocks.set.mockResolvedValue(undefined)
     firebaseMocks.update.mockResolvedValue(undefined)
     firebaseMocks.remove.mockResolvedValue(undefined)
+    firebaseMocks.get.mockResolvedValue({ val: () => null })
 
     firebaseMocks.onValue.mockImplementation((refObj, callback) => {
       if (refObj.path === '.info/connected') {
@@ -55,7 +66,7 @@ describe('useSession', () => {
     act(() => {
       sessionCallback?.({
         exists: () => data !== null,
-        val:    () => data,
+        val: () => data,
       })
     })
   }
@@ -111,10 +122,12 @@ describe('useSession', () => {
   describe('startSession', () => {
     it('writes state: "active" and timestamps via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.startSession() })
+      await act(async () => {
+        await result.current.startSession()
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ state: 'active', startedAt: expect.any(Number) }),
+        expect.objectContaining({ state: 'active', startedAt: expect.any(Number) })
       )
     })
   })
@@ -122,20 +135,59 @@ describe('useSession', () => {
   describe('setTaskId', () => {
     it('writes currentTaskId and currentTaskStartedAt via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.setTaskId(3) })
+      await act(async () => {
+        await result.current.setTaskId(3)
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ currentTaskId: 3, currentTaskStartedAt: expect.any(Number) }),
+        expect.objectContaining({ currentTaskId: 3, currentTaskStartedAt: expect.any(Number) })
       )
     })
 
     it('resets explainerShowComplete to false on task change', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.setTaskId(3) })
+      await act(async () => {
+        await result.current.setTaskId(3)
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ explainerShowComplete: false }),
+        expect.objectContaining({ explainerShowComplete: false })
       )
+    })
+  })
+
+  describe('enterSandbox / exitSandbox', () => {
+    it('records previousTaskId as sandboxPreviousTaskId when provided', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.enterSandbox({ code: 'x = 1', previousTaskId: 5 })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ state: 'sandbox', sandboxPreviousTaskId: 5 })
+      )
+    })
+
+    it('restores currentTaskId from sandboxPreviousTaskId and clears it on exit', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'sandbox', currentTaskId: 9, sandboxPreviousTaskId: 4 })
+      await act(async () => {
+        await result.current.exitSandbox()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ state: 'active', currentTaskId: 4, sandboxPreviousTaskId: null })
+      )
+    })
+
+    it('leaves currentTaskId untouched when no sandboxPreviousTaskId was recorded', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'sandbox', currentTaskId: 9, sandboxPreviousTaskId: null })
+      await act(async () => {
+        await result.current.exitSandbox()
+      })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(updates).not.toHaveProperty('currentTaskId')
     })
   })
 
@@ -155,10 +207,14 @@ describe('useSession', () => {
 
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-abc' },
-        { teacherLiveFiles: {
-          'index__dot__html': '<h1>Hello</h1>',
-          'app__dot__js': 'console.log("hello")',
-        }, teacherLiveActiveFile: 'app.js', teacherLiveWorkspace: 'tilemaps' },
+        {
+          teacherLiveFiles: {
+            index__dot__html: '<h1>Hello</h1>',
+            app__dot__js: 'console.log("hello")',
+          },
+          teacherLiveActiveFile: 'app.js',
+          teacherLiveWorkspace: 'tilemaps',
+        }
       )
     })
 
@@ -173,9 +229,9 @@ describe('useSession', () => {
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-abc' },
         expect.objectContaining({
-          teacherEditApplyFiles: { 'index__dot__html': '<p>Updated</p>' },
-          currentFiles: { 'index__dot__html': '<p>Updated</p>' },
-        }),
+          teacherEditApplyFiles: { index__dot__html: '<p>Updated</p>' },
+          currentFiles: { index__dot__html: '<p>Updated</p>' },
+        })
       )
     })
   })
@@ -183,19 +239,23 @@ describe('useSession', () => {
   describe('setExplainerShowComplete', () => {
     it('writes explainerShowComplete: true via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.setExplainerShowComplete(true) })
+      await act(async () => {
+        await result.current.setExplainerShowComplete(true)
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        { explainerShowComplete: true },
+        { explainerShowComplete: true }
       )
     })
 
     it('coerces truthy/falsy values to booleans', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.setExplainerShowComplete(0) })
+      await act(async () => {
+        await result.current.setExplainerShowComplete(0)
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        { explainerShowComplete: false },
+        { explainerShowComplete: false }
       )
     })
   })
@@ -203,19 +263,34 @@ describe('useSession', () => {
   describe('endSession', () => {
     it('writes state: "ended" via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.endSession() })
+      await act(async () => {
+        await result.current.endSession()
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ state: 'ended', endedAt: expect.any(Number) }),
+        expect.objectContaining({ state: 'ended', endedAt: expect.any(Number) })
       )
     })
 
     it('clears any session-only lesson override so a restart starts from the published lesson', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.endSession() })
+      await act(async () => {
+        await result.current.endSession()
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ lessonOverrideTasks: null }),
+        expect.objectContaining({ lessonOverrideTasks: null })
+      )
+    })
+
+    it('resets videoCallLink to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ videoCallLink: null })
       )
     })
   })
@@ -223,19 +298,144 @@ describe('useSession', () => {
   describe('createSession', () => {
     it('initialises lessonOverrideTasks to null', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.createSession() })
+      await act(async () => {
+        await result.current.createSession()
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ lessonOverrideTasks: null }),
+        expect.objectContaining({ lessonOverrideTasks: null })
       )
     })
 
     it('initialises explainerShowComplete to false', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.createSession() })
+      await act(async () => {
+        await result.current.createSession()
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
-        expect.objectContaining({ explainerShowComplete: false }),
+        expect.objectContaining({ explainerShowComplete: false })
+      )
+    })
+
+    it('initialises videoCallLink to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ videoCallLink: null })
+      )
+    })
+  })
+
+  describe('updateVideoCallLink', () => {
+    it('writes a trimmed https URL to the session videoCallLink path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.updateVideoCallLink('https://zoom.us/j/123  ')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallLink' },
+        'https://zoom.us/j/123'
+      )
+    })
+
+    it('accepts an http URL', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.updateVideoCallLink('http://example.com/call')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallLink' },
+        'http://example.com/call'
+      )
+    })
+
+    it('rejects a non-http(s) URL and does not write', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await expect(result.current.updateVideoCallLink('javascript:alert(1)')).rejects.toThrow()
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('rejects a value that is not a valid URL at all', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await expect(result.current.updateVideoCallLink('not a url')).rejects.toThrow()
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('clears the link by writing null when passed an empty string', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.updateVideoCallLink('')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallLink' },
+        null
+      )
+    })
+  })
+
+  describe('sendVideoCallLink', () => {
+    it('writes a videoCallLinkPushedAt timestamp to the student node', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.sendVideoCallLink('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { videoCallLinkPushedAt: expect.any(Number) }
+      )
+    })
+  })
+
+  describe('requestFullscreenForAll', () => {
+    it('writes a fullscreenRequestedAt timestamp via firebase update', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestFullscreenForAll()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { fullscreenRequestedAt: expect.any(Number) }
+      )
+    })
+  })
+
+  describe('requestFullscreenForStudent', () => {
+    it('writes a fullscreenRequestedAt timestamp under just that student, not the whole session', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestFullscreenForStudent('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { fullscreenRequestedAt: expect.any(Number) }
+      )
+    })
+  })
+
+  describe('writeStudentInteraction viewingShareId', () => {
+    it('writes viewingShareId when a student opens a shared workspace', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInteraction('student-abc', { viewingShareId: 'share-1' })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { viewingShareId: 'share-1' }
+      )
+    })
+
+    it('clears viewingShareId (explicit null) when the student closes it', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInteraction('student-abc', { viewingShareId: null })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { viewingShareId: null }
       )
     })
   })
@@ -254,14 +454,60 @@ describe('useSession', () => {
         { path: 'sessions/html-1-1/teacherLive' },
         expect.objectContaining({
           files: { index__dot__html: '<main />', style__dot__css: 'body {}' },
-        }),
+        })
       )
     })
 
     it('clears the teacherLive node when called with null', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.setTeacherLive(null) })
-      expect(firebaseMocks.set).toHaveBeenCalledWith({ path: 'sessions/lesson-1/teacherLive' }, null)
+      await act(async () => {
+        await result.current.setTeacherLive(null)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLive' },
+        null
+      )
+    })
+  })
+
+  describe('setTeacherLiveReference', () => {
+    it('writes to a separate teacherLiveReference node, encoding dotted file keys', async () => {
+      const { result } = renderHook(() => useSession('html-1-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReference({
+          taskId: 1,
+          files: { 'index.html': '<main />' },
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/html-1-1/teacherLiveReference' },
+        expect.objectContaining({
+          active: true,
+          taskId: 1,
+          files: { index__dot__html: '<main />' },
+        })
+      )
+    })
+
+    it('registers an onDisconnect cleanup so it never outlives the Presentation window', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReference({ taskId: 1, code: 'print("hi")' })
+      })
+      expect(firebaseMocks.onDisconnect).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/teacherLiveReference',
+      })
+    })
+
+    it('clears the teacherLiveReference node when called with null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReference(null)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLiveReference' },
+        null
+      )
     })
   })
 
@@ -273,16 +519,18 @@ describe('useSession', () => {
       })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/html-2-1/teacherLive' },
-        expect.objectContaining({ files: { index__dot__html: '<main />' } }),
+        expect.objectContaining({ files: { index__dot__html: '<main />' } })
       )
     })
 
     it('leaves payloads without a files map untouched', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.updateTeacherLive({ output: 'hi' }) })
+      await act(async () => {
+        await result.current.updateTeacherLive({ output: 'hi' })
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/teacherLive' },
-        expect.objectContaining({ output: 'hi' }),
+        expect.objectContaining({ output: 'hi' })
       )
     })
   })
@@ -291,10 +539,12 @@ describe('useSession', () => {
     it('writes the tasks array to the session lessonOverrideTasks path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       const tasks = [{ id: 1, title: 'Edited' }]
-      await act(async () => { await result.current.pushLessonOverride(tasks) })
+      await act(async () => {
+        await result.current.pushLessonOverride(tasks)
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/lessonOverrideTasks' },
-        tasks,
+        tasks
       )
     })
   })
@@ -302,10 +552,12 @@ describe('useSession', () => {
   describe('clearLessonOverride', () => {
     it('clears the lessonOverrideTasks path back to null', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.clearLessonOverride() })
+      await act(async () => {
+        await result.current.clearLessonOverride()
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/lessonOverrideTasks' },
-        null,
+        null
       )
     })
   })
@@ -313,10 +565,12 @@ describe('useSession', () => {
   describe('renameStudent', () => {
     it('writes the new name to the student displayName path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.renameStudent('student-123', 'Alex') })
+      await act(async () => {
+        await result.current.renameStudent('student-123', 'Alex')
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-123/displayName' },
-        'Alex',
+        'Alex'
       )
     })
   })
@@ -354,7 +608,7 @@ describe('useSession', () => {
             attemptNumber: 3,
             previousCheckState: 'failed',
           },
-        }),
+        })
       )
     })
 
@@ -415,7 +669,7 @@ describe('useSession', () => {
             attemptNumber: 0,
             previousCheckState: 'unattempted',
           },
-        },
+        }
       )
     })
 
@@ -468,27 +722,139 @@ describe('useSession', () => {
           source: 'teacher',
           attemptNumber: 2,
           revealedAt: { '.sv': 'timestamp' },
-        },
+        }
       )
+    })
+  })
+
+  describe('setTaskRating', () => {
+    it('writes a task rating record', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 1 })
+
+      await act(async () => {
+        await result.current.setTaskRating(1, {
+          rating: 4,
+          whatWorkedWell: 'Good pacing',
+          whatDidntWork: 'Check was flaky',
+        })
+      })
+
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/taskRatingLog/1' },
+        {
+          taskId: 1,
+          rating: 4,
+          whatWorkedWell: 'Good pacing',
+          whatDidntWork: 'Check was flaky',
+          submittedAt: { '.sv': 'timestamp' },
+        }
+      )
+    })
+
+    it('removes the record instead of writing an all-blank rating', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 1 })
+
+      await act(async () => {
+        await result.current.setTaskRating(1, { rating: null, whatWorkedWell: '', whatDidntWork: '' })
+      })
+
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'sessions/lesson-1/taskRatingLog/1' })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
     })
   })
 
   describe('writeStudentCode', () => {
     it('writes code to the student currentCode path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.writeStudentCode('student-abc', 'print("hi")') })
+      await act(async () => {
+        await result.current.writeStudentCode('student-abc', 'print("hi")')
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-abc/currentCode' },
-        'print("hi")',
+        'print("hi")'
       )
     })
 
     it('writes to whichever student ID is provided — the activeStudentView guard lives at the call site', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.writeStudentCode('watched-student', 'x = 1') })
+      await act(async () => {
+        await result.current.writeStudentCode('watched-student', 'x = 1')
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/watched-student/currentCode' },
-        'x = 1',
+        'x = 1'
+      )
+    })
+  })
+
+  describe('writeStudentInputState', () => {
+    it('writes the pending input() prompt and typed-so-far value', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInputState('student-abc', {
+          prompt: 'Name?',
+          value: 'Jam',
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { currentInputPrompt: 'Name?', currentInput: 'Jam' }
+      )
+    })
+
+    it('defaults to a cleared prompt/value when passed nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInputState('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { currentInputPrompt: null, currentInput: '' }
+      )
+    })
+  })
+
+  describe('writeStudentCodeArrangeSlots', () => {
+    it('writes slot state to the student currentCodeArrangeSlots path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentCodeArrangeSlots('student-abc', { L1: 'L1', L2: 'D1' })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/currentCodeArrangeSlots' },
+        { L1: 'L1', L2: 'D1' }
+      )
+    })
+
+    it('writes null when passed no slot state', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentCodeArrangeSlots('student-abc', undefined)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/currentCodeArrangeSlots' },
+        null
+      )
+    })
+  })
+
+  describe('setTaskId clears currentCodeArrangeSlots', () => {
+    it('nulls currentCodeArrangeSlots for every student on task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 1,
+        isPaused: false,
+        students: { 'student-abc': { displayName: 'Jamie' } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ 'students/student-abc/currentCodeArrangeSlots': null })
       )
     })
   })
@@ -516,7 +882,7 @@ describe('useSession', () => {
           resolvedSourceTaskId: 1,
           skippedSourceTaskIds: [2],
           fallbackAt: { '.sv': 'timestamp' },
-        },
+        }
       )
     })
   })
@@ -524,13 +890,15 @@ describe('useSession', () => {
   describe('pushResetToStudent', () => {
     it('writes remoteResetAction and remoteResetPushedAt to the student node', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.pushResetToStudent('student-xyz', 'complete') })
+      await act(async () => {
+        await result.current.pushResetToStudent('student-xyz', 'complete')
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-xyz' },
         expect.objectContaining({
-          remoteResetAction:   'complete',
+          remoteResetAction: 'complete',
           remoteResetPushedAt: expect.any(Number),
-        }),
+        })
       )
     })
   })
@@ -540,14 +908,21 @@ describe('useSession', () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.pushTeacherHighlight('student-xyz', {
-          file: 'index.html', from: 12, to: 34, emoji: '✅', note: 'Nice work',
+          file: 'index.html',
+          from: 12,
+          to: 34,
+          emoji: '✅',
+          note: 'Nice work',
         })
       })
-      expect(firebaseMocks.push).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights' },
-      )
+      expect(firebaseMocks.push).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/students/student-xyz/teacherHighlights',
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights/mockHighlightId', key: 'mockHighlightId' },
+        {
+          path: 'sessions/lesson-1/students/student-xyz/teacherHighlights/mockHighlightId',
+          key: 'mockHighlightId',
+        },
         expect.objectContaining({
           file: 'index__dot__html',
           from: 12,
@@ -555,18 +930,23 @@ describe('useSession', () => {
           emoji: '✅',
           note: 'Nice work',
           createdAt: expect.any(Number),
-        }),
+        })
       )
     })
 
     it('defaults a missing note to null', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
-        await result.current.pushTeacherHighlight('student-xyz', { file: '', from: 0, to: 4, emoji: '❓' })
+        await result.current.pushTeacherHighlight('student-xyz', {
+          file: '',
+          from: 0,
+          to: 4,
+          emoji: '❓',
+        })
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ note: null }),
+        expect.objectContaining({ note: null })
       )
     })
   })
@@ -575,14 +955,27 @@ describe('useSession', () => {
     it('pushes a new attempt entry on first submission for a task', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
-        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false, suggestion: 'try again' })
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v1',
+          passed: false,
+          suggestion: 'try again',
+        })
       })
-      expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'sessions/lesson-1/attemptLog/student-abc/1' })
+      expect(firebaseMocks.push).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/attemptLog/student-abc/1',
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId', key: 'mockHighlightId' },
+        {
+          path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId',
+          key: 'mockHighlightId',
+        },
         expect.objectContaining({
-          submission: 'code v1', passed: false, suggestion: 'try again', attemptNumber: 1, retries: 0,
-        }),
+          submission: 'code v1',
+          passed: false,
+          suggestion: 'try again',
+          attemptNumber: 1,
+          retries: 0,
+        })
       )
     })
 
@@ -599,38 +992,57 @@ describe('useSession', () => {
       expect(firebaseMocks.push).not.toHaveBeenCalled()
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
-        { retries: 1 },
+        { retries: 1 }
       )
     })
 
     it('pushes a new entry with an incremented attempt number when the submission changes', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
       firebaseMocks.push.mockClear()
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: true }) })
-      expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'sessions/lesson-1/attemptLog/student-abc/1' })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: true })
+      })
+      expect(firebaseMocks.push).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/attemptLog/student-abc/1',
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ submission: 'code v2', passed: true, attemptNumber: 2, retries: 0 }),
+        expect.objectContaining({
+          submission: 'code v2',
+          passed: true,
+          attemptNumber: 2,
+          retries: 0,
+        })
       )
     })
 
     it('marks the cached entry passed instead of pushing when a retried submission later passes', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
       firebaseMocks.update.mockClear()
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true })
+      })
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
-        expect.objectContaining({ retries: 1, passed: true }),
+        expect.objectContaining({ retries: 1, passed: true })
       )
     })
 
     it('stamps passedAt the moment an attempt first becomes passed', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
       firebaseMocks.update.mockClear()
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true })
+      })
       const [, updates] = firebaseMocks.update.mock.calls.at(-1)
       expect(Object.keys(updates)).toContain('passedAt')
     })
@@ -646,24 +1058,429 @@ describe('useSession', () => {
 
     it('stops logging further attempts once a task has been passed', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true })
+      })
       firebaseMocks.push.mockClear()
       firebaseMocks.update.mockClear()
       firebaseMocks.set.mockClear()
-      await act(async () => { await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: false }) })
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: false })
+      })
       expect(firebaseMocks.push).not.toHaveBeenCalled()
       expect(firebaseMocks.update).not.toHaveBeenCalled()
       expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    // Scratch/filesystem/HTML submissions are objects (workspace state, an fs tree, a
+    // files map), not strings. The Realtime Database's set() throws on values it can't
+    // serialize (e.g. undefined anywhere in the tree), so the stored submission must
+    // always be the already-JSON-stringified form, never the raw object — writing the
+    // raw object here previously caused every Scratch code-task attempt to silently
+    // fail to log, since nothing awaited/caught this call at the caller.
+    it('writes an object-shaped submission as its JSON-serialized string, not the raw object', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const submission = { sprite1: { blocks: { languageVersion: 0, blocks: [] } } }
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission, passed: true })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ submission: JSON.stringify(submission) })
+      )
     })
   })
 
   describe('removeTeacherHighlight', () => {
     it('clears a single highlight entry by id', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
-      await act(async () => { await result.current.removeTeacherHighlight('student-xyz', 'highlight-1') })
+      await act(async () => {
+        await result.current.removeTeacherHighlight('student-xyz', 'highlight-1')
+      })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights/highlight-1' },
-        null,
+        null
+      )
+    })
+  })
+
+  describe('pushTeacherPaneCommand', () => {
+    it('writes mode, panes, and a pushedAt timestamp to the student node', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherPaneCommand('student-xyz', {
+          mode: 'highlight',
+          panes: ['breadboard'],
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherPaneCommand' },
+        { mode: 'highlight', panes: ['breadboard'], pushedAt: expect.any(Number) }
+      )
+    })
+
+    it('normalises an unrecognised mode to "highlight"', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherPaneCommand('student-xyz', {
+          mode: 'bogus',
+          panes: ['code'],
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: 'highlight' })
+      )
+    })
+
+    it('accepts mode: "force"', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherPaneCommand('student-xyz', {
+          mode: 'force',
+          panes: ['stage'],
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: 'force', panes: ['stage'] })
+      )
+    })
+  })
+
+  describe('clearTeacherPaneCommand', () => {
+    it('clears the student pane command', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.clearTeacherPaneCommand('student-xyz')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherPaneCommand' },
+        null
+      )
+    })
+  })
+
+  describe('pushClassPaneCommand', () => {
+    it('writes mode, panes, and a pushedAt timestamp to the session root', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushClassPaneCommand({ mode: 'force', panes: ['instructions'] })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherClassPaneCommand' },
+        { mode: 'force', panes: ['instructions'], pushedAt: expect.any(Number) }
+      )
+    })
+  })
+
+  describe('clearClassPaneCommand', () => {
+    it('clears the whole-class pane command', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.clearClassPaneCommand()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherClassPaneCommand' },
+        null
+      )
+    })
+  })
+  describe('workspace sharing', () => {
+    const snapshot = {
+      lessonType: 'html',
+      taskId: 3,
+      code: '',
+      arcadeDesign: null,
+      files: { 'index.html': '<p>hi</p>' },
+      activeFile: 'index.html',
+      output: '',
+      runStatus: null,
+      capturedAt: 111,
+    }
+
+    it('writes the payload before raising the request flag', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestWorkspaceShare('stu-1', snapshot)
+      })
+
+      const setCall = firebaseMocks.set.mock.calls.find(
+        ([r]) => r.path === 'sharedWorkspacePayloads/lesson-1/pending/stu-1'
+      )
+      expect(setCall).toBeTruthy()
+      // File keys are encoded at the write boundary, like teacherLive.
+      expect(setCall[1].files).toEqual({ index__dot__html: '<p>hi</p>' })
+
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1/students/stu-1'
+      )
+      expect(updateCall[1]).toMatchObject({
+        shareRequestTaskId: 3,
+        shareRequestOrigin: 'student',
+        shareSnapshotRequestedAt: null,
+      })
+      expect(updateCall[1].shareRequestedAt).toEqual(expect.any(Number))
+
+      // Ordering matters: the badge must never appear before the content.
+      const setOrder = firebaseMocks.set.mock.invocationCallOrder[0]
+      const updateOrder = firebaseMocks.update.mock.invocationCallOrder[0]
+      expect(setOrder).toBeLessThan(updateOrder)
+    })
+
+    it('refuses a snapshot past the size limit and writes nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const huge = { ...snapshot, code: 'x'.repeat(600 * 1024) }
+      await act(async () => {
+        await expect(result.current.requestWorkspaceShare('stu-1', huge)).rejects.toThrow(
+          /too large to share/
+        )
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+
+    it('approve copies the payload across before writing the index entry', async () => {
+      firebaseMocks.get.mockResolvedValue({
+        val: () => ({ ...snapshot, files: { index__dot__html: '<p>hi</p>' } }),
+      })
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        students: { 'stu-1': { displayName: 'Jamie', shareRequestOrigin: 'student' } },
+      })
+
+      await act(async () => {
+        await result.current.approveWorkspaceShare('stu-1', { task: { title: 'Task Three' } })
+      })
+
+      const payloadWrite = firebaseMocks.set.mock.calls.findIndex(
+        ([r]) => r.path === 'sharedWorkspacePayloads/lesson-1/approved/mockHighlightId'
+      )
+      const indexWrite = firebaseMocks.set.mock.calls.findIndex(
+        ([r]) => r.path === 'sessions/lesson-1/sharedWorkspaces/mockHighlightId'
+      )
+      expect(payloadWrite).toBeGreaterThanOrEqual(0)
+      expect(indexWrite).toBeGreaterThan(payloadWrite)
+
+      expect(firebaseMocks.set.mock.calls[indexWrite][1]).toMatchObject({
+        sharerId: 'stu-1',
+        sharerName: 'Jamie',
+        taskId: 3,
+        taskTitle: 'Task Three',
+        lessonType: 'html',
+        sharedBy: 'student',
+      })
+    })
+
+    it('approve refuses when the pending payload is gone', async () => {
+      firebaseMocks.get.mockResolvedValue({ val: () => null })
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await expect(result.current.approveWorkspaceShare('stu-1')).rejects.toThrow(
+          /no longer available/
+        )
+      })
+    })
+
+    it('decline clears the request and the pending payload, and nothing else', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.declineWorkspaceShare('stu-1')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/stu-1' },
+        { shareRequestedAt: null, shareRequestTaskId: null, shareRequestOrigin: null }
+      )
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1/pending/stu-1',
+      })
+      // Silent decline: no message, no index entry.
+      expect(firebaseMocks.set.mock.calls.some(([r]) => r.path.includes('sharedWorkspaces'))).toBe(
+        false
+      )
+    })
+
+    it('remove deletes the index entry and the payload together', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.removeSharedWorkspace('share-9')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/sharedWorkspaces/share-9' },
+        null
+      )
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1/approved/share-9',
+      })
+    })
+
+    it('setTaskId clears pending requests but preserves approved shares', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ students: { 'stu-1': { displayName: 'Jamie' } }, currentTaskId: 1 })
+
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      expect(updateCall[1]).toMatchObject({
+        'students/stu-1/shareRequestedAt': null,
+        'students/stu-1/shareRequestTaskId': null,
+        'students/stu-1/shareRequestOrigin': null,
+        'students/stu-1/shareSnapshotRequestedAt': null,
+      })
+      // Approved shares deliberately survive a task change.
+      expect(updateCall[1]).not.toHaveProperty('sharedWorkspaces')
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1/pending/stu-1',
+      })
+    })
+
+    it('endSession clears the index and removes the payload subtree', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.endSession()
+      })
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      expect(updateCall[1]).toMatchObject({ sharedWorkspaces: null })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1',
+      })
+    })
+
+    it('createSession clears the index and removes the payload subtree', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      const setCall = firebaseMocks.set.mock.calls.find(([r]) => r.path === 'sessions/lesson-1')
+      expect(setCall[1]).toMatchObject({ sharedWorkspaces: null })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sharedWorkspacePayloads/lesson-1',
+      })
+    })
+
+    it('requestShareSnapshot stamps only the snapshot request field', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.requestShareSnapshot('stu-1')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/stu-1' },
+        { shareSnapshotRequestedAt: expect.any(Number) }
+      )
+    })
+
+    it('reads decode file keys back to real filenames', async () => {
+      firebaseMocks.get.mockResolvedValue({
+        val: () => ({ ...snapshot, files: { index__dot__html: '<p>hi</p>' } }),
+      })
+      const { result } = renderHook(() => useSession('lesson-1'))
+      let loaded
+      await act(async () => {
+        loaded = await result.current.readSharedWorkspace('share-1')
+      })
+      expect(loaded.files).toEqual({ 'index.html': '<p>hi</p>' })
+    })
+    // Regression: share payloads live outside the session node and are cleared
+    // with a second write. If that write fails (most commonly because
+    // database.rules.json has not been deployed) it must not take down session
+    // lifecycle — creating, ending, or advancing must still work.
+    describe('payload cleanup failures are non-fatal', () => {
+      function failPayloadRemoves() {
+        firebaseMocks.remove.mockImplementation((r) =>
+          r.path.startsWith('sharedWorkspacePayloads')
+            ? Promise.reject(new Error('PERMISSION_DENIED: Permission denied'))
+            : Promise.resolve()
+        )
+      }
+
+      it('endSession still ends the session', async () => {
+        failPayloadRemoves()
+        const { result } = renderHook(() => useSession('lesson-1'))
+        await act(async () => {
+          await expect(result.current.endSession()).resolves.not.toThrow()
+        })
+        const updateCall = firebaseMocks.update.mock.calls.find(
+          ([r]) => r.path === 'sessions/lesson-1'
+        )
+        expect(updateCall[1]).toMatchObject({ state: 'ended' })
+      })
+
+      it('createSession still creates the session', async () => {
+        failPayloadRemoves()
+        const { result } = renderHook(() => useSession('lesson-1'))
+        await act(async () => {
+          await expect(result.current.createSession()).resolves.not.toThrow()
+        })
+        expect(
+          firebaseMocks.set.mock.calls.find(([r]) => r.path === 'sessions/lesson-1')
+        ).toBeTruthy()
+      })
+
+      it('setTaskId still advances the task', async () => {
+        failPayloadRemoves()
+        const { result } = renderHook(() => useSession('lesson-1'))
+        fireSession({ students: { 'stu-1': { displayName: 'Jamie' } }, currentTaskId: 1 })
+        await act(async () => {
+          await expect(result.current.setTaskId(2)).resolves.not.toThrow()
+        })
+        const updateCall = firebaseMocks.update.mock.calls.find(
+          ([r]) => r.path === 'sessions/lesson-1'
+        )
+        expect(updateCall[1]).toMatchObject({ currentTaskId: 2 })
+      })
+    })
+  })
+
+  describe('setTeacherLiveReferenceForStudent', () => {
+    it('writes true to the student teacherLiveReferenceVisible path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', true)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        true
+      )
+    })
+
+    it('writes null (not false) when turned off', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', false)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        null
+      )
+    })
+  })
+
+  describe('setTeacherLiveReferenceForClass', () => {
+    it('writes true to the session teacherLiveReferenceVisibleToAll path', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForClass(true)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
+        true
+      )
+    })
+
+    it('writes null (not false) when turned off', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForClass(false)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
+        null
       )
     })
   })

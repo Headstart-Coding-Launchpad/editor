@@ -26,10 +26,10 @@ tasks:
     answer: a
 `
     const lesson = parseYamlLesson(source)
-    expect(lesson.tasks.map(task => task.priority)).toEqual([undefined, 'optional', 'core'])
+    expect(lesson.tasks.map((task) => task.priority)).toEqual([undefined, 'optional', 'core'])
 
     const roundTripped = yaml.load(lessonToYamlText(lesson))
-    expect(roundTripped.tasks.map(task => task.priority)).toEqual([undefined, 'optional', 'core'])
+    expect(roundTripped.tasks.map((task) => task.priority)).toEqual([undefined, 'optional', 'core'])
   })
 
   it('preserves draft, intent, task ids, and current audit metadata through YAML', () => {
@@ -49,7 +49,11 @@ tasks:
     taskLastChangedAt: 2026-07-25T09:00:00.000Z
 `
     const lesson = parseYamlLesson(source)
-    expect(lesson).toMatchObject({ draft: true, version: 4, tasks: [{ id: 42, intent: expect.stringContaining('**Markdown**') }] })
+    expect(lesson).toMatchObject({
+      draft: true,
+      version: 4,
+      tasks: [{ id: 42, intent: expect.stringContaining('**Markdown**') }],
+    })
     const exported = yaml.load(lessonToYamlText(lesson))
     expect(exported.tasks[0].intentLastChangedAt).toBe('2026-07-25T10:00:00.000Z')
     expect(exported.tasks[0].taskLastChangedAt).toBe('2026-07-25T09:00:00.000Z')

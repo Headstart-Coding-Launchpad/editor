@@ -22,7 +22,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. `scopeType` is `type`, `module`, `course`, or `collection`. |
 | `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
 | `modules` | No | `{id, type, title?, sandbox?}[]` | Named workspace instances for a composed lesson. Use `moduleId` on code tasks to select one. |
-| `sandboxStarter` | No | string | Python, Arcade Kit, or Scratch sandbox starter code or state. |
+| `sandboxStarter` | No | string | Python, Arcade Kit, Turtle, or Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
 | `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. |
 | `sandboxSprites` | No | sprite array | Scratch sandbox sprites. |
@@ -33,6 +33,9 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `assets` | No | string array | Files shown in the AssetBrowser. |
 | `storageAssets` | No | `{name, url, showInEditor?}[]` | Optional metadata for files in Firebase Storage at `lessons/{lessonId}/assets/`. The Storage folder is the asset inventory; this field only preserves per-file settings such as `showInEditor`. Folder-discovered files default to `showInEditor: true`; explicit `false` keeps them out of the web editor rewrite set. |
 | `fork` | No | object | Metadata for admin-created class forks. Forked lesson IDs must be `{sourceLessonId}-{classId}` and the fork is still a normal public lesson with its own URL. |
+| `recordingUrl` | No | string | Unlisted YouTube link to that class's recorded live session, set per-class on the class's forked lesson (see Fork Metadata). Shown to solo students as a small pop-out player; not shown during live sessions or teacher presentation. The YouTube video must be set to **Unlisted** (not Private) — students never sign in with Google. Parsed/validated with `src/shared/youtube.js`; only `youtube.com`/`youtu.be` links are accepted. |
+| `soloOnly` | No | boolean | Default `false`/absent. When `true`, the lesson is hard-forced to solo mode always — the live/wait choice screen is never offered to students, regardless of which URL they open (even `?solo=true` is redundant, and even if a live session exists for the lesson, students stay in solo mode). Authored via the Builder's "Solo-only lesson" checkbox in `LessonMetaPanel.jsx`, alongside `draft`. See `docs/agents/runtime-model.md` for how this interacts with the URL/session join flow. |
+| `companionOf` | No | string | Set on a `soloOnly` "solo challenge" lesson to the `id` of the parent lesson it extends (see Solo Companion Metadata). Authored via the Builder's "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, next to the "Solo-only lesson" checkbox. |
 | `tasks` | Yes | array | Ordered task list. IDs are sequential integers starting at `1`. May contain group objects. |
 
 ### Fork Metadata
@@ -55,6 +58,20 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 
 Class forks are created by admins through Admin or the CLI. Creating the same fork again overwrites the lesson document, resets the title to `{source title} - {class name}`, keeps `stage: "published"`, and rebuilds 1:1 `taskLinks`. Reports and feedback start empty for the overwritten fork.
 
+### Solo Companion Metadata
+
+```json
+{
+  "id": "python-l3-09-solo",
+  "soloOnly": true,
+  "companionOf": "python-l3-09"
+}
+```
+
+A "solo challenge" lesson is a normal lesson (own `id`, own URL, `soloOnly: true`) that extends another lesson. Setting `companionOf` to the parent lesson's `id` links the two: the Admin lesson list groups the solo lesson under its parent, and students who finish the parent lesson (live or solo) are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The link is one-directional and lives on the solo lesson only — the parent lesson document is not modified. At most one solo companion is resolved per parent lesson; if more than one lesson sets the same `companionOf`, only one is shown.
+
+Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `companionOf` for existing lessons that already follow the informal `<id>-solo` naming convention (add `--apply` to write it); it never overwrites an existing `companionOf` and flags `-solo`-suffixed lessons with no matching parent id for manual review.
+
 ---
 
 ## Common Task Fields
@@ -64,17 +81,18 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 | `id` | Yes | integer | Sequential task number. |
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes | string | Markdown shown to students. |
-| `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
+| `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
+| `allowSharing` | No | boolean | Lets students offer this workspace to the whole class. Off unless set to `true`. The teacher approves every share before classmates see it, and classmates open it as a non-destructive copy they can run and edit without affecting their own work. Not valid on `quiz` or `information` tasks. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types, or `code_arrange` for a drag-and-drop runnable-code task (see "Code Arrange Task Fields" below). |
-| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
+| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of a named entry in the lesson `modules` array. It distinguishes separate instances of the same workspace type. |
-| `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
+| `copyCode` | No | string | Python, Arcade Kit, Turtle, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
 | `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task (e.g. "Pair-share discussion"). Never shown to students. |
-| `check` | No | object or array | Completion check. Arrays require every check to pass. |
+| `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run — its check-passed state stays permanently false and it's never logged as passed in teacher reports. This does **not** block the student from advancing to the next task; forward navigation isn't gated by check state. Arcade is a special case: its Run button doesn't yet evaluate checks against game state at all (tracked in `docs/ARCADE_KIT_STATUS.md`), so a checkless Arcade task currently behaves no differently from a checked one — don't rely on an Arcade check to gate progression yet. |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
 | `_checkTested` | No | boolean | Builder-only validation flag set when an author has run/tested the completion checks in the builder. It is not read by the student experience. |
@@ -99,6 +117,7 @@ Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratc
 |---|---|---|---|---|
 | `python` | Python editor + output | Supported | Supported |
 | `arcade` | Python game editor + canvas | Supported | Supported |
+| `turtle` | Python editor + turtle-graphics canvas | Supported | Supported |
 | `html` | Multi-file editor + iframe | Supported | Supported |
 | `scratch` | Scratch blocks + stage | Supported | Supported |
 | `filesystem` | Virtual file manager | Supported | Supported |
@@ -109,7 +128,25 @@ In a composed lesson, every code task chooses one row with `moduleType`; `module
 
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
-Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `role: starter | support | complete`. The first Starter is the default; teachers may apply any Starter to a class or individual learner. Arcade Kit Starter stages carry `code` plus `arcadeDesign` (sprites and tilemaps); Electronics Starter stages carry `circuit`; Scratch Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference: Arcade Kit and Electronics currently show code only, while Scratch uses `markdown` and renders fenced or inline Scratch blocks. Complete stages are revealed read-only before the student or teacher explicitly takes them over, using the same preview-then-replace flow as Support stages. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
+Python, HTML, Arcade Kit, Turtle, Electronics, and Scratch code stages use `role: starter | support | complete`. The first Starter is the default; teachers may apply any Starter to a class or individual learner. Arcade Kit Starter stages carry `code` plus `arcadeDesign` (sprites and tilemaps); Electronics Starter stages carry `circuit`; Scratch Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference: Arcade Kit, Turtle, and Electronics currently show code only, while Scratch uses `markdown` and renders fenced or inline Scratch blocks. Complete stages are revealed read-only before the student or teacher explicitly takes them over, using the same preview-then-replace flow as Support stages. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
+
+### Code stage runtime behaviour
+
+- **Labels are shown to students**, not just teachers — a revealed stage's `label` is the panel header the student sees, and it's interpolated into the confirmation text when a stage push would replace their work (e.g. "This will replace your current work with '{label}'").
+- **The `check` lives on the task, never on a stage.** Every stage — Starter, Support, or Complete — is graded against the one `check` defined on the task; there is no way to author a stage with its own, differently-graded check. Loading a Complete stage doesn't evaluate the check against it — it force-sets the task to passed directly.
+- **Support-stage reveal is offer-based, one at a time, and happens in both live and solo sessions**: after each failed run or check (including runtime/syntax errors), the student is offered the next not-yet-revealed Support stage. They must click to open it. Revealing is non-destructive — it opens a side reference panel and never touches the editor. A teacher can also reveal a Support or Complete stage reference for one student instantly from the student roster, with the same non-destructive effect.
+- **Starter/Complete stage pushes from a teacher are destructive but consent-based**: the teacher's push is a request the student must accept or decline before their editor/files are overwritten. This is different from a Support-stage reveal, which needs no confirmation because it doesn't touch the student's own work.
+- **Targeted feedback offers** (`stageOffer`, below) can point at either a Support stage or a Complete stage. A `preview` action is always non-destructive; a `replace` action always asks the student to confirm before overwriting their work.
+
+### Solo-mode complete-code self-reveal
+
+A student working in **Solo mode** (no teacher/live session) can destructively overwrite their own code with the task's Complete stage, without any teacher involved. This is distinct from the teacher-driven push covered above and from the read-only `copyCode` panel: it actually replaces the student's saved work and immediately marks the task's `check` as passed, the same as a genuine solve.
+
+- Offered only once the student has exhausted any authored Support stages and failed the check (or a run) at least twice (`checkFailCount >= 2`). It is **not available in a live session** — teachers still use the destructive stage push described above for that.
+- Available for every module type that has a Complete stage: Python, HTML, Arcade Kit, Turtle, Scratch, Filesystem, and Electronics.
+- **Python, Turtle, and HTML** show a read-only "See complete code?" preview first; only after that preview has been opened does a second offer appear to load it into the editor.
+- **Arcade Kit, Scratch, Filesystem, and Electronics** have no preview step — the single offer to load the complete solution is destructive immediately.
+- There is **no confirmation dialog** before the destructive load (unlike moving to a stage, which does ask the student to confirm) — the button's label ("Load complete code into my editor") is the only warning.
 
 ### Targeted feedback-stage offers
 
@@ -130,7 +167,7 @@ feedbackChecks:
 
 `preview` opens the named stage read-only from the feedback banner and keeps the student's work. `replace` offers the named stage from the same banner, but the student must confirm before their work is replaced. A later matching attempt offers the stage again if the student previously declined or did not use it. Removing a stage in the builder removes links to it and keeps later stage links aligned.
 
-When a feedback check matches in the Builder, its result area includes a **Student feedback preview**. Use it to exercise the same preview or replacement prompt a learner will receive; replacement previews never alter the lesson's authoring code.
+When a feedback check matches in the Builder **on a Python code task**, its result area includes a **Student feedback preview**. Use it to exercise the same preview or replacement prompt a learner will receive; replacement previews never alter the lesson's authoring code. This preview is currently Python-only (`TargetedStageOfferPreview`, rendered from `PythonTaskWorkspace.jsx`) — HTML, Scratch, Filesystem, and Electronics tasks support `stageOffer` the same way at runtime, but the Builder has no equivalent preview tool for them yet, so double-check those with the module's real student view instead.
 
 ## Draft lessons
 
@@ -154,6 +191,8 @@ Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `
 
 ## Code Arrange Task Fields
 
+**Authoring YAML note:** the field names below (`taskType`, etc.) are the internal/JSON form this page documents, per the header above. In authoring YAML, use `type: code_arrange` — matching how `docs/authoring/AUTHORING_GUIDE.md` already phrases `type: information`/`type: quiz` for the other two special task types — and `cli/yaml-converter.mjs` converts it to `taskType: code_arrange` on ingest. Authoring with a literal `taskType: code_arrange` key in the YAML is silently carried through as an unrecognised extra field rather than validated or converted, so the task will not actually be treated as an arrange task.
+
 `taskType: "code_arrange"` is a drag-and-drop runnable-code task, alongside
 `information` and `quiz` — not a `quiz` sub-type, since `quiz` tasks must
 never carry code/output check fields (see `docs/authoring/quiz-tasks.md`)
@@ -172,7 +211,11 @@ content. A line that's just a single blank with no surrounding text (e.g.
 `parts: [{type: "slot", id: "L1", code: "for i in range(5):"}]`) behaves
 like a traditional whole draggable line; a line mixing text and blanks
 reads like `for i in range(___):`. There is no separate schema branch for
-either case — it's purely how many/which parts a line has.
+either case — it's purely how many/which parts a line has. A line may also
+have no blanks at all (every part `type: "text"`) — it renders as fixed,
+non-interactive context, e.g. a variable declaration the student doesn't
+need to arrange. At least one blank is still required somewhere in the
+task as a whole (across all of its lines combined).
 
 There is exactly one shared tile pool for the whole task: every blank's own
 correct code, plus the task-level `distractors` list (`{id, code}[]`). Any
@@ -194,7 +237,7 @@ to a single blank, the whole-line shape, as a starting point).
 | `moduleType` | Yes | `python` or `html` only. Selects which run pipeline executes the assembled code. |
 | `lines` | Yes | Ordered program lines: `{id, parts}[]`. At least one required. One assembled program line (`parts` joined together) is produced per entry, in order, joined by newlines. |
 | `lines[].id` | Yes | Stable string id for the line (Builder list identity/reordering only — not itself a pool tile id). |
-| `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. At least one `slot` part required. |
+| `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. A line may have zero `slot` parts (fixed context); the task as a whole needs at least one `slot` part somewhere across all lines. |
 | `lines[].parts[].id` | Slot parts | Stable string id; doubles as the id of that blank's own "correct" tile in the task's shared pool. |
 | `lines[].parts[].code` | Slot parts | The exact correct value for this blank. |
 | `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code}[]`. |
@@ -206,7 +249,7 @@ to a single blank, the whole-line shape, as a starting point).
 
 ```yaml
 - title: Print the first five even numbers
-  taskType: code_arrange
+  type: code_arrange
   moduleType: python
   explainer: Drag the line into place and fill in the blank to print 0 2 4 6 8, one per line.
   lines:
@@ -244,7 +287,7 @@ to a single blank, the whole-line shape, as a starting point).
 
 ```yaml
 - title: Arrange a heading and paragraph
-  taskType: code_arrange
+  type: code_arrange
   moduleType: html
   explainer: Build the page by arranging the lines.
   entryFile: index.html
@@ -311,6 +354,10 @@ Two separate validators exist and they do not enforce the same rules. `cli lesso
 - Multiple-choice quiz tasks need at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules.
 - HTML code tasks should have files with unique filenames and an HTML entry file.
 - Scratch `sprite_property` and `block_used` checks need their type-specific fields (`property`/`operator`/`value`, `opcode`) filled in.
+- Filesystem checks (`fs_*`, including legacy aliases) need their type-specific fields — a `path`, an expected `value`/count where applicable, a parent `dir` for location checks.
+- Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry — though write `starterCircuit` regardless, or the Builder shows a "no starter breadboard yet" banner the validator does not). Electronics checks (`circuit_*`) need a real target — a component/control selector (`type`, `label`, or `id`) and, for connection checks, an endpoint `pin`. Neither validator inspects wire endpoints, so a wire naming a missing pin — or written as a `{ component, pin }` object instead of a `componentId.pin` string — passes validation while connecting nothing; see `docs/authoring/electronics.md`.
+
+Both validators share the same filesystem/electronics check-field logic (`src/shared/checkAuthoringValidation.js`) so they can't drift apart the way they used to — a lesson published via the CLI alone can no longer ship a filesystem or electronics check the Builder would have flagged as broken.
 
 **Builder-only (not checked by the CLI):**
 

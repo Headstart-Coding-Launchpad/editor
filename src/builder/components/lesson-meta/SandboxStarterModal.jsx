@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import SplitPane from '../../../shared/SplitPane'
 import { CodeEditor } from '../../../shared/CodeEditor'
 import FileManager from '../FileManager'
@@ -8,46 +8,153 @@ import { DEFAULT_SPRITES } from '../../../modules/scratch/checks'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { FsTreeEditor } from '../../../modules/filesystem/filesystemEditors'
 import ElectronicsWorkspace from '../../../modules/electronics/ElectronicsWorkspace'
-import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from '../../../modules/electronics/circuit'
+import {
+  DEFAULT_CIRCUIT,
+  parseCircuit,
+  serializeCircuit,
+} from '../../../modules/electronics/circuit'
+import {
+  getEffectiveLessonForModule,
+  getLessonModules,
+  isComposedLesson,
+} from '../../../shared/composedLesson'
 import Modal from './Modal'
 import { s } from './styles'
 
-export function getSandboxStarterSummary(lesson) {
+function isPythonLikeType(type) {
+  return type === 'python' || type === 'arcade' || type === 'turtle'
+}
+
+function getSandboxStarterSummaryForType(lesson) {
   const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
     ? (lesson.sandboxStarter ?? '').split('\n').length
     : 0
   const sandboxFileCount = lesson.sandboxStarterFiles?.length ?? 0
-  const sandboxFsCount = lesson.sandboxStarterFs ? Object.keys(lesson.sandboxStarterFs).length - 1 : 0
+  const sandboxFsCount = lesson.sandboxStarterFs
+    ? Object.keys(lesson.sandboxStarterFs).length - 1
+    : 0
 
-  if (lesson.type === 'python') {
-    return sandboxLineCount ? `${sandboxLineCount} lines configured` : 'No sandbox starter code set.'
+  if (isPythonLikeType(lesson.type)) {
+    return sandboxLineCount
+      ? `${sandboxLineCount} lines configured`
+      : 'No sandbox starter code set.'
   }
   if (lesson.type === 'scratch') {
-    return lesson.sandboxStarter ? 'Scratch sandbox starter configured.' : 'No Scratch sandbox starter set.'
+    return lesson.sandboxStarter
+      ? 'Scratch sandbox starter configured.'
+      : 'No Scratch sandbox starter set.'
   }
   if (lesson.type === 'filesystem') {
     return sandboxFsCount ? `${sandboxFsCount} items configured` : 'No sandbox filesystem set.'
   }
   if (lesson.type === 'electronics') {
-    return lesson.sandboxStarterCircuit ? 'Sandbox breadboard configured.' : 'No sandbox breadboard set.'
+    return lesson.sandboxStarterCircuit
+      ? 'Sandbox breadboard configured.'
+      : 'No sandbox breadboard set.'
   }
-  return sandboxFileCount ? `${sandboxFileCount} starter files configured` : 'No sandbox starter files set.'
+  return sandboxFileCount
+    ? `${sandboxFileCount} starter files configured`
+    : 'No sandbox starter files set.'
 }
 
-export default function SandboxStarterModal({ lesson, onSetField, onClose }) {
-  const isPython = lesson.type === 'python'
+export function getSandboxStarterSummary(lesson) {
+  if (!isComposedLesson(lesson)) return getSandboxStarterSummaryForType(lesson)
+
+  const modules = getLessonModules(lesson)
+  if (modules.length === 0) return 'Add a code task to configure a sandbox.'
+  if (modules.length === 1) {
+    return getSandboxStarterSummaryForType(getEffectiveLessonForModule(lesson, modules[0].id))
+  }
+  return modules
+    .map(
+      (module) =>
+        `${module.title}: ${getSandboxStarterSummaryForType(getEffectiveLessonForModule(lesson, module.id))}`
+    )
+    .join(' ')
+}
+
+export default function SandboxStarterModal({
+  lesson,
+  onSetField,
+  onSetModuleSandboxField,
+  onClose,
+}) {
+  if (isComposedLesson(lesson)) {
+    return (
+      <ComposedSandboxStarterModal
+        lesson={lesson}
+        onSetModuleSandboxField={onSetModuleSandboxField}
+        onClose={onClose}
+      />
+    )
+  }
+
+  return (
+    <Modal title="Sandbox starter" onClose={onClose}>
+      <SandboxStarterEditor lesson={lesson} onSetField={onSetField} />
+    </Modal>
+  )
+}
+
+function ComposedSandboxStarterModal({ lesson, onSetModuleSandboxField, onClose }) {
+  const modules = getLessonModules(lesson)
+  const [selectedModuleId, setSelectedModuleId] = useState(modules[0]?.id ?? null)
+
+  if (modules.length === 0) {
+    return (
+      <Modal title="Sandbox starter" onClose={onClose}>
+        <p style={s.summaryText}>
+          Add a code task to this lesson to create a module before configuring its sandbox.
+        </p>
+      </Modal>
+    )
+  }
+
+  const activeModuleId = modules.some((module) => module.id === selectedModuleId)
+    ? selectedModuleId
+    : modules[0].id
+  const effectiveLesson = getEffectiveLessonForModule(lesson, activeModuleId)
+
+  return (
+    <Modal title="Sandbox starter" onClose={onClose}>
+      {modules.length > 1 && (
+        <div style={s.workspaceTabs} className="ui-tabs" role="tablist" aria-label="Sandbox module">
+          {modules.map((module) => (
+            <button
+              key={module.id}
+              type="button"
+              className={`ui-tab${module.id === activeModuleId ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={module.id === activeModuleId}
+              onClick={() => setSelectedModuleId(module.id)}
+            >
+              {module.title}
+            </button>
+          ))}
+        </div>
+      )}
+      <SandboxStarterEditor
+        lesson={effectiveLesson}
+        onSetField={(field, value) => onSetModuleSandboxField(activeModuleId, field, value)}
+      />
+    </Modal>
+  )
+}
+
+function SandboxStarterEditor({ lesson, onSetField }) {
+  const isPython = isPythonLikeType(lesson.type)
   const isScratch = lesson.type === 'scratch'
   const isFilesystem = lesson.type === 'filesystem'
   const isElectronics = lesson.type === 'electronics'
 
   return (
-    <Modal title="Sandbox starter" onClose={onClose}>
+    <>
       {isPython ? (
         <div style={s.modalEditor}>
           <CodeEditor
             value={lesson.sandboxStarter ?? ''}
             language="python"
-            onChange={v => onSetField('sandboxStarter', v || undefined)}
+            onChange={(v) => onSetField('sandboxStarter', v || undefined)}
             style={s.modalCodeEditor}
           />
         </div>
@@ -56,22 +163,28 @@ export default function SandboxStarterModal({ lesson, onSetField, onClose }) {
           value={lesson.sandboxStarter}
           toolbox={lesson.sandboxToolbox ?? ''}
           sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : DEFAULT_SPRITES}
-          backdrops={lesson.sandboxBackdrops?.length > 0 ? lesson.sandboxBackdrops : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]}
+          backdrops={
+            lesson.sandboxBackdrops?.length > 0
+              ? lesson.sandboxBackdrops
+              : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]
+          }
           assetsPath={lesson.assetsPath ?? ''}
           storageAssets={lesson.storageAssets ?? []}
           lessonId={lesson.id}
           lessonType={lesson.type}
-          onChange={state => onSetField('sandboxStarter', state ? JSON.stringify(state) : undefined)}
-          onToolboxChange={v => onSetField('sandboxToolbox', v || undefined)}
-          onSpritesChange={sprites => onSetField('sandboxSprites', sprites)}
-          onBackdropsChange={backdrops => onSetField('sandboxBackdrops', backdrops)}
+          onChange={(state) =>
+            onSetField('sandboxStarter', state ? JSON.stringify(state) : undefined)
+          }
+          onToolboxChange={(v) => onSetField('sandboxToolbox', v || undefined)}
+          onSpritesChange={(sprites) => onSetField('sandboxSprites', sprites)}
+          onBackdropsChange={(backdrops) => onSetField('sandboxBackdrops', backdrops)}
         />
       ) : isFilesystem ? (
         <div style={{ padding: '12px 0' }}>
           <FsTreeEditor
             label="Sandbox starting filesystem"
             fs={lesson.sandboxStarterFs ?? { '/': { type: 'dir' } }}
-            onFsChange={newFs => onSetField('sandboxStarterFs', newFs)}
+            onFsChange={(newFs) => onSetField('sandboxStarterFs', newFs)}
             storageAssets={lesson.storageAssets ?? []}
           />
         </div>
@@ -79,7 +192,9 @@ export default function SandboxStarterModal({ lesson, onSetField, onClose }) {
         <div style={s.modalEditor}>
           <ElectronicsWorkspace
             circuit={parseCircuit(lesson.sandboxStarterCircuit, DEFAULT_CIRCUIT)}
-            onChange={circuit => onSetField('sandboxStarterCircuit', JSON.parse(serializeCircuit(circuit)))}
+            onChange={(circuit) =>
+              onSetField('sandboxStarterCircuit', JSON.parse(serializeCircuit(circuit)))
+            }
             setupMode
             title="Sandbox breadboard"
           />
@@ -87,10 +202,10 @@ export default function SandboxStarterModal({ lesson, onSetField, onClose }) {
       ) : (
         <SandboxStarterFiles
           files={lesson.sandboxStarterFiles ?? []}
-          onChange={files => onSetField('sandboxStarterFiles', files.length ? files : undefined)}
+          onChange={(files) => onSetField('sandboxStarterFiles', files.length ? files : undefined)}
         />
       )}
-    </Modal>
+    </>
   )
 }
 
@@ -109,17 +224,41 @@ function cloneScratchStarter(value) {
   return JSON.parse(JSON.stringify(value))
 }
 
-function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath, storageAssets, lessonId, lessonType, onChange, onToolboxChange, onSpritesChange, onBackdropsChange }) {
+function ScratchSandboxStarter({
+  value,
+  toolbox,
+  sprites,
+  backdrops,
+  assetsPath,
+  storageAssets,
+  lessonId,
+  lessonType,
+  onChange,
+  onToolboxChange,
+  onSpritesChange,
+  onBackdropsChange,
+}) {
   const [activeTab, setActiveTab] = useState('starter')
-  const [testBlocks, setTestBlocks] = useState(() => cloneScratchStarter(parseScratchStarter(value)))
+  const [testBlocks, setTestBlocks] = useState(() =>
+    cloneScratchStarter(parseScratchStarter(value))
+  )
   const [syncNowKey, setSyncNowKey] = useState(0)
   const starterBlocksRef = useRef(parseScratchStarter(value))
+  const tabChangeFrameRef = useRef(null)
+
+  useEffect(
+    () => () => {
+      if (tabChangeFrameRef.current != null) cancelAnimationFrame(tabChangeFrameRef.current)
+    },
+    []
+  )
 
   function handleTabChange(tab) {
     if (tab === activeTab) return
     if (tab === 'test') {
-      setSyncNowKey(key => key + 1)
-      requestAnimationFrame(() => {
+      setSyncNowKey((key) => key + 1)
+      tabChangeFrameRef.current = requestAnimationFrame(() => {
+        tabChangeFrameRef.current = null
         const snapshot = starterBlocksRef.current ?? parseScratchStarter(value)
         setTestBlocks(cloneScratchStarter(snapshot))
         setActiveTab('test')
@@ -130,11 +269,16 @@ function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath,
   }
 
   const resolvedAssets = assetsPath ? resolveAssetsPath(assetsPath) : ''
-  const spriteIds = (sprites ?? []).map(sp => sp.id).join(',')
+  const spriteIds = (sprites ?? []).map((sp) => sp.id).join(',')
 
   return (
     <div style={s.scratchSandboxShell}>
-      <div style={s.workspaceTabs} className="ui-tabs" role="tablist" aria-label="Sandbox starter workspace">
+      <div
+        style={s.workspaceTabs}
+        className="ui-tabs"
+        role="tablist"
+        aria-label="Sandbox starter workspace"
+      >
         <button
           type="button"
           className={`ui-tab${activeTab === 'starter' ? ' is-active' : ''}`}
@@ -194,7 +338,7 @@ function ScratchSandboxStarter({ value, toolbox, sprites, backdrops, assetsPath,
               hideStage
               assetsPath={resolvedAssets}
               initialState={parseScratchStarter(value)}
-              onStateChange={state => {
+              onStateChange={(state) => {
                 starterBlocksRef.current = state
                 onChange(state)
               }}
@@ -225,17 +369,25 @@ function SandboxStarterFiles({ files, onChange }) {
       left={
         <FileManager
           files={files}
-          entryFile={files.find(f => f.type === 'html')?.name ?? files[0]?.name ?? ''}
+          entryFile={files.find((f) => f.type === 'html')?.name ?? files[0]?.name ?? ''}
           selectedFile={selectedFile}
           onSelectFile={setSelectedFile}
-          onAddFile={f => { onChange([...files, f]); setSelectedFile(f.name) }}
-          onSetFiles={(newFiles, newEntry) => { onChange(newFiles); setSelectedFile(newFiles[0]?.name ?? '') }}
-          onDeleteFile={name => {
-            const next = files.filter(f => f.name !== name)
+          onAddFile={(f) => {
+            onChange([...files, f])
+            setSelectedFile(f.name)
+          }}
+          onSetFiles={(newFiles, newEntry) => {
+            onChange(newFiles)
+            setSelectedFile(newFiles[0]?.name ?? '')
+          }}
+          onDeleteFile={(name) => {
+            const next = files.filter((f) => f.name !== name)
             onChange(next)
             setSelectedFile(next[0]?.name ?? '')
           }}
-          onChangeType={(name, type) => onChange(files.map(f => f.name === name ? { ...f, type } : f))}
+          onChangeType={(name, type) =>
+            onChange(files.map((f) => (f.name === name ? { ...f, type } : f)))
+          }
           onChangeEntryFile={() => {}}
         />
       }
@@ -244,9 +396,11 @@ function SandboxStarterFiles({ files, onChange }) {
           {selectedFile ? (
             <CodeEditor
               key={selectedFile}
-              value={files.find(f => f.name === selectedFile)?.content ?? ''}
-              language={files.find(f => f.name === selectedFile)?.type ?? 'html'}
-              onChange={v => onChange(files.map(f => f.name === selectedFile ? { ...f, content: v } : f))}
+              value={files.find((f) => f.name === selectedFile)?.content ?? ''}
+              language={files.find((f) => f.name === selectedFile)?.type ?? 'html'}
+              onChange={(v) =>
+                onChange(files.map((f) => (f.name === selectedFile ? { ...f, content: v } : f)))
+              }
               style={s.htmlCodeEditor}
             />
           ) : (

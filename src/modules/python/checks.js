@@ -45,12 +45,16 @@ export function evaluatePythonCheck(check, output, context = {}) {
     const variable = getVariableEntry(context.variables, check.name)
     if (!variable.exists || !isPlainObject(variable.value)) return false
     const expected = parseCheckValue(check.value)
-    return Object.values(variable.value).some(value => valueEquals(value, expected))
+    return Object.values(variable.value).some((value) => valueEquals(value, expected))
   }
 
   if (check.type === 'variable_dict_equals') {
     const variable = getVariableEntry(context.variables, check.name)
-    return variable.exists && isPlainObject(variable.value) && valueEquals(variable.value, parseCheckValue(check.value))
+    return (
+      variable.exists &&
+      isPlainObject(variable.value) &&
+      valueEquals(variable.value, parseCheckValue(check.value))
+    )
   }
 
   if (check.type === 'variable_dict_key_value') {
@@ -63,12 +67,16 @@ export function evaluatePythonCheck(check, output, context = {}) {
     const variable = getVariableEntry(context.variables, check.name)
     if (!variable.exists || !Array.isArray(variable.value)) return false
     const expected = parseCheckValue(check.value)
-    return variable.value.some(item => valueEquals(item, expected))
+    return variable.value.some((item) => valueEquals(item, expected))
   }
 
   if (check.type === 'variable_array_equals') {
     const variable = getVariableEntry(context.variables, check.name)
-    return variable.exists && Array.isArray(variable.value) && valueEquals(variable.value, parseCheckValue(check.value))
+    return (
+      variable.exists &&
+      Array.isArray(variable.value) &&
+      valueEquals(variable.value, parseCheckValue(check.value))
+    )
   }
 
   if (check.type === 'variable_array_nth_item') {

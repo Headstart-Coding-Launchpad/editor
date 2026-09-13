@@ -7,7 +7,7 @@ export default function CheckEditor({ task, onUpdate, checks, onChange, feedback
   return (
     <ScratchCheckListEditor
       checks={normalizeChecks(checks ?? task.check)}
-      onChange={nextChecks => {
+      onChange={(nextChecks) => {
         if (onChange) onChange(nextChecks)
         else onUpdate({ ...task, check: nextChecks })
       }}

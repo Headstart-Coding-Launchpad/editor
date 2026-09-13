@@ -4,25 +4,11 @@ import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import ScratchTeacherLiveView from './TeacherLiveView.jsx'
 import { DEFAULT_SPRITES } from './checks'
+import { flexLayoutStyles } from '../sharedStyles.js'
 
 export { DEFAULT_SPRITES, SPRITE_TYPES }
 
-const taskContentStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-  minHeight: 0,
-  overflow: 'visible',
-}
-
-const editorAreaStyle = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-  minHeight: 0,
-}
+const { taskContentStyle, editorAreaStyle } = flexLayoutStyles
 
 const scratchModule = {
   type: 'scratch',
@@ -48,21 +34,31 @@ const scratchModule = {
     toolbox: task.toolbox ?? '',
     starterBlocks: task.starterBlocks ?? null,
     carryBlocksFrom: task.carryBlocksFrom ?? null,
-    codeStages: task.codeStages ?? [{
-      label: 'Starter',
-      role: 'starter',
-      blocks: task.starterBlocks ?? null,
-      predefinedBlocks: task.predefinedBlocks ?? null,
-      prebuiltStacks: task.prebuiltStacks ?? null,
-    }],
+    codeStages: task.codeStages ?? [
+      {
+        label: 'Starter',
+        role: 'starter',
+        blocks: task.starterBlocks ?? null,
+        predefinedBlocks: task.predefinedBlocks ?? null,
+        prebuiltStacks: task.prebuiltStacks ?? null,
+      },
+    ],
   }),
 
-  makeNewStage: (task, existing) => existing.length === 0
-    ? {
-      label: 'Starter', role: 'starter', blocks: task.starterBlocks ?? null,
-      predefinedBlocks: task.predefinedBlocks ?? null, prebuiltStacks: task.prebuiltStacks ?? null,
-    }
-    : { label: `Support ${existing.filter(stage => stage.role === 'support').length + 1}`, role: 'support', markdown: '' },
+  makeNewStage: (task, existing) =>
+    existing.length === 0
+      ? {
+          label: 'Starter',
+          role: 'starter',
+          blocks: task.starterBlocks ?? null,
+          predefinedBlocks: task.predefinedBlocks ?? null,
+          prebuiltStacks: task.prebuiltStacks ?? null,
+        }
+      : {
+          label: `Support ${existing.filter((stage) => stage.role === 'support').length + 1}`,
+          role: 'support',
+          markdown: '',
+        },
 
   initCompleteTab: null,
   initStageTab: null,
@@ -71,12 +67,25 @@ const scratchModule = {
 
   carryThroughField: 'carryBlocksFrom',
   carryThroughLabel: 'Carry blocks from task',
-  getCarryThroughUpdates: (sourceTask) => ({
-    starterBlocks: sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null,
-    sprites: JSON.parse(JSON.stringify(sourceTask.sprites ?? [])),
-    backdrops: JSON.parse(JSON.stringify(sourceTask.backdrops ?? [])),
-    variables: JSON.parse(JSON.stringify(sourceTask.variables ?? [])),
-  }),
+  // Also patches codeStages[0].blocks (see python/index.js's getCarryThroughUpdates for why)
+  // and carries enableStageCode across — without it, a carried __stage__ blocks entry has
+  // no Stage workspace to render in, so the carried Stage script becomes silently inert.
+  getCarryThroughUpdates: (sourceTask, targetTask) => {
+    const blocks = sourceTask.completeBlocks ?? sourceTask.starterBlocks ?? null
+    const updates = {
+      starterBlocks: blocks,
+      sprites: JSON.parse(JSON.stringify(sourceTask.sprites ?? [])),
+      backdrops: JSON.parse(JSON.stringify(sourceTask.backdrops ?? [])),
+      variables: JSON.parse(JSON.stringify(sourceTask.variables ?? [])),
+      enableStageCode: sourceTask.enableStageCode ?? false,
+    }
+    if (targetTask?.codeStages?.length) {
+      updates.codeStages = targetTask.codeStages.map((stage, i) =>
+        i === 0 ? { ...stage, blocks } : stage
+      )
+    }
+    return updates
+  },
   getNewStarterUpdates: () => ({
     starterBlocks: null,
   }),
@@ -94,11 +103,15 @@ const scratchModule = {
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: null,
   initialState: (task) => task.starterBlocks ?? null,
-  serializeState: (state) => state == null ? null : JSON.stringify(state),
+  serializeState: (state) => (state == null ? null : JSON.stringify(state)),
   deserializeState: (raw) => {
     if (raw == null) return null
     if (typeof raw === 'string') {
-      try { return JSON.parse(raw) } catch { return null }
+      try {
+        return JSON.parse(raw)
+      } catch {
+        return null
+      }
     }
     return raw
   },
@@ -106,7 +119,9 @@ const scratchModule = {
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => {
     if (lesson?.sandboxStarter != null) {
-      try { return JSON.parse(lesson.sandboxStarter) } catch {}
+      try {
+        return JSON.parse(lesson.sandboxStarter)
+      } catch {}
     }
     return task?.starterBlocks ?? null
   },

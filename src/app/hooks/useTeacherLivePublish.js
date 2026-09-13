@@ -3,7 +3,8 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { flattenTasks } from '../../shared/taskUtils'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
-import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { getEffectiveLessonForTask, getTaskModuleType } from '../../shared/composedLesson'
+import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
 
 /**
  * Owns the teacher-live broadcast helpers and the two related effects:
@@ -18,7 +19,9 @@ export function useTeacherLivePublish({
   lessonRef,
   currentTaskIdRef,
   codeRef,
+  scratchCodeRef,
   arcadeDesignRef,
+  turtleResultRef,
   filesRef,
   activeFileRef,
   outputRef,
@@ -45,6 +48,7 @@ export function useTeacherLivePublish({
   iframeStorageAssets = null,
   // Callbacks
   updateTeacherLive,
+  setTeacherLiveReference,
 }) {
   const [teacherLiveIframeSrc, setTeacherLiveIframeSrc] = useState(null)
   const [htmlPreviewCollapsed, setHtmlPreviewCollapsed] = useState(true)
@@ -66,7 +70,16 @@ export function useTeacherLivePublish({
   function currentTeacherLivePayload(extra = {}) {
     const isFilesystem = lessonRef.current?.type === 'filesystem'
     const isDesktop = lessonRef.current?.type === 'desktop'
-    const filesMap = (isFilesystem || isDesktop) ? {} : Object.fromEntries(filesRef.current.map(f => [f.name, f.content]))
+    // Scratch never routes edits through the generic `code` state (see
+    // loadTaskContent's scratch branch in useStudentCodeState.js) — codeRef.current
+    // would otherwise still hold whatever an earlier non-Scratch task left behind,
+    // or an empty string, wiping out the mirror's blocks the moment a broadcast
+    // starts (or the live task changes) until the next real edit resyncs it.
+    const isScratch = getTaskModuleType(lessonRef.current, currentTaskIdRef.current) === 'scratch'
+    const filesMap =
+      isFilesystem || isDesktop
+        ? {}
+        : Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -80,8 +93,14 @@ export function useTeacherLivePublish({
         ? JSON.stringify(fsStateRef.current)
         : isDesktop
           ? JSON.stringify(desktopStateRef.current)
-          : codeRef.current,
+          : isScratch
+            ? scratchCodeRef.current
+            : codeRef.current,
       arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
+      turtleResult:
+        lessonRef.current?.type === 'turtle'
+          ? compactTurtleResultForSync(turtleResultRef.current)
+          : null,
       files: filesMap,
       activeFile: activeFileRef.current,
       output: outputRef.current,
@@ -100,6 +119,19 @@ export function useTeacherLivePublish({
     updateTeacherLive(currentTeacherLivePayload(extra))
   }
 
+  // Mirrors the source's output/preview panel collapse state to forced-live
+  // viewers, continuously (not just a one-time seed) — see
+  // studentLiveDisplay.js's displayOutputCollapsed. Deliberately a small
+  // standalone merge-update rather than routed through the full
+  // currentTeacherLivePayload()/publish-effect machinery above: updateTeacherLive
+  // is a Firebase `update()` (merge, not overwrite), so this one field persists
+  // across every other payload publish without needing to be threaded through
+  // every call site that builds a payload.
+  function publishOutputCollapsed(collapsed) {
+    if (!canPublishTeacherLive()) return
+    updateTeacherLive({ outputCollapsed: collapsed })
+  }
+
   // Rebuild the teacher-live preview src when the teacher's live state updates
   useEffect(() => {
     // In a composed lesson the viewer can be on a different workspace from the
@@ -108,27 +140,91 @@ export function useTeacherLivePublish({
     const sourceLesson = lesson?.composedLesson ?? lesson
     const liveLesson = getEffectiveLessonForTask(sourceLesson, session?.teacherLive?.taskId)
     const mod = liveLesson ? getLessonModule(liveLesson.type) : null
-    if (teacherPresentation || !mod?.runtime?.buildPreviewSrc || !session?.teacherLive?.active || !session.teacherLive.files) {
+    if (
+      teacherPresentation ||
+      !mod?.runtime?.buildPreviewSrc ||
+      !session?.teacherLive?.active ||
+      !session.teacherLive.files
+    ) {
       setTeacherLiveIframeSrc(null)
       return
     }
     const liveFiles = toTeacherLiveFiles(session.teacherLive.files)
-    const liveTask = flattenTasks(sourceLesson?.tasks ?? []).find(t => t.id === session.teacherLive.taskId)
+    const liveTask = flattenTasks(sourceLesson?.tasks ?? []).find(
+      (t) => t.id === session.teacherLive.taskId
+    )
     setHtmlPreviewCollapsed(false)
-    setTeacherLiveIframeSrc(mod.runtime.buildPreviewSrc(
-      { files: liveFiles, entryFile: liveTask?.entryFile ?? 'index.html' },
-      liveTask,
-      { assets: liveLesson?.assets ?? [], assetsPath: resolveAssetsPath(liveLesson?.assetsPath), storageAssets: iframeStorageAssets ?? (liveLesson?.storageAssets ?? []) }
-    ))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, lesson?.type, session?.teacherLive?.updatedAt, JSON.stringify(iframeStorageAssets ?? [])])
+    setTeacherLiveIframeSrc(
+      mod.runtime.buildPreviewSrc(
+        { files: liveFiles, entryFile: liveTask?.entryFile ?? 'index.html' },
+        liveTask,
+        {
+          assets: liveLesson?.assets ?? [],
+          assetsPath: resolveAssetsPath(liveLesson?.assetsPath),
+          storageAssets: iframeStorageAssets ?? liveLesson?.storageAssets ?? [],
+        }
+      )
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    teacherPresentation,
+    lesson?.type,
+    session?.teacherLive?.updatedAt,
+    JSON.stringify(iframeStorageAssets ?? []),
+  ])
 
   // Publish the current payload whenever any tracked value changes
   useEffect(() => {
     if (!canPublishTeacherLive()) return
     updateTeacherLive(currentTeacherLivePayload())
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.sourceStudentId, identity?.anonymousId, currentTaskId, code, JSON.stringify(files), activeFile, output, runStatus, checkPassed, checkAttempted, checkSuggestion, fsState, desktopState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    teacherPresentation,
+    session?.teacherLive?.active,
+    session?.teacherLive?.sourceStudentId,
+    identity?.anonymousId,
+    currentTaskId,
+    code,
+    JSON.stringify(files),
+    activeFile,
+    output,
+    runStatus,
+    checkPassed,
+    checkAttempted,
+    checkSuggestion,
+    fsState,
+    desktopState,
+  ])
 
-  return { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive }
+  // Publish the soft support-reference channel whenever Presentation View is open,
+  // independent of whether the "Go Live" force takeover (teacherLive) is toggled on —
+  // see setTeacherLiveReference in useSession.js.
+  useEffect(() => {
+    if (!teacherPresentation || !setTeacherLiveReference) return
+    setTeacherLiveReference(currentTeacherLivePayload())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherPresentation, currentTaskId, code, JSON.stringify(files), fsState])
+
+  // Clear it the moment Presentation View closes, so it never outlives the window.
+  // setTeacherLiveReference is deliberately excluded from the deps below — like every
+  // other useSession callback in this file, it's a new function identity on every
+  // render (useSession's functions aren't memoized, and its owner re-renders on any
+  // realtime session change). Depending on it here would re-fire this cleanup on
+  // every unrelated session update, wiping teacherLiveReference to null far more often
+  // than Presentation View actually closes.
+  useEffect(() => {
+    if (!teacherPresentation || !setTeacherLiveReference) return
+    return () => setTeacherLiveReference(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherPresentation])
+
+  return {
+    teacherLiveIframeSrc,
+    htmlPreviewCollapsed,
+    setHtmlPreviewCollapsed,
+    canPublishTeacherLive,
+    currentTeacherLivePayload,
+    publishTeacherLive,
+    publishOutputCollapsed,
+  }
 }

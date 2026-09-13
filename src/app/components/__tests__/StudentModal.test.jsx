@@ -13,8 +13,12 @@ vi.mock('../../../shared/iframe', () => ({
   waitForIframeText: vi.fn(),
 }))
 
+const scratchExternalStateSpy = vi.fn()
 vi.mock('../../../modules/scratch/ScratchWorkspace.jsx', () => ({
-  default: () => <div data-testid="scratch-workspace" />,
+  default: ({ externalState }) => {
+    scratchExternalStateSpy(externalState)
+    return <div data-testid="scratch-workspace" />
+  },
   SPRITE_TYPES: [],
 }))
 
@@ -36,7 +40,16 @@ vi.mock('../QuizTask', () => ({
 }))
 
 vi.mock('../OutputPanel', () => ({
-  default: ({ output }) => <div data-testid="output-panel">{output}</div>,
+  default: ({ output, inputPrompt, inputReadOnly, mirroredInputValue }) => (
+    <div data-testid="output-panel">
+      {output}
+      {inputPrompt !== null && inputPrompt !== undefined && (
+        <div data-testid="output-panel-input-prompt" data-readonly={inputReadOnly ? 'true' : 'false'}>
+          {mirroredInputValue}
+        </div>
+      )}
+    </div>
+  ),
 }))
 
 vi.mock('../ExplainerPanel', () => ({
@@ -102,16 +115,91 @@ function mkProps(overrides = {}, studentOverrides = {}) {
   }
 }
 
+const CODE_ARRANGE_LESSON = {
+  type: 'python',
+  tasks: [
+    {
+      id: 1,
+      title: 'Arrange Task',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [
+        { id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'print(1)' }] },
+        { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: 'print(2)' }] },
+      ],
+      distractors: [{ id: 'D1', code: 'print(99)' }],
+    },
+  ],
+}
+
+describe('code_arrange tasks', () => {
+  it("renders the tile board matching the student's assembled code, not a raw code editor", () => {
+    render(
+      <StudentModal
+        {...mkProps({ lesson: CODE_ARRANGE_LESSON }, { currentCode: 'print(1)\nprint(2)' })}
+      />
+    )
+
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    // Both tiles are placed in their slots — the distractor stays in the pool.
+    expect(screen.getAllByText('print(1)')).toHaveLength(1)
+    expect(screen.getAllByText('print(2)')).toHaveLength(1)
+    expect(screen.getByText('print(99)')).toBeInTheDocument()
+  })
+
+  it('shows empty slots when the student has not placed any tiles yet', () => {
+    render(<StudentModal {...mkProps({ lesson: CODE_ARRANGE_LESSON }, { currentCode: '' })} />)
+
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Empty line')).toHaveLength(2)
+  })
+
+  it('shows the live code editor, not the stale tile board, once the session is in sandbox mode', () => {
+    render(
+      <StudentModal
+        {...mkProps(
+          { lesson: CODE_ARRANGE_LESSON, session: { state: 'sandbox', currentTaskId: 1 } },
+          { currentCode: 'print("free code")' }
+        )}
+      />
+    )
+
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument()
+    expect(screen.queryByText('print(1)')).not.toBeInTheDocument()
+  })
+})
+
 describe('StudentModal', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
   it.each([
-    ['HTML', { type: 'html', tasks: [{ id: 1, title: 'HTML task', starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hello</p>' }] }] }],
-    ['ArcadeKit', { type: 'arcade', tasks: [{ id: 1, title: 'Arcade task', starterCode: 'game.run()' }] }],
+    [
+      'HTML',
+      {
+        type: 'html',
+        tasks: [
+          {
+            id: 1,
+            title: 'HTML task',
+            starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hello</p>' }],
+          },
+        ],
+      },
+    ],
+    [
+      'ArcadeKit',
+      { type: 'arcade', tasks: [{ id: 1, title: 'Arcade task', starterCode: 'game.run()' }] },
+    ],
     ['Electronics', { type: 'electronics', tasks: [{ id: 1, title: 'Circuit task' }] }],
-    ['a composed ArcadeKit task', { type: 'composed', tasks: [{ id: 1, moduleType: 'arcade', title: 'Arcade task', starterCode: 'game.run()' }] }],
+    [
+      'a composed ArcadeKit task',
+      {
+        type: 'composed',
+        tasks: [{ id: 1, moduleType: 'arcade', title: 'Arcade task', starterCode: 'game.run()' }],
+      },
+    ],
   ])('offers teacher live editing for %s workspaces', async (_name, lesson) => {
     const user = userEvent.setup()
     const onRequestTeacherEdit = vi.fn()
@@ -141,6 +229,28 @@ describe('StudentModal', () => {
   it('does not render the check badge when checkPassed is false', () => {
     render(<StudentModal {...mkProps()} />)
     expect(screen.queryByText('✅')).not.toBeInTheDocument()
+  })
+
+  describe('watching a student mid-input()', () => {
+    it('mirrors the pending prompt and typed-so-far value as read-only', () => {
+      render(
+        <StudentModal
+          {...mkProps(
+            {},
+            { currentInputPrompt: 'Name?', currentInput: 'Jam' }
+          )}
+        />
+      )
+
+      const mirrored = screen.getByTestId('output-panel-input-prompt')
+      expect(mirrored).toHaveTextContent('Jam')
+      expect(mirrored).toHaveAttribute('data-readonly', 'true')
+    })
+
+    it('shows nothing extra when the student has no pending input() prompt', () => {
+      render(<StudentModal {...mkProps()} />)
+      expect(screen.queryByTestId('output-panel-input-prompt')).not.toBeInTheDocument()
+    })
   })
 
   describe('live badge', () => {
@@ -184,6 +294,77 @@ describe('StudentModal', () => {
       fireEvent.click(screen.getByRole('dialog'))
       expect(props.onClose).toHaveBeenCalledOnce()
     })
+
+    describe('while actively editing student work', () => {
+      async function renderEditing() {
+        const user = userEvent.setup()
+        const onRequestTeacherEdit = vi.fn()
+        const onCommitTeacherEdit = vi.fn()
+        const onCancelTeacherEdit = vi.fn()
+        const props = mkProps({ onRequestTeacherEdit, onCommitTeacherEdit, onCancelTeacherEdit })
+        const { rerender } = render(<StudentModal {...props} />)
+
+        await user.click(screen.getByRole('button', { name: /^More/ }))
+        await user.click(screen.getByRole('button', { name: /Edit Code/i }))
+
+        // Student accepts the edit request, moving teacherEditState to 'editing'.
+        rerender(
+          <StudentModal
+            {...props}
+            student={{
+              ...props.student,
+              teacherEditRequestedAt: 1,
+              teacherEditAcceptedAt: 2,
+            }}
+          />
+        )
+
+        return { props, onCommitTeacherEdit, onCancelTeacherEdit }
+      }
+
+      it('auto-saves the edit (commits, does not cancel) when the backdrop is clicked', async () => {
+        const { props, onCommitTeacherEdit, onCancelTeacherEdit } = await renderEditing()
+
+        fireEvent.click(screen.getByRole('dialog'))
+
+        expect(onCommitTeacherEdit).toHaveBeenCalledWith('student-1', {
+          code: BASE_STUDENT.currentCode,
+        })
+        expect(onCancelTeacherEdit).not.toHaveBeenCalled()
+        expect(props.onClose).toHaveBeenCalledOnce()
+      })
+
+      it('auto-saves the edit (commits, does not cancel) when Escape is pressed', async () => {
+        const user = userEvent.setup()
+        const { props, onCommitTeacherEdit, onCancelTeacherEdit } = await renderEditing()
+
+        await user.keyboard('{Escape}')
+
+        expect(onCommitTeacherEdit).toHaveBeenCalledWith('student-1', {
+          code: BASE_STUDENT.currentCode,
+        })
+        expect(onCancelTeacherEdit).not.toHaveBeenCalled()
+        expect(props.onClose).toHaveBeenCalledOnce()
+      })
+    })
+
+    it('cancels (does not commit) when closing while only a pending edit request', async () => {
+      const user = userEvent.setup()
+      const onRequestTeacherEdit = vi.fn()
+      const onCommitTeacherEdit = vi.fn()
+      const onCancelTeacherEdit = vi.fn()
+      const props = mkProps({ onRequestTeacherEdit, onCommitTeacherEdit, onCancelTeacherEdit })
+      render(<StudentModal {...props} />)
+
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      await user.click(screen.getByRole('button', { name: /Edit Code/i }))
+
+      fireEvent.click(screen.getByRole('dialog'))
+
+      expect(onCancelTeacherEdit).toHaveBeenCalledWith('student-1')
+      expect(onCommitTeacherEdit).not.toHaveBeenCalled()
+      expect(props.onClose).toHaveBeenCalledOnce()
+    })
   })
 
   describe('navigation buttons', () => {
@@ -217,12 +398,14 @@ describe('StudentModal', () => {
   describe('remote reset stage options', () => {
     const LESSON_WITH_STAGES = {
       type: 'python',
-      tasks: [{
-        id: 1,
-        title: 'Task 1',
-        completeCode: 'print("done")',
-        codeStages: [{ label: 'Stage 1', code: 'x = 1' }],
-      }],
+      tasks: [
+        {
+          id: 1,
+          title: 'Task 1',
+          completeCode: 'print("done")',
+          codeStages: [{ label: 'Stage 1', code: 'x = 1' }],
+        },
+      ],
     }
 
     it('renders the Set Stage button when stages are available', () => {
@@ -255,27 +438,264 @@ describe('StudentModal', () => {
       const user = userEvent.setup()
       const onRequestTeacherStage = vi.fn()
       const onClearTeacherStage = vi.fn()
-      const props = mkProps({ lesson: LESSON_WITH_STAGES, onRequestTeacherStage, onClearTeacherStage })
+      const props = mkProps({
+        lesson: LESSON_WITH_STAGES,
+        onRequestTeacherStage,
+        onClearTeacherStage,
+      })
       const { rerender } = render(<StudentModal {...props} />)
       await user.click(screen.getByRole('button', { name: /Set Stage/i }))
       await user.click(screen.getByRole('button', { name: 'Starter' }))
-      rerender(<StudentModal {...props} student={{ ...props.student, teacherStageRequestedAt: 1, teacherStageAcceptedAt: 2 }} />)
+      rerender(
+        <StudentModal
+          {...props}
+          student={{ ...props.student, teacherStageRequestedAt: 1, teacherStageAcceptedAt: 2 }}
+        />
+      )
       expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'starter')
       expect(onClearTeacherStage).toHaveBeenCalledWith('student-1')
     })
   })
 
+  describe('reveal solution', () => {
+    const LESSON_WITH_COMPLETE_STAGE = {
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          title: 'Task 1',
+          codeStages: [
+            { role: 'support', label: 'Hint', code: 'x = 1' },
+            { role: 'complete', label: 'Complete', code: 'print("done")' },
+          ],
+        },
+      ],
+    }
+
+    it('records the support reveal and pushes the remote reset when solution is revealed', async () => {
+      const user = userEvent.setup()
+      const props = mkProps({
+        lesson: LESSON_WITH_COMPLETE_STAGE,
+        onRevealSupportStage: vi.fn(),
+      })
+      render(<StudentModal {...props} />)
+      await user.click(screen.getByRole('button', { name: /Reveal/i }))
+      await user.click(screen.getByRole('button', { name: /Reveal solution: Complete/i }))
+
+      expect(props.onRevealSupportStage).toHaveBeenCalledWith('student-1', 1, 1, {
+        source: 'teacher',
+        stageLabel: 'Complete',
+      })
+      expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'reveal_stage_1')
+    })
+  })
+
+  describe('video call link', () => {
+    it('does not show the Send Video Call Link item when onSendVideoCallLink is not provided', async () => {
+      const user = userEvent.setup()
+      // onSendMessage keeps the More dropdown itself present so we can assert the
+      // video-call item specifically is absent (with no handlers at all, More itself doesn't render).
+      render(<StudentModal {...mkProps({ onSendMessage: vi.fn() })} />)
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      expect(screen.queryByRole('button', { name: /Send Video Call Link/ })).not.toBeInTheDocument()
+    })
+
+    it('calls onSendVideoCallLink with the student anonymousId when clicked', async () => {
+      const user = userEvent.setup()
+      const onSendVideoCallLink = vi.fn()
+      render(<StudentModal {...mkProps({ onSendVideoCallLink })} />)
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      await user.click(screen.getByRole('button', { name: /Send Video Call Link/ }))
+      expect(onSendVideoCallLink).toHaveBeenCalledWith('student-1')
+    })
+  })
+
   describe('Scratch lessons', () => {
     it('renders the Scratch workspace when opening the modal', () => {
-      render(<StudentModal {...mkProps({
-        lesson: SCRATCH_LESSON,
-        session: ACTIVE_SESSION,
-      }, {
-        currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
-        currentOutput: JSON.stringify({ x: 0, y: 0 }),
-      })} />)
+      render(
+        <StudentModal
+          {...mkProps(
+            {
+              lesson: SCRATCH_LESSON,
+              session: ACTIVE_SESSION,
+            },
+            {
+              currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+              currentOutput: JSON.stringify({ x: 0, y: 0 }),
+            }
+          )}
+        />
+      )
 
       expect(screen.getByTestId('scratch-workspace')).toBeInTheDocument()
     })
+
+    // `student` is a live RTDB-fed object that updates on every throttled cursor/
+    // block-drag tick while being watched — far more often than currentCode itself
+    // changes. ScratchWorkspace's "load external state" effect is keyed on object
+    // identity, so a fresh parse every render would reload the mirrored Blockly
+    // workspace on every tick, stomping the live block-drag mirror's moveTo().
+    it('keeps the same externalState reference across renders while currentCode is unchanged, and only recomputes when it changes', () => {
+      scratchExternalStateSpy.mockClear()
+      const props = mkProps(
+        { lesson: SCRATCH_LESSON, session: ACTIVE_SESSION },
+        {
+          currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+          currentCursor: { target: 'stage', x: 1, y: 2, at: 100 },
+        }
+      )
+      const { rerender } = render(<StudentModal {...props} />)
+      const first = scratchExternalStateSpy.mock.calls.at(-1)[0]
+
+      // Unrelated update (a live cursor tick) with the same currentCode.
+      rerender(
+        <StudentModal
+          {...mkProps(
+            { lesson: SCRATCH_LESSON, session: ACTIVE_SESSION },
+            {
+              currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+              currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
+            }
+          )}
+        />
+      )
+      const second = scratchExternalStateSpy.mock.calls.at(-1)[0]
+      expect(second).toBe(first)
+
+      // A genuine code update.
+      rerender(
+        <StudentModal
+          {...mkProps(
+            { lesson: SCRATCH_LESSON, session: ACTIVE_SESSION },
+            {
+              currentCode: JSON.stringify({
+                sprite1: { blocks: [{ type: 'event_whenflagclicked' }] },
+              }),
+              currentCursor: { target: 'stage', x: 5, y: 9, at: 200 },
+            }
+          )}
+        />
+      )
+      const third = scratchExternalStateSpy.mock.calls.at(-1)[0]
+      expect(third).not.toBe(first)
+    })
+  })
+})
+
+describe('StudentModal — teacher pane highlight/force', () => {
+  it('does not render the Focus control when onPushTeacherPaneCommand is not provided', () => {
+    render(<StudentModal {...mkProps()} />)
+    expect(screen.queryByRole('button', { name: /Focus/ })).not.toBeInTheDocument()
+  })
+
+  it('offers only Instructions for a Python lesson, and pushes a highlight command for that student', async () => {
+    const user = userEvent.setup()
+    const onPushTeacherPaneCommand = vi.fn()
+    render(<StudentModal {...mkProps({ onPushTeacherPaneCommand })} />)
+
+    await user.click(screen.getByRole('button', { name: /Focus/ }))
+    expect(screen.getByText('Instructions')).toBeInTheDocument()
+    expect(screen.queryByText('Breadboard')).not.toBeInTheDocument()
+    expect(screen.queryByText('Blocks')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Highlight/ }))
+    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith('student-1', {
+      mode: 'highlight',
+      panes: ['instructions'],
+    })
+  })
+
+  it('pushes a force command with the checked panes for a Scratch lesson', async () => {
+    const user = userEvent.setup()
+    const onPushTeacherPaneCommand = vi.fn()
+    render(
+      <StudentModal
+        {...mkProps(
+          {
+            lesson: SCRATCH_LESSON,
+            onPushTeacherPaneCommand,
+          },
+          {
+            currentCode: JSON.stringify({ sprite1: { blocks: [] } }),
+          }
+        )}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /Focus/ }))
+    await user.click(screen.getByText('Blocks'))
+    await user.click(screen.getByRole('button', { name: /Switch to this/ }))
+
+    expect(onPushTeacherPaneCommand).toHaveBeenCalledWith('student-1', {
+      mode: 'force',
+      panes: expect.arrayContaining(['instructions', 'blocks']),
+    })
+  })
+
+  it('does not render the Focus control on an Information task', () => {
+    const infoLesson = {
+      type: 'python',
+      tasks: [{ id: 1, title: 'Info', taskType: 'information' }],
+    }
+    render(<StudentModal {...mkProps({ lesson: infoLesson, onPushTeacherPaneCommand: vi.fn() })} />)
+    expect(screen.queryByRole('button', { name: /Focus/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('pending workspace share', () => {
+  const SNAPSHOT = {
+    lessonType: 'python',
+    taskId: 1,
+    code: 'print("frozen")',
+    files: {},
+    output: '',
+    runStatus: null,
+  }
+
+  function shareProps(studentOverrides = {}) {
+    return mkProps(
+      {
+        onReadPendingShare: vi.fn(() => Promise.resolve(SNAPSHOT)),
+        onApproveShare: vi.fn(() => Promise.resolve()),
+        onDeclineShare: vi.fn(() => Promise.resolve()),
+      },
+      { shareRequestedAt: 1700000000000, shareRequestOrigin: 'student', ...studentOverrides }
+    )
+  }
+
+  // Showing the frozen snapshot beside the live workspace invited approving one
+  // while reading the other. Only the snapshot is what the class receives.
+  it('replaces the live workspace with the frozen request', async () => {
+    render(<StudentModal {...shareProps()} />)
+
+    expect(await screen.findByText(/wants to share with the class/i)).toBeInTheDocument()
+    expect(screen.getByText(/not their live work/i)).toBeInTheDocument()
+    // The live body renders this student's own run output; the preview does not
+    // (the snapshot has none), so it marks whether the live workspace is shown.
+    expect(screen.queryByTestId('output-panel')).not.toBeInTheDocument()
+    expect(screen.queryByText('hello')).not.toBeInTheDocument()
+  })
+
+  it('restores the live workspace once there is no pending request', () => {
+    render(<StudentModal {...shareProps({ shareRequestedAt: null })} />)
+
+    expect(screen.queryByText(/wants to share with the class/i)).not.toBeInTheDocument()
+    expect(screen.getByTestId('output-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument()
+  })
+
+  it('shows the live workspace when sharing is not wired up at all', () => {
+    render(<StudentModal {...mkProps()} />)
+    expect(screen.getByTestId('output-panel')).toBeInTheDocument()
+  })
+
+  it('takes over while waiting for a teacher-requested snapshot', () => {
+    render(
+      <StudentModal
+        {...shareProps({ shareRequestedAt: null, shareSnapshotRequestedAt: 1700000000001 })}
+      />
+    )
+    expect(screen.getByText(/preparing a share/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('output-panel')).not.toBeInTheDocument()
   })
 })

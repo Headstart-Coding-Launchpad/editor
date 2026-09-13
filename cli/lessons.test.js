@@ -4,13 +4,13 @@ const state = vi.hoisted(() => ({ records: new Map(), set: vi.fn() }))
 
 vi.mock('./firebase.mjs', () => ({
   db: {
-    collection: name => ({
-      doc: id => ({
+    collection: (name) => ({
+      doc: (id) => ({
         get: async () => {
           const data = state.records.get(`${name}/${id}`)
           return { exists: data != null, id, data: () => data }
         },
-        set: async value => {
+        set: async (value) => {
           state.set(name, id, value)
           state.records.set(`${name}/${id}`, value)
         },
@@ -23,7 +23,11 @@ vi.mock('./firebase.mjs', () => ({
 import { publishYamlLesson, upsertLesson } from './lessons.mjs'
 
 const draft = {
-  id: 'cli-draft', type: 'python', title: 'CLI draft', description: 'In progress', draft: true,
+  id: 'cli-draft',
+  type: 'python',
+  title: 'CLI draft',
+  description: 'In progress',
+  draft: true,
   tasks: [{ id: 41, title: 'First task', intent: 'Create a simple variable.' }],
 }
 
@@ -37,9 +41,16 @@ describe('CLI draft lesson upsert', () => {
     const created = await upsertLesson(draft)
     expect(created).toMatchObject({ success: true, version: 1, noOp: false })
     const stored = state.records.get('lessons/cli-draft')
-    expect(stored).toMatchObject({ draft: true, version: 1, tasks: [{ id: 41, intent: draft.tasks[0].intent }] })
+    expect(stored).toMatchObject({
+      draft: true,
+      version: 1,
+      tasks: [{ id: 41, intent: draft.tasks[0].intent }],
+    })
 
-    const updated = await upsertLesson({ ...draft, tasks: [{ ...draft.tasks[0], intent: 'Create and print a simple variable.' }] })
+    const updated = await upsertLesson({
+      ...draft,
+      tasks: [{ ...draft.tasks[0], intent: 'Create and print a simple variable.' }],
+    })
     expect(updated).toMatchObject({ success: true, version: 2, noOp: false })
     const changed = state.records.get('lessons/cli-draft').tasks[0]
     expect(changed.id).toBe(41)
@@ -67,7 +78,9 @@ tasks:
 `
     const result = await publishYamlLesson(yaml)
     expect(result.success).toBe(false)
-    expect(result.errors).toContain('Draft lessons cannot be published. Clear draft only after full validation passes.')
+    expect(result.errors).toContain(
+      'Draft lessons cannot be published. Clear draft only after full validation passes.'
+    )
     expect(state.set).not.toHaveBeenCalled()
   })
 })

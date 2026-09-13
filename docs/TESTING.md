@@ -78,7 +78,7 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/IframePreview.jsx` | Displays iframe console entries and reports runtime errors (with `filename`/`lineno`/`loadId` location) to the student support-stage flow and error-line highlight |
 | `src/app/components/TopBar.jsx` | Solo/Live/Sandbox badge logic; displayName visibility; right slot; desktop mode |
 | `src/app/components/TaskProgressDots.jsx` | Renders past/current/locked dots; click on past dot fires callback; locked dot is not clickable |
-| `src/app/components/CheckFeedbackBanner.jsx` | Renders pass state; renders fail + hint; renders "see complete code" when unlocked |
+| `src/app/components/CheckFeedbackBanner.jsx` | Renders pass state; renders fail + hint; renders "see complete code" when unlocked; floating-popup close button and 45s auto-dismiss timer; help pointer text on fail only |
 | `src/app/components/QuizTask.jsx` | Multiple-choice renders all options; selecting an answer fires callback; match/fill-blank drag interactions |
 | `src/app/components/InformationTask.jsx` | Information/introduction content and duration rendering |
 | `src/app/components/SessionEndedScreen.jsx` | Session-end browser-storage warning and all-code backup action |

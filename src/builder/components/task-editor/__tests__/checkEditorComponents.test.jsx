@@ -15,7 +15,7 @@ describe('CheckValueEditor insertion actions', () => {
         operator="equals"
         output="Hello classroom"
         onChange={onChange}
-      />,
+      />
     )
 
     await user.click(screen.getByRole('button', { name: 'Use output' }))
@@ -39,7 +39,7 @@ describe('CheckValueEditor insertion actions', () => {
         operator="equals"
         code={'print("Hello")'}
         onChange={onChange}
-      />,
+      />
     )
 
     await user.click(screen.getByRole('button', { name: 'Use code' }))

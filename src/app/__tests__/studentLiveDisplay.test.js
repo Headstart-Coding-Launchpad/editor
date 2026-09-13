@@ -15,12 +15,14 @@ const localWorkspace = {
 
 describe('toTeacherLiveFiles', () => {
   it('converts live file maps to editor files using the existing type rules', () => {
-    expect(toTeacherLiveFiles({
-      'index.html': '<main />',
-      'styles.css': 'body {}',
-      'app.js': 'run()',
-      'data.json': '{}',
-    })).toEqual([
+    expect(
+      toTeacherLiveFiles({
+        'index.html': '<main />',
+        'styles.css': 'body {}',
+        'app.js': 'run()',
+        'data.json': '{}',
+      })
+    ).toEqual([
       { name: 'index.html', content: '<main />', type: 'html' },
       { name: 'styles.css', content: 'body {}', type: 'css' },
       { name: 'app.js', content: 'run()', type: 'javascript' },
@@ -41,6 +43,9 @@ describe('deriveStudentLiveDisplay', () => {
     output: 'live output',
     selection: { from: 1, to: 2 },
     activity: { type: 'paste' },
+    codeArrangeSlots: { slot1: 'fragment-a' },
+    codeArrangeCursor: { tileId: 'fragment-a', x: 0.4, y: 0.6, at: 123 },
+    outputCollapsed: true,
   }
 
   it('shows a teacher broadcast to students in a live lesson', () => {
@@ -59,11 +64,53 @@ describe('deriveStudentLiveDisplay', () => {
     expect(display.displayedTaskId).toBe(2)
     expect(display.displayCode).toBe('live code')
     expect(display.displayArcadeDesign).toEqual({ sprites: [{ name: 'hero.png' }], maps: [] })
-    expect(display.displayFiles).toEqual([{ name: 'index.html', content: 'live html', type: 'html' }])
+    expect(display.displayFiles).toEqual([
+      { name: 'index.html', content: 'live html', type: 'html' },
+    ])
     expect(display.displayOutput).toBe('live output')
     expect(display.displayCheckPassed).toBe(false)
     expect(display.displaySelection).toEqual({ from: 1, to: 2 })
     expect(display.displayActivity).toEqual({ type: 'paste' })
+    expect(display.displayCodeArrangeSlots).toEqual({ slot1: 'fragment-a' })
+    expect(display.displayCodeArrangeCursor).toEqual({
+      tileId: 'fragment-a',
+      x: 0.4,
+      y: 0.6,
+      at: 123,
+    })
+    expect(display.displayOutputCollapsed).toBe(true)
+  })
+
+  it('reports no live code_arrange state when not forced-teacher-live', () => {
+    const display = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'solo',
+      teacherLive: null,
+      identityId: 'student-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(display.isForcedTeacherLive).toBe(false)
+    expect(display.displayCodeArrangeSlots).toBeNull()
+    expect(display.displayCodeArrangeCursor).toBeNull()
+    expect(display.displayOutputCollapsed).toBeNull()
+  })
+
+  it('defaults displayOutputCollapsed to false (expanded) when forced-live but the source never set it', () => {
+    const display = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: { ...teacherBroadcast, outputCollapsed: undefined },
+      identityId: 'student-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(display.isForcedTeacherLive).toBe(true)
+    expect(display.displayOutputCollapsed).toBe(false)
   })
 
   it('keeps the broadcasting student on their own workspace while classmates watch', () => {
@@ -126,5 +173,76 @@ describe('deriveStudentLiveDisplay', () => {
     expect(teacherDisplay.isTeacherLiveActive).toBe(true)
     expect(teacherDisplay.isForcedTeacherLive).toBe(false)
     expect(teacherDisplay.displayCode).toBe('local code')
+  })
+
+  it('blocks copying for students watching a teacher broadcast or a pinned classmate', () => {
+    const teacherViewer = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: teacherBroadcast,
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    const classmateViewer = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: {
+        active: true,
+        source: 'student',
+        sourceStudentId: 'stu-2',
+        taskId: 3,
+        code: 'classmate code',
+      },
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(teacherViewer.isLiveCopyBlocked).toBe(true)
+    expect(classmateViewer.isLiveCopyBlocked).toBe(true)
+  })
+
+  it('leaves copying alone for the presenting teacher and outside a broadcast', () => {
+    const presentingTeacher = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: true,
+      phase: 'lesson',
+      teacherLive: { active: true, source: 'student', taskId: 3, code: 'student screen' },
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    const broadcastSource = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: {
+        active: true,
+        source: 'student',
+        sourceStudentId: 'stu-1',
+        taskId: 3,
+        code: 'own code',
+      },
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    const noBroadcast = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: null,
+      identityId: 'stu-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+
+    expect(presentingTeacher.isPresentationStudentViewer).toBe(true)
+    expect(presentingTeacher.isForcedTeacherLive).toBe(true)
+    expect(presentingTeacher.isLiveCopyBlocked).toBe(false)
+    expect(broadcastSource.isLiveCopyBlocked).toBe(false)
+    expect(noBroadcast.isLiveCopyBlocked).toBe(false)
   })
 })

@@ -1,11 +1,24 @@
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, orderBy, query,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   setDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
-import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from './lessonBlocksCodec'
+import {
+  encodeLessonBlocksForFirestore,
+  decodeLessonBlocksFromFirestore,
+} from './lessonBlocksCodec'
 import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
 import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
+import { encodeSessionReportForFirestore } from './lessonReport'
 
 export async function fetchLessonById(lessonId) {
   if (!lessonId) return null
@@ -16,9 +29,22 @@ export async function fetchLessonById(lessonId) {
 
 export async function fetchLessonList() {
   const snap = await getDocs(collection(firestore, 'lessons'))
-  const items = snap.docs.map(d => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
+  const items = snap.docs.map((d) => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
   items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
   return items
+}
+
+// Finds the "solo challenge" lesson linked to a parent lesson, if any, via the
+// linked lesson's `companionOf` field. Returns only the fields needed to offer
+// it as a lesson-complete continuation.
+export async function findSoloCompanion(lessonId) {
+  if (!lessonId) return null
+  const snap = await getDocs(
+    query(collection(firestore, 'lessons'), where('companionOf', '==', lessonId), limit(1))
+  )
+  if (snap.empty) return null
+  const [docSnap] = snap.docs
+  return { id: docSnap.id, title: docSnap.data()?.title ?? docSnap.id }
 }
 
 // Publishes a full lesson document. Callers should validate the lesson before
@@ -27,9 +53,14 @@ export async function publishLesson(lesson) {
   if (!lesson?.id) throw new Error('Lesson id is required')
   const migrated = migrateLessonLevel(lesson)
   if (migrated.level) {
-    await setDoc(doc(firestore, LEVEL_COLLECTION, migrated.level.id), migrated.level, { merge: true })
+    await setDoc(doc(firestore, LEVEL_COLLECTION, migrated.level.id), migrated.level, {
+      merge: true,
+    })
   }
-  await setDoc(doc(firestore, 'lessons', migrated.lesson.id), encodeLessonBlocksForFirestore(migrated.lesson))
+  await setDoc(
+    doc(firestore, 'lessons', migrated.lesson.id),
+    encodeLessonBlocksForFirestore(migrated.lesson)
+  )
 }
 
 // Permanently persists an edited task list to a published lesson (admin-only,
@@ -39,16 +70,14 @@ export async function publishLessonTasks(lessonId, tasks) {
   await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
 }
 
+// Deletes a published lesson document. Firestore does not cascade-delete
+// subcollections, so this also purges the lesson's sessionReports/feedback
+// subcollections first — otherwise a deleted lesson silently leaves orphaned
+// run data behind despite the admin UI describing the delete as unrecoverable.
 export async function deletePublishedLesson(lessonId) {
   if (!lessonId) throw new Error('Lesson id is required')
+  await clearLessonRunData(lessonId)
   await deleteDoc(doc(firestore, 'lessons', lessonId))
-}
-
-export async function fetchClassList() {
-  const snap = await getDocs(collection(firestore, CLASS_COLLECTION))
-  return snap.docs
-    .map(d => makeClassRecord({ id: d.id, ...d.data() }))
-    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export async function saveClassRecord(input) {
@@ -57,9 +86,16 @@ export async function saveClassRecord(input) {
   return record
 }
 
+const FIRESTORE_BATCH_LIMIT = 500
+
 async function clearLessonChildCollection(lessonId, collectionName) {
   const snap = await getDocs(collection(firestore, 'lessons', lessonId, collectionName))
-  await Promise.all(snap.docs.map(item => deleteDoc(item.ref)))
+  const docs = snap.docs
+  for (let i = 0; i < docs.length; i += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(firestore)
+    for (const item of docs.slice(i, i + FIRESTORE_BATCH_LIMIT)) batch.delete(item.ref)
+    await batch.commit()
+  }
   return snap.size
 }
 
@@ -91,14 +127,17 @@ export function applyLessonOverride(lesson, overrideTasks) {
 // One doc per session run, doc ID = the report's sessionId (session.startedAt).
 
 export async function saveSessionReport(lessonId, sessionId, report) {
-  await setDoc(doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId), report)
+  await setDoc(
+    doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId),
+    encodeSessionReportForFirestore(report)
+  )
 }
 
 export async function fetchSessionReports(lessonId) {
   const q = query(
     collection(firestore, 'lessons', lessonId, 'sessionReports'),
-    orderBy('startedAt', 'desc'),
+    orderBy('startedAt', 'desc')
   )
   const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }

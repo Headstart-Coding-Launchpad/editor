@@ -1,6 +1,15 @@
 import BuilderOutputPanel from '../BuilderOutputPanel'
 
-export default function TaskTestResults({ output, runStatus, running, inputPrompt, onInputSubmit, checkResults, incorrectCheckResults, testResults }) {
+export default function TaskTestResults({
+  output,
+  runStatus,
+  running,
+  inputPrompt,
+  onInputSubmit,
+  checkResults,
+  incorrectCheckResults,
+  testResults,
+}) {
   return (
     <BuilderOutputPanel
       output={output}

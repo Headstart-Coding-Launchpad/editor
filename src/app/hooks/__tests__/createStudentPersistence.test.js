@@ -27,9 +27,18 @@ vi.mock('../../studentStorage', () => ({
 }))
 
 import {
-  saveCode, saveFile, saveFsState, saveDesktopState,
-  loadSavedCode, loadSavedFile, loadSavedFs, loadSavedDesktop,
-  savePersonalSandboxCode, savePersonalSandboxFile, savePersonalSandboxFs, savePersonalSandboxDesktop,
+  saveCode,
+  saveFile,
+  saveFsState,
+  saveDesktopState,
+  loadSavedCode,
+  loadSavedFile,
+  loadSavedFs,
+  loadSavedDesktop,
+  savePersonalSandboxCode,
+  savePersonalSandboxFile,
+  savePersonalSandboxFs,
+  savePersonalSandboxDesktop,
   ephemeralStorage,
 } from '../../studentStorage'
 
@@ -37,9 +46,18 @@ function makeRef(value) {
   return { current: value }
 }
 
-function setup({ teacherPresentation = false, previewMode = false, inPersonalSandbox = false } = {}) {
+function setup({
+  teacherPresentation = false,
+  previewMode = false,
+  inPersonalSandbox = false,
+} = {}) {
   const inPersonalSandboxRef = makeRef(inPersonalSandbox)
-  const persistence = createStudentPersistence({ lessonId: 'lesson-1', teacherPresentation, previewMode, inPersonalSandboxRef })
+  const persistence = createStudentPersistence({
+    lessonId: 'lesson-1',
+    teacherPresentation,
+    previewMode,
+    inPersonalSandboxRef,
+  })
   return { persistence, inPersonalSandboxRef }
 }
 
@@ -52,7 +70,11 @@ describe('createStudentPersistence', () => {
     it('calls saveCode in normal mode', () => {
       const { persistence } = setup()
       persistence.savePythonCode('anon-1', 1, { code: 'x=1', output: 'hi', runStatus: 'success' })
-      expect(saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', { code: 'x=1', output: 'hi', runStatus: 'success' })
+      expect(saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', {
+        code: 'x=1',
+        output: 'hi',
+        runStatus: 'success',
+      })
       expect(savePersonalSandboxCode).not.toHaveBeenCalled()
     })
 
@@ -66,7 +88,9 @@ describe('createStudentPersistence', () => {
     it('routes to ephemeral storage when teacherPresentation', () => {
       const { persistence } = setup({ teacherPresentation: true })
       persistence.savePythonCode('anon-1', 1, { code: 'x=1' })
-      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', { code: 'x=1' })
+      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', {
+        code: 'x=1',
+      })
       expect(saveCode).not.toHaveBeenCalled()
       expect(savePersonalSandboxCode).not.toHaveBeenCalled()
     })
@@ -74,7 +98,9 @@ describe('createStudentPersistence', () => {
     it('routes to ephemeral storage when previewMode', () => {
       const { persistence } = setup({ previewMode: true })
       persistence.savePythonCode('anon-1', 1, { code: 'x=1' })
-      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', { code: 'x=1' })
+      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 1, 'anon-1', {
+        code: 'x=1',
+      })
       expect(saveCode).not.toHaveBeenCalled()
     })
 
@@ -97,14 +123,25 @@ describe('createStudentPersistence', () => {
     it('calls savePersonalSandboxFile in sandbox mode', () => {
       const { persistence } = setup({ inPersonalSandbox: true })
       persistence.saveHtmlFile('anon-1', 2, 'style.css', 'body{}')
-      expect(savePersonalSandboxFile).toHaveBeenCalledWith('lesson-1', 'style.css', 'anon-1', 'body{}')
+      expect(savePersonalSandboxFile).toHaveBeenCalledWith(
+        'lesson-1',
+        'style.css',
+        'anon-1',
+        'body{}'
+      )
       expect(saveFile).not.toHaveBeenCalled()
     })
 
     it('routes to ephemeral storage when previewMode', () => {
       const { persistence } = setup({ previewMode: true })
       persistence.saveHtmlFile('anon-1', 2, 'index.html', '<p/>')
-      expect(ephemeralStorage.saveFile).toHaveBeenCalledWith('lesson-1', 2, 'index.html', 'anon-1', '<p/>')
+      expect(ephemeralStorage.saveFile).toHaveBeenCalledWith(
+        'lesson-1',
+        2,
+        'index.html',
+        'anon-1',
+        '<p/>'
+      )
       expect(saveFile).not.toHaveBeenCalled()
     })
   })
@@ -124,7 +161,13 @@ describe('createStudentPersistence', () => {
     it('routes each file to ephemeral storage when teacherPresentation', () => {
       const { persistence } = setup({ teacherPresentation: true })
       persistence.saveHtmlFiles('anon-1', 3, [{ name: 'index.html', content: '<h1/>' }])
-      expect(ephemeralStorage.saveFile).toHaveBeenCalledWith('lesson-1', 3, 'index.html', 'anon-1', '<h1/>')
+      expect(ephemeralStorage.saveFile).toHaveBeenCalledWith(
+        'lesson-1',
+        3,
+        'index.html',
+        'anon-1',
+        '<h1/>'
+      )
       expect(saveFile).not.toHaveBeenCalled()
     })
   })
@@ -149,7 +192,9 @@ describe('createStudentPersistence', () => {
       const { persistence } = setup({ teacherPresentation: true })
       const states = { blocks: [] }
       persistence.saveScratch('anon-1', 4, states)
-      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 4, 'anon-1', { state: states })
+      expect(ephemeralStorage.saveCode).toHaveBeenCalledWith('lesson-1', 4, 'anon-1', {
+        state: states,
+      })
       expect(saveCode).not.toHaveBeenCalled()
     })
   })
@@ -229,7 +274,12 @@ describe('createStudentPersistence', () => {
       const ephemeral = setup({ previewMode: true }).persistence
       ephemeral.readSavedFile('anon-1', 2, 'index.html')
       ephemeral.readSavedFs('anon-1', 3)
-      expect(ephemeralStorage.loadSavedFile).toHaveBeenCalledWith('lesson-1', 2, 'index.html', 'anon-1')
+      expect(ephemeralStorage.loadSavedFile).toHaveBeenCalledWith(
+        'lesson-1',
+        2,
+        'index.html',
+        'anon-1'
+      )
       expect(ephemeralStorage.loadSavedFs).toHaveBeenCalledWith('lesson-1', 3, 'anon-1')
     })
 

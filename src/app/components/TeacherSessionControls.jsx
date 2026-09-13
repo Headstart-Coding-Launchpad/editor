@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { sortedShareEntries } from '../sharedWorkspacePayload'
 
-const BREAKPOINT_NARROW  = 1300  // collapse secondary buttons into Menu dropdown
-const BREAKPOINT_COMPACT = 950   // also hide status text from bar (shown inside dropdown instead)
+const BREAKPOINT_NARROW = 1300 // collapse secondary buttons into Menu dropdown
+const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside dropdown instead)
 
 export default function TeacherSessionControls({
   session,
@@ -13,6 +14,10 @@ export default function TeacherSessionControls({
   onEndSession,
   onRestartSession,
   onReturnToAdmin,
+  onUpdateVideoCallLink,
+  onRemoveSharedWorkspace,
+  onRemoveAllSharedWorkspaces,
+  onOpenSharedWorkspace,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -21,12 +26,30 @@ export default function TeacherSessionControls({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
-  const narrow  = width < BREAKPOINT_NARROW
+  const [sharesOpen, setSharesOpen] = useState(false)
+  const sharesRef = useRef(null)
+
+  const [videoLinkOpen, setVideoLinkOpen] = useState(false)
+  const [videoLinkValue, setVideoLinkValue] = useState(session?.videoCallLink ?? '')
+  const [videoLinkError, setVideoLinkError] = useState(null)
+  const [videoLinkSaving, setVideoLinkSaving] = useState(false)
+  const videoLinkRef = useRef(null)
+
+  const shareEntries = useMemo(
+    () => sortedShareEntries(session?.sharedWorkspaces),
+    [session?.sharedWorkspaces]
+  )
+
+  const narrow = width < BREAKPOINT_NARROW
   const compact = width < BREAKPOINT_COMPACT
-  const openAccount = () => { window.location.hash = '#/account' }
+  const openAccount = () => {
+    window.location.hash = '#/account'
+  }
 
   useEffect(() => {
-    function onResize() { setWidth(window.innerWidth) }
+    function onResize() {
+      setWidth(window.innerWidth)
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
@@ -40,6 +63,44 @@ export default function TeacherSessionControls({
     return () => document.removeEventListener('mousedown', onDown)
   }, [menuOpen])
 
+  useEffect(() => {
+    if (!sharesOpen) return
+    function onDown(e) {
+      if (sharesRef.current && !sharesRef.current.contains(e.target)) setSharesOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [sharesOpen])
+
+  useEffect(() => {
+    if (!videoLinkOpen) return
+    setVideoLinkValue(session?.videoCallLink ?? '')
+    setVideoLinkError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoLinkOpen])
+
+  useEffect(() => {
+    if (!videoLinkOpen) return
+    function onDown(e) {
+      if (videoLinkRef.current && !videoLinkRef.current.contains(e.target)) setVideoLinkOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [videoLinkOpen])
+
+  async function handleSaveVideoLink() {
+    setVideoLinkSaving(true)
+    setVideoLinkError(null)
+    try {
+      await onUpdateVideoCallLink(videoLinkValue)
+      setVideoLinkOpen(false)
+    } catch (err) {
+      setVideoLinkError(err.message || 'Could not save that link.')
+    } finally {
+      setVideoLinkSaving(false)
+    }
+  }
+
   return (
     <div className="teacher-session-controls">
       {!compact && (
@@ -52,7 +113,7 @@ export default function TeacherSessionControls({
         <div ref={menuRef} style={sDD.wrap}>
           <button
             className="btn-ghost teacher-session-controls__action"
-            onClick={() => setMenuOpen(v => !v)}
+            onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
           >
             Menu ▾
@@ -60,26 +121,60 @@ export default function TeacherSessionControls({
           {menuOpen && (
             <div style={sDD.panel} className="ui-popover">
               {compact && (
-                <span style={sDD.statusLabel}>
-                  {session ? `Session: ${state}` : 'No session'}
-                </span>
+                <span style={sDD.statusLabel}>{session ? `Session: ${state}` : 'No session'}</span>
               )}
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenPresentationWindow() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenPresentationWindow()
+                }}
+              >
                 Presentation Window
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenFeedback() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenFeedback()
+                }}
+              >
                 Feedback
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenReports() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenReports()
+                }}
+              >
                 Reports
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onOpenEditLesson() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onOpenEditLesson()
+                }}
+              >
                 Edit Lesson
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); onReturnToAdmin() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onReturnToAdmin()
+                }}
+              >
                 Admin
               </button>
-              <button style={sDD.item} onClick={() => { setMenuOpen(false); openAccount() }}>
+              <button
+                style={sDD.item}
+                onClick={() => {
+                  setMenuOpen(false)
+                  openAccount()
+                }}
+              >
                 Account
               </button>
             </div>
@@ -87,7 +182,10 @@ export default function TeacherSessionControls({
         </div>
       ) : (
         <>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenPresentationWindow}>
+          <button
+            className="btn-ghost teacher-session-controls__action"
+            onClick={onOpenPresentationWindow}
+          >
             Presentation Window
           </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
@@ -106,6 +204,119 @@ export default function TeacherSessionControls({
             Account
           </button>
         </>
+      )}
+
+      {session && onRemoveSharedWorkspace && shareEntries.length > 0 && (
+        <div ref={sharesRef} style={sDD.wrap}>
+          <button
+            className="btn-ghost teacher-session-controls__action"
+            onClick={() => setSharesOpen((v) => !v)}
+            aria-expanded={sharesOpen}
+          >
+            📤 Shared work ({shareEntries.length})
+          </button>
+          {sharesOpen && (
+            <div style={sDD.panel} className="ui-popover">
+              <p style={sShare.note}>
+                Approved shares stay available to the class until you remove them.
+              </p>
+              <ul style={sShare.list}>
+                {shareEntries.map((entry) => (
+                  <li key={entry.shareId} style={sShare.row}>
+                    <span style={sShare.rowText}>
+                      <strong>{entry.sharerName}</strong>
+                      {entry.taskTitle ? ` · ${entry.taskTitle}` : ''}
+                    </span>
+                    <span style={sShare.rowActions}>
+                      {onOpenSharedWorkspace && (
+                        <button
+                          style={sDD.item}
+                          onClick={() => {
+                            setSharesOpen(false)
+                            onOpenSharedWorkspace(entry)
+                          }}
+                        >
+                          Open
+                        </button>
+                      )}
+                      <button
+                        style={sDD.item}
+                        onClick={() => onRemoveSharedWorkspace(entry.shareId)}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {onRemoveAllSharedWorkspaces && shareEntries.length > 1 && (
+                <button
+                  style={{ ...sDD.item, width: '100%' }}
+                  onClick={() => {
+                    onRemoveAllSharedWorkspaces()
+                    setSharesOpen(false)
+                  }}
+                >
+                  Remove all
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {session && onUpdateVideoCallLink && (
+        <div ref={videoLinkRef} style={sDD.wrap}>
+          <button
+            className="btn-ghost teacher-session-controls__action"
+            onClick={() => setVideoLinkOpen((v) => !v)}
+            aria-expanded={videoLinkOpen}
+          >
+            📹 {session.videoCallLink ? 'Video Call' : 'Add Video Call'}
+          </button>
+          {videoLinkOpen && (
+            <div style={sDD.panel} className="ui-popover">
+              <label style={sVid.label}>
+                Video call link
+                <input
+                  style={sVid.input}
+                  type="url"
+                  autoFocus
+                  placeholder="https://zoom.us/j/…"
+                  value={videoLinkValue}
+                  onChange={(e) => setVideoLinkValue(e.target.value)}
+                />
+              </label>
+              {videoLinkError && <span style={sVid.error}>{videoLinkError}</span>}
+              <div style={sVid.actions}>
+                {session.videoCallLink && (
+                  <button
+                    style={{ ...sDD.item, flex: 1 }}
+                    disabled={videoLinkSaving}
+                    onClick={() => {
+                      setVideoLinkValue('')
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  style={{
+                    ...sDD.item,
+                    flex: 1,
+                    background: 'var(--colour-primary)',
+                    color: '#fff',
+                    borderColor: 'var(--colour-primary)',
+                  }}
+                  disabled={videoLinkSaving}
+                  onClick={handleSaveVideoLink}
+                >
+                  {videoLinkSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {state === 'waiting' && (
@@ -169,4 +380,49 @@ const sDD = {
     cursor: 'pointer',
     textAlign: 'left',
   },
+}
+
+const sVid = {
+  label: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: 12,
+    color: '#374151',
+  },
+  input: {
+    padding: '7px 9px',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+    outline: 'none',
+    minWidth: 220,
+  },
+  error: {
+    fontFamily: 'var(--font-body)',
+    fontSize: 11.5,
+    color: '#dc2626',
+  },
+  actions: {
+    display: 'flex',
+    gap: 6,
+  },
+}
+
+const sShare = {
+  note: { margin: '0 0 6px', fontSize: 12, color: 'var(--colour-muted)' },
+  list: {
+    listStyle: 'none',
+    margin: '0 0 6px',
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  rowText: { fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
+  rowActions: { display: 'flex', gap: 4, flexShrink: 0 },
 }

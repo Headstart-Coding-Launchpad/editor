@@ -2,11 +2,11 @@ import { useState } from 'react'
 
 const DRAG_MIME = 'application/x-headstart-quiz-tile'
 
-export function readDraggedTileId(event) {
+function readDraggedTileId(event) {
   return event.dataTransfer.getData(DRAG_MIME) || event.dataTransfer.getData('text/plain')
 }
 
-export function writeDraggedTileId(event, tileId) {
+function writeDraggedTileId(event, tileId) {
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData(DRAG_MIME, tileId)
   event.dataTransfer.setData('text/plain', tileId)
@@ -43,7 +43,7 @@ export function setLiftedDragImage(event, label) {
 
 export function removeTileFromState(state, tileId) {
   const next = { ...state }
-  const existingSlot = Object.keys(next).find(k => next[k] === tileId)
+  const existingSlot = Object.keys(next).find((k) => next[k] === tileId)
   if (existingSlot) delete next[existingSlot]
   return next
 }
@@ -60,7 +60,13 @@ export function removeTileFromState(state, tileId) {
  * and `publishState` passed at call time (handleTargetClick, handleTargetDrop,
  * handlePoolDrop) so they always operate on the freshest values.
  */
-export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTile }) {
+export function useTileDragAndDrop({
+  blocked,
+  dragEnabled = true,
+  getLabelForTile,
+  onDragStart,
+  onDragEnd,
+}) {
   const [draggingTile, setDraggingTile] = useState(null)
   const [dragOverTarget, setDragOverTarget] = useState(null)
   const [touchSelectedTile, setTouchSelectedTile] = useState(null)
@@ -71,16 +77,18 @@ export function useTileDragAndDrop({ blocked, dragEnabled = true, getLabelForTil
     writeDraggedTileId(event, tileId)
     setLiftedDragImage(event, getLabelForTile(tileId))
     setDraggingTile(tileId)
+    onDragStart?.(event, tileId)
   }
 
   function handleDragEnd() {
     setDraggingTile(null)
     setDragOverTarget(null)
+    onDragEnd?.()
   }
 
   function handleTileClick(tileId) {
     if (!dragEnabled || blocked) return
-    setTouchSelectedTile(prev => (prev === tileId ? null : tileId))
+    setTouchSelectedTile((prev) => (prev === tileId ? null : tileId))
   }
 
   function handleTargetClick(targetId, state, publishState) {

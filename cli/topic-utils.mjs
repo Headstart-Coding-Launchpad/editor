@@ -25,7 +25,7 @@ export function normalizeTopicLibrary(input) {
     return []
   }
   return rawTopics
-    .filter(topic => topic && typeof topic === 'object' && !Array.isArray(topic))
+    .filter((topic) => topic && typeof topic === 'object' && !Array.isArray(topic))
     .map(normalizeTopic)
 }
 
@@ -35,7 +35,8 @@ export function validateTopic(topic) {
   }
   const errors = []
   if (!topic.id || !String(topic.id).trim()) errors.push('id is required')
-  else if (!/^[a-z0-9._-]+$/.test(topic.id)) errors.push('id must be a slug (lowercase, digits, dots, underscores, hyphens only)')
+  else if (!/^[a-z0-9._-]+$/.test(topic.id))
+    errors.push('id must be a slug (lowercase, digits, dots, underscores, hyphens only)')
   if (!topic.title || !String(topic.title).trim()) errors.push('title is required')
   return errors
 }

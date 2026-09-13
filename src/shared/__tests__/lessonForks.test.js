@@ -12,17 +12,26 @@ describe('lesson fork helpers', () => {
   })
 
   it('copies a stock lesson as a published class fork with task lineage', () => {
-    const fork = buildLessonFork({
-      id: 'python-l3-09',
-      title: 'Dictionaries',
-      type: 'python',
-      description: 'Practice dictionaries',
-      stage: 'published',
-      tasks: [
-        { id: 1, title: 'Intro', taskType: 'information', explainer: 'Hi' },
-        { id: 'g-1', type: 'group', title: 'Practice', subtasks: [{ id: 2, title: 'Code', starterCode: '' }] },
-      ],
-    }, { id: 'maple', name: 'Maple' }, 123)
+    const fork = buildLessonFork(
+      {
+        id: 'python-l3-09',
+        title: 'Dictionaries',
+        type: 'python',
+        description: 'Practice dictionaries',
+        stage: 'published',
+        tasks: [
+          { id: 1, title: 'Intro', taskType: 'information', explainer: 'Hi' },
+          {
+            id: 'g-1',
+            type: 'group',
+            title: 'Practice',
+            subtasks: [{ id: 2, title: 'Code', starterCode: '' }],
+          },
+        ],
+      },
+      { id: 'maple', name: 'Maple' },
+      123
+    )
 
     expect(fork).toMatchObject({
       id: 'python-l3-09-maple',

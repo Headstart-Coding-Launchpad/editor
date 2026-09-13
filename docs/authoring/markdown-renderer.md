@@ -70,6 +70,22 @@ for i in range(5):
 | `scratch` | Stacked Scratch block visual |
 | *(none)* | Auto-renders as Scratch if all non-empty lines match patterns; otherwise plain monospace |
 
+A fence opening directly under a paragraph line, with **no blank line** in between, still renders as its own code block and correctly interrupts the paragraph — this is standard CommonMark fenced-code-block-interrupts-paragraph behaviour, honoured by default by the renderer's `remark-parse`/micromark pipeline. No blank line is required before a fence.
+
+**The opening fence, the code, and the closing fence are always three separate lines, even when the code itself is a single line.** A fence delimiter must be alone on its own line — CommonMark does not recognise a fence unless the line containing ` ```python ` (or ` ``` `) contains nothing else. Squeezing a one-line snippet onto the same line as its fences does not produce a code block at all; it renders as broken literal text:
+
+```
+WRONG:
+```python print("Adventure awaits!") ```
+
+RIGHT:
+```python
+print("Adventure awaits!")
+```
+```
+
+This mistake surfaces specifically when the code being fenced happens to be one line long — a multi-line snippet is much less likely to get collapsed this way, since collapsing it as one line would visibly overrun the block. Check one-line-of-code fenced blocks in particular, e.g. wherever the Quiz Guide's "always fence, never inline, for this quiz type" rule applies to a single line of code.
+
 ---
 
 ## Scratch Blocks (fenced)
@@ -215,6 +231,11 @@ The marker text is stripped from rendered output.
 
 Block-level, `max-width: 100%`, small border radius.
 
+Information tasks (`InformationTask.jsx`) are the one exception: there, every image floats
+beside its surrounding paragraph text instead of always breaking onto its own line (stacks
+full-width again below ~640px). This is automatic — authors write the same `![alt](url)`
+markdown, nothing to opt into — driven by `MarkdownRenderer`'s `imageLayout="float"` prop.
+
 ---
 
 ## Links
@@ -223,7 +244,7 @@ Block-level, `max-width: 100%`, small border radius.
 [link text](https://example.com)
 ```
 
-Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike:
+Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike — **except Scratch lessons**, where the topic library is disabled outright (see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`'s Scratch note) and these links render as plain text instead:
 ```
 [link text](#topic/topic-id)
 ```

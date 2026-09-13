@@ -1,5 +1,10 @@
 import { db } from './firebase.mjs'
-import { normalizeTopic, normalizeTopicLibrary, validateTopic, validateTopicLibrary } from './topic-utils.mjs'
+import {
+  normalizeTopic,
+  normalizeTopicLibrary,
+  validateTopic,
+  validateTopicLibrary,
+} from './topic-utils.mjs'
 import { parseYamlTopicLibrary } from './yaml-converter.mjs'
 
 export { normalizeTopic, normalizeTopicLibrary, validateTopic, validateTopicLibrary }
@@ -7,7 +12,7 @@ export { normalizeTopic, normalizeTopicLibrary, validateTopic, validateTopicLibr
 export async function listTopics() {
   const snap = await db.collection('topicLibrary').get()
   return snap.docs
-    .map(doc => {
+    .map((doc) => {
       const d = doc.data()
       return { id: doc.id, title: d.title ?? '', category: d.category ?? '', types: d.types ?? [] }
     })
@@ -39,7 +44,7 @@ export async function upsertTopicLibrary(input) {
   return {
     success: true,
     count: validation.topics.length,
-    ids: validation.topics.map(topic => topic.id),
+    ids: validation.topics.map((topic) => topic.id),
   }
 }
 

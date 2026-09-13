@@ -22,7 +22,10 @@ describe('TeacherTimers', () => {
       <TeacherTimers
         session={{ state: 'active', startedAt: 1_000_000, currentTaskStartedAt: 1_000_000 }}
         task={{ id: 1, estimatedMinutes: 5 }}
-        tasks={[{ id: 1, estimatedMinutes: 5 }, { id: 2, estimatedMinutes: 10 }]}
+        tasks={[
+          { id: 1, estimatedMinutes: 5 },
+          { id: 2, estimatedMinutes: 10 },
+        ]}
       />
     )
 

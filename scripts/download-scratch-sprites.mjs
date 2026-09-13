@@ -15,20 +15,29 @@ function fetchFile(url, dest) {
   return new Promise((resolve, reject) => {
     if (fs.existsSync(dest)) return resolve()
     const file = fs.createWriteStream(dest)
-    https.get(`${url}/get/`, res => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        file.close()
-        fs.unlinkSync(dest)
-        return fetchFile(res.headers.location, dest).then(resolve, reject)
-      }
-      if (res.statusCode !== 200) {
-        file.close()
-        try { fs.unlinkSync(dest) } catch {}
-        return reject(new Error(`${res.statusCode} ${url}`))
-      }
-      res.pipe(file)
-      file.on('finish', () => file.close(resolve))
-    }).on('error', err => { try { fs.unlinkSync(dest) } catch {}; reject(err) })
+    https
+      .get(`${url}/get/`, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          file.close()
+          fs.unlinkSync(dest)
+          return fetchFile(res.headers.location, dest).then(resolve, reject)
+        }
+        if (res.statusCode !== 200) {
+          file.close()
+          try {
+            fs.unlinkSync(dest)
+          } catch {}
+          return reject(new Error(`${res.statusCode} ${url}`))
+        }
+        res.pipe(file)
+        file.on('finish', () => file.close(resolve))
+      })
+      .on('error', (err) => {
+        try {
+          fs.unlinkSync(dest)
+        } catch {}
+        reject(err)
+      })
   })
 }
 
@@ -47,17 +56,19 @@ async function pool(tasks, concurrency) {
 
 async function run() {
   const library = []
-  let downloaded = 0, skipped = 0, errors = 0
+  let downloaded = 0,
+    skipped = 0,
+    errors = 0
 
   // Build work list
-  const sprites = raw.filter(s => s.costumes.some(c => c.dataFormat === 'svg'))
+  const sprites = raw.filter((s) => s.costumes.some((c) => c.dataFormat === 'svg'))
   skipped = raw.length - sprites.length
 
   // All costume download tasks
-  const allTasks = sprites.flatMap(sprite =>
+  const allTasks = sprites.flatMap((sprite) =>
     sprite.costumes
-      .filter(c => c.dataFormat === 'svg')
-      .map(c => async () => {
+      .filter((c) => c.dataFormat === 'svg')
+      .map((c) => async () => {
         const dest = path.join(OUT_DIR, c.md5ext)
         const url = `${CDN}/${c.md5ext}`
         try {
@@ -71,14 +82,21 @@ async function run() {
       })
   )
 
-  console.log(`Downloading ${allTasks.length} SVG costumes for ${sprites.length} sprites (${CONCURRENCY} concurrent)...`)
+  console.log(
+    `Downloading ${allTasks.length} SVG costumes for ${sprites.length} sprites (${CONCURRENCY} concurrent)...`
+  )
   await pool(allTasks, CONCURRENCY)
 
   // Build library index
   for (const sprite of sprites) {
     const costumes = sprite.costumes
-      .filter(c => c.dataFormat === 'svg' && fs.existsSync(path.join(OUT_DIR, c.md5ext)))
-      .map(c => ({ name: c.name, file: c.md5ext, rotationCenterX: c.rotationCenterX, rotationCenterY: c.rotationCenterY }))
+      .filter((c) => c.dataFormat === 'svg' && fs.existsSync(path.join(OUT_DIR, c.md5ext)))
+      .map((c) => ({
+        name: c.name,
+        file: c.md5ext,
+        rotationCenterX: c.rotationCenterX,
+        rotationCenterY: c.rotationCenterY,
+      }))
     if (costumes.length > 0) library.push({ name: sprite.name, tags: sprite.tags ?? [], costumes })
   }
 
@@ -88,7 +106,12 @@ async function run() {
     JSON.stringify(library, null, 2)
   )
   fs.unlinkSync(RAW)
-  console.log(`Done. ${library.length} sprites in library, ${downloaded} SVG files, ${skipped} non-SVG sprites skipped, ${errors} errors.`)
+  console.log(
+    `Done. ${library.length} sprites in library, ${downloaded} SVG files, ${skipped} non-SVG sprites skipped, ${errors} errors.`
+  )
 }
 
-run().catch(e => { console.error(e); process.exit(1) })
+run().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

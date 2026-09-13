@@ -15,9 +15,7 @@ export function useImagePreview() {
     const rect = anchorEl.getBoundingClientRect()
     const tipW = 192
     const tipH = 156
-    const x = rect.right + 8 + tipW > window.innerWidth
-      ? rect.left - tipW - 8
-      : rect.right + 8
+    const x = rect.right + 8 + tipW > window.innerWidth ? rect.left - tipW - 8 : rect.right + 8
     const y = Math.min(rect.top, window.innerHeight - tipH - 8)
     setPreview({ src, x, y })
   }

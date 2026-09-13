@@ -10,7 +10,9 @@ describe('CopyCodePanel', () => {
     render(<CopyCodePanel code={code} language="python" />)
 
     expect(screen.getByLabelText('Python reference code')).toBeInTheDocument()
-    expect(screen.getByLabelText('Python reference code').querySelector('code')?.textContent).toBe(code)
+    expect(screen.getByLabelText('Python reference code').querySelector('code')?.textContent).toBe(
+      code
+    )
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 

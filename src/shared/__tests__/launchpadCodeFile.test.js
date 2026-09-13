@@ -9,10 +9,13 @@ import {
 
 describe('LaunchPad code files', () => {
   it('creates one consistent Python file shape for one or many tasks', () => {
-    const file = createLaunchpadCodeFile([
-      { id: 3, title: 'Draw a square', code: 'print("square")' },
-      { id: 4, title: 'Final challenge', code: 'print("done")' },
-    ], { exportedAt: '2026-07-22T12:00:00.000Z' })
+    const file = createLaunchpadCodeFile(
+      [
+        { id: 3, title: 'Draw a square', code: 'print("square")' },
+        { id: 4, title: 'Final challenge', code: 'print("done")' },
+      ],
+      { exportedAt: '2026-07-22T12:00:00.000Z' }
+    )
 
     expect(file).toEqual({
       format: LAUNCHPAD_CODE_FILE_FORMAT,
@@ -36,13 +39,19 @@ describe('LaunchPad code files', () => {
 
   it('rejects malformed or incompatible files', () => {
     expect(() => parseLaunchpadCodeFile('not json')).toThrow(/valid LaunchPad/i)
-    expect(() => parseLaunchpadCodeFile(JSON.stringify({ format: 'other', tasks: [] }))).toThrow(/supported/i)
-    expect(() => parseLaunchpadCodeFile(JSON.stringify({
-      format: LAUNCHPAD_CODE_FILE_FORMAT,
-      version: LAUNCHPAD_CODE_FILE_VERSION,
-      language: 'python',
-      tasks: [],
-    }))).toThrow(/does not contain/i)
+    expect(() => parseLaunchpadCodeFile(JSON.stringify({ format: 'other', tasks: [] }))).toThrow(
+      /supported/i
+    )
+    expect(() =>
+      parseLaunchpadCodeFile(
+        JSON.stringify({
+          format: LAUNCHPAD_CODE_FILE_FORMAT,
+          version: LAUNCHPAD_CODE_FILE_VERSION,
+          language: 'python',
+          tasks: [],
+        })
+      )
+    ).toThrow(/does not contain/i)
   })
 
   it('uses the same .launchpad extension for every export', () => {

@@ -9,7 +9,7 @@ const authMocks = vi.hoisted(() => ({
 
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (...args) => authMocks.onAuthStateChanged(...args),
-  signInAnonymously:  (...args) => authMocks.signInAnonymously(...args),
+  signInAnonymously: (...args) => authMocks.signInAnonymously(...args),
 }))
 
 vi.mock('../../../shared/firebase', () => ({
@@ -17,7 +17,7 @@ vi.mock('../../../shared/firebase', () => ({
 }))
 
 const STORAGE_KEY = 'headstart_identity'
-const MOCK_UID    = 'firebase-anon-uid'
+const MOCK_UID = 'firebase-anon-uid'
 
 describe('useIdentity', () => {
   beforeEach(() => {
@@ -207,4 +207,55 @@ describe('useIdentity', () => {
     expect(result.current.identity).toBe(null)
     expect(localStorage.getItem(STORAGE_KEY)).toBe(null)
   })
+
+  it('retries a failed anonymous sign-in before falling back, and succeeds without setting authError if a retry works', async () => {
+    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback(null)
+      return () => {}
+    })
+    authMocks.signInAnonymously
+      .mockRejectedValueOnce(new Error('network blip'))
+      .mockResolvedValueOnce({ user: { uid: MOCK_UID } })
+
+    const { result } = renderHook(() => useIdentity())
+
+    await waitFor(() => expect(result.current.loaded).toBe(true), { timeout: 5000 })
+
+    expect(authMocks.signInAnonymously).toHaveBeenCalledTimes(2)
+    expect(result.current.authError).toBe(false)
+  }, 10000)
+
+  it('falls back to a local UUID and reports authError after every retry fails', async () => {
+    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback(null)
+      return () => {}
+    })
+    authMocks.signInAnonymously.mockRejectedValue(new Error('blocked'))
+
+    const { result } = renderHook(() => useIdentity())
+
+    await waitFor(() => expect(result.current.authError).toBe(true), { timeout: 10000 })
+
+    expect(authMocks.signInAnonymously).toHaveBeenCalledTimes(3)
+  }, 15000)
+
+  it('retrySignIn re-attempts sign-in and clears authError on success', async () => {
+    authMocks.onAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback(null)
+      return () => {}
+    })
+    authMocks.signInAnonymously.mockRejectedValue(new Error('blocked'))
+
+    const { result } = renderHook(() => useIdentity())
+    await waitFor(() => expect(result.current.authError).toBe(true), { timeout: 10000 })
+
+    authMocks.signInAnonymously.mockReset()
+    authMocks.signInAnonymously.mockResolvedValue({ user: { uid: MOCK_UID } })
+
+    act(() => {
+      result.current.retrySignIn()
+    })
+
+    await waitFor(() => expect(result.current.authError).toBe(false))
+  }, 15000)
 })

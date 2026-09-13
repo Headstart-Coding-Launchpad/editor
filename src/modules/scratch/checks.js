@@ -1,14 +1,30 @@
 // Pure Scratch check evaluation helpers and default sprite state.
 // No Blockly dependency — all inputs are plain JS values or workspace references.
 
+import { wildcardEquals, compareValues } from '../../shared/checkHelpers.js'
+
 export const DEFAULT_SPRITES = [
   { id: 'sprite1', name: 'Sprite 1', type: 'cat', x: 0, y: 0, size: 100, direction: 90 },
 ]
 
 export function createSpriteState() {
   return {
-    x: 0, y: 0, direction: 90, size: 100, visible: true, bubble: '', bubbleType: 'say', rotationStyle: 'all around', costume: null,
-    effect_color: 0, effect_fisheye: 0, effect_whirl: 0, effect_pixelate: 0, effect_mosaic: 0, effect_brightness: 0, effect_ghost: 0,
+    x: 0,
+    y: 0,
+    direction: 90,
+    size: 100,
+    visible: true,
+    bubble: '',
+    bubbleType: 'say',
+    rotationStyle: 'all around',
+    costume: null,
+    effect_color: 0,
+    effect_fisheye: 0,
+    effect_whirl: 0,
+    effect_pixelate: 0,
+    effect_mosaic: 0,
+    effect_brightness: 0,
+    effect_ghost: 0,
   }
 }
 
@@ -29,40 +45,60 @@ function traverseChain(startBlock) {
 }
 
 function getInputValue(block, inputName) {
+  // Dropdown/checkbox fields (e.g. motion_goto's TO) live directly on the block, not as a
+  // connected input — check those before falling back to shadow-block value inputs (e.g. a
+  // number/text input like STEPS, which plugs in a math_number/text shadow block).
+  const directValue = block.getFieldValue?.(inputName)
+  if (directValue !== null && directValue !== undefined) return directValue
   const inputBlock = block.getInputTargetBlock?.(inputName)
   if (!inputBlock) return null
   return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
 }
 
-function wildcardMatchField(actual, expected) {
-  if (!expected.includes('*')) return actual === expected
-  const re = new RegExp('^' + expected.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[\\s\\S]*') + '$')
-  return re.test(actual)
-}
-
 function fieldConditionMatches(actualValue, expectedConfig) {
   const actual = String(actualValue)
-  const config = expectedConfig && typeof expectedConfig === 'object' && !Array.isArray(expectedConfig)
-    ? expectedConfig
-    : { operator: 'equals', value: expectedConfig }
+  const config =
+    expectedConfig && typeof expectedConfig === 'object' && !Array.isArray(expectedConfig)
+      ? expectedConfig
+      : { operator: 'equals', value: expectedConfig }
   const operator = config.operator ?? 'equals'
   const expected = String(config.value ?? '')
   const actualNumber = Number(actual)
   const expectedNumber = Number(expected)
   if (operator === 'contains') return actual.toLowerCase().includes(expected.toLowerCase())
   if (operator === 'not_contains') return !actual.toLowerCase().includes(expected.toLowerCase())
-  if (operator === 'not_equals') return !wildcardMatchField(actual, expected)
-  if (operator === 'greater_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber > expectedNumber
-  if (operator === 'greater_than_or_equal' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber >= expectedNumber
-  if (operator === 'less_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber < expectedNumber
-  if (operator === 'less_than_or_equal' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) return actualNumber <= expectedNumber
+  if (operator === 'not_equals') return !wildcardEquals(actual, expected)
+  if (operator === 'greater_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber))
+    return actualNumber > expectedNumber
+  if (
+    operator === 'greater_than_or_equal' &&
+    !Number.isNaN(actualNumber) &&
+    !Number.isNaN(expectedNumber)
+  )
+    return actualNumber >= expectedNumber
+  if (operator === 'less_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber))
+    return actualNumber < expectedNumber
+  if (
+    operator === 'less_than_or_equal' &&
+    !Number.isNaN(actualNumber) &&
+    !Number.isNaN(expectedNumber)
+  )
+    return actualNumber <= expectedNumber
   if (operator === 'matches_regex') {
-    try { return new RegExp(expected).test(actual) } catch { return false }
+    try {
+      return new RegExp(expected).test(actual)
+    } catch {
+      return false
+    }
   }
   if (operator === 'not_matches_regex') {
-    try { return !new RegExp(expected).test(actual) } catch { return false }
+    try {
+      return !new RegExp(expected).test(actual)
+    } catch {
+      return false
+    }
   }
-  return wildcardMatchField(actual, expected)
+  return wildcardEquals(actual, expected)
 }
 
 function blockMatchesFieldValues(block, fieldValues) {
@@ -88,6 +124,19 @@ function containsSubsequence(haystack, needle) {
   return false
 }
 
+function chainContainsBlock(chain, opcode, fieldValues) {
+  return chain.some((block) => block.type === opcode && blockMatchesFieldValues(block, fieldValues))
+}
+
+// True if `block` matches some sequence item other than the one at `skipIndex` — i.e. it
+// genuinely belongs to the required sequence, just not at this position.
+function blockMatchesOtherSequenceItem(block, normalized, skipIndex) {
+  return normalized.some(
+    (item, idx) =>
+      idx !== skipIndex && block.type === item.opcode && blockMatchesFieldValues(block, item.fieldValues)
+  )
+}
+
 // Returns 'on_track', 'violation', or 'unrelated' for a chain against a required sequence.
 // Used by partialEvaluateScratchCheck to distinguish "still building" from "placed wrong block".
 function findChainStatus(chain, sequence) {
@@ -97,8 +146,27 @@ function findChainStatus(chain, sequence) {
     if (!blockMatchesFieldValues(chain[i], normalized[0].fieldValues)) continue
     // Found sequence start at index i — verify that subsequent blocks continue correctly.
     for (let j = 1; j < normalized.length && i + j < chain.length; j++) {
-      if (chain[i + j].type !== normalized[j].opcode) return 'violation'
-      if (!blockMatchesFieldValues(chain[i + j], normalized[j].fieldValues)) return 'violation'
+      const block = chain[i + j]
+      if (block.type === normalized[j].opcode && blockMatchesFieldValues(block, normalized[j].fieldValues))
+        continue
+      // The next required block isn't here. That's only a genuine violation once
+      // something is actually wrong — either the block sitting here doesn't belong to
+      // the sequence at all (a foreign block), or the required block has already been
+      // placed somewhere else in the chain (wrongly positioned — e.g. the pause before
+      // the first move, or after the second, that an authored hint like "not before the
+      // first one or after the second" is meant to catch). If the block here legitimately
+      // belongs to the sequence AND the required one hasn't been placed anywhere yet, the
+      // student just hasn't gotten to it — still on track, not a violation. Starter
+      // content commonly begins with exactly this gap, since "insert a block between
+      // these two" starts from the two blocks already connected to each other.
+      const sittingBlockBelongsToSequence = blockMatchesOtherSequenceItem(block, normalized, j)
+      const requiredBlockPlacedElsewhere = chainContainsBlock(
+        chain,
+        normalized[j].opcode,
+        normalized[j].fieldValues
+      )
+      if (!sittingBlockBelongsToSequence || requiredBlockPlacedElsewhere) return 'violation'
+      return 'on_track'
     }
     return 'on_track'
   }
@@ -113,22 +181,26 @@ export function partialEvaluateScratchCheck(check, workspace) {
     switch (check.type) {
       case 'block_used': {
         if (!workspace) return 'pending'
-        const found = workspace.getAllBlocks(false).some(
-          b => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues)
-        )
+        const found = workspace
+          .getAllBlocks(false)
+          .some((b) => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
         return found ? 'pass' : 'pending'
       }
       case 'blocks_in_order': {
-        if (!workspace || !Array.isArray(check.sequence) || check.sequence.length === 0) return 'pending'
-        const topBlocks = workspace.getAllBlocks(false).filter(b => !b.previousConnection?.isConnected())
+        if (!workspace || !Array.isArray(check.sequence) || check.sequence.length === 0)
+          return 'pending'
+        const topBlocks = workspace
+          .getAllBlocks(false)
+          .filter((b) => !b.previousConnection?.isConnected())
         const chains = topBlocks.map(traverseChain)
-        if (chains.some(chain => containsSubsequence(chain, check.sequence))) return 'pass'
-        if (chains.some(chain => findChainStatus(chain, check.sequence) === 'violation')) return 'fail'
+        if (chains.some((chain) => containsSubsequence(chain, check.sequence))) return 'pass'
+        if (chains.some((chain) => findChainStatus(chain, check.sequence) === 'violation'))
+          return 'fail'
         return 'pending'
       }
       case 'block_count': {
         if (!workspace) return 'pending'
-        const count = workspace.getAllBlocks(false).filter(b => b.type === check.opcode).length
+        const count = workspace.getAllBlocks(false).filter((b) => b.type === check.opcode).length
         const target = Number(check.value)
         if (check.operator === 'equals') {
           if (count === target) return 'pass'
@@ -147,20 +219,35 @@ export function partialEvaluateScratchCheck(check, workspace) {
 }
 
 // preRunSpriteState is the state of the specific matched sprite before running (for delta checks).
-export function evaluateScratchCheck(check, workspace, spriteState, runState = null, preRunSpriteState = null) {
+export function evaluateScratchCheck(
+  check,
+  workspace,
+  spriteState,
+  runState = null,
+  preRunSpriteState = null
+) {
   if (!check?.type) return false
   try {
     switch (check.type) {
       case 'sprite_property':
-        return spriteState ? compare(spriteState[check.property], check.operator, check.value) : false
+        return spriteState
+          ? compare(spriteState[check.property], check.operator, check.value)
+          : false
       case 'variable_equals':
-        return compare(runState?.variables?.[check.variableName ?? check.name ?? 'score'], 'equals', check.value)
+        return compare(
+          runState?.variables?.[check.variableName ?? check.name ?? 'score'],
+          'equals',
+          check.value
+        )
       case 'block_used':
         if (!workspace) return false
-        return workspace.getAllBlocks(false).some(b => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
+        return workspace
+          .getAllBlocks(false)
+          .some((b) => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
       case 'sprite_property_delta': {
         if (!spriteState || !preRunSpriteState) return false
-        const delta = Number(spriteState[check.property]) - Number(preRunSpriteState[check.property] ?? 0)
+        const delta =
+          Number(spriteState[check.property]) - Number(preRunSpriteState[check.property] ?? 0)
         return compare(delta, check.operator, check.value)
       }
       case 'sprite_property_changed': {
@@ -168,13 +255,18 @@ export function evaluateScratchCheck(check, workspace, spriteState, runState = n
         return spriteState[check.property] !== preRunSpriteState[check.property]
       }
       case 'blocks_in_order': {
-        if (!workspace || !Array.isArray(check.sequence) || check.sequence.length === 0) return false
-        const topLevelBlocks = workspace.getAllBlocks(false).filter(b => !b.previousConnection?.isConnected())
-        return topLevelBlocks.some(block => containsSubsequence(traverseChain(block), check.sequence))
+        if (!workspace || !Array.isArray(check.sequence) || check.sequence.length === 0)
+          return false
+        const topLevelBlocks = workspace
+          .getAllBlocks(false)
+          .filter((b) => !b.previousConnection?.isConnected())
+        return topLevelBlocks.some((block) =>
+          containsSubsequence(traverseChain(block), check.sequence)
+        )
       }
       case 'block_count': {
         if (!workspace) return false
-        const count = workspace.getAllBlocks(false).filter(b => b.type === check.opcode).length
+        const count = workspace.getAllBlocks(false).filter((b) => b.type === check.opcode).length
         return compare(count, check.operator, check.value)
       }
       case 'variable_compare':
@@ -186,7 +278,9 @@ export function evaluateScratchCheck(check, workspace, spriteState, runState = n
         if (!ran) return false
         if (!check.fieldValues || Object.keys(check.fieldValues).length === 0) return true
         if (!workspace) return true
-        return workspace.getAllBlocks(false).some(b => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
+        return workspace
+          .getAllBlocks(false)
+          .some((b) => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
       }
       default:
         return false
@@ -196,13 +290,9 @@ export function evaluateScratchCheck(check, workspace, spriteState, runState = n
   }
 }
 
-export function compare(actual, operator, expected) {
-  const a = Number(actual)
-  const e = Number(expected)
-  if (!Number.isNaN(a) && !Number.isNaN(e)) {
-    if (operator === 'equals') return a === e
-    if (operator === 'greater_than') return a > e
-    if (operator === 'less_than') return a < e
-  }
-  return operator === 'equals' && String(actual) === String(expected)
-}
+// Re-exported under the Scratch-local name kept for existing check-type call sites
+// (sprite_property, sprite_property_delta, block_count, variable_compare) and for
+// `scratch.js`'s re-export — this now delegates to the shared comparator so Scratch
+// checks gain not_equals/greater_than_or_equal/less_than_or_equal for free instead of
+// maintaining a second, narrower copy of the same logic.
+export const compare = compareValues

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { encodeLessonBlocksForFirestore, decodeLessonBlocksFromFirestore } from '../lessonBlocksCodec'
+import {
+  encodeLessonBlocksForFirestore,
+  decodeLessonBlocksFromFirestore,
+} from '../lessonBlocksCodec'
 
 function deepBlockChain(length) {
   let block = { type: 'motion_movesteps', id: 'leaf', fields: { STEPS: '10' } }
@@ -19,10 +22,10 @@ function maxDepth(value, d = 0) {
 function hasNestedArray(value, insideArray = false) {
   if (Array.isArray(value)) {
     if (insideArray) return true
-    return value.some(item => hasNestedArray(item, true))
+    return value.some((item) => hasNestedArray(item, true))
   }
   if (value === null || typeof value !== 'object') return false
-  return Object.values(value).some(item => hasNestedArray(item, false))
+  return Object.values(value).some((item) => hasNestedArray(item, false))
 }
 
 describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () => {
@@ -34,7 +37,9 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
           id: 1,
           starterBlocks: { sprite1: { blocks: { blocks: [{ type: 'a' }] } } },
           completeBlocks: { sprite1: { blocks: { blocks: [{ type: 'b' }] } } },
-          codeStages: [{ label: 'Stage 1', blocks: { sprite1: { blocks: { blocks: [{ type: 'c' }] } } } }],
+          codeStages: [
+            { label: 'Stage 1', blocks: { sprite1: { blocks: { blocks: [{ type: 'c' }] } } } },
+          ],
         },
       ],
     }
@@ -91,7 +96,9 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
           moduleType: 'arcade',
           arcadeDesign: {
             version: 1,
-            sprites: [{ id: 'hero', name: 'hero.png', width: 2, height: 2, frames: [frameA, frameB] }],
+            sprites: [
+              { id: 'hero', name: 'hero.png', width: 2, height: 2, frames: [frameA, frameB] },
+            ],
             maps: [],
           },
           completeArcadeDesign: {
@@ -105,7 +112,9 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
               role: 'starter',
               arcadeDesign: {
                 version: 1,
-                sprites: [{ id: 'stage', name: 'stage.png', width: 2, height: 2, frames: [frameA] }],
+                sprites: [
+                  { id: 'stage', name: 'stage.png', width: 2, height: 2, frames: [frameA] },
+                ],
                 maps: [],
               },
             },

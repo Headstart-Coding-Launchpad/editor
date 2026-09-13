@@ -4,7 +4,7 @@ Load this when a task touches Firebase, localStorage, routing, session state, id
 
 ## Firebase Data Model
 
-Do not deviate from this shape.
+Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCallLinkPushedAt` fields below were added as an explicitly user-authorized deviation for the lesson-join/video-call rework — not an ad hoc addition.)
 
 ```json
 {
@@ -18,8 +18,15 @@ Do not deviate from this shape.
       "endedAt": "1234567890 | null",
       "isPaused": false,
       "activeStudentView": "{anonymousId} | null",
+      "teacherClassPaneCommand": {
+        "mode": "highlight | force",
+        "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
+        "pushedAt": 1234567890
+      },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
+      "fullscreenRequestedAt": "1234567890 | null",
+      "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -33,13 +40,31 @@ Do not deviate from this shape.
         "runStatus": "success | error | stopped | submitted | null",
         "checkPassed": true,
         "selection": { "from": 0, "to": 5, "file": "index.html" },
-        "activity": { "type": "copy | paste | click", "at": 1234567890, "file": "index.html" },
+        "activity": { "type": "copy | paste | click | block_drag | block_click | green_flag | stop | sprite_drag", "at": 1234567890, "file": "index.html" },
+        "spriteState": "object | null (watched Scratch student's throttled sprite/clone/backdrop snapshot, ~8Hz)",
+        "cursor": "object | null (watched Scratch student's throttled live pointer position, ~20Hz — see students.{id}.currentCursor shape)",
+        "blockDrag": "object | null ({ spriteId, blockId, x, y, at } — watched Scratch student's in-progress block-drag position within a sprite's Blockly workspace, read live off Blockly's own drag tracking and throttled with the cursor, ~20Hz; null once the drag ends)",
+        "codeArrangeSlots": "object | null (watched code_arrange student's live tile placements — { slotId: fragmentId, ... }, same shape as students.{id}.currentCodeArrangeSlots; a forced-teacher-live viewer prefers this over deriving the board from code/files)",
+        "codeArrangeCursor": "object | null ({ tileId, x, y, at } — watched code_arrange student's in-progress tile-drag position, x/y normalized 0-1 against the task's own board container, throttled ~20Hz like Scratch's cursor; null once the drag ends)",
+        "outputCollapsed": "boolean (source's output/preview panel expand-collapse state — Python/Electronics console, HTML iframe preview; mirrored continuously to forced-live viewers via publishOutputCollapsed, a standalone update() merge rather than part of the main payload/dependency-tracked publish effect — see useTeacherLivePublish.js. A forced-live viewer's own toggle is locked/hidden while mirroring: see displayOutputCollapsed in studentLiveDisplay.js)",
         "updatedAt": 1234567890
+      },
+      "sharedWorkspaces": {
+        "{shareId}": {
+          "sharerId": "{anonymousId}",
+          "sharerName": "Jamie",
+          "taskId": 3,
+          "taskTitle": "Looping over a list",
+          "lessonType": "python",
+          "sharedBy": "student | teacher",
+          "sharedAt": 1234567890
+        }
       },
       "sandboxCode": "string | null",
       "sandboxCodePushedAt": 1234567890,
       "sandboxFiles": { "index__dot__html": "..." },
       "sandboxFilesUpdatedAt": 1234567890,
+      "sandboxPreviousTaskId": "string | number | null (currentTaskId to restore on exitSandbox, when handleGoLiveSandbox moved it for a composed-lesson module switch)",
       "lessonOverrideTasks": "Task[] | null",
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
@@ -98,6 +123,15 @@ Do not deviate from this shape.
           }
         }
       },
+      "taskRatingLog": {
+        "{taskId}": {
+          "taskId": 3,
+          "rating": "1-5 | null",
+          "whatWorkedWell": "string",
+          "whatDidntWork": "string",
+          "submittedAt": "ServerValue.TIMESTAMP"
+        }
+      },
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
@@ -105,12 +139,18 @@ Do not deviate from this shape.
           "online": true,
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
+          "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz)",
+          "currentCursor": "object | null ({ target: 'stage' | 'workspace', spriteId, x, y, at } — watched Scratch student's throttled live pointer position, ~20Hz; stage coords are origin-centred same as sprite x/y, workspace coords are that sprite's Blockly workspace units)",
+          "currentBlockDrag": "object | null ({ spriteId, blockId, x, y, at } — the top block of an in-progress drag, live position in that sprite's Blockly workspace units, cleared to null when the drag ends)",
+          "currentCodeArrangeSlots": "object | null (watched code_arrange student's live tile placements — { slotId: fragmentId, ... }, same shape CodeArrangeTask uses locally; updated on every tile move, independent of currentCode/currentFiles which only sync once the arrangement is fully assembled)",
           "currentFiles": { "index__dot__html": "..." },
           "currentOutput": "string",
+          "currentInputPrompt": "string | null (watched Python student's pending input() prompt text, if any — the only sync of that state; OutputPanel's own inputPrompt is otherwise local-only runtime state)",
+          "currentInput": "string (watched Python student's not-yet-submitted input() text, per keystroke; cleared to '' on submit or when the prompt clears)",
           "currentAnswer": "b",
           "currentActiveFile": "index.html",
           "currentSelection": { "from": 0, "to": 5, "file": "index.html" },
-          "currentActivity": { "type": "copy | paste | click", "at": 1234567890, "file": "index.html" },
+          "currentActivity": { "type": "copy | paste | click | block_drag | block_click | green_flag | stop | sprite_drag", "at": 1234567890, "file": "index.html" },
           "lastRunStatus": "success | error | null",
           "checkPassed": true,
           "lastRunAt": 1234567890,
@@ -118,6 +158,7 @@ Do not deviate from this shape.
           "remoteResetPushedAt": 1234567890,
           "needsHelp": "true | null",
           "inPersonalSandbox": "true | null",
+          "videoCallLinkPushedAt": "number | null (stamped by sendVideoCallLink to pop VideoCallPrompt for this one student mid-lesson; independent of the session-level videoCallLink above)",
           "checkOverridePassed": "boolean | null",
           "checkOverrideHint": "string | null",
           "checkOverridePushedAt": "number | null",
@@ -128,6 +169,8 @@ Do not deviate from this shape.
           "teacherMessagePushedAt": "number | null",
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
+          "isFullscreen": "boolean | null",
+          "visiblePanes": "string[] | null (what the student can currently see, e.g. ['instructions','blocks','stage'] — see LessonTaskContent.jsx's visiblePanes comment and PaneFocusDropdown.jsx for the pane-id vocabulary; rendered on StudentCard as '👀 Info + Blocks + Stage')",
           "teacherEditRequestedAt": "number | null",
           "teacherEditAcceptedAt": "number | null",
           "teacherLiveCode": "string | null",
@@ -145,6 +188,15 @@ Do not deviate from this shape.
               "note": "string | null",
               "createdAt": 1234567890
             }
+          },
+          "shareRequestedAt": "number | null (student is offering this workspace to the class; drives the 'Sharing' badge on StudentCard)",
+          "shareRequestTaskId": "number | string | null",
+          "shareRequestOrigin": "student | teacher | null",
+          "shareSnapshotRequestedAt": "number | null (teacher asking this device for a fresh snapshot — see Workspace Sharing below)",
+          "teacherPaneCommand": {
+            "mode": "highlight | force",
+            "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
+            "pushedAt": 1234567890
           }
         }
       }
@@ -161,10 +213,15 @@ Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
+- `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` in the main task panel while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
 - `activeStudentView`, `teacherLive`
+- `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
+- `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
+- `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
+- `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
 - any student's `displayName`
 - student node removal
 
@@ -175,17 +232,21 @@ Teacher per-student actions:
 - Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
+- Highlight or force a tab/panel (`pushTeacherPaneCommand`/`clearTeacherPaneCommand`) writes `teacherPaneCommand: { mode, panes, pushedAt }` — `mode: 'highlight'` pulses a glow on the named tab(s)/panel(s) without moving anything; `mode: 'force'` immediately switches the student to them (a one-time jump, not a lock — the student is free to navigate away again right after). `panes` is drawn from `instructions` (every lesson type), plus `breadboard`/`code` for Electronics or `blocks`/`stage` for Scratch — see `PaneFocusDropdown.jsx`. There is no consent step (unlike `teacherStageRequestedAt`/`teacherEditRequestedAt`). Dismissal ("clears when the student looks at it") is tracked client-side in `StudentView`, not by writing back to Firebase — this matters for `teacherClassPaneCommand` above, since it's one shared node and one student looking at it must not clear it for the rest of the class. Cleared by `setTaskId`.
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
+- Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student. Independent of the session-level `videoCallLink`; the teacher can target one student mid-lesson even outside the waiting room.
 
 Student writes:
 
 - On run: own `currentCode` / `currentFiles`, `currentOutput`, `lastRunStatus`, `checkPassed`, `lastRunAt`.
 - On a graded check result (lesson phase only, not sandbox): own `attemptLog/{taskId}/{pushId}` via `logAttempt` — deduplicated client-side, so an unchanged resubmission only bumps `retries` on the existing entry rather than pushing a new one, and no further entries are written once a task has passed. The moment an attempt (new or retried-in-place) first becomes `passed`, `passedAt` is stamped alongside it — this is the timestamp `buildSessionReport` uses (together with `taskStartTimes`) to compute time-on-task. `attemptLog` is a sibling of `students`, not nested inside it, so it is untouched by `setTaskId`'s per-task field wipe and is still present in the teacher's in-memory `session` snapshot at the moment `endSession()` runs — that snapshot is what `buildSessionReport` (`src/shared/lessonReport.js`) reads to build the Firestore report described under "Session Reports" below.
-- When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`.
+- When watched, Python: `currentCode` per keystroke, `currentOutput` line by line during run, `currentSelection`, `currentActivity`, and while an `input()` prompt is pending, `currentInputPrompt`/`currentInput` per keystroke of the not-yet-submitted answer (`writeStudentInputState`) — cleared on submit or when the prompt otherwise clears.
 - When watched, Arcade design changes are saved locally immediately and publish a throttled `currentArcadeDesign` snapshot. Pixel/map edits never stream unless that student is `activeStudentView`.
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
+- When watched, `code_arrange` tasks (Python or HTML module): `currentCodeArrangeSlots` on every tile placement/move, independent of the Python/HTML rules above — `currentCode`/`currentFiles` for the task only update once the arrangement is fully assembled (see `CodeArrangeTaskContainer.jsx`).
+- When watched, Scratch: `currentCode` (settled block state) on change, `currentActivity` for block drags/clicks/green-flag/stop/sprite-drag notices, a throttled (~120ms) `currentSpriteState` snapshot of sprite/clone/backdrop runtime state so the mirror renders live stage motion instead of authored starting positions, and a throttled (~50ms) `currentCursor` live pointer position covering both the stage and each sprite's block workspace. While a block is actively being dragged, its live in-progress position (not just the settled `currentCode` state on drop) also streams as `currentBlockDrag`, read directly off Blockly's own drag-tracked coordinates — the mirror repositions that block (if it already has it from the last settled sync) via Blockly's `moveTo`, without treating it as a real drag. The broadcast direction (`teacherLive`) mirrors the same fields (`code`, `activity`, `spriteState`, `cursor`, `blockDrag`); the mirror's visible sprite tab follows the source's tab automatically whenever a workspace-target cursor is live, and a cursor with no update for 2s fades out rather than freezing in place.
 - Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
@@ -193,11 +254,81 @@ Student writes:
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
-- Presence: own `windowFocused` and `lastActivityAt` via `writeStudentPresence`, independent of the `online` onDisconnect key.
+- Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
 Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields, `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, and their own `supportRevealLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
+
+## Workspace Sharing
+
+Students can offer their workspace to the whole class on tasks authored with `allowSharing: true`. The teacher approves every share before anyone else sees it. Approved shares land in a class-wide gallery and stay there until the teacher removes them.
+
+Two nodes, deliberately split. Do not collapse them into one.
+
+```json
+{
+  "sessions": {
+    "{lessonId}": {
+      "sharedWorkspaces": { "{shareId}": { "sharerId": "...", "sharerName": "Jamie", "taskId": 3, "taskTitle": "...", "lessonType": "python", "sharedBy": "student | teacher", "sharedAt": 1234567890 } }
+    }
+  },
+  "sharedWorkspacePayloads": {
+    "{lessonId}": {
+      "pending":  { "{anonymousId}": { "snapshot" : "..." } },
+      "approved": { "{shareId}":     { "snapshot" : "..." } }
+    }
+  }
+}
+```
+
+**Why the split.** Every client subscribes to the whole session node (`onValue(ref(db, 'sessions/{lessonId}'))` in `useSession.js`), so anything stored there is pushed to the teacher and all 30 students on every unrelated session write. `sharedWorkspaces` is therefore an index only — a few hundred bytes per entry, enough to render the gallery list, the toast, and the teacher's manage-shares popover. The workspace content lives in the top-level `sharedWorkspacePayloads` node, which nobody subscribes to and which is read one entry at a time with `get()`.
+
+**Why the student writes the snapshot.** `students/{id}/currentCode` and `currentFiles` are only fresh while `activeStudentView` matches that student, and a student pressing Share is almost never the watched one. The teacher therefore cannot build a snapshot. Every snapshot is written by the sharer's own client via `buildShareSnapshot()` (`useStudentCodeState.js`), which reads the module-specific sources — Scratch's `scratchCodeRef`, filesystem's `fsStateRef` — that only exist inside that hook.
+
+Snapshot shape (file keys encoded with `encodeFileKey` at the write boundary, exactly like `teacherLive`):
+
+```json
+{
+  "lessonType": "python",
+  "taskId": 3,
+  "code": "string (module state; filesystem/scratch/electronics serialize into this)",
+  "files": { "index__dot__html": "..." },
+  "activeFile": "index.html",
+  "arcadeDesign": "object | null",
+  "output": "string",
+  "runStatus": "success | error | null",
+  "capturedAt": 1234567890
+}
+```
+
+A share is frozen. Live-only interaction state (`cursor`, `blockDrag`, `spriteState`, `selection`, `activity`, `codeArrangeSlots`) is deliberately **not** captured — meaningless once frozen, and it would inflate a payload that travels to the whole class. Client-side cap of 512KB (`SHARE_PAYLOAD_MAX_BYTES`); an oversized snapshot is refused before anything is written.
+
+Student writes:
+
+- `requestWorkspaceShare(anonymousId, snapshot, origin)` — writes `pending/{anonymousId}` **first**, then stamps `shareRequestedAt` / `shareRequestTaskId` / `shareRequestOrigin`. Ordering matters: a teacher must never see a request badge for a request whose payload has not landed.
+- `cancelWorkspaceShare(anonymousId)` — student withdraws their own pending request.
+- Answering a teacher snapshot request: when `shareSnapshotRequestedAt` changes, the student's client silently calls `requestWorkspaceShare(..., 'teacher')` with a fresh snapshot. There is no student prompt or consent step for this (unlike `teacherEditRequestedAt`).
+
+Teacher writes:
+
+- `requestShareSnapshot(anonymousId)` — stamps `shareSnapshotRequestedAt`, asking that device for a current snapshot ("📤 Share this with the class" in `StudentModal`'s More menu).
+- `readPendingShare(anonymousId)` — one-shot `get()` for the approval preview.
+- `approveWorkspaceShare(anonymousId, { student, task })` — copies `pending/{anonymousId}` to `approved/{shareId}` **first**, then writes the `sharedWorkspaces/{shareId}` index entry, then clears the request. A student must never see a gallery row whose payload is missing.
+- `declineWorkspaceShare(anonymousId)` — clears the request fields and the pending payload. Silent by design: the student is told nothing, the button simply becomes available again.
+- `removeSharedWorkspace(shareId)` / `removeAllSharedWorkspaces()` — deletes index entry and approved payload together.
+- `readSharedWorkspace(shareId)` — one-shot `get()` when a student opens a gallery entry.
+
+Lifecycle:
+
+- `setTaskId` clears the four per-student share request fields and removes each `pending/{anonymousId}` payload — pending requests are per-task. It deliberately does **not** touch `sharedWorkspaces` or `approved` payloads, so approved shares survive task changes.
+- `createSession` / `restartSession` / `endSession` set `sharedWorkspaces` to `null` and remove the whole `sharedWorkspacePayloads/{lessonId}` subtree.
+- `endSession` also registers `onDisconnect().remove()` on `sharedWorkspacePayloads/{lessonId}`. This is separate from the session node's own disconnect cleanup — payloads live outside `sessions`, so without it they outlive the session that owned them.
+
+**Deploying the rules is required.** `sharedWorkspacePayloads` is a new top-level node, so until `firebase deploy --only database` runs, every write to it is denied by default and the first thing a student's Share button does fails. The session-node writes (`sharedWorkspaces`, the per-student `share*` fields) are already covered by the existing `sessions/$lessonId` rules and keep working, which makes a partial deploy look like "only sharing is broken". Payload cleanup in `createSession`/`endSession`/`setTaskId` is deliberately best-effort (`removeSharePayloadsQuietly`) so an undeployed or failing rule cannot break session lifecycle.
+
+Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
+
 
 ## onDisconnect Rules
 
@@ -206,12 +337,15 @@ Firebase Realtime Database security rules are in `database.rules.json`. Sessions
 - Student `online` key is removed on disconnect, not set to false.
 - Session node is deleted when the teacher calls `endSession()` and disconnects.
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
+- `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 
-Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`.
+Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`. A task summary also carries `teacherRating` (`{ rating, whatWorkedWell, whatDidntWork, submittedAt }`) when the teacher rated that task live during the session via `TaskRatingPanel.jsx` — omitted entirely for a task the teacher left unrated, same "attach only if non-blank" rule as the whole-session `teacherFeedback` below.
 
-Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
+Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskRatingLog` (live per-task teacher ratings), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
+
+The whole-session `teacherFeedback` (rating plus "what worked well"/"what didn't work" notes for the lesson as a whole) is a separate, later step: unlike `taskRatingLog`, it isn't written live to RTDB — the teacher submits it in `TeacherReportModal`'s `TeacherFeedbackForm` right after the report is first built, and `attachTeacherFeedback(report, feedback)` (`src/shared/lessonReport.js`) merges it onto the already-saved report, which is then re-saved via `saveSessionReport`. Both features share the same star-rating + notes UI (`StarRatingFeedbackFields.jsx`) and the same "omit if every field is blank" validation, but `teacherFeedback` sits at the report root while `teacherRating` sits per task inside `taskSummary`.
 
 Override records make moved-on tasks complete without claiming a real pass. If a student had at least one failed attempt before the teacher moved them on, the task reports `finalResult: overridden_failed`; if they had no attempt, it reports `finalResult: overridden_unattempted`. `distinctAttempts[].passed` remains `false` unless an actual check passed.
 
@@ -280,7 +414,8 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "respondedCount": "number (confidence/open short-answer summaries)",
       "ratingDistribution": { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
       "blankFailures": [{ "blankId": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
-      "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }]
+      "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
+      "teacherRating": { "rating": "1-5 | null", "whatWorkedWell": "string", "whatDidntWork": "string", "submittedAt": 1234567890 }
     }
   ]
 }
@@ -380,14 +515,21 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/login` | Email/password sign-in for teachers/admins; reads `?redirect` |
 | `/account` | Authenticated account settings; teachers/admins can change their own password |
 | `/admin` | Admin portal; admin role required |
-| `/lesson/:lessonId` | Solo student mode |
-| `/lesson/:lessonId?live=true` | Live student mode |
+| `/lesson/:lessonId` | Smart join. If a session exists (`waiting` or `active`), the student auto-joins it. If no session exists, the student sees the `choice` phase (`ChoiceScreen.jsx`) to pick Join Live Lesson or Go Solo. |
+| `/lesson/:lessonId?solo=true` | Forces solo mode unconditionally — bypasses any session even if one exists. Replaces the old "bare URL = solo" meaning. |
+| `/lesson/:lessonId?live=true` | Deprecated no-op. Silently ignored by `LessonRoute.jsx` (kept out of `forceSolo`) so previously-shared links with this param don't break. Bare URLs now handle the smart-join behaviour this param used to imply. |
 | `/lesson/:lessonId?teacher=true` | Teacher view; redirects unauthenticated users to login |
 | `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation view; auth required |
+| `/lesson/:lessonId?preview=true` | Teacher/admin-only ephemeral preview — auth required (same check as `?teacher=true`). Renders `StudentView` with `forceSolo`, `previewMode` (writes never persist — see `createStudentPersistence.js`), and `allowUnrestrictedTaskNavigation`. Linked from the Admin Portal's lesson list ("Preview"). |
 | `/code` | Imported `.launchpad` Python code workspace |
+| `/playground/:type` | No-login, no-persistence solo sandbox for `python`/`arcade`/`electronics`/`scratch`; builds an ephemeral in-memory lesson (`__playground__<type>` id) and renders it forced-solo — never shares storage with a real lesson |
 | `/builder` | Lesson builder |
 
 No room IDs. There is one session per lesson.
+
+A lesson-level `soloOnly: true` flag (on the lesson envelope) overrides all of the above: the lesson is hard-forced to solo mode always, regardless of URL or session state, and the `choice` phase is never shown. See `docs/authoring/lesson-schema.md` for the full field reference.
+
+`getLessonLinks(lessonId)` (`src/shared/lessonLinks.js`) returns `{ join, solo }` — `join` is the bare smart-join URL, `solo` appends `?solo=true`. Used by `TeacherSessionControls.jsx` and Admin Portal's `LessonPanel.jsx` (labelled "Lesson Link (live or solo)" and "Solo-Only Link").
 
 ## Session States
 
@@ -398,6 +540,12 @@ No room IDs. There is one session per lesson.
 | `sandbox` | Freeform mode; no task and no checks |
 | `ended` | Session finished |
 | any state plus `isPaused: true` | Freeze student navigation without changing state |
+
+## Student Phase State Machine
+
+`useStudentPhase.js` (`src/app/hooks/useStudentPhase.js`) owns the student phase state machine: `loading → choice → waiting → name-entry → lesson/sandbox → solo → ended`.
+
+`choice` is shown when no session exists yet and the student hasn't committed to solo — it renders `ChoiceScreen.jsx`, offering "Join a Live Lesson" (`handleWaitForTeacher`, → `waiting`/`name-entry`) or "Go Solo" (`handleGoSolo`, → `solo`). The choice is not persisted to localStorage — a fresh page load always re-shows `choice` when no session exists. If a session appears while a student sits at `choice` (the session transitions to `waiting` or `active`), they auto-transition to `waiting`/`name-entry` without needing to re-click. `soloOnly` lessons and `?solo=true` URLs skip `choice` entirely and go straight to `solo`.
 
 ## Identity Model
 

@@ -5,7 +5,7 @@ export default function CheckEditor({ task, onUpdate, checks, onChange, feedback
   return (
     <FsCheckListEditor
       checks={checks ?? task.check}
-      onChange={nextChecks => {
+      onChange={(nextChecks) => {
         if (onChange) onChange(nextChecks)
         else onUpdate({ ...task, check: nextChecks, _checkTested: false })
       }}

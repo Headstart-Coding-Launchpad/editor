@@ -13,8 +13,13 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 // lesson's tasks without leaving TeacherView. Edits are staged in local
 // `draftLesson` state and only take effect when explicitly saved.
 export default function EditLessonModal({
-  lesson, role, currentTaskId,
-  onApplySession, onSavePermanent, onResetToOriginal, onClose,
+  lesson,
+  role,
+  currentTaskId,
+  onApplySession,
+  onSavePermanent,
+  onResetToOriginal,
+  onClose,
 }) {
   const [draftLesson, setDraftLesson] = useState(() => lesson)
   const [saving, setSaving] = useState(false)
@@ -48,7 +53,7 @@ export default function EditLessonModal({
     if (taskId !== currentTaskId) return true
     return confirm(
       'This is the task students are currently on — deleting it will leave ' +
-      'their screen blank until you move the session to another task.\n\nDelete anyway?'
+        'their screen blank until you move the session to another task.\n\nDelete anyway?'
     )
   }
 
@@ -62,8 +67,8 @@ export default function EditLessonModal({
   }
 
   function guardedDeleteGroup(groupId) {
-    const group = draftLesson.tasks.find(t => t.type === 'group' && t.id === groupId)
-    const containsActiveTask = (group?.subtasks ?? []).some(t => t.id === currentTaskId)
+    const group = draftLesson.tasks.find((t) => t.type === 'group' && t.id === groupId)
+    const containsActiveTask = (group?.subtasks ?? []).some((t) => t.id === currentTaskId)
     if (containsActiveTask) {
       if (!confirmIfActiveTask(currentTaskId)) return
       handleDeleteGroup(groupId, { skipConfirm: true })
@@ -120,11 +125,14 @@ export default function EditLessonModal({
       <div className="te-modal">
         <div className="te-modal__header">
           <span className="te-modal__title">
-            Edit Lesson — {role === 'admin'
+            Edit Lesson —{' '}
+            {role === 'admin'
               ? 'apply for this session or save permanently'
               : 'changes apply to this session only'}
           </span>
-          <button className="te-modal__close" onClick={onClose} title="Close">×</button>
+          <button className="te-modal__close" onClick={onClose} title="Close">
+            ×
+          </button>
         </div>
 
         <div className="te-modal__body" style={s.body}>
@@ -151,10 +159,10 @@ export default function EditLessonModal({
             {selectedGroup && !selectedTask ? (
               <GroupEditor
                 group={selectedGroup}
-                onUpdate={updatedGroup => {
-                  handleLessonUpdate(prev => ({
+                onUpdate={(updatedGroup) => {
+                  handleLessonUpdate((prev) => ({
                     ...prev,
-                    tasks: prev.tasks.map(t =>
+                    tasks: prev.tasks.map((t) =>
                       t.type === 'group' && t.id === updatedGroup.id ? updatedGroup : t
                     ),
                   }))
@@ -166,8 +174,8 @@ export default function EditLessonModal({
                 task={selectedTask}
                 lesson={lessonForEditor}
                 parentGroup={selectedTaskGroup}
-                onUpdate={updated => {
-                  handleLessonUpdate(prev => ({
+                onUpdate={(updated) => {
+                  handleLessonUpdate((prev) => ({
                     ...prev,
                     tasks: applyTaskUpdate(prev.tasks, selectedTaskGroup, selectedTask, updated),
                   }))
@@ -185,7 +193,12 @@ export default function EditLessonModal({
           <button className="btn-ghost" style={s.footerBtn} onClick={onClose} disabled={saving}>
             Cancel
           </button>
-          <button className="btn-ghost-outline" style={s.footerBtn} onClick={handleResetToOriginal} disabled={saving}>
+          <button
+            className="btn-ghost-outline"
+            style={s.footerBtn}
+            onClick={handleResetToOriginal}
+            disabled={saving}
+          >
             Reset to Original
           </button>
           <div style={s.footerSpacer} />
@@ -198,7 +211,12 @@ export default function EditLessonModal({
             Apply for This Session
           </button>
           {role === 'admin' && (
-            <button className="btn-primary" style={s.footerBtn} onClick={handleSavePermanent} disabled={saving}>
+            <button
+              className="btn-primary"
+              style={s.footerBtn}
+              onClick={handleSavePermanent}
+              disabled={saving}
+            >
               {saving ? 'Saving…' : 'Save Permanently'}
             </button>
           )}

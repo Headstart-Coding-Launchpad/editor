@@ -13,36 +13,48 @@ import {
   typedValueMatchesBlank,
 } from './quizUtils'
 
-export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult, showCorrectAnswer }) {
+export default function FillBlankQuiz({
+  task,
+  selectedAnswer,
+  onSelectAnswer,
+  submitted,
+  checkPassed,
+  disabled,
+  showQuestion,
+  showResult,
+  showCorrectAnswer,
+}) {
   const blanks = task?.blanks ?? []
   const mode = task?.mode ?? 'drag'
   const text = task?.text ?? ''
   const distractors = task?.distractors ?? []
 
   // Unified pool: correct answer tiles + distractor tiles, both normalised to { id, text }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const tilePool = useMemo(() => {
     const all = [
-      ...blanks.map(b => ({ id: b.id, text: b.answer })),
-      ...distractors.map(d => ({ id: d.id, text: d.text })),
+      ...blanks.map((b) => ({ id: b.id, text: b.answer })),
+      ...distractors.map((d) => ({ id: d.id, text: d.text })),
     ]
     return all.sort((a, b) => stableHash(a.text ?? '') - stableHash(b.text ?? ''))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(blanks), JSON.stringify(distractors)])
 
   const state = useMemo(() => parseQuizAnswerState(selectedAnswer), [selectedAnswer])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const segments = useMemo(() => parseFillBlankSegments(text, blanks), [text, JSON.stringify(blanks)])
+  const segments = useMemo(
+    () => parseFillBlankSegments(text, blanks),
+    [text, JSON.stringify(blanks)]
+  )
 
   const placedIds = new Set(Object.values(state))
   const blocked = disabled || (submitted && checkPassed)
 
   function publishState(next) {
-    const allFilled = blanks.every(b => next[b.id] !== undefined)
+    const allFilled = blanks.every((b) => next[b.id] !== undefined)
     if (allFilled) {
-      const allCorrect = blanks.every(b => {
-        const placedTile = tilePool.find(t => t.id === next[b.id])
+      const allCorrect = blanks.every((b) => {
+        const placedTile = tilePool.find((t) => t.id === next[b.id])
         return fillDragTileMatchesBlank(placedTile, b)
       })
       onSelectAnswer?.(next, allCorrect)
@@ -54,7 +66,7 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
   const dnd = useTileDragAndDrop({
     blocked,
     dragEnabled: mode === 'drag',
-    getLabelForTile: tileId => tilePool.find(t => t.id === tileId)?.text ?? '',
+    getLabelForTile: (tileId) => tilePool.find((t) => t.id === tileId)?.text ?? '',
   })
   const { draggingTile, dragOverTarget: dragOverBlank, touchSelectedTile } = dnd
 
@@ -64,30 +76,34 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
   }
 
   function handleTypeSubmit() {
-    const allFilled = blanks.every(b => String(state[b.id] ?? '').trim())
+    const allFilled = blanks.every((b) => String(state[b.id] ?? '').trim())
     if (!allFilled) return
-    const allCorrect = blanks.every(b => {
+    const allCorrect = blanks.every((b) => {
       return typedValueMatchesBlank(state[b.id], b)
     })
     onSelectAnswer?.(state, allCorrect)
   }
 
   function renderBlank(blankId, key) {
-    const blank = blanks.find(b => b.id === blankId)
+    const blank = blanks.find((b) => b.id === blankId)
     const placedTileId = state[blankId]
-    const placedText = tilePool.find(t => t.id === placedTileId)?.text
+    const placedText = tilePool.find((t) => t.id === placedTileId)?.text
     const activeId = draggingTile || touchSelectedTile
     const canReceive = mode === 'drag' && !!(activeId && activeId !== placedTileId)
     const isDragHighlight = canReceive && dragOverBlank === blankId && !blocked
     const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
-    const hasBlankValue = mode === 'drag'
-      ? placedTileId !== undefined && placedTileId !== null
-      : String(placedTileId ?? '').trim() !== ''
-    const isBlankCorrect = hasBlankValue && (
+    const hasBlankValue =
       mode === 'drag'
-        ? fillDragTileMatchesBlank(tilePool.find(t => t.id === placedTileId), blank)
-        : typedValueMatchesBlank(placedTileId, blank)
-    )
+        ? placedTileId !== undefined && placedTileId !== null
+        : String(placedTileId ?? '').trim() !== ''
+    const isBlankCorrect =
+      hasBlankValue &&
+      (mode === 'drag'
+        ? fillDragTileMatchesBlank(
+            tilePool.find((t) => t.id === placedTileId),
+            blank
+          )
+        : typedValueMatchesBlank(placedTileId, blank))
     const isBlankWrong = hasBlankValue && !isBlankCorrect
 
     if (mode === 'type') {
@@ -100,7 +116,7 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
             ...(isBlankWrong ? sm.fillInputWrong : {}),
           }}
           value={state[blankId] ?? ''}
-          onChange={e => handleTypeChange(blankId, e.target.value)}
+          onChange={(e) => handleTypeChange(blankId, e.target.value)}
           disabled={blocked}
           placeholder="..."
         />
@@ -115,21 +131,31 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
           ...(placedTileId ? sm.fillBlankFilled : sm.fillBlankEmpty),
           ...(isBlankCorrect ? sm.fillBlankCorrect : {}),
           ...(isBlankWrong ? sm.fillBlankWrong : {}),
-          ...((isDragHighlight || isTapHighlight) ? sm.fillBlankHighlight : {}),
-          cursor: blocked ? 'default' : (isTapHighlight || placedTileId) ? 'pointer' : 'copy',
+          ...(isDragHighlight || isTapHighlight ? sm.fillBlankHighlight : {}),
+          cursor: blocked ? 'default' : isTapHighlight || placedTileId ? 'pointer' : 'copy',
         }}
-        onDragOver={event => dnd.handleTargetDragOver(event, blankId)}
+        onDragOver={(event) => dnd.handleTargetDragOver(event, blankId)}
         onDragLeave={dnd.clearDragOver}
-        onDrop={event => dnd.handleTargetDrop(event, blankId, state, publishState)}
+        onDrop={(event) => dnd.handleTargetDrop(event, blankId, state, publishState)}
         onClick={() => dnd.handleTargetClick(blankId, state, publishState)}
         draggable={!!placedTileId && !blocked}
-        onDragStart={event => placedTileId && dnd.handleDragStart(event, placedTileId)}
+        onDragStart={(event) => placedTileId && dnd.handleDragStart(event, placedTileId)}
         onDragEnd={dnd.handleDragEnd}
         title={isBlankWrong && blank ? `Correct: ${blank.answer}` : undefined}
       >
-        {placedText
-          ? <span style={sm.fillBlankMarkdown}><InlineMarkdown content={placedText} /></span>
-          : (canReceive && !blocked ? (touchSelectedTile && !draggingTile ? 'Tap to place' : 'Drop here') : '___')}
+        {placedText ? (
+          <span style={sm.fillBlankMarkdown}>
+            <InlineMarkdown content={placedText} />
+          </span>
+        ) : canReceive && !blocked ? (
+          touchSelectedTile && !draggingTile ? (
+            'Tap to place'
+          ) : (
+            'Drop here'
+          )
+        ) : (
+          '___'
+        )}
       </span>
     )
   }
@@ -142,11 +168,19 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
         <div style={sm.fillText}>
           {segments.map((seg, i) => {
             if (seg.type === 'text') {
-              return <span key={i}><InlineMarkdown content={seg.text} /></span>
+              return (
+                <span key={i}>
+                  <InlineMarkdown content={seg.text} />
+                </span>
+              )
             }
             if (seg.type === 'code') {
               const mdCode = `\`${seg.lang ? seg.lang + ':' : ''}${seg.text}\``
-              return <span key={i}><InlineMarkdown content={mdCode} /></span>
+              return (
+                <span key={i}>
+                  <InlineMarkdown content={mdCode} />
+                </span>
+              )
             }
             if (seg.type === 'codeBlock') {
               return (
@@ -154,9 +188,11 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
                   <pre style={sm.fillCodeBlockPre}>
                     <code>
                       {seg.parts.map((part, j) =>
-                        part.type === 'codeText'
-                          ? <span key={j}>{part.text}</span>
-                          : renderBlank(part.blankId, j)
+                        part.type === 'codeText' ? (
+                          <span key={j}>{part.text}</span>
+                        ) : (
+                          renderBlank(part.blankId, j)
+                        )
                       )}
                     </code>
                   </pre>
@@ -168,26 +204,43 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
         </div>
 
         {mode === 'drag' && (
-          <div style={sm.answerPool} onDragOver={dnd.handlePoolDragOver} onDrop={event => dnd.handlePoolDrop(event, state, publishState)}>
+          <div
+            style={sm.answerPool}
+            onDragOver={dnd.handlePoolDragOver}
+            onDrop={(event) => dnd.handlePoolDrop(event, state, publishState)}
+          >
             <div style={sm.poolLabel}>Answer bank</div>
             <div style={sm.poolTiles}>
-              {tilePool.filter(t => !placedIds.has(t.id)).map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  style={{ ...sm.tile, ...((draggingTile === t.id || touchSelectedTile === t.id) ? sm.tileSelected : {}) }}
-                  draggable={!blocked}
-                  onDragStart={event => dnd.handleDragStart(event, t.id)}
-                  onDragEnd={dnd.handleDragEnd}
-                  onClick={() => dnd.handleTileClick(t.id)}
-                  disabled={blocked}
-                >
-                  <span style={(draggingTile === t.id || touchSelectedTile === t.id) ? sm.selectedTileMarkdown : undefined}>
-                    <InlineMarkdown content={t.text} />
-                  </span>
-                </button>
-              ))}
-              {tilePool.filter(t => !placedIds.has(t.id)).length === 0 && !checkPassed && (
+              {tilePool
+                .filter((t) => !placedIds.has(t.id))
+                .map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    style={{
+                      ...sm.tile,
+                      ...(draggingTile === t.id || touchSelectedTile === t.id
+                        ? sm.tileSelected
+                        : {}),
+                    }}
+                    draggable={!blocked}
+                    onDragStart={(event) => dnd.handleDragStart(event, t.id)}
+                    onDragEnd={dnd.handleDragEnd}
+                    onClick={() => dnd.handleTileClick(t.id)}
+                    disabled={blocked}
+                  >
+                    <span
+                      style={
+                        draggingTile === t.id || touchSelectedTile === t.id
+                          ? sm.selectedTileMarkdown
+                          : undefined
+                      }
+                    >
+                      <InlineMarkdown content={t.text} />
+                    </span>
+                  </button>
+                ))}
+              {tilePool.filter((t) => !placedIds.has(t.id)).length === 0 && !checkPassed && (
                 <span style={sm.poolEmpty}>All answers placed</span>
               )}
             </div>
@@ -199,7 +252,7 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
             className="btn-primary"
             style={{ alignSelf: 'flex-start', padding: '8px 24px', marginTop: 4 }}
             onClick={handleTypeSubmit}
-            disabled={!blanks.every(b => String(state[b.id] ?? '').trim())}
+            disabled={!blanks.every((b) => String(state[b.id] ?? '').trim())}
           >
             Submit
           </button>
@@ -207,7 +260,11 @@ export default function FillBlankQuiz({ task, selectedAnswer, onSelectAnswer, su
       </div>
 
       {showResult && submitted && (
-        <CheckFeedbackBanner passed={checkPassed} failureMessage="Not quite right, try again." suggestion={task?.feedback ?? task?.check?.hint ?? ''} />
+        <CheckFeedbackBanner
+          passed={checkPassed}
+          failureMessage="Not quite right, try again."
+          suggestion={task?.feedback ?? task?.check?.hint ?? ''}
+        />
       )}
     </div>
   )

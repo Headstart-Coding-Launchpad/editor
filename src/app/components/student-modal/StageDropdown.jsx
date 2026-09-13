@@ -8,13 +8,16 @@ export default function StageDropdown({ stageOptions, onRequest, declinedNotice 
       buttonClassName="btn-ghost"
       buttonStyle={declinedNotice ? { color: '#ef4444', borderColor: '#ef4444' } : undefined}
     >
-      {close => (
+      {(close) => (
         <>
-          {stageOptions.map(opt => (
+          {stageOptions.map((opt) => (
             <button
               key={opt.value}
               style={s.stageBtn}
-              onClick={() => { close(); onRequest(opt.value, opt.label) }}
+              onClick={() => {
+                close()
+                onRequest(opt.value, opt.label)
+              }}
             >
               {opt.label}
             </button>

@@ -1,11 +1,14 @@
-function isObject(value) {
-  return value != null && typeof value === 'object' && !Array.isArray(value)
-}
+import { isPlainObject } from './textUtils.js'
+import { flattenTaskTree } from './taskUtils.js'
 
 function sorted(value) {
   if (Array.isArray(value)) return value.map(sorted)
-  if (!isObject(value)) return value
-  return Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])]))
+  if (!isPlainObject(value)) return value
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, sorted(value[key])])
+  )
 }
 
 function same(value, other) {
@@ -22,27 +25,28 @@ function taskWithoutAudit(task, { includeIntent = true } = {}) {
   return includeIntent ? { ...rest, intent: intent ?? '' } : rest
 }
 
-function flattenTasks(tasks = []) {
-  return (Array.isArray(tasks) ? tasks : []).flatMap(item => item?.type === 'group'
-    ? (Array.isArray(item.subtasks) ? item.subtasks : [])
-    : [item])
-}
-
 function withTaskAudit(tasks, priorTasks, timestamp) {
-  const previousById = new Map(flattenTasks(priorTasks)
-    .filter(task => task && typeof task === 'object')
-    .map(task => [String(task.id), task]))
-  return (Array.isArray(tasks) ? tasks : []).map(item => {
+  const previousById = new Map(
+    flattenTaskTree(priorTasks)
+      .filter((task) => task && typeof task === 'object')
+      .map((task) => [String(task.id), task])
+  )
+  return (Array.isArray(tasks) ? tasks : []).map((item) => {
     if (item?.type === 'group') {
       return { ...item, subtasks: withTaskAudit(item.subtasks ?? [], priorTasks, timestamp) }
     }
     const previous = previousById.get(String(item.id))
     const intent = item.intent ?? previous?.intent ?? ''
     const intentChanged = !previous || (previous.intent ?? '') !== intent
-    const taskChanged = !previous || !same(
-      taskWithoutAudit({ ...previous, intent: intent ?? previous.intent ?? '' }, { includeIntent: false }),
-      taskWithoutAudit({ ...item, intent }, { includeIntent: false })
-    )
+    const taskChanged =
+      !previous ||
+      !same(
+        taskWithoutAudit(
+          { ...previous, intent: intent ?? previous.intent ?? '' },
+          { includeIntent: false }
+        ),
+        taskWithoutAudit({ ...item, intent }, { includeIntent: false })
+      )
     const next = { ...item, intent }
     const intentLastChangedAt = intentChanged ? timestamp : previous?.intentLastChangedAt
     const taskLastChangedAt = taskChanged ? timestamp : previous?.taskLastChangedAt
@@ -54,16 +58,25 @@ function withTaskAudit(tasks, priorTasks, timestamp) {
 
 function lessonWithoutAudit(lesson) {
   const { version: _version, tasks = [], ...rest } = lesson
-  return { ...rest, tasks: tasks.map(item => item?.type === 'group'
-    ? { ...item, subtasks: (item.subtasks ?? []).map(task => taskWithoutAudit(task)) }
-    : taskWithoutAudit(item)) }
+  return {
+    ...rest,
+    tasks: tasks.map((item) =>
+      item?.type === 'group'
+        ? { ...item, subtasks: (item.subtasks ?? []).map((task) => taskWithoutAudit(task)) }
+        : taskWithoutAudit(item)
+    ),
+  }
 }
 
 /**
  * Applies the current-state lesson audit fields. The returned lesson is safe to
  * persist as-is; a no-op returns the prior value without changing timestamps.
  */
-export function applyLessonAuditMetadata(existing, candidate, timestamp = new Date().toISOString()) {
+export function applyLessonAuditMetadata(
+  existing,
+  candidate,
+  timestamp = new Date().toISOString()
+) {
   const normalized = { ...candidate, draft: candidate.draft === true }
   const baseline = existing ? { ...existing, draft: existing.draft === true } : null
   if (baseline && same(lessonWithoutAudit(baseline), lessonWithoutAudit(normalized))) {

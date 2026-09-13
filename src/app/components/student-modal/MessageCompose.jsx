@@ -16,31 +16,60 @@ export default function MessageCompose({ student, onSendMessage, isOpen, onClose
   return (
     <div
       style={s.overlay}
-      onClick={e => { if (e.target === e.currentTarget) { onClose(); setText('') } }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+          setText('')
+        }
+      }}
     >
       <div style={s.modal}>
         <div style={s.header}>
           <span style={s.title}>Message {student.displayName}</span>
-          <button style={s.closeBtn} onClick={() => { onClose(); setText('') }}>✕</button>
+          <button
+            style={s.closeBtn}
+            onClick={() => {
+              onClose()
+              setText('')
+            }}
+          >
+            ✕
+          </button>
         </div>
         <div style={s.body}>
-          <p style={s.hint}>A friendly pop-up will appear on {student.displayName}&apos;s screen.</p>
+          <p style={s.hint}>
+            A friendly pop-up will appear on {student.displayName}&apos;s screen.
+          </p>
           <textarea
             style={s.textarea}
             placeholder='e.g. "Great work so far!" or "Try a different approach…"'
             value={text}
-            onChange={e => setText(e.target.value)}
+            onChange={(e) => setText(e.target.value)}
             rows={4}
             autoFocus
-            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend() }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend()
+            }}
           />
           <p style={s.hint2}>Ctrl+Enter to send</p>
         </div>
         <div style={s.footer}>
-          <button className="btn-ghost-outline" style={{ fontSize: 13 }} onClick={() => { onClose(); setText('') }}>
+          <button
+            className="btn-ghost-outline"
+            style={{ fontSize: 13 }}
+            onClick={() => {
+              onClose()
+              setText('')
+            }}
+          >
             Cancel
           </button>
-          <button className="btn-primary" style={{ fontSize: 13 }} onClick={handleSend} disabled={!text.trim()}>
+          <button
+            className="btn-primary"
+            style={{ fontSize: 13 }}
+            onClick={handleSend}
+            disabled={!text.trim()}
+          >
             Send
           </button>
         </div>

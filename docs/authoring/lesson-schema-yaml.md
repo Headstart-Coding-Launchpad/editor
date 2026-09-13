@@ -26,6 +26,7 @@ id: python-for-loops         # required — lowercase slug, used in URLs
 type: composed               # required for new lessons; legacy types still load
 title: Python For Loops      # required
 draft: false                 # optional; true permits incomplete real tasks during authoring
+soloOnly: false               # optional; true hard-forces solo mode, hiding the live/wait choice
 version: 3                   # current successful-save version (managed by CLI/Builder)
 description: Practise loops. # required — shown on the entry screen
 level: Level 1               # optional legacy display fallback; prefer levelId/levelRef
@@ -55,6 +56,8 @@ tasks: []                     # required — ordered task list (see below)
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `draft` | No | boolean | Enables incomplete real tasks for authoring. Final publishing refuses `true`. |
+| `soloOnly` | No | boolean | Default `false`. When `true`, hard-forces solo mode always — the live/wait choice screen is never offered, regardless of URL or an existing live session. See `docs/authoring/lesson-schema.md` and `docs/agents/runtime-model.md`. |
+| `companionOf` | No | string | Set only on a `soloOnly` "solo challenge" lesson, to the `id` of the parent lesson it extends. Links the two in the Admin list and offers this lesson as a "Try the Solo Challenge" continuation when students finish the parent. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`. |
 | `version` | No | positive integer | Current save version, managed by LaunchPad; callers must not set it. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
@@ -82,6 +85,7 @@ tasks:
       Instructions here.
     estimatedMinutes: 5        # optional — approximate duration, totalled in the builder
     priority: core              # optional — core (default) | optional; teacher-facing only
+    allowSharing: true          # optional — let students share this workspace with the class (teacher approves)
     taskMode: both              # optional — both (default) | live | solo
     intent: |                    # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
@@ -100,8 +104,9 @@ tasks:
 | `id` | No | integer | Auto-assigned sequential integer if omitted. |
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes in final mode | string | Markdown shown to students. Draft permits it to be omitted. |
-| `estimatedMinutes` | No | positive integer | Approximate duration; totalled in the builder. |
+| `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
+| `allowSharing` | No | boolean | Lets students offer this workspace to the whole class, subject to teacher approval. Off unless set to `true`. Not valid on `quiz` or `information` tasks. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
@@ -109,7 +114,7 @@ tasks:
 | `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task. Always optional, even in Draft. Never student-facing. |
 | `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
 | `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
-| `check` | No | object or array | Completion check. Arrays require every check to pass. |
+| `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run, but it also doesn't block advancing to the next task — it just never shows as passed in reports. See `docs/authoring/lesson-schema.md` for the full behaviour, including the Arcade-specific caveat. |
 | `feedbackChecks` | No | object or array | Supported by Python, HTML, Filesystem, Electronics, and Scratch. Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. |
 

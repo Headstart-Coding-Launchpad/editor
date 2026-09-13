@@ -18,6 +18,93 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-12
+
+### New Turtle module task type
+
+Added `moduleType: turtle` — a single-file Python task type for turtle
+graphics, running a hand-built shim of the real `turtle` module (`import
+turtle` works as written) inside the shared Pyodide worker, drawing onto a
+responsive canvas with a fixed logical coordinate space matching real
+turtle's centre-origin, y-up convention. Supports the core movement/pen
+command set (forward/backward/left/right/penup/pendown/pencolor/goto/
+setheading/home/reset), plus circle, begin_fill/end_fill/fillcolor/color,
+stamp, write, bgcolor, and colormode. New check types: `turtle_position`,
+`turtle_heading`, `turtle_path_closed`, `turtle_segment_count`,
+`turtle_path_length`, `turtle_command_used`, `turtle_color_used` (takes an
+optional `kind: "pen" | "fill"`), and `turtle_stamp_count`. The student's
+drawing now also syncs live to the teacher — both when watching an
+individual student and when "Go Live" broadcasts a turtle task to the whole
+class — via the same channels that already sync live code. Multiple
+`Turtle()` instances, per-task canvas size, and a reference-image comparison
+feature are not implemented. See `docs/authoring/turtle.md`.
+
+### New `companionOf` lesson field links a solo challenge to its parent lesson
+
+A `soloOnly` "solo challenge" lesson can now set `companionOf: "<parent-lesson-id>"` to link it to the lesson it extends. The Admin lesson list groups a solo lesson under its linked parent (collapsible, same pattern as class forks), and students who finish the parent lesson — live or solo — are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The field is set only on the solo lesson; the parent lesson document is unchanged. Set it via the Builder's new "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, or the CLI. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`.
+
+## 2026-09-11
+
+### New `allowRemoveSprite` / `allowRemoveStarterSprites` Scratch task fields
+
+Scratch tasks can now opt in to letting students remove sprites from their workspace with `allowRemoveSprite: true`. By default this only allows removing sprites the student added themselves via the existing "Add sprite" picker (`studentAdded: true`) — author-placed starter sprites stay protected. Set `allowRemoveStarterSprites: true` alongside it to also allow removing author-placed sprites; a workspace can never be emptied to zero sprites, and removal asks the student to confirm first. The Scratch Playground sets both flags so every sprite there is removable. See `docs/authoring/scratch.md`.
+
+## 2026-09-05
+
+### New `allowSharing` task field for student workspace sharing
+
+Tasks can now opt in to student workspace sharing with `allowSharing: true`. When set, students working on that task get a **Share with class** button; the teacher is notified, previews the exact snapshot, and approves or declines it. Approved workspaces go into a class-wide **Shared work** gallery that persists across task changes until the teacher removes them, and classmates open them as a non-destructive sandbox copy they can run and edit without touching their own work.
+
+The field is off unless explicitly set, so existing lessons are unaffected and need no changes. It is valid on any code task in any lesson type, and rejected by CLI and Builder validation on `quiz` and `information` tasks, which have no workspace to share. Set it on tasks where seeing a classmate's approach helps — open-ended builds, creative tasks, "solve it your own way" problems — and leave it off where you want independent work. See `docs/authoring/lesson-schema.md`.
+
+## 2026-09-04
+
+### Topic library removed from Scratch lessons
+
+The topic library (inline `[[wiki-links]]`, hover cards, and the browse dialog) no longer renders on Scratch lessons at all — `useTopicLibrary` now returns no topics whenever the lesson type is `scratch`, regardless of a topic's `types` field. A topic tagged `["scratch"]` (or left untagged, normally "all types") will never appear on a Scratch lesson; `[[topic-id]]` syntax in a Scratch explainer now renders as plain text instead of a link. This also removes the teacher's "📖" topic-library button from the Student Grid/Student Modal while viewing a Scratch lesson. No change for any other lesson type. Existing Scratch lessons need no changes — any `[[..]]`/`topicLinks` authored there simply stop resolving to links; authors should stop adding them for Scratch going forward. See `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
+
+## 2026-09-02
+
+### New optional `recordingUrl` field for per-class recordings
+
+Lessons can now carry an optional `recordingUrl` field: an unlisted YouTube link to that class's recorded live session. It's meant to be set per-class on a class's forked lesson (`lessons fork`), not on the shared source lesson, since each class recorded a different session. When present, solo students see a small pop-out player (bottom-right, pausable/hideable) on the lesson page; it never appears during a live session or teacher presentation. The video must be set to **Unlisted** on YouTube — students are login-less and never authenticate with Google, so a Private video would just show a "request access" screen. Only `youtube.com`/`youtu.be` links validate; Google Drive links do not, because Drive's embed has no JS control API to pause/resume the widget in place. See `docs/authoring/lesson-schema.md`.
+
+### Electronics `locked: true` components are now interactive
+
+A "Fixed" (`locked: true`) component previously had every one of its controls disabled for students, so a fully locked demo board was inert: the switch would not flip, the button would not press, and the potentiometer would not turn. `locked` now freezes only a part's *structure* — position, rotation, `props`, pins, and deletion — while its `controls` state stays live on the canvas and in the inspector. `push_button` (`pressed`), `slide_switch` (`closed`), `potentiometer`/`sensor` (`value`), `transistor` (`baseHigh`), and `servo_motor` (`angle`) all respond on a locked part. This makes the documented pre-wired demo board pattern work as its example already described: `controls: {}` leaves the switch open and the student flips it to light the LED. Existing lessons need no changes — a locked demo board gains its intended interactivity automatically. A read-only workspace (teacher live view, Support/Complete stage preview) remains fully inert. See `docs/authoring/electronics.md`.
+
+### Electronics wire format corrected: `from`/`to` are `componentId.pin` strings
+
+`docs/authoring/electronics.md` previously documented a wire as `from: { component: battery1, pin: positive }`. That shape does not work. The runtime uses `wire.from`/`wire.to` directly as graph keys in `buildGraph` and string-splits them in `pinPoint`, so it accepts only the flat form `from: battery1.positive`. An object-form wire produces no error — `lessons validate` still passes — but connects nothing in the simulation and draws nothing on the board, leaving the parts placed but entirely unwired and every check involving them permanently failing. The doc's only populated wire example carried the wrong shape, so any board authored from it was dead on arrival. Wires are strings; **Checks** endpoint selectors remain `{ type, pin }` objects, which is the likely source of the confusion. Existing lessons with object-form wires need their wires rewritten. No runtime change. See `docs/authoring/electronics.md`.
+
+### Electronics `controls` documented
+
+`docs/authoring/electronics.md` now documents the `controls` map, which was previously undocumented and appeared only as `controls: {}` in examples. It holds live, student-adjustable state keyed by component id, separate from the fixed `props`: `slide_switch` uses `closed`, `push_button` uses `pressed`, `transistor` uses `baseHigh`, and `potentiometer`/`sensor` use `value`. Switches and buttons default to open/at-rest, so a demo board's LED starts dark until the student toggles it. No runtime change. See `docs/authoring/electronics.md`.
+
+### Electronics tasks should write `starterCircuit` even when a starter stage exists
+
+The student workspace reads `codeStages[0].circuit` and falls back to `starterCircuit`, and the lesson validator follows the same fallback — but the Builder's task editor checks `starterCircuit` alone, so a draft electronics task with only a starter stage shows "This draft task has no starter breadboard yet" over an otherwise working task while `lessons validate` reports it clean. `docs/authoring/electronics.md` now says to write both, and adds a complete pre-wired demo-board example showing the whole shape. No runtime change. See `docs/authoring/electronics.md`.
+
+### Electronics pin names documented for every component type
+
+`docs/authoring/electronics.md` now lists the pin names for all 16 electronics component types, not just the seven newer parts. `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `buzzer`, and `terminal` previously had no documented pins, so authoring a `starterCircuit` meant guessing — and a wire naming a pin that does not exist silently never connects rather than failing validation. Buttons and switches use `a`/`b`, batteries `positive`/`negative`, LEDs `anode`/`cathode`, potentiometers `left`/`wiper`/`right`, and a junction has the single pin `pin`. No runtime change; `COMPONENT_PINS` in `src/modules/electronics/circuit.js` remains the source of truth. See `docs/authoring/electronics.md`.
+
+## 2026-09-01
+
+### New lesson-level `soloOnly` field
+
+Lessons can now set `soloOnly: true` on the envelope to hard-force solo mode always — the live/wait choice screen is never offered to students, regardless of URL (`?solo=true` becomes redundant) or whether a live session exists for the lesson. Authored via the Builder's "Solo-only lesson" checkbox next to "Draft workflow". Default is `false`/absent (unchanged live/solo behaviour). See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md`.
+
+### `code_arrange` lines no longer each require a blank
+
+A `code_arrange` line can now have zero `slot` parts (all `type: "text"`) — useful for fixed context like a variable declaration the student doesn't need to arrange. Validation now only requires at least one blank somewhere across the whole task, not on every individual line. See `docs/authoring/lesson-schema.md`.
+
+## 2026-08-20
+
+### `estimatedMinutes` now accepts decimal values
+
+`estimatedMinutes` previously had to be a positive whole number; it now accepts any positive number, e.g. `estimatedMinutes: 7.5`. The Builder's task editor input steps by 0.5 minutes. See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md`.
+
 ## 2026-08-18 (2)
 
 ### Added a Paint app to the Desktop module
@@ -47,6 +134,26 @@ New check types: `browser_visited` (`visited`/`not_visited`, field `pageId`) and
 
 `siteGraph` has no visual Builder editor yet — author it as JSON/YAML on the task, the same gap
 `sandboxStarterDesktop` has. See `docs/authoring/desktop.md`.
+
+## 2026-08-17
+
+### Corrected Scratch `evaluation` values and documented `sprite_property_delta`/`sprite_property_changed`
+
+`docs/authoring/scratch.md` previously told authors to write `evaluation: continuous` for block-structure checks (`block_used`, `blocks_in_order`, `block_count`); the runtime only ever recognizes `after_block_placed`, `after_run`, and `manual` — `continuous` silently fell into the after-run bucket, so a check authored exactly as documented would only ever evaluate after Run, never continuously. Use `evaluation: after_block_placed` instead. No published lesson used `continuous`, so no content migration is needed.
+
+Also documented two previously-unlisted check types that were already implemented and available in the Builder: `sprite_property_delta` (change in a property since before Run) and `sprite_property_changed` (property differs from before Run, any amount).
+
+Added a warning to the `block_run` section: a block is marked "executed" the instant it runs, before its field values are inspected, and this app's click-to-run-a-single-block feature means a bare click into a block (e.g. to edit its text) already counts as a run. Omitting `fieldValues` on a `block_run` check for a block with student-editable input can pass on an unedited/default value — set `fieldValues` (e.g. `operator: not_equals, value: ""`) to require the student's own input.
+
+See `docs/authoring/scratch.md#scratch-check-types`.
+
+### Prebuilt Scratch stacks no longer require their blocks to be in the toolbox
+
+A `prebuiltStacks` (or legacy `predefinedBlocks`) entry now appears in the correct toolbox flyout category even when the task's `toolbox` doesn't otherwise include that block type — the platform resolves the root block's category and creates it if missing. This lets a task restrict its toolbox to already-taught blocks while still handing out a scaffolded starter stack built from blocks ahead of the current lesson. The Builder's prebuilt-stack editor no longer restricts which block types an author can add to a stack.
+
+This only applies to categorized toolboxes; a minimal/flat toolbox (blocks listed directly under `<xml>`) is unchanged and still requires the stack's root block type to already be present there.
+
+See `docs/authoring/scratch.md#prebuilt-stack-object`.
 
 ## 2026-08-04
 

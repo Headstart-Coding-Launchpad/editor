@@ -1,6 +1,14 @@
 import React from 'react'
 
-export default function SessionEndedScreen({ savedCodeTaskCount = 0, onDownloadAllCode, onContinueSolo }) {
+export default function SessionEndedScreen({
+  savedCodeTaskCount = 0,
+  savedOtherTaskCount = 0,
+  onDownloadAllCode,
+  onContinueSolo,
+  soloCompanion,
+  onTrySoloChallenge,
+  onOpenPlayground,
+}) {
   return (
     <div style={s.centreScreen}>
       <h2 style={s.title}>Session ended</h2>
@@ -9,22 +17,47 @@ export default function SessionEndedScreen({ savedCodeTaskCount = 0, onDownloadA
       </p>
       {savedCodeTaskCount > 0 && (
         <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong> Browser data can be cleared or lost when you change device. Download your {savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`} to keep a copy.
+          <strong>Saved only on this device.</strong> Browser data can be cleared or lost when you
+          change device. Download your{' '}
+          {savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`} to
+          keep a copy.
           <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
             Download all my code
           </button>
         </div>
       )}
-      <p style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}>
-        Want to keep practising on your own?
+      {savedOtherTaskCount > 0 && (
+        <div style={s.backupNotice}>
+          <strong>Saved only on this device.</strong> Work in{' '}
+          {savedOtherTaskCount === 1
+            ? 'one other task is'
+            : `${savedOtherTaskCount} other tasks are`}{' '}
+          saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost
+          when you change device.
+        </div>
+      )}
+      <p
+        style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}
+      >
+        What would you like to do next?
       </p>
       <button
         className="btn-primary"
         style={{ padding: '12px 32px', fontSize: 15 }}
         onClick={onContinueSolo}
       >
-        Continue Solo
+        Go Through the Lesson Again
       </button>
+      {soloCompanion && onTrySoloChallenge && (
+        <button className="btn-ghost-outline" style={s.secondaryButton} onClick={onTrySoloChallenge}>
+          Try the Solo Challenge
+        </button>
+      )}
+      {onOpenPlayground && (
+        <button className="btn-ghost-outline" style={s.secondaryButton} onClick={onOpenPlayground}>
+          Open Playground
+        </button>
+      )}
     </div>
   )
 }
@@ -61,4 +94,5 @@ const s = {
     lineHeight: 1.5,
   },
   downloadButton: { alignSelf: 'center', padding: '10px 20px', fontSize: 14 },
+  secondaryButton: { padding: '12px 32px', fontSize: 15 },
 }

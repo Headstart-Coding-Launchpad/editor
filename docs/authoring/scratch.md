@@ -62,6 +62,9 @@ modules:
     allowAddBackdrop: false   # optional — show a student-facing "Add backdrop" picker (default false)
     addBackdropPresetIds: []  # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultBackdrops` ids; omitted/empty = whole library
     allowCreateVariable: false # optional — add a "Make a Variable" button to the Variables flyout (default false)
+    allowRemoveSprite: false  # optional — let students remove sprites they added themselves (default false)
+    allowRemoveStarterSprites: false # optional — also let removal target author-placed sprites, not just student-added ones (default false; ignored unless allowRemoveSprite is true)
+    enableStageCode: false    # optional — give the Stage its own workspace (blocks keyed "__stage__"); carried through automatically when the task carries blocks from an earlier task
     check:
       type: sprite_property
       evaluation: after_run
@@ -131,6 +134,13 @@ prebuiltStacks:
     stack: {}                 # required — Blockly toolbox-compatible block JSON
 ```
 
+**Student mechanic:** a prebuilt stack is not a separate chip or button — it's inserted into the toolbox category matching its root block's type (e.g. a `say` stack appears in the Looks flyout, next to the plain `say` block). There's no click-to-insert:
+- **Drag** the stack out of its flyout into the workspace to add it, exactly like any other block. It arrives as a normal, fully editable/movable/deletable block stack — nothing marks it as special. Dragging alone does not run it.
+- **Click** any block or stack — whether still sitting in the flyout or already dragged into the workspace — to run it immediately as a standalone script. Clicking in the flyout runs it as a one-off without adding it to the workspace.
+- If the stack starts with a `when green flag clicked` hat and has been dragged into the workspace, the green-flag **Run** button also runs it along with every other green-flag script.
+
+**The stack's block types don't need to already be in the task's `toolbox`.** The platform resolves the root block's category (Motion, Looks, Control, etc.) and appends the stack there, creating that category if the toolbox doesn't have it yet — so a task's toolbox can be restricted to only the blocks taught so far, even down to every block deselected, while a prebuilt stack still hands out a scaffolded script that uses blocks ahead of it. The one exception is a minimal/flat toolbox that already has blocks listed directly under `<xml>` (no categories) — that authored pattern is left as-is, and a stack only appends there if its root block type is already one of those root-level blocks — see [Scratch Toolbox XML](scratch-toolbox-xml.md).
+
 ## Populated Block-State JSON
 
 Scratch uses two related JSON shapes. Use the toolbox-stack shape for
@@ -149,6 +159,15 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
   `math_number` / `NUM`.
 - Join two stack blocks with `next: { block: ... }`. For a nested value or
   statement input, use `inputs.INPUT_NAME.block` instead.
+- **A workspace state is stored as a JSON string, not a nested object.**
+  `starterBlocks`, `completeBlocks`, and `codeStages[].blocks` each take the
+  serialised text of the shape below, not the shape itself. Firestore rejects a
+  document nested deeper than 20 levels, and `next: { block: ... }` costs two
+  levels per joined block — a connected chain of four or more blocks breaks the
+  cap on its own, and the upsert fails with "Input object is deeper than 20
+  levels or contains a cycle." Serialising collapses the whole workspace to a
+  single value, so chain length stops mattering. A toolbox stack
+  (`prebuiltStacks[].stack`) is one shallow block and stays a real object.
 
 ### A filled toolbox stack
 
@@ -218,8 +237,10 @@ the key `__stage__`.
 }
 ```
 
-Use that same object as `starterBlocks`, `completeBlocks`, or a stage's
-`blocks` value. For example, this support stage supplies a connected
+Serialise that object to a JSON string and use the string as `starterBlocks`,
+`completeBlocks`, or a stage’s `blocks` value. The JSON examples in this
+section show the object shape for readability; what is authored into the lesson
+is its `JSON.stringify` form. For example, this support stage supplies a connected
 green-flag-and-say stack for `sprite1`; a `solution` stage uses the identical
 shape and differs only in `role`.
 
@@ -267,6 +288,52 @@ workspace (or a prebuilt stack), then save the lesson. The examples above are
 the serialization shape used by that loader and serializer, so hand-authored
 values can be mixed with builder-authored ones.
 
+### A dropdown-menu block field
+
+A field picked from the block's own dropdown menu (a Blockly `field_dropdown`)
+is not a text/number value, so it does not use an input shadow. It goes
+directly in the block's own `fields` object, keyed by the field name:
+
+```json
+{ "type": "motion_setrotationstyle", "fields": { "STYLE": "left-right" } }
+```
+
+**The stored value is the option's underlying value, not its visible label —
+and for a sprite-target menu that value is the sprite's `id`, not its `name`.**
+`motion_goto`'s `TO` field (and `motion_glideto`'s, alongside its own `SECS`
+shadow) offers "random position", "mouse pointer", and every sprite on stage:
+
+```json
+{
+  "type": "motion_glideto",
+  "fields": { "TO": "sprite1" },
+  "inputs": {
+    "SECS": { "shadow": { "type": "math_number", "fields": { "NUM": "1" } } }
+  }
+}
+```
+
+| `TO` value | Menu option |
+|---|---|
+| `_random_` | random position |
+| `_mouse_` | mouse pointer |
+| a sprite's `id` (e.g. `sprite1`, `rocket` — see `sprites[].id` above; not the display `name`) | that sprite |
+
+The same `_random_` / `_mouse_` / sprite-`id` shape also backs
+`control_create_clone_of`'s `CLONE_OPTION` (which adds a `_myself_` option
+instead of `_random_`), `sensing_touchingobject`'s `TOUCHINGOBJECTMENU`
+(which adds `_edge_`), and `sensing_distanceto`'s `DISTANCETOMENU` (no
+`_random_` option). A costume/backdrop-target menu —
+`looks_switchcostumeto`'s `COSTUME`, `looks_switchbackdropto` /
+`event_whenbackdropswitchesto`'s `BACKDROP` — takes the costume/backdrop's
+`name` directly, since those have no separate id.
+
+A fixed-option menu with no sprite/costume/backdrop involved — e.g.
+`motion_setrotationstyle`'s `STYLE` (`left-right` / `don't rotate` / `all
+around`), `looks_seteffectto` / `looks_changeeffectby`'s `EFFECT`, or
+`operator_mathop`'s `OPERATOR` — takes the option's label text verbatim,
+exactly as it reads on the block.
+
 ---
 
 ## Public Sprite Presets
@@ -295,6 +362,7 @@ Three per-task toggles let students extend their own project beyond what the aut
 - `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library.
 - `allowAddBackdrop` / `addBackdropPresetIds` — same pattern for backdrops, sourced from `lessonTypeAssets/scratch.defaultBackdrops` (`DefaultBackdropsEditor`).
 - `allowCreateVariable` — adds a "Make a Variable" button to the Variables toolbox flyout. The student is prompted for a name (must be non-empty and not collide, case-insensitively, with any existing variable name); the new variable becomes available immediately in every variable dropdown block (`data_variable`, `data_setvariableto`, etc.) for every sprite in the task.
+- `allowRemoveSprite` — shows a ✕ on each sprite's tile in the student's sprite panel. By default this only ever lets a student remove a sprite *they* added via the "Add sprite" picker above (`studentAdded: true`) — author-placed starter sprites always stay protected, even with this flag on. Set `allowRemoveStarterSprites: true` alongside it to lift that restriction and let removal target every sprite, author-placed or not (used by the freeform Scratch Playground, which has no starter code to protect). A workspace can never be emptied entirely — the ✕ is disabled once only one sprite remains — and removal asks the student to confirm first, since it deletes that sprite's code and costumes.
 
 **Checks never see these.** A student-added sprite, a student-added backdrop, or a student-created variable is decorative only:
 
@@ -309,17 +377,17 @@ Both are enforced structurally (author sprites/variables are always distinguisha
 
 ## Scratch Check Types
 
-Scratch checks can be a single object or an array. Prefer `evaluation: continuous` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
+Scratch checks can be a single object or an array. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
 
-Students should not see a failure just because they are still building. Continuous checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
+Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
-`feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback.
+`feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback. Avoid using `after_run` check types (`block_run`, `sprite_property`/`variable_compare` reading run-dependent state) as `on_idle` feedback checks — idle evaluation happens purely from editing, without a fresh run, so an `after_run` check there is judged against the last Run's state rather than the learner's current unedited workspace.
 
 ### `block_used`
 ```yaml
 check:
   type: block_used
-  evaluation: continuous
+  evaluation: after_block_placed
   spriteName: Sprite 1  # optional
   opcode: control_repeat
   fieldValues:          # optional — require specific input values
@@ -337,6 +405,28 @@ check:
   operator: greater_than   # equals | greater_than | less_than
   value: 50
 ```
+
+### `sprite_property_delta`
+```yaml
+check:
+  type: sprite_property_delta
+  evaluation: after_run
+  spriteName: Rocket
+  property: x          # x | y | size | direction | visible | costume
+  operator: greater_than   # equals | greater_than | less_than
+  value: 10
+```
+Compares the change in `property` between the state just before Run and the state after Run finishes — use this for "moved by at least N" style checks rather than an absolute position.
+
+### `sprite_property_changed`
+```yaml
+check:
+  type: sprite_property_changed
+  evaluation: after_run
+  spriteName: Rocket
+  property: costume
+```
+Passes if `property` differs from its value just before Run, regardless of direction or amount — use this when any change counts (e.g. "the costume must switch").
 
 ### `variable_equals`
 ```yaml
@@ -362,7 +452,7 @@ Use `variable_compare` for non-equality operators; `variable_equals` is legacy b
 ```yaml
 check:
   type: blocks_in_order
-  evaluation: continuous
+  evaluation: after_block_placed
   spriteName: Sprite 1   # optional — if omitted, any sprite satisfying it passes
   sequence:
     - event_whenflagclicked
@@ -377,7 +467,7 @@ Passes if any connected stack contains the opcodes **consecutively** (no gaps). 
 ```yaml
 check:
   type: block_count
-  evaluation: continuous
+  evaluation: after_block_placed
   spriteName: Sprite 1   # optional
   opcode: motion_movesteps
   operator: equals
@@ -409,6 +499,14 @@ check:
       value: "50"
 ```
 Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace.
+
+**Always set `fieldValues` when the block has a student-editable input (text, number).** A block is marked "executed" the instant it runs, before its field values are inspected — and this app's click-to-run-a-single-block feature means a bare click on the block (e.g. while a student is clicking in to edit its text) already counts as a run. Without `fieldValues`, `block_run` only asserts "this opcode executed at least once," which can pass on a still-blank/default field. For a task like "type your own message into this say block," require the field to be non-empty rather than leaving `fieldValues` unset:
+```yaml
+    fieldValues:
+      MESSAGE:
+        operator: not_equals
+        value: ""
+```
 
 ---
 

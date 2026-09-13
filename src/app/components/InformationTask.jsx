@@ -1,12 +1,24 @@
 import React from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import ExplainerPanel from './ExplainerPanel'
+import { isComposedLesson, getComposedModuleTypes } from '../../shared/composedLesson'
 
-function lessonTypeLabel(type) {
+function singleTypeLabel(type) {
   if (type === 'python') return 'Python'
   if (type === 'scratch') return 'Scratch'
   if (type === 'html') return 'Web Dev'
+  if (type === 'filesystem') return 'Filesystem'
+  if (type === 'electronics') return 'Electronics'
+  if (type === 'arcade') return 'Arcade Kit'
   return type || 'Lesson'
+}
+
+// A composed lesson's own `.type` is just 'composed' — describe it by the
+// mix of modules its code tasks actually use instead.
+function lessonTypeLabel(lesson) {
+  if (!isComposedLesson(lesson)) return singleTypeLabel(lesson?.type)
+  const types = getComposedModuleTypes(lesson)
+  return types.length ? types.map(singleTypeLabel).join(' + ') : 'Lesson'
 }
 
 export default function InformationTask({ task, lesson, fill = true, disableCopy = false }) {
@@ -20,7 +32,7 @@ export default function InformationTask({ task, lesson, fill = true, disableCopy
           <h1>{lesson?.title ?? task?.title ?? 'Lesson'}</h1>
           <div className="information-intro__meta">
             {lesson?.level && <span>{lesson.level}</span>}
-            <span>{lessonTypeLabel(lesson?.type)}</span>
+            <span>{lessonTypeLabel(lesson)}</span>
           </div>
           {lesson?.description && <p>{lesson.description}</p>}
         </div>
@@ -32,10 +44,22 @@ export default function InformationTask({ task, lesson, fill = true, disableCopy
     return (
       <section className="information-task information-task--recap">
         <div className="information-recap__left">
-          <MarkdownRenderer content={task?.leftContent ?? ''} textScale={markdownTextScale} inheritColor topicType={lesson?.type} disableCopy={disableCopy} />
+          <MarkdownRenderer
+            content={task?.leftContent ?? ''}
+            textScale={markdownTextScale}
+            inheritColor
+            topicType={lesson?.type}
+            disableCopy={disableCopy}
+          />
         </div>
         <div className="information-recap__content">
-          <MarkdownRenderer content={task?.explainer ?? ''} textScale={markdownTextScale} topicType={lesson?.type} showLibrary disableCopy={disableCopy} />
+          <MarkdownRenderer
+            content={task?.explainer ?? ''}
+            textScale={markdownTextScale}
+            topicType={lesson?.type}
+            disableCopy={disableCopy}
+            imageLayout="float"
+          />
         </div>
       </section>
     )
@@ -49,7 +73,9 @@ export default function InformationTask({ task, lesson, fill = true, disableCopy
       fill={fill}
       markdownTextScale={markdownTextScale}
       topicType={lesson?.type}
+      showLibrary={false}
       disableCopy={disableCopy}
+      imageLayout="float"
     />
   )
 }

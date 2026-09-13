@@ -28,4 +28,9 @@ describe('LiveActivityToast', () => {
     render(<LiveActivityToast activity={{ type: 'paste', at: Date.now() - 3000 }} />)
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('reports Scratch block/sprite activity types', () => {
+    render(<LiveActivityToast activity={{ type: 'green_flag', at: Date.now() }} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Clicked green flag')
+  })
 })

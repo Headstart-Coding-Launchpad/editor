@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import { useTypewriterOutput } from '../hooks/useTypewriterOutput'
 
 const CODE_FONT_STYLE = {
   fontFamily: "'JetBrains Mono', monospace",
@@ -12,6 +13,13 @@ export default function OutputPanel({
   runStatus = null,
   inputPrompt = null,
   onInputSubmit,
+  onInputChange,
+  // Read-only mirror mode: a teacher watching a student sees the student's
+  // own not-yet-submitted input() text, but must never be able to edit it —
+  // this renders the same prompt row as plain text instead of a live <input>,
+  // driven entirely by the given value rather than local state.
+  inputReadOnly = false,
+  mirroredInputValue = '',
   checkPassed = false,
   hasCheck = false,
   running = false,
@@ -25,7 +33,7 @@ export default function OutputPanel({
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
-  const [displayedOutput, setDisplayedOutput] = useState('')
+  const displayedOutput = useTypewriterOutput(output)
 
   const preRef = useRef(null)
   const inputRef = useRef(null)
@@ -48,54 +56,14 @@ export default function OutputPanel({
   }, [output, openOnOutput])
 
   useEffect(() => {
-    if (!output) {
-      setDisplayedOutput('')
-      return
-    }
-
-    if (displayedOutput === output) return
-
-    const timer = setTimeout(() => {
-      setDisplayedOutput(prev => {
-        if (prev === output) return prev
-
-        let current = prev
-        if (!output.startsWith(prev)) {
-          current = ''
-        }
-
-        const remaining = output.slice(current.length)
-        if (remaining.length === 0) return current
-
-        let chunkSize = 1
-        if (remaining.length > 500) {
-          chunkSize = 25
-        } else if (remaining.length > 200) {
-          chunkSize = 12
-        } else if (remaining.length > 100) {
-          chunkSize = 6
-        } else if (remaining.length > 50) {
-          chunkSize = 3
-        } else if (remaining.length > 20) {
-          chunkSize = 2
-        }
-
-        return current + remaining.slice(0, chunkSize)
-      })
-    }, 12)
-
-    return () => clearTimeout(timer)
-  }, [output, displayedOutput])
-
-  useEffect(() => {
     if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
   }, [displayedOutput, inputPrompt])
 
   useEffect(() => {
-    if (inputPrompt !== null && !contentCollapsed) {
+    if (inputPrompt !== null && !contentCollapsed && !inputReadOnly) {
       inputRef.current?.focus()
     }
-  }, [inputPrompt, contentCollapsed])
+  }, [inputPrompt, contentCollapsed, inputReadOnly])
 
   function handleInputSubmit(e) {
     e.preventDefault()
@@ -103,8 +71,15 @@ export default function OutputPanel({
     setInputValue('')
   }
 
-  const statusColour = runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
-  const statusLabel = runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
+  function handleInputValueChange(e) {
+    setInputValue(e.target.value)
+    onInputChange?.(e.target.value)
+  }
+
+  const statusColour =
+    runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
+  const statusLabel =
+    runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
   const showCursor = running || (output && displayedOutput !== output)
   return (
     <div
@@ -123,18 +98,17 @@ export default function OutputPanel({
           cursor: collapsible ? 'pointer' : 'default',
           userSelect: 'none',
         }}
-        onClick={collapsible ? () => setIsCollapsed(prev => !prev) : undefined}
+        onClick={collapsible ? () => setIsCollapsed((prev) => !prev) : undefined}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
           {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
           <span style={s.headerLabel}>{title}</span>
-          {collapsible && (
-            <span style={s.toggleIcon}>
-              {isCollapsed ? 'Show' : 'Hide'}
-            </span>
-          )}
+          {collapsible && <span style={s.toggleIcon}>{isCollapsed ? 'Show' : 'Hide'}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <span style={{ ...s.statusDot, background: statusColour }} />
           <span style={s.statusLabel}>{statusLabel}</span>
           {rightActions && <div style={s.trailingActions}>{rightActions}</div>}
@@ -143,20 +117,36 @@ export default function OutputPanel({
 
       {!contentCollapsed && (
         <pre ref={preRef} style={s.pre}>
-          {displayedOutput || <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>}
+          {displayedOutput || (
+            <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>
+          )}
           {showCursor && <span className="terminal-cursor" />}
 
-          {inputPrompt !== null && (
+          {inputPrompt !== null && inputReadOnly && (
+            <div style={s.inputRow}>
+              <span style={s.prompt}>&gt;</span>
+              <span style={s.input}>{mirroredInputValue}</span>
+              <span className="terminal-cursor" />
+            </div>
+          )}
+
+          {inputPrompt !== null && !inputReadOnly && (
             <form onSubmit={handleInputSubmit} style={s.inputRow}>
               <span style={s.prompt}>&gt;</span>
               <input
                 ref={inputRef}
                 style={s.input}
                 value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                placeholder="Type your input and press Enter"
+                onChange={handleInputValueChange}
+                placeholder="Type your input…"
                 autoFocus
               />
+              {/* Enter still submits; this button covers on-screen keyboards
+                  (e.g. iPad Safari) where Enter/Return may not be reachable
+                  or wired to submit a form the way it is on a hardware keyboard. */}
+              <button type="submit" style={s.inputSubmitBtn} aria-label="Submit input">
+                ↵
+              </button>
             </form>
           )}
         </pre>
@@ -256,5 +246,20 @@ const s = {
     background: 'transparent',
     color: 'var(--colour-text)',
     padding: '2px 4px',
+  },
+  inputSubmitBtn: {
+    flexShrink: 0,
+    width: 28,
+    height: 28,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '15px',
+    lineHeight: 1,
+    border: 'none',
+    borderRadius: 6,
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    cursor: 'pointer',
   },
 }

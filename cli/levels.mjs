@@ -7,8 +7,12 @@ export async function listLevels({ scopeType, scopeId } = {}) {
   if (scopeId) ref = ref.where('scopeId', '==', scopeId)
   const snap = await ref.get()
   return snap.docs
-    .map(doc => normalizeLevelRecord({ id: doc.id, ...doc.data() }))
-    .sort((a, b) => (a.scopeType + a.scopeId + String(a.order)).localeCompare(b.scopeType + b.scopeId + String(b.order)))
+    .map((doc) => normalizeLevelRecord({ id: doc.id, ...doc.data() }))
+    .sort((a, b) =>
+      (a.scopeType + a.scopeId + String(a.order)).localeCompare(
+        b.scopeType + b.scopeId + String(b.order)
+      )
+    )
 }
 
 export async function upsertLevel(fields) {

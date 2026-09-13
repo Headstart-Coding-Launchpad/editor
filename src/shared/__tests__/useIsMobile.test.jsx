@@ -42,7 +42,9 @@ describe('useIsMobile', () => {
         onchange: null,
         addListener: () => {},
         removeListener: () => {},
-        addEventListener: (_event, handler) => { capturedHandler = handler },
+        addEventListener: (_event, handler) => {
+          capturedHandler = handler
+        },
         removeEventListener: () => {},
         dispatchEvent: () => false,
       }),
@@ -70,7 +72,9 @@ describe('useIsMobile', () => {
         onchange: null,
         addListener: () => {},
         removeListener: () => {},
-        addEventListener: (_event, handler) => { capturedHandler = handler },
+        addEventListener: (_event, handler) => {
+          capturedHandler = handler
+        },
         removeEventListener: () => {},
         dispatchEvent: () => false,
       }),
@@ -98,7 +102,9 @@ describe('useIsMobile', () => {
         addListener: () => {},
         removeListener: () => {},
         addEventListener: () => {},
-        removeEventListener: () => { removeEventListenerSpy.called = true },
+        removeEventListener: () => {
+          removeEventListenerSpy.called = true
+        },
         dispatchEvent: () => false,
       }),
     })

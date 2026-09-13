@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 
-export default function DropdownMenu({ label, children, buttonClassName = 'btn-ghost', buttonStyle }) {
+export default function DropdownMenu({
+  label,
+  children,
+  buttonClassName = 'btn-ghost',
+  buttonStyle,
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -18,7 +23,7 @@ export default function DropdownMenu({ label, children, buttonClassName = 'btn-g
       <button
         className={buttonClassName}
         style={{ fontSize: 13, padding: '5px 12px', ...buttonStyle }}
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
         {label} ▾

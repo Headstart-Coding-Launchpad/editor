@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const [,, inputPath, outputPath] = process.argv
+const [, , inputPath, outputPath] = process.argv
 
 if (!inputPath || inputPath === '--help' || inputPath === '-h') {
   console.error('Usage: node scripts/yaml-to-json.mjs <input.yaml> [output.json]')
@@ -22,8 +22,12 @@ if (!inputPath || inputPath === '--help' || inputPath === '-h') {
 }
 
 // Use pathToFileURL so Windows absolute paths are valid ESM specifiers
-const { parseYamlLesson } = await import(pathToFileURL(join(__dirname, '..', 'mcp', 'yaml-converter.mjs')))
-const { validateLessonForMcp } = await import(pathToFileURL(join(__dirname, '..', 'mcp', 'validate.mjs')))
+const { parseYamlLesson } = await import(
+  pathToFileURL(join(__dirname, '..', 'mcp', 'yaml-converter.mjs'))
+)
+const { validateLessonForMcp } = await import(
+  pathToFileURL(join(__dirname, '..', 'mcp', 'validate.mjs'))
+)
 
 let yamlText
 try {

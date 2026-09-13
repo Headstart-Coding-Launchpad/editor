@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getLessonModule, getLessonModules, getStudentWorkspace, getBuilderWorkspace, getCheckEditor } from '../registry.js'
+import { getLessonModule, getLessonModules } from '../registry.js'
 
 describe('getLessonModule', () => {
   it('returns a module for each known lesson type', () => {
@@ -9,6 +9,7 @@ describe('getLessonModule', () => {
     expect(getLessonModule('scratch')).not.toBeNull()
     expect(getLessonModule('filesystem')).not.toBeNull()
     expect(getLessonModule('electronics')).not.toBeNull()
+    expect(getLessonModule('turtle')).not.toBeNull()
     expect(getLessonModule('desktop')).not.toBeNull()
   })
 
@@ -25,36 +26,20 @@ describe('getLessonModule', () => {
     expect(getLessonModule('scratch').type).toBe('scratch')
     expect(getLessonModule('filesystem').type).toBe('filesystem')
     expect(getLessonModule('electronics').type).toBe('electronics')
+    expect(getLessonModule('turtle').type).toBe('turtle')
     expect(getLessonModule('desktop').type).toBe('desktop')
   })
 
   it('exposes ordered module labels for admin and authoring UI', () => {
-    expect(getLessonModules().map(module => [module.type, module.label])).toEqual([
+    expect(getLessonModules().map((module) => [module.type, module.label])).toEqual([
       ['python', 'Python'],
       ['arcade', 'Arcade Kit'],
+      ['turtle', 'Python Turtle'],
       ['scratch', 'Scratch'],
       ['html', 'HTML'],
       ['filesystem', 'Filesystem'],
       ['desktop', 'Desktop'],
       ['electronics', 'Electronics'],
     ])
-  })
-})
-
-describe('getStudentWorkspace', () => {
-  it('returns null for unknown type', () => {
-    expect(getStudentWorkspace('unknown')).toBeNull()
-  })
-})
-
-describe('getBuilderWorkspace', () => {
-  it('returns null for unknown type', () => {
-    expect(getBuilderWorkspace('unknown')).toBeNull()
-  })
-})
-
-describe('getCheckEditor', () => {
-  it('returns null for unknown type', () => {
-    expect(getCheckEditor('unknown')).toBeNull()
   })
 })

@@ -7,28 +7,30 @@ export default function TaskFeedbackPanel({ feedback = [] }) {
   return (
     <section style={s.section}>
       <>
-          <button
-            type="button"
-            style={s.feedbackHeader}
-            onClick={() => setFeedbackOpen(o => !o)}
-            aria-expanded={feedbackOpen}
-          >
-            <span style={s.feedbackTitle}>Teacher Feedback ({feedback.length})</span>
-            <span style={{ ...s.chevron, transform: feedbackOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
-          </button>
-          {feedbackOpen && (
-            <div style={s.feedbackBody}>
-              {feedback.map((item, i) => (
-                <div key={i} style={s.feedbackItem}>
-                  <div style={s.meta}>
-                    <span style={s.email}>{item.teacherEmail}</span>
-                    <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
-                  </div>
-                  <p style={s.text}>{item.text}</p>
+        <button
+          type="button"
+          style={s.feedbackHeader}
+          onClick={() => setFeedbackOpen((o) => !o)}
+          aria-expanded={feedbackOpen}
+        >
+          <span style={s.feedbackTitle}>Teacher Feedback ({feedback.length})</span>
+          <span style={{ ...s.chevron, transform: feedbackOpen ? 'rotate(180deg)' : 'none' }}>
+            ▾
+          </span>
+        </button>
+        {feedbackOpen && (
+          <div style={s.feedbackBody}>
+            {feedback.map((item, i) => (
+              <div key={i} style={s.feedbackItem}>
+                <div style={s.meta}>
+                  <span style={s.email}>{item.teacherEmail}</span>
+                  <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <p style={s.text}>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </>
     </section>
   )

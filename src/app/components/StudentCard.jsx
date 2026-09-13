@@ -2,20 +2,41 @@ import React, { useState, useEffect } from 'react'
 import { getQuizOptionText, CONFIDENCE_COLOURS } from './QuizTask'
 import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import PresenceBadge from './PresenceBadge'
+import { formatTimeAgo } from '../../shared/timeAgo'
 
-function formatLastRun(ts) {
-  if (!ts) return null
-  const secs = Math.floor((Date.now() - ts) / 1000)
-  if (secs < 10) return 'Just now'
-  if (secs < 60) return `${secs}s ago`
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  return `${hrs}h ago`
+const formatLastRun = formatTimeAgo
+
+// Matches the pane ids each module's StudentWorkspace/LessonTaskContent report — see
+// visiblePanes in LessonTaskContent.jsx. Ids with no entry here (e.g. HTML file names)
+// pass through as-is via the ?? fallback below.
+const VISIBLE_PANE_LABELS = {
+  instructions: 'Info',
+  blocks: 'Blocks',
+  stage: 'Stage',
+  breadboard: 'Breadboard',
+  code: 'Code',
+  console: 'Console',
+  sprites: 'Sprites',
+  tilemaps: 'Tilemaps',
+  running: 'Running',
+  preview: 'Preview',
+}
+function formatVisiblePanes(panes) {
+  return panes.map((p) => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
 }
 
-export default function StudentCard({ student, lesson, lessonId, session, topics, onRename, onRemove, onExpand }) {
+export default function StudentCard({
+  student,
+  lesson,
+  lessonId,
+  session,
+  topics,
+  onRename,
+  onRemove,
+  onExpand,
+}) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
@@ -32,7 +53,7 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
   // Refresh "X ago" label every 30 seconds
   useEffect(() => {
     if (!student.lastRunAt) return
-    const interval = setInterval(() => setTick(n => n + 1), 30000)
+    const interval = setInterval(() => setTick((n) => n + 1), 30000)
     return () => clearInterval(interval)
   }, [student.lastRunAt])
 
@@ -44,69 +65,148 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
-  const { isPython, isFilesystem, isQuiz, isInformation, isSessionSandbox } = deriveTaskContext(lesson, currentTask, session)
+  // Composed lessons carry `type: 'composed'`, so the module flags have to come from the
+  // task's own moduleType — deriveTaskContext reads lesson.type directly. StudentModal
+  // resolves the same way; without this every code task in a composed lesson (27 of the
+  // 28 published lessons) fell through to the HTML fallback and showed "No run yet".
+  const taskLesson = getEffectiveLessonForTask(lesson, currentTask)
+  const {
+    isPython,
+    isScratch,
+    isElectronics,
+    isArcade,
+    isFilesystem,
+    isQuiz,
+    isInformation,
+    isSessionSandbox,
+  } = deriveTaskContext(taskLesson, currentTask, session)
+  // Python, Arcade and Electronics all run code that prints to a console, so the teacher
+  // wants the same first-few-lines-of-output snippet for all three.
+  const hasConsoleOutput = isPython || isArcade || isElectronics
   const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
   const isShortAnswer = quizType === 'short_answer'
   const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
   const isConfidence = quizType === 'confidence'
-  const quizAnswerText = isQuiz && !isShortAnswer && !isMatchOrFillBlank && !isConfidence ? getQuizOptionText(currentTask, student.currentAnswer) : ''
+  const quizAnswerText =
+    isQuiz && !isShortAnswer && !isMatchOrFillBlank && !isConfidence
+      ? getQuizOptionText(currentTask, student.currentAnswer)
+      : ''
   const quizSubmitted = isQuiz && student.lastRunStatus === 'submitted'
-  const confidenceLevel = isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
+  const confidenceLevel =
+    isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
 
-  const statusColour = isConfidence && confidenceLevel >= 1 && confidenceLevel <= 5
-    ? CONFIDENCE_COLOURS[confidenceLevel - 1]
-    : quizSubmitted && student.checkPassed === true  ? '#22c55e' :
-      quizSubmitted && student.checkPassed === false  ? '#ef4444' :
-      student.lastRunStatus === 'success'   ? '#22c55e' :
-      student.lastRunStatus === 'error'     ? '#ef4444' :
-      student.lastRunStatus === 'submitted' ? '#3b82f6' : '#9ca3af'
+  // The dot is presence, which is what a dot beside a name means everywhere else. It
+  // used to carry run status while the pill next to it carried presence - two dots one
+  // row apart answering different questions, so an idle-but-connected student read as
+  // half offline. Run status is already in the output snippet and the pass/fail badge.
+  const presenceState =
+    session?.state === 'waiting' ? 'waiting' : student.online ? 'online' : 'offline'
+  const statusColour =
+    presenceState === 'waiting'
+      ? 'var(--colour-warning)'
+      : presenceState === 'online'
+        ? 'var(--colour-success)'
+        : 'var(--colour-muted-soft)'
+  const presenceTitle =
+    presenceState === 'waiting'
+      ? 'Waiting to join'
+      : presenceState === 'online'
+        ? 'Connected now'
+        : 'Offline'
 
   // Confidence tasks have no pass/fail check — teacher just sees the submitted level
   // For match/fill_blank quizzes, checkPassed comes from internal quiz logic rather than task.check
-  const hasCheck = !isConfidence && (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
+  const hasCheck =
+    !isConfidence &&
+    (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const hasActiveOverride = !!student.checkOverridePushedAt
-  const supportRevealCount = Object.keys(session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}).length
-  const checkPassed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
-  const checkFailed = hasCheck && (hasActiveOverride ? student.checkOverridePassed === false : (checkAttempted && student.checkPassed !== true))
-  const checkCardStyle = checkPassed
-    ? s.cardCheckPassed
-    : checkFailed
-    ? s.cardCheckFailed
-    : student.needsHelp
+  const supportRevealCount = Object.keys(
+    session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}
+  ).length
+  const checkPassed =
+    hasCheck &&
+    (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
+  const checkFailed =
+    hasCheck &&
+    (hasActiveOverride
+      ? student.checkOverridePassed === false
+      : checkAttempted && student.checkPassed !== true)
+  const checkCardStyle = student.needsHelp
     ? s.cardNeedsHelp
-    : null
+    : checkPassed
+      ? s.cardCheckPassed
+      : checkFailed
+        ? s.cardCheckFailed
+        : null
   const hasAnswer = student.currentAnswer != null && student.currentAnswer !== ''
 
+  const expandable = !isInformation
+  const openStudent = () => {
+    if (expandable) onExpand?.(student)
+  }
+
   return (
-    <div style={{ ...s.card, ...checkCardStyle }} className="card">
+    // The card is the click target. A dedicated full-width Expand button cost ~45px on
+    // every card - over half the height budget - was the loudest thing on the wall, and
+    // was identical on all eight, so it carried nothing about the student it belonged to.
+    <div
+      style={{ ...s.card, ...checkCardStyle, ...(expandable ? s.cardClickable : null) }}
+      className="card"
+      role={expandable ? 'button' : undefined}
+      tabIndex={expandable ? 0 : undefined}
+      aria-label={expandable ? `Expand ${student.displayName}` : undefined}
+      onClick={openStudent}
+      onKeyDown={(event) => {
+        if (!expandable) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openStudent()
+        }
+      }}
+    >
       {/* Header row */}
       <div style={s.header}>
         <div style={s.nameRow}>
-          <span style={{ ...s.statusDot, background: statusColour }} />
+          <span style={{ ...s.statusDot, background: statusColour }} title={presenceTitle} />
           {editing ? (
-            <form onSubmit={handleRename} style={s.nameForm}>
+            <form
+              onSubmit={handleRename}
+              style={s.nameForm}
+              onClick={(event) => event.stopPropagation()}
+            >
               <input
                 style={s.nameInput}
                 value={nameValue}
                 autoFocus
-                onChange={e => setNameValue(e.target.value)}
+                onChange={(e) => setNameValue(e.target.value)}
                 onBlur={handleRename}
               />
             </form>
           ) : (
-            <span style={s.name} title={student.displayName}>{student.displayName}</span>
+            <span style={s.name} title={student.displayName}>
+              {student.displayName}
+            </span>
+          )}
+          {!isQuiz && !isInformation && student.lastRunAt && (
+            <span style={s.lastRunLabel} title="Last run">
+              ▶ {formatLastRun(student.lastRunAt)}
+            </span>
           )}
           <button
             style={s.pencil}
-            onClick={() => setEditing(e => !e)}
+            onClick={(event) => {
+              event.stopPropagation()
+              setEditing((e) => !e)
+            }}
             title="Rename student"
           >
             ✏️
           </button>
           <button
             style={s.removeBtn}
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation()
               if (window.confirm(`Remove ${student.displayName} from the session?`)) {
                 onRemove?.(student.anonymousId)
               }
@@ -117,32 +217,60 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
           </button>
         </div>
         <div style={s.badgeRow}>
-          <PresenceBadge student={student} session={session} />
+          {/* Online is the default and is already carried by the status dot; only an
+              exception (offline, or still waiting to join) is worth a badge. */}
+          {!(student.online && session?.state !== 'waiting') && (
+            <PresenceBadge student={student} session={session} />
+          )}
           {student.online && student.windowFocused === false && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeAway }} title="Student's tab is not focused">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeAway }}
+              title="Student's tab is not focused"
+            >
               Away
+            </span>
+          )}
+          {student.isFullscreen && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeFullscreen }}
+              title="Student is in fullscreen mode"
+            >
+              ⛶ Fullscreen
             </span>
           )}
           {isActive && (
             <span className="activity-dots" title="Student is active">
-              <span /><span /><span />
+              <span />
+              <span />
+              <span />
             </span>
           )}
           {checkPassed && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgePassed }} title="Completion check passed">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgePassed }}
+              title="Completion check passed"
+            >
               <span style={s.checkBadgeIcon}>✓</span>
               Passed
             </span>
           )}
           {checkFailed && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeFailed }} title="Completion check failed">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeFailed }}
+              title="Completion check failed"
+            >
               <span style={s.checkBadgeIcon}>✕</span>
               Failed
             </span>
           )}
           {hasActiveOverride && (
             <span
-              style={{ ...s.checkBadge, ...(student.checkOverridePassed ? s.checkBadgeOverridePassed : s.checkBadgeOverrideFailed) }}
+              style={{
+                ...s.checkBadge,
+                ...(student.checkOverridePassed
+                  ? s.checkBadgeOverridePassed
+                  : s.checkBadgeOverrideFailed),
+              }}
               title="Check overridden by teacher"
             >
               <span style={s.checkBadgeIcon}>{student.checkOverridePassed ? '✓' : '✕'}</span>
@@ -150,28 +278,65 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
             </span>
           )}
           {student.inPersonalSandbox && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeSandbox }} title="Student is in their personal sandbox">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeSandbox }}
+              title="Student is in their personal sandbox"
+            >
               Sandbox
             </span>
           )}
           {student.needsHelp && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeHelp }} title="Student has requested help">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeHelp }}
+              title="Student has requested help"
+            >
               Help
             </span>
           )}
+          {student.shareRequestedAt != null && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
+              title="Student wants to share their workspace with the class — open them to review it"
+            >
+              Sharing
+            </span>
+          )}
+          {student.online && student.viewingShareId && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
+              title={`Viewing ${session?.sharedWorkspaces?.[student.viewingShareId]?.sharerName ?? "a classmate's"} shared work`}
+            >
+              👀 {session?.sharedWorkspaces?.[student.viewingShareId]?.sharerName ?? 'Viewing share'}
+            </span>
+          )}
           {supportRevealCount > 0 && (
-            <span style={{ ...s.checkBadge, ...s.checkBadgeSupport }} title="Student has opened support reference">
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeSupport }}
+              title="Student has opened support reference"
+            >
               Support {supportRevealCount > 1 ? supportRevealCount : ''}
             </span>
           )}
-          {student.currentTopicId && (() => {
-            const topic = topics?.find(t => t.id === student.currentTopicId)
-            return (
-              <span style={{ ...s.checkBadge, ...s.checkBadgeTopic }} title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}>
-                📖 {topic?.title ?? student.currentTopicId}
-              </span>
-            )
-          })()}
+          {student.currentTopicId &&
+            (() => {
+              const topic = topics?.find((t) => t.id === student.currentTopicId)
+              return (
+                <span
+                  style={{ ...s.checkBadge, ...s.checkBadgeTopic }}
+                  title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}
+                >
+                  📖 {topic?.title ?? student.currentTopicId}
+                </span>
+              )
+            })()}
+          {Array.isArray(student.visiblePanes) && student.visiblePanes.length > 0 && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeView }}
+              title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}
+            >
+              👀 {formatVisiblePanes(student.visiblePanes)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -184,7 +349,15 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         <div style={s.quizAnswer}>
           {hasAnswer ? (
             isConfidence ? (
-              <span style={{ ...s.confidenceBadge, background: confidenceLevel >= 1 && confidenceLevel <= 5 ? CONFIDENCE_COLOURS[confidenceLevel - 1] : '#9ca3af' }}>
+              <span
+                style={{
+                  ...s.confidenceBadge,
+                  background:
+                    confidenceLevel >= 1 && confidenceLevel <= 5
+                      ? CONFIDENCE_COLOURS[confidenceLevel - 1]
+                      : '#9ca3af',
+                }}
+              >
                 {confidenceLevel}/5
               </span>
             ) : isShortAnswer ? (
@@ -194,10 +367,10 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
                 {student.checkPassed === true
                   ? '✓ All correct'
                   : student.checkPassed === false && quizSubmitted
-                  ? '✗ Some incorrect'
-                  : quizSubmitted
-                  ? 'Answered'
-                  : 'In progress…'}
+                    ? '✗ Some incorrect'
+                    : quizSubmitted
+                      ? 'Answered'
+                      : 'In progress…'}
               </span>
             ) : (
               <>
@@ -211,16 +384,30 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
             <span style={{ color: '#9ca3af', fontSize: 12 }}>No answer yet</span>
           )}
         </div>
-      ) : isPython ? (
+      ) : hasConsoleOutput ? (
         isSubmitMode ? (
           <pre style={s.snippet}>
-            {student.lastRunStatus === 'submitted'
-              ? (student.currentCode ?? '').split('\n').slice(0, 3).join('\n') || <span style={{ color: '#9ca3af' }}>No code yet</span>
-              : <span style={{ color: '#9ca3af' }}>Waiting for submission</span>}
+            {student.lastRunStatus === 'submitted' ? (
+              (student.currentCode ?? '').split('\n').slice(0, 2).join('\n') || (
+                <span style={{ color: '#9ca3af' }}>No code yet</span>
+              )
+            ) : (
+              <span style={{ color: '#9ca3af' }}>Waiting for submission</span>
+            )}
           </pre>
         ) : (
-          <pre style={s.snippet}>{(student.currentOutput ?? '').split('\n').slice(0, 3).join('\n') || <span style={{ color: '#9ca3af' }}>No output yet</span>}</pre>
+          <pre style={s.snippet}>
+            {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
+              <span style={{ color: '#9ca3af' }}>No output yet</span>
+            )}
+          </pre>
         )
+      ) : isScratch ? (
+        <div style={s.iframeThumb}>
+          <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
+            {student.currentCode ? 'Blocks edited' : 'No blocks yet'}
+          </span>
+        </div>
       ) : isFilesystem ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
@@ -229,28 +416,12 @@ export default function StudentCard({ student, lesson, lessonId, session, topics
         </div>
       ) : (
         <div style={s.iframeThumb}>
-          {student.currentFiles
-            ? <span style={{ color: '#6b7280', fontSize: 12 }}>HTML project</span>
-            : <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>}
+          {student.currentFiles ? (
+            <span style={{ color: '#6b7280', fontSize: 12 }}>HTML project</span>
+          ) : (
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>
+          )}
         </div>
-      )}
-
-      {/* Last run indicator for code tasks */}
-      {!isQuiz && !isInformation && student.lastRunAt && (
-        <div style={s.lastRunRow}>
-          <span style={s.lastRunLabel}>▶ {formatLastRun(student.lastRunAt)}</span>
-        </div>
-      )}
-
-      {/* Expand button — not shown for information tasks */}
-      {!isInformation && (
-        <button
-          className="btn-secondary"
-          style={s.expandBtn}
-          onClick={() => onExpand?.(student)}
-        >
-          Expand
-        </button>
       )}
     </div>
   )
@@ -260,29 +431,33 @@ const s = {
   card: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-    padding: 10,
+    gap: 4,
+    padding: '6px 8px',
     minWidth: 0,
+    // A left edge is the one channel card state uses. It previously fired three at once -
+    // a 3px border all round, a tinted fill and a coloured glow - which made a student who
+    // had finished exactly as loud as one who was stuck.
+    borderLeft: '3px solid transparent',
   },
+  cardClickable: {
+    cursor: 'pointer',
+  },
+  // Finished is quiet-positive: the loud states should be the ones that want you to
+  // walk over.
   cardCheckPassed: {
-    border: '3px solid #22c55e',
-    background: '#f0fdf4',
-    boxShadow: '0 0 0 3px rgba(34, 197, 94, 0.16), 0 8px 18px rgba(22, 101, 52, 0.14)',
+    borderLeftColor: 'var(--colour-success)',
   },
   cardCheckFailed: {
-    border: '3px solid #ef4444',
-    background: '#fef2f2',
-    boxShadow: '0 0 0 3px rgba(239, 68, 68, 0.16), 0 8px 18px rgba(127, 29, 29, 0.14)',
+    borderLeftColor: 'var(--colour-error)',
   },
   cardNeedsHelp: {
-    border: '3px solid #f59e0b',
-    background: '#fffbeb',
-    boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.2), 0 8px 18px rgba(120, 53, 15, 0.14)',
+    borderLeftColor: 'var(--colour-warning)',
+    background: 'var(--colour-warning-bg)',
   },
   header: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 7,
+    gap: 4,
     minWidth: 0,
   },
   nameRow: {
@@ -295,10 +470,13 @@ const s = {
   badgeRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     width: '100%',
     minWidth: 0,
     flexWrap: 'wrap',
+    // Empty on a quiet card, so it collapses rather than reserving a row. A student
+    // carrying Help + Failed + Support genuinely needs more space than an idle one.
+    rowGap: 3,
   },
   statusDot: {
     width: 10,
@@ -329,10 +507,10 @@ const s = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 4,
-    padding: '3px 7px',
+    padding: '2px 6px',
     borderRadius: 999,
     fontFamily: 'var(--font-body)',
-    fontSize: '0.72rem',
+    fontSize: '0.66rem',
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.03em',
@@ -359,6 +537,10 @@ const s = {
     background: '#2563eb',
     color: '#fff',
   },
+  checkBadgeShare: {
+    background: '#0d9488',
+    color: '#fff',
+  },
   checkBadgeTopic: {
     background: '#0ea5e9',
     color: '#fff',
@@ -368,10 +550,21 @@ const s = {
     whiteSpace: 'nowrap',
     display: 'inline-block',
   },
+  checkBadgeView: {
+    background: '#f3f4f6',
+    color: '#4b5563',
+    border: '1px solid #d1d5db',
+    textTransform: 'none',
+    letterSpacing: 0,
+  },
   checkBadgeAway: {
     background: '#f3f4f6',
     color: '#6b7280',
     border: '1px solid #d1d5db',
+  },
+  checkBadgeFullscreen: {
+    background: '#0284c7',
+    color: '#fff',
   },
   checkBadgeOverridePassed: {
     background: 'rgba(34,197,94,0.12)',
@@ -423,17 +616,17 @@ const s = {
     fontSize: '0.78rem',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    background: '#f5f5f5',
+    background: 'var(--ui-surface-neutral-sunk)',
     borderRadius: 6,
-    padding: '6px 8px',
+    padding: '5px 7px',
     margin: 0,
-    maxHeight: 54,
+    maxHeight: 36,
     overflow: 'hidden',
     color: 'var(--colour-text)',
   },
   iframeThumb: {
-    height: 54,
-    background: '#f5f5f5',
+    height: 30,
+    background: 'var(--ui-surface-neutral-sunk)',
     borderRadius: 6,
     display: 'flex',
     alignItems: 'center',
@@ -441,7 +634,7 @@ const s = {
   },
   quizAnswer: {
     minHeight: 54,
-    background: '#f5f5f5',
+    background: 'var(--ui-surface-neutral-sunk)',
     borderRadius: 6,
     padding: '6px 8px',
     display: 'flex',
@@ -511,19 +704,11 @@ const s = {
     fontSize: '0.9rem',
     flexShrink: 0,
   },
-  lastRunRow: {
-    display: 'flex',
-    alignItems: 'center',
-  },
   lastRunLabel: {
     fontFamily: 'var(--font-body)',
-    fontSize: '0.7rem',
-    color: '#9ca3af',
+    fontSize: '0.66rem',
+    color: 'var(--colour-muted-soft)',
     fontWeight: 500,
-  },
-  expandBtn: {
-    fontSize: 12,
-    padding: '5px 0',
-    width: '100%',
+    flexShrink: 0,
   },
 }

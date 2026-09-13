@@ -14,11 +14,16 @@ vi.mock('../StudentCard', () => ({
 }))
 
 vi.mock('../StudentModal', () => ({
-  default: ({ student, onClose, onPrev, onNext, hasPrev, hasNext }) => (
+  default: ({ student, onClose, onPrev, onNext, hasPrev, hasNext, onSendVideoCallLink }) => (
     <div data-testid="student-modal">
       <span data-testid="modal-name">{student.displayName}</span>
       {hasPrev && <button onClick={onPrev}>Prev student</button>}
       {hasNext && <button onClick={onNext}>Next student</button>}
+      {onSendVideoCallLink && (
+        <button onClick={() => onSendVideoCallLink(student.anonymousId)}>
+          Send video call link
+        </button>
+      )}
       <button onClick={onClose}>Close modal</button>
     </div>
   ),
@@ -37,9 +42,21 @@ const PYTHON_LESSON = {
 const ACTIVE_SESSION = { state: 'active', currentTaskId: 1 }
 
 const STUDENTS = [
-  { anonymousId: 's1', displayName: 'Alice', online: true,  lastRunStatus: 'success', checkPassed: true  },
-  { anonymousId: 's2', displayName: 'Bob',   online: false, lastRunStatus: 'error',   checkPassed: false },
-  { anonymousId: 's3', displayName: 'Carol', online: true,  lastRunStatus: null,      checkPassed: null  },
+  {
+    anonymousId: 's1',
+    displayName: 'Alice',
+    online: true,
+    lastRunStatus: 'success',
+    checkPassed: true,
+  },
+  {
+    anonymousId: 's2',
+    displayName: 'Bob',
+    online: false,
+    lastRunStatus: 'error',
+    checkPassed: false,
+  },
+  { anonymousId: 's3', displayName: 'Carol', online: true, lastRunStatus: null, checkPassed: null },
 ]
 
 function mkProps(overrides = {}) {
@@ -88,13 +105,40 @@ describe('StudentGrid', () => {
 
     it('does not show check count badges when the task has no check', () => {
       render(<StudentGrid {...mkProps()} />)
-      expect(screen.queryByTitle('Students who passed the completion check')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTitle('Students who passed the completion check')
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('request fullscreen all', () => {
+    it('does not show the button when no handler is provided', () => {
+      render(<StudentGrid {...mkProps()} />)
+      expect(screen.queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
+    })
+
+    it('does not show the button when there are no students', () => {
+      render(<StudentGrid {...mkProps({ students: [], onRequestFullscreenAll: vi.fn() })} />)
+      expect(screen.queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
+    })
+
+    it('calls onRequestFullscreenAll and shows confirmation when clicked', async () => {
+      const user = userEvent.setup()
+      const onRequestFullscreenAll = vi.fn()
+      render(<StudentGrid {...mkProps({ onRequestFullscreenAll })} />)
+      await user.click(screen.getByText('⛶ Fullscreen All'))
+      expect(onRequestFullscreenAll).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('✓ Requested')).toBeInTheDocument()
     })
   })
 
   describe('collapsed state', () => {
     function renderCollapsed(studentOverrides = {}) {
-      return render(<StudentGrid {...mkProps({ collapsed: true, lesson: LESSON_WITH_CHECK, ...studentOverrides })} />)
+      return render(
+        <StudentGrid
+          {...mkProps({ collapsed: true, lesson: LESSON_WITH_CHECK, ...studentOverrides })}
+        />
+      )
     }
 
     it('shows the total student count badge', () => {
@@ -150,6 +194,48 @@ describe('StudentGrid', () => {
       expect(screen.getByTestId('student-modal')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Close modal' }))
       expect(screen.queryByTestId('student-modal')).not.toBeInTheDocument()
+    })
+
+    it('threads onSendVideoCallLink through to the expanded StudentModal', async () => {
+      const user = userEvent.setup()
+      const onSendVideoCallLink = vi.fn()
+      render(<StudentGrid {...mkProps({ onSendVideoCallLink })} />)
+      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await user.click(screen.getByRole('button', { name: 'Send video call link' }))
+      expect(onSendVideoCallLink).toHaveBeenCalledWith('s1')
+    })
+  })
+
+  // A solid green 0 beside a solid red 0 rendered whenever the task had a check, whether
+  // or not anyone had passed or failed - the electronics status strip in the two colours
+  // the quiz fix is reclaiming.
+  describe('check counters', () => {
+    const withCheck = {
+      type: 'python',
+      tasks: [{ id: 1, title: 'T', check: { type: 'output_contains', value: 'hi' } }],
+    }
+    const session = { state: 'active', currentTaskId: 1 }
+
+    it('hides both counters while nobody has passed or failed', () => {
+      const students = [{ anonymousId: 's1', displayName: 'A', online: true, lastRunStatus: null }]
+      render(<StudentGrid students={students} lesson={withCheck} session={session} />)
+      expect(screen.queryByTitle(/passed the completion check/i)).not.toBeInTheDocument()
+      expect(screen.queryByTitle(/failed the completion check/i)).not.toBeInTheDocument()
+    })
+
+    it('shows only the counter that has a value', () => {
+      const students = [
+        {
+          anonymousId: 's1',
+          displayName: 'A',
+          online: true,
+          lastRunStatus: 'success',
+          checkPassed: true,
+        },
+      ]
+      render(<StudentGrid students={students} lesson={withCheck} session={session} />)
+      expect(screen.getByTitle(/passed the completion check/i)).toBeInTheDocument()
+      expect(screen.queryByTitle(/failed the completion check/i)).not.toBeInTheDocument()
     })
   })
 })

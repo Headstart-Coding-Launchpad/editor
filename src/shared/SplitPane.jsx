@@ -16,10 +16,14 @@ export default function SplitPane({
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef(null)
   const dragging = useRef(false)
+  const dragCleanupRef = useRef(null)
 
   useEffect(() => {
     if (!rightCollapsed && !leftCollapsed) setSplitPct(defaultSplit)
   }, [defaultSplit, leftCollapsed, rightCollapsed])
+
+  // Detach the drag listeners on unmount too, in case the pane is swapped out mid-drag.
+  useEffect(() => () => dragCleanupRef.current?.(), [])
 
   const onMouseDown = useCallback((e) => {
     e.preventDefault()
@@ -35,41 +39,91 @@ export default function SplitPane({
       setSplitPct(Math.min(85, Math.max(15, pct)))
     }
 
+    function detach() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      dragCleanupRef.current = null
+    }
+
     function onMouseUp() {
       dragging.current = false
       setIsDragging(false)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
+      detach()
     }
 
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
+    dragCleanupRef.current = detach
   }, [])
 
   const paneStyle = isDragging ? { pointerEvents: 'none' } : undefined
   const leftStyle = leftCollapsed
-    ? { width: collapsedLeftWidth, minWidth: collapsedLeftWidth, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }
+    ? {
+        width: collapsedLeftWidth,
+        minWidth: collapsedLeftWidth,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }
     : rightCollapsed
-    ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', ...paneStyle }
-    : { width: `${splitPct}%`, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', ...paneStyle }
+      ? {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          ...paneStyle,
+        }
+      : {
+          width: `${splitPct}%`,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          ...paneStyle,
+        }
   const rightStyle = rightCollapsed
-    ? { width: collapsedRightWidth, minWidth: collapsedRightWidth, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }
+    ? {
+        width: collapsedRightWidth,
+        minWidth: collapsedRightWidth,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }
     : leftCollapsed
-    ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...paneStyle }
-    : { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...paneStyle }
+      ? {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          ...paneStyle,
+        }
+      : {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          ...paneStyle,
+        }
 
   return (
     <div ref={containerRef} style={{ display: 'flex', minHeight: 0, overflow: 'hidden', ...style }}>
-      <div style={leftStyle}>
-        {leftCollapsed ? collapsedLeft : left}
-      </div>
+      <div style={leftStyle}>{leftCollapsed ? collapsedLeft : left}</div>
       {!rightCollapsed && !leftCollapsed && (
         <div
           onMouseDown={onMouseDown}
-          onMouseEnter={e => { e.currentTarget.style.background = '#c4b5fd' }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#e5e7eb' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#c4b5fd'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#e5e7eb'
+          }}
           style={{
             width: 5,
             cursor: 'col-resize',
@@ -79,9 +133,7 @@ export default function SplitPane({
           }}
         />
       )}
-      <div style={rightStyle}>
-        {rightCollapsed ? collapsedRight : right}
-      </div>
+      <div style={rightStyle}>{rightCollapsed ? collapsedRight : right}</div>
     </div>
   )
 }

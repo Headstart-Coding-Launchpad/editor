@@ -3,10 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import TeacherCodeTabs from '../TeacherCodeTabs'
 
-const stages = [
-  { label: 'Stage 1' },
-  { label: 'Stage 2' },
-]
+const stages = [{ label: 'Stage 1' }, { label: 'Stage 2' }]
 
 function renderTabs(overrides = {}) {
   const props = {
@@ -64,10 +61,26 @@ describe('TeacherCodeTabs', () => {
     expect(screen.queryByRole('button', { name: 'Send to all' })).not.toBeInTheDocument()
   })
 
-  it('calls onSendToAll with correct action after confirmation', () => {
+  it('reveals rather than resets when the active stage is not a starter stage, regardless of unifiedStages', () => {
+    // stages[] here has no explicit role, which getStageRole defaults to 'support' —
+    // this must be safe to reveal, not reset, even when unifiedStages is left at its
+    // default (false), since revealing is correct for every module type, not just the
+    // ones using the unified tab layout.
     const onSendToAll = vi.fn()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderTabs({ activeTab: 'stage_0', stages, hasStudents: true, onSendToAll })
+    expect(screen.getByRole('button', { name: 'Reveal to all' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal to all' }))
+    expect(onSendToAll).toHaveBeenCalledWith('reveal_stage_0')
+    vi.restoreAllMocks()
+  })
+
+  it('sends a raw reset action when the active stage is the starter stage, even without unifiedStages', () => {
+    const onSendToAll = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const starterStages = [{ label: 'Starter Stage', role: 'starter' }]
+    renderTabs({ activeTab: 'stage_0', stages: starterStages, hasStudents: true, onSendToAll })
+    expect(screen.getByRole('button', { name: 'Send to all' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Send to all' }))
     expect(onSendToAll).toHaveBeenCalledWith('stage_0')
     vi.restoreAllMocks()
@@ -80,5 +93,47 @@ describe('TeacherCodeTabs', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send to all' }))
     expect(onSendToAll).not.toHaveBeenCalled()
     vi.restoreAllMocks()
+  })
+
+  it('does not render the Live tab unless showLiveTab is set', () => {
+    renderTabs()
+    expect(screen.queryByRole('tab', { name: 'Live' })).not.toBeInTheDocument()
+  })
+
+  it('renders the Live tab and delegates onLive', () => {
+    const props = renderTabs({ showLiveTab: true, onLive: vi.fn() })
+    const liveTab = screen.getByRole('tab', { name: 'Live' })
+    fireEvent.click(liveTab)
+    expect(props.onLive).toHaveBeenCalledOnce()
+  })
+
+  it('shows the class-broadcast toggle instead of send-to-all while on the Live tab', () => {
+    const onToggleLiveReference = vi.fn()
+    const onSendToAll = vi.fn()
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: true,
+      onSendToAll,
+      onToggleLiveReference,
+    })
+    expect(screen.queryByRole('button', { name: 'Send to all' })).not.toBeInTheDocument()
+    const toggleBtn = screen.getByRole('button', { name: 'Show live code to class' })
+    fireEvent.click(toggleBtn)
+    expect(onToggleLiveReference).toHaveBeenCalledWith(true)
+    expect(onSendToAll).not.toHaveBeenCalled()
+  })
+
+  it('toggles the class broadcast off when already visible to the class', () => {
+    const onToggleLiveReference = vi.fn()
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: true,
+      liveReferenceVisibleToAll: true,
+      onToggleLiveReference,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Live ref: class on' }))
+    expect(onToggleLiveReference).toHaveBeenCalledWith(false)
   })
 })

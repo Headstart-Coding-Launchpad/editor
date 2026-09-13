@@ -3,7 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import TopBar from '../components/TopBar'
 import OutputPanel from '../components/OutputPanel'
 import PythonEditor from '../../modules/python/PythonEditor'
-import { initPyodide, isPyodideReady, provideInput, runPython, stopPython } from '../../modules/python/pyodide'
+import {
+  initPyodide,
+  isPyodideReady,
+  provideInput,
+  runPython,
+  stopPython,
+} from '../../modules/python/pyodide'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import { useIsMobile } from '../../shared/useIsMobile'
 
@@ -18,7 +24,7 @@ export default function CodeFileWorkspace() {
   const [runStatus, setRunStatus] = useState(null)
   const [running, setRunning] = useState(false)
   const [inputPrompt, setInputPrompt] = useState(null)
-  const [pythonStatus, setPythonStatus] = useState(() => isPyodideReady() ? 'ready' : 'loading')
+  const [pythonStatus, setPythonStatus] = useState(() => (isPyodideReady() ? 'ready' : 'loading'))
   const [errorLine, setErrorLine] = useState(null)
 
   useEffect(() => {
@@ -28,16 +34,20 @@ export default function CodeFileWorkspace() {
       return
     }
     setPythonStatus('loading')
-    initPyodide().then(() => setPythonStatus('ready')).catch(() => setPythonStatus('error'))
+    initPyodide()
+      .then(() => setPythonStatus('ready'))
+      .catch(() => setPythonStatus('error'))
   }, [codeFile])
 
   const activeTask = useMemo(
-    () => tasks.find(task => task.id === activeTaskId) ?? tasks[0] ?? null,
+    () => tasks.find((task) => task.id === activeTaskId) ?? tasks[0] ?? null,
     [tasks, activeTaskId]
   )
 
   function updateActiveCode(code) {
-    setTasks(current => current.map(task => task.id === activeTask?.id ? { ...task, code } : task))
+    setTasks((current) =>
+      current.map((task) => (task.id === activeTask?.id ? { ...task, code } : task))
+    )
     if (errorLine != null) setErrorLine(null)
   }
 
@@ -55,7 +65,7 @@ export default function CodeFileWorkspace() {
           setOutput(nextOutput)
           if (kind === 'stderr' && typeof line === 'number') setErrorLine(line)
         },
-        onInputRequired: prompt => setInputPrompt(prompt),
+        onInputRequired: (prompt) => setInputPrompt(prompt),
       })
       setRunStatus(result.status)
     } catch {
@@ -71,14 +81,17 @@ export default function CodeFileWorkspace() {
   }
 
   function handleInputSubmit(value) {
-    setOutput(current => current + value + '\n')
+    setOutput((current) => current + value + '\n')
     setInputPrompt(null)
     provideInput(value)
   }
 
   function handleDownload() {
     if (!tasks.length) return
-    downloadLaunchpadCodeFile(createLaunchpadCodeFile(tasks), tasks.length === 1 ? tasks[0].title : 'my-python-code')
+    downloadLaunchpadCodeFile(
+      createLaunchpadCodeFile(tasks),
+      tasks.length === 1 ? tasks[0].title : 'my-python-code'
+    )
   }
 
   if (!codeFile || tasks.length === 0) {
@@ -86,7 +99,9 @@ export default function CodeFileWorkspace() {
       <div style={s.emptyPage}>
         <h1 style={s.emptyTitle}>Open your saved code</h1>
         <p style={s.emptyText}>Choose a LaunchPad file from the start screen to continue coding.</p>
-        <button className="btn-primary" onClick={() => navigate('/')}>Go to LaunchPad</button>
+        <button className="btn-primary" onClick={() => navigate('/')}>
+          Go to LaunchPad
+        </button>
       </div>
     )
   }
@@ -97,17 +112,22 @@ export default function CodeFileWorkspace() {
         lessonTitle={activeTask?.title || 'My Python code'}
         right={
           <div style={s.topActions}>
-            <button className="btn-ghost" style={s.topButton} onClick={() => navigate('/')}>Open another file</button>
-            <button className="btn-ghost" style={s.topButton} onClick={handleDownload}>Download code</button>
+            <button className="btn-ghost" style={s.topButton} onClick={() => navigate('/')}>
+              Open another file
+            </button>
+            <button className="btn-ghost" style={s.topButton} onClick={handleDownload}>
+              Download code
+            </button>
           </div>
         }
       />
       <div style={s.warning} role="status">
-        <strong>Saved only on this device.</strong> Download your code after editing to keep an updated copy.
+        <strong>Saved only on this device.</strong> Download your code after editing to keep an
+        updated copy.
       </div>
       {tasks.length > 1 && (
         <div style={s.taskPicker} role="tablist" aria-label="Saved Python tasks">
-          {tasks.map(task => (
+          {tasks.map((task) => (
             <button
               key={task.id}
               className={`ui-tab ${task.id === activeTask?.id ? 'is-active' : ''}`}
@@ -163,19 +183,60 @@ export default function CodeFileWorkspace() {
 }
 
 const s = {
-  page: { height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--ui-surface-soft)' },
+  page: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'var(--ui-surface-soft)',
+  },
   topActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   topButton: { fontSize: 13, padding: '5px 10px' },
-  warning: { background: '#fef9c3', borderBottom: '1px solid #fde047', color: '#854d0e', padding: '8px 16px', fontFamily: 'var(--font-body)', fontSize: 13 },
-  taskPicker: { display: 'flex', gap: 4, flexWrap: 'wrap', padding: '8px 16px', background: 'var(--ui-surface)' },
-  workspace: { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(280px, 2fr)', gap: 12, padding: 16 },
+  warning: {
+    background: '#fef9c3',
+    borderBottom: '1px solid #fde047',
+    color: '#854d0e',
+    padding: '8px 16px',
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+  },
+  taskPicker: {
+    display: 'flex',
+    gap: 4,
+    flexWrap: 'wrap',
+    padding: '8px 16px',
+    background: 'var(--ui-surface)',
+  },
+  workspace: {
+    flex: 1,
+    minHeight: 0,
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 3fr) minmax(280px, 2fr)',
+    gap: 12,
+    padding: 16,
+  },
   workspaceMobile: { display: 'flex', flexDirection: 'column', overflow: 'auto' },
   editorPane: { display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' },
   outputPane: { display: 'flex', minHeight: 0 },
   editorHeader: { flexShrink: 0 },
-  editorLabel: { padding: '0 10px', color: 'var(--colour-primary)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '0.86rem' },
+  editorLabel: {
+    padding: '0 10px',
+    color: 'var(--colour-primary)',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.86rem',
+  },
   editorActions: { marginLeft: 'auto', padding: 6 },
-  emptyPage: { height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32, textAlign: 'center', background: 'var(--ui-surface-soft)' },
+  emptyPage: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    padding: 32,
+    textAlign: 'center',
+    background: 'var(--ui-surface-soft)',
+  },
   emptyTitle: { margin: 0, fontFamily: 'var(--font-title)', color: 'var(--colour-primary)' },
   emptyText: { margin: 0, fontFamily: 'var(--font-body)', color: '#6b7280' },
 }

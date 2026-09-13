@@ -4,6 +4,8 @@ const mockGetDoc = vi.fn()
 const mockGetDocs = vi.fn()
 const mockSetDoc = vi.fn()
 const mockDeleteDoc = vi.fn()
+const mockBatchDelete = vi.fn()
+const mockBatchCommit = vi.fn()
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((firestore, name) => ({ firestore, name })),
@@ -12,13 +14,28 @@ vi.mock('firebase/firestore', () => ({
   getDocs: (...args) => mockGetDocs(...args),
   setDoc: (...args) => mockSetDoc(...args),
   deleteDoc: (...args) => mockDeleteDoc(...args),
+  query: vi.fn((...args) => ({ query: args })),
+  where: vi.fn((field, op, value) => ({ field, op, value })),
+  limit: vi.fn((n) => ({ limit: n })),
+  writeBatch: () => ({
+    delete: (...args) => mockBatchDelete(...args),
+    commit: (...args) => mockBatchCommit(...args),
+  }),
 }))
 
 vi.mock('../firebase', () => ({
   firestore: {},
 }))
 
-const { fetchLessonById, fetchLessonList, applyLessonOverride, publishLesson, publishLessonTasks, deletePublishedLesson } = await import('../lessonService')
+const {
+  fetchLessonById,
+  fetchLessonList,
+  findSoloCompanion,
+  applyLessonOverride,
+  publishLesson,
+  publishLessonTasks,
+  deletePublishedLesson,
+} = await import('../lessonService')
 
 describe('lessonService', () => {
   beforeEach(() => {
@@ -26,6 +43,8 @@ describe('lessonService', () => {
     mockGetDocs.mockReset()
     mockSetDoc.mockReset()
     mockDeleteDoc.mockReset()
+    mockBatchDelete.mockReset()
+    mockBatchCommit.mockReset().mockResolvedValue(undefined)
   })
 
   it('loads a lesson from Firestore by id', async () => {
@@ -69,6 +88,42 @@ describe('lessonService', () => {
   })
 })
 
+describe('findSoloCompanion', () => {
+  it('returns null when lessonId is falsy', async () => {
+    await expect(findSoloCompanion('')).resolves.toBeNull()
+    await expect(findSoloCompanion(null)).resolves.toBeNull()
+  })
+
+  it('returns null when no lesson links to this one', async () => {
+    mockGetDocs.mockResolvedValue({ empty: true, docs: [] })
+    await expect(findSoloCompanion('python-1-1')).resolves.toBeNull()
+  })
+
+  it('returns the linked solo companion id and title', async () => {
+    mockGetDocs.mockResolvedValue({
+      empty: false,
+      docs: [{ id: 'python-1-1-solo', data: () => ({ title: 'Python Challenge' }) }],
+    })
+
+    await expect(findSoloCompanion('python-1-1')).resolves.toEqual({
+      id: 'python-1-1-solo',
+      title: 'Python Challenge',
+    })
+  })
+
+  it('falls back to the id when the companion has no title', async () => {
+    mockGetDocs.mockResolvedValue({
+      empty: false,
+      docs: [{ id: 'python-1-1-solo', data: () => ({}) }],
+    })
+
+    await expect(findSoloCompanion('python-1-1')).resolves.toEqual({
+      id: 'python-1-1-solo',
+      title: 'python-1-1-solo',
+    })
+  })
+})
+
 describe('publishLesson', () => {
   it('writes an encoded full lesson document', async () => {
     mockSetDoc.mockResolvedValue(undefined)
@@ -78,13 +133,15 @@ describe('publishLesson', () => {
 
     expect(mockSetDoc).toHaveBeenCalledWith(
       { firestore: {}, collectionName: 'lessons', id: 'scratch-1' },
-      expect.objectContaining({ id: 'scratch-1', type: 'scratch', tasks: expect.any(Array) }),
+      expect.objectContaining({ id: 'scratch-1', type: 'scratch', tasks: expect.any(Array) })
     )
   })
 
   it('rejects lessons without an id', async () => {
     mockSetDoc.mockClear()
-    await expect(publishLesson({ type: 'python', tasks: [] })).rejects.toThrow('Lesson id is required')
+    await expect(publishLesson({ type: 'python', tasks: [] })).rejects.toThrow(
+      'Lesson id is required'
+    )
     expect(mockSetDoc).not.toHaveBeenCalled()
   })
 })
@@ -109,13 +166,40 @@ describe('applyLessonOverride', () => {
 
 describe('deletePublishedLesson', () => {
   it('deletes the lesson document by id', async () => {
+    mockGetDocs.mockResolvedValue({ docs: [] })
     mockDeleteDoc.mockResolvedValue(undefined)
 
     await deletePublishedLesson('python-1-1')
 
-    expect(mockDeleteDoc).toHaveBeenCalledWith(
-      { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
-    )
+    expect(mockDeleteDoc).toHaveBeenCalledWith({
+      firestore: {},
+      collectionName: 'lessons',
+      id: 'python-1-1',
+    })
+  })
+
+  it('purges the sessionReports and feedback subcollections before deleting the lesson doc', async () => {
+    // clearLessonRunData fires clearLessonChildCollection('sessionReports') and
+    // ('feedback') via Promise.all — each calls getDocs synchronously in that
+    // array order before either await resolves, so mockResolvedValueOnce chaining
+    // reliably corresponds to sessionReports first, feedback second.
+    const reportRef = { id: 'report-1' }
+    const feedbackRef = { id: 'feedback-1' }
+    mockGetDocs
+      .mockResolvedValueOnce({ docs: [{ ref: reportRef }] })
+      .mockResolvedValueOnce({ docs: [{ ref: feedbackRef }] })
+    mockDeleteDoc.mockResolvedValue(undefined)
+
+    await deletePublishedLesson('python-1-1')
+
+    expect(mockBatchDelete).toHaveBeenCalledWith(reportRef)
+    expect(mockBatchDelete).toHaveBeenCalledWith(feedbackRef)
+    expect(mockBatchCommit).toHaveBeenCalled()
+    expect(mockDeleteDoc).toHaveBeenCalledWith({
+      firestore: {},
+      collectionName: 'lessons',
+      id: 'python-1-1',
+    })
   })
 
   it('rejects empty lesson ids', async () => {
@@ -135,7 +219,7 @@ describe('publishLessonTasks', () => {
     expect(mockSetDoc).toHaveBeenCalledWith(
       { firestore: {}, collectionName: 'lessons', id: 'python-1-1' },
       { tasks },
-      { merge: true },
+      { merge: true }
     )
   })
 })

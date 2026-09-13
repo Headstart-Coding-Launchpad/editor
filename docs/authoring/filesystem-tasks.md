@@ -30,7 +30,7 @@ A flat path map. Directories end with `/`; files do not. Root `/` always exists.
 | `carryFsFrom` | No | Task ID to carry the saved filesystem from. |
 | `startsInDir` | No | Directory path the explorer opens in. Defaults to `/`. Must end with `/`. |
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Support stages are offerable references where the lesson type provides a read-only reveal UI; that UI is currently implemented for Python/HTML stages only.
+**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Support stages are offerable references where the lesson type provides a read-only reveal UI; that UI is currently implemented for Python/HTML stages only. As with every task type, the `check` is defined once on the task, never on a stage — see "Code stage runtime behaviour" in `docs/authoring/lesson-schema.md`.
 
 ---
 

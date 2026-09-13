@@ -1,17 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
 
 /**
- * Owns the student phase state machine: loading → waiting → name-entry → lesson → sandbox → solo → ended.
+ * Owns the student phase state machine: loading → choice → waiting → name-entry → lesson → sandbox → solo → ended.
+ * `choice` is shown when no session exists yet, so the student picks Join Live Lesson (→ waiting/name-entry)
+ * or Go Solo (→ solo), rather than being dropped straight into the waiting room.
  * Also owns currentTaskId and viewingTaskId, which are tightly coupled to phase transitions.
  *
  * onBeforeTaskChange()    — call before currentTaskId is updated (save current work)
  * onPersonalSandboxExit() — call when a forced task/phase change must close personal sandbox
  */
 export function useStudentPhase({
-  session, sessionLoading,
-  identity, identityLoaded,
-  lessonId, lessonLoading,
-  soloMode, teacherPresentation,
+  session,
+  sessionLoading,
+  identity,
+  identityLoaded,
+  lessonId,
+  lessonLoading,
+  soloMode,
+  teacherPresentation,
   firstTaskId = null,
   onBeforeTaskChange,
   onPersonalSandboxExit,
@@ -25,6 +31,7 @@ export function useStudentPhase({
   const [phase, setPhase] = useState('loading')
   const [currentTaskId, setCurrentTaskId] = useState(firstTaskId ?? 1)
   const [viewingTaskId, setViewingTaskId] = useState(null)
+  const [joinError, setJoinError] = useState(null)
 
   const phaseRef = useRef(phase)
   phaseRef.current = phase
@@ -55,13 +62,13 @@ export function useStudentPhase({
   // overwriting a session-driven task that was already applied by the phase-determination effect
   useEffect(() => {
     if (firstTaskId != null && phaseRef.current === 'loading') setCurrentTaskId(firstTaskId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstTaskId])
 
   // ─── Phase determination ───────────────────────────────────────────────────
 
   useEffect(() => {
-    if ((!soloMode && sessionLoading) || (!teacherPresentation && !identityLoaded) || lessonLoading) return
+    if ((!soloMode && sessionLoading) || (!teacherPresentation && !identityLoaded) || lessonLoading)
+      return
 
     if (teacherPresentation) {
       if (!session) {
@@ -89,7 +96,8 @@ export function useStudentPhase({
       return
     }
 
-    // No session — go straight to solo or waiting depending on URL mode
+    // No session — offer the solo-vs-wait choice, unless the student already committed
+    // to solo, is mid-name-entry, or has already finished (ended screen).
     if (!session) {
       if (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') {
         onPersonalSandboxExit?.()
@@ -98,19 +106,8 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'join-choice' || phaseRef.current === 'name-entry' || phaseRef.current === 'waiting') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      if (phaseRef.current === 'loading') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
-        return
-      }
-      // Already solo — stay solo
-      if (!identity) createIdentity('Solo', Date.now())
-      setPhase('solo')
+      if (phaseRef.current === 'solo' || phaseRef.current === 'ended') return
+      setPhase('choice')
       return
     }
 
@@ -123,9 +120,8 @@ export function useStudentPhase({
         setPhase('ended')
         return
       }
-      if (phaseRef.current === 'loading' || phaseRef.current === 'join-choice') {
-        if (soloMode) { if (!identity) createIdentity('Solo', Date.now()); setPhase('solo') }
-        else setPhase('waiting')
+      if (phaseRef.current === 'loading' || phaseRef.current === 'choice') {
+        setPhase('choice')
         return
       }
       if (!identity) createIdentity('Solo', Date.now())
@@ -166,7 +162,10 @@ export function useStudentPhase({
     // Student was in the waiting room and the session just became active
     if (phaseRef.current === 'waiting') {
       if (isReturning) {
-        if (session.state === 'sandbox') { setPhase('sandbox'); return }
+        if (session.state === 'sandbox') {
+          setPhase('sandbox')
+          return
+        }
         setCurrentTaskId(session.currentTaskId ?? 1)
         setPhase('lesson')
       } else {
@@ -183,11 +182,23 @@ export function useStudentPhase({
     // Returning student — update timestamp and drop in
     updateTimestamp(sessionTs)
 
-    if (session.state === 'sandbox') { setPhase('sandbox'); return }
+    if (session.state === 'sandbox') {
+      setPhase('sandbox')
+      return
+    }
     setCurrentTaskId(session.currentTaskId ?? 1)
     setPhase('lesson')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionLoading, identityLoaded, lessonLoading, session?.state, session?.createdAt, session?.currentTaskId, soloMode, teacherPresentation])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    sessionLoading,
+    identityLoaded,
+    lessonLoading,
+    session?.state,
+    session?.createdAt,
+    session?.currentTaskId,
+    soloMode,
+    teacherPresentation,
+  ])
 
   // Close teacher presentation window when session ends
   useEffect(() => {
@@ -204,22 +215,40 @@ export function useStudentPhase({
       setCurrentTaskId(session.currentTaskId)
       setViewingTaskId(null)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.currentTaskId])
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleNameSubmit(displayName) {
+    setJoinError(null)
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
+    try {
+      await joinSession(id.anonymousId, displayName)
+    } catch (err) {
+      console.warn('Failed to join session:', err)
+      setJoinError("Couldn't connect to the class session. Check your connection and try again.")
+      return
+    }
+    // Only remove the joining marker once the real student record is written, so a failed
+    // join (and any retry) keeps the teacher's live view showing this student as joining.
     if (joiningTempIdRef.current) {
       unregisterJoining(joiningTempIdRef.current)
       joiningTempIdRef.current = null
     }
-    await joinSession(id.anonymousId, displayName)
-    if (!session || session.state === 'ended') { setPhase('waiting'); return }
-    if (session.state === 'waiting') { setPhase('waiting'); return }
-    if (session.state === 'sandbox') { setPhase('sandbox'); return }
+    if (!session || session.state === 'ended') {
+      setPhase('waiting')
+      return
+    }
+    if (session.state === 'waiting') {
+      setPhase('waiting')
+      return
+    }
+    if (session.state === 'sandbox') {
+      setPhase('sandbox')
+      return
+    }
     setCurrentTaskId(session.currentTaskId ?? 1)
     setPhase('lesson')
   }
@@ -238,9 +267,15 @@ export function useStudentPhase({
   }
 
   return {
-    phase, setPhase,
-    currentTaskId, setCurrentTaskId,
-    viewingTaskId, setViewingTaskId,
-    handleNameSubmit, handleWaitForTeacher, handleGoSolo,
+    phase,
+    setPhase,
+    currentTaskId,
+    setCurrentTaskId,
+    viewingTaskId,
+    setViewingTaskId,
+    joinError,
+    handleNameSubmit,
+    handleWaitForTeacher,
+    handleGoSolo,
   }
 }

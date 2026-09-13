@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { cloneFiles, cloneScratchState, decodeSessionFiles, getFileType, parseScratchState } from '../workspaceData'
+import {
+  cloneFiles,
+  cloneScratchState,
+  decodeSessionFiles,
+  getFileType,
+  parseScratchState,
+} from '../workspaceData'
 
 describe('scratch state helpers', () => {
   it('parses JSON or preserves an existing project object', () => {
@@ -26,8 +32,8 @@ describe('HTML file helpers', () => {
   })
 
   it('decodes Firebase file maps while retaining caller-specific fallback types', () => {
-    const decodeKey = key => key.replace('__dot__', '.')
-    expect(decodeSessionFiles({ 'index__dot__html': 'a', README: 'b' }, decodeKey, 'html')).toEqual([
+    const decodeKey = (key) => key.replace('__dot__', '.')
+    expect(decodeSessionFiles({ index__dot__html: 'a', README: 'b' }, decodeKey, 'html')).toEqual([
       { name: 'index.html', content: 'a', type: 'html' },
       { name: 'README', content: 'b', type: 'html' },
     ])
@@ -35,11 +41,15 @@ describe('HTML file helpers', () => {
   })
 
   it('recovers legacy file-object entries as editable text files', () => {
-    const decodeKey = key => key.replace('__dot__', '.')
-    expect(decodeSessionFiles({
-      0: { name: 'index.html', content: '<h1>Recovered</h1>', type: 'html' },
-    }, decodeKey, 'html')).toEqual([
-      { name: 'index.html', content: '<h1>Recovered</h1>', type: 'html' },
-    ])
+    const decodeKey = (key) => key.replace('__dot__', '.')
+    expect(
+      decodeSessionFiles(
+        {
+          0: { name: 'index.html', content: '<h1>Recovered</h1>', type: 'html' },
+        },
+        decodeKey,
+        'html'
+      )
+    ).toEqual([{ name: 'index.html', content: '<h1>Recovered</h1>', type: 'html' }])
   })
 })

@@ -1,19 +1,59 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { FEEDBACK_TIMING, checkAllowedForSubmit, evaluateCheck, evaluateCheckWithCode, evaluateCheckWithFeedback, getStageOfferMatchThreshold, normalizeChecks, normalizeFeedbackChecks, evaluateSingleCheck, resolveTestCheck } from '../../modules/checks'
-import { flattenTasks, findTaskById, getCompleteStage, getNextRevealableStage, getRevealableStages, getStageRole, getStarterStage, isRevealableStage } from '../../shared/taskUtils'
+import {
+  FEEDBACK_TIMING,
+  checkAllowedForSubmit,
+  evaluateCheck,
+  evaluateCheckWithCode,
+  evaluateCheckWithFeedback,
+  getStageOfferMatchThreshold,
+  normalizeChecks,
+  normalizeFeedbackChecks,
+  evaluateSingleCheck,
+  resolveTestCheck,
+} from '../../modules/checks'
+import {
+  flattenTasks,
+  findTaskById,
+  getCompleteStage,
+  getNextRevealableStage,
+  getRevealableStages,
+  getStageRole,
+  getStarterStage,
+  isRevealableStage,
+} from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
 import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
 import { decodeFileKey } from '../../shared/fileKeys'
-import { loadSavedCode, loadPersonalSandboxCode, savePersonalSandboxCode, loadPersonalSandboxFile, savePersonalSandboxFile, loadPersonalSandboxFs, savePersonalSandboxFs, loadPersonalSandboxDesktop, savePersonalSandboxDesktop, clearEphemeralStorage } from '../studentStorage'
-import { resolveSavedCarrySource, selectHtmlTaskFiles, selectPythonTaskCode } from '../studentTaskContent'
+import {
+  loadSavedCode,
+  loadPersonalSandboxCode,
+  savePersonalSandboxCode,
+  loadPersonalSandboxFile,
+  savePersonalSandboxFile,
+  loadPersonalSandboxFs,
+  savePersonalSandboxFs,
+  loadPersonalSandboxDesktop,
+  savePersonalSandboxDesktop,
+  clearEphemeralStorage,
+} from '../studentStorage'
+import {
+  resolveRemoteResetTarget,
+  resolveSavedCarrySource,
+  selectHtmlTaskFiles,
+  selectPythonTaskCode,
+} from '../studentTaskContent'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { useCheckFeedback } from './useCheckFeedback'
+import { useLatestRef } from './useLatestRef'
+import { useSandboxCodePush } from './useSandboxCodePush'
+import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { getLessonModule } from '../../modules/registry'
@@ -44,8 +84,14 @@ export function useStudentCodeState({
   writeStudentAnswer,
   writeStudentCode,
   writeStudentArcadeDesign,
+  writeStudentTurtleResult,
+  writeStudentSpriteState,
+  writeStudentCursor,
+  writeStudentBlockDrag,
+  writeStudentCodeArrangeSlots,
   writeStudentFiles,
   writeStudentOutput,
+  writeStudentInputState,
   writeStudentInteraction,
   recordStudentCarryFallback,
   recordSupportStageReveal,
@@ -55,25 +101,30 @@ export function useStudentCodeState({
   removeStudent,
   updateTeacherLive,
   setTeacherLive,
+  setTeacherLiveReference,
   removeTeacherHighlight,
 }) {
-  const [code, setCode]                   = useState('')
-  const [arcadeDesign, setArcadeDesign]   = useState(null)
-  const [files, setFiles]                 = useState([])
-  const [activeFile, setActiveFile]       = useState('')
-  const [output, setOutput]               = useState('')
-  const [runStatus, setRunStatus]         = useState(null)
-  const [running, setRunning]             = useState(false)
-  const [runningTests, setRunningTests]   = useState(false)
-  const [iframeSrc, setIframeSrc]         = useState(null)
-  const [inputPrompt, setInputPrompt]     = useState(null)
+  const [code, setCode] = useState('')
+  const [arcadeDesign, setArcadeDesign] = useState(null)
+  const [files, setFiles] = useState([])
+  const [activeFile, setActiveFile] = useState('')
+  const [output, setOutput] = useState('')
+  const [runStatus, setRunStatus] = useState(null)
+  // Turtle module only: the { state, commands, calls } snapshot from the most recent run,
+  // used by TurtleStudentWorkspace to redraw its canvas. Ephemeral/in-memory only (Phase 1) —
+  // not persisted or synced to teacher-live yet, so it resets wherever output does.
+  const [turtleResult, setTurtleResult] = useState(null)
+  const [running, setRunning] = useState(false)
+  const [runningTests, setRunningTests] = useState(false)
+  const [iframeSrc, setIframeSrc] = useState(null)
+  const [inputPrompt, setInputPrompt] = useState(null)
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
   const [scratchActiveStageIndex, setScratchActiveStageIndex] = useState(null)
-  const [fsState, setFsState]             = useState(DEFAULT_FS)
+  const [fsState, setFsState] = useState(DEFAULT_FS)
   const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
-  const [desktopState, setDesktopState]             = useState(() => makeDefaultDesktop())
+  const [desktopState, setDesktopState] = useState(() => makeDefaultDesktop())
   const [desktopInteraction, setDesktopInteraction] = useState({ currentDir: '/', openFile: null })
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
@@ -92,59 +143,57 @@ export function useStudentCodeState({
   const [targetedPreviewStageIndex, setTargetedPreviewStageIndex] = useState(null)
   const targetedStageOfferMatchCountsRef = useRef({})
 
-  const iframeRef              = useRef(null)
-  const appendOutputRef        = useRef(null)
+  const iframeRef = useRef(null)
+  const appendOutputRef = useRef(null)
   const writeAnswerDebounceRef = useRef(null)
-  const lastOutputWriteRef     = useRef(0)
+  const lastOutputWriteRef = useRef(0)
   const lastRuntimeCodeWriteRef = useRef(0)
-  const outputRafIdRef         = useRef(null)
-  const runtimeCodeRafIdRef    = useRef(null)
-  const pendingRuntimeCodeRef  = useRef(null)
-  const idleFeedbackTimerRef   = useRef(null)
+  const outputRafIdRef = useRef(null)
+  const runtimeCodeRafIdRef = useRef(null)
+  const pendingRuntimeCodeRef = useRef(null)
+  const idleFeedbackTimerRef = useRef(null)
   const htmlSupportAttemptsRef = useRef(new Map())
+  // Latest code_arrange tile-placement state (owned by CodeArrangeTaskContainer,
+  // mirrored here purely so the "teacher starts watching" effect below can
+  // publish it immediately — see handleCodeArrangeSlotsChange.
+  const codeArrangeSlotStateRef = useRef({})
 
   const IDLE_FEEDBACK_DELAY_MS = 900
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
-  const identityRef          = useRef(identity)
-  identityRef.current        = identity
-  const lessonRef            = useRef(lesson)
-  lessonRef.current          = lesson
-  const currentTaskIdRef     = useRef(currentTaskId)
-  currentTaskIdRef.current   = currentTaskId
-  const phaseRef             = useRef(phase)
-  phaseRef.current           = phase
-  const codeRef              = useRef(code)
-  codeRef.current            = code
-  const arcadeDesignRef      = useRef(arcadeDesign)
-  arcadeDesignRef.current    = arcadeDesign
+  const identityRef = useLatestRef(identity)
+  const lessonRef = useLatestRef(lesson)
+  const currentTaskIdRef = useLatestRef(currentTaskId)
+  const phaseRef = useLatestRef(phase)
+  const codeRef = useLatestRef(code)
+  // Scratch never routes through the generic `code` state (see loadTaskContent's
+  // scratch branch) — handleScratchChange stashes the latest Blockly JSON here
+  // instead, so the teacher-live payload publishes real block state rather than
+  // whatever `code` happens to be left over from a previous non-Scratch task.
+  const scratchCodeRef = useRef('')
+  const arcadeDesignRef = useLatestRef(arcadeDesign)
+  // Turtle module only — mirrors turtleResult so currentTeacherLivePayload (built inside
+  // useTeacherLivePublish, which only receives refs) can read the latest snapshot without
+  // a stale closure. See setTurtleResult(result.turtle ?? null) below: it's set in the same
+  // handler/render pass as setRunStatus, so the "publish on tracked value change" effect
+  // (keyed on runStatus) always sees the fresh value the next time it fires.
+  const turtleResultRef = useLatestRef(turtleResult)
   const arcadeDesignWriteTimerRef = useRef(null)
-  const filesRef             = useRef(files)
-  filesRef.current           = files
-  const outputRef            = useRef(output)
-  outputRef.current          = output
-  const runStatusRef         = useRef(runStatus)
-  runStatusRef.current       = runStatus
-  const sessionRef           = useRef(session)
-  sessionRef.current         = session
-  const activeStudentViewRef = useRef(session?.activeStudentView)
-  activeStudentViewRef.current = session?.activeStudentView
-  const editorSelectionRef   = useRef(editorSelection)
-  editorSelectionRef.current = editorSelection
-  const editorActivityRef    = useRef(editorActivity)
-  editorActivityRef.current  = editorActivity
-  const inPersonalSandboxRef = useRef(inPersonalSandbox)
-  inPersonalSandboxRef.current = inPersonalSandbox
-  const fsStateRef           = useRef(fsState)
-  fsStateRef.current         = fsState
-  const activeFileRef        = useRef(activeFile)
-  activeFileRef.current      = activeFile
-  const fsInteractionRef     = useRef(fsInteraction)
-  fsInteractionRef.current   = fsInteraction
-  const desktopStateRef       = useRef(desktopState)
-  desktopStateRef.current     = desktopState
-  const desktopInteractionRef = useRef(desktopInteraction)
-  desktopInteractionRef.current = desktopInteraction
+  const spriteStateLastSentRef = useRef(0)
+  const spriteStatePendingTimerRef = useRef(null)
+  const filesRef = useLatestRef(files)
+  const outputRef = useLatestRef(output)
+  const runStatusRef = useLatestRef(runStatus)
+  const sessionRef = useLatestRef(session)
+  const activeStudentViewRef = useLatestRef(session?.activeStudentView)
+  const editorSelectionRef = useLatestRef(editorSelection)
+  const editorActivityRef = useLatestRef(editorActivity)
+  const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
+  const fsStateRef = useLatestRef(fsState)
+  const activeFileRef = useLatestRef(activeFile)
+  const fsInteractionRef = useLatestRef(fsInteraction)
+  const desktopStateRef = useLatestRef(desktopState)
+  const desktopInteractionRef = useLatestRef(desktopInteraction)
 
   // ─── Runtime status ───────────────────────────────────────────────────────
 
@@ -153,8 +202,13 @@ export function useStudentCodeState({
   useEffect(() => {
     const mod = getLessonModule(lesson?.type)
     if (!lesson || !mod?.runtime?.init || mod.runtime.isReady()) return
+    // No progress callback — nothing currently displays the raw progress text (the
+    // loading banner just shows a static message), and passing one here previously
+    // clobbered pyodideStatus's 'loading'/'ready'/'error' enum with human-readable
+    // progress strings for most of the load, breaking the banner and Run-button state.
     setPyodideStatus('loading')
-    mod.runtime.init(msg => setPyodideStatus(msg))
+    mod.runtime
+      .init()
       .then(() => setPyodideStatus('ready'))
       .catch(() => setPyodideStatus('error'))
   }, [lesson])
@@ -174,22 +228,31 @@ export function useStudentCodeState({
   const { typeStorageAssets: htmlTypeAssets } = useTypeAssets('html')
   const { storageAssets: lessonStorageAssets } = useLessonStorageAssets(
     lesson?.isPlayground ? null : (lesson?.id ?? lessonId),
-    lesson?.storageAssets ?? [],
+    lesson?.storageAssets ?? []
   )
   const htmlSharedAssetNames = lesson?.sharedAssetNames ?? null
-  const htmlIncludedTypeAssets = htmlSharedAssetNames !== null
-    ? htmlTypeAssets.filter(a => htmlSharedAssetNames.includes(a.name))
-    : htmlTypeAssets
+  const htmlIncludedTypeAssets =
+    htmlSharedAssetNames !== null
+      ? htmlTypeAssets.filter((a) => htmlSharedAssetNames.includes(a.name))
+      : htmlTypeAssets
   const htmlIframeStorageAssets = [
-    ...lessonStorageAssets.filter(a => a.showInEditor),
-    ...htmlIncludedTypeAssets.filter(a => !lessonStorageAssets.some(b => b.name === a.name)),
+    ...lessonStorageAssets.filter((a) => a.showInEditor),
+    ...htmlIncludedTypeAssets.filter((a) => !lessonStorageAssets.some((b) => b.name === a.name)),
   ]
 
   const myStudentData = session?.students?.[identity?.anonymousId]
-  const supportStageReveals = useMemo(() => ({
-    ...(session?.supportRevealLog?.[effectiveIdentity?.anonymousId]?.[currentTaskId] ?? {}),
-    ...(localSupportStageReveals[currentTaskId] ?? {}),
-  }), [session?.supportRevealLog, effectiveIdentity?.anonymousId, currentTaskId, localSupportStageReveals])
+  const supportStageReveals = useMemo(
+    () => ({
+      ...(session?.supportRevealLog?.[effectiveIdentity?.anonymousId]?.[currentTaskId] ?? {}),
+      ...(localSupportStageReveals[currentTaskId] ?? {}),
+    }),
+    [
+      session?.supportRevealLog,
+      effectiveIdentity?.anonymousId,
+      currentTaskId,
+      localSupportStageReveals,
+    ]
+  )
   const activeSupportStageIndex = useMemo(() => {
     const visibility = supportStageVisibility[currentTaskId]
     if (visibility !== undefined) return visibility
@@ -197,6 +260,39 @@ export function useStudentCodeState({
     return revealedIndexes.length ? Math.max(...revealedIndexes) : null
   }, [currentTaskId, supportStageReveals, supportStageVisibility])
   const offeredSupportStageIndex = supportStageOffers[currentTaskId] ?? null
+
+  // Teacher-live-code support reference: Presentation View's independent
+  // teacherLiveReference broadcast (separate from teacherLive, which drives
+  // the all-or-nothing "Go Live" force takeover) shown as a dismissible
+  // reference. Deriving this reactively — rather than via an explicit
+  // "clear" write — is what makes it auto-clear the instant Presentation
+  // closes or moves to a different task.
+  const teacherLiveReferenceRequested =
+    !!myStudentData?.teacherLiveReferenceVisible || !!session?.teacherLiveReferenceVisibleToAll
+  const teacherLiveReferenceActive =
+    teacherLiveReferenceRequested &&
+    !!session?.teacherLiveReference?.active &&
+    session?.teacherLiveReference?.taskId === currentTaskId
+
+  // Log the first time this becomes visible for this task, matching the
+  // existing "note the reveal happened once" semantics used for authored
+  // stage reveals — recordSupportStageReveal already no-ops on repeats.
+  useEffect(() => {
+    if (!teacherLiveReferenceActive) return
+    if (teacherPresentation || phase !== 'lesson') return
+    if (!effectiveIdentity?.anonymousId) return
+    recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, 'teacherLive', {
+      source: 'teacher',
+      stageLabel: "Teacher's live code",
+    })
+  }, [
+    teacherLiveReferenceActive,
+    teacherPresentation,
+    phase,
+    effectiveIdentity?.anonymousId,
+    currentTaskId,
+    recordSupportStageReveal,
+  ])
 
   const teacherHighlights = useMemo(() => {
     const raw = myStudentData?.teacherHighlights
@@ -206,34 +302,89 @@ export function useStudentCodeState({
       .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
   }, [myStudentData?.teacherHighlights, activeFile])
 
-  const dismissHighlight = useCallback(highlightId => {
-    if (!identity?.anonymousId) return
-    removeTeacherHighlight?.(identity.anonymousId, highlightId)
-  }, [identity, removeTeacherHighlight])
+  const dismissHighlight = useCallback(
+    (highlightId) => {
+      if (!identity?.anonymousId) return
+      removeTeacherHighlight?.(identity.anonymousId, highlightId)
+    },
+    [identity, removeTeacherHighlight]
+  )
 
   const {
-    checkPassed, setCheckPassed, checkAttempted, setCheckAttempted,
-    checkSuggestion, setCheckSuggestion, repeatedSuggestionCount, checkFailCount,
-    testResults, setTestResults, checkPassedRef,
-    offeredStageIndex, setOfferedStageIndex,
-    completePreviewShown, setCompletePreviewShown,
-    stagePromptAccepted, markStagePromptAccepted,
-    resetRunFeedback, resetCheckFeedback, applyCheckFeedback,
+    checkPassed,
+    setCheckPassed,
+    checkAttempted,
+    setCheckAttempted,
+    checkSuggestion,
+    setCheckSuggestion,
+    repeatedSuggestionCount,
+    checkFailCount,
+    testResults,
+    setTestResults,
+    checkPassedRef,
+    offeredStageIndex,
+    setOfferedStageIndex,
+    completePreviewShown,
+    setCompletePreviewShown,
+    stagePromptAccepted,
+    markStagePromptAccepted,
+    resetRunFeedback,
+    resetCheckFeedback,
+    applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
 
   const sandboxModuleId = lesson?.lessonModule?.id ?? null
-  const persistence = createStudentPersistence({ lessonId, teacherPresentation, previewMode, inPersonalSandboxRef, sandboxModuleId })
-
-  const { teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed, canPublishTeacherLive, currentTeacherLivePayload, publishTeacherLive } = useTeacherLivePublish({
+  const persistence = createStudentPersistence({
+    lessonId,
     teacherPresentation,
-    identityRef, sessionRef, lessonRef, currentTaskIdRef,
-    codeRef, arcadeDesignRef, filesRef, activeFileRef, outputRef, runStatusRef, fsStateRef, desktopStateRef,
-    editorSelectionRef, editorActivityRef,
-    lesson, session, identity, currentTaskId,
-    code, files, activeFile, output, runStatus,
-    checkPassed, checkAttempted, checkSuggestion, fsState, desktopState,
+    previewMode,
+    inPersonalSandboxRef,
+    sandboxModuleId,
+  })
+
+  const {
+    teacherLiveIframeSrc,
+    htmlPreviewCollapsed,
+    setHtmlPreviewCollapsed,
+    canPublishTeacherLive,
+    currentTeacherLivePayload,
+    publishTeacherLive,
+    publishOutputCollapsed,
+  } = useTeacherLivePublish({
+    teacherPresentation,
+    identityRef,
+    sessionRef,
+    lessonRef,
+    currentTaskIdRef,
+    codeRef,
+    scratchCodeRef,
+    arcadeDesignRef,
+    turtleResultRef,
+    filesRef,
+    activeFileRef,
+    outputRef,
+    runStatusRef,
+    fsStateRef,
+    desktopStateRef,
+    editorSelectionRef,
+    editorActivityRef,
+    lesson,
+    session,
+    identity,
+    currentTaskId,
+    code,
+    files,
+    activeFile,
+    output,
+    runStatus,
+    checkPassed,
+    checkAttempted,
+    checkSuggestion,
+    fsState,
+    desktopState,
     iframeStorageAssets: htmlIframeStorageAssets,
     updateTeacherLive,
+    setTeacherLiveReference,
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
@@ -254,9 +405,9 @@ export function useStudentCodeState({
       const taskId = currentTaskIdRef.current
       const task = findTaskById(currentLesson?.tasks, taskId)
       if (!task?.feedbackChecks && !task?.incorrectChecks) return
-      const feedbackChecks = normalizeFeedbackChecks(task).filter(check => (
+      const feedbackChecks = normalizeFeedbackChecks(task).filter((check) =>
         options.feedbackFilter ? options.feedbackFilter(check, task) : true
-      ))
+      )
       if (feedbackChecks.length === 0) return
       const feedbackTask = {
         ...task,
@@ -269,7 +420,7 @@ export function useStudentCodeState({
         completionPassed,
         feedbackTiming: FEEDBACK_TIMING.ON_IDLE,
       })
-      const matchedIdleFeedback = evaluation.feedbackResults.find(result => result.passed)
+      const matchedIdleFeedback = evaluation.feedbackResults.find((result) => result.passed)
       if (matchedIdleFeedback && !isAlreadySolved()) {
         applyCheckFeedback(evaluation.passed, evaluation.suggestion)
         updateTargetedStageOffer(task, evaluation, evaluation.passed)
@@ -277,22 +428,29 @@ export function useStudentCodeState({
     }, IDLE_FEEDBACK_DELAY_MS)
   }
 
-  useEffect(() => () => {
-    if (idleFeedbackTimerRef.current !== null) {
-      clearTimeout(idleFeedbackTimerRef.current)
-      idleFeedbackTimerRef.current = null
-    }
-  }, [lesson?.type, currentTaskId])
+  useEffect(
+    () => () => {
+      if (idleFeedbackTimerRef.current !== null) {
+        clearTimeout(idleFeedbackTimerRef.current)
+        idleFeedbackTimerRef.current = null
+      }
+    },
+    [lesson?.type, currentTaskId]
+  )
 
-  useEffect(() => () => {
-    if (arcadeDesignWriteTimerRef.current !== null) clearTimeout(arcadeDesignWriteTimerRef.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (arcadeDesignWriteTimerRef.current !== null)
+        clearTimeout(arcadeDesignWriteTimerRef.current)
+    },
+    []
+  )
 
   // Presentation/preview persist to an in-memory store (see createStudentPersistence);
   // start each such session clean so stale state from a previous preview can't leak in.
   useEffect(() => {
     if (teacherPresentation || previewMode) clearEphemeralStorage()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ─── localStorage snapshot helpers ────────────────────────────────────────
@@ -304,10 +462,10 @@ export function useStudentCodeState({
     if (!id || !currentLesson) return
     if (inPersonalSandboxRef.current) return
 
-    const task = flattenTasks(currentLesson.tasks).find(t => t.id === taskId)
+    const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
     if (task?.taskType === 'quiz' || task?.taskType === 'information') return
 
-    if (currentLesson.type === 'python') {
+    if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
       persistence.savePythonCode(id.anonymousId, taskId, {
         code: codeRef.current,
         output: outputRef.current,
@@ -336,25 +494,65 @@ export function useStudentCodeState({
     const id = identityRef.current
     const currentLesson = lessonRef.current
     if (!id || teacherPresentation || !currentLesson) return
-    if (currentLesson.type === 'python') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current }, currentLesson.lessonModule?.id ?? null)
+    if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
+      savePersonalSandboxCode(
+        lessonId,
+        id.anonymousId,
+        { code: codeRef.current },
+        currentLesson.lessonModule?.id ?? null
+      )
     } else if (currentLesson.type === 'arcade') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current, arcadeDesign: arcadeDesignRef.current }, currentLesson.lessonModule?.id ?? null)
+      savePersonalSandboxCode(
+        lessonId,
+        id.anonymousId,
+        { code: codeRef.current, arcadeDesign: arcadeDesignRef.current },
+        currentLesson.lessonModule?.id ?? null
+      )
     } else if (currentLesson.type === 'html') {
-      filesRef.current.forEach(f => savePersonalSandboxFile(lessonId, f.name, id.anonymousId, f.content, currentLesson.lessonModule?.id ?? null))
+      filesRef.current.forEach((f) =>
+        savePersonalSandboxFile(
+          lessonId,
+          f.name,
+          id.anonymousId,
+          f.content,
+          currentLesson.lessonModule?.id ?? null
+        )
+      )
     } else if (currentLesson.type === 'filesystem') {
-      savePersonalSandboxFs(lessonId, id.anonymousId, fsStateRef.current, currentLesson.lessonModule?.id ?? null)
+      savePersonalSandboxFs(
+        lessonId,
+        id.anonymousId,
+        fsStateRef.current,
+        currentLesson.lessonModule?.id ?? null
+      )
     } else if (currentLesson.type === 'desktop') {
-      savePersonalSandboxDesktop(lessonId, id.anonymousId, desktopStateRef.current, currentLesson.lessonModule?.id ?? null)
+      savePersonalSandboxDesktop(
+        lessonId,
+        id.anonymousId,
+        desktopStateRef.current,
+        currentLesson.lessonModule?.id ?? null
+      )
     } else if (currentLesson.type === 'electronics') {
-      savePersonalSandboxCode(lessonId, id.anonymousId, { code: codeRef.current }, currentLesson.lessonModule?.id ?? null)
+      savePersonalSandboxCode(
+        lessonId,
+        id.anonymousId,
+        { code: codeRef.current },
+        currentLesson.lessonModule?.id ?? null
+      )
     }
     // Scratch: saves incrementally via handleScratchChange
   }
 
   function recordCarryFallback(fallback) {
     const id = identityRef.current
-    if (!fallback || teacherPresentation || previewMode || phaseRef.current !== 'lesson' || !id?.anonymousId) return
+    if (
+      !fallback ||
+      teacherPresentation ||
+      previewMode ||
+      phaseRef.current !== 'lesson' ||
+      !id?.anonymousId
+    )
+      return
     if (sessionRef.current?.carryFallbackLog?.[id.anonymousId]?.[fallback.taskId]) return
     recordStudentCarryFallback?.(id.anonymousId, fallback.taskId, fallback)
   }
@@ -364,7 +562,7 @@ export function useStudentCodeState({
   function loadTaskContent(taskId) {
     const activeIdentity = effectiveIdentity
     if (!lesson || !activeIdentity) return
-    const task = flattenTasks(lesson.tasks).find(t => t.id === taskId)
+    const task = flattenTasks(lesson.tasks).find((t) => t.id === taskId)
     if (!task) return
     if (task.taskType === 'quiz' || task.taskType === 'information') {
       setCode('')
@@ -374,30 +572,41 @@ export function useStudentCodeState({
       resetCheckFeedback()
       return
     }
-    if (lesson.type === 'python') {
-      setCode(selectPythonTaskCode({
-        tasks: lesson.tasks,
-        task,
-        taskId,
-        phase,
-        readSavedCode: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
-        onCarryFallback: recordCarryFallback,
-      }))
+    if (lesson.type === 'python' || lesson.type === 'turtle') {
+      setCode(
+        selectPythonTaskCode({
+          tasks: lesson.tasks,
+          task,
+          taskId,
+          phase,
+          readSavedCode: (sourceTaskId) =>
+            persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+          onCarryFallback: recordCarryFallback,
+        })
+      )
     } else if (lesson.type === 'arcade') {
       const saved = persistence.readSavedCode(activeIdentity.anonymousId, taskId)
-      setCode(selectPythonTaskCode({
-        tasks: lesson.tasks,
-        task,
-        taskId,
-        phase,
-        readSavedCode: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
-        onCarryFallback: recordCarryFallback,
-      }))
-      setArcadeDesign(saved?.arcadeDesign ? cloneArcadeDesign(saved.arcadeDesign) : designForCodeTab(task, 'starter'))
+      setCode(
+        selectPythonTaskCode({
+          tasks: lesson.tasks,
+          task,
+          taskId,
+          phase,
+          readSavedCode: (sourceTaskId) =>
+            persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+          onCarryFallback: recordCarryFallback,
+        })
+      )
+      setArcadeDesign(
+        saved?.arcadeDesign
+          ? cloneArcadeDesign(saved.arcadeDesign)
+          : designForCodeTab(task, 'starter')
+      )
     } else if (lesson.type === 'scratch') {
       setFiles([])
       setActiveFile('')
       setScratchActiveStageIndex(null)
+      scratchCodeRef.current = ''
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = persistence.readSavedFs(activeIdentity.anonymousId, taskId)
@@ -406,16 +615,21 @@ export function useStudentCodeState({
         taskId,
         carryFromId: carryId,
         carryField: 'carryFsFrom',
-        readSavedState: sourceTaskId => persistence.readSavedFs(activeIdentity.anonymousId, sourceTaskId),
-        hasSavedState: fs => fs != null,
+        readSavedState: (sourceTaskId) =>
+          persistence.readSavedFs(activeIdentity.anonymousId, sourceTaskId),
+        hasSavedState: (fs) => fs != null,
       })
       if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const initialFs = carryId != null
-        ? (ownSaved ?? carried.saved ?? task.starterFs ?? DEFAULT_FS)
-        : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
+      const initialFs =
+        carryId != null
+          ? (ownSaved ?? carried.saved ?? task.starterFs ?? DEFAULT_FS)
+          : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
       setFsState(initialFs)
       const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
-      setFsInteraction({ currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
+      setFsInteraction({
+        currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir,
+        openFile: null,
+      })
       resetCheckFeedback()
     } else if (lesson.type === 'desktop') {
       const carryId = task.carryDesktopFrom ?? null
@@ -425,16 +639,26 @@ export function useStudentCodeState({
         taskId,
         carryFromId: carryId,
         carryField: 'carryDesktopFrom',
-        readSavedState: sourceTaskId => persistence.readSavedDesktop(activeIdentity.anonymousId, sourceTaskId),
-        hasSavedState: desktop => desktop != null,
+        readSavedState: (sourceTaskId) =>
+          persistence.readSavedDesktop(activeIdentity.anonymousId, sourceTaskId),
+        hasSavedState: (desktop) => desktop != null,
       })
       if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const initialDesktop = carryId != null
-        ? (ownSaved ?? carried.saved ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
-        : (ownSaved ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
+      const initialDesktop =
+        carryId != null
+          ? (ownSaved ??
+            carried.saved ??
+            task.starterDesktop ??
+            makeDefaultDesktop(task.availableApps))
+          : (ownSaved ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
       setDesktopState(normaliseDesktop(initialDesktop))
       const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
-      setDesktopInteraction({ currentDir: carryId ? (desktopInteractionRef.current?.currentDir ?? defaultDir) : defaultDir, openFile: null })
+      setDesktopInteraction({
+        currentDir: carryId
+          ? (desktopInteractionRef.current?.currentDir ?? defaultDir)
+          : defaultDir,
+        openFile: null,
+      })
       resetCheckFeedback()
     } else if (lesson.type === 'electronics') {
       const carryId = task.carryCircuitFrom ?? null
@@ -444,12 +668,18 @@ export function useStudentCodeState({
         taskId,
         carryFromId: carryId,
         carryField: 'carryCircuitFrom',
-        readSavedState: sourceTaskId => persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
-        hasSavedState: saved => saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
+        readSavedState: (sourceTaskId) =>
+          persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+        hasSavedState: (saved) =>
+          saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
       })
       if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const starter = serializeCircuit(getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
-      setCode(carryId != null ? (ownSaved ?? carried.saved?.code ?? starter) : (ownSaved ?? starter))
+      const starter = serializeCircuit(
+        getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
+      )
+      setCode(
+        carryId != null ? (ownSaved ?? carried.saved?.code ?? starter) : (ownSaved ?? starter)
+      )
       setFiles([])
       setActiveFile('')
       resetCheckFeedback()
@@ -459,7 +689,8 @@ export function useStudentCodeState({
         task,
         taskId,
         phase,
-        readSavedFile: (sourceTaskId, filename) => persistence.readSavedFile(activeIdentity.anonymousId, sourceTaskId, filename),
+        readSavedFile: (sourceTaskId, filename) =>
+          persistence.readSavedFile(activeIdentity.anonymousId, sourceTaskId, filename),
         onCarryFallback: recordCarryFallback,
       })
       setFiles(taskFiles)
@@ -469,7 +700,15 @@ export function useStudentCodeState({
 
   // Exposed to StudentView for coordination (save before task change, navigation)
   function resetForTaskChange() {
+    // A python/electronics run left mid-flight (e.g. a loop or input() wait) must not
+    // keep executing once the student has moved to a different task.
+    if (running || runningTests) {
+      getLessonModule(lesson?.type)?.runtime?.stop()
+    }
+    setRunning(false)
+    setRunningTests(false)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
@@ -546,7 +785,7 @@ export function useStudentCodeState({
     if ((phase === 'lesson' || phase === 'solo') && effectiveIdentity && lesson) {
       loadTaskContent(currentTaskId)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentTaskId, effectiveIdentity?.anonymousId])
 
   // When phase leaves lesson/solo, exit personal sandbox silently
@@ -556,69 +795,31 @@ export function useStudentCodeState({
     savePersonalSandboxSnapshot()
     setInPersonalSandbox(false)
     if (identity?.anonymousId) writeStudentPersonalSandbox(identity.anonymousId, false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
-  // Register Firebase presence so the teacher sees who is connected live.
-  // Also re-registers on reconnect (connected flips true) so the online key
-  // is restored after a temporary network drop without a page refresh.
-  useEffect(() => {
-    if (teacherPresentation) return
-    if (!connected) return
-    if ((phase === 'lesson' || phase === 'sandbox') && identity?.anonymousId) {
-      registerPresence(identity.anonymousId)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation, connected])
+  useStudentPresenceReporting({
+    phase,
+    identity,
+    session,
+    connected,
+    teacherPresentation,
+    registerPresence,
+    writeStudentPresence,
+    removeStudent,
+  })
 
-  // Track whether the student's browser window is focused so the teacher can
-  // see "Away" when a student has switched tabs or minimised the window.
-  useEffect(() => {
-    if (teacherPresentation || !identity?.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    const id = identity.anonymousId
-    const onFocus = () => writeStudentPresence?.(id, { windowFocused: true })
-    const onBlur  = () => writeStudentPresence?.(id, { windowFocused: false })
-    writeStudentPresence?.(id, { windowFocused: document.hasFocus() })
-    window.addEventListener('focus', onFocus)
-    window.addEventListener('blur', onBlur)
-    return () => {
-      window.removeEventListener('focus', onFocus)
-      window.removeEventListener('blur', onBlur)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
-
-  // Track mouse/keyboard activity so the teacher gets a WhatsApp-style
-  // typing indicator. Throttled to one Firebase write per 2 seconds.
-  useEffect(() => {
-    if (teacherPresentation || !identity?.anonymousId) return
-    if (phase !== 'lesson' && phase !== 'sandbox') return
-    const id = identity.anonymousId
-    let lastWrite = 0
-    const record = () => {
-      const now = Date.now()
-      if (now - lastWrite < 2000) return
-      lastWrite = now
-      writeStudentPresence?.(id, { lastActivityAt: now })
-    }
-    window.addEventListener('mousemove', record)
-    window.addEventListener('keydown', record)
-    window.addEventListener('mousedown', record)
-    return () => {
-      window.removeEventListener('mousemove', record)
-      window.removeEventListener('keydown', record)
-      window.removeEventListener('mousedown', record)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, identity?.anonymousId, teacherPresentation])
-
-  // Presentation windows must not appear as students
-  useEffect(() => {
-    if (!teacherPresentation || !identity?.anonymousId || !session?.students?.[identity.anonymousId]) return
-    removeStudent(identity.anonymousId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, identity?.anonymousId, session?.students])
+  useSandboxCodePush({
+    phase,
+    lesson,
+    session,
+    setCode,
+    setFiles,
+    setActiveFile,
+    setFsState,
+    setDesktopState: (desktop) => setDesktopState(normaliseDesktop(desktop)),
+    setScratchSandboxProject,
+  })
 
   // When teacher starts live-viewing this student, publish the current in-memory editor state
   useEffect(() => {
@@ -627,11 +828,19 @@ export function useStudentCodeState({
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'electronics') {
+    if (
+      lesson.type === 'python' ||
+      lesson.type === 'arcade' ||
+      lesson.type === 'electronics' ||
+      lesson.type === 'turtle'
+    ) {
       writeStudentCode(identity.anonymousId, code)
       writeStudentOutput(identity.anonymousId, output)
     } else if (lesson.type === 'html') {
-      writeStudentFiles(identity.anonymousId, Object.fromEntries(files.map(f => [f.name, f.content])))
+      writeStudentFiles(
+        identity.anonymousId,
+        Object.fromEntries(files.map((f) => [f.name, f.content]))
+      )
     } else if (lesson.type === 'scratch') {
       const saved = loadSavedCode(lessonId, currentTaskId, identity.anonymousId)
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
@@ -640,73 +849,25 @@ export function useStudentCodeState({
     } else if (lesson.type === 'desktop') {
       writeStudentCode(identity.anonymousId, JSON.stringify(desktopStateRef.current))
     }
+    // code_arrange is a taskType flag layered on python/html, not its own
+    // lesson.type, so it needs its own branch here too — without it, a
+    // teacher opening the modal mid-arrangement sees a blank board (no
+    // currentCodeArrangeSlots has ever been written for this student/task
+    // yet) that then jumps straight to whatever the student had already
+    // placed the moment they drop their next tile, instead of reflecting
+    // their in-progress board right away.
+    if (findTaskById(lesson.tasks, currentTaskId)?.taskType === 'code_arrange') {
+      writeStudentCodeArrangeSlots?.(identity.anonymousId, codeArrangeSlotStateRef.current)
+    }
     writeStudentInteraction(identity.anonymousId, {
       selection: editorSelectionRef.current,
       activeFile: lesson.type === 'html' ? activeFile : undefined,
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.activeStudentView])
 
-  // React to sandbox code pushes (Python)
-  useEffect(() => {
-    if (phase !== 'sandbox' || !['python', 'arcade'].includes(lesson?.type) || !session?.sandboxCode) return
-    setCode(session.sandboxCode)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox block pushes (Scratch)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'scratch' || !session?.sandboxCode) return
-    try {
-      setScratchSandboxProject(JSON.parse(session.sandboxCode))
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox filesystem pushes
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'filesystem' || !session?.sandboxCode) return
-    try {
-      setFsState(JSON.parse(session.sandboxCode))
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox desktop pushes
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'desktop' || !session?.sandboxCode) return
-    try {
-      setDesktopState(normaliseDesktop(JSON.parse(session.sandboxCode)))
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox circuit pushes
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'electronics' || !session?.sandboxCode) return
-    setCode(session.sandboxCode)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxCodePushedAt])
-
-  // React to sandbox files pushes (HTML)
-  useEffect(() => {
-    if (phase !== 'sandbox' || lesson?.type !== 'html') return
-    if (session?.sandboxFiles) {
-      const decoded = Object.entries(session.sandboxFiles).map(([k, v]) => {
-        const name = decodeFileKey(k)
-        const type = name.endsWith('.html') ? 'html' : name.endsWith('.css') ? 'css' : 'js'
-        return { name, content: v, type }
-      })
-      setFiles(decoded)
-      if (decoded.length > 0) setActiveFile(decoded[0].name)
-    } else if (lesson?.sandboxStarterFiles?.length > 0) {
-      setFiles(lesson.sandboxStarterFiles)
-      setActiveFile(lesson.sandboxStarterFiles[0].name)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, session?.sandboxFilesUpdatedAt])
-
-  // React to teacher remotely resetting or completing this student's code
+  // React to teacher remotely resetting or completing this student's code. Which content
+  // the action maps to is resolveRemoteResetTarget's job; this only applies the result.
   useEffect(() => {
     if (!myStudentData?.remoteResetPushedAt || (phase !== 'lesson' && phase !== 'solo')) return
     const action = myStudentData.remoteResetAction
@@ -722,103 +883,51 @@ export function useStudentCodeState({
       return
     }
 
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
-      let target
-      if (action === 'starter') target = getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
-      else if (action === 'complete') target = task.completeCode ?? ''
-      else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        target = stage?.code ?? getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
-      }
-      setCode(target)
+    const target = resolveRemoteResetTarget(task, action, lesson.type, {
+      fs: DEFAULT_FS,
+      circuit: DEFAULT_CIRCUIT,
+      desktop: makeDefaultDesktop(task.availableApps),
+    })
+    if (!target) return
+
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
+      setCode(target.code)
       if (lesson.type === 'arcade') {
         const resetDesign = designForCodeTab(task, action)
         setArcadeDesign(resetDesign)
-        persistence.savePythonCode(effectiveIdentity?.anonymousId, currentTaskId, { code: target, output: '', runStatus: null, arcadeDesign: resetDesign })
-        if (identity?.anonymousId && sessionRef.current?.activeStudentView === identity.anonymousId) writeStudentArcadeDesign?.(identity.anonymousId, resetDesign)
+        persistence.savePythonCode(effectiveIdentity?.anonymousId, currentTaskId, {
+          code: target.code,
+          output: '',
+          runStatus: null,
+          arcadeDesign: resetDesign,
+        })
+        if (identity?.anonymousId && sessionRef.current?.activeStudentView === identity.anonymousId)
+          writeStudentArcadeDesign?.(identity.anonymousId, resetDesign)
       }
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'html') {
-      let targetFiles, targetEntry
-      if (action === 'starter') {
-        const starter = getStarterStage(task)?.stage
-        targetFiles = starter?.files ?? task.starterFiles ?? []
-        targetEntry = starter?.entryFile ?? task.entryFile
-      } else if (action === 'complete') {
-        targetFiles = task.completeFiles ?? []
-        targetEntry = task.completeEntryFile ?? task.entryFile
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        const starter = getStarterStage(task)?.stage
-        targetFiles = stage?.files ?? starter?.files ?? task.starterFiles ?? []
-        targetEntry = stage?.entryFile ?? starter?.entryFile ?? task.entryFile
-      }
-      setFiles(targetFiles.map(f => ({ ...f })))
-      setActiveFile(targetEntry ?? targetFiles[0]?.name ?? '')
+      setFiles(target.files.map((f) => ({ ...f })))
+      setActiveFile(target.entryFile ?? target.files[0]?.name ?? '')
       setIframeSrc(null)
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'scratch') {
-      let targetBlocks
-      if (action === 'starter') targetBlocks = getStarterStage(task)?.stage?.blocks ?? task.starterBlocks ?? null
-      else if (action === 'complete') {
-        targetBlocks = task.completeBlocks ?? null
-        setScratchActiveStageIndex(null)
-      }
-      else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stageIndex = stageMatch ? parseInt(stageMatch[1], 10) : null
-        const stage = stageIndex != null ? (task.codeStages ?? [])[stageIndex] : null
-        targetBlocks = stage?.blocks ?? task.starterBlocks ?? null
-        setScratchActiveStageIndex(stage ? stageIndex : null)
-      }
-      if (action === 'starter') setScratchActiveStageIndex(null)
-      setScratchExternalState(targetBlocks)
+      setScratchActiveStageIndex(target.stageIndex)
+      setScratchExternalState(target.blocks)
     } else if (lesson.type === 'filesystem') {
-      let targetFs
-      if (action === 'complete') {
-        targetFs = task.completeFs ?? task.starterFs ?? DEFAULT_FS
-      } else if (action === 'starter') {
-        targetFs = task.starterFs ?? DEFAULT_FS
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetFs = stage?.fs ?? task.starterFs ?? DEFAULT_FS
-      }
-      setFsState(targetFs)
+      setFsState(target.fs)
       resetCheckFeedback()
     } else if (lesson.type === 'desktop') {
-      let targetDesktop
-      if (action === 'complete') {
-        targetDesktop = task.completeDesktop ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps)
-      } else if (action === 'starter') {
-        targetDesktop = task.starterDesktop ?? makeDefaultDesktop(task.availableApps)
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetDesktop = stage?.desktop ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps)
-      }
-      setDesktopState(normaliseDesktop(targetDesktop))
+      setDesktopState(normaliseDesktop(target.desktop))
       resetCheckFeedback()
     } else if (lesson.type === 'electronics') {
-      let targetCircuit
-      if (action === 'complete') {
-        targetCircuit = task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      } else if (action === 'starter') {
-        targetCircuit = getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      } else {
-        const stageMatch = action.match(/^stage_(\d+)$/)
-        const stage = stageMatch ? (task.codeStages ?? [])[parseInt(stageMatch[1], 10)] : null
-        targetCircuit = stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      }
-      setCode(serializeCircuit(targetCircuit))
+      setCode(serializeCircuit(target.circuit))
       resetCheckFeedback()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
   // Apply teacher-committed work when teacher finishes a live edit.
@@ -830,25 +939,40 @@ export function useStudentCodeState({
     if (lesson?.type === 'html' && newFiles) {
       const nextFiles = decodeSessionFiles(newFiles, decodeFileKey, 'html')
       setFiles(nextFiles)
-      setActiveFile(current => nextFiles.some(file => file.name === current) ? current : (nextFiles[0]?.name ?? ''))
+      setActiveFile((current) =>
+        nextFiles.some((file) => file.name === current) ? current : (nextFiles[0]?.name ?? '')
+      )
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       if (effectiveIdentity?.anonymousId) {
         persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, nextFiles)
       }
-    } else if (newCode !== undefined && (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')) {
+    } else if (
+      newCode !== undefined &&
+      (lesson?.type === 'python' ||
+        lesson?.type === 'arcade' ||
+        lesson?.type === 'electronics' ||
+        lesson?.type === 'turtle')
+    ) {
       setCode(newCode ?? '')
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
-      const nextDesign = lesson?.type === 'arcade'
-        ? (newArcadeDesign ? cloneArcadeDesign(newArcadeDesign) : arcadeDesignRef.current)
-        : null
+      const nextDesign =
+        lesson?.type === 'arcade'
+          ? newArcadeDesign
+            ? cloneArcadeDesign(newArcadeDesign)
+            : arcadeDesignRef.current
+          : null
       if (lesson?.type === 'arcade') setArcadeDesign(nextDesign)
       if (effectiveIdentity?.anonymousId) {
         persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-          code: newCode ?? '', output: '', runStatus: null,
+          code: newCode ?? '',
+          output: '',
+          runStatus: null,
           ...(lesson?.type === 'arcade' ? { arcadeDesign: nextDesign } : {}),
         })
       }
@@ -860,7 +984,7 @@ export function useStudentCodeState({
         persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, newState)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherEditAppliedAt])
 
   // ─── Personal sandbox ──────────────────────────────────────────────────────
@@ -868,7 +992,7 @@ export function useStudentCodeState({
   function handleEnterPersonalSandbox() {
     if (!identity || teacherPresentation || !lesson) return
     const id = identity.anonymousId
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? lesson.sandboxStarter ?? '')
       if (lesson.type === 'arcade') {
@@ -876,11 +1000,12 @@ export function useStudentCodeState({
       }
     } else if (lesson.type === 'html') {
       const starterFiles = lesson.sandboxStarterFiles ?? []
-      const sandboxFiles = starterFiles.map(f => {
+      const sandboxFiles = starterFiles.map((f) => {
         const savedContent = loadPersonalSandboxFile(lessonId, f.name, id, sandboxModuleId)
         return { ...f, content: savedContent ?? f.content }
       })
-      const withContent = sandboxFiles.length > 0 ? sandboxFiles : starterFiles.map(f => ({ ...f }))
+      const withContent =
+        sandboxFiles.length > 0 ? sandboxFiles : starterFiles.map((f) => ({ ...f }))
       setFiles(withContent)
       setActiveFile(withContent[0]?.name ?? '')
     } else if (lesson.type === 'filesystem') {
@@ -888,12 +1013,15 @@ export function useStudentCodeState({
       setFsState(savedFs ?? lesson.sandboxStarterFs ?? DEFAULT_FS)
     } else if (lesson.type === 'desktop') {
       const savedDesktop = loadPersonalSandboxDesktop(lessonId, id, sandboxModuleId)
-      setDesktopState(normaliseDesktop(savedDesktop ?? lesson.sandboxStarterDesktop ?? makeDefaultDesktop()))
+      setDesktopState(
+        normaliseDesktop(savedDesktop ?? lesson.sandboxStarterDesktop ?? makeDefaultDesktop())
+      )
     } else if (lesson.type === 'electronics') {
       const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
     }
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -907,6 +1035,7 @@ export function useStudentCodeState({
     setInPersonalSandbox(false)
     if (session) writeStudentPersonalSandbox(identity.anonymousId, false)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -925,15 +1054,19 @@ export function useStudentCodeState({
 
     setRunning(true)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setTestResults(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
     if (!alreadySolved) resetRunFeedback()
 
-    if (lesson.type === 'python' || lesson.type === 'electronics') {
+    if (lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle') {
       lastOutputWriteRef.current = 0
-      if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
+      if (outputRafIdRef.current !== null) {
+        cancelAnimationFrame(outputRafIdRef.current)
+        outputRafIdRef.current = null
+      }
       let outputBuffer = createStudentOutputBuffer()
       const echoOutput = (text) => {
         const nextOutputBuffer = appendStudentOutput(outputBuffer, text)
@@ -951,7 +1084,8 @@ export function useStudentCodeState({
         const now = Date.now()
         if (now - lastOutputWriteRef.current >= 200) {
           lastOutputWriteRef.current = now
-          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
+          if (canPublishTeacherLive())
+            updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
           if (isWatched) writeStudentOutput(actor.anonymousId, outputBuffer.raw)
         }
       }
@@ -970,12 +1104,18 @@ export function useStudentCodeState({
         const now = Date.now()
         if (now - lastRuntimeCodeWriteRef.current >= 200) {
           lastRuntimeCodeWriteRef.current = now
-          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ code: pending }))
+          if (canPublishTeacherLive())
+            updateTeacherLive(currentTeacherLivePayload({ code: pending }))
           if (isWatched) writeStudentCode(actor.anonymousId, pending)
         }
       }
       const scheduleRuntimeCodeUpdate = (nextCode) => {
-        if (lesson.type !== 'electronics' || typeof nextCode !== 'string' || nextCode === latestRuntimeCode) return
+        if (
+          lesson.type !== 'electronics' ||
+          typeof nextCode !== 'string' ||
+          nextCode === latestRuntimeCode
+        )
+          return
         latestRuntimeCode = nextCode
         pendingRuntimeCodeRef.current = nextCode
         if (runtimeCodeRafIdRef.current !== null) return
@@ -989,20 +1129,37 @@ export function useStudentCodeState({
             setErrorLine(line)
           }
         },
-        onInputRequired: (prompt) => setInputPrompt(prompt),
+        onInputRequired: (prompt) => {
+          setInputPrompt(prompt)
+          if (isWatched) writeStudentInputState(actor.anonymousId, { prompt, value: '' })
+        },
         onCodeUpdate: scheduleRuntimeCodeUpdate,
         getRuntimeCode: () => codeRef.current,
       })
       setInputPrompt(null)
+      if (isWatched) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
 
       // Cancel any pending RAF and sync final output immediately
-      if (outputRafIdRef.current !== null) { cancelAnimationFrame(outputRafIdRef.current); outputRafIdRef.current = null }
+      if (outputRafIdRef.current !== null) {
+        cancelAnimationFrame(outputRafIdRef.current)
+        outputRafIdRef.current = null
+      }
 
       if (result.status === 'stopped') {
         flushRuntimeCodeUpdate()
-        setOutput(outputBuffer.display)
-        if (lesson.type === 'electronics') persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: latestRuntimeCode, output: outputBuffer.raw })
-        if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ code: latestRuntimeCode, output: outputBuffer.raw }))
+        // Only repaint the buffered output if the student is still on the task that
+        // produced it — a stop triggered by navigating away must not overwrite the
+        // freshly reset state for the task they moved to.
+        if (currentTaskId === currentTaskIdRef.current) setOutput(outputBuffer.display)
+        if (lesson.type === 'electronics')
+          persistence.savePythonCode(actor.anonymousId, currentTaskId, {
+            code: latestRuntimeCode,
+            output: outputBuffer.raw,
+          })
+        if (canPublishTeacherLive())
+          updateTeacherLive(
+            currentTeacherLivePayload({ code: latestRuntimeCode, output: outputBuffer.raw })
+          )
         if (isWatched) {
           writeStudentCode(actor.anonymousId, latestRuntimeCode)
           writeStudentOutput(actor.anonymousId, outputBuffer.raw)
@@ -1015,21 +1172,36 @@ export function useStudentCodeState({
       setOutput(outputBuffer.display)
       const status = result.status
       setRunStatus(status)
-      const nextCode = typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
+      const nextCode =
+        typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
       if (nextCode !== code) setCode(nextCode)
 
-      const checkContext = { status, code: nextCode, variables: result.variables ?? {} }
+      setTurtleResult(result.turtle ?? null)
+      const checkContext = {
+        status,
+        code: nextCode,
+        variables: result.variables ?? {},
+        turtle: result.turtle ?? null,
+      }
       const hasTests = task?.tests?.length > 0
-      let passed = alreadySolved ? true : (status === 'error' || hasTests ? false : evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext).passed)
+      let passed = alreadySolved
+        ? true
+        : status === 'error' || hasTests
+          ? false
+          : evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext).passed
       let suggestion = ''
       if (!alreadySolved) {
         // Feedback checks can diagnose code even when Python could not run (for
         // example, `print(hello)` raises NameError). Keep completion failed on a
         // runtime error, but still evaluate the feedback checks and their stage
         // offers against the submitted code/output.
-        const evaluation = (!hasTests && task?.check) ? evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext, {
-          completionPassed: status !== 'error' && evaluateCheck(task.check, outputBuffer.raw, checkContext),
-        }) : null
+        const evaluation =
+          !hasTests && task?.check
+            ? evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext, {
+                completionPassed:
+                  status !== 'error' && evaluateCheck(task.check, outputBuffer.raw, checkContext),
+              })
+            : null
         if (evaluation) {
           passed = evaluation.passed
           suggestion = evaluation.suggestion
@@ -1040,13 +1212,47 @@ export function useStudentCodeState({
       }
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ code: nextCode, output: outputBuffer.raw, runStatus: status, checkPassed: passed, checkAttempted: !alreadySolved && !hasTests && !!task?.check, checkSuggestion: suggestion })
+        publishTeacherLive({
+          code: nextCode,
+          output: outputBuffer.raw,
+          runStatus: status,
+          checkPassed: passed,
+          checkAttempted: !alreadySolved && !hasTests && !!task?.check,
+          checkSuggestion: suggestion,
+        })
       }
-      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code: nextCode, output: outputBuffer.raw, runStatus: status })
-      if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code: nextCode, output: outputBuffer.raw, status, checkPassed: hasTests ? undefined : passed })
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, {
+        code: nextCode,
+        output: outputBuffer.raw,
+        runStatus: status,
+      })
+      if (
+        !teacherPresentation &&
+        (phaseRef.current === 'lesson' ||
+          phaseRef.current === 'sandbox' ||
+          inPersonalSandboxRef.current ||
+          isWatched)
+      ) {
+        await writeStudentRun(actor.anonymousId, {
+          code: nextCode,
+          output: outputBuffer.raw,
+          status,
+          checkPassed: hasTests ? undefined : passed,
+        })
+        // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
+        // Arcade's design — so it's synced here alongside writeStudentRun, not only on
+        // explicit edits. Lets a teacher open StudentModal and see the student's actual
+        // drawing, not just their code.
+        if (lesson.type === 'turtle')
+          writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
       }
-      if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && !hasTests && task?.check) {
+      if (
+        !teacherPresentation &&
+        phaseRef.current === 'lesson' &&
+        !alreadySolved &&
+        !hasTests &&
+        task?.check
+      ) {
         logAttempt(actor.anonymousId, currentTaskId, { submission: nextCode, passed, suggestion })
       }
       setRunning(false)
@@ -1059,18 +1265,27 @@ export function useStudentCodeState({
     const src = mod.runtime.buildPreviewSrc(
       { files: currentFiles, entryFile: task?.entryFile ?? 'index.html' },
       task,
-      { assets: lesson.assets ?? [], assetsPath: resolveAssetsPath(lesson.assetsPath), storageAssets: htmlIframeStorageAssets }
+      {
+        assets: lesson.assets ?? [],
+        assetsPath: resolveAssetsPath(lesson.assetsPath),
+        storageAssets: htmlIframeStorageAssets,
+      }
     )
     htmlSupportAttemptsRef.current.clear()
-    htmlSupportAttemptsRef.current.set(src, { hasError: false, outcomeApplied: false, passed: false })
+    htmlSupportAttemptsRef.current.set(src, {
+      hasError: false,
+      outcomeApplied: false,
+      passed: false,
+    })
     setIframeSrc(src)
     setRunStatus('success')
 
     const taskIdAtRunTime = currentTaskIdRef.current
-    mod.runtime.waitForPreviewText().then(text => {
-      let passed, suggestion = ''
+    mod.runtime.waitForPreviewText().then((text) => {
+      let passed,
+        suggestion = ''
       if (!alreadySolved) {
-        const codeStr = currentFiles.map(f => f.content).join('\n')
+        const codeStr = currentFiles.map((f) => f.content).join('\n')
         const iframeDoc = iframeRef.current?.contentDocument ?? null
         const evaluation = evaluateCheckWithFeedback(task, text, { code: codeStr, iframeDoc })
         passed = evaluation.passed
@@ -1088,16 +1303,38 @@ export function useStudentCodeState({
         passed = true
       }
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ runStatus: 'success', checkPassed: passed, checkAttempted: !alreadySolved && !!task?.check, checkSuggestion: suggestion, files: Object.fromEntries(currentFiles.map(f => [f.name, f.content])) })
+        publishTeacherLive({
+          runStatus: 'success',
+          checkPassed: passed,
+          checkAttempted: !alreadySolved && !!task?.check,
+          checkSuggestion: suggestion,
+          files: Object.fromEntries(currentFiles.map((f) => [f.name, f.content])),
+        })
       }
-      if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
+      if (
+        !teacherPresentation &&
+        (phaseRef.current === 'lesson' ||
+          phaseRef.current === 'sandbox' ||
+          inPersonalSandboxRef.current ||
+          isWatched)
+      ) {
         if (taskIdAtRunTime === currentTaskIdRef.current) {
-          const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
-          writeStudentRun(actor.anonymousId, { files: filesMap, status: 'success', checkPassed: passed })
+          const filesMap = Object.fromEntries(currentFiles.map((f) => [f.name, f.content]))
+          writeStudentRun(actor.anonymousId, {
+            files: filesMap,
+            status: 'success',
+            checkPassed: passed,
+          })
         }
       }
-      if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && task?.check && taskIdAtRunTime === currentTaskIdRef.current) {
-        const filesMap = Object.fromEntries(currentFiles.map(f => [f.name, f.content]))
+      if (
+        !teacherPresentation &&
+        phaseRef.current === 'lesson' &&
+        !alreadySolved &&
+        task?.check &&
+        taskIdAtRunTime === currentTaskIdRef.current
+      ) {
+        const filesMap = Object.fromEntries(currentFiles.map((f) => [f.name, f.content]))
         logAttempt(actor.anonymousId, taskIdAtRunTime, { submission: filesMap, passed, suggestion })
       }
       persistence.saveHtmlFiles(actor.anonymousId, taskIdAtRunTime, currentFiles)
@@ -1112,7 +1349,19 @@ export function useStudentCodeState({
   function handleInputSubmit(value) {
     appendOutputRef.current?.(value + '\n')
     setInputPrompt(null)
+    if (identity && session?.activeStudentView === identity.anonymousId) {
+      writeStudentInputState(identity.anonymousId, { prompt: null, value: '' })
+    }
     getLessonModule(lesson?.type)?.runtime?.provideInput(value)
+  }
+
+  // Mirrors the student's not-yet-submitted input() text to a watching
+  // teacher, per keystroke — same activeStudentView gating AGENTS.md
+  // requires for any per-keystroke Firebase write (see handleCodeChange).
+  function handleInputChange(value) {
+    if (identity && session?.activeStudentView === identity.anonymousId) {
+      writeStudentInputState(identity.anonymousId, { prompt: inputPrompt, value })
+    }
   }
 
   async function handleRunTests() {
@@ -1125,6 +1374,7 @@ export function useStudentCodeState({
 
     setRunningTests(true)
     setOutput('')
+    setTurtleResult(null)
     setRunStatus(null)
     setTestResults(null)
     resetRunFeedback()
@@ -1135,41 +1385,88 @@ export function useStudentCodeState({
       await initRuntimeIfNeeded()
 
       for (const test of task.tests) {
-        const inputQueue = (test.inputs ?? []).map(inp => inp.value ?? '')
+        const inputQueue = (test.inputs ?? []).map((inp) => inp.value ?? '')
         let accumulated = ''
         const result = await mod.runtime.run(code, task, {
-          onOutput: text => { accumulated += text },
-          onInputRequired: () => { mod.runtime.provideInput(inputQueue.shift() ?? '') },
+          onOutput: (text) => {
+            accumulated += text
+          },
+          onInputRequired: () => {
+            mod.runtime.provideInput(inputQueue.shift() ?? '')
+          },
         })
         const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
         const checks = normalizeChecks(resolvedCheck)
         const checkContext = { status: result.status, code, variables: result.variables ?? {} }
-        const passed = result.status !== 'error' && checks.length > 0 && checks.every(c => evaluateSingleCheck(c, accumulated, checkContext))
-        results.push({ id: test.id, name: test.name || `Test ${results.length + 1}`, passed, output: accumulated, status: result.status })
+        const passed =
+          result.status !== 'error' &&
+          checks.length > 0 &&
+          checks.every((c) => evaluateSingleCheck(c, accumulated, checkContext))
+        results.push({
+          id: test.id,
+          name: test.name || `Test ${results.length + 1}`,
+          passed,
+          output: accumulated,
+          status: result.status,
+        })
         if (result.status === 'stopped') break
       }
 
-      const allPassed = results.length > 0 && results.every(r => r.passed)
-      const finalStatus = results.some(r => r.status === 'error')
+      const allPassed = results.length > 0 && results.every((r) => r.passed)
+      const finalStatus = results.some((r) => r.status === 'error')
         ? 'error'
-        : results.some(r => r.status === 'stopped') ? 'stopped' : 'success'
-      const displayedOutput = results.find(r => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
-      setTestResults(results)
-      setOutput(displayedOutput)
-      setRunStatus(finalStatus)
+        : results.some((r) => r.status === 'stopped')
+          ? 'stopped'
+          : 'success'
+      const displayedOutput =
+        results.find((r) => !r.passed)?.output ?? results[results.length - 1]?.output ?? ''
+      // A stop triggered by navigating away must not overwrite the freshly reset
+      // state for the task the student moved to.
+      if (finalStatus !== 'stopped' || currentTaskId === currentTaskIdRef.current) {
+        setTestResults(results)
+        setOutput(displayedOutput)
+        setRunStatus(finalStatus)
+      }
       if (finalStatus !== 'stopped') applyCheckFeedback(allPassed)
       if (finalStatus !== 'stopped') updateSupportStageForAttempt(allPassed)
 
       if (canPublishTeacherLive()) {
-        publishTeacherLive({ output: displayedOutput, runStatus: finalStatus, checkPassed: allPassed, checkAttempted: true })
+        publishTeacherLive({
+          output: displayedOutput,
+          runStatus: finalStatus,
+          checkPassed: allPassed,
+          checkAttempted: true,
+        })
       }
-      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: displayedOutput, runStatus: finalStatus })
-      if (!teacherPresentation && (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox' || inPersonalSandboxRef.current || isWatched)) {
-        await writeStudentRun(actor.anonymousId, { code, output: displayedOutput, status: finalStatus, checkPassed: allPassed })
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, {
+        code,
+        output: displayedOutput,
+        runStatus: finalStatus,
+      })
+      if (
+        !teacherPresentation &&
+        (phaseRef.current === 'lesson' ||
+          phaseRef.current === 'sandbox' ||
+          inPersonalSandboxRef.current ||
+          isWatched)
+      ) {
+        await writeStudentRun(actor.anonymousId, {
+          code,
+          output: displayedOutput,
+          status: finalStatus,
+          checkPassed: allPassed,
+        })
       }
       if (!teacherPresentation && phaseRef.current === 'lesson' && finalStatus !== 'stopped') {
-        const failedTestNames = results.filter(r => !r.passed).map(r => r.name).join(', ')
-        logAttempt(actor.anonymousId, currentTaskId, { submission: code, passed: allPassed, suggestion: failedTestNames })
+        const failedTestNames = results
+          .filter((r) => !r.passed)
+          .map((r) => r.name)
+          .join(', ')
+        logAttempt(actor.anonymousId, currentTaskId, {
+          submission: code,
+          passed: allPassed,
+          suggestion: failedTestNames,
+        })
       }
     } catch {
       getLessonModule(lesson?.type)?.runtime?.stop()
@@ -1186,18 +1483,34 @@ export function useStudentCodeState({
     setCode(newCode)
     if (errorLine != null) setErrorLine(null)
     if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
-    if (effectiveIdentity && (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics')) {
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: newCode, output, runStatus, ...(lesson?.type === 'arcade' ? { arcadeDesign: arcadeDesignRef.current } : {}) })
+    if (
+      effectiveIdentity &&
+      (lesson?.type === 'python' ||
+        lesson?.type === 'arcade' ||
+        lesson?.type === 'electronics' ||
+        lesson?.type === 'turtle')
+    ) {
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+        code: newCode,
+        output,
+        runStatus,
+        ...(lesson?.type === 'arcade' ? { arcadeDesign: arcadeDesignRef.current } : {}),
+      })
     }
     if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentCode(identity.anonymousId, newCode)
     }
-    if (lesson?.type === 'python' || lesson?.type === 'arcade' || lesson?.type === 'electronics') {
-      scheduleIdleFeedback(() => (
+    if (
+      lesson?.type === 'python' ||
+      lesson?.type === 'arcade' ||
+      lesson?.type === 'electronics' ||
+      lesson?.type === 'turtle'
+    ) {
+      scheduleIdleFeedback(() =>
         lessonRef.current?.type === 'electronics'
           ? { code: newCode, circuit: newCode }
           : { code: newCode, status: runStatusRef.current }
-      ))
+      )
     }
   }
 
@@ -1205,11 +1518,17 @@ export function useStudentCodeState({
     const next = cloneArcadeDesign(nextDesign)
     setArcadeDesign(next)
     if (effectiveIdentity && lesson?.type === 'arcade') {
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: codeRef.current, output: outputRef.current, runStatus: runStatusRef.current, arcadeDesign: next })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+        code: codeRef.current,
+        output: outputRef.current,
+        runStatus: runStatusRef.current,
+        arcadeDesign: next,
+      })
     }
     if (canPublishTeacherLive()) publishTeacherLive({ arcadeDesign: next })
     if (!teacherPresentation && identity && session?.activeStudentView === identity.anonymousId) {
-      if (arcadeDesignWriteTimerRef.current !== null) clearTimeout(arcadeDesignWriteTimerRef.current)
+      if (arcadeDesignWriteTimerRef.current !== null)
+        clearTimeout(arcadeDesignWriteTimerRef.current)
       arcadeDesignWriteTimerRef.current = setTimeout(() => {
         writeStudentArcadeDesign?.(identity.anonymousId, next)
         arcadeDesignWriteTimerRef.current = null
@@ -1237,6 +1556,16 @@ export function useStudentCodeState({
     }
   }
 
+  function handleScratchActivity(activity) {
+    const nextActivity = { ...activity }
+    editorActivityRef.current = nextActivity
+    setEditorActivity(nextActivity)
+    if (canPublishTeacherLive()) publishTeacherLive({ activity: nextActivity })
+    if (!teacherPresentation && session?.activeStudentView === identity?.anonymousId) {
+      writeStudentInteraction(identity.anonymousId, { activity: nextActivity })
+    }
+  }
+
   function handleFileTabChange(filename) {
     setActiveFile(filename)
     editorSelectionRef.current = null
@@ -1248,37 +1577,119 @@ export function useStudentCodeState({
   }
 
   function handleFileChange(filename, content) {
-    const nextFiles = filesRef.current.map(f => f.name === filename ? { ...f, content } : f)
+    const nextFiles = filesRef.current.map((f) => (f.name === filename ? { ...f, content } : f))
     setFiles(nextFiles)
     if (htmlErrorLocation?.file === filename) setHtmlErrorLocation(null)
     if (canPublishTeacherLive()) {
-      publishTeacherLive({ files: Object.fromEntries(nextFiles.map(f => [f.name, f.content])), activeFile: filename })
+      publishTeacherLive({
+        files: Object.fromEntries(nextFiles.map((f) => [f.name, f.content])),
+        activeFile: filename,
+      })
     }
     if (effectiveIdentity && lesson?.type === 'html') {
       persistence.saveHtmlFile(effectiveIdentity.anonymousId, currentTaskId, filename, content)
     }
     if (identity && session?.activeStudentView === identity.anonymousId) {
       const filesMap = Object.fromEntries(
-        filesRef.current.map(f => [f.name, f.name === filename ? content : f.content])
+        filesRef.current.map((f) => [f.name, f.name === filename ? content : f.content])
       )
       writeStudentFiles(identity.anonymousId, filesMap)
     }
     if (lesson?.type === 'html') {
-      scheduleIdleFeedback(() => ({
-        code: nextFiles.map(f => f.content).join('\n'),
-        output: outputRef.current,
-        iframeDoc: iframeRef.current?.contentDocument ?? null,
-      }), { feedbackFilter: checkAllowedForSubmit })
+      scheduleIdleFeedback(
+        () => ({
+          code: nextFiles.map((f) => f.content).join('\n'),
+          output: outputRef.current,
+          iframeDoc: iframeRef.current?.contentDocument ?? null,
+        }),
+        { feedbackFilter: checkAllowedForSubmit }
+      )
     }
   }
 
   function handleScratchChange(workspaceStates) {
-    if (canPublishTeacherLive()) publishTeacherLive({ code: JSON.stringify(workspaceStates) })
+    const serialized = JSON.stringify(workspaceStates)
+    scratchCodeRef.current = serialized
+    if (canPublishTeacherLive()) publishTeacherLive({ code: serialized })
     if (!effectiveIdentity) return
     persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, workspaceStates)
     if (identity && activeStudentViewRef.current === identity.anonymousId) {
-      writeStudentCode(identity.anonymousId, JSON.stringify(workspaceStates))
+      writeStudentCode(identity.anonymousId, serialized)
     }
+  }
+
+  const SPRITE_STATE_THROTTLE_MS = 120
+
+  function handleScratchSpriteState(spriteStates, cloneStates, backdropName, selectedSpriteId) {
+    if (!identity) return
+    const payload = {
+      spriteStates,
+      cloneStates,
+      backdropName,
+      selectedSpriteId: selectedSpriteId ?? null,
+      updatedAt: Date.now(),
+    }
+    const flush = () => {
+      spriteStateLastSentRef.current = Date.now()
+      if (canPublishTeacherLive()) publishTeacherLive({ spriteState: payload })
+      if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+        writeStudentSpriteState?.(identity.anonymousId, payload)
+      }
+    }
+    const elapsed = Date.now() - spriteStateLastSentRef.current
+    if (elapsed >= SPRITE_STATE_THROTTLE_MS) {
+      clearTimeout(spriteStatePendingTimerRef.current)
+      spriteStatePendingTimerRef.current = null
+      flush()
+    } else if (!spriteStatePendingTimerRef.current) {
+      spriteStatePendingTimerRef.current = setTimeout(() => {
+        spriteStatePendingTimerRef.current = null
+        flush()
+      }, SPRITE_STATE_THROTTLE_MS - elapsed)
+    }
+  }
+
+  function handleScratchCursor(payload) {
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ cursor: payload })
+    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+      writeStudentCursor?.(identity.anonymousId, payload)
+    }
+  }
+
+  function handleScratchBlockDrag(payload) {
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ blockDrag: payload })
+    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+      writeStudentBlockDrag?.(identity.anonymousId, payload)
+    }
+  }
+
+  // Live tile-placement mirror for code_arrange tasks — the assembled code
+  // itself only syncs once every blank is filled (see handleCodeChange /
+  // handleFileChange), so without this a teacher watching a student would
+  // see stale code from a previous task until the student finishes, and a
+  // "Go Live to Students" viewer would see nothing move at all. Same two
+  // destinations as handleScratchSpriteState/handleScratchCursor above:
+  // teacherLive for a Go-Live/presentation broadcast, the student's own
+  // currentCodeArrangeSlots record for a teacher passively watching them.
+  function handleCodeArrangeSlotsChange(slotState) {
+    codeArrangeSlotStateRef.current = slotState
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
+    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+      writeStudentCodeArrangeSlots?.(identity.anonymousId, slotState)
+    }
+  }
+
+  // Live drag-position mirror for code_arrange tasks, broadcast-only (Go
+  // Live/presentation) — unlike slot placements there's no per-student
+  // "watch one student" destination for this, since StudentModal only needs
+  // the settled board, not the in-flight drag. Payload is null on drag end
+  // to clear the mirror immediately rather than waiting for it to go stale.
+  function handleCodeArrangeDragCursor(payload) {
+    if (!identity) return
+    if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeCursor: payload })
   }
 
   function handleScratchCheck(passed, snapshot) {
@@ -1286,14 +1697,23 @@ export function useStudentCodeState({
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
     const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
-    const suggestion = effectivePassed ? '' : (String(snapshot?.suggestion ?? '').trim() || String(checks.find(c => c?.hint)?.hint ?? '').trim())
+    const suggestion = effectivePassed
+      ? ''
+      : String(snapshot?.suggestion ?? '').trim() ||
+        String(checks.find((c) => c?.hint)?.hint ?? '').trim()
     if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
     if (!identity || lesson?.type !== 'scratch') return
-    if (phase === 'lesson' || phase === 'sandbox' || activeStudentViewRef.current === identity.anonymousId) {
-      const states = snapshot?.workspaceStates ?? loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ?? null
+    if (
+      phase === 'lesson' ||
+      phase === 'sandbox' ||
+      activeStudentViewRef.current === identity.anonymousId
+    ) {
+      const states =
+        snapshot?.workspaceStates ??
+        loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ??
+        null
       writeStudentRun(identity.anonymousId, {
         code: states ? JSON.stringify(states) : undefined,
-        output: snapshot?.spriteStates ? JSON.stringify(snapshot.spriteStates) : undefined,
         status: 'success',
         checkPassed: effectivePassed,
       })
@@ -1310,7 +1730,10 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
     const evaluation = task?.check
-      ? evaluateCheckWithFeedback(task, '', context, { completionPassed, feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT })
+      ? evaluateCheckWithFeedback(task, '', context, {
+          completionPassed,
+          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+        })
       : { passed: false, suggestion: '' }
     const evaluatedPassed = evaluation.passed
     const passed = alreadySolved ? true : evaluatedPassed
@@ -1319,14 +1742,23 @@ export function useStudentCodeState({
       applyCheckFeedback(evaluatedPassed, suggestion)
       updateTargetedStageOffer(task, evaluation, evaluatedPassed)
     }
-    if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
+    if (
+      !teacherPresentation &&
+      phase === 'lesson' &&
+      !inPersonalSandboxRef.current &&
+      effectiveIdentity?.anonymousId
+    ) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.fs),
         status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
         checkPassed: evaluatedPassed,
       })
       if (!alreadySolved && task?.check) {
-        logAttempt(effectiveIdentity.anonymousId, currentTaskId, { submission: context.fs, passed: evaluatedPassed, suggestion })
+        logAttempt(effectiveIdentity.anonymousId, currentTaskId, {
+          submission: context.fs,
+          passed: evaluatedPassed,
+          suggestion,
+        })
       }
     }
   }
@@ -1338,12 +1770,18 @@ export function useStudentCodeState({
     scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...fsInteractionRef.current }))
   }
 
-  const handleFsInteraction = useCallback((interaction) => {
-    setFsInteraction(interaction)
-    applyFsCheckAndPublish({ fs: fsStateRef.current, ...interaction }, { suppressFailFeedback: true })
-    scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...interaction }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity])
+  const handleFsInteraction = useCallback(
+    (interaction) => {
+      setFsInteraction(interaction)
+      applyFsCheckAndPublish(
+        { fs: fsStateRef.current, ...interaction },
+        { suppressFailFeedback: true }
+      )
+      scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...interaction }))
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
+  )
 
   // ─── Desktop handlers ───────────────────────────────────────────────────────
 
@@ -1352,7 +1790,10 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
     const evaluation = task?.check
-      ? evaluateCheckWithFeedback(task, '', context, { completionPassed, feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT })
+      ? evaluateCheckWithFeedback(task, '', context, {
+          completionPassed,
+          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+        })
       : { passed: false, suggestion: '' }
     const evaluatedPassed = evaluation.passed
     const passed = alreadySolved ? true : evaluatedPassed
@@ -1361,14 +1802,23 @@ export function useStudentCodeState({
       applyCheckFeedback(evaluatedPassed, suggestion)
       updateTargetedStageOffer(task, evaluation, evaluatedPassed)
     }
-    if (!teacherPresentation && phase === 'lesson' && !inPersonalSandboxRef.current && effectiveIdentity?.anonymousId) {
+    if (
+      !teacherPresentation &&
+      phase === 'lesson' &&
+      !inPersonalSandboxRef.current &&
+      effectiveIdentity?.anonymousId
+    ) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: JSON.stringify(context.desktop),
         status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
         checkPassed: evaluatedPassed,
       })
       if (!alreadySolved && task?.check) {
-        logAttempt(effectiveIdentity.anonymousId, currentTaskId, { submission: context.desktop, passed: evaluatedPassed, suggestion })
+        logAttempt(effectiveIdentity.anonymousId, currentTaskId, {
+          submission: context.desktop,
+          passed: evaluatedPassed,
+          suggestion,
+        })
       }
     }
   }
@@ -1376,29 +1826,49 @@ export function useStudentCodeState({
   function handleDesktopChange(newDesktop) {
     setDesktopState(newDesktop)
     persistence.saveDesktop(effectiveIdentity?.anonymousId, currentTaskId, newDesktop)
-    applyDesktopCheckAndPublish({ fs: newDesktop.fs, desktop: newDesktop, ...desktopInteractionRef.current })
-    scheduleIdleFeedback(() => ({ fs: desktopStateRef.current.fs, desktop: desktopStateRef.current, ...desktopInteractionRef.current }))
+    applyDesktopCheckAndPublish({
+      fs: newDesktop.fs,
+      desktop: newDesktop,
+      ...desktopInteractionRef.current,
+    })
+    scheduleIdleFeedback(() => ({
+      fs: desktopStateRef.current.fs,
+      desktop: desktopStateRef.current,
+      ...desktopInteractionRef.current,
+    }))
   }
 
-  const handleDesktopInteraction = useCallback((interaction) => {
-    setDesktopInteraction(interaction)
-    applyDesktopCheckAndPublish({ fs: desktopStateRef.current.fs, desktop: desktopStateRef.current, ...interaction }, { suppressFailFeedback: true })
-    scheduleIdleFeedback(() => ({ fs: desktopStateRef.current.fs, desktop: desktopStateRef.current, ...interaction }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity])
+  const handleDesktopInteraction = useCallback(
+    (interaction) => {
+      setDesktopInteraction(interaction)
+      applyDesktopCheckAndPublish(
+        { fs: desktopStateRef.current.fs, desktop: desktopStateRef.current, ...interaction },
+        { suppressFailFeedback: true }
+      )
+      scheduleIdleFeedback(() => ({
+        fs: desktopStateRef.current.fs,
+        desktop: desktopStateRef.current,
+        ...interaction,
+      }))
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
+  )
 
   // ─── Reset/Complete code ───────────────────────────────────────────────────
 
   function handleResetCode() {
     if (inPersonalSandboxRef.current) {
-      if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.')) return
-      if (lesson.type === 'python' || lesson.type === 'arcade') {
+      if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.'))
+        return
+      if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
         setCode(lesson.sandboxStarter ?? '')
         if (lesson.type === 'arcade') setArcadeDesign(null)
         setOutput('')
+        setTurtleResult(null)
         setRunStatus(null)
       } else if (lesson.type === 'html') {
-        const starterFiles = (lesson.sandboxStarterFiles ?? []).map(f => ({ ...f }))
+        const starterFiles = (lesson.sandboxStarterFiles ?? []).map((f) => ({ ...f }))
         setFiles(starterFiles)
         setActiveFile(starterFiles[0]?.name ?? '')
         setIframeSrc(null)
@@ -1412,24 +1882,43 @@ export function useStudentCodeState({
       } else if (lesson.type === 'electronics') {
         setCode(serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
         setOutput('')
+        setTurtleResult(null)
         setRunStatus(null)
         resetCheckFeedback()
       }
       return
     }
-    if (!window.confirm('Reset your code to the starter code? Your current work will be lost.')) return
+    if (!window.confirm('Reset your code to the starter code? Your current work will be lost.'))
+      return
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       setCode(getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '')
       if (lesson.type === 'arcade') handleArcadeDesignChange(designForCodeTab(task, 'starter'))
-      if (canPublishTeacherLive()) publishTeacherLive({ code: getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '', output: '', runStatus: null, checkPassed: false, checkAttempted: false })
+      if (canPublishTeacherLive())
+        publishTeacherLive({
+          code: getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '',
+          output: '',
+          runStatus: null,
+          checkPassed: false,
+          checkAttempted: false,
+        })
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
     } else if (lesson.type === 'html') {
-      const taskFiles = (getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []).map(f => ({ ...f }))
+      const taskFiles = (getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []).map(
+        (f) => ({ ...f })
+      )
       setFiles(taskFiles)
-      if (canPublishTeacherLive()) publishTeacherLive({ files: Object.fromEntries(taskFiles.map(f => [f.name, f.content])), output: '', runStatus: null, checkPassed: false, checkAttempted: false })
+      if (canPublishTeacherLive())
+        publishTeacherLive({
+          files: Object.fromEntries(taskFiles.map((f) => [f.name, f.content])),
+          output: '',
+          runStatus: null,
+          checkPassed: false,
+          checkAttempted: false,
+        })
       setActiveFile(task?.entryFile ?? taskFiles[0]?.name ?? '')
       setIframeSrc(null)
       setRunStatus(null)
@@ -1438,7 +1927,9 @@ export function useStudentCodeState({
       setScratchExternalState(task?.starterBlocks ?? null)
       setScratchActiveStageIndex(null)
     } else if (lesson.type === 'electronics') {
-      const starter = serializeCircuit(getStarterStage(task)?.stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
+      const starter = serializeCircuit(
+        getStarterStage(task)?.stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT
+      )
       setCode(starter)
       persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: starter })
       resetCheckFeedback()
@@ -1452,15 +1943,23 @@ export function useStudentCodeState({
     const stage = task.codeStages?.[stageIndex]
     if (!stage) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       const stageCode = stage.code ?? ''
       setCode(stageCode)
       if (lesson.type === 'arcade') setArcadeDesign(designForCodeTab(task, `stage_${stageIndex}`))
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: stageCode, output: '', runStatus: null, ...(lesson.type === 'arcade' ? { arcadeDesign: designForCodeTab(task, `stage_${stageIndex}`) } : {}) })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+        code: stageCode,
+        output: '',
+        runStatus: null,
+        ...(lesson.type === 'arcade'
+          ? { arcadeDesign: designForCodeTab(task, `stage_${stageIndex}`) }
+          : {}),
+      })
     } else if (lesson.type === 'html') {
-      const stageFiles = (stage.files ?? []).map(f => ({ ...f }))
+      const stageFiles = (stage.files ?? []).map((f) => ({ ...f }))
       setFiles(stageFiles)
       setActiveFile(stage.entryFile ?? task.entryFile ?? stageFiles[0]?.name ?? '')
       setIframeSrc(null)
@@ -1470,7 +1969,8 @@ export function useStudentCodeState({
       const stageBlocks = stage.blocks ?? null
       setScratchExternalState(stageBlocks)
       setScratchActiveStageIndex(stageIndex)
-      if (stageBlocks) persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, stageBlocks)
+      if (stageBlocks)
+        persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, stageBlocks)
     } else if (lesson.type === 'filesystem') {
       const stageFs = stage.fs ?? DEFAULT_FS
       setFsState(stageFs)
@@ -1482,17 +1982,24 @@ export function useStudentCodeState({
     } else if (lesson.type === 'electronics') {
       const stageCircuit = serializeCircuit(stage.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
       setCode(stageCircuit)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: stageCircuit })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+        code: stageCircuit,
+      })
     }
     setOfferedStageIndex(stageIndex)
   }
 
-  function handleRevealSupportStage(stageIndex, source = 'student', attemptNumber = checkFailCount) {
+  function handleRevealSupportStage(
+    stageIndex,
+    source = 'student',
+    attemptNumber = checkFailCount
+  ) {
     if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const stage = task?.codeStages?.[stageIndex]
     if (!stage) return
-      if (!['python', 'html', 'arcade', 'electronics', 'scratch'].includes(lesson?.type)) return
+    if (!['python', 'html', 'arcade', 'turtle', 'electronics', 'scratch'].includes(lesson?.type))
+      return
     if (!isRevealableStage(stage)) return
 
     const record = {
@@ -1503,16 +2010,16 @@ export function useStudentCodeState({
       attemptNumber,
       revealedAt: Date.now(),
     }
-    setLocalSupportStageReveals(prev => ({
+    setLocalSupportStageReveals((prev) => ({
       ...prev,
       [currentTaskId]: {
         ...(prev[currentTaskId] ?? {}),
         [stageIndex]: record,
       },
     }))
-    setOfferedStageIndex(prev => Math.max(prev, stageIndex))
-    setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: stageIndex }))
-    setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: null }))
+    setOfferedStageIndex((prev) => Math.max(prev, stageIndex))
+    setSupportStageVisibility((prev) => ({ ...prev, [currentTaskId]: stageIndex }))
+    setSupportStageOffers((prev) => ({ ...prev, [currentTaskId]: null }))
     markStagePromptAccepted()
     if (!teacherPresentation && phase === 'lesson') {
       recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, stageIndex, {
@@ -1534,19 +2041,29 @@ export function useStudentCodeState({
     // Keep the first error's line for this run — later errors (e.g. a second,
     // unrelated console.error) shouldn't bump the highlight around.
     if (errorMeta && htmlErrorLocation == null) {
-      const location = resolveIframeErrorLocation(errorMeta.loadId, errorMeta.filename, errorMeta.lineno)
+      const location = resolveIframeErrorLocation(
+        errorMeta.loadId,
+        errorMeta.filename,
+        errorMeta.lineno
+      )
       if (location) setHtmlErrorLocation(location)
     }
   }
 
   function updateSupportStageForAttempt(passed) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (!task || teacherPresentation || inPersonalSandboxRef.current || !['lesson', 'solo'].includes(phaseRef.current)) return
+    if (
+      !task ||
+      teacherPresentation ||
+      inPersonalSandboxRef.current ||
+      !['lesson', 'solo'].includes(phaseRef.current)
+    )
+      return
     if (!['python', 'html'].includes(lesson?.type)) return
 
     if (passed) {
-      setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: null }))
-      setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: null }))
+      setSupportStageVisibility((prev) => ({ ...prev, [currentTaskId]: null }))
+      setSupportStageOffers((prev) => ({ ...prev, [currentTaskId]: null }))
       return
     }
 
@@ -1556,16 +2073,16 @@ export function useStudentCodeState({
 
     const nextStage = getNextRevealableStage(task, Object.keys(supportStageReveals))
     if (nextStage) {
-      setSupportStageOffers(prev => ({ ...prev, [currentTaskId]: nextStage.index }))
+      setSupportStageOffers((prev) => ({ ...prev, [currentTaskId]: nextStage.index }))
       return
     }
 
     const latestStage = getRevealableStages(task)
       .map(({ index }) => index)
-      .filter(index => Object.prototype.hasOwnProperty.call(supportStageReveals, index))
+      .filter((index) => Object.prototype.hasOwnProperty.call(supportStageReveals, index))
       .at(-1)
     if (latestStage != null) {
-      setSupportStageVisibility(prev => ({ ...prev, [currentTaskId]: latestStage }))
+      setSupportStageVisibility((prev) => ({ ...prev, [currentTaskId]: latestStage }))
     }
   }
 
@@ -1604,18 +2121,31 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade') {
+    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
       const completeCode = getCompleteStage(task)?.stage?.code ?? task.completeCode ?? ''
       setCode(completeCode)
       setOutput('')
+      setTurtleResult(null)
       setRunStatus(null)
       applyCheckFeedback(true)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: completeCode, output: '', runStatus: null })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+        code: completeCode,
+        output: '',
+        runStatus: null,
+      })
     } else if (lesson.type === 'html') {
       const completeStage = getCompleteStage(task)?.stage
-      const completeFiles = (completeStage?.files ?? task.completeFiles ?? []).map(f => ({ ...f }))
+      const completeFiles = (completeStage?.files ?? task.completeFiles ?? []).map((f) => ({
+        ...f,
+      }))
       setFiles(completeFiles)
-      setActiveFile(completeStage?.entryFile ?? task.completeEntryFile ?? task.entryFile ?? completeFiles[0]?.name ?? '')
+      setActiveFile(
+        completeStage?.entryFile ??
+          task.completeEntryFile ??
+          task.entryFile ??
+          completeFiles[0]?.name ??
+          ''
+      )
       setIframeSrc(null)
       setRunStatus(null)
       applyCheckFeedback(true)
@@ -1625,22 +2155,29 @@ export function useStudentCodeState({
       setScratchExternalState(completeBlocks)
       setScratchActiveStageIndex(null)
       applyCheckFeedback(true)
-      if (completeBlocks) persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, completeBlocks)
+      if (completeBlocks)
+        persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, completeBlocks)
     } else if (lesson.type === 'filesystem') {
       const completeFs = task.completeFs ?? DEFAULT_FS
       setFsState(completeFs)
       applyCheckFeedback(true)
       persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, completeFs)
     } else if (lesson.type === 'desktop') {
-      const completeDesktop = normaliseDesktop(task.completeDesktop ?? makeDefaultDesktop(task.availableApps))
+      const completeDesktop = normaliseDesktop(
+        task.completeDesktop ?? makeDefaultDesktop(task.availableApps)
+      )
       setDesktopState(completeDesktop)
       applyCheckFeedback(true)
       persistence.saveDesktop(effectiveIdentity.anonymousId, currentTaskId, completeDesktop)
     } else if (lesson.type === 'electronics') {
-      const completeCircuit = serializeCircuit(task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
+      const completeCircuit = serializeCircuit(
+        task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
+      )
       setCode(completeCircuit)
       applyCheckFeedback(true)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: completeCircuit })
+      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
+        code: completeCircuit,
+      })
     }
   }
 
@@ -1652,11 +2189,17 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const isHtml = lesson?.type === 'html'
     const alreadySolved = isAlreadySolved()
-    let passed, suggestion = ''
+    let passed,
+      suggestion = ''
     if (!alreadySolved) {
-      const codeForCheck = isHtml ? files.map(f => f.content).join('\n') : code
-      const checkContext = lesson?.type === 'electronics' ? { code: codeForCheck, circuit: codeForCheck } : { code: codeForCheck }
-      const completionPassed = task?.check ? evaluateCheckWithCode(task.check, codeForCheck, checkContext) : false
+      const codeForCheck = isHtml ? files.map((f) => f.content).join('\n') : code
+      const checkContext =
+        lesson?.type === 'electronics'
+          ? { code: codeForCheck, circuit: codeForCheck }
+          : { code: codeForCheck }
+      const completionPassed = task?.check
+        ? evaluateCheckWithCode(task.check, codeForCheck, checkContext)
+        : false
       const evaluation = evaluateCheckWithFeedback(task, '', checkContext, { completionPassed })
       passed = task?.check ? evaluation.passed : false
       suggestion = task?.check ? evaluation.suggestion : ''
@@ -1672,7 +2215,7 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) {
       publishTeacherLive({
         code: isHtml ? undefined : code,
-        files: isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : undefined,
+        files: isHtml ? Object.fromEntries(files.map((f) => [f.name, f.content])) : undefined,
         output: isHtml ? undefined : '',
         runStatus: 'submitted',
         checkPassed: passed,
@@ -1683,14 +2226,26 @@ export function useStudentCodeState({
     if (isHtml) {
       persistence.saveHtmlFiles(actor.anonymousId, currentTaskId, files)
     } else {
-      persistence.savePythonCode(actor.anonymousId, currentTaskId, { code, output: '', runStatus: 'submitted' })
+      persistence.savePythonCode(actor.anonymousId, currentTaskId, {
+        code,
+        output: '',
+        runStatus: 'submitted',
+      })
     }
     if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-      const filesMap = isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : undefined
-      await writeStudentRun(actor.anonymousId, { code: isHtml ? undefined : code, files: filesMap, output: isHtml ? undefined : '', status: 'submitted', checkPassed: passed })
+      const filesMap = isHtml
+        ? Object.fromEntries(files.map((f) => [f.name, f.content]))
+        : undefined
+      await writeStudentRun(actor.anonymousId, {
+        code: isHtml ? undefined : code,
+        files: filesMap,
+        output: isHtml ? undefined : '',
+        status: 'submitted',
+        checkPassed: passed,
+      })
     }
     if (!teacherPresentation && phase === 'lesson' && !alreadySolved && task?.check) {
-      const submission = isHtml ? Object.fromEntries(files.map(f => [f.name, f.content])) : code
+      const submission = isHtml ? Object.fromEntries(files.map((f) => [f.name, f.content])) : code
       logAttempt(actor.anonymousId, currentTaskId, { submission, passed, suggestion })
     }
   }
@@ -1726,7 +2281,13 @@ export function useStudentCodeState({
     applyCheckFeedback(passed, suggestion)
     setRunStatus('submitted')
     if (canPublishTeacherLive()) {
-      publishTeacherLive({ answer: serializedAnswer, runStatus: 'submitted', checkPassed: passed, checkAttempted: true, checkSuggestion: suggestion })
+      publishTeacherLive({
+        answer: serializedAnswer,
+        runStatus: 'submitted',
+        checkPassed: passed,
+        checkAttempted: true,
+        checkSuggestion: suggestion,
+      })
     }
     if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
       await writeStudentRun(actor.anonymousId, {
@@ -1736,36 +2297,133 @@ export function useStudentCodeState({
       })
     }
     if (!teacherPresentation && phase === 'lesson') {
-      logAttempt(actor.anonymousId, currentTaskId, { submission: buildQuizSubmission(task, answer), passed, suggestion })
+      logAttempt(actor.anonymousId, currentTaskId, {
+        submission: buildQuizSubmission(task, answer),
+        passed,
+        suggestion,
+      })
     }
+  }
+
+  // Workspace sharing captures the student's own current state. Built here
+  // rather than in the view because the module-specific sources (Scratch's
+  // scratchCodeRef, filesystem's fsStateRef) only exist inside this hook.
+  function buildShareSnapshot() {
+    return buildSharedWorkspaceSnapshot({
+      lesson: lessonRef.current,
+      taskId: currentTaskIdRef.current,
+      code: codeRef.current,
+      scratchCode: scratchCodeRef.current,
+      fsState: fsStateRef.current,
+      arcadeDesign: arcadeDesignRef.current,
+      files: filesRef.current,
+      activeFile: activeFileRef.current,
+      output: outputRef.current,
+      runStatus: runStatusRef.current,
+    })
   }
 
   return {
     // State
-    code, arcadeDesign, files, activeFile, output, runStatus, running, runningTests, testResults,
-    pyodideStatus, iframeSrc, teacherLiveIframeSrc, htmlPreviewCollapsed, setHtmlPreviewCollapsed,
-    inputPrompt, checkPassed, checkAttempted, checkSuggestion, repeatedSuggestionCount, checkFailCount, stagePromptAccepted,
-    offeredStageIndex, completePreviewShown, supportStageReveals, activeSupportStageIndex, offeredSupportStageIndex, targetedStageOffer, targetedPreviewStageIndex,
-    selectedAnswer, scratchSandboxProject, scratchExternalState, scratchActiveStageIndex,
-    fsState, fsInteraction, desktopState, desktopInteraction, editorSelection, editorActivity, inPersonalSandbox,
-    teacherHighlights, dismissHighlight,
-    errorLine, htmlErrorLocation,
+    code,
+    arcadeDesign,
+    files,
+    activeFile,
+    output,
+    runStatus,
+    turtleResult,
+    running,
+    runningTests,
+    testResults,
+    pyodideStatus,
+    iframeSrc,
+    teacherLiveIframeSrc,
+    htmlPreviewCollapsed,
+    setHtmlPreviewCollapsed,
+    publishOutputCollapsed,
+    inputPrompt,
+    checkPassed,
+    checkAttempted,
+    checkSuggestion,
+    repeatedSuggestionCount,
+    checkFailCount,
+    stagePromptAccepted,
+    offeredStageIndex,
+    completePreviewShown,
+    supportStageReveals,
+    activeSupportStageIndex,
+    offeredSupportStageIndex,
+    teacherLiveReferenceActive,
+    targetedStageOffer,
+    targetedPreviewStageIndex,
+    selectedAnswer,
+    scratchSandboxProject,
+    scratchExternalState,
+    scratchActiveStageIndex,
+    fsState,
+    fsInteraction,
+    desktopState,
+    desktopInteraction,
+    editorSelection,
+    editorActivity,
+    inPersonalSandbox,
+    teacherHighlights,
+    dismissHighlight,
+    errorLine,
+    htmlErrorLocation,
     // Refs
     iframeRef,
     // Event handlers
-    handleRun, handleStop, handleRunTests, handleSubmit, handleQuizSelect,
-    handleCodeChange, handleArcadeDesignChange, handleFileChange, handleFileTabChange,
-    handleEditorSelection, handleEditorActivity,
-    handleScratchChange, handleScratchCheck,
-    handleFsChange, handleFsInteraction,
-    handleDesktopChange, handleDesktopInteraction,
-    handleInputSubmit, handleHtmlRuntimeError, handleResetCode, handleShowCodeStage, handleRevealSupportStage, handleRevealOfferedSupportStage, handlePreviewTargetedStage, handleAcceptTargetedStage, handleAcceptGenericNextStage, handlePreviewCompleteCode, handleShowCompleteCode,
-    handleEnterPersonalSandbox, handleLeavePersonalSandbox,
+    handleRun,
+    handleStop,
+    handleRunTests,
+    handleSubmit,
+    handleQuizSelect,
+    handleCodeChange,
+    handleArcadeDesignChange,
+    handleFileChange,
+    handleFileTabChange,
+    handleEditorSelection,
+    handleEditorActivity,
+    handleScratchActivity,
+    handleScratchSpriteState,
+    handleScratchCursor,
+    handleScratchBlockDrag,
+    handleCodeArrangeSlotsChange,
+    handleCodeArrangeDragCursor,
+    handleScratchChange,
+    handleScratchCheck,
+    handleFsChange,
+    handleFsInteraction,
+    handleDesktopChange,
+    handleDesktopInteraction,
+    handleInputSubmit,
+    handleInputChange,
+    handleHtmlRuntimeError,
+    handleResetCode,
+    handleShowCodeStage,
+    handleRevealSupportStage,
+    handleRevealOfferedSupportStage,
+    handlePreviewTargetedStage,
+    handleAcceptTargetedStage,
+    handleAcceptGenericNextStage,
+    handlePreviewCompleteCode,
+    handleShowCompleteCode,
+    handleEnterPersonalSandbox,
+    handleLeavePersonalSandbox,
     // Mode-aware task-save readers (localStorage normally, in-memory in presentation/preview)
-    readSavedTaskCode: taskId => effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,
-    readSavedTaskFile: (taskId, filename) => effectiveIdentity ? persistence.readSavedFile(effectiveIdentity.anonymousId, taskId, filename) : null,
-    readSavedTaskFs: taskId => effectiveIdentity ? persistence.readSavedFs(effectiveIdentity.anonymousId, taskId) : null,
-    readSavedTaskDesktop: taskId => effectiveIdentity ? persistence.readSavedDesktop(effectiveIdentity.anonymousId, taskId) : null,
+    readSavedTaskCode: (taskId) =>
+      effectiveIdentity ? persistence.readSavedCode(effectiveIdentity.anonymousId, taskId) : null,
+    readSavedTaskFile: (taskId, filename) =>
+      effectiveIdentity
+        ? persistence.readSavedFile(effectiveIdentity.anonymousId, taskId, filename)
+        : null,
+    readSavedTaskFs: (taskId) =>
+      effectiveIdentity ? persistence.readSavedFs(effectiveIdentity.anonymousId, taskId) : null,
+    readSavedTaskDesktop: (taskId) =>
+      effectiveIdentity
+        ? persistence.readSavedDesktop(effectiveIdentity.anonymousId, taskId)
+        : null,
     // Generic per-task auxiliary storage (mode-aware, same key format as
     // readSavedTaskFile/saveHtmlFile). Used by task types that need to persist
     // something alongside their code that isn't itself a code file — for
@@ -1780,6 +2438,7 @@ export function useStudentCodeState({
     resetForTaskChange,
     exitPersonalSandbox,
     currentTeacherLivePayload,
+    buildShareSnapshot,
     canPublishTeacherLive,
     publishTeacherLive,
     updateTeacherLiveFn: updateTeacherLive,

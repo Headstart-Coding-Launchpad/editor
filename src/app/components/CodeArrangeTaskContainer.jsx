@@ -7,10 +7,10 @@ import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../shared/c
 // studentFileStorageKey()-keyed helpers every other task type already uses
 // (see src/app/studentStorage.js). It cannot collide with an authored HTML
 // filename since authors name real files like "index.html".
-export const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
+const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
 
 function fileContent(files, name) {
-  return files?.find(file => file.name === name)?.content ?? ''
+  return files?.find((file) => file.name === name)?.content ?? ''
 }
 
 // Wires the presentational CodeArrangeTask component to the shared student
@@ -34,12 +34,45 @@ function fileContent(files, name) {
 //     type mirrors in this situation (displayCode/displayFiles for a "Go
 //     Live" broadcast viewer, teacherLiveCode/teacherLiveFiles for an
 //     accepted teacher-edit session — see PythonEditor/HtmlEditor
-//     StudentWorkspace for the identical pattern).
+//     StudentWorkspace for the identical pattern) — UNLESS displayCodeArrangeSlots
+//     is available for an isForcedTeacherLive viewer, in which case that live
+//     per-tile stream is preferred (see below).
+//
+// Every non-read-only slot change is also mirrored live via
+// cs.handleCodeArrangeSlotsChange (same pattern as Scratch's
+// currentCursor/currentBlockDrag in useStudentCodeState.js) to two
+// destinations, separate from the assembled code/file sync above which only
+// fires once every blank is filled:
+//   - currentCodeArrangeSlots (gated by activeStudentView) for a teacher
+//     passively watching a student in StudentModal — see
+//     StudentWorkspaceBody.jsx, which prefers it over deriving from
+//     currentCode/currentFiles.
+//   - teacherLive.codeArrangeSlots for an isForcedTeacherLive viewer (Go
+//     Live/presentation), read here as displayCodeArrangeSlots and preferred
+//     over deriving from liveCode. Without either destination, a watcher
+//     would see a blank/stale board until the arrangement was complete.
+// A live drag also streams its in-flight position (cs.handleCodeArrangeDragCursor
+// → teacherLive.codeArrangeCursor → displayCodeArrangeCursor), broadcast-only,
+// so a Go-Live viewer sees the tile move as it's dragged rather than only
+// snapping into place on drop — mirrors ScratchWorkspace's cursor/blockDrag.
 export default function CodeArrangeTaskContainer({
-  task, cs, viewingTaskId, currentTaskId,
-  isViewingPrev, isForcedTeacherLive, isTeacherEditing,
-  displayCode, displayFiles, displayOutput, displayRunStatus, displayCheckPassed, displayCheckAttempted,
-  teacherLiveCode, teacherLiveFiles,
+  task,
+  cs,
+  viewingTaskId,
+  currentTaskId,
+  isViewingPrev,
+  isForcedTeacherLive,
+  isTeacherEditing,
+  displayCode,
+  displayFiles,
+  displayOutput,
+  displayRunStatus,
+  displayCheckPassed,
+  displayCheckAttempted,
+  displayCodeArrangeSlots,
+  displayCodeArrangeCursor,
+  teacherLiveCode,
+  teacherLiveFiles,
 }) {
   const isHtml = task.moduleType === 'html'
   const entryFile = getCodeArrangeEntryFile(task)
@@ -56,11 +89,16 @@ export default function CodeArrangeTaskContainer({
     if (loadedForTaskRef.current === taskId) return
     loadedForTaskRef.current = taskId
     const raw = cs.readSavedTaskFile(taskId, CODE_ARRANGE_SLOTS_FILENAME)
+    // Routed through handleCodeArrangeSlotsChange (not a bare setSlotState) so
+    // a teacher already watching this student when the task loads — or who
+    // starts watching before the student places a new tile — sees this
+    // student's actual saved progress immediately, not a blank board.
     if (raw) {
       try {
         const parsed = JSON.parse(raw)
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           setSlotState(parsed)
+          cs.handleCodeArrangeSlotsChange?.(parsed)
           return
         }
       } catch {
@@ -68,12 +106,16 @@ export default function CodeArrangeTaskContainer({
       }
     }
     setSlotState({})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    cs.handleCodeArrangeSlotsChange?.({})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
   function handleSlotStateChange(next) {
     setSlotState(next)
-    if (!readOnly) cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, JSON.stringify(next))
+    if (!readOnly) {
+      cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, JSON.stringify(next))
+      cs.handleCodeArrangeSlotsChange?.(next)
+    }
   }
 
   function handleAssembledCodeChange(assembledCode) {
@@ -90,12 +132,28 @@ export default function CodeArrangeTaskContainer({
   // The synced code to mirror while a teacher is watching/editing — resolved
   // fresh on every render so the board tracks the stream as it updates.
   const liveCode = isForcedTeacherLive
-    ? (isHtml ? fileContent(displayFiles, entryFile) : (displayCode ?? ''))
+    ? isHtml
+      ? fileContent(displayFiles, entryFile)
+      : (displayCode ?? '')
     : isTeacherEditing
-      ? (isHtml ? fileContent(teacherLiveFiles, entryFile) : (teacherLiveCode ?? ''))
+      ? isHtml
+        ? fileContent(teacherLiveFiles, entryFile)
+        : (teacherLiveCode ?? '')
       : null
 
-  const selectedAnswer = isLiveMirror ? deriveSlotStateFromCode(task, liveCode ?? '') : slotState
+  // A Go-Live/presentation viewer prefers the live per-tile slot stream
+  // (displayCodeArrangeSlots, mirrored on every drop — see
+  // handleCodeArrangeSlotsChange in useStudentCodeState.js) over deriving
+  // from liveCode, which only updates once every blank is filled and would
+  // otherwise leave the board blank until the teacher finishes. isTeacherEditing
+  // has no such stream (a different, lower-frequency mechanism), so it always
+  // derives from code.
+  const selectedAnswer =
+    isForcedTeacherLive && displayCodeArrangeSlots
+      ? displayCodeArrangeSlots
+      : isLiveMirror
+        ? deriveSlotStateFromCode(task, liveCode ?? '')
+        : slotState
 
   const output = isForcedTeacherLive
     ? (displayOutput ?? '')
@@ -111,19 +169,20 @@ export default function CodeArrangeTaskContainer({
       : isViewingPrev
         ? (savedView?.runStatus ?? null)
         : cs.runStatus
+  const inputPrompt = readOnly ? null : cs.inputPrompt
   const checkPassed = isForcedTeacherLive
     ? !!displayCheckPassed
-    : (isLiveMirror || isViewingPrev)
+    : isLiveMirror || isViewingPrev
       ? false
       : cs.checkPassed
   const checkAttempted = isForcedTeacherLive
     ? !!displayCheckAttempted
-    : (isLiveMirror || isViewingPrev)
+    : isLiveMirror || isViewingPrev
       ? false
       : cs.checkAttempted
   const iframeSrc = isForcedTeacherLive
     ? cs.teacherLiveIframeSrc
-    : (isTeacherEditing || isViewingPrev)
+    : isTeacherEditing || isViewingPrev
       ? null
       : cs.iframeSrc
 
@@ -136,6 +195,8 @@ export default function CodeArrangeTaskContainer({
       onAssembledCodeChange={readOnly ? undefined : handleAssembledCodeChange}
       output={output}
       runStatus={runStatus}
+      inputPrompt={inputPrompt}
+      onInputSubmit={readOnly ? undefined : cs.handleInputSubmit}
       running={readOnly ? false : cs.running}
       checkPassed={checkPassed}
       checkAttempted={checkAttempted}
@@ -144,6 +205,8 @@ export default function CodeArrangeTaskContainer({
       iframeRef={cs.iframeRef}
       onRun={readOnly ? undefined : cs.handleRun}
       onStop={readOnly ? undefined : cs.handleStop}
+      onDragCursor={readOnly ? undefined : cs.handleCodeArrangeDragCursor}
+      externalDragCursor={isForcedTeacherLive ? displayCodeArrangeCursor : null}
       disabled={readOnly}
       showQuestion={false}
     />

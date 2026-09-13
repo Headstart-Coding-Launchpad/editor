@@ -1,11 +1,13 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../StudentView'
+import { runPython, stopPython } from '../../../modules/python/pyodide'
 
 const mocks = vi.hoisted(() => ({
   fetchLessonById: vi.fn(),
+  findSoloCompanion: vi.fn(),
   useSession: vi.fn(),
   useIdentity: vi.fn(),
   scratchWorkspace: vi.fn(),
@@ -18,7 +20,9 @@ vi.mock('../../../shared/useIsMobile', () => ({
 
 vi.mock('../../../shared/lessonService', () => ({
   fetchLessonById: (...args) => mocks.fetchLessonById(...args),
-  applyLessonOverride: (lesson, overrideTasks) => (overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson),
+  findSoloCompanion: (...args) => mocks.findSoloCompanion(...args),
+  applyLessonOverride: (lesson, overrideTasks) =>
+    overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson,
 }))
 
 vi.mock('../../hooks/useSession', () => ({
@@ -43,7 +47,12 @@ vi.mock('../../../modules/html/iframe', () => ({
 }))
 
 vi.mock('../../components/TopBar', () => ({
-  default: ({ lessonTitle, isSolo, right }) => <div>{lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}{right}</div>,
+  default: ({ lessonTitle, isSolo, right }) => (
+    <div>
+      {lessonTitle} {isSolo ? 'SOLO' : 'LIVE'}
+      {right}
+    </div>
+  ),
 }))
 
 vi.mock('../../../modules/python/PythonEditor', () => ({
@@ -51,13 +60,17 @@ vi.mock('../../../modules/python/PythonEditor', () => ({
 }))
 
 vi.mock('../../components/OutputPanel', () => ({
-  default: () => <div>Output</div>,
+  default: ({ output }) => <div>Output{output}</div>,
 }))
 
 vi.mock('../../components/TaskProgressDots', () => ({
   default: ({ tasks, onDotClick }) => (
     <div>
-      {tasks.map(task => <button key={task.id} type="button" onClick={() => onDotClick(task.id)}>{task.title}</button>)}
+      {tasks.map((task) => (
+        <button key={task.id} type="button" onClick={() => onDotClick(task.id)}>
+          {task.title}
+        </button>
+      ))}
     </div>
   ),
 }))
@@ -87,7 +100,9 @@ vi.mock('../../components/InformationTask', () => ({
 }))
 
 vi.mock('../../../modules/html/HtmlEditor', () => ({
-  default: ({ files = [] }) => <output data-testid="html-files">{files.map(file => file.content).join('\n')}</output>,
+  default: ({ files = [] }) => (
+    <output data-testid="html-files">{files.map((file) => file.content).join('\n')}</output>
+  ),
 }))
 
 vi.mock('../../components/CollapsibleIframePreview', () => ({
@@ -95,11 +110,15 @@ vi.mock('../../components/CollapsibleIframePreview', () => ({
 }))
 
 vi.mock('../../../modules/scratch/ScratchWorkspace', () => ({
-  default: props => {
+  default: (props) => {
     mocks.scratchWorkspace(props)
     return <div>Scratch</div>
   },
   SPRITE_TYPES: ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot'],
+  // Real values (not mocked) — LessonTaskContent.jsx imports these directly to keep its
+  // own Instructions/Code threshold in lockstep with ScratchWorkspace's compact detection.
+  NARROW_BREAKPOINT: 1000,
+  NARROW_BREAKPOINT_HEIGHT: 600,
 }))
 
 vi.mock('../../components/QuizTask', () => ({
@@ -119,7 +138,12 @@ vi.mock('../../components/LiveActivityToast', () => ({
 }))
 
 vi.mock('../../../shared/SplitPane', () => ({
-  default: ({ left, right }) => <div>{left}{right}</div>,
+  default: ({ left, right }) => (
+    <div>
+      {left}
+      {right}
+    </div>
+  ),
 }))
 
 vi.mock('../../components/StudentEditorHeader', () => ({
@@ -130,6 +154,7 @@ describe('StudentView', () => {
   beforeEach(() => {
     mocks.scratchWorkspace.mockClear()
     mocks.buildIframeSrc.mockClear()
+    mocks.findSoloCompanion.mockReset().mockResolvedValue(null)
     mocks.fetchLessonById.mockResolvedValue({
       id: 'python-1-1',
       title: 'Python 1.1',
@@ -177,7 +202,7 @@ describe('StudentView', () => {
   })
 
   it('loads solo mode when a waiting live session exists for the lesson', async () => {
-    render(<StudentView lessonId="python-1-1" soloMode />)
+    render(<StudentView lessonId="python-1-1" forceSolo />)
 
     await waitFor(() => {
       expect(screen.getByText(/Python 1\.1 SOLO/)).toBeInTheDocument()
@@ -192,7 +217,7 @@ describe('StudentView', () => {
     render(
       <StudentView
         lessonId="python-1-1"
-        soloMode
+        forceSolo
         lesson={{
           id: 'python-1-1',
           title: 'Python 1.1',
@@ -248,7 +273,7 @@ describe('StudentView', () => {
     render(
       <StudentView
         lessonId="scratch-1-1"
-        soloMode
+        forceSolo
         lesson={{
           id: 'scratch-1-1',
           title: 'Scratch 1.1',
@@ -287,20 +312,40 @@ describe('StudentView', () => {
         students: {},
       },
       loading: false,
-      registerPresence: vi.fn(), joinSession: vi.fn(),
-      writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-      writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(),
-      setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+      registerPresence: vi.fn(),
+      joinSession: vi.fn(),
+      writeStudentRun: vi.fn(),
+      writeStudentCode: vi.fn(),
+      writeStudentFiles: vi.fn(),
+      writeStudentOutput: vi.fn(),
+      writeStudentInteraction: vi.fn(),
+      writeStudentPersonalSandbox: vi.fn(),
+      setTaskId: vi.fn(),
+      setTeacherLive: vi.fn(),
+      updateTeacherLive: vi.fn(),
+      removeStudent: vi.fn(),
     })
-    localStorage.setItem('headstart_composed-1_1_index.html_student-1', JSON.stringify({ content: '<h1>Saved HTML</h1>' }))
+    localStorage.setItem(
+      'headstart_composed-1_1_index.html_student-1',
+      JSON.stringify({ content: '<h1>Saved HTML</h1>' })
+    )
 
     render(
       <StudentView
         lessonId="composed-1"
         lesson={{
-          id: 'composed-1', title: 'Composed', type: 'composed',
+          id: 'composed-1',
+          title: 'Composed',
+          type: 'composed',
           tasks: [
-            { id: 1, title: 'HTML task', moduleType: 'html', starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter HTML</h1>' }] },
+            {
+              id: 1,
+              title: 'HTML task',
+              moduleType: 'html',
+              starterFiles: [
+                { name: 'index.html', type: 'html', content: '<h1>Starter HTML</h1>' },
+              ],
+            },
             { id: 2, title: 'Python task', moduleType: 'python', starterCode: 'print("current")' },
           ],
         }}
@@ -310,39 +355,1010 @@ describe('StudentView', () => {
     await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("current")'))
     await user.click(screen.getByRole('button', { name: 'HTML task' }))
 
-    await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Saved HTML</h1>'))
+    await waitFor(() =>
+      expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Saved HTML</h1>')
+    )
   })
 
   it('builds the HTML preview when teacher live switches composed modules', async () => {
     mocks.useSession.mockReturnValue({
       session: {
-        lessonId: 'composed-live', state: 'active', createdAt: 456, currentTaskId: 1, students: {},
+        lessonId: 'composed-live',
+        state: 'active',
+        createdAt: 456,
+        currentTaskId: 1,
+        students: {},
         teacherLive: {
-          active: true, source: 'teacher', taskId: 2, updatedAt: 789,
-          files: { 'index.html': '<h1>Teacher live</h1>' }, activeFile: 'index.html',
+          active: true,
+          source: 'teacher',
+          taskId: 2,
+          updatedAt: 789,
+          files: { 'index.html': '<h1>Teacher live</h1>' },
+          activeFile: 'index.html',
         },
       },
       loading: false,
-      registerPresence: vi.fn(), joinSession: vi.fn(),
-      writeStudentRun: vi.fn(), writeStudentCode: vi.fn(), writeStudentFiles: vi.fn(), writeStudentOutput: vi.fn(),
-      writeStudentInteraction: vi.fn(), writeStudentPersonalSandbox: vi.fn(),
-      setTaskId: vi.fn(), setTeacherLive: vi.fn(), updateTeacherLive: vi.fn(), removeStudent: vi.fn(),
+      registerPresence: vi.fn(),
+      joinSession: vi.fn(),
+      writeStudentRun: vi.fn(),
+      writeStudentCode: vi.fn(),
+      writeStudentFiles: vi.fn(),
+      writeStudentOutput: vi.fn(),
+      writeStudentInteraction: vi.fn(),
+      writeStudentPersonalSandbox: vi.fn(),
+      setTaskId: vi.fn(),
+      setTeacherLive: vi.fn(),
+      updateTeacherLive: vi.fn(),
+      removeStudent: vi.fn(),
     })
 
     render(
       <StudentView
         lessonId="composed-live"
         lesson={{
-          id: 'composed-live', title: 'Composed live', type: 'composed',
+          id: 'composed-live',
+          title: 'Composed live',
+          type: 'composed',
           tasks: [
             { id: 1, title: 'Python task', moduleType: 'python', starterCode: 'print("current")' },
-            { id: 2, title: 'HTML task', moduleType: 'html', starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter</h1>' }] },
+            {
+              id: 2,
+              title: 'HTML task',
+              moduleType: 'html',
+              starterFiles: [{ name: 'index.html', type: 'html', content: '<h1>Starter</h1>' }],
+            },
           ],
         }}
       />
     )
 
-    await waitFor(() => expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Teacher live</h1>'))
+    await waitFor(() =>
+      expect(screen.getByTestId('html-files')).toHaveTextContent('<h1>Teacher live</h1>')
+    )
     expect(mocks.buildIframeSrc).toHaveBeenCalled()
+  })
+
+  describe('teacher-live-code support reference', () => {
+    function mkSession(sessionOverrides = {}) {
+      mocks.useSession.mockReturnValue({
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': {} },
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        recordSupportStageReveal: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      })
+    }
+
+    it('shows the reference when this student is targeted and the broadcast matches the task', async () => {
+      mkSession({
+        students: { 'student-1': { teacherLiveReferenceVisible: true } },
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("live")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      expect(
+        await screen.findByLabelText("Teacher's live code stage reference")
+      ).toHaveTextContent('print("live")')
+    })
+
+    it('shows the reference to everyone when the whole-class flag is on', async () => {
+      mkSession({
+        teacherLiveReferenceVisibleToAll: true,
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("all")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      expect(
+        await screen.findByLabelText("Teacher's live code stage reference")
+      ).toHaveTextContent('print("all")')
+    })
+
+    it('does not show a reference for a different task than the one being presented', async () => {
+      mkSession({
+        students: { 'student-1': { teacherLiveReferenceVisible: true } },
+        teacherLiveReference: { active: true, taskId: 2, code: 'print("other task")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+    })
+
+    it('does not show a reference when neither the per-student nor whole-class flag is set', async () => {
+      mkSession({
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("unrequested")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+    })
+
+    it('is suppressed by a concurrent full "Go Live" force takeover (teacherLive is a separate node)', async () => {
+      mkSession({
+        students: { 'student-1': { teacherLiveReferenceVisible: true } },
+        teacherLiveReference: { active: true, taskId: 1, code: 'print("reference")' },
+        teacherLive: { active: true, source: 'teacher', taskId: 1, code: 'print("forced")' },
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("forced")'))
+      expect(screen.queryByLabelText("Teacher's live code stage reference")).toBeNull()
+    })
+  })
+
+  describe('teacher pane highlight/force', () => {
+    function mkScratchSession(sessionOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'scratch-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': {} },
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      }
+    }
+
+    const scratchLesson = {
+      id: 'scratch-1-1',
+      title: 'Scratch 1.1',
+      type: 'scratch',
+      tasks: [{ id: 1, title: 'Move', starterBlocks: null }],
+    }
+
+    it('passes a per-student highlight command down to ScratchWorkspace as highlightedPanes', async () => {
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          students: {
+            'student-1': {
+              teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 1 },
+            },
+          },
+        })
+      )
+
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+
+      // Checks the FIRST render, not the last: the mocked ScratchWorkspace never reports
+      // real visiblePanes back (it's a dumb prop-capturing stub), so LessonTaskContent's
+      // ['blocks','stage'] default-visible guess looks, after a later render, exactly like
+      // the student "already saw" a 'blocks' highlight — self-dismissing it client-side.
+      // That's a test-only artifact of the stub, not a real dismissal; the first render is
+      // what actually proves the session-to-prop wiring under test here.
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const firstProps = mocks.scratchWorkspace.mock.calls[0][0]
+      expect(firstProps.highlightedPanes).toEqual(['blocks'])
+    })
+
+    it('passes a whole-class force command down to ScratchWorkspace as forcedPane/forcedPaneToken', async () => {
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
+        })
+      )
+
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const firstProps = mocks.scratchWorkspace.mock.calls[0][0]
+      expect(firstProps.forcedPane).toBe('stage')
+      expect(firstProps.forcedPaneToken).toBe(5)
+    })
+
+    it('prefers whichever of the per-student or whole-class command was pushed more recently', async () => {
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          students: {
+            'student-1': {
+              teacherPaneCommand: { mode: 'highlight', panes: ['blocks'], pushedAt: 10 },
+            },
+          },
+          teacherClassPaneCommand: { mode: 'force', panes: ['stage'], pushedAt: 5 },
+        })
+      )
+
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const firstProps = mocks.scratchWorkspace.mock.calls[0][0]
+      expect(firstProps.highlightedPanes).toEqual(['blocks'])
+      expect(firstProps.forcedPane).toBeNull()
+    })
+  })
+
+  describe('fullscreen request', () => {
+    function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    afterEach(() => {
+      delete document.documentElement.requestFullscreen
+      delete document.exitFullscreen
+    })
+
+    it('shows a fullscreen modal prompt when the teacher requests it', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession({ fullscreenRequestedAt: 999 }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => {
+        expect(screen.getByText('Your teacher would like you to go fullscreen')).toBeInTheDocument()
+      })
+    })
+
+    it("calls requestFullscreen from the student's own click and dismisses the prompt", async () => {
+      const user = userEvent.setup()
+      const requestFullscreen = vi.fn().mockResolvedValue(undefined)
+      document.documentElement.requestFullscreen = requestFullscreen
+      mocks.useSession.mockReturnValue(mkLiveSession({ fullscreenRequestedAt: 999 }))
+      render(<StudentView lessonId="python-1-1" />)
+
+      const goFullscreenBtn = await screen.findByRole('button', { name: 'Go Fullscreen' })
+      await user.click(goFullscreenBtn)
+
+      expect(requestFullscreen).toHaveBeenCalledTimes(1)
+      expect(
+        screen.queryByText('Your teacher would like you to go fullscreen')
+      ).not.toBeInTheDocument()
+    })
+
+    it('dismisses the prompt without requesting fullscreen when Not now is clicked', async () => {
+      const user = userEvent.setup()
+      const requestFullscreen = vi.fn().mockResolvedValue(undefined)
+      document.documentElement.requestFullscreen = requestFullscreen
+      mocks.useSession.mockReturnValue(mkLiveSession({ fullscreenRequestedAt: 999 }))
+      render(<StudentView lessonId="python-1-1" />)
+
+      const notNowBtn = await screen.findByRole('button', { name: 'Not now' })
+      await user.click(notNowBtn)
+
+      expect(requestFullscreen).not.toHaveBeenCalled()
+      expect(
+        screen.queryByText('Your teacher would like you to go fullscreen')
+      ).not.toBeInTheDocument()
+    })
+
+    it('also shows the prompt for a per-student fullscreen request, not just the class-wide one', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ students: { 'student-1': { fullscreenRequestedAt: 999 } } })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => {
+        expect(screen.getByText('Your teacher would like you to go fullscreen')).toBeInTheDocument()
+      })
+    })
+
+    it('does not show the prompt for a fullscreen request targeted at a different student', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ students: { 'someone-else': { fullscreenRequestedAt: 999 } } })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      expect(
+        screen.queryByText('Your teacher would like you to go fullscreen')
+      ).not.toBeInTheDocument()
+    })
+
+    it('exits fullscreen automatically once the session ends', async () => {
+      const exitFullscreen = vi.fn().mockResolvedValue(undefined)
+      document.exitFullscreen = exitFullscreen
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        value: document.body,
+      })
+
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(exitFullscreen).toHaveBeenCalledTimes(1))
+
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
+    })
+  })
+
+  describe('session ended screen', () => {
+    // Mirrors the fullscreen describe block above: the phase machine only transitions
+    // to 'ended' from 'lesson'/'sandbox' (see useStudentPhase.js), so a session that
+    // starts already 'ended' resolves to 'choice' instead — mount live first, then
+    // rerender with state 'ended' to trigger the real transition.
+    function mkLiveSession(overrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...overrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      }
+    }
+
+    it('offers the linked solo challenge when the live session ends', async () => {
+      mocks.findSoloCompanion.mockResolvedValue({
+        id: 'python-1-1-solo',
+        title: 'Python Challenge',
+      })
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      const challengeBtn = await screen.findByRole('button', { name: 'Try the Solo Challenge' })
+      await user.click(challengeBtn)
+      expect(window.location.hash).toBe('#/lesson/python-1-1-solo?solo=true')
+
+      window.location.hash = originalHash
+    })
+
+    it('shows no solo challenge button when the lesson has no linked companion', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      await screen.findByText('Session ended')
+      expect(
+        screen.queryByRole('button', { name: /Try the Solo Challenge/i })
+      ).not.toBeInTheDocument()
+    })
+
+    it('offers Open Playground for the lesson type on the session ended screen', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(mkLiveSession({ state: 'ended' }))
+      rerender(<StudentView lessonId="python-1-1" />)
+
+      const playgroundBtn = await screen.findByRole('button', { name: 'Open Playground' })
+      await user.click(playgroundBtn)
+      expect(window.location.hash).toBe('#/playground/python')
+
+      window.location.hash = originalHash
+    })
+  })
+
+  describe('persistent Need Help control', () => {
+    function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+        requestHelp: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    it('is always available (not tied to a failed check) during a live lesson, and requests help for this student when clicked', async () => {
+      const user = userEvent.setup()
+      const requestHelp = vi.fn()
+      mocks.useSession.mockReturnValue(mkLiveSession({}, { requestHelp }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      const needHelpBtn = screen.getByRole('button', { name: /Need Help/i })
+      await user.click(needHelpBtn)
+
+      expect(requestHelp).toHaveBeenCalledWith('student-1')
+    })
+
+    it('shows a requested state and disables the button once the teacher has been notified', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ students: { 'student-1': { needsHelp: true } } })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      const needHelpBtn = screen.getByRole('button', { name: /Help requested/i })
+      expect(needHelpBtn).toBeDisabled()
+    })
+
+    it('does not appear in solo mode (no teacher on the other end to help)', async () => {
+      render(<StudentView lessonId="python-1-1" forceSolo />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      expect(screen.queryByRole('button', { name: /Need Help/i })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('explainer pseudo-task (Scratch solo)', () => {
+    const scratchLessonWithExplainers = {
+      id: 'scratch-1-1',
+      title: 'Scratch 1.1',
+      type: 'scratch',
+      tasks: [
+        {
+          id: 1,
+          title: 'Move the cat',
+          starterBlocks: null,
+          explainer: 'Drag a move block onto the stage.',
+        },
+        { id: 2, title: 'Turn the cat', starterBlocks: null, explainer: 'Now add a turn block.' },
+      ],
+    }
+
+    it('adds a pseudo-task to solo nav (debounced) after the explainer is manually collapsed, and removes it immediately on re-expand', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      // The nav count only bumps to 3 after the debounce window fires.
+      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), {
+        timeout: 2000,
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Show Explainer' }))
+
+      // Disappearance is not debounced.
+      await waitFor(() => expect(screen.getByText('Task 1 of 2')).toBeInTheDocument())
+    })
+
+    it('opens a read-only explainer slide via Previous, and Next returns to the task', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled(), {
+        timeout: 2000,
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Previous' }))
+
+      await waitFor(() => expect(screen.getByText('Information')).toBeInTheDocument())
+      expect(screen.queryByText('Scratch')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      await waitFor(() => expect(screen.getByText('Scratch')).toBeInTheDocument())
+      expect(screen.queryByText('Information')).not.toBeInTheDocument()
+    })
+
+    it('does not add a pseudo-task for non-Scratch lesson types even when solo and collapsed', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="python-1-1"
+          forceSolo
+          lesson={{
+            id: 'python-1-1',
+            title: 'Python 1.1',
+            type: 'python',
+            tasks: [
+              {
+                id: 1,
+                title: 'Task one',
+                starterCode: 'print("hi")',
+                explainer: 'Read this first.',
+              },
+              { id: 2, title: 'Task two', starterCode: 'print("bye")', explainer: 'Then this.' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      // Wait out the (Scratch-only) debounce window, then confirm the count never bumped.
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+    })
+
+    it('arriving at a new task with the explainer already collapsed auto-shows the explainer slide first', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      // Manually collapsing mid-task does not itself open the slide — still on task 1's code.
+      expect(screen.getByText('Scratch')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      // Task 2's explainer is still collapsed (the toggle carries across tasks), so arriving
+      // there shows the slide automatically instead of dropping straight into the code.
+      await waitFor(() => expect(screen.getByText('Information')).toBeInTheDocument())
+      expect(screen.queryByText('Scratch')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      await waitFor(() => expect(screen.getByText('Scratch')).toBeInTheDocument())
+      expect(screen.queryByText('Information')).not.toBeInTheDocument()
+    })
+
+    // Composed lessons carry a per-task module type (task.moduleType) rather than a
+    // single lesson.type — the gate must read the effective, per-task type, not the
+    // raw composed lesson.type (which is just 'composed').
+    it('adds a pseudo-task for a composed lesson task whose module type is scratch', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="composed-scratch-1"
+          forceSolo
+          lesson={{
+            id: 'composed-scratch-1',
+            title: 'Composed',
+            type: 'composed',
+            tasks: [
+              {
+                id: 1,
+                title: 'Move the cat',
+                moduleType: 'scratch',
+                starterBlocks: null,
+                explainer: 'Drag a move block.',
+              },
+              {
+                id: 2,
+                title: 'Turn the cat',
+                moduleType: 'scratch',
+                starterBlocks: null,
+                explainer: 'Now turn.',
+              },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      await waitFor(() => expect(screen.getByText('Task 2 of 3')).toBeInTheDocument(), {
+        timeout: 2000,
+      })
+    })
+
+    it('does not add a pseudo-task for a composed lesson task whose module type is not scratch', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="composed-python-1"
+          forceSolo
+          lesson={{
+            id: 'composed-python-1',
+            title: 'Composed',
+            type: 'composed',
+            tasks: [
+              {
+                id: 1,
+                title: 'Task one',
+                moduleType: 'python',
+                starterCode: 'print("hi")',
+                explainer: 'Read this first.',
+              },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      expect(screen.getByText('Task 1 of 1')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Collapse Explainer' }))
+
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      expect(screen.getByText('Task 1 of 1')).toBeInTheDocument()
+    })
+  })
+
+  describe('solo lesson completion screen', () => {
+    // A dedicated lessonId (distinct from the "python-1-1" id reused throughout this
+    // file) avoids cross-test localStorage bleed — saved code is keyed by lessonId +
+    // taskId + student id, and other tests write real code under "python-1-1"/task 1.
+    const twoTaskPythonLesson = {
+      id: 'python-solo-complete-1',
+      title: 'Python Solo Complete',
+      type: 'python',
+      tasks: [
+        { id: 1, title: 'First task', starterCode: 'print("one")' },
+        { id: 2, title: 'Second task', starterCode: 'print("two")' },
+      ],
+    }
+
+    it('shows a completion screen with a working Open Playground link after Next off the last task', async () => {
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("two")'))
+      // Reaching the last real task keeps the real count in the label (Next becomes
+      // reachable past it, but the completion screen isn't "counted" until you're on it).
+      expect(screen.getByText('Task 2 of 2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      expect(screen.getByText('Task 3 of 3')).toBeInTheDocument()
+
+      const playgroundBtn = screen.getByRole('button', { name: 'Open Playground' })
+      await user.click(playgroundBtn)
+      expect(window.location.hash).toBe('#/playground/python')
+
+      window.location.hash = originalHash
+    })
+
+    it('returns to the last task when Previous is clicked from the completion screen', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      await user.click(screen.getByRole('button', { name: 'Previous' }))
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("two")'))
+      expect(screen.queryByText('Lesson complete!')).not.toBeInTheDocument()
+    })
+
+    it('resolves Open Playground from the last code task, not a trailing non-code task, on a composed lesson', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="composed-solo-complete-1"
+          forceSolo
+          lesson={{
+            id: 'composed-solo-complete-1',
+            title: 'Composed Solo Complete',
+            type: 'composed',
+            tasks: [
+              { id: 1, title: 'Scratch task', moduleType: 'scratch', starterBlocks: null },
+              { id: 2, title: 'Python task', moduleType: 'python', starterCode: 'print("hi")' },
+              { id: 3, title: 'Recap', taskType: 'information' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("hi")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await waitFor(() => expect(screen.getByText('Recap')).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      // The lesson's last real task (Recap) has no module of its own — the button
+      // must fall back to the last *code* task (Python), not disappear or point at
+      // whatever the raw composed lesson's meaningless top-level `.type` resolves to.
+      const playgroundBtn = screen.getByRole('button', { name: 'Open Playground' })
+      const originalHash = window.location.hash
+      await user.click(playgroundBtn)
+      expect(window.location.hash).toBe('#/playground/python')
+      window.location.hash = originalHash
+    })
+
+    it('shows no Open Playground link for a lesson type without a playground', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="filesystem-1-1"
+          forceSolo
+          lesson={{
+            id: 'filesystem-1-1',
+            title: 'Filesystem 1.1',
+            type: 'filesystem',
+            tasks: [{ id: 1, title: 'Only task' }],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByText('Filesystem')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Open Playground' })).not.toBeInTheDocument()
+    })
+
+    it('shows no solo challenge link when the lesson has no linked companion', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+    })
+
+    it('offers a linked solo challenge and navigates straight into it in solo mode', async () => {
+      mocks.findSoloCompanion.mockResolvedValue({
+        id: 'python-solo-complete-1-solo',
+        title: 'Python Challenge',
+      })
+      const user = userEvent.setup()
+      const originalHash = window.location.hash
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      const challengeBtn = await screen.findByRole('button', { name: 'Try the Solo Challenge' })
+      await user.click(challengeBtn)
+      expect(window.location.hash).toBe('#/lesson/python-solo-complete-1-solo?solo=true')
+
+      window.location.hash = originalHash
+    })
+
+    it('goes back to the first task when "Go Through the Lesson Again" is clicked', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView lessonId="python-solo-complete-1" forceSolo lesson={twoTaskPythonLesson} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      await user.click(screen.getByRole('button', { name: 'Go Through the Lesson Again' }))
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      expect(screen.queryByText('Lesson complete!')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('python execution across task navigation', () => {
+    afterEach(() => {
+      runPython.mockReset()
+      stopPython.mockReset()
+    })
+
+    it('stops a still-running python execution when the student moves to another task', async () => {
+      const user = userEvent.setup()
+      let resolveRun
+      runPython.mockImplementation((code, { onOutput }) => {
+        onOutput('task one output\n')
+        return new Promise((resolve) => {
+          resolveRun = resolve
+        })
+      })
+      // Mirrors stopPython(): terminating the worker resolves the pending run as 'stopped'.
+      stopPython.mockImplementation(() => resolveRun?.({ status: 'stopped' }))
+
+      render(
+        <StudentView
+          lessonId="python-solo-nav-stop-1"
+          forceSolo
+          lesson={{
+            id: 'python-solo-nav-stop-1',
+            title: 'Python Solo Nav Stop',
+            type: 'python',
+            tasks: [
+              { id: 1, title: 'First task', starterCode: 'print("one")' },
+              { id: 2, title: 'Second task', starterCode: 'print("two")' },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+      // The workspace's Run button becomes a Stop button while execution is in flight.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByText(/task one output/)).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      expect(stopPython).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("two")'))
+      // Run must be usable again on the new task, not stuck showing Stop as "still running".
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+      // The first task's buffered output must not bleed into the task navigated to.
+      expect(screen.queryByText(/task one output/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('turtle execution', () => {
+    afterEach(() => {
+      runPython.mockReset()
+      stopPython.mockReset()
+    })
+
+    // Regression test: handleRun's python-vs-html branch in useStudentCodeState.js
+    // originally didn't include 'turtle', so Run fell through to the HTML iframe
+    // branch and crashed on mod.runtime.buildPreviewSrc (turtle has none — it runs
+    // through the shared Pyodide worker like python, not an iframe).
+    it('runs a turtle task through the Pyodide worker without falling into the HTML iframe branch', async () => {
+      const user = userEvent.setup()
+      runPython.mockImplementation(() =>
+        Promise.resolve({
+          status: 'success',
+          variables: {},
+          turtle: {
+            state: { x: 0, y: 0, heading: 0, penDown: true, color: 'black' },
+            commands: [{ type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' }],
+            calls: [{ name: 'forward', args: [100] }],
+          },
+        })
+      )
+
+      render(
+        <StudentView
+          lessonId="turtle-solo-1"
+          forceSolo
+          lesson={{
+            id: 'turtle-solo-1',
+            title: 'Turtle Solo',
+            type: 'turtle',
+            tasks: [{ id: 1, title: 'Draw a line', starterCode: 'turtle.forward(100)' }],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+
+      await waitFor(() => expect(runPython).toHaveBeenCalledTimes(1))
+      // The bug threw synchronously inside handleRun before this point was ever reached.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+    })
+
+    it('stops a still-running turtle execution without an unhandled rejection', async () => {
+      const user = userEvent.setup()
+      let resolveRun
+      runPython.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveRun = resolve
+          })
+      )
+      stopPython.mockImplementation(() => resolveRun?.({ status: 'stopped', variables: {} }))
+
+      render(
+        <StudentView
+          lessonId="turtle-solo-stop-1"
+          forceSolo
+          lesson={{
+            id: 'turtle-solo-stop-1',
+            title: 'Turtle Solo Stop',
+            type: 'turtle',
+            tasks: [{ id: 1, title: 'Draw a line', starterCode: 'turtle.forward(100)' }],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Stop' }))
+
+      expect(stopPython).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+    })
   })
 })

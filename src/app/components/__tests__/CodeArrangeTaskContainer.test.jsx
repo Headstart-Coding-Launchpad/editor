@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CodeArrangeTaskContainer from '../CodeArrangeTaskContainer'
 
@@ -32,6 +33,7 @@ function makeCs(overrides = {}) {
     saveTaskAuxFile: vi.fn(),
     handleCodeChange: vi.fn(),
     handleFileChange: vi.fn(),
+    handleCodeArrangeSlotsChange: vi.fn(),
     handleRun: vi.fn(),
     handleStop: vi.fn(),
     output: '',
@@ -147,7 +149,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.getByText('<h1>Hello</h1>')).toBeInTheDocument()
   })
 
-  it('mirrors displayOutput/displayCheckPassed rather than this browser\'s own cs.output while forced-live', async () => {
+  it("mirrors displayOutput/displayCheckPassed rather than this browser's own cs.output while forced-live", async () => {
     const cs = makeCs({ output: 'stale local output', checkPassed: true })
     const { container } = render(
       <CodeArrangeTaskContainer
@@ -172,7 +174,7 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.queryByText('stale local output')).not.toBeInTheDocument()
   })
 
-  it('still loads the arrangement from local storage for the student\'s own session (unchanged behaviour)', () => {
+  it("still loads the arrangement from local storage for the student's own session (unchanged behaviour)", () => {
     const cs = makeCs({
       readSavedTaskFile: vi.fn(() => JSON.stringify({ L1: 'L1', L2: 'L2' })),
     })
@@ -191,5 +193,231 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(cs.readSavedTaskFile).toHaveBeenCalledWith(1, '__code_arrange_slots__')
     expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
     expect(screen.getByText('print("done")')).toBeInTheDocument()
+  })
+
+  it('publishes the loaded arrangement via cs.handleCodeArrangeSlotsChange on mount, not just on later tile placements', () => {
+    // A teacher can already be watching (or start watching a moment later)
+    // when this task loads with a partially-filled arrangement restored from
+    // local storage — without this, currentCodeArrangeSlots stays stale/empty
+    // until the student's next tile move, so the modal shows a blank board
+    // that then jumps straight to wherever the student already was.
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => JSON.stringify({ L1: 'L1' })),
+    })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({ L1: 'L1' })
+  })
+
+  it('publishes an empty arrangement via cs.handleCodeArrangeSlotsChange on mount when there is nothing saved yet', () => {
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({})
+  })
+
+  it('mirrors each tile placement live via cs.handleCodeArrangeSlotsChange, not just on completion', async () => {
+    const user = userEvent.setup()
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    await user.click(screen.getByText('print("done")'))
+    await user.click(screen.getAllByText('Tap to place')[0])
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({ L1: 'L2' })
+    // Only one blank is filled — the assembled code isn't complete yet, so
+    // the normal code-sync path must not have fired.
+    expect(cs.handleCodeChange).not.toHaveBeenCalled()
+  })
+
+  it('never mirrors tile placements live for a teacher live mirror (read-only)', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={'for i in range(5): print(i * 2)\nprint("done")'}
+      />
+    )
+
+    expect(cs.handleCodeArrangeSlotsChange).not.toHaveBeenCalled()
+  })
+
+  it("shows an input box wired to handleInputSubmit while the student's own code is awaiting input()", () => {
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => null),
+      inputPrompt: '',
+      output: 'What is your name?',
+    })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(screen.getByPlaceholderText('Type your input…')).toBeInTheDocument()
+  })
+
+  it('prefers the live displayCodeArrangeSlots stream over deriving from displayCode while forced-live ("Go Live")', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={''}
+        displayCodeArrangeSlots={{ L1: 'L1' }}
+      />
+    )
+
+    expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
+    expect(screen.getByText('Empty line')).toBeInTheDocument()
+  })
+
+  it('falls back to deriving from displayCode when displayCodeArrangeSlots has not arrived yet', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={'for i in range(5): print(i * 2)\nprint("done")'}
+        displayCodeArrangeSlots={null}
+      />
+    )
+
+    expect(screen.queryAllByText('Empty line')).toHaveLength(0)
+    expect(screen.getByText('for i in range(5): print(i * 2)')).toBeInTheDocument()
+    expect(screen.getByText('print("done")')).toBeInTheDocument()
+  })
+
+  it("wires onDragCursor to cs.handleCodeArrangeDragCursor for the student's own interactive session", async () => {
+    const user = userEvent.setup()
+    const handleCodeArrangeDragCursor = vi.fn()
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null), handleCodeArrangeDragCursor })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    await user.click(screen.getByText('print("done")'))
+    // Tap-to-place never opens a native drag session, so no drag-cursor
+    // payload is expected here — this just proves the wiring doesn't throw
+    // when cs.handleCodeArrangeDragCursor is present but unused for a tap.
+    expect(handleCodeArrangeDragCursor).not.toHaveBeenCalled()
+  })
+
+  it('renders the live drag mirror (dot + ghost tile) from displayCodeArrangeCursor for a teacher live mirror', () => {
+    const cs = makeCs()
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={''}
+        displayCodeArrangeSlots={{}}
+        displayCodeArrangeCursor={{ tileId: 'L1', x: 0.5, y: 0.5, at: Date.now() }}
+      />
+    )
+
+    expect(screen.getByTestId('code-arrange-drag-dot')).toBeInTheDocument()
+    expect(screen.getByTestId('code-arrange-drag-ghost')).toHaveTextContent(
+      'for i in range(5): print(i * 2)'
+    )
+  })
+
+  it("never shows the live drag mirror for the student's own interactive session", () => {
+    const cs = makeCs({ readSavedTaskFile: vi.fn(() => null) })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(screen.queryByTestId('code-arrange-drag-dot')).not.toBeInTheDocument()
+  })
+
+  it("never shows an input box for a teacher live mirror, even if this browser's own cs.inputPrompt happens to be set", () => {
+    const cs = makeCs({ inputPrompt: '' })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode={'for i in range(5): print(i * 2)\nprint("done")'}
+      />
+    )
+
+    expect(screen.queryByPlaceholderText('Type your input…')).not.toBeInTheDocument()
   })
 })

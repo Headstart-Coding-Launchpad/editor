@@ -59,6 +59,10 @@ const BlockCodeContext = React.createContext(false)
 const MarkdownScaleContext = React.createContext(1)
 const MarkdownInheritColorContext = React.createContext(false)
 const MarkdownImageMaxHeightContext = React.createContext('min(420px, 60vh)')
+// 'stacked' (default) keeps images full-width in document flow; 'float' lets an image sit
+// beside its surrounding paragraph text (used by information tasks) instead of always
+// breaking onto its own line.
+const MarkdownImageLayoutContext = React.createContext('stacked')
 const INLINE_CODE_LINE_BREAK = '@@HSC_INLINE_CODE_LINE_BREAK@@'
 
 // InlineMarkdown only allows inline elements (see allowedElements below) — headings,
@@ -69,25 +73,28 @@ const INLINE_CODE_LINE_BREAK = '@@HSC_INLINE_CODE_LINE_BREAK@@'
 // character is consumed as syntax and disappears instead of showing as text. Escape
 // leading block-marker syntax per line so these render as plain text.
 function escapeInlineBlockSyntax(text) {
-  return String(text ?? '').split('\n').map(line => {
-    const [, leading, rest] = line.match(/^( {0,3})(.*)$/s)
+  return String(text ?? '')
+    .split('\n')
+    .map((line) => {
+      const [, leading, rest] = line.match(/^( {0,3})(.*)$/s)
 
-    // Thematic break: 3+ of the same -, _, or * (optionally space-separated)
-    if (/^([-*_])( *\1){2,}$/.test(rest)) {
-      return leading + rest.replace(/[-*_]/g, m => `\\${m}`)
-    }
-    // ATX heading: 1-6 '#' followed by a space or end of line
-    if (/^#{1,6}(\s|$)/.test(rest)) return leading + '\\' + rest
-    // Blockquote marker
-    if (rest.startsWith('>')) return leading + '\\' + rest
-    // Bullet list marker: -, +, or * followed by a space or end of line
-    if (/^[-+*](\s|$)/.test(rest)) return leading + '\\' + rest
-    // Ordered list marker: digits followed by '.' or ')' then a space or end of line
-    const ordered = rest.match(/^(\d{1,9})([.)])(\s|$)/)
-    if (ordered) return leading + ordered[1] + '\\' + rest.slice(ordered[1].length)
+      // Thematic break: 3+ of the same -, _, or * (optionally space-separated)
+      if (/^([-*_])( *\1){2,}$/.test(rest)) {
+        return leading + rest.replace(/[-*_]/g, (m) => `\\${m}`)
+      }
+      // ATX heading: 1-6 '#' followed by a space or end of line
+      if (/^#{1,6}(\s|$)/.test(rest)) return leading + '\\' + rest
+      // Blockquote marker
+      if (rest.startsWith('>')) return leading + '\\' + rest
+      // Bullet list marker: -, +, or * followed by a space or end of line
+      if (/^[-+*](\s|$)/.test(rest)) return leading + '\\' + rest
+      // Ordered list marker: digits followed by '.' or ')' then a space or end of line
+      const ordered = rest.match(/^(\d{1,9})([.)])(\s|$)/)
+      if (ordered) return leading + ordered[1] + '\\' + rest.slice(ordered[1].length)
 
-    return line
-  }).join('\n')
+      return line
+    })
+    .join('\n')
 }
 
 function preserveInlineCodeLineBreaks(text) {
@@ -114,7 +121,10 @@ function preserveInlineCodeLineBreaks(text) {
     }
 
     const rawCode = source.slice(i + runLength, close).replace(/\r\n?/g, '\n')
-    const code = (runLength >= 3 ? rawCode.replace(/^\n+|\n+$/g, '') : rawCode).replace(/\n/g, INLINE_CODE_LINE_BREAK)
+    const code = (runLength >= 3 ? rawCode.replace(/^\n+|\n+$/g, '') : rawCode).replace(
+      /\n/g,
+      INLINE_CODE_LINE_BREAK
+    )
     output += marker + code + marker
     i = close + runLength
   }
@@ -123,7 +133,8 @@ function preserveInlineCodeLineBreaks(text) {
 }
 
 export function InlineMarkdown({ content, topicType = null }) {
-  const topicEnabled = String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
+  const topicEnabled =
+    String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics } = useTopicLibrary(topicType, topicEnabled)
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
@@ -131,14 +142,14 @@ export function InlineMarkdown({ content, topicType = null }) {
     ...components,
     a({ href, children }) {
       const topicId = parseTopicHref(href)
-      const topic = topicId && topics.find(item => item.id === topicId)
+      const topic = topicId && topics.find((item) => item.id === topicId)
       if (!topic) return <span>{children}</span>
       return (
         <TopicReference
           topic={topic}
           label={children}
           renderSummary={InlineMarkdown}
-          onOpen={id => {
+          onOpen={(id) => {
             setSelectedTopicId(id)
             setLibraryOpen(true)
           }}
@@ -155,7 +166,9 @@ export function InlineMarkdown({ content, topicType = null }) {
         allowedElements={['strong', 'em', 'code', 'br', 'span', 'a']}
         unwrapDisallowed
       >
-        {escapeInlineBlockSyntax(preserveInlineCodeLineBreaks(topicEnabled ? expandTopicLinks(content, topics) : content))}
+        {escapeInlineBlockSyntax(
+          preserveInlineCodeLineBreaks(topicEnabled ? expandTopicLinks(content, topics) : content)
+        )}
       </ReactMarkdown>
       {libraryOpen && (
         <TopicLibraryDialog
@@ -265,114 +278,125 @@ const CALLOUT_VARIANTS = {
 const CALLOUT_MARKER_PATTERN = /^\s*>?:(warning|error|success|info)\b\s*/i
 
 function getTextFromChildren(children) {
-  return React.Children.toArray(children).map(child => {
-    if (typeof child === 'string' || typeof child === 'number') return String(child)
-    if (React.isValidElement(child)) return getTextFromChildren(child.props.children)
-    return ''
-  }).join('')
+  return React.Children.toArray(children)
+    .map((child) => {
+      if (typeof child === 'string' || typeof child === 'number') return String(child)
+      if (React.isValidElement(child)) return getTextFromChildren(child.props.children)
+      return ''
+    })
+    .join('')
 }
 
 function removeCalloutMarker(children) {
   let removed = false
-  return React.Children.toArray(children).map(child => {
-    if (removed || !React.isValidElement(child)) return child
-    const text = getTextFromChildren(child.props.children)
-    const match = text.match(CALLOUT_MARKER_PATTERN)
-    if (!match) return child
+  return React.Children.toArray(children)
+    .map((child) => {
+      if (removed || !React.isValidElement(child)) return child
+      const text = getTextFromChildren(child.props.children)
+      const match = text.match(CALLOUT_MARKER_PATTERN)
+      if (!match) return child
 
-    removed = true
-    const nextChildren = React.Children.toArray(child.props.children).map((nested, index) => {
-      if (index !== 0 || typeof nested !== 'string') return nested
-      return nested.replace(CALLOUT_MARKER_PATTERN, '')
-    }).filter(nested => nested !== '')
+      removed = true
+      const nextChildren = React.Children.toArray(child.props.children)
+        .map((nested, index) => {
+          if (index !== 0 || typeof nested !== 'string') return nested
+          return nested.replace(CALLOUT_MARKER_PATTERN, '')
+        })
+        .filter((nested) => nested !== '')
 
-    if (!nextChildren.length) return null
-    return React.cloneElement(child, child.props, nextChildren)
-  }).filter(Boolean)
+      if (!nextChildren.length) return null
+      return React.cloneElement(child, child.props, nextChildren)
+    })
+    .filter(Boolean)
 }
 
-const components = {
-  h1({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return <h1 style={{ ...headingBase, color, fontSize: `${1.45 * scale}rem`, margin: '4px 0 10px' }}>{children}</h1>
-  },
-  h2({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return <h2 style={{ ...headingBase, color, fontSize: `${1.22 * scale}rem`, margin: '4px 0 8px' }}>{children}</h2>
-  },
-  h3({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return <h3 style={{ ...headingBase, color, fontSize: `${1.05 * scale}rem`, margin: '8px 0 6px' }}>{children}</h3>
-  },
-  h4({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary-dark)'
-    return <h4 style={{ ...headingBase, color, fontSize: `${0.95 * scale}rem`, margin: '8px 0 4px' }}>{children}</h4>
-  },
-  code({ node, className, children, ...props }) {
-    const isInBlock = React.useContext(BlockCodeContext)
-    const isInline = !isInBlock && !className
-    const text = String(children).replaceAll(INLINE_CODE_LINE_BREAK, '\n')
-    const multiline = text.includes('\n')
-    if (isInline) {
-      if (text.startsWith('scratch:')) {
-        return <InlineScratchBlock text={text.slice('scratch:'.length).trim()} />
-      }
-      const langMatch = text.match(/^(python|html|css|js):(.*)$/s)
-      if (langMatch) {
-        return <InlineHighlightedCode lang={langMatch[1]} code={langMatch[2]} />
-      }
-      const inheritColor = React.useContext(MarkdownInheritColorContext)
-      return (
-        <code
-          style={{
-            ...CODE_FONT_STYLE,
-            fontSize: '0.88em',
-            background: inheritColor ? 'rgba(0,0,0,0.2)' : '#f0eafa',
-            color: inheritColor ? 'inherit' : '#4e1aa3',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            display: multiline ? 'inline-block' : undefined,
-            whiteSpace: 'pre-wrap',
-            textAlign: 'left',
-          }}
-          {...props}
-        >
-          {text}
-        </code>
-      )
+// react-markdown renders these through the `components` map below, so they really are
+// components - but they have to be written as such (capitalised, declared outside the
+// map) for the hooks they call to be visible to React and its lint rules.
+function useHeadingStyle(sizeRem, margin) {
+  const scale = React.useContext(MarkdownScaleContext)
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
+  return {
+    ...headingBase,
+    color: inheritColor ? 'inherit' : 'var(--colour-primary-dark)',
+    fontSize: `${sizeRem * scale}rem`,
+    margin,
+  }
+}
+
+function Heading1({ children }) {
+  return <h1 style={useHeadingStyle(1.45, '4px 0 10px')}>{children}</h1>
+}
+
+function Heading2({ children }) {
+  return <h2 style={useHeadingStyle(1.22, '4px 0 8px')}>{children}</h2>
+}
+
+function Heading3({ children }) {
+  return <h3 style={useHeadingStyle(1.05, '8px 0 6px')}>{children}</h3>
+}
+
+function Heading4({ children }) {
+  return <h4 style={useHeadingStyle(0.95, '8px 0 4px')}>{children}</h4>
+}
+
+function MarkdownCode({ node: _node, className, children, ...props }) {
+  const isInBlock = React.useContext(BlockCodeContext)
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
+  const isInline = !isInBlock && !className
+  const text = String(children).replaceAll(INLINE_CODE_LINE_BREAK, '\n')
+  const multiline = text.includes('\n')
+  if (isInline) {
+    if (text.startsWith('scratch:')) {
+      return <InlineScratchBlock text={text.slice('scratch:'.length).trim()} />
     }
-    if (className?.includes('language-scratch')) {
-      return <ScratchBlocks code={String(children).replace(/\n$/, '')} />
+    const langMatch = text.match(/^(python|html|css|js):(.*)$/s)
+    if (langMatch) {
+      return <InlineHighlightedCode lang={langMatch[1]} code={langMatch[2]} />
     }
     return (
-      <code className={className} style={CODE_FONT_STYLE} {...props}>
-        {children}
+      <code
+        style={{
+          ...CODE_FONT_STYLE,
+          fontSize: '0.88em',
+          background: inheritColor ? 'rgba(0,0,0,0.2)' : '#f0eafa',
+          color: inheritColor ? 'inherit' : '#4e1aa3',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          display: multiline ? 'inline-block' : undefined,
+          whiteSpace: 'pre-wrap',
+          textAlign: 'left',
+        }}
+        {...props}
+      >
+        {text}
       </code>
     )
-  },
-  pre({ children }) {
-    const scale = React.useContext(MarkdownScaleContext)
-    // Pass through without pre styling when the child is a scratch block
-    const child = React.Children.toArray(children)[0]
-    if (child?.props?.className?.includes('language-scratch')) {
-      return <>{children}</>
-    }
-    const className = child?.props?.className
-    const isPlainCodeBlock = child?.type === 'code' && !className
-    const plainCode = isPlainCodeBlock ? String(child.props.children ?? '') : null
-    if (plainCode && looksLikeScratchBlocks(plainCode)) {
-      return <ScratchBlocks code={plainCode.replace(/\n$/, '')} />
-    }
-    return (
-      <BlockCodeContext.Provider value={true}>
+  }
+  if (className?.includes('language-scratch')) {
+    return <ScratchBlocks code={String(children).replace(/\n$/, '')} />
+  }
+  return (
+    <code className={className} style={CODE_FONT_STYLE} {...props}>
+      {children}
+    </code>
+  )
+}
+function MarkdownPre({ children }) {
+  const scale = React.useContext(MarkdownScaleContext)
+  // Pass through without pre styling when the child is a scratch block
+  const child = React.Children.toArray(children)[0]
+  if (child?.props?.className?.includes('language-scratch')) {
+    return <>{children}</>
+  }
+  const className = child?.props?.className
+  const isPlainCodeBlock = child?.type === 'code' && !className
+  const plainCode = isPlainCodeBlock ? String(child.props.children ?? '') : null
+  if (plainCode && looksLikeScratchBlocks(plainCode)) {
+    return <ScratchBlocks code={plainCode.replace(/\n$/, '')} />
+  }
+  return (
+    <BlockCodeContext.Provider value={true}>
       <pre
         style={{
           background: '#fafafa',
@@ -386,17 +410,47 @@ const components = {
           lineHeight: 1.6,
         }}
       >
-        {isPlainCodeBlock
-          ? (
-            <code style={CODE_FONT_STYLE}>
-              {plainCode}
-            </code>
-          )
-          : children}
+        {isPlainCodeBlock ? <code style={CODE_FONT_STYLE}>{plainCode}</code> : children}
       </pre>
-      </BlockCodeContext.Provider>
-    )
-  },
+    </BlockCodeContext.Provider>
+  )
+}
+function MarkdownStrong({ children }) {
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
+  const color = inheritColor ? 'inherit' : 'var(--colour-primary)'
+  return <strong style={{ fontWeight: 700, color }}>{children}</strong>
+}
+function MarkdownImage({ src, alt }) {
+  const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
+  const imageLayout = React.useContext(MarkdownImageLayoutContext)
+  const floating = imageLayout === 'float'
+  return (
+    <img
+      src={src}
+      alt={alt ?? ''}
+      className={floating ? 'markdown-img--float' : undefined}
+      style={{
+        maxWidth: '100%',
+        maxHeight: imageMaxHeight,
+        height: 'auto',
+        objectFit: 'contain',
+        borderRadius: 6,
+        // Float layout's positioning/spacing/width comes from the .markdown-img--float
+        // CSS class instead (it also needs a narrow-screen media query, which an inline
+        // style can't express).
+        ...(floating ? {} : { display: 'block', margin: '10px 0' }),
+      }}
+    />
+  )
+}
+
+const components = {
+  h1: Heading1,
+  h2: Heading2,
+  h3: Heading3,
+  h4: Heading4,
+  code: MarkdownCode,
+  pre: MarkdownPre,
   p({ children }) {
     return <p style={{ margin: '6px 0', lineHeight: 1.65 }}>{children}</p>
   },
@@ -431,49 +485,41 @@ const components = {
       </blockquote>
     )
   },
-  strong({ children }) {
-    const inheritColor = React.useContext(MarkdownInheritColorContext)
-    const color = inheritColor ? 'inherit' : 'var(--colour-primary)'
-    return <strong style={{ fontWeight: 700, color }}>{children}</strong>
-  },
   em({ children }) {
     return <em>{children}</em>
   },
-  img({ src, alt }) {
-    const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
-    return (
-      <img
-        src={src}
-        alt={alt ?? ''}
-        style={{
-          maxWidth: '100%',
-          maxHeight: imageMaxHeight,
-          height: 'auto',
-          objectFit: 'contain',
-          borderRadius: 6,
-          display: 'block',
-          margin: '10px 0',
-        }}
-      />
-    )
-  },
+  strong: MarkdownStrong,
+  img: MarkdownImage,
 }
 
-export function MarkdownRenderer({ content, title, style, textScale = 1, inheritColor = false, topicType = null, showLibrary = false, onTopicOpen, onTopicClose, openTopicId, disableCopy = false, imageMaxHeight = 'min(420px, 60vh)' }) {
-  const topicEnabled = showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
+export function MarkdownRenderer({
+  content,
+  style,
+  textScale = 1,
+  inheritColor = false,
+  topicType = null,
+  showLibrary = false,
+  onTopicOpen,
+  onTopicClose,
+  openTopicId,
+  disableCopy = false,
+  imageMaxHeight = 'min(420px, 60vh)',
+  imageLayout = 'stacked',
+}) {
+  const topicEnabled =
+    showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics, loading } = useTopicLibrary(topicType, topicEnabled)
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
   const blocks = parseMarkdownTables(topicEnabled ? expandTopicLinks(content, topics) : content)
-  const heading = String(title ?? '').trim()
 
   React.useEffect(() => {
     if (!openTopicId) return
     setSelectedTopicId(openTopicId)
     setLibraryOpen(true)
     onTopicOpen?.(openTopicId)
-  // openTopicId is the external trigger; only re-run when it changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // openTopicId is the external trigger; only re-run when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openTopicId])
 
   function handleTopicLinkOpen(id) {
@@ -492,7 +538,7 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
     a({ href, children }) {
       const topicId = parseTopicHref(href)
       if (!topicId) return <a href={href}>{children}</a>
-      const topic = topics.find(item => item.id === topicId)
+      const topic = topics.find((item) => item.id === topicId)
       if (!topic) return <span>{children}</span>
       return (
         <TopicReference
@@ -507,80 +553,107 @@ export function MarkdownRenderer({ content, title, style, textScale = 1, inherit
 
   return (
     <MarkdownInheritColorContext.Provider value={inheritColor}>
-    <MarkdownImageMaxHeightContext.Provider value={imageMaxHeight}>
-    <MarkdownScaleContext.Provider value={textScale}>
-      <div
-        style={{
-          fontFamily: "'Quicksand', sans-serif",
-          color: inheritColor ? 'inherit' : 'var(--colour-text)',
-          fontSize: `${15 * textScale}px`,
-          lineHeight: 1.65,
-          ...(disableCopy ? {
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-            MozUserSelect: 'none',
-          } : {}),
-          ...style,
-        }}
-        {...(disableCopy ? {
-          onCopy: e => e.preventDefault(),
-          onCut: e => e.preventDefault(),
-          onDragStart: e => e.preventDefault(),
-          onContextMenu: e => e.preventDefault(),
-        } : {})}
-      >
-        {showLibrary && (
-          <button
-            type="button"
-            onClick={() => setLibraryOpen(true)}
-            style={{
-              float: 'right',
-              margin: '0 0 8px 10px',
-              padding: '5px 10px',
-              border: '1px solid #ded1f3',
-              borderRadius: 999,
-              background: '#f7f2ff',
-              color: 'var(--colour-primary)',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 700,
-              fontSize: '0.78rem',
-            }}
-          >
-            {loading ? 'Loading library...' : 'Topic library'}
-          </button>
-        )}
-        {blocks.map((block, i) => block.type === 'table'
-          ? <MarkdownTable key={i} headers={block.headers} align={block.align} rows={block.rows} />
-          : (
-            <ReactMarkdown
-               key={i}
-               remarkPlugins={[remarkBreaks]}
-               rehypePlugins={[rehypeHighlight]}
-               components={markdownComponents}
-               allowedElements={[
-                 'h1', 'h2', 'h3', 'h4',
-                 'p', 'strong', 'em', 'code', 'pre', 'br', 'span',
-                 'ul', 'ol', 'li', 'blockquote', 'img', 'a',
-               ]}
-               unwrapDisallowed
-             >
-              {block.content}
-            </ReactMarkdown>
-             ))}
-      </div>
-      {libraryOpen && (
-        <TopicLibraryDialog
-          topics={topics}
-          initialTopicId={selectedTopicId}
-          renderMarkdown={MarkdownRenderer}
-          topicType={topicType}
-          onClose={handleDialogClose}
-          onTopicSelect={onTopicOpen}
-        />
-      )}
-    </MarkdownScaleContext.Provider>
-    </MarkdownImageMaxHeightContext.Provider>
+      <MarkdownImageMaxHeightContext.Provider value={imageMaxHeight}>
+        <MarkdownImageLayoutContext.Provider value={imageLayout}>
+          <MarkdownScaleContext.Provider value={textScale}>
+            <div
+              style={{
+                fontFamily: "'Quicksand', sans-serif",
+                color: inheritColor ? 'inherit' : 'var(--colour-text)',
+                fontSize: `${15 * textScale}px`,
+                lineHeight: 1.65,
+                ...(disableCopy
+                  ? {
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      MozUserSelect: 'none',
+                    }
+                  : {}),
+                ...style,
+              }}
+              {...(disableCopy
+                ? {
+                    onCopy: (e) => e.preventDefault(),
+                    onCut: (e) => e.preventDefault(),
+                    onDragStart: (e) => e.preventDefault(),
+                    onContextMenu: (e) => e.preventDefault(),
+                  }
+                : {})}
+            >
+              {showLibrary && (
+                <button
+                  type="button"
+                  onClick={() => setLibraryOpen(true)}
+                  style={{
+                    float: 'right',
+                    margin: '0 0 8px 10px',
+                    padding: '5px 10px',
+                    border: '1px solid #ded1f3',
+                    borderRadius: 999,
+                    background: '#f7f2ff',
+                    color: 'var(--colour-primary)',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                  }}
+                >
+                  {loading ? 'Loading library...' : 'Topic library'}
+                </button>
+              )}
+              {blocks.map((block, i) =>
+                block.type === 'table' ? (
+                  <MarkdownTable
+                    key={i}
+                    headers={block.headers}
+                    align={block.align}
+                    rows={block.rows}
+                  />
+                ) : (
+                  <ReactMarkdown
+                    key={i}
+                    remarkPlugins={[remarkBreaks]}
+                    rehypePlugins={[rehypeHighlight]}
+                    components={markdownComponents}
+                    allowedElements={[
+                      'h1',
+                      'h2',
+                      'h3',
+                      'h4',
+                      'p',
+                      'strong',
+                      'em',
+                      'code',
+                      'pre',
+                      'br',
+                      'span',
+                      'ul',
+                      'ol',
+                      'li',
+                      'blockquote',
+                      'img',
+                      'a',
+                    ]}
+                    unwrapDisallowed
+                  >
+                    {block.content}
+                  </ReactMarkdown>
+                )
+              )}
+            </div>
+            {libraryOpen && (
+              <TopicLibraryDialog
+                topics={topics}
+                initialTopicId={selectedTopicId}
+                renderMarkdown={MarkdownRenderer}
+                topicType={topicType}
+                onClose={handleDialogClose}
+                onTopicSelect={onTopicOpen}
+              />
+            )}
+          </MarkdownScaleContext.Provider>
+        </MarkdownImageLayoutContext.Provider>
+      </MarkdownImageMaxHeightContext.Provider>
     </MarkdownInheritColorContext.Provider>
   )
 }

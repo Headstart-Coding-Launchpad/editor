@@ -1,5 +1,6 @@
 import yaml from 'js-yaml'
-import { flattenTasks, getTaskPriority } from './taskUtils'
+import { flattenTasks, getTaskPriority } from './taskUtils.js'
+import { answerTextMatches, parseQuizAnswerState } from './quizAnswers.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -23,30 +24,15 @@ function getTypeFields(task) {
 }
 
 function isNotApplicableTask(task) {
-  return task?.taskType === 'quiz' && (
-    task.quizType === 'confidence'
-    || (task.quizType === 'short_answer' && task.check == null)
+  return (
+    task?.taskType === 'quiz' &&
+    (task.quizType === 'confidence' || (task.quizType === 'short_answer' && task.check == null))
   )
 }
 
-function parseAnswerState(value) {
-  if (value && typeof value === 'object' && !Array.isArray(value)) return value
-  if (typeof value === 'string' && value) {
-    try {
-      const parsed = JSON.parse(value)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
-    } catch {}
-  }
-  return {}
-}
-
-function textMatches(value, expected) {
-  return String(value ?? '').trim().toLowerCase() === String(expected ?? '').trim().toLowerCase()
-}
-
 function normalizeFillBlankSubmission(task, submission) {
-  const state = parseAnswerState(submission)
-  const hasDetailedShape = (task?.blanks ?? []).some(blank => {
+  const state = parseQuizAnswerState(submission)
+  const hasDetailedShape = (task?.blanks ?? []).some((blank) => {
     const entry = state[blank.id]
     return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
   })
@@ -54,40 +40,52 @@ function normalizeFillBlankSubmission(task, submission) {
 
   const mode = task?.mode ?? 'drag'
   const tiles = [
-    ...(task?.blanks ?? []).map(blank => ({ id: blank.id, text: blank.answer })),
-    ...(task?.distractors ?? []).map(distractor => ({ id: distractor.id, text: distractor.text })),
+    ...(task?.blanks ?? []).map((blank) => ({ id: blank.id, text: blank.answer })),
+    ...(task?.distractors ?? []).map((distractor) => ({
+      id: distractor.id,
+      text: distractor.text,
+    })),
   ]
-  return Object.fromEntries((task?.blanks ?? []).map(blank => {
-    const rawValue = state[blank.id]
-    const value = mode === 'drag'
-      ? (tiles.find(tile => tile.id === rawValue)?.text ?? rawValue ?? '')
-      : (rawValue ?? '')
-    const expected = blank.answer ?? ''
-    const correct = mode === 'drag'
-      ? String(value ?? '') === String(expected)
-      : textMatches(value, expected)
-    return [blank.id, { value, expected, correct }]
-  }))
+  return Object.fromEntries(
+    (task?.blanks ?? []).map((blank) => {
+      const rawValue = state[blank.id]
+      const value =
+        mode === 'drag'
+          ? (tiles.find((tile) => tile.id === rawValue)?.text ?? rawValue ?? '')
+          : (rawValue ?? '')
+      const expected = blank.answer ?? ''
+      const correct =
+        mode === 'drag'
+          ? String(value ?? '') === String(expected)
+          : answerTextMatches(value, expected)
+      return [blank.id, { value, expected, correct }]
+    })
+  )
 }
 
 function normalizeMatchSubmission(task, submission) {
-  const state = parseAnswerState(submission)
-  const hasDetailedShape = (task?.pairs ?? []).some(pair => {
+  const state = parseQuizAnswerState(submission)
+  const hasDetailedShape = (task?.pairs ?? []).some((pair) => {
     const entry = state[pair.id]
     return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
   })
   if (hasDetailedShape) return state
 
-  return Object.fromEntries((task?.pairs ?? []).map(pair => {
-    const placedId = state[pair.id]
-    const placedPair = (task?.pairs ?? []).find(candidate => candidate.id === placedId)
-    return [pair.id, {
-      prompt: pair.prompt ?? '',
-      value: placedPair?.answer ?? placedId ?? '',
-      expected: pair.answer ?? '',
-      correct: placedId === pair.id,
-    }]
-  }))
+  return Object.fromEntries(
+    (task?.pairs ?? []).map((pair) => {
+      const placedId = state[pair.id]
+      const placedPair = (task?.pairs ?? []).find((candidate) => candidate.id === placedId)
+      return [
+        pair.id,
+        {
+          prompt: pair.prompt ?? '',
+          value: placedPair?.answer ?? placedId ?? '',
+          expected: pair.answer ?? '',
+          correct: placedId === pair.id,
+        },
+      ]
+    })
+  )
 }
 
 function normalizeConfidenceSubmission(submission) {
@@ -95,12 +93,58 @@ function normalizeConfidenceSubmission(submission) {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : submission
 }
 
+// logAttempt now always writes submission as a JSON-safe string (see useSession.js), so an
+// object-shaped submission (Scratch workspace state, a filesystem tree, an HTML file map)
+// round-trips through the attempt log as text. Parse it back to its original shape here so
+// the report reads as structured data rather than an escaped JSON blob; plain code strings
+// (Python, etc.) simply fail to parse as an object and are left as-is.
+function normalizeCodeSubmission(submission) {
+  if (typeof submission !== 'string' || !submission) return submission ?? null
+  try {
+    const parsed = JSON.parse(submission)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
+  } catch {}
+  return submission
+}
+
 function normalizeSubmission(task, submission) {
-  if (task?.taskType !== 'quiz') return submission ?? null
+  if (task?.taskType !== 'quiz') return normalizeCodeSubmission(submission)
   if (task.quizType === 'fill_blank') return normalizeFillBlankSubmission(task, submission)
   if (task.quizType === 'match') return normalizeMatchSubmission(task, submission)
   if (task.quizType === 'confidence') return normalizeConfidenceSubmission(submission)
   return submission ?? null
+}
+
+// Inverse of normalizeCodeSubmission, applied right at the Firestore write
+// boundary (see saveSessionReport). A submitted Scratch workspace state can
+// serialize with an array nested directly inside another array (Blockly's
+// mutator/extraState shape for some block types) — a shape Firestore rejects
+// outright, failing the whole report write. Re-stringifying every
+// object-shaped submission here undoes normalizeCodeSubmission's parse and
+// sidesteps that, mirroring the starterBlocks/completeBlocks codec in
+// lessonBlocksCodec.js. Reports are never read back into objects for further
+// processing (TeacherReportModal renders a string submission as-is), so this
+// is safe to apply unconditionally.
+function encodeSubmissionForFirestore(submission) {
+  if (submission && typeof submission === 'object') return JSON.stringify(submission)
+  return submission
+}
+
+export function encodeSessionReportForFirestore(report) {
+  if (!Array.isArray(report?.students)) return report
+  return {
+    ...report,
+    students: report.students.map((student) => ({
+      ...student,
+      tasks: (student.tasks ?? []).map((task) => ({
+        ...task,
+        distinctAttempts: (task.distinctAttempts ?? []).map((attempt) => ({
+          ...attempt,
+          submission: encodeSubmissionForFirestore(attempt.submission),
+        })),
+      })),
+    })),
+  }
 }
 
 function entryReportPassed(task, entry) {
@@ -115,9 +159,12 @@ function countAttempts(entries) {
 function normalizeOverrideRecord(raw, taskId, entries) {
   if (!raw) return null
   const attempts = countAttempts(entries)
-  const previousCheckState = raw.previousCheckState === 'failed' || raw.previousCheckState === 'unattempted'
-    ? raw.previousCheckState
-    : attempts > 0 ? 'failed' : 'unattempted'
+  const previousCheckState =
+    raw.previousCheckState === 'failed' || raw.previousCheckState === 'unattempted'
+      ? raw.previousCheckState
+      : attempts > 0
+        ? 'failed'
+        : 'unattempted'
   return {
     taskId,
     overriddenAt: raw.overriddenAt ?? raw.timestamp ?? null,
@@ -132,16 +179,19 @@ function getOverrideFinalResult(override) {
 }
 
 function getStudentTaskOverride(overrides, anonymousId, taskId, entries, task) {
-  if (entries.some(entry => entry.passed) || isNotApplicableTask(task)) return null
+  if (entries.some((entry) => entry.passed) || isNotApplicableTask(task)) return null
   return normalizeOverrideRecord(overrides?.[anonymousId]?.[taskId], taskId, entries)
 }
 
 function addOverrideSummaryFields(summary, perStudent) {
-  const overrideCounts = perStudent.reduce((counts, task) => {
-    if (task.finalResult === 'overridden_failed') counts.failed += 1
-    if (task.finalResult === 'overridden_unattempted') counts.unattempted += 1
-    return counts
-  }, { failed: 0, unattempted: 0 })
+  const overrideCounts = perStudent.reduce(
+    (counts, task) => {
+      if (task.finalResult === 'overridden_failed') counts.failed += 1
+      if (task.finalResult === 'overridden_unattempted') counts.unattempted += 1
+      return counts
+    },
+    { failed: 0, unattempted: 0 }
+  )
   return {
     ...summary,
     overrideCount: overrideCounts.failed + overrideCounts.unattempted,
@@ -170,7 +220,7 @@ function normalizeCarryFallbackRecord(raw, taskId) {
 }
 
 function summarizeCarryFallbacks(perStudent) {
-  const fallbacks = perStudent.map(task => task.carryFallback).filter(Boolean)
+  const fallbacks = perStudent.map((task) => task.carryFallback).filter(Boolean)
   const grouped = new Map()
 
   for (const fallback of fallbacks) {
@@ -202,7 +252,7 @@ function normalizeSupportRevealRecord(raw, taskId, stageIndex) {
   const numericStageIndex = Number(stageIndex)
   return {
     taskId,
-    stageIndex: Number.isFinite(numericStageIndex) ? numericStageIndex : raw.stageIndex ?? null,
+    stageIndex: Number.isFinite(numericStageIndex) ? numericStageIndex : (raw.stageIndex ?? null),
     stageLabel: raw.stageLabel ?? null,
     source: raw.source === 'teacher' ? 'teacher' : 'student',
     attemptNumber: Number.isFinite(raw.attemptNumber) ? raw.attemptNumber : 0,
@@ -219,21 +269,39 @@ function normalizeSupportReveals(raw, taskId) {
 }
 
 function summarizeSupportReveals(perStudent) {
-  const reveals = perStudent.flatMap(task => task.supportReveals ?? [])
-  const sourceCounts = reveals.reduce((counts, reveal) => {
-    counts[reveal.source] = (counts[reveal.source] ?? 0) + 1
-    return counts
-  }, { teacher: 0, student: 0 })
+  const reveals = perStudent.flatMap((task) => task.supportReveals ?? [])
+  const sourceCounts = reveals.reduce(
+    (counts, reveal) => {
+      counts[reveal.source] = (counts[reveal.source] ?? 0) + 1
+      return counts
+    },
+    { teacher: 0, student: 0 }
+  )
   return {
     supportRevealCount: reveals.length,
-    supportRevealStudentCount: perStudent.filter(task => (task.supportReveals ?? []).length > 0).length,
+    supportRevealStudentCount: perStudent.filter((task) => (task.supportReveals ?? []).length > 0)
+      .length,
     supportRevealSources: sourceCounts,
   }
 }
 
+// Teacher's live per-task rating (see setTaskRating in useSession.js and
+// TaskRatingPanel.jsx). Mirrors attachTeacherFeedback's shape/validation but
+// for a single task rather than the whole session, and reads straight off the
+// live session snapshot rather than being merged in as a separate step, since
+// the rating is already written to RTDB by the time the report is built.
+function normalizeTaskRating(raw) {
+  if (!raw) return null
+  const rating = Number.isInteger(raw.rating) && raw.rating >= 1 && raw.rating <= 5 ? raw.rating : null
+  const whatWorkedWell = String(raw.whatWorkedWell ?? '').trim()
+  const whatDidntWork = String(raw.whatDidntWork ?? '').trim()
+  if (rating == null && !whatWorkedWell && !whatDidntWork) return null
+  return { rating, whatWorkedWell, whatDidntWork, submittedAt: raw.submittedAt ?? null }
+}
+
 function getFinalResult(task, entries, override) {
   if (isNotApplicableTask(task)) return entries.length > 0 ? 'not_applicable' : 'not_attempted'
-  if (entries.some(entry => entry.passed)) return 'passed'
+  if (entries.some((entry) => entry.passed)) return 'passed'
   const overrideResult = getOverrideFinalResult(override)
   if (overrideResult) return overrideResult
   if (entries.length === 0) return 'not_attempted'
@@ -242,7 +310,7 @@ function getFinalResult(task, entries, override) {
 
 function getCompleted(task, entries, override) {
   if (isNotApplicableTask(task)) return entries.length > 0
-  return entries.some(entry => entry.passed) || !!override
+  return entries.some((entry) => entry.passed) || !!override
 }
 
 function countValues(values) {
@@ -264,7 +332,10 @@ function summarizeFillBlankFailures(task, perStudent) {
       for (const blank of task.blanks ?? []) {
         const entry = submission[blank.id]
         if (!entry || entry.correct) continue
-        const current = failuresByBlank.get(blank.id) ?? { expected: blank.answer ?? '', values: [] }
+        const current = failuresByBlank.get(blank.id) ?? {
+          expected: blank.answer ?? '',
+          values: [],
+        }
         current.values.push(entry.value)
         failuresByBlank.set(blank.id, current)
       }
@@ -337,38 +408,49 @@ export function buildSessionReport({ session, lesson }) {
   const overrideLog = session?.overrideLog ?? {}
   const carryFallbackLog = session?.carryFallbackLog ?? {}
   const supportRevealLog = session?.supportRevealLog ?? {}
-  const anonymousIds = Array.from(new Set([
-    ...Object.keys(studentsSnapshot),
-    ...Object.keys(attemptLog),
-    ...Object.keys(overrideLog),
-    ...Object.keys(carryFallbackLog),
-    ...Object.keys(supportRevealLog),
-  ]))
+  const taskRatingLog = session?.taskRatingLog ?? {}
+  const anonymousIds = Array.from(
+    new Set([
+      ...Object.keys(studentsSnapshot),
+      ...Object.keys(attemptLog),
+      ...Object.keys(overrideLog),
+      ...Object.keys(carryFallbackLog),
+      ...Object.keys(supportRevealLog),
+    ])
+  )
 
   const taskStartTimes = session?.taskStartTimes ?? {}
 
   const students = anonymousIds.map((anonymousId, index) => {
     const studentAttempts = attemptLog[anonymousId] ?? {}
 
-    const taskResults = tasks.map(task => {
-      const entries = Object.values(studentAttempts[task.id] ?? {})
-        .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
+    const taskResults = tasks.map((task) => {
+      const entries = Object.values(studentAttempts[task.id] ?? {}).sort(
+        (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
+      )
       const override = getStudentTaskOverride(overrideLog, anonymousId, task.id, entries, task)
-      const carryFallback = normalizeCarryFallbackRecord(carryFallbackLog?.[anonymousId]?.[task.id], task.id)
-      const supportReveals = normalizeSupportReveals(supportRevealLog?.[anonymousId]?.[task.id], task.id)
+      const carryFallback = normalizeCarryFallbackRecord(
+        carryFallbackLog?.[anonymousId]?.[task.id],
+        task.id
+      )
+      const supportReveals = normalizeSupportReveals(
+        supportRevealLog?.[anonymousId]?.[task.id],
+        task.id
+      )
       const attempts = countAttempts(entries)
       const completed = getCompleted(task, entries, override)
 
       // Time on task: elapsed time between the task becoming current and either the
       // moment a passing attempt/override was logged, or (if not yet completed) the latest attempt.
       const startedAt = taskStartTimes[task.id] ?? null
-      const passingEntry = entries.find(entry => entry.passed)
+      const passingEntry = entries.find((entry) => entry.passed)
       const referenceTime = completed
         ? (passingEntry?.passedAt ?? passingEntry?.loggedAt ?? override?.overriddenAt ?? null)
         : (entries[entries.length - 1]?.loggedAt ?? null)
-      const timeOnTaskMs = (startedAt != null && typeof referenceTime === 'number')
-        ? Math.max(0, referenceTime - startedAt)
-        : null
+      const timeOnTaskMs =
+        startedAt != null && typeof referenceTime === 'number'
+          ? Math.max(0, referenceTime - startedAt)
+          : null
 
       return {
         taskId: task.id,
@@ -381,7 +463,7 @@ export function buildSessionReport({ session, lesson }) {
         ...(override ? { override } : {}),
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
-        distinctAttempts: entries.map(entry => ({
+        distinctAttempts: entries.map((entry) => ({
           attemptNumber: entry.attemptNumber,
           passed: entryReportPassed(task, entry),
           retries: entry.retries ?? 0,
@@ -397,12 +479,15 @@ export function buildSessionReport({ session, lesson }) {
     }
   })
 
-  const taskSummary = tasks.map(task => {
-    const perStudent = students.map(s => s.tasks.find(t => t.taskId === task.id)).filter(Boolean)
-    const attemptedStudents = perStudent.filter(t => t.finalResult !== 'not_attempted')
-    const completedCount = perStudent.filter(t => t.completed).length
+  const taskSummary = tasks.map((task) => {
+    const perStudent = students
+      .map((s) => s.tasks.find((t) => t.taskId === task.id))
+      .filter(Boolean)
+    const attemptedStudents = perStudent.filter((t) => t.finalResult !== 'not_attempted')
+    const completedCount = perStudent.filter((t) => t.completed).length
     const totalAttempts = perStudent.reduce((sum, t) => sum + t.attempts, 0)
     const typeFields = getTypeFields(task)
+    const teacherRating = normalizeTaskRating(taskRatingLog[task.id])
 
     const failureCounts = new Map()
     for (const t of perStudent) {
@@ -416,7 +501,7 @@ export function buildSessionReport({ session, lesson }) {
       .slice(0, 5)
       .map(([suggestion, count]) => ({ suggestion, count }))
 
-    const timedStudents = perStudent.filter(t => t.timeOnTaskMs != null)
+    const timedStudents = perStudent.filter((t) => t.timeOnTaskMs != null)
     const avgTimeOnTaskMs = timedStudents.length
       ? Math.round(timedStudents.reduce((sum, t) => sum + t.timeOnTaskMs, 0) / timedStudents.length)
       : null
@@ -445,6 +530,7 @@ export function buildSessionReport({ session, lesson }) {
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
+        ...(teacherRating ? { teacherRating } : {}),
       }
     }
 
@@ -463,24 +549,33 @@ export function buildSessionReport({ session, lesson }) {
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
+        ...(teacherRating ? { teacherRating } : {}),
       }
     }
 
     const summary = {
-      ...addOverrideSummaryFields({
-        taskId: task.id,
-        title: task.title ?? `Task ${task.id}`,
-        priority: getTaskPriority(task),
-        ...typeFields,
-        totalStudents: perStudent.length,
-        completedCount,
-        completionRate: perStudent.length ? Number((completedCount / perStudent.length).toFixed(2)) : 0,
-        avgAttempts: attemptedStudents.length ? Number((totalAttempts / attemptedStudents.length).toFixed(2)) : 0,
-        avgTimeOnTaskMs,
-        commonFailures,
-      }, perStudent),
+      ...addOverrideSummaryFields(
+        {
+          taskId: task.id,
+          title: task.title ?? `Task ${task.id}`,
+          priority: getTaskPriority(task),
+          ...typeFields,
+          totalStudents: perStudent.length,
+          completedCount,
+          completionRate: perStudent.length
+            ? Number((completedCount / perStudent.length).toFixed(2))
+            : 0,
+          avgAttempts: attemptedStudents.length
+            ? Number((totalAttempts / attemptedStudents.length).toFixed(2))
+            : 0,
+          avgTimeOnTaskMs,
+          commonFailures,
+        },
+        perStudent
+      ),
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
+      ...(teacherRating ? { teacherRating } : {}),
     }
     if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
       summary.blankFailures = summarizeFillBlankFailures(task, perStudent)
@@ -499,6 +594,32 @@ export function buildSessionReport({ session, lesson }) {
     endedAt: session?.endedAt ?? Date.now(),
     students,
     taskSummary,
+  }
+}
+
+// Merges optional teacher-submitted end-of-session feedback (star rating plus
+// what-worked-well / what-didn't-work notes) onto a built report. Returns the
+// report unchanged when the teacher left every field blank, so reports without
+// feedback never carry an empty teacherFeedback stub.
+export function attachTeacherFeedback(report, feedback) {
+  if (!report) return report
+  const rating =
+    Number.isInteger(feedback?.rating) && feedback.rating >= 1 && feedback.rating <= 5
+      ? feedback.rating
+      : null
+  const whatWorkedWell = String(feedback?.whatWorkedWell ?? '').trim()
+  const whatDidntWork = String(feedback?.whatDidntWork ?? '').trim()
+
+  if (rating == null && !whatWorkedWell && !whatDidntWork) return report
+
+  return {
+    ...report,
+    teacherFeedback: {
+      rating,
+      whatWorkedWell,
+      whatDidntWork,
+      submittedAt: Date.now(),
+    },
   }
 }
 

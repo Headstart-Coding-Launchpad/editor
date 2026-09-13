@@ -24,14 +24,13 @@ describe('useBuilderState scratch task creation', () => {
   it('inherits sprites/backdrops/variables from the previous task and carries blocks', () => {
     const lesson = makeScratchLesson()
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.selectTask(1)
@@ -57,7 +56,7 @@ describe('useBuilderState scratch task creation', () => {
   it('falls back to a default preset sprite when there is no previous task', () => {
     const lesson = makeScratchLesson({ tasks: [] })
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
     const defaultSprites = [{ id: 'preset-cat', name: 'Cat', type: 'cat' }]
@@ -84,14 +83,13 @@ describe('useBuilderState taskActivity default-seeding', () => {
   it('seeds an empty taskActivity on a new top-level task, alongside intent', () => {
     const lesson = { type: 'python', tasks: [{ id: 1, title: 'First', starterCode: '' }] }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.handleAddTask()
@@ -104,14 +102,13 @@ describe('useBuilderState taskActivity default-seeding', () => {
   it('seeds an empty taskActivity on a new composed-lesson task', () => {
     const lesson = { type: 'composed', tasks: [] }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.handleAddTask()
@@ -121,17 +118,16 @@ describe('useBuilderState taskActivity default-seeding', () => {
     expect(currentLesson.tasks[0]).toMatchObject({ intent: '', taskActivity: '' })
   })
 
-  it('seeds an empty taskActivity on a new group\'s first subtask', () => {
+  it("seeds an empty taskActivity on a new group's first subtask", () => {
     const lesson = { type: 'python', tasks: [] }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.handleAddGroup()
@@ -144,17 +140,23 @@ describe('useBuilderState taskActivity default-seeding', () => {
   it('seeds an empty taskActivity on a new subtask added to an existing group', () => {
     const lesson = {
       type: 'python',
-      tasks: [{ id: 'group-a', type: 'group', title: 'Group', subtasks: [{ id: 1, title: 'First', starterCode: '' }] }],
+      tasks: [
+        {
+          id: 'group-a',
+          type: 'group',
+          title: 'Group',
+          subtasks: [{ id: 1, title: 'First', starterCode: '' }],
+        },
+      ],
     }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.handleAddSubtask('group-a')
@@ -183,14 +185,13 @@ describe('useBuilderState task renumbering', () => {
       ],
     }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.selectTask(10)
@@ -223,14 +224,13 @@ describe('useBuilderState grouped task titles', () => {
       ],
     }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.handleAddSubtask('group-a')
@@ -251,14 +251,13 @@ describe('useBuilderState grouped task titles', () => {
   it('starts the first task in a new group with an independent blank title', () => {
     const lesson = { type: 'python', tasks: [] }
     let currentLesson = lesson
-    const onUpdate = vi.fn(updater => {
+    const onUpdate = vi.fn((updater) => {
       currentLesson = typeof updater === 'function' ? updater(currentLesson) : updater
     })
 
-    const { result, rerender } = renderHook(
-      ({ lesson }) => useBuilderState({ lesson, onUpdate }),
-      { initialProps: { lesson } }
-    )
+    const { result, rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
 
     act(() => {
       result.current.handleAddGroup()

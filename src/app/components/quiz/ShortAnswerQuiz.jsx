@@ -2,8 +2,19 @@ import React, { useState } from 'react'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
 import { baseStyles as s, interactionStyles as sm, QuestionPanel } from './quizUtils'
 
-export default function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, submitted, checkPassed, disabled, showQuestion, showResult }) {
-  const [localAnswer, setLocalAnswer] = useState(typeof selectedAnswer === 'string' ? selectedAnswer : '')
+export default function ShortAnswerQuiz({
+  task,
+  selectedAnswer,
+  onSelectAnswer,
+  submitted,
+  checkPassed,
+  disabled,
+  showQuestion,
+  showResult,
+}) {
+  const [localAnswer, setLocalAnswer] = useState(
+    typeof selectedAnswer === 'string' ? selectedAnswer : ''
+  )
 
   React.useEffect(() => {
     setLocalAnswer(typeof selectedAnswer === 'string' ? selectedAnswer : '')
@@ -25,7 +36,7 @@ export default function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, 
         <textarea
           style={sm.shortAnswerInput}
           value={localAnswer}
-          onChange={e => setLocalAnswer(e.target.value)}
+          onChange={(e) => setLocalAnswer(e.target.value)}
           placeholder="Type your answer here…"
           disabled={disabled || (submitted && checkPassed)}
           rows={3}
@@ -48,7 +59,11 @@ export default function ShortAnswerQuiz({ task, selectedAnswer, onSelectAnswer, 
       </div>
 
       {showResult && submitted && (
-        <CheckFeedbackBanner passed={checkPassed} failureMessage="Not quite right, try again." suggestion={task?.check?.hint ?? task?.feedback ?? ''} />
+        <CheckFeedbackBanner
+          passed={checkPassed}
+          failureMessage="Not quite right, try again."
+          suggestion={task?.check?.hint ?? task?.feedback ?? ''}
+        />
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,14 +7,12 @@
     <script>
       // Move query params from the real URL into the hash so HashRouter can read them.
       // e.g. /headstart-repl/?teacher=true  →  /headstart-repl/#/?teacher=true
-      (function () {
-        var search = window.location.search;
+      ;(function () {
+        var search = window.location.search
         if (search && !window.location.hash) {
-          window.location.replace(
-            window.location.pathname + '#/?' + search.slice(1)
-          );
+          window.location.replace(window.location.pathname + '#/?' + search.slice(1))
         }
-      })();
+      })()
     </script>
   </head>
   <body>

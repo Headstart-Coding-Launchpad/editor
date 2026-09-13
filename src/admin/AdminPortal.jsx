@@ -27,14 +27,18 @@ export default function AdminPortal() {
   const { user } = useAuth()
   const { tab, subtab } = useParams()
   const navigate = useNavigate()
-  const activeTab = TABS.some(t => t.id === tab) ? tab : 'lessons'
+  const activeTab = TABS.some((t) => t.id === tab) ? tab : 'lessons'
 
   function handleSubtabChange(sub) {
     navigate(`/admin/${activeTab}/${sub}`)
   }
 
   async function handleLogout() {
-    await signOut(auth)
+    try {
+      await signOut(auth)
+    } catch (err) {
+      console.error('Sign out failed:', err)
+    }
   }
 
   return (
@@ -43,7 +47,11 @@ export default function AdminPortal() {
         <span style={s.brand}>Headstart Coding — Admin</span>
         <div style={s.headerRight}>
           <span style={s.userEmail}>{user?.email}</span>
-          <button className="btn-ghost-outline" style={s.logoutBtn} onClick={() => navigate('/account')}>
+          <button
+            className="btn-ghost-outline"
+            style={s.logoutBtn}
+            onClick={() => navigate('/account')}
+          >
             Account
           </button>
           <button className="btn-ghost-outline" style={s.logoutBtn} onClick={handleLogout}>
@@ -53,11 +61,13 @@ export default function AdminPortal() {
       </header>
 
       <nav style={s.nav}>
-        <div style={s.tabs}>
-          {TABS.map(tab => (
+        <div style={s.tabs} role="tablist" aria-label="Admin sections">
+          {TABS.map((tab) => (
             <button
               key={tab.id}
               className={`ui-tab${activeTab === tab.id ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => navigate(`/admin/${tab.id}`)}
             >
               {tab.label}
@@ -73,9 +83,13 @@ export default function AdminPortal() {
           {activeTab === 'classes' && <LessonPanel view="classes" />}
           {activeTab === 'sessions' && <SessionsPanel />}
           {activeTab === 'topics' && <TopicLibraryPanel />}
-          {activeTab === 'shared-assets' && <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+          {activeTab === 'shared-assets' && (
+            <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />
+          )}
           {activeTab === 'accounts' && <AccountManagement />}
-          {activeTab === 'feedback' && <FeedbackPanel subtab={subtab} onSubtabChange={handleSubtabChange} />}
+          {activeTab === 'feedback' && (
+            <FeedbackPanel subtab={subtab} onSubtabChange={handleSubtabChange} />
+          )}
         </Suspense>
       </main>
     </div>

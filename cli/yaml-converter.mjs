@@ -40,7 +40,7 @@ export function lessonToYamlText(lesson) {
 export function lessonToYamlObject(lesson) {
   return {
     ...lesson,
-    tasks: (lesson.tasks ?? []).map(item => {
+    tasks: (lesson.tasks ?? []).map((item) => {
       if (item.type !== 'group') return taskToYamlObject(item)
       return {
         group: item.title,
@@ -64,12 +64,15 @@ export function topicToYamlText(topic) {
 }
 
 export function topicLibraryToYamlText(input) {
-  return yaml.dump({ topics: topicListFromRaw(input).map(topicToYamlObject) }, {
-    lineWidth: 100,
-    noRefs: true,
-    sortKeys: false,
-    quotingType: '"',
-  })
+  return yaml.dump(
+    { topics: topicListFromRaw(input).map(topicToYamlObject) },
+    {
+      lineWidth: 100,
+      noRefs: true,
+      sortKeys: false,
+      quotingType: '"',
+    }
+  )
 }
 
 export function topicToYamlObject(topic) {
@@ -105,7 +108,7 @@ function convertTaskList(rawTasks, lessonType, lessonId) {
   for (const rawItem of rawTasks) {
     if (typeof rawItem.group === 'string') {
       const groupId = makeGroupId(rawItem, lessonId, groupIdCounts)
-      const subtasks = (rawItem.tasks ?? []).map(t => convertTask(t, ++taskCounter, lessonType))
+      const subtasks = (rawItem.tasks ?? []).map((t) => convertTask(t, ++taskCounter, lessonType))
       result.push({
         id: groupId,
         type: 'group',

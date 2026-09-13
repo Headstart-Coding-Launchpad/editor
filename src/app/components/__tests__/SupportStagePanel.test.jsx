@@ -10,7 +10,7 @@ describe('SupportStagePanel', () => {
         stage={{ label: 'With a name', code: 'name = "Ada"' }}
         lessonType="python"
         revealed={false}
-      />,
+      />
     )
 
     expect(screen.queryByText('name = "Ada"')).not.toBeInTheDocument()
@@ -23,7 +23,7 @@ describe('SupportStagePanel', () => {
         stage={{ label: 'With a name', code: 'name = "Ada"' }}
         lessonType="python"
         revealed
-      />,
+      />
     )
 
     const panel = screen.getByLabelText('With a name stage reference')

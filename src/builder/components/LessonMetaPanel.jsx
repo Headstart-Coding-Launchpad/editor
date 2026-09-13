@@ -6,7 +6,14 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useAuth } from '../../auth/useAuth'
 import { firestore } from '../../shared/firebase'
-import { getLessonLevelRef, getLessonLevelScope, levelTitleFromLesson, LEVEL_COLLECTION, normalizeLevelRecord } from '../../shared/lessonLevels'
+import {
+  getLessonLevelRef,
+  getLessonLevelScope,
+  levelTitleFromLesson,
+  LEVEL_COLLECTION,
+  normalizeLevelRecord,
+} from '../../shared/lessonLevels'
+import { getLessonModules, isComposedLesson, getComposedModuleTypes } from '../../shared/composedLesson'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -14,30 +21,55 @@ import SandboxStarterModal, { getSandboxStarterSummary } from './lesson-meta/San
 import SharedAssetsSelector from './lesson-meta/SharedAssetsSelector'
 import StorageAssetUploader from './lesson-meta/StorageAssetUploader'
 import { s } from './lesson-meta/styles'
+import { isValidRecordingUrl } from '../../shared/youtube'
 
 export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicState }) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
-  const {
-    storageAssets: lessonStorageAssets,
-    refresh: refreshLessonStorageAssets,
-  } = useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
-  const { typeStorageAssets } = useTypeAssets(['html', 'arcade'].includes(lesson.type) ? lesson.type : null)
+  const { storageAssets: lessonStorageAssets, refresh: refreshLessonStorageAssets } =
+    useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
+  const { typeStorageAssets } = useTypeAssets(
+    ['html', 'arcade'].includes(lesson.type) ? lesson.type : null
+  )
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
   const [levels, setLevels] = useState([])
+  const [levelsError, setLevelsError] = useState(null)
 
   function set(field, value) {
-    onUpdate(prev => ({ ...prev, [field]: value }))
+    onUpdate((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function setModuleSandboxField(moduleId, field, value) {
+    onUpdate((prev) => {
+      const resolvedModule = getLessonModules(prev).find((module) => module.id === moduleId)
+      const baseModules = Array.isArray(prev.modules) ? prev.modules : []
+      const nextModules = baseModules.some((module) => module.id === moduleId)
+        ? baseModules.map((module) =>
+            module.id === moduleId
+              ? { ...module, sandbox: { ...(module.sandbox ?? {}), [field]: value } }
+              : module
+          )
+        : [
+            ...baseModules,
+            {
+              id: moduleId,
+              type: resolvedModule?.type,
+              title: resolvedModule?.title,
+              sandbox: { [field]: value },
+            },
+          ]
+      return { ...prev, modules: nextModules }
+    })
   }
 
   function setLevel(levelId) {
-    const level = levels.find(item => item.id === levelId)
+    const level = levels.find((item) => item.id === levelId)
     if (!level) {
-      onUpdate(prev => ({ ...prev, levelId: undefined, levelRef: undefined, level: undefined }))
+      onUpdate((prev) => ({ ...prev, levelId: undefined, levelRef: undefined, level: undefined }))
       return
     }
-    onUpdate(prev => ({
+    onUpdate((prev) => ({
       ...prev,
       levelId: level.id,
       levelRef: { id: level.id, scopeType: level.scopeType, scopeId: level.scopeId },
@@ -50,7 +82,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
     if (!lesson.id) return
     const newPath = `/assets/${lesson.id}/`
     if (lesson.assetsPath !== newPath) {
-      onUpdate(prev => ({ ...prev, assetsPath: newPath }))
+      onUpdate((prev) => ({ ...prev, assetsPath: newPath }))
     }
   }, [lesson.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -62,20 +94,28 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
     lastAutoKeyRef.current = key
     const merged = lessonAssets(lesson.id, lesson.type)
     if (merged.length > 0) {
-      onUpdate(prev => ({ ...prev, assets: merged }))
+      onUpdate((prev) => ({ ...prev, assets: merged }))
     }
   }, [lesson.id, lesson.type, assetsLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    return onSnapshot(collection(firestore, LEVEL_COLLECTION), snap => {
-      setLevels(snap.docs.map(d => normalizeLevelRecord({ id: d.id, ...d.data() })))
-    }, () => setLevels([]))
+    return onSnapshot(
+      collection(firestore, LEVEL_COLLECTION),
+      (snap) => {
+        setLevels(snap.docs.map((d) => normalizeLevelRecord({ id: d.id, ...d.data() })))
+        setLevelsError(null)
+      },
+      (err) => {
+        setLevels([])
+        setLevelsError(err.message)
+      }
+    )
   }, [])
 
-  const lessonTypeLabel = getLessonTypeLabel(lesson.type)
+  const lessonTypeLabel = getLessonTypeLabel(lesson)
   const scope = getLessonLevelScope(lesson)
   const availableLevels = levels
-    .filter(level => level.scopeType === scope.scopeType && level.scopeId === scope.scopeId)
+    .filter((level) => level.scopeType === scope.scopeType && level.scopeId === scope.scopeId)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   const levelRef = getLessonLevelRef(lesson)
   const legacyLevel = levelTitleFromLesson(lesson, levels)
@@ -99,7 +139,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <input
             style={s.input}
             value={lesson.id}
-            onChange={e => set('id', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+            onChange={(e) => set('id', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
             placeholder="python-intro"
           />
         </Field>
@@ -108,36 +148,120 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <input
             style={s.input}
             value={lesson.title}
-            onChange={e => set('title', e.target.value)}
+            onChange={(e) => set('title', e.target.value)}
             placeholder="Introduction to Python"
           />
         </Field>
 
-        <Field label="Draft workflow" hint="Draft lessons may have incomplete real tasks and cannot be published until this is cleared.">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontWeight: 600, color: lesson.draft ? '#92400e' : 'var(--colour-text)' }}>
-            <input type="checkbox" checked={lesson.draft === true} onChange={e => set('draft', e.target.checked)} />
+        <Field
+          label="Draft workflow"
+          hint="Draft lessons may have incomplete real tasks and cannot be published until this is cleared."
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontFamily: 'var(--font-body)',
+              fontWeight: 600,
+              color: lesson.draft ? '#92400e' : 'var(--colour-text)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={lesson.draft === true}
+              onChange={(e) => set('draft', e.target.checked)}
+            />
             Draft {lesson.draft ? '— incomplete authoring allowed' : '— ready for full validation'}
           </label>
           <span style={s.summaryText}>Current version: {lesson.version ?? 0}</span>
         </Field>
 
+        <Field
+          label="Solo-only lesson"
+          hint="When on, every link to this lesson goes straight to solo mode — no live/wait option is ever offered, regardless of the URL."
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontFamily: 'var(--font-body)',
+              fontWeight: 600,
+              color: 'var(--colour-text)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={lesson.soloOnly === true}
+              onChange={(e) => set('soloOnly', e.target.checked)}
+            />
+            Solo-only{' '}
+            {lesson.soloOnly ? '— live/wait option hidden' : '— live and solo both available'}
+          </label>
+        </Field>
+
+        <Field
+          label="Solo challenge companion of"
+          hint="If this lesson is a solo challenge extending another lesson, set the parent lesson's id here. Students who finish that parent lesson (live or solo) are offered a 'Try the Solo Challenge' button straight into this lesson."
+        >
+          <input
+            style={s.input}
+            value={lesson.companionOf ?? ''}
+            onChange={(e) =>
+              set('companionOf', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') || null)
+            }
+            placeholder="python-intro"
+          />
+        </Field>
+
         {lesson.fork?.sourceLessonId && (
           <Field label="Class fork">
             <div style={s.summaryText}>
-              {lesson.fork.sourceLessonTitle || lesson.fork.sourceLessonId} / {lesson.fork.className || lesson.fork.classId}
+              {lesson.fork.sourceLessonTitle || lesson.fork.sourceLessonId} /{' '}
+              {lesson.fork.className || lesson.fork.classId}
             </div>
           </Field>
         )}
 
-        <Field label="Level" hint={`Scoped to ${scope.scopeType}: ${scope.scopeId}. Create levels in Admin > Levels.`}>
+        {lesson.fork?.sourceLessonId && (
+          <Field
+            label="Class recording"
+            hint="Unlisted YouTube link for this class's recorded session — not Private, students don't sign in with Google"
+          >
+            <input
+              type="url"
+              style={s.input}
+              value={lesson.recordingUrl ?? ''}
+              onChange={(e) => set('recordingUrl', e.target.value)}
+              placeholder="https://youtu.be/VIDEO_ID"
+            />
+            {lesson.recordingUrl && !isValidRecordingUrl(lesson.recordingUrl) && (
+              <span style={{ ...s.summaryText, color: '#dc2626' }}>
+                Doesn't look like a YouTube link.
+              </span>
+            )}
+          </Field>
+        )}
+
+        <Field
+          label="Level"
+          hint={
+            levelsError
+              ? `Couldn't load levels: ${levelsError}`
+              : `Scoped to ${scope.scopeType}: ${scope.scopeId}. Create levels in Admin > Levels.`
+          }
+        >
           <select
             style={s.input}
             value={levelRef?.id ?? ''}
-            onChange={e => setLevel(e.target.value)}
+            onChange={(e) => setLevel(e.target.value)}
           >
             <option value="">No level</option>
-            {availableLevels.map(level => (
-              <option key={level.id} value={level.id}>{level.title}</option>
+            {availableLevels.map((level) => (
+              <option key={level.id} value={level.id}>
+                {level.title}
+              </option>
             ))}
           </select>
           {legacyLevel && !levelRef?.id && (
@@ -149,7 +273,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <textarea
             style={{ ...s.input, resize: 'vertical', minHeight: 60 }}
             value={lesson.description}
-            onChange={e => set('description', e.target.value)}
+            onChange={(e) => set('description', e.target.value)}
             placeholder="Short summary shown on entry screen."
           />
         </Field>
@@ -172,7 +296,13 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <StorageAssetUploader
             lessonId={lesson.id}
             storageAssets={lessonStorageAssets}
-            onUpdate={updater => onUpdate(prev => ({ ...prev, storageAssets: typeof updater === 'function' ? updater(prev.storageAssets ?? []) : updater }))}
+            onUpdate={(updater) =>
+              onUpdate((prev) => ({
+                ...prev,
+                storageAssets:
+                  typeof updater === 'function' ? updater(prev.storageAssets ?? []) : updater,
+              }))
+            }
             onRefresh={refreshLessonStorageAssets}
           />
         )}
@@ -181,7 +311,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <SharedAssetsSelector
             typeStorageAssets={typeStorageAssets}
             sharedAssetNames={lesson.sharedAssetNames ?? null}
-            onChange={names => onUpdate(prev => ({ ...prev, sharedAssetNames: names }))}
+            onChange={(names) => onUpdate((prev) => ({ ...prev, sharedAssetNames: names }))}
           />
         )}
 
@@ -201,6 +331,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           <SandboxStarterModal
             lesson={lesson}
             onSetField={set}
+            onSetModuleSandboxField={setModuleSandboxField}
             onClose={() => setSandboxOpen(false)}
           />
         )}
@@ -209,7 +340,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
   )
 }
 
-function getLessonTypeLabel(type) {
+function singleModuleLabel(type) {
   if (type === 'python') return 'Python'
   if (type === 'arcade') return 'Arcade Kit'
   if (type === 'scratch') return 'Scratch'
@@ -217,4 +348,12 @@ function getLessonTypeLabel(type) {
   if (type === 'desktop') return 'Desktop'
   if (type === 'electronics') return 'Electronics'
   return 'Web'
+}
+
+// A composed lesson's own `.type` is just 'composed' — describe it by the
+// mix of modules its code tasks actually use instead.
+function getLessonTypeLabel(lesson) {
+  if (!isComposedLesson(lesson)) return singleModuleLabel(lesson.type)
+  const types = getComposedModuleTypes(lesson)
+  return types.length ? types.map(singleModuleLabel).join(' + ') : 'Composed'
 }

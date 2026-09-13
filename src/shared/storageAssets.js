@@ -1,4 +1,8 @@
-export function mergeStorageAssets(schemaAssets = [], folderAssets = [], { defaultShowInEditor = true } = {}) {
+export function mergeStorageAssets(
+  schemaAssets = [],
+  folderAssets = [],
+  { defaultShowInEditor = true } = {}
+) {
   const schemaByName = new Map()
   for (const asset of schemaAssets ?? []) {
     if (!asset?.name) continue
@@ -8,7 +12,7 @@ export function mergeStorageAssets(schemaAssets = [], folderAssets = [], { defau
   const used = new Set()
   const merged = []
   const sortedFolderAssets = [...(folderAssets ?? [])]
-    .filter(asset => asset?.name)
+    .filter((asset) => asset?.name)
     .sort((a, b) => a.name.localeCompare(b.name))
 
   for (const folderAsset of sortedFolderAssets) {

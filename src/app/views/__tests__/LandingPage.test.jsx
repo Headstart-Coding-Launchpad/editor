@@ -51,6 +51,16 @@ describe('LandingPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/playground/python')
   })
 
+  it('opens the Scratch playground from the playground chooser', async () => {
+    const user = userEvent.setup()
+    render(<LandingPage />)
+
+    await user.click(screen.getByRole('button', { name: /Open playgrounds/i }))
+    await user.click(screen.getByRole('button', { name: 'Scratch' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/playground/scratch')
+  })
+
   it('navigates to the lesson route when a lesson ID is entered and the form is submitted', async () => {
     const user = userEvent.setup()
     render(<LandingPage />)

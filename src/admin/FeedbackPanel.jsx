@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { collection, collectionGroup, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
+import {
+  collection,
+  collectionGroup,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+} from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 
 function builderUrl(lessonId) {
@@ -12,11 +20,14 @@ function PlatformCard({ item, onDelete }) {
       <div style={s.cardTop}>
         <span style={s.email}>{item.teacherEmail}</span>
         <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
-        <button style={s.deleteBtn} title="Archive feedback" onClick={() => onDelete(item.id)}>×</button>
+        <button style={s.deleteBtn} title="Archive feedback" onClick={() => onDelete(item.id)}>
+          ×
+        </button>
       </div>
       {(item.lessonTitle || item.taskTitle) && (
         <div style={s.context}>
-          {item.lessonTitle}{item.taskTitle ? ` — ${item.taskTitle}` : ''}
+          {item.lessonTitle}
+          {item.taskTitle ? ` — ${item.taskTitle}` : ''}
         </div>
       )}
       <p style={s.text}>{item.text}</p>
@@ -30,7 +41,9 @@ function LessonCard({ item, onDelete }) {
       <div style={s.cardTop}>
         <span style={s.email}>{item.teacherEmail}</span>
         <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
-        <button style={s.deleteBtn} title="Archive feedback" onClick={() => onDelete(item)}>×</button>
+        <button style={s.deleteBtn} title="Archive feedback" onClick={() => onDelete(item)}>
+          ×
+        </button>
       </div>
       <div style={s.lessonRow}>
         {item.lessonTitle ? (
@@ -60,39 +73,51 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
 
   useEffect(() => {
     const q = query(collection(firestore, 'platformFeedback'), orderBy('submittedAt', 'desc'))
-    return onSnapshot(q, snap => {
-      setPlatform(snap.docs.filter(d => !d.data().archived).map(d => ({ id: d.id, ...d.data() })))
-      setLoadingPlatform(false)
-    }, () => setLoadingPlatform(false))
+    return onSnapshot(
+      q,
+      (snap) => {
+        setPlatform(
+          snap.docs.filter((d) => !d.data().archived).map((d) => ({ id: d.id, ...d.data() }))
+        )
+        setLoadingPlatform(false)
+      },
+      () => setLoadingPlatform(false)
+    )
   }, [])
 
   useEffect(() => {
     const q = collectionGroup(firestore, 'feedback')
-    return onSnapshot(q, snap => {
-      const items = snap.docs
-        .filter(d => !d.data().archived)
-        .map(d => ({
-          id: d.id,
-          lessonId: d.ref.parent.parent?.id ?? null,
-          ...d.data(),
-        }))
-      items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
-      setAllLesson(items)
-      setLoadingLesson(false)
-    }, () => setLoadingLesson(false))
+    return onSnapshot(
+      q,
+      (snap) => {
+        const items = snap.docs
+          .filter((d) => !d.data().archived)
+          .map((d) => ({
+            id: d.id,
+            lessonId: d.ref.parent.parent?.id ?? null,
+            ...d.data(),
+          }))
+        items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
+        setAllLesson(items)
+        setLoadingLesson(false)
+      },
+      () => setLoadingLesson(false)
+    )
   }, [])
 
   function handleDeletePlatform(id) {
+    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
     updateDoc(doc(firestore, 'platformFeedback', id), { archived: true })
   }
 
   function handleDeleteLesson(item) {
     if (!item.lessonId) return
+    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
     updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), { archived: true })
   }
 
-  const lessonItems = allLesson.filter(item => !item.taskId)
-  const taskItems   = allLesson.filter(item => !!item.taskId)
+  const lessonItems = allLesson.filter((item) => !item.taskId)
+  const taskItems = allLesson.filter((item) => !!item.taskId)
 
   const loading = subTab === 'platform' ? loadingPlatform : loadingLesson
   const items = subTab === 'platform' ? platform : subTab === 'lesson' ? lessonItems : taskItems
@@ -101,10 +126,31 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
     <div style={s.wrap}>
       <h2 style={s.heading}>Feedback</h2>
 
-      <div className="ui-tabs">
-        <button className={`ui-tab${subTab === 'platform' ? ' is-active' : ''}`} onClick={() => setSubTab('platform')}>Platform</button>
-        <button className={`ui-tab${subTab === 'lesson' ? ' is-active' : ''}`} onClick={() => setSubTab('lesson')}>Lesson</button>
-        <button className={`ui-tab${subTab === 'task' ? ' is-active' : ''}`} onClick={() => setSubTab('task')}>Task</button>
+      <div className="ui-tabs" role="tablist" aria-label="Feedback source">
+        <button
+          className={`ui-tab${subTab === 'platform' ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={subTab === 'platform'}
+          onClick={() => setSubTab('platform')}
+        >
+          Platform
+        </button>
+        <button
+          className={`ui-tab${subTab === 'lesson' ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={subTab === 'lesson'}
+          onClick={() => setSubTab('lesson')}
+        >
+          Lesson
+        </button>
+        <button
+          className={`ui-tab${subTab === 'task' ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={subTab === 'task'}
+          onClick={() => setSubTab('task')}
+        >
+          Task
+        </button>
       </div>
 
       {loading ? (
@@ -114,9 +160,12 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
       ) : (
         <div style={s.list}>
           {subTab === 'platform'
-            ? items.map(item => <PlatformCard key={item.id} item={item} onDelete={handleDeletePlatform} />)
-            : items.map(item => <LessonCard key={item.id} item={item} onDelete={handleDeleteLesson} />)
-          }
+            ? items.map((item) => (
+                <PlatformCard key={item.id} item={item} onDelete={handleDeletePlatform} />
+              ))
+            : items.map((item) => (
+                <LessonCard key={item.id} item={item} onDelete={handleDeleteLesson} />
+              ))}
         </div>
       )}
     </div>
@@ -177,7 +226,7 @@ const s = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#9ca3af',
+    color: '#dc2626',
     fontSize: '1.2rem',
     lineHeight: 1,
     padding: '0 2px',
@@ -203,7 +252,7 @@ const s = {
     color: 'var(--colour-text)',
   },
   lessonIdPill: {
-    fontFamily: 'var(--font-mono, monospace)',
+    fontFamily: 'var(--font-code)',
     fontSize: '0.75rem',
     color: '#6b7280',
     background: '#f3f4f6',

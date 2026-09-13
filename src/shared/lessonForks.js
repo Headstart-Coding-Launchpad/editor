@@ -8,7 +8,13 @@ export function slugifyClassId(value) {
     .replace(/^-+|-+$/g, '')
 }
 
-export function makeClassRecord({ id, name, archived = false, createdAt = Date.now(), updatedAt = Date.now() }) {
+export function makeClassRecord({
+  id,
+  name,
+  archived = false,
+  createdAt = Date.now(),
+  updatedAt = Date.now(),
+}) {
   const safeId = slugifyClassId(id ?? name)
   if (!safeId) throw new Error('Class id is required')
   const title = String(name ?? id ?? '').trim()
@@ -30,7 +36,7 @@ export function makeForkLessonId(sourceLessonId, classId) {
   return `${source}-${safeClassId}`
 }
 
-export function makeForkLessonTitle(sourceTitle, className) {
+function makeForkLessonTitle(sourceTitle, className) {
   const title = String(sourceTitle ?? '').trim()
   const name = String(className ?? '').trim()
   if (!title) throw new Error('Source lesson title is required')
@@ -38,7 +44,7 @@ export function makeForkLessonTitle(sourceTitle, className) {
   return `${title} - ${name}`
 }
 
-export function flattenLessonTasks(tasks = []) {
+function flattenLessonTasks(tasks = []) {
   const result = []
   for (const item of tasks) {
     if (item?.type === 'group') {
@@ -50,10 +56,10 @@ export function flattenLessonTasks(tasks = []) {
   return result
 }
 
-export function makeForkTaskLinks(tasks = []) {
+function makeForkTaskLinks(tasks = []) {
   return flattenLessonTasks(tasks)
-    .filter(task => task?.id != null)
-    .map(task => ({
+    .filter((task) => task?.id != null)
+    .map((task) => ({
       taskId: task.id,
       sourceTaskId: task.id,
       relation: 'copied',
@@ -63,17 +69,14 @@ export function makeForkTaskLinks(tasks = []) {
 export function buildLessonFork(sourceLesson, classRecord, now = Date.now()) {
   if (!sourceLesson?.id) throw new Error('Source lesson is required')
   if (sourceLesson.fork?.sourceLessonId) {
-    throw new Error(`Lesson '${sourceLesson.id}' is already a fork; fork from the stock lesson instead`)
+    throw new Error(
+      `Lesson '${sourceLesson.id}' is already a fork; fork from the stock lesson instead`
+    )
   }
   const cls = makeClassRecord(classRecord)
   const forkId = makeForkLessonId(sourceLesson.id, cls.id)
   const sourceCopy = JSON.parse(JSON.stringify(sourceLesson))
-  const {
-    id: _sourceId,
-    title: _sourceTitle,
-    fork: _sourceFork,
-    ...rest
-  } = sourceCopy
+  const { id: _sourceId, title: _sourceTitle, fork: _sourceFork, ...rest } = sourceCopy
 
   return {
     ...rest,

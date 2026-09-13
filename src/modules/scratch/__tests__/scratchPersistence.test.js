@@ -8,10 +8,12 @@ function oldFormatBroadcastState(text) {
   return {
     blocks: {
       languageVersion: 0,
-      blocks: [{
-        type: 'event_broadcast',
-        inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: text } } } },
-      }],
+      blocks: [
+        {
+          type: 'event_broadcast',
+          inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: text } } } },
+        },
+      ],
     },
   }
 }
@@ -33,15 +35,17 @@ describe('migrateBroadcastState', () => {
     const state = {
       blocks: {
         languageVersion: 0,
-        blocks: [{
-          type: 'event_whenflagclicked',
-          next: {
-            block: {
-              type: 'event_broadcast',
-              inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: 'go' } } } },
+        blocks: [
+          {
+            type: 'event_whenflagclicked',
+            next: {
+              block: {
+                type: 'event_broadcast',
+                inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: 'go' } } } },
+              },
             },
           },
-        }],
+        ],
       },
     }
     const result = migrateBroadcastState(state)
@@ -54,11 +58,13 @@ describe('migrateBroadcastState', () => {
     const state = {
       blocks: {
         languageVersion: 0,
-        blocks: [{
-          type: 'event_broadcast',
-          fields: { BROADCAST_INPUT: 'existing' },
-          inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: 'shadow' } } } },
-        }],
+        blocks: [
+          {
+            type: 'event_broadcast',
+            fields: { BROADCAST_INPUT: 'existing' },
+            inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: 'shadow' } } } },
+          },
+        ],
       },
     }
     const result = migrateBroadcastState(state)
@@ -74,10 +80,12 @@ describe('migrateBroadcastState', () => {
     const state = {
       blocks: {
         languageVersion: 0,
-        blocks: [{
-          type: 'event_broadcastandwait',
-          inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: 'done' } } } },
-        }],
+        blocks: [
+          {
+            type: 'event_broadcastandwait',
+            inputs: { BROADCAST_INPUT: { shadow: { type: 'text', fields: { TEXT: 'done' } } } },
+          },
+        ],
       },
     }
     const result = migrateBroadcastState(state)
@@ -91,10 +99,12 @@ describe('migrateVariableFields', () => {
       variables: [{ id: 'v1', name: 'score' }],
       blocks: {
         languageVersion: 0,
-        blocks: [{
-          type: 'data_setvariableto',
-          fields: { VARIABLE: { id: 'v1', name: 'score' } },
-        }],
+        blocks: [
+          {
+            type: 'data_setvariableto',
+            fields: { VARIABLE: { id: 'v1', name: 'score' } },
+          },
+        ],
       },
     }
     const result = migrateVariableFields(state)
@@ -106,10 +116,12 @@ describe('migrateVariableFields', () => {
       variables: [{ id: 'v1', name: 'lives' }],
       blocks: {
         languageVersion: 0,
-        blocks: [{
-          type: 'data_changevariableby',
-          fields: { VARIABLE: 'v1' },
-        }],
+        blocks: [
+          {
+            type: 'data_changevariableby',
+            fields: { VARIABLE: 'v1' },
+          },
+        ],
       },
     }
     const result = migrateVariableFields(state)
@@ -119,7 +131,10 @@ describe('migrateVariableFields', () => {
   it('strips the variables array from the output', () => {
     const state = {
       variables: [{ id: 'v1', name: 'score' }],
-      blocks: { languageVersion: 0, blocks: [{ type: 'data_variable', fields: { VARIABLE: { id: 'v1', name: 'score' } } }] },
+      blocks: {
+        languageVersion: 0,
+        blocks: [{ type: 'data_variable', fields: { VARIABLE: { id: 'v1', name: 'score' } } }],
+      },
     }
     const result = migrateVariableFields(state)
     expect(result.variables).toBeUndefined()
@@ -135,10 +150,12 @@ describe('migrateVariableFields', () => {
       variables: [],
       blocks: {
         languageVersion: 0,
-        blocks: [{
-          type: 'data_variable',
-          fields: { VARIABLE: { id: 'unknown-id', name: undefined } },
-        }],
+        blocks: [
+          {
+            type: 'data_variable',
+            fields: { VARIABLE: { id: 'unknown-id', name: undefined } },
+          },
+        ],
       },
     }
     const result = migrateVariableFields(state)

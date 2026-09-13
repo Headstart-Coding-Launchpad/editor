@@ -40,7 +40,7 @@ describe('decodeFileKey', () => {
 describe('round-trip', () => {
   it('encodes then decodes back to the original name', () => {
     const names = ['index.html', 'style.min.css', 'README', '.gitignore', 'a.b.c.d']
-    names.forEach(name => {
+    names.forEach((name) => {
       expect(decodeFileKey(encodeFileKey(name))).toBe(name)
     })
   })

@@ -5,8 +5,12 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { flattenTasks, filterTasksByMode, getStarterStage } from '../../shared/taskUtils'
-import { applyLessonOverride, publishLessonTasks, saveSessionReport } from '../../shared/lessonService'
-import { buildSessionReport } from '../../shared/lessonReport'
+import {
+  applyLessonOverride,
+  publishLessonTasks,
+  saveSessionReport,
+} from '../../shared/lessonService'
+import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
@@ -23,21 +27,37 @@ import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
+import TaskRatingPanel from './teacher/TaskRatingPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
 import { DEFAULT_FS } from '../../modules/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
 import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
-import { cloneFiles, cloneScratchState, decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
-import { getEffectiveLessonForModule, getEffectiveLessonForTask, getLessonModules, getTaskModuleId, isComposedLesson } from '../../shared/composedLesson'
+import {
+  cloneFiles,
+  cloneScratchState,
+  decodeSessionFiles,
+  parseScratchState,
+} from '../../shared/workspaceData'
+import {
+  getEffectiveLessonForModule,
+  getEffectiveLessonForTask,
+  getLessonModules,
+  getTaskModuleId,
+  isComposedLesson,
+} from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getLessonModule } from '../../modules/registry'
+import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
+import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
+import { describeShareError } from '../sharedWorkspacePayload'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
   if (task.taskType === 'quiz' && task.quizType === 'confidence') return false
-  if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null) return false
+  if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null)
+    return false
   return true
 }
 
@@ -45,37 +65,82 @@ export default function TeacherView({ lessonId }) {
   const navigate = useNavigate()
   const { user, role } = useAuth()
   const {
-    session, loading,
-    createSession, restartSession, startSession, endSession,
-    setTaskId, enterSandbox, exitSandbox, pushSandboxCode, pushSandboxFiles, pushSandboxExplainer,
-    pushLessonOverride, clearLessonOverride,
-    setPaused, setExplainerShowComplete, setActiveStudentView, setTeacherLive, renameStudent, removeStudent, pushResetToStudent, overrideStudentCheck, recordClassAdvanceOverrides, dismissHelp,
-    sendToTopic, sendMessageToStudent,
-    requestTeacherEdit, pushTeacherLiveCode, commitTeacherEdit, cancelTeacherEdit,
-    requestTeacherStage, clearTeacherStage,
-    pushTeacherHighlight, removeTeacherHighlight, recordSupportStageReveal,
+    session,
+    loading,
+    createSession,
+    restartSession,
+    startSession,
+    endSession,
+    setTaskId,
+    enterSandbox,
+    exitSandbox,
+    pushSandboxCode,
+    pushSandboxFiles,
+    pushSandboxExplainer,
+    pushLessonOverride,
+    clearLessonOverride,
+    setPaused,
+    requestFullscreenForAll,
+    requestFullscreenForStudent,
+    setActiveStudentView,
+    setTeacherLive,
+    renameStudent,
+    removeStudent,
+    pushResetToStudent,
+    overrideStudentCheck,
+    recordClassAdvanceOverrides,
+    dismissHelp,
+    readPendingShare,
+    approveWorkspaceShare,
+    declineWorkspaceShare,
+    requestShareSnapshot,
+    removeSharedWorkspace,
+    removeAllSharedWorkspaces,
+    readSharedWorkspace,
+    sendToTopic,
+    sendMessageToStudent,
+    updateVideoCallLink,
+    sendVideoCallLink,
+    requestTeacherEdit,
+    pushTeacherLiveCode,
+    commitTeacherEdit,
+    cancelTeacherEdit,
+    requestTeacherStage,
+    clearTeacherStage,
+    pushTeacherHighlight,
+    removeTeacherHighlight,
+    recordSupportStageReveal,
+    setTaskRating,
+    setTeacherLiveReferenceForStudent,
+    setTeacherLiveReferenceForClass,
+    pushTeacherPaneCommand,
+    pushClassPaneCommand,
   } = useSession(lessonId)
 
-  const [baseLesson, setBaseLesson]     = useState(null)
+  const [baseLesson, setBaseLesson] = useState(null)
   const lesson = useMemo(
     () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
     [baseLesson, session?.lessonOverrideTasks]
   )
   const [lessonLoading, setLessonLoading] = useState(true)
   const { topics } = useTopicLibrary(isComposedLesson(lesson) ? null : lesson?.type, !!lesson)
-  const [lessonError, setLessonError]     = useState(false)
+  const [lessonError, setLessonError] = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
-  const [previewTaskId, setPreviewTaskId]   = useState(null)
-  const [showEndModal, setShowEndModal]         = useState(false)
+  const [previewTaskId, setPreviewTaskId] = useState(null)
+  const [showEndModal, setShowEndModal] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
-  const [lastReport, setLastReport]             = useState(null)
+  const [lastReport, setLastReport] = useState(null)
   const [showReportsPanel, setShowReportsPanel] = useState(false)
-  const [leftCollapsed, setLeftCollapsed]   = useState(() => window.innerWidth < 860)
+  // The teacher's own read-only look at an approved share — same gallery students get,
+  // opened from TeacherSessionControls' "Shared work" dropdown.
+  const [openTeacherShare, setOpenTeacherShare] = useState(null)
+  const [teacherShareError, setTeacherShareError] = useState(null)
+  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 860)
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1100)
-  const [code, setCode]                 = useState('')
-  const [files, setFiles]               = useState([])
+  const [code, setCode] = useState('')
+  const [files, setFiles] = useState([])
   const [sandboxStaging, setSandboxStaging] = useState(false)
   const [scratchState, setScratchState] = useState(null)
   const [fsState, setFsState] = useState(DEFAULT_FS)
@@ -83,13 +148,21 @@ export default function TeacherView({ lessonId }) {
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
   const [sandboxModuleId, setSandboxModuleId] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
-  const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null, fs: null, desktop: null })
+  const sandboxDraftRef = useRef({
+    code: null,
+    files: null,
+    scratchState: null,
+    fs: null,
+    desktop: null,
+  })
   const presentationWindowRef = useRef(null)
 
   // Load lesson from Firestore
   useEffect(() => {
+    let cancelled = false
     getDoc(doc(firestore, 'lessons', lessonId))
-      .then(snap => {
+      .then((snap) => {
+        if (cancelled) return
         if (snap.exists()) {
           setBaseLesson(decodeLessonBlocksFromFirestore(snap.data()))
         } else {
@@ -97,14 +170,22 @@ export default function TeacherView({ lessonId }) {
         }
         setLessonLoading(false)
       })
-      .catch(() => { setLessonError(true); setLessonLoading(false) })
+      .catch(() => {
+        if (!cancelled) {
+          setLessonError(true)
+          setLessonLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
   }, [lessonId])
 
   // Create session only if none exists — don't auto-restart an ended session
   useEffect(() => {
     if (loading || !lesson) return
     if (!session) createSession()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, lesson])
 
   useEffect(() => {
@@ -125,7 +206,7 @@ export default function TeacherView({ lessonId }) {
 
   function loadCurrentTaskContent(taskId) {
     if (!lesson) return
-    const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === taskId)
+    const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === taskId)
     if (!task) return
     const taskLesson = getEffectiveLessonForTask(lesson, task)
     if (task.taskType === 'quiz' || task.taskType === 'information') {
@@ -139,7 +220,9 @@ export default function TeacherView({ lessonId }) {
     } else if (taskLesson.type === 'filesystem') {
       setFsState(task.starterFs ?? DEFAULT_FS)
     } else if (taskLesson.type === 'desktop') {
-      setDesktopState(normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps)))
+      setDesktopState(
+        normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
+      )
     } else if (taskLesson.type === 'electronics') {
       setCode(serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT))
     } else {
@@ -148,7 +231,6 @@ export default function TeacherView({ lessonId }) {
   }
 
   // Load task content when displayed task changes (preview or session task)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sandboxStaging || session?.state === 'sandbox') return
     loadCurrentTaskContent(previewTaskId ?? currentTaskId)
@@ -157,25 +239,48 @@ export default function TeacherView({ lessonId }) {
   // Restore sandbox state when teacher opens/reloads while sandbox is live.
   // Also used when entering sandbox — see applySandboxStarterState() below.
   function applySandboxStarterState(moduleId = sandboxModuleId) {
-    const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
-    const resolvedModuleId = moduleId ?? getTaskModuleId(lesson, task) ?? getLessonModules(lesson)[0]?.id ?? null
+    const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === currentTaskId)
+    const resolvedModuleId =
+      moduleId ?? getTaskModuleId(lesson, task) ?? getLessonModules(lesson)[0]?.id ?? null
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, resolvedModuleId) ?? lesson
     const mod = getLessonModule(activeSandboxLesson.type)
     const configured = mod.getSandboxState(activeSandboxLesson, task)
     const draft = sandboxDraftRef.current
     const sessionHasCode = session?.state === 'sandbox' && session.sandboxCode != null
 
-    if (activeSandboxLesson.type === 'python' || activeSandboxLesson.type === 'arcade' || activeSandboxLesson.type === 'electronics') {
+    if (
+      activeSandboxLesson.type === 'python' ||
+      activeSandboxLesson.type === 'arcade' ||
+      activeSandboxLesson.type === 'electronics'
+    ) {
       setCode(draft.code ?? (sessionHasCode ? session.sandboxCode : null) ?? configured)
     } else if (activeSandboxLesson.type === 'scratch') {
-      setScratchState(draft.scratchState ?? (sessionHasCode ? parseScratchState(session.sandboxCode) : null) ?? configured)
+      setScratchState(
+        draft.scratchState ??
+          (sessionHasCode ? parseScratchState(session.sandboxCode) : null) ??
+          configured
+      )
     } else if (activeSandboxLesson.type === 'filesystem') {
-      setFsState(draft.fs ?? (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ?? configured)
+      setFsState(
+        draft.fs ??
+          (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ??
+          configured
+      )
     } else if (activeSandboxLesson.type === 'desktop') {
-      setDesktopState(normaliseDesktop(draft.desktop ?? (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ?? configured))
+      setDesktopState(
+        normaliseDesktop(
+          draft.desktop ??
+            (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ??
+            configured
+        )
+      )
     } else {
       const sessionFiles = isSandbox ? decodeSessionFiles(session?.sandboxFiles, decodeFileKey) : []
-      const starterFiles = draft.files?.length ? cloneFiles(draft.files) : sessionFiles.length ? cloneFiles(sessionFiles) : cloneFiles(configured.files ?? [])
+      const starterFiles = draft.files?.length
+        ? cloneFiles(draft.files)
+        : sessionFiles.length
+          ? cloneFiles(sessionFiles)
+          : cloneFiles(configured.files ?? [])
       setFiles(starterFiles)
     }
   }
@@ -183,18 +288,46 @@ export default function TeacherView({ lessonId }) {
   useEffect(() => {
     if (!lesson || sandboxStaging || session?.state !== 'sandbox') return
     applySandboxStarterState()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lesson, sandboxStaging, session?.state, session?.sandboxCodePushedAt, session?.sandboxFilesUpdatedAt])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    lesson,
+    sandboxStaging,
+    session?.state,
+    session?.sandboxCodePushedAt,
+    session?.sandboxFilesUpdatedAt,
+  ])
 
   // Reset complete code tab when displayed task changes
   useEffect(() => {
     setTeacherCodeTab('starter')
   }, [currentTaskId, previewTaskId])
 
+  // Fall back off the Live tab if Presentation View's broadcast for the displayed task ends
+  // (window closed, task changed there, etc.) — the tab itself disappears once this happens,
+  // so staying on 'live' would otherwise leave the editor showing a stale/empty snapshot.
+  useEffect(() => {
+    if (teacherCodeTab !== 'live') return
+    const displayedTaskId = previewTaskId ?? currentTaskId
+    const stillLive =
+      session?.teacherLiveReference?.active &&
+      session.teacherLiveReference.taskId === displayedTaskId
+    if (!stillLive) setTeacherCodeTab('starter')
+  }, [
+    teacherCodeTab,
+    previewTaskId,
+    currentTaskId,
+    session?.teacherLiveReference?.active,
+    session?.teacherLiveReference?.taskId,
+  ])
+
   async function handleTaskChange(taskId) {
     const leavingTaskId = session?.currentTaskId ?? currentTaskId
-    const leavingTask = flatTasks.find(t => t.id === leavingTaskId)
-    if (session?.state === 'active' && taskId !== leavingTaskId && canRecordAdvanceOverride(leavingTask)) {
+    const leavingTask = flatTasks.find((t) => t.id === leavingTaskId)
+    if (
+      session?.state === 'active' &&
+      taskId !== leavingTaskId &&
+      canRecordAdvanceOverride(leavingTask)
+    ) {
       await recordClassAdvanceOverrides(leavingTaskId)
     }
     setPreviewTaskId(null)
@@ -214,8 +347,10 @@ export default function TeacherView({ lessonId }) {
 
   function handleEnterSandbox() {
     setPreviewTaskId(null)
-    const currentTask = flattenTasks(lesson?.tasks ?? []).find(task => task.id === currentTaskId)
-    const initialModuleId = isComposedLesson(lesson) ? (getTaskModuleId(lesson, currentTask) ?? getLessonModules(lesson)[0]?.id ?? null) : null
+    const currentTask = flattenTasks(lesson?.tasks ?? []).find((task) => task.id === currentTaskId)
+    const initialModuleId = isComposedLesson(lesson)
+      ? (getTaskModuleId(lesson, currentTask) ?? getLessonModules(lesson)[0]?.id ?? null)
+      : null
     setSandboxModuleId(initialModuleId)
     applySandboxStarterState(initialModuleId)
     setSandboxStaging(true)
@@ -227,36 +362,50 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleGoLiveSandbox() {
+    const previousTaskId = currentTaskId
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
     const sandboxTask = isComposedLesson(lesson)
-      ? flattenTasks(lesson?.tasks ?? []).find(task => getTaskModuleId(lesson, task) === sandboxModuleId && task.taskType !== 'information' && task.taskType !== 'quiz')
+      ? flattenTasks(lesson?.tasks ?? []).find(
+          (task) =>
+            getTaskModuleId(lesson, task) === sandboxModuleId &&
+            task.taskType !== 'information' &&
+            task.taskType !== 'quiz'
+        )
       : null
     if (sandboxTask && sandboxTask.id !== currentTaskId) {
       setCurrentTaskId(sandboxTask.id)
       await setTaskId(sandboxTask.id)
     }
-    if (activeSandboxLesson.type === 'python' || activeSandboxLesson.type === 'arcade' || activeSandboxLesson.type === 'electronics') {
+    if (
+      activeSandboxLesson.type === 'python' ||
+      activeSandboxLesson.type === 'arcade' ||
+      activeSandboxLesson.type === 'electronics'
+    ) {
       sandboxDraftRef.current.code = code
-      await enterSandbox({ code })
+      await enterSandbox({ code, previousTaskId })
     } else if (activeSandboxLesson.type === 'scratch') {
       sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
-      await enterSandbox({ code: JSON.stringify(scratchState ?? {}) })
+      await enterSandbox({ code: JSON.stringify(scratchState ?? {}), previousTaskId })
     } else if (activeSandboxLesson.type === 'filesystem') {
       sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
-      await enterSandbox({ code: JSON.stringify(fsState) })
+      await enterSandbox({ code: JSON.stringify(fsState), previousTaskId })
     } else if (activeSandboxLesson.type === 'desktop') {
       sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(desktopState))
-      await enterSandbox({ code: JSON.stringify(desktopState) })
+      await enterSandbox({ code: JSON.stringify(desktopState), previousTaskId })
     } else {
       sandboxDraftRef.current.files = cloneFiles(files)
-      await enterSandbox({ files })
+      await enterSandbox({ files, previousTaskId })
     }
     setSandboxStaging(false)
   }
 
   async function handlePushSandbox() {
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
-    if (activeSandboxLesson.type === 'python' || activeSandboxLesson.type === 'arcade' || activeSandboxLesson.type === 'electronics') {
+    if (
+      activeSandboxLesson.type === 'python' ||
+      activeSandboxLesson.type === 'arcade' ||
+      activeSandboxLesson.type === 'electronics'
+    ) {
       sandboxDraftRef.current.code = code
       await pushSandboxCode(code)
     } else if (activeSandboxLesson.type === 'scratch') {
@@ -277,10 +426,14 @@ export default function TeacherView({ lessonId }) {
   async function handleResetSandboxStarter() {
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
     const mod = getLessonModule(activeSandboxLesson.type)
-    const task = flattenTasks(lesson?.tasks ?? []).find(t => t.id === currentTaskId)
+    const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === currentTaskId)
     const configured = mod.getSandboxState(activeSandboxLesson, task)
 
-    if (activeSandboxLesson.type === 'python' || activeSandboxLesson.type === 'arcade' || activeSandboxLesson.type === 'electronics') {
+    if (
+      activeSandboxLesson.type === 'python' ||
+      activeSandboxLesson.type === 'arcade' ||
+      activeSandboxLesson.type === 'electronics'
+    ) {
       sandboxDraftRef.current.code = configured
       setCode(configured)
       if (isSandbox) await pushSandboxCode(configured)
@@ -300,21 +453,30 @@ export default function TeacherView({ lessonId }) {
       const starterFiles = cloneFiles(configured.files ?? [])
       sandboxDraftRef.current.files = starterFiles
       setFiles(starterFiles)
-      setActiveFile(starterFiles[0]?.name ?? '')
       if (isSandbox) await pushSandboxFiles(starterFiles)
     }
   }
 
   async function handleDeactivateSandbox() {
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
-    if (activeSandboxLesson.type === 'python' || activeSandboxLesson.type === 'arcade' || activeSandboxLesson.type === 'electronics') sandboxDraftRef.current.code = code
-    else if (activeSandboxLesson.type === 'scratch') sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
-    else if (activeSandboxLesson.type === 'filesystem') sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
-    else if (activeSandboxLesson.type === 'desktop') sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(desktopState))
+    if (
+      activeSandboxLesson.type === 'python' ||
+      activeSandboxLesson.type === 'arcade' ||
+      activeSandboxLesson.type === 'electronics'
+    )
+      sandboxDraftRef.current.code = code
+    else if (activeSandboxLesson.type === 'scratch')
+      sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
+    else if (activeSandboxLesson.type === 'filesystem')
+      sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
+    else if (activeSandboxLesson.type === 'desktop')
+      sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(desktopState))
     else sandboxDraftRef.current.files = cloneFiles(files)
     setSandboxStaging(false)
+    const restoredTaskId = session?.sandboxPreviousTaskId ?? currentTaskId
     await exitSandbox()
-    loadCurrentTaskContent(currentTaskId)
+    setCurrentTaskId(restoredTaskId)
+    loadCurrentTaskContent(restoredTaskId)
   }
 
   async function handleEndSession(goHome) {
@@ -328,6 +490,13 @@ export default function TeacherView({ lessonId }) {
     if (goHome) navigate('/')
   }
 
+  async function handleSaveSessionFeedback(feedback) {
+    const updatedReport = attachTeacherFeedback(lastReport, feedback)
+    if (updatedReport !== lastReport)
+      await saveSessionReport(lessonId, updatedReport.sessionId, updatedReport)
+    setLastReport(updatedReport)
+  }
+
   async function handleApplySessionLessonEdit(tasks) {
     await pushLessonOverride(tasks)
   }
@@ -338,9 +507,11 @@ export default function TeacherView({ lessonId }) {
       pushLessonOverride(tasks),
     ])
     if (firestoreResult.status === 'rejected') throw firestoreResult.reason
-    setBaseLesson(prev => ({ ...prev, tasks }))
+    setBaseLesson((prev) => ({ ...prev, tasks }))
     if (rtdbResult.status === 'rejected') {
-      throw new Error('Lesson saved — but failed to update the live session: ' + rtdbResult.reason?.message)
+      throw new Error(
+        'Lesson saved — but failed to update the live session: ' + rtdbResult.reason?.message
+      )
     }
   }
 
@@ -355,12 +526,14 @@ export default function TeacherView({ lessonId }) {
 
   async function handleGoLiveForAll(student) {
     await setActiveStudentView(student.anonymousId)
-    await setTeacherLive(buildStudentLivePayload({
-      student,
-      lesson,
-      taskId: session?.currentTaskId ?? currentTaskId,
-      entryFileTaskId: session?.currentTaskId,
-    }))
+    await setTeacherLive(
+      buildStudentLivePayload({
+        student,
+        lesson,
+        taskId: session?.currentTaskId ?? currentTaskId,
+        entryFileTaskId: session?.currentTaskId,
+      })
+    )
   }
 
   async function handleStopStudentLive() {
@@ -370,7 +543,25 @@ export default function TeacherView({ lessonId }) {
 
   function handleOpenPresentationWindow() {
     const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
-    presentationWindowRef.current = window.open(`${base}?teacher=true&present=true`, `headstart-present-${lessonId}`, 'popup=yes,width=1280,height=800')
+    presentationWindowRef.current = window.open(
+      `${base}?teacher=true&present=true`,
+      `headstart-present-${lessonId}`,
+      'popup=yes,width=1280,height=800'
+    )
+  }
+
+  async function handleOpenTeacherShare(entry) {
+    setTeacherShareError(null)
+    try {
+      const snapshot = await readSharedWorkspace(entry.shareId)
+      if (!snapshot) {
+        setTeacherShareError('That shared workspace is no longer available.')
+        return
+      }
+      setOpenTeacherShare({ entry, snapshot })
+    } catch (err) {
+      setTeacherShareError(describeShareError(err))
+    }
   }
 
   const isSandbox = session?.state === 'sandbox'
@@ -379,68 +570,103 @@ export default function TeacherView({ lessonId }) {
   const flatTasks = flattenTasks(visibleTasks)
   // displayTaskId: what the teacher's centre panel is currently showing
   const displayTaskId = previewTaskId ?? currentTaskId
-  const task = flatTasks.find(t => t.id === displayTaskId)
+  const task = flatTasks.find((t) => t.id === displayTaskId)
   const displayedLesson = getEffectiveLessonForTask(lesson, displayTaskId)
   const lessonModules = getLessonModules(lesson)
-  const activeSandboxModuleId = sandboxModuleId ?? getTaskModuleId(lesson, task) ?? lessonModules[0]?.id ?? null
+  const activeSandboxModuleId =
+    sandboxModuleId ?? getTaskModuleId(lesson, task) ?? lessonModules[0]?.id ?? null
   const sandboxLesson = getEffectiveLessonForModule(lesson, activeSandboxModuleId)
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
-  const currentTask = flatTasks.find(t => t.id === (session?.currentTaskId ?? currentTaskId))
-  const displayIndex = flatTasks.findIndex(t => t.id === displayTaskId)
+  const currentTask = flatTasks.find((t) => t.id === (session?.currentTaskId ?? currentTaskId))
+  const displayIndex = flatTasks.findIndex((t) => t.id === displayTaskId)
   const teacherStageMatch = teacherCodeTab.match(/^stage_(\d+)$/)
   const teacherActiveStageIndex = teacherStageMatch ? parseInt(teacherStageMatch[1], 10) : null
   const taskCodeStages = task?.codeStages ?? []
-  const activeTeacherStage = teacherActiveStageIndex !== null && !isInSandbox
-    ? (taskCodeStages[teacherActiveStageIndex] ?? null)
-    : null
+  const activeTeacherStage =
+    teacherActiveStageIndex !== null && !isInSandbox
+      ? (taskCodeStages[teacherActiveStageIndex] ?? null)
+      : null
   const isInformationTask = task?.taskType === 'information'
-  const students = session ? Object.entries(session.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id })) : []
+  const students = session
+    ? Object.entries(session.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id }))
+    : []
   const joiningCount = Object.keys(session?.joiningStudents ?? {}).length
   const isPreviewing = previewTaskId !== null && !isInSandbox
 
   async function handleSendStageToAll(action) {
     const studentIds = Object.keys(session?.students ?? {})
-    await Promise.all(studentIds.map(id => pushResetToStudent(id, action)))
+    await Promise.all(studentIds.map((id) => pushResetToStudent(id, action)))
   }
 
   async function handleSendTopicToAll(topicId) {
     const studentIds = Object.keys(session?.students ?? {})
-    await Promise.all(studentIds.map(id => sendToTopic(id, topicId)))
+    await Promise.all(studentIds.map((id) => sendToTopic(id, topicId)))
   }
 
   async function handleSendToIndividual(topicId, studentId) {
     await sendToTopic(studentId, topicId)
   }
 
-  const liveState = editorLesson?.type === 'python' || editorLesson?.type === 'arcade' ? code
-    : editorLesson?.type === 'scratch' ? scratchState
-    : editorLesson?.type === 'filesystem' ? fsState
-    : editorLesson?.type === 'desktop' ? desktopState
-    : editorLesson?.type === 'electronics' ? code
-    : { files, entryFile: task?.entryFile ?? 'index.html' }
-
-  const onChange = !isInSandbox ? undefined
-    : editorLesson?.type === 'python' || editorLesson?.type === 'arcade'
-      ? value => { setCode(value); sandboxDraftRef.current.code = value }
-    : editorLesson?.type === 'scratch'
-      ? state => { setScratchState(state); sandboxDraftRef.current.scratchState = cloneScratchState(state) }
+  const liveState =
+    editorLesson?.type === 'python' || editorLesson?.type === 'arcade'
+      ? code
+      : editorLesson?.type === 'scratch'
+        ? scratchState
         : editorLesson?.type === 'filesystem'
-        ? newFs => { setFsState(newFs); sandboxDraftRef.current.fs = newFs }
-        : editorLesson?.type === 'desktop'
-        ? newDesktop => { setDesktopState(newDesktop); sandboxDraftRef.current.desktop = newDesktop }
-          : editorLesson?.type === 'electronics'
-          ? value => { setCode(value); sandboxDraftRef.current.code = value }
-        : (name, content) => setFiles(prev => {
-              const next = prev.map(f => f.name === name ? { ...f, content } : f)
-              sandboxDraftRef.current.files = cloneFiles(next)
-              return next
-            })
+          ? fsState
+          : editorLesson?.type === 'desktop'
+            ? desktopState
+            : editorLesson?.type === 'electronics'
+              ? code
+              : { files, entryFile: task?.entryFile ?? 'index.html' }
+
+  const onChange = !isInSandbox
+    ? undefined
+    : editorLesson?.type === 'python' || editorLesson?.type === 'arcade'
+      ? (value) => {
+          setCode(value)
+          sandboxDraftRef.current.code = value
+        }
+      : editorLesson?.type === 'scratch'
+        ? (state) => {
+            setScratchState(state)
+            sandboxDraftRef.current.scratchState = cloneScratchState(state)
+          }
+        : editorLesson?.type === 'filesystem'
+          ? (newFs) => {
+              setFsState(newFs)
+              sandboxDraftRef.current.fs = newFs
+            }
+          : editorLesson?.type === 'desktop'
+            ? (newDesktop) => {
+                setDesktopState(newDesktop)
+                sandboxDraftRef.current.desktop = newDesktop
+              }
+            : editorLesson?.type === 'electronics'
+              ? (value) => {
+                  setCode(value)
+                  sandboxDraftRef.current.code = value
+                }
+              : (name, content) =>
+                  setFiles((prev) => {
+                    const next = prev.map((f) => (f.name === name ? { ...f, content } : f))
+                    sandboxDraftRef.current.files = cloneFiles(next)
+                    return next
+                  })
 
   if (lessonLoading) {
-    return <div style={s.centre}><p>Loading…</p></div>
+    return (
+      <div style={s.centre}>
+        <p>Loading…</p>
+      </div>
+    )
   }
   if (lessonError || !lesson) {
-    return <div style={s.centre}><p>Lesson &ldquo;{lessonId}&rdquo; not found.</p></div>
+    return (
+      <div style={s.centre}>
+        <p>Lesson &ldquo;{lessonId}&rdquo; not found.</p>
+      </div>
+    )
   }
 
   return (
@@ -450,25 +676,42 @@ export default function TeacherView({ lessonId }) {
         lessonLevel={lesson.level}
         isSandbox={isSandbox}
         right={
-          <TeacherSessionControls
-            session={session}
-            onOpenPresentationWindow={handleOpenPresentationWindow}
-            onOpenFeedback={() => setShowFeedbackModal(true)}
-            onOpenReports={() => setShowReportsPanel(true)}
-            onOpenEditLesson={() => setShowEditLessonModal(true)}
-            onStartSession={startSession}
-            onEndSession={() => setShowEndModal(true)}
-            onRestartSession={restartSession}
-            onReturnToAdmin={() => navigate('/admin')}
-          />
+          <>
+            {session && !isInformationTask && (
+              <PaneFocusDropdown
+                label="Focus Class"
+                lessonType={editorLesson?.type}
+                onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
+                onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}
+              />
+            )}
+            <TeacherSessionControls
+              session={session}
+              onOpenPresentationWindow={handleOpenPresentationWindow}
+              onOpenFeedback={() => setShowFeedbackModal(true)}
+              onOpenReports={() => setShowReportsPanel(true)}
+              onOpenEditLesson={() => setShowEditLessonModal(true)}
+              onStartSession={startSession}
+              onEndSession={() => setShowEndModal(true)}
+              onRestartSession={restartSession}
+              onReturnToAdmin={() => navigate('/admin')}
+              onUpdateVideoCallLink={updateVideoCallLink}
+              onRemoveSharedWorkspace={removeSharedWorkspace}
+              onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
+              onOpenSharedWorkspace={handleOpenTeacherShare}
+            />
+          </>
         }
       />
       <TeacherTimers session={session} task={currentTask} tasks={visibleTasks} />
       <LiveActivityToast activity={editorActivity} showClicks={false} />
 
-
-
-      <div style={{ ...s.body, gridTemplateColumns: `${leftCollapsed ? '40px' : '220px'} 1fr ${rightCollapsed ? '40px' : '280px'}` }}>
+      <div
+        style={{
+          ...s.body,
+          gridTemplateColumns: `${leftCollapsed ? '40px' : '220px'} 1fr ${rightCollapsed ? '40px' : '280px'}`,
+        }}
+      >
         {/* Left — Task Navigator */}
         <aside style={s.left}>
           <TaskNavigator
@@ -478,30 +721,41 @@ export default function TeacherView({ lessonId }) {
             session={session}
             students={students}
             onTaskSelect={handlePreviewTask}
-            onSandbox={isSandbox ? handleDeactivateSandbox : sandboxStaging ? handleCancelSandbox : handleEnterSandbox}
+            onSandbox={
+              isSandbox
+                ? handleDeactivateSandbox
+                : sandboxStaging
+                  ? handleCancelSandbox
+                  : handleEnterSandbox
+            }
             isSandbox={isSandbox}
             sandboxStaging={sandboxStaging}
             collapsed={leftCollapsed}
-            onToggle={() => setLeftCollapsed(v => !v)}
+            onToggle={() => setLeftCollapsed((v) => !v)}
           />
         </aside>
 
         {/* Centre — Teacher Editor */}
-        <main style={{ ...s.centre, ...((isInformationTask || displayedLesson.type === 'html' || displayedLesson.type === 'scratch' || displayedLesson.type === 'filesystem' || displayedLesson.type === 'desktop' || displayedLesson.type === 'electronics') && !(currentTask?.check != null && !isInSandbox) ? { overflow: 'hidden' } : {}) }}>
+        <main
+          style={{
+            ...s.centre,
+            ...((isInformationTask ||
+              displayedLesson.type === 'html' ||
+              displayedLesson.type === 'scratch' ||
+              displayedLesson.type === 'filesystem' ||
+              displayedLesson.type === 'desktop' ||
+              displayedLesson.type === 'electronics') &&
+            !(currentTask?.check != null && !isInSandbox)
+              ? { overflow: 'hidden' }
+              : {}),
+          }}
+        >
           {task?.explainer && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
-            <ExplainerPanel title={task.title} content={task.explainer} topicType={displayedLesson.type} />
-          )}
-
-          {false && displayedLesson.type === 'python' && !!task?.completeCode && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
-            <div style={sc.explainerToggleRow}>
-              <button
-                type="button"
-                style={{ ...sc.explainerToggleBtn, ...(session?.explainerShowComplete ? sc.explainerToggleBtnActive : {}) }}
-                onClick={() => setExplainerShowComplete(!session?.explainerShowComplete)}
-              >
-                {session?.explainerShowComplete ? 'Showing complete code in students’ explainer — click to revert' : 'Show complete code in students’ explainer'}
-              </button>
-            </div>
+            <ExplainerPanel
+              title={task.title}
+              content={task.explainer}
+              topicType={displayedLesson.type}
+            />
           )}
 
           {isPreviewing && (
@@ -516,17 +770,30 @@ export default function TeacherView({ lessonId }) {
           {isInSandbox && (
             <div style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               {lessonModules.length > 0 && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#eef2ff', fontSize: '0.88rem' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    background: '#eef2ff',
+                    fontSize: '0.88rem',
+                  }}
+                >
                   Sandbox module
                   <select
                     value={activeSandboxModuleId ?? ''}
-                    onChange={event => {
+                    onChange={(event) => {
                       const moduleId = event.target.value || null
                       setSandboxModuleId(moduleId)
                       applySandboxStarterState(moduleId)
                     }}
                   >
-                    {lessonModules.map(module => <option key={module.id} value={module.id}>{module.title || module.id} ({module.type})</option>)}
+                    {lessonModules.map((module) => (
+                      <option key={module.id} value={module.id}>
+                        {module.title || module.id} ({module.type})
+                      </option>
+                    ))}
                   </select>
                 </label>
               )}
@@ -559,7 +826,18 @@ export default function TeacherView({ lessonId }) {
             liveState={liveState}
             onChange={onChange}
             onActivity={setEditorActivity}
+            teacherLiveReference={session?.teacherLiveReference}
+            teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
+            onToggleLiveReference={setTeacherLiveReferenceForClass}
           />
+          {task && !isInformationTask && !isInSandbox && (
+            <TaskRatingPanel
+              taskId={task.id}
+              taskTitle={task.title}
+              existingRating={session?.taskRatingLog?.[task.id] ?? null}
+              onSave={setTaskRating}
+            />
+          )}
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}
@@ -583,6 +861,7 @@ export default function TeacherView({ lessonId }) {
             onOverrideCheck={overrideStudentCheck}
             onDismissHelp={dismissHelp}
             onSendToTopic={sendToTopic}
+            onSendVideoCallLink={session?.videoCallLink ? sendVideoCallLink : undefined}
             onSendTopicToAll={handleSendTopicToAll}
             onSendToIndividual={handleSendToIndividual}
             onSendMessage={sendMessageToStudent}
@@ -594,10 +873,18 @@ export default function TeacherView({ lessonId }) {
             onClearTeacherStage={clearTeacherStage}
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
+            onPushTeacherPaneCommand={pushTeacherPaneCommand}
+            onReadPendingShare={readPendingShare}
+            onApproveShare={approveWorkspaceShare}
+            onDeclineShare={declineWorkspaceShare}
+            onRequestShareSnapshot={requestShareSnapshot}
             onRevealSupportStage={recordSupportStageReveal}
+            onSetTeacherLiveReference={setTeacherLiveReferenceForStudent}
             onTogglePaused={() => setPaused(!session?.isPaused)}
+            onRequestFullscreenAll={requestFullscreenForAll}
+            onRequestFullscreenStudent={requestFullscreenForStudent}
             collapsed={rightCollapsed}
-            onToggle={() => setRightCollapsed(v => !v)}
+            onToggle={() => setRightCollapsed((v) => !v)}
           />
         </aside>
       </div>
@@ -622,13 +909,21 @@ export default function TeacherView({ lessonId }) {
       )}
 
       {lastReport && (
-        <TeacherReportModal report={lastReport} onClose={() => setLastReport(null)} />
+        <TeacherReportModal
+          report={lastReport}
+          onClose={() => setLastReport(null)}
+          onSaveFeedback={handleSaveSessionFeedback}
+        />
       )}
 
       {showReportsPanel && (
         <TeacherReportsPanel
           lessonId={lessonId}
-          liveReport={(session?.state === 'active' || session?.state === 'sandbox') ? buildSessionReport({ session, lesson }) : null}
+          liveReport={
+            session?.state === 'active' || session?.state === 'sandbox'
+              ? buildSessionReport({ session, lesson })
+              : null
+          }
           onClose={() => setShowReportsPanel(false)}
         />
       )}
@@ -644,28 +939,37 @@ export default function TeacherView({ lessonId }) {
           onClose={() => setShowEditLessonModal(false)}
         />
       )}
+
+      {teacherShareError && !openTeacherShare && (
+        <div style={s.teacherShareErrorToast} role="alert">
+          {teacherShareError}
+          <button
+            type="button"
+            className="btn-ghost"
+            style={s.teacherShareErrorDismiss}
+            onClick={() => setTeacherShareError(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Teacher's own read-only look at an approved share — no onCopyToMyEditor,
+          since a teacher has no editor of their own to copy into. */}
+      {openTeacherShare && (
+        <div style={s.teacherShareOverlay}>
+          <div style={s.teacherShareModal}>
+            <SharedWorkspaceViewer
+              lesson={lesson}
+              entry={openTeacherShare.entry}
+              snapshot={openTeacherShare.snapshot}
+              onClose={() => setOpenTeacherShare(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
-}
-
-const sc = {
-  explainerToggleRow: { flexShrink: 0 },
-  explainerToggleBtn: {
-    fontSize: 12,
-    padding: '5px 12px',
-    background: '#fff',
-    color: 'var(--colour-primary)',
-    border: '1px solid rgba(124,58,237,0.35)',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-  },
-  explainerToggleBtnActive: {
-    background: 'var(--colour-primary)',
-    color: '#fff',
-    borderColor: 'var(--colour-primary)',
-  },
 }
 
 const s = {
@@ -674,6 +978,43 @@ const s = {
     flexDirection: 'column',
     height: '100%',
   },
+  teacherShareOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.45)',
+    zIndex: 1000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  teacherShareModal: {
+    background: '#fff',
+    borderRadius: 12,
+    width: 'min(1100px, 92vw)',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  teacherShareErrorToast: {
+    position: 'fixed',
+    right: 16,
+    bottom: 16,
+    zIndex: 1200,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 14px',
+    borderRadius: 10,
+    background: '#fff',
+    border: '1px solid var(--colour-error, #dc2626)',
+    boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+  },
+  teacherShareErrorDismiss: { fontSize: 12, padding: '2px 6px' },
   body: {
     flex: 1,
     display: 'grid',

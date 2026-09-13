@@ -1,5 +1,9 @@
 import React from 'react'
-import { findScratchBlock, scratchBlockBadgeIcon, scratchBlockTextWithoutIcon } from '../scratchBlockCatalog'
+import {
+  findScratchBlock,
+  scratchBlockBadgeIcon,
+  scratchBlockTextWithoutIcon,
+} from '../scratchBlockCatalog'
 
 const BODY_H = 38
 const HAT_H = 42
@@ -67,7 +71,12 @@ function findBalanced(text, start, open, close) {
   for (let i = start; i < text.length; i++) {
     if (text[i] === open) depth++
     else if (text[i] === close) {
-      if (open === '<' && close === '>' && /\s/.test(text[i - 1] ?? '') && /\s/.test(text[i + 1] ?? '')) {
+      if (
+        open === '<' &&
+        close === '>' &&
+        /\s/.test(text[i - 1] ?? '') &&
+        /\s/.test(text[i + 1] ?? '')
+      ) {
         continue
       }
       depth--
@@ -80,7 +89,7 @@ function findBalanced(text, start, open, close) {
 }
 
 function hostColorOf(hostInfo) {
-  return typeof hostInfo === 'string' ? hostInfo : hostInfo?.color ?? '#7c7c7c'
+  return typeof hostInfo === 'string' ? hostInfo : (hostInfo?.color ?? '#7c7c7c')
 }
 
 function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
@@ -101,7 +110,14 @@ function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
       const found = findBalanced(text, i, '[', ']')
       if (found) {
         flush()
-        parts.push({ type: 'slot', kind: 'dropdown', content: found.content, depth, hostColor, key: `slot-${i}` })
+        parts.push({
+          type: 'slot',
+          kind: 'dropdown',
+          content: found.content,
+          depth,
+          hostColor,
+          key: `slot-${i}`,
+        })
         i = found.end
         continue
       }
@@ -110,7 +126,14 @@ function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
       const found = findBalanced(text, i, '(', ')')
       if (found) {
         flush()
-        parts.push({ type: 'slot', kind: 'value', content: found.content, depth, hostColor, key: `slot-${i}` })
+        parts.push({
+          type: 'slot',
+          kind: 'value',
+          content: found.content,
+          depth,
+          hostColor,
+          key: `slot-${i}`,
+        })
         i = found.end
         continue
       }
@@ -119,7 +142,14 @@ function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
       const found = findBalanced(text, i, '<', '>')
       if (found) {
         flush()
-        parts.push({ type: 'slot', kind: 'condition', content: found.content, depth, hostColor, key: `slot-${i}` })
+        parts.push({
+          type: 'slot',
+          kind: 'condition',
+          content: found.content,
+          depth,
+          hostColor,
+          key: `slot-${i}`,
+        })
         i = found.end
         continue
       }
@@ -132,7 +162,11 @@ function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
 }
 
 function booleanMinWidth(info, inline) {
-  if (info?.opcode === 'operator_equals' || info?.opcode === 'operator_gt' || info?.opcode === 'operator_lt') {
+  if (
+    info?.opcode === 'operator_equals' ||
+    info?.opcode === 'operator_gt' ||
+    info?.opcode === 'operator_lt'
+  ) {
     return inline ? 0 : 92
   }
   if (info?.opcode === 'operator_not') return inline ? 78 : 88
@@ -142,14 +176,24 @@ function booleanMinWidth(info, inline) {
 }
 
 function booleanExtraWidth(info) {
-  if (info?.opcode === 'operator_equals' || info?.opcode === 'operator_gt' || info?.opcode === 'operator_lt') return 28
+  if (
+    info?.opcode === 'operator_equals' ||
+    info?.opcode === 'operator_gt' ||
+    info?.opcode === 'operator_lt'
+  )
+    return 28
   if (info?.opcode === 'operator_not') return 34
   return 42
 }
 
 function contentPaddingFor(shape, info) {
   if (shape !== 'boolean') return 13
-  if (info?.opcode === 'operator_equals' || info?.opcode === 'operator_gt' || info?.opcode === 'operator_lt') return 14
+  if (
+    info?.opcode === 'operator_equals' ||
+    info?.opcode === 'operator_gt' ||
+    info?.opcode === 'operator_lt'
+  )
+    return 14
   return 18
 }
 
@@ -166,7 +210,13 @@ function minimumBlockWidth(shape, info, inline) {
   return inline ? 48 : 60
 }
 
-function useMeasuredBlockWidth(rowRef, fallbackWidth, minimumWidth, horizontalPadding, dependencies) {
+function useMeasuredBlockWidth(
+  rowRef,
+  fallbackWidth,
+  minimumWidth,
+  horizontalPadding,
+  dependencies
+) {
   const [width, setWidth] = React.useState(fallbackWidth)
 
   React.useLayoutEffect(() => {
@@ -178,7 +228,7 @@ function useMeasuredBlockWidth(rowRef, fallbackWidth, minimumWidth, horizontalPa
       const rowWidth = rowRef.current?.offsetWidth ?? 0
       if (!rowWidth || !active) return
       const nextWidth = Math.max(minimumWidth, Math.ceil(rowWidth + horizontalPadding * 2))
-      setWidth(current => current === nextWidth ? current : nextWidth)
+      setWidth((current) => (current === nextWidth ? current : nextWidth))
     }
 
     measure()
@@ -199,10 +249,29 @@ function measureInlineBlock(text, info) {
   const bodyH = shape === 'hat' ? INLINE_H + 3 : INLINE_H
   const bottomTab = shape === 'stack' || shape === 'hat'
   const textWidth = iconBadgeMeasure(info, true) + measurePartsWidth(text, 12, 1, info)
-  if (shape === 'reporter') return { width: Math.max(48, textWidth + 26), height: bodyH + 1, bodyH: bodyH + 1, bottomTab: false }
-  if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, true), textWidth + booleanExtraWidth(info)), height: bodyH + 8, bodyH: bodyH + 8, bottomTab: false }
-  if (shape === 'hat') return { width: Math.max(68, textWidth + 28), height: bodyH + CONNECTOR_H, bodyH, bottomTab: true }
-  if (shape === 'cap') return { width: Math.max(48, textWidth + 28), height: bodyH, bodyH, bottomTab: false }
+  if (shape === 'reporter')
+    return {
+      width: Math.max(48, textWidth + 26),
+      height: bodyH + 1,
+      bodyH: bodyH + 1,
+      bottomTab: false,
+    }
+  if (shape === 'boolean')
+    return {
+      width: Math.max(booleanMinWidth(info, true), textWidth + booleanExtraWidth(info)),
+      height: bodyH + 8,
+      bodyH: bodyH + 8,
+      bottomTab: false,
+    }
+  if (shape === 'hat')
+    return {
+      width: Math.max(68, textWidth + 28),
+      height: bodyH + CONNECTOR_H,
+      bodyH,
+      bottomTab: true,
+    }
+  if (shape === 'cap')
+    return { width: Math.max(48, textWidth + 28), height: bodyH, bodyH, bottomTab: false }
   return { width: Math.max(48, textWidth + 28), height: bodyH + CONNECTOR_H, bodyH, bottomTab }
 }
 
@@ -213,11 +282,30 @@ function measureSimpleBlock(text, info, inline = false) {
   const bodyH = shape === 'hat' ? HAT_H : BODY_H
   const bottomTab = shape === 'stack' || shape === 'hat'
   const textWidth = iconBadgeMeasure(info, false) + measurePartsWidth(text, 13, 0, info)
-  if (shape === 'reporter') return { width: Math.max(60, textWidth + 30), height: 33, bodyH: 33, bottomTab: false }
-  if (shape === 'boolean') return { width: Math.max(booleanMinWidth(info, false), textWidth + booleanExtraWidth(info)), height: 36, bodyH: 36, bottomTab: false }
-  if (shape === 'cap') return { width: Math.max(60, textWidth + 30), height: BODY_H, bodyH: BODY_H, bottomTab: false }
-  if (shape === 'hat') return { width: Math.max(88, textWidth + 32), height: bodyH + CONNECTOR_H, bodyH, bottomTab: true }
-  return { width: Math.max(60, textWidth + 30), height: bodyH + CONNECTOR_H, bodyH, bottomTab: true }
+  if (shape === 'reporter')
+    return { width: Math.max(60, textWidth + 30), height: 33, bodyH: 33, bottomTab: false }
+  if (shape === 'boolean')
+    return {
+      width: Math.max(booleanMinWidth(info, false), textWidth + booleanExtraWidth(info)),
+      height: 36,
+      bodyH: 36,
+      bottomTab: false,
+    }
+  if (shape === 'cap')
+    return { width: Math.max(60, textWidth + 30), height: BODY_H, bodyH: BODY_H, bottomTab: false }
+  if (shape === 'hat')
+    return {
+      width: Math.max(88, textWidth + 32),
+      height: bodyH + CONNECTOR_H,
+      bodyH,
+      bottomTab: true,
+    }
+  return {
+    width: Math.max(60, textWidth + 30),
+    height: bodyH + CONNECTOR_H,
+    bodyH,
+    bottomTab: true,
+  }
 }
 
 function measurePartsWidth(text, size, depth, hostInfo) {
@@ -248,8 +336,10 @@ function stackedSize(children) {
   if (!children.length) return { width: 0, height: 0 }
   const sizes = children.map(measureNode)
   return {
-    width: Math.max(...sizes.map(size => size.width)),
-    height: sizes.reduce((sum, size) => sum + size.height, 0) - CONNECTOR_H * Math.max(0, sizes.length - 1),
+    width: Math.max(...sizes.map((size) => size.width)),
+    height:
+      sizes.reduce((sum, size) => sum + size.height, 0) -
+      CONNECTOR_H * Math.max(0, sizes.length - 1),
   }
 }
 
@@ -258,7 +348,9 @@ function measureCBlock(node) {
   const childSize = stackedSize(node.children)
   const elseChildSize = stackedSize(node.elseChildren)
   const mouthH = Math.max(MOUTH_MIN_H, childSize.height + MOUTH_PAD_TOP + MOUTH_PAD_BOTTOM)
-  const elseMouthH = node.hasElse ? Math.max(MOUTH_MIN_H, elseChildSize.height + MOUTH_PAD_TOP + MOUTH_PAD_BOTTOM) : 0
+  const elseMouthH = node.hasElse
+    ? Math.max(MOUTH_MIN_H, elseChildSize.height + MOUTH_PAD_TOP + MOUTH_PAD_BOTTOM)
+    : 0
   const mouthW = Math.max(childSize.width, elseChildSize.width) + MOUTH_X + 12
   const width = Math.ceil(Math.max(C_MIN_W, header.width, mouthW))
   const bodyH = BODY_H + mouthH + (node.hasElse ? ELSE_H + elseMouthH : 0) + FOOTER_H
@@ -278,7 +370,11 @@ function measureNode(node) {
   return measureSimpleBlock(node.text, node.info, false)
 }
 
-function stackPath(width, bodyH, { topNotch = true, bottomTab = true, roundedBottom = false } = {}) {
+function stackPath(
+  width,
+  bodyH,
+  { topNotch = true, bottomTab = true, roundedBottom = false } = {}
+) {
   const r = 5
   const tabX = NOTCH_X
   const tabW = NOTCH_W
@@ -333,7 +429,8 @@ function shapePath(shape, width, bodyH, bottomTab) {
   if (shape === 'reporter') return reporterPath(width, bodyH)
   if (shape === 'boolean') return booleanPath(width, bodyH)
   if (shape === 'hat') return stackPath(width, bodyH, { topNotch: false, bottomTab })
-  if (shape === 'cap') return stackPath(width, bodyH, { topNotch: true, bottomTab: false, roundedBottom: true })
+  if (shape === 'cap')
+    return stackPath(width, bodyH, { topNotch: true, bottomTab: false, roundedBottom: true })
   return stackPath(width, bodyH, { topNotch: true, bottomTab })
 }
 
@@ -470,7 +567,8 @@ function ScratchIconBadge({ icon, inline = false }) {
 
 function usesLightDropdown(hostInfo) {
   const opcode = hostInfo?.opcode ?? ''
-  return hostInfo?.category === 'Events' ||
+  return (
+    hostInfo?.category === 'Events' ||
     opcode.startsWith('looks_say') ||
     opcode.startsWith('looks_think') ||
     opcode === 'sensing_askandwait' ||
@@ -478,6 +576,7 @@ function usesLightDropdown(hostInfo) {
     opcode === 'operator_letter_of' ||
     opcode === 'operator_length' ||
     opcode === 'operator_contains'
+  )
 }
 
 function slotStyle(kind, hostInfo = fallbackInfo()) {
@@ -496,15 +595,21 @@ function slotStyle(kind, hostInfo = fallbackInfo()) {
     padding: isCondition ? '1px 11px' : isDropdown ? '0 7px 0 8px' : '0 7px',
     margin: '0 1px',
     color: isLightDropdown ? '#334155' : isDropdown || isCondition ? '#fff' : '#1f2937',
-    background: isLightDropdown ? '#fff' : isDropdown ? dropdownColor : isCondition ? OPERATOR_COLOR : '#fff',
+    background: isLightDropdown
+      ? '#fff'
+      : isDropdown
+        ? dropdownColor
+        : isCondition
+          ? OPERATOR_COLOR
+          : '#fff',
     borderRadius: isDropdown ? 4 : isCondition ? 3 : 999,
     boxShadow: isLightDropdown
       ? 'inset 0 0 0 1px rgba(0,0,0,0.22), inset 0 -1px 0 rgba(0,0,0,0.08)'
       : isDropdown
         ? `inset 0 0 0 1px rgba(0,0,0,0.35), inset 0 -1px 0 rgba(255,255,255,0.16)`
-      : isCondition
-        ? `inset 0 0 0 1px ${outlineFor(OPERATOR_COLOR)}`
-        : 'inset 0 0 0 1px rgba(0,0,0,0.2)',
+        : isCondition
+          ? `inset 0 0 0 1px ${outlineFor(OPERATOR_COLOR)}`
+          : 'inset 0 0 0 1px rgba(0,0,0,0.2)',
     clipPath: isCondition
       ? 'polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%)'
       : undefined,
@@ -520,10 +625,20 @@ function GreenFlagIcon() {
       width="13"
       height="14"
       viewBox="0 0 13 14"
-      style={{ display: 'inline-block', margin: '0 1px 0 2px', verticalAlign: '-2px', flex: '0 0 auto' }}
+      style={{
+        display: 'inline-block',
+        margin: '0 1px 0 2px',
+        verticalAlign: '-2px',
+        flex: '0 0 auto',
+      }}
     >
       <path d="M2 1.2v11.6" stroke="#4d4d4d" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M3 1.8c2.2-1 4 .7 6.6-.2v6.1c-2.6.9-4.4-.8-6.6.2z" fill="#40BF4A" stroke="#219635" strokeWidth="0.7" />
+      <path
+        d="M3 1.8c2.2-1 4 .7 6.6-.2v6.1c-2.6.9-4.4-.8-6.6.2z"
+        fill="#40BF4A"
+        stroke="#219635"
+        strokeWidth="0.7"
+      />
     </svg>
   )
 }
@@ -601,7 +716,9 @@ function renderSlot(content, kind, key, depth, hostInfo) {
       data-scratch-slot={kind}
       data-scratch-slot-tone={isLightDropdown ? 'light' : undefined}
     >
-      {kind === 'condition' ? renderBlockText(label, depth + 1, { color: OPERATOR_COLOR, category: 'Operators' }) : label}
+      {kind === 'condition'
+        ? renderBlockText(label, depth + 1, { color: OPERATOR_COLOR, category: 'Operators' })
+        : label}
       {kind === 'dropdown' && <SlotArrow tone={isLightDropdown ? 'dark' : 'light'} />}
     </span>
   )
@@ -612,7 +729,8 @@ function renderBlockText(text, depth = 0, hostInfo = fallbackInfo()) {
   if (flagText) return flagText
 
   return blockTextParts(text, depth, hostInfo).map((part, index) => {
-    if (part.type === 'text') return <React.Fragment key={`text-${index}`}>{part.text}</React.Fragment>
+    if (part.type === 'text')
+      return <React.Fragment key={`text-${index}`}>{part.text}</React.Fragment>
     return renderSlot(part.content, part.kind, part.key, part.depth, hostInfo)
   })
 }
@@ -667,7 +785,7 @@ function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride
     size.width,
     minimumBlockWidth(shape, info, inline),
     contentPadding,
-    [displayText, info.opcode, inline, shape, size.width, contentPadding],
+    [displayText, info.opcode, inline, shape, size.width, contentPadding]
   )
 
   return (
@@ -714,7 +832,12 @@ function ScratchBlockBody({ text, info, inline = false, depth = 0, shapeOverride
       >
         <span
           ref={contentRowRef}
-          style={{ display: 'inline-flex', alignItems: 'center', width: 'max-content', lineHeight: 1 }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            width: 'max-content',
+            lineHeight: 1,
+          }}
           data-scratch-block-row="true"
         >
           <ScratchIconBadge icon={scratchBlockBadgeIcon(info)} inline={inline} />
@@ -904,7 +1027,9 @@ function parseScratchStack(code) {
 
     if (lower === 'else') {
       while (stack.length && stack[stack.length - 1].indent > indent) stack.pop()
-      const targetIndex = stack.findLastIndex(entry => entry.indent === indent && entry.node.info.shape === 'c')
+      const targetIndex = stack.findLastIndex(
+        (entry) => entry.indent === indent && entry.node.info.shape === 'c'
+      )
       if (targetIndex >= 0) {
         stack.length = targetIndex + 1
         stack[targetIndex].node.hasElse = true
@@ -968,9 +1093,15 @@ export function ScratchBlocks({ code }) {
 }
 
 export function looksLikeScratchBlocks(code) {
-  const lines = String(code ?? '').split('\n').map(line => line.trim()).filter(Boolean)
-  return lines.length > 0 && lines.every(line => {
-    const lower = line.toLowerCase()
-    return lower === 'end' || lower === 'else' || Boolean(findScratchBlock(line))
-  })
+  const lines = String(code ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  return (
+    lines.length > 0 &&
+    lines.every((line) => {
+      const lower = line.toLowerCase()
+      return lower === 'end' || lower === 'else' || Boolean(findScratchBlock(line))
+    })
+  )
 }

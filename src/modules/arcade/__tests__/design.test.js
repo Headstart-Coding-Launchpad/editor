@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { ARCADE_COLOURS, ARCADE_PALETTE, createArcadeDesign, createArcadeMap, createArcadeSprite, designForCodeTab, generatedArcadeAssets, generatedArcadeTilemaps, mapToPythonSnippet, normaliseArcadeColour, resizeArcadeMap, resizeArcadeSprite, updateDesignForCodeTab, updateMapCell } from '../design.js'
+import {
+  ARCADE_COLOURS,
+  ARCADE_PALETTE,
+  createArcadeDesign,
+  createArcadeMap,
+  createArcadeSprite,
+  designForCodeTab,
+  generatedArcadeAssets,
+  generatedArcadeTilemaps,
+  mapToPythonSnippet,
+  normaliseArcadeColour,
+  resizeArcadeMap,
+  resizeArcadeSprite,
+  updateDesignForCodeTab,
+  updateMapCell,
+} from '../design.js'
 
 describe('Arcade design model', () => {
   it('normalises pixel sprites and generates a portable image asset', () => {
@@ -19,11 +34,19 @@ describe('Arcade design model', () => {
   })
 
   it('edits map cells and exposes a compact tilemap file to Python', () => {
-    const map = createArcadeMap([], { name: 'level one', columns: 2, rows: 2, tiles: { '#': { asset: 'wall.png', properties: { solid: true, hazard: true } } }, objects: [{ type: 'coin', x: 16, y: 8 }] })
+    const map = createArcadeMap([], {
+      name: 'level one',
+      columns: 2,
+      rows: 2,
+      tiles: { '#': { asset: 'wall.png', properties: { solid: true, hazard: true } } },
+      objects: [{ type: 'coin', x: 16, y: 8 }],
+    })
     const updated = updateMapCell(map, 1, 0, '#')
     expect(updated.rows[0]).toBe('.#')
     const snippet = mapToPythonSnippet(updated)
-    expect(snippet).toBe('from headstart_arcade import TileMap\nlevel_one = TileMap("level-one.tilemap")')
+    expect(snippet).toBe(
+      'from headstart_arcade import TileMap\nlevel_one = TileMap("level-one.tilemap")'
+    )
     const tilemap = generatedArcadeTilemaps({ maps: [updated] })[0]
     expect(tilemap.name).toBe('level-one.tilemap')
     expect(tilemap.data.properties['#'].hazard).toBe(true)
@@ -60,7 +83,9 @@ describe('Arcade design model', () => {
   })
 
   it('keeps an intentionally blank 16 by 16 sprite at its selected size', () => {
-    const design = createArcadeDesign({ sprites: [{ name: 'blank.png', width: 16, height: 16, frames: [Array(256).fill(null)] }] })
+    const design = createArcadeDesign({
+      sprites: [{ name: 'blank.png', width: 16, height: 16, frames: [Array(256).fill(null)] }],
+    })
 
     expect(design.sprites[0].width).toBe(16)
     expect(design.sprites[0].height).toBe(16)

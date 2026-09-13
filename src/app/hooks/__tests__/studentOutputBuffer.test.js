@@ -43,10 +43,12 @@ describe('studentOutputBuffer', () => {
       maxDisplayLines: 10,
     })
 
-    expect(appendStudentOutput(capped, 'more', {
-      maxStreamedOutput: 5,
-      maxDisplayLines: 10,
-    })).toBe(capped)
+    expect(
+      appendStudentOutput(capped, 'more', {
+        maxStreamedOutput: 5,
+        maxDisplayLines: 10,
+      })
+    ).toBe(capped)
   })
 
   it('collapses the truncation message like any other output line', () => {

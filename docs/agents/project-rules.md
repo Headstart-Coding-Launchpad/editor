@@ -91,9 +91,11 @@ Important shared files include `iframe.js`, `CodeEditor.jsx`, `markdown.jsx`, `f
 
 The `/admin` route is available only to users with the admin Firebase role.
 
-Tabs:
+8 tabs, defined in `src/admin/AdminPortal.jsx`'s `TABS` array:
 
-- Lessons: browse Firestore lessons grouped by type and referenced level; manage reusable levels; expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher or copy student links.
+- Lessons: browse all published Firestore lessons in one library (the older type-grouped/filtered view is hardcoded off — `LessonPanel.jsx`'s type-tab UI is dead code behind `{false && ...}`); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher, preview as a student (`?preview=true` — ephemeral, nothing persists), or copy student links; fork a lesson to a class.
+- Levels: manage reusable levels (`LessonPanel.jsx` rendered with `view="levels"`, via `LevelManager`).
+- Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`).
 - Sessions: Realtime Database `sessions` list filtered to non-`ended` states — lesson, state, paused flag, student/online counts, open duration; "Close Session" removes an abandoned session node.
 - Topic Library: create, edit, and delete topics with Markdown description and syntax fields.
 - Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
@@ -110,6 +112,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 - Classes → Firestore `classes/`
 - Topics → Firestore `topicLibrary/`
 - Assets → Firebase Storage under `lessons/{lessonId}/assets/`; `lesson.storageAssets` is optional metadata, not the source-of-truth inventory
+- Lesson-type-wide shared assets (files, Scratch default sprites/backdrops) → Firestore `lessonTypeAssets/{type}`, files in Storage under `shared/{type}/assets/` — same data the admin "Shared Assets" panel manages
 
 **Auth:**
 - Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
@@ -126,7 +129,7 @@ Command groups:
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
-- `assets list|upload|delete`
+- `assets list|upload|delete|list-type|upload-type|set-default-sprites|upload-backdrop`
 - `levels list|upsert|delete`
 - `classes list|upsert|archive`
 
@@ -135,3 +138,5 @@ Command groups:
 Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.
+
+`assets list-type`/`upload-type` work for any lesson type (shared files only). `set-default-sprites` (accepts a JSON/YAML array or `{ sprites: [...] }`, file or stdin) and `upload-backdrop` (uploads a local image and appends it as a new `defaultBackdrops` entry in one step) are scratch-only — they write `lessonTypeAssets/scratch.defaultSprites`/`defaultBackdrops`, the same fields the Scratch student/builder workspaces read via `useTypeAssets`.

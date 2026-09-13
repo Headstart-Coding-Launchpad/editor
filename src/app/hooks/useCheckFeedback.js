@@ -1,20 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 
 export function useCheckFeedback({ myStudentData } = {}) {
-  const [checkPassed, setCheckPassed]         = useState(false)
-  const [checkAttempted, setCheckAttempted]   = useState(false)
+  const [checkPassed, setCheckPassed] = useState(false)
+  const [checkAttempted, setCheckAttempted] = useState(false)
   const [checkSuggestion, setCheckSuggestion] = useState('')
   const [repeatedSuggestionCount, setRepeatedSuggestionCount] = useState(0)
-  const [checkFailCount, setCheckFailCount]   = useState(0)
-  const [testResults, setTestResults]         = useState(null)
+  const [checkFailCount, setCheckFailCount] = useState(0)
+  const [testResults, setTestResults] = useState(null)
   const [offeredStageIndex, setOfferedStageIndex] = useState(-1)
   const [completePreviewShown, setCompletePreviewShown] = useState(false)
   const [stagePromptAccepted, setStagePromptAccepted] = useState(false)
 
-  const checkPassedRef    = useRef(false)
-  checkPassedRef.current  = checkPassed
-  const checkSuggestionRef    = useRef('')
-  checkSuggestionRef.current  = checkSuggestion
+  const checkPassedRef = useRef(false)
+  checkPassedRef.current = checkPassed
+  const checkSuggestionRef = useRef('')
+  checkSuggestionRef.current = checkSuggestion
 
   function resetRunFeedback() {
     // Clears per-run transient state. Does NOT reset checkFailCount or offeredStageIndex
@@ -42,10 +42,10 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)
     setStagePromptAccepted(false)
-    setCheckFailCount(prev => passed ? 0 : prev + 1)
+    setCheckFailCount((prev) => (passed ? 0 : prev + 1))
     if (passed) setOfferedStageIndex(-1)
     if (passed) setCompletePreviewShown(false)
-    setRepeatedSuggestionCount(prev => {
+    setRepeatedSuggestionCount((prev) => {
       if (passed || !nextSuggestion) return 0
       return checkSuggestionRef.current === nextSuggestion ? prev + 1 : 1
     })
@@ -61,21 +61,30 @@ export function useCheckFeedback({ myStudentData } = {}) {
     if (!myStudentData?.checkOverridePushedAt) return
     setCheckPassed(myStudentData.checkOverridePassed)
     setCheckAttempted(true)
-    setCheckSuggestion(myStudentData.checkOverridePassed ? '' : (myStudentData.checkOverrideHint ?? ''))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCheckSuggestion(
+      myStudentData.checkOverridePassed ? '' : (myStudentData.checkOverrideHint ?? '')
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.checkOverridePushedAt])
 
   return {
-    checkPassed, setCheckPassed,
-    checkAttempted, setCheckAttempted,
-    checkSuggestion, setCheckSuggestion,
+    checkPassed,
+    setCheckPassed,
+    checkAttempted,
+    setCheckAttempted,
+    checkSuggestion,
+    setCheckSuggestion,
     repeatedSuggestionCount,
     checkFailCount,
-    testResults, setTestResults,
+    testResults,
+    setTestResults,
     checkPassedRef,
-    offeredStageIndex, setOfferedStageIndex,
-    completePreviewShown, setCompletePreviewShown,
-    stagePromptAccepted, markStagePromptAccepted,
+    offeredStageIndex,
+    setOfferedStageIndex,
+    completePreviewShown,
+    setCompletePreviewShown,
+    stagePromptAccepted,
+    markStagePromptAccepted,
     resetRunFeedback,
     resetCheckFeedback,
     applyCheckFeedback,

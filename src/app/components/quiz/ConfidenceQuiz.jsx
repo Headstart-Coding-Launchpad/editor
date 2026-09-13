@@ -1,7 +1,19 @@
 import React from 'react'
-import { baseStyles as s, CONFIDENCE_COLOURS, confidenceStyles as sc, QuestionPanel } from './quizUtils'
+import {
+  baseStyles as s,
+  CONFIDENCE_COLOURS,
+  confidenceStyles as sc,
+  QuestionPanel,
+} from './quizUtils'
 
-export default function ConfidenceQuiz({ task, selectedAnswer, onSelectAnswer, submitted, disabled, showQuestion }) {
+export default function ConfidenceQuiz({
+  task,
+  selectedAnswer,
+  onSelectAnswer,
+  submitted,
+  disabled,
+  showQuestion,
+}) {
   const blocked = disabled
   return (
     <div style={s.wrap}>
@@ -25,7 +37,9 @@ export default function ConfidenceQuiz({ task, selectedAnswer, onSelectAnswer, s
                   borderColor: colour,
                   color: isSelected ? '#fff' : colour,
                   opacity: blocked && !isSelected ? 0.35 : 1,
-                  boxShadow: isSelected ? `0 0 0 4px ${colour}38, 0 6px 18px ${colour}28` : undefined,
+                  boxShadow: isSelected
+                    ? `0 0 0 4px ${colour}38, 0 6px 18px ${colour}28`
+                    : undefined,
                   transform: isSelected ? 'scale(1.08)' : undefined,
                 }}
                 onClick={() => !blocked && onSelectAnswer?.(String(level), true)}
@@ -41,7 +55,14 @@ export default function ConfidenceQuiz({ task, selectedAnswer, onSelectAnswer, s
           })}
         </div>
         {submitted && selectedAnswer && (
-          <div style={{ ...sc.result, borderColor: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1], color: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1], background: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1] + '18' }}>
+          <div
+            style={{
+              ...sc.result,
+              borderColor: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1],
+              color: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1],
+              background: CONFIDENCE_COLOURS[parseInt(selectedAnswer) - 1] + '18',
+            }}
+          >
             You rated your confidence: <strong>{selectedAnswer} / 5</strong>
           </div>
         )}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
@@ -30,7 +30,9 @@ describe('CheckFeedbackBanner', () => {
     })
 
     it('renders non-blocking nudge text on pass', () => {
-      render(<CheckFeedbackBanner passed={true} suggestion="Nice work. Try a clearer variable name." />)
+      render(
+        <CheckFeedbackBanner passed={true} suggestion="Nice work. Try a clearer variable name." />
+      )
       expect(screen.getByText('Correct!')).toBeInTheDocument()
       expect(screen.getByText(/clearer variable name/i)).toBeInTheDocument()
     })
@@ -124,7 +126,13 @@ describe('CheckFeedbackBanner', () => {
     })
 
     it('renders both the preview and load-into-editor buttons when both handlers are provided', () => {
-      render(<CheckFeedbackBanner passed={false} onPreviewCompleteCode={vi.fn()} onShowCompleteCode={vi.fn()} />)
+      render(
+        <CheckFeedbackBanner
+          passed={false}
+          onPreviewCompleteCode={vi.fn()}
+          onShowCompleteCode={vi.fn()}
+        />
+      )
       expect(screen.getByRole('button', { name: /See complete code/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Load complete code/i })).toBeInTheDocument()
     })
@@ -158,7 +166,13 @@ describe('CheckFeedbackBanner', () => {
 
     it('shows stage hint prompt text alongside the button', () => {
       const handler = vi.fn()
-      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} stageActionLabel="Show reference" />)
+      render(
+        <CheckFeedbackBanner
+          passed={false}
+          onShowCodeStage={handler}
+          stageActionLabel="Show reference"
+        />
+      )
       expect(screen.getByText(/Want a hint\?/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Show reference/i })).toBeInTheDocument()
     })
@@ -167,7 +181,14 @@ describe('CheckFeedbackBanner', () => {
       const user = userEvent.setup()
       const handler = vi.fn()
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-      render(<CheckFeedbackBanner passed={false} onShowCodeStage={handler} stageActionLabel="Try guided restart" stageActionConfirm="Replace your work?" />)
+      render(
+        <CheckFeedbackBanner
+          passed={false}
+          onShowCodeStage={handler}
+          stageActionLabel="Try guided restart"
+          stageActionConfirm="Replace your work?"
+        />
+      )
 
       await user.click(screen.getByRole('button', { name: /Try guided restart/i }))
 
@@ -186,6 +207,58 @@ describe('CheckFeedbackBanner', () => {
     it('renders without crashing when passed is undefined', () => {
       render(<CheckFeedbackBanner />)
       expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+  })
+
+  describe('floating popup behaviour', () => {
+    it('dismisses immediately when the close button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.getByRole('status')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /dismiss/i }))
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('auto-dismisses after 45 seconds', () => {
+      vi.useFakeTimers()
+      try {
+        render(<CheckFeedbackBanner passed={false} />)
+        expect(screen.getByRole('status')).toBeInTheDocument()
+
+        act(() => {
+          vi.advanceTimersByTime(45000)
+        })
+
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not auto-dismiss before 45 seconds have passed', () => {
+      vi.useFakeTimers()
+      try {
+        render(<CheckFeedbackBanner passed={false} />)
+        act(() => {
+          vi.advanceTimersByTime(44000)
+        })
+        expect(screen.getByRole('status')).toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('points to the persistent Need Help control instead of rendering its own button on fail', () => {
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.getByText(/Need Help/i)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Need Help$/i })).not.toBeInTheDocument()
+    })
+
+    it('does not show the help pointer on pass', () => {
+      render(<CheckFeedbackBanner passed={true} />)
+      expect(screen.queryByText(/Need Help/i)).not.toBeInTheDocument()
     })
   })
 })

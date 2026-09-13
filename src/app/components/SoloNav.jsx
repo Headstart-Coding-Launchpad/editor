@@ -1,19 +1,24 @@
 import React from 'react'
+import { useIsMobile } from '../../shared/useIsMobile'
 
 export default function SoloNav({
   flatTasks,
   currentIndex,
   cs,
-  hasPersonalSandbox,
-  isQuizTask,
-  isInformationTask,
   canNavigateNextSolo,
   onNavigate,
   compact = false,
+  // Total shown in the "Task X of Y" label, when it must differ from flatTasks.length
+  // (e.g. the lesson-complete pseudo-task inflates flatTasks by one only once it's
+  // actually reachable, but the label should still read the real task count until then).
+  displayTotal = flatTasks.length,
 }) {
+  const isMobile = useIsMobile()
   const navStyle = compact ? s.soloNavCompact : s.soloNav
   const btnStyle = compact ? s.soloNavBtnCompact : s.soloNavBtn
-  const labelStyle = compact ? s.soloNavLabelCompact : s.soloNavLabel
+  const labelStyle = compact
+    ? { ...s.soloNavLabelCompact, ...(isMobile ? { minWidth: 0 } : {}) }
+    : s.soloNavLabel
 
   return (
     <div style={navStyle}>
@@ -28,21 +33,13 @@ export default function SoloNav({
         </button>
       )}
       {cs.inPersonalSandbox ? (
-        <span style={labelStyle}>Personal Sandbox</span>
+        <span style={labelStyle}>{isMobile ? 'Sandbox' : 'Personal Sandbox'}</span>
       ) : (
         <span style={labelStyle}>
-          Task {currentIndex + 1} of {flatTasks.length}
+          {isMobile
+            ? `${currentIndex + 1}/${displayTotal}`
+            : `Task ${currentIndex + 1} of ${displayTotal}`}
         </span>
-      )}
-      {!cs.inPersonalSandbox && hasPersonalSandbox && !isQuizTask && !isInformationTask && (
-        <button
-          className="btn-ghost-outline"
-          style={{ ...btnStyle, fontSize: compact ? 12 : 14 }}
-          onClick={cs.handleEnterPersonalSandbox}
-          title="Open your personal sandbox to experiment freely"
-        >
-          Open Sandbox
-        </button>
       )}
       {!cs.inPersonalSandbox && (
         <button
@@ -91,6 +88,8 @@ const s = {
     fontWeight: 700,
     lineHeight: 1.1,
     minHeight: 30,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   soloNavLabel: {
     flex: 1,
