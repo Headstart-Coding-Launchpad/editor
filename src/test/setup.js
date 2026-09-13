@@ -1,11 +1,20 @@
 import '@testing-library/jest-dom'
+import { afterEach } from 'vitest'
 import { configure } from '@testing-library/react'
 
-// waitFor/findBy default to 1s. Views like StudentView lazy-load module workspaces on
-// first render, which can take longer than that when the whole suite runs in parallel,
-// so tests passed alone but flaked in `npm test`. A longer ceiling only costs time when
-// an assertion is genuinely failing.
+// waitFor/findBy default to 1s, which is tight for full views like StudentView on a busy
+// CI runner. A longer ceiling only costs time when an assertion is genuinely failing.
 configure({ asyncUtilTimeout: 5000 })
+
+// Saved student work is keyed by lesson + task + student, and many tests reuse the same
+// ids. Without a reset, whatever one test saved (including an empty snapshot written when a
+// session ends before starter code loads) became the next test's "saved work", replacing
+// its starter code. That made StudentView's pseudo-task test fail whenever the earlier
+// test's timing let it save "" first. Every test starts with empty storage.
+afterEach(() => {
+  window.localStorage?.clear?.()
+  window.sessionStorage?.clear?.()
+})
 
 // Query jsdom's storage instead of Node's native getter, which warns when no
 // persistence file is configured in recent Node versions.
