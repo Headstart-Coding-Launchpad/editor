@@ -43,7 +43,11 @@ describe('PlaygroundView', () => {
     const lesson = renderPlayground('scratch')
 
     expect(lesson.tasks[0].starterBlocks).toBeNull()
-    expect(lesson).toMatchObject({ id: '__playground__scratch', isPlayground: true, type: 'scratch' })
+    expect(lesson).toMatchObject({
+      id: '__playground__scratch',
+      isPlayground: true,
+      type: 'scratch',
+    })
   })
 
   it('lets students add extra sprites in the Scratch playground', () => {

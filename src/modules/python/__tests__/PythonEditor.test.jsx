@@ -10,7 +10,7 @@ import PythonEditor from '../PythonEditor'
 // symbol-bar wiring can be exercised without mounting a real editor.
 const insertAtCursor = vi.fn()
 vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: React.forwardRef((props, ref) => {
+  CodeEditor: React.forwardRef(function MockCodeEditor(props, ref) {
     React.useImperativeHandle(ref, () => ({ insertAtCursor }))
     return <div data-testid="code-editor" />
   }),

@@ -39,9 +39,7 @@ function mkProps(overrides = {}, studentOverrides = {}) {
 
 describe('ShareRequestPanel', () => {
   it('renders nothing when there is no pending request', () => {
-    const { container } = render(
-      <ShareRequestPanel {...mkProps({}, { shareRequestedAt: null })} />
-    )
+    const { container } = render(<ShareRequestPanel {...mkProps({}, { shareRequestedAt: null })} />)
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -124,9 +122,7 @@ describe('ShareRequestPanel', () => {
 
   it('shows a waiting state while the student device prepares a snapshot', () => {
     render(
-      <ShareRequestPanel
-        {...mkProps({ awaitingSnapshot: true }, { shareRequestedAt: null })}
-      />
+      <ShareRequestPanel {...mkProps({ awaitingSnapshot: true }, { shareRequestedAt: null })} />
     )
     expect(screen.getByText(/asking jamie's device/i)).toBeInTheDocument()
   })

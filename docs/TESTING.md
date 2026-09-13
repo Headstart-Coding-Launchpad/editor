@@ -167,17 +167,43 @@ global.URL.revokeObjectURL = vi.fn()
 
 ## Coverage Thresholds
 
-Set in `vitest.config.js`. Current thresholds reflect the initial test scope (pure functions + selected simple components). `QuizTask`, `InformationTask`, `TeacherTimers`, `TeacherSessionControls`, and pure builder validation/export logic now have focused coverage; large orchestration surfaces including `StudentView`, `TeacherView`, `useSession`, and builder UI views still require incremental coverage before raising thresholds.
+Set in `vitest.config.js` and enforced by `npm run test:coverage`, which CI runs.
+Coverage includes `src/**` and `cli/**/*.mjs`. Web Workers and `cli/cli.mjs` (argument
+parsing only) are excluded.
 
-| Phase | When to raise to | Prerequisite |
+| Scope | Floor | Measured Sept 2026 |
 |---|---|---|
-| Current | 8% lines / 6% branches | Initial setup complete |
-| Phase 2 | 25% | useSession, QuizTask, HtmlEditor covered |
-| Phase 3 | 50% | StudentView, TeacherView partially covered |
-| Phase 4 | 70% | Builder views + remaining components |
+| Whole suite | 53% lines, 48% branches, 48% functions, 51% statements | 54.7% / 49.2% / 49.2% / 52.8% |
+| `src/modules/checks.js`, `src/shared/taskUtils.js` | 90% lines, 85% branches | 95% / 88–89% |
+| `src/modules/{python,turtle,filesystem,scratch}/checks.js` | 85% lines, 75% branches | 87–100% |
+| `src/shared/composedLesson.js` | 90% lines, 75% branches | 96% / 80% |
+| `src/builder/lessonUtils.js` | 75% lines, 65% branches | 80% / 69% |
 
-`src/modules/python/pyodide.worker.js` and `src/modules/scratch/scratch.js` are permanently excluded from coverage because they require Web Worker and canvas runtime environments that jsdom cannot measure. The one exception is `formatPythonError`, a pure traceback-parsing function with no Worker/Pyodide dependency — it's unit-tested directly (see Layer 1 above) even though the rest of the file stays excluded.
+The global floors sit just under the measured suite so coverage can't quietly slip. When a
+PR raises coverage, raise the floors in the same PR. Never lower a floor to get a PR green:
+add tests instead.
+
+`src/modules/scratch/scratch.js` (the Scratch interpreter) is measured, at about 52% lines.
+`pyodide.worker.js` stays excluded because it only runs inside a Web Worker. Its one pure
+export, `formatPythonError`, is unit-tested directly (see Layer 1 above).
+
+The weakest large files are the best places to add coverage: `TeacherView.jsx`,
+`ScratchWorkspace.jsx`, `useStudentCodeState.js`, `ScratchTaskSetup.jsx`, `TaskList.jsx`,
+`SharedAssetsPanel.jsx` and `TaskEditorFields.jsx`.
+
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`:
+
+1. `npm install` (not `npm ci`: the Windows-generated lockfile omits Linux-only optional binaries)
+2. `npm run docs:check`
+3. `npm run lint`: fails on errors, not warnings
+4. `npm run format:check`: Prettier, code only (Markdown is ignored)
+5. `npm run test:coverage`: fails if a coverage floor is missed; the report is uploaded as
+   the `coverage` artifact
+
+The deploy workflow still runs `vitest run` through `prebuild` before building.
 
 ---
 
-*Last updated: July 2026 — refreshed moved module paths and documentation hygiene expectations.*
+*Last updated: September 2026: coverage floors now match the measured suite, and CI runs on pushes to main.*
