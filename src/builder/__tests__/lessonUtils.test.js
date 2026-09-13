@@ -14,6 +14,18 @@ function lesson(type, tasks) {
 }
 
 describe('validateLesson', () => {
+  it('reports a missing task list instead of throwing', () => {
+    const result = validateLesson({ id: 'no-tasks', title: 'No tasks', type: 'composed' })
+    expect(result.errors).toContain('Lesson must have at least one task')
+  })
+
+  it('rejects an unknown lesson type, matching the CLI', () => {
+    const result = validateLesson(lesson('bogus', [{ id: 1, title: 'Task', starterCode: 'x' }]))
+    expect(result.errors.some((error) => error.startsWith('Lesson type must be one of:'))).toBe(
+      true
+    )
+  })
+
   it('captures Python starter, check, carry-through and timing issues', () => {
     const result = validateLesson(
       lesson('python', [
