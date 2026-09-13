@@ -1,11 +1,20 @@
 name: CI
 
+# Runs on pull requests and on every push to main. Branches merged locally and
+# pushed straight to main still get checked, instead of only reaching the
+# `prebuild` test run inside the deploy job.
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -18,11 +27,54 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # npm install, not npm ci: the lockfile is generated on Windows and omits esbuild's
+      # optional Linux binaries, which makes npm ci fail (same as the deploy workflow).
       - name: Install dependencies
         run: npm install
 
       - name: Check documentation
         run: npm run docs:check
 
-      - name: Test
-        run: npm test
+      # Fails on lint errors only. Existing warnings are reported but don't block.
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+
+  # Security rules for Realtime Database, Firestore and Storage, tested against the
+  # emulators using the real rules files. Separate job because it needs Java.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools@15
+
+      - name: Test security rules
+        run: npm run test:rules

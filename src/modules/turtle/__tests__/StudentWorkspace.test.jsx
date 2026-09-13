@@ -66,8 +66,10 @@ describe('Turtle StudentWorkspace', () => {
     )
   })
 
-  it('passes the run\'s final background colour through to the renderer', () => {
-    const cs = makeCs({ turtleResult: { state: { background: '#000000' }, commands: [], calls: [] } })
+  it("passes the run's final background colour through to the renderer", () => {
+    const cs = makeCs({
+      turtleResult: { state: { background: '#000000' }, commands: [], calls: [] },
+    })
     render(<StudentWorkspace task={{}} cs={cs} isMobile={false} />)
     expect(drawTurtleCommands).toHaveBeenCalledWith(
       expect.anything(),

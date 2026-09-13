@@ -598,13 +598,15 @@ export default function LessonTaskContent({
             }
           : editorAreaStyle
       }
-      className={[
-        isForcedTeacherLive ? 'live-view-active' : null,
-        isLiveCopyBlocked ? 'live-copy-blocked' : null,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .trim() || undefined}
+      className={
+        [
+          isForcedTeacherLive ? 'live-view-active' : null,
+          isLiveCopyBlocked ? 'live-copy-blocked' : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || undefined
+      }
       onCopy={isLiveCopyBlocked ? blockClipboardEvent : undefined}
       onCut={isLiveCopyBlocked ? blockClipboardEvent : undefined}
     >

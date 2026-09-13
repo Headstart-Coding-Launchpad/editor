@@ -5,12 +5,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import StudentModal from '../StudentModal'
 
 vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: () => <div data-testid="code-editor" />,
-}))
-
-vi.mock('../../../shared/iframe', () => ({
-  buildIframeSrc: vi.fn(() => 'blob:mock-iframe'),
-  waitForIframeText: vi.fn(),
+  CodeEditor: ({ value, onChange, readOnly }) => (
+    <textarea
+      data-testid="code-editor"
+      value={value ?? ''}
+      readOnly={readOnly}
+      onChange={(event) => onChange?.(event.target.value)}
+    />
+  ),
 }))
 
 const scratchExternalStateSpy = vi.fn()
@@ -20,10 +22,6 @@ vi.mock('../../../modules/scratch/ScratchWorkspace.jsx', () => ({
     return <div data-testid="scratch-workspace" />
   },
   SPRITE_TYPES: [],
-}))
-
-vi.mock('../FilesystemTask', () => ({
-  default: () => <div data-testid="filesystem-task" />,
 }))
 
 vi.mock('../IframePreview', () => ({
@@ -44,7 +42,10 @@ vi.mock('../OutputPanel', () => ({
     <div data-testid="output-panel">
       {output}
       {inputPrompt !== null && inputPrompt !== undefined && (
-        <div data-testid="output-panel-input-prompt" data-readonly={inputReadOnly ? 'true' : 'false'}>
+        <div
+          data-testid="output-panel-input-prompt"
+          data-readonly={inputReadOnly ? 'true' : 'false'}
+        >
           {mirroredInputValue}
         </div>
       )}
@@ -234,12 +235,7 @@ describe('StudentModal', () => {
   describe('watching a student mid-input()', () => {
     it('mirrors the pending prompt and typed-so-far value as read-only', () => {
       render(
-        <StudentModal
-          {...mkProps(
-            {},
-            { currentInputPrompt: 'Name?', currentInput: 'Jam' }
-          )}
-        />
+        <StudentModal {...mkProps({}, { currentInputPrompt: 'Name?', currentInput: 'Jam' })} />
       )
 
       const mirrored = screen.getByTestId('output-panel-input-prompt')
@@ -331,6 +327,20 @@ describe('StudentModal', () => {
           code: BASE_STUDENT.currentCode,
         })
         expect(onCancelTeacherEdit).not.toHaveBeenCalled()
+        expect(props.onClose).toHaveBeenCalledOnce()
+      })
+
+      it('commits the latest typed code, not the code from when editing began, on Escape', async () => {
+        const { props, onCommitTeacherEdit } = await renderEditing()
+
+        const editors = screen.getAllByTestId('code-editor')
+        const editor = editors.find((element) => !element.readOnly)
+        fireEvent.change(editor, { target: { value: 'print("edited by teacher")' } })
+        fireEvent.keyDown(window, { key: 'Escape' })
+
+        expect(onCommitTeacherEdit).toHaveBeenCalledWith('student-1', {
+          code: 'print("edited by teacher")',
+        })
         expect(props.onClose).toHaveBeenCalledOnce()
       })
 
