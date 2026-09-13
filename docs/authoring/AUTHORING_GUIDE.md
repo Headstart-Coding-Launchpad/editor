@@ -5,12 +5,13 @@ YAML-first reference for writing HSC lessons and topics. Use the CLI to convert 
 **Workspace module code-task authoring (task fields, checks, examples):**
 - Python: `docs/authoring/python.md`
 - Arcade Kit: `docs/authoring/arcade.md`
+- Python Turtle: `docs/authoring/turtle.md`
 - HTML: `docs/authoring/html.md`
 - Scratch: `docs/authoring/scratch.md`
 - Filesystem: `docs/authoring/filesystem.md`
 - Electronics: `docs/authoring/electronics.md`
 
-**Other references:** `docs/authoring/CHANGELOG.md` · `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/lesson-assets-cli.md` · `docs/authoring/markdown-renderer.md`
+**Other references:** `docs/authoring/CHANGELOG.md` · `docs/authoring/validation-errors.md` · `docs/authoring/feedback-cli.md` · `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/lesson-assets-cli.md` · `docs/authoring/markdown-renderer.md`
 
 ---
 
@@ -50,6 +51,7 @@ tasks:
 
 ## Lesson Envelope
 
+<!-- example:template -->
 ```yaml
 id: python-for-loops         # required — lowercase slug, used in URLs
 type: composed               # required for every new lesson
@@ -73,7 +75,7 @@ modules: []                  # optional named workspace instances; see lesson-sc
 tasks: []                    # required — ordered task list (see below)
 ```
 
-Each code task in a composed lesson needs `moduleType`: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. Add `modules` plus task `moduleId` when a lesson needs named or repeated workspace instances. Put module-specific sandbox configuration in `modules[].sandbox`; see `lesson-schema-yaml.md` for the full model.
+Each code task in a composed lesson needs `moduleType`: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, or `electronics`. Add `modules` plus task `moduleId` when a lesson needs named or repeated workspace instances. Put module-specific sandbox configuration in `modules[].sandbox`; see `lesson-schema-yaml.md` for the full model.
 
 ---
 
@@ -208,7 +210,7 @@ feedbackChecks:
 
 `feedbackChecks` are supported by Python, HTML, Filesystem, Electronics, and Scratch tasks and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
 
-**Wildcards:** `*` matches any sequence (including newlines) in `value` for containment/equality checks.
+**Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
 
@@ -357,49 +359,75 @@ For full topic field reference see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
 
 ## Full YAML Example (Composed)
 
+One lesson that mixes an information task, a quiz, a Scratch task, a Python task with starter and
+complete stages, and a group holding a Turtle challenge. It passes `lessons validate`; a test runs
+every complete lesson example in these docs through the validator.
+
 ```yaml
-id: python-for-loops
+id: loops-three-ways
 type: composed
-title: Loops in Python and Arcade Kit
-description: Practise loops in two programming environments.
+title: Loops Three Ways
+description: Repeat actions with Scratch blocks, Python and a turtle.
 modules:
   - id: python-practice
     type: python
     title: Python practice
     sandbox:
-      sandboxStarter: "print('Try a Python loop here')"
-  - id: arcade-practice
-    type: arcade
-    title: Arcade Kit practice
+      sandboxStarter: "print('Try a loop here')"
 tasks:
   - type: information
     title: Read first
     explainer: |
-      A `for` loop repeats code a fixed number of times.
-
-      ```python
-      for i in range(3):
-          print(i)
-      ```
+      A loop repeats the same steps. Scratch uses a **repeat** block; Python uses `for`.
 
   - type: quiz
     title: Quick check
-    explainer: Which function generates a range of numbers?
+    explainer: Which Python function generates a range of numbers?
     options:
       - id: a
         text: "`range()`"
       - id: b
         text: "`repeat()`"
-        feedback: "`repeat()` does not exist in Python."
+        feedback: "`repeat()` is a Scratch block, not a Python function."
     answer: a
+
+  - title: Repeat a move
+    moduleType: scratch
+    explainer: Make the cat move ten times using a **repeat** block.
+    sprites:
+      - id: sprite1
+        name: Cat
+        type: cat
+        x: 0
+        y: 0
+        size: 100
+        direction: 90
+    starterBlocks:
+      sprite1:
+        blocks:
+          languageVersion: 0
+          blocks:
+            - type: event_whenflagclicked
+              x: 40
+              y: 40
+    check:
+      type: block_used
+      opcode: control_repeat
 
   - title: Print numbers
     moduleType: python
     moduleId: python-practice
-    explainer: Print the numbers 0 to 4.
-    starterCode: |
-      for i in range(5):
-          print(i)
+    explainer: Print the numbers 0 to 4, one per line.
+    codeStages:
+      - label: Starter
+        role: starter
+        code: |
+          # Print 0 to 4 with a for loop
+      - label: Complete
+        role: complete
+        code: |
+          for i in range(5):
+              print(i)
     checks:
       - type: code
         operator: contains
@@ -410,15 +438,18 @@ tasks:
 
   - group: Challenge
     tasks:
-      - title: Animate with a loop
-        moduleType: arcade
-        moduleId: arcade-practice
-        explainer: Use a loop to update an Arcade Kit game.
-        starterCode: |
-          from headstart_arcade import game
-          game.run()
-        check:
-          type: code
-          operator: contains
-          value: game.run
+      - title: Draw a square
+        moduleType: turtle
+        explainer: Use a loop to draw a square with sides of 100.
+        codeStages:
+          - label: Starter
+            role: starter
+            code: |
+              import turtle
+        checks:
+          - type: turtle_path_closed
+            tolerance: 2
+          - type: turtle_segment_count
+            operator: equals
+            value: 4
 ```

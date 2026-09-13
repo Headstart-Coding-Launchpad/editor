@@ -60,9 +60,9 @@ If reviewing a local branch diff instead of a PR, skip the comment step.
 
 ## Worktrees
 
-All worktrees share the same `.env` automatically because it lives one level above the repo root and Vite uses `envDir: '../'`.
+The app's `.env` lives in the repo root and the CLI's in `cli/.env`. Both are gitignored, so a new worktree has neither: the dev server there has no Firebase config, and the CLI has no credentials.
 
-Do not create, copy, or write `.env` inside a worktree or the main repo directory.
+Do not create, copy, or write `.env` files in a worktree unless the user asks. Run the CLI and dev server from the main checkout instead.
 
 After creating a PR from a temporary worktree, remove that worktree when the PR is open and the user no longer needs local changes there.
 
@@ -121,7 +121,7 @@ After significant changes, update relevant docs:
 - `docs/FEATURES.md` when user-facing features change.
 - `docs/TESTING.md` when test strategy or coverage thresholds change.
 - `docs/agents/project-rules.md` when CLI commands or auth setup changes.
-- `.claude/skills/` when content-authoring workflows change.
+- `docs/authoring/AUTHORING_GUIDE.md`, `docs/authoring/validation-errors.md` or `docs/authoring/feedback-cli.md` when content-authoring workflows change.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
 
 **All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.

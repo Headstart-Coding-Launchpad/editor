@@ -31,7 +31,7 @@ export function useSandboxCodePush({
   useEffect(() => {
     if (phase !== 'sandbox' || !session?.sandboxCode) return
     const type = lesson?.type
-    if (type === 'python' || type === 'arcade' || type === 'electronics') {
+    if (type === 'python' || type === 'arcade' || type === 'electronics' || type === 'turtle') {
       // Electronics keeps its circuit as serialised JSON in `code`, same as the others.
       setCode(session.sandboxCode)
     } else if (type === 'scratch') {

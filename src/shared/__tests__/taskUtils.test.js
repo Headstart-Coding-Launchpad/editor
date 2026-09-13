@@ -534,6 +534,7 @@ describe('deriveTaskContext', () => {
       isElectronics: false,
       isArcade: false,
       isHtml: false,
+      isTurtle: false,
       isQuiz: false,
       isInformation: false,
       isSessionSandbox: false,

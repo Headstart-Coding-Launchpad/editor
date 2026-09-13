@@ -102,7 +102,7 @@ Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex
 
 **Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source. Element text/value checks use the rendered text or input value.
 
-**Wildcards and multi-option contains:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present.
+**Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
 
 ## Feedback Checks
 
@@ -170,12 +170,13 @@ through this same iframe pipeline. Full field reference:
 ```json
 {
   "id": "html-minimal",
-  "type": "html",
+  "type": "composed",
   "title": "HTML Minimal",
   "description": "A short HTML lesson.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "html",
       "title": "Heading",
       "explainer": "Add a heading.",
       "entryFile": "index.html",

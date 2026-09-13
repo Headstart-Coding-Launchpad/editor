@@ -232,7 +232,7 @@ function stageForAction(task, action) {
  * Resolves what a remote-reset action should put in front of the student, as the shape
  * that lesson type's workspace holds:
  *
- *   python / arcade   { code }
+ *   python / arcade / turtle   { code }
  *   html              { files, entryFile }
  *   scratch           { blocks, stageIndex }   stageIndex is the stage to make active
  *   filesystem        { fs }
@@ -248,7 +248,8 @@ export function resolveRemoteResetTarget(task, action, lessonType, defaults = {}
 
   switch (lessonType) {
     case 'python':
-    case 'arcade': {
+    case 'arcade':
+    case 'turtle': {
       if (action === 'complete') return { code: task.completeCode ?? '' }
       if (action === 'starter') return { code: starter?.code ?? task.starterCode ?? '' }
       return { code: stage?.code ?? starter?.code ?? task.starterCode ?? '' }

@@ -906,7 +906,9 @@ export default function StudentView({
   }
   const unifiedCompleteStage = getCompleteStage(task)?.stage
   const hasCompleteSolution =
-    displayedLesson.type === 'python' || displayedLesson.type === 'arcade'
+    displayedLesson.type === 'python' ||
+    displayedLesson.type === 'arcade' ||
+    displayedLesson.type === 'turtle'
       ? !!(unifiedCompleteStage?.code ?? task?.completeCode)
       : displayedLesson.type === 'scratch'
         ? !!task?.completeBlocks
@@ -954,7 +956,9 @@ export default function StudentView({
     : stagesExhausted
   const explainerShowsComplete = false
   const hasPersonalSandbox =
-    activeLesson.type === 'python' || activeLesson.type === 'arcade'
+    activeLesson.type === 'python' ||
+    activeLesson.type === 'arcade' ||
+    activeLesson.type === 'turtle'
       ? true
       : activeLesson.type === 'html'
         ? !!(activeLesson.sandboxStarterFiles?.length > 0)
@@ -984,7 +988,8 @@ export default function StudentView({
     activeLesson?.type === 'html' ||
     activeLesson?.type === 'arcade' ||
     activeLesson?.type === 'scratch' ||
-    activeLesson?.type === 'electronics'
+    activeLesson?.type === 'electronics' ||
+    activeLesson?.type === 'turtle'
   const isTeacherEditing =
     !teacherPresentation &&
     !!myStudentTeacherEdit?.teacherEditAcceptedAt &&

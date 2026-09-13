@@ -6,12 +6,10 @@ real Python `turtle` module — `import turtle` / `from turtle import *` work as
 written — running inside the same shared Pyodide Web Worker as the Python
 module (see `src/modules/python/pyodide.worker.js`), not a separate runtime.
 
-**Status:** All three phases are implemented (this document describes them).
-Multiple `Turtle()` instances are still not supported, and per-task canvas
-size configuration and a reference/expected-image comparison feature were
-explicitly out of scope — see `memory/python_turtle_task_type_initiative.md`
-for the full plan (that file lives in the assistant's memory store, not this
-repo).
+**Status:** Shipped. Not supported: multiple `Turtle()` instances, per-task
+canvas size, and reference/expected-image comparison. There is no standalone
+`/playground/turtle` route, and Turtle work can't be shared through shared
+workspaces yet.
 
 ## Lesson and task shape
 
@@ -49,7 +47,7 @@ interaction mode and no `tests` support.
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed
 logical 400×400-unit world, y increases **upward**, and heading is in degrees
 counter-clockwise from east (`0` = facing right, `90` = facing up). The
-logical world size is fixed in Phase 1, not configurable per task.
+logical world size is fixed, not configurable per task.
 
 The canvas element itself is fully responsive — its on-screen pixel size can
 be anything — but the logical coordinate space is always mapped to fit it
@@ -70,7 +68,7 @@ outline's own line segments were already logged. This is a deliberate
 simplification for the instant/final-draw model, not a limitation students
 are likely to notice in normal use.
 
-## Supported commands (Phase 1)
+## Supported commands: movement and pen
 
 Single default turtle only — `import turtle; turtle.forward(10)` or
 `from turtle import forward, left, ...`. `turtle.Turtle()` is not available.
@@ -78,7 +76,7 @@ Single default turtle only — `import turtle; turtle.forward(10)` or
 | Command | Aliases | Notes |
 |---|---|---|
 | `forward(distance)` | `fd` | |
-| `backward(distance)` | `bk`, `back` | |
+| `backward(distance)` | `bk`, `back` | Recorded as its own `backward` command **and** as a `forward` call with a negative distance, so it counts towards both in `turtle_command_used`. |
 | `left(angle)` | `lt` | |
 | `right(angle)` | `rt` | |
 | `penup()` | `pu`, `up` | |
@@ -86,7 +84,7 @@ Single default turtle only — `import turtle; turtle.forward(10)` or
 | `isdown()` | | |
 | `pencolor(color=None)` | | Reads the current colour when called with no argument. |
 | `goto(x, y)` / `goto((x, y))` | `setpos`, `setposition` | |
-| `setx(x)` / `sety(y)` | | |
+| `setx(x)` / `sety(y)` | | Recorded as `goto`. |
 | `setheading(angle)` | `seth` | |
 | `home()` | | |
 | `reset()` | `clear` | Clears the drawing and returns to the origin. |
@@ -102,9 +100,11 @@ raise an error for no visual reason in this headless, instant-draw model.
 
 `left()`/`right()` both record as the same internal `turn` event (signed
 degrees) — a `turtle_command_used` check targeting `turn` can't currently
-tell which direction was used.
+tell which direction was used. `circle()` is drawn from many small
+`forward`/`turn` steps, so it also raises those counts — prefer
+`command: circle` when a task is about circles.
 
-## Supported commands (Phase 2)
+## Supported commands: shapes, fill, stamps and text
 
 | Command | Notes |
 |---|---|
@@ -133,11 +133,26 @@ student's source code — a run is always required.
 | `turtle_path_closed` | `tolerance` (default 2) | The drawn path's start and end points coincide within `tolerance`. |
 | `turtle_segment_count` | `operator`, `value` | The number of drawn line segments compares to `value` (`operator` defaults to "at least"). |
 | `turtle_path_length` | `operator`, `value` | The total length of all drawn segments compares to `value`. |
-| `turtle_command_used` | `command` (one of the canonical bridge-call names, e.g. `forward`, `turn`, `goto`, `circle`, `fillcolor`, `bgcolor`, `beginfill`, `endfill`, `stamp`, `write`), `minCount` (default 1) | That command was called at least `minCount` times. `color()` isn't a canonical name — it records as `pencolor`/`fillcolor`, whichever it actually changed. |
-| `turtle_color_used` | `kind` (`"pen"` default, or `"fill"`), `color` | The final pen/fill colour (per `kind`), or any matching `pencolor(...)`/`fillcolor(...)` call, matches `color` (case-insensitive). |
+| `turtle_command_used` | `command` (one of: `forward`, `backward`, `turn`, `goto`, `setheading`, `home`, `reset`, `penup`, `pendown`, `pencolor`, `fillcolor`, `bgcolor`, `beginfill`, `endfill`, `circle`, `stamp`, `write`), `minCount` (default 1) | That command was called at least `minCount` times. `color()` isn't a canonical name — it records as `pencolor`/`fillcolor`, whichever it actually changed. |
+| `turtle_color_used` | `kind` (`"pen"` default, or `"fill"`), `color` | The final pen/fill colour (per `kind`), or any matching `pencolor(...)`/`fillcolor(...)` call, matches `color` as text, ignoring case and surrounding spaces. Colour formats are **not** converted: `"red"`, `"#ff0000"` and `(255, 0, 0)` (stored as `"rgb(255,0,0)"`) don't match each other, so use the same form the task asks students to write. |
 | `turtle_stamp_count` | `operator`, `value` | The number of `stamp()` calls compares to `value` (`operator` defaults to "at least"). |
 
 Feedback/incorrect checks use the same types.
+
+### Validation
+
+The Builder and `node cli/cli.mjs lessons validate` apply the same rules to
+Turtle checks and feedback checks:
+
+- The `type` must be one of the eight types above.
+- `turtle_position` needs both `x` and `y`.
+- `turtle_heading`, `turtle_segment_count`, `turtle_path_length` and
+  `turtle_stamp_count` need a `value`.
+- `turtle_command_used` needs a `command` from the list above.
+- `turtle_color_used` needs a `color`.
+
+`test-checks` can't evaluate Turtle checks, because they need a real run —
+use the Builder preview to confirm a complete solution passes.
 
 ## Runtime notes and limits
 
@@ -150,7 +165,7 @@ Feedback/incorrect checks use the same types.
 - `print()` output still works and appears in a collapsible Output panel
   alongside the canvas.
 
-## Teacher live view (Phase 3)
+## Teacher live view
 
 The student's canvas syncs to the teacher after every run — not stroke by
 stroke, just the finished drawing from the run that just completed:

@@ -89,7 +89,7 @@ Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
 
 Legacy aliases such as `fs_file_exists`, `fs_dir_exists`, `fs_not_exists`, `fs_content_contains`, `fs_content_equals`, `fs_file_in_dir`, `fs_dir_opened`, and `fs_file_opened` still load, but new lessons should use the canonical form above.
 
-`matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`, with the pattern in `value` and optional flags such as `i` or `m` in `flags`. Non-regex content checks normalise `\r\n` to `\n` and compare case-insensitively. Line counts ignore trailing blank lines created only by final newline characters.
+`matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`, with the pattern in `value` and optional flags such as `i` or `m` in `flags`. Non-regex content checks normalise `\r\n` to `\n`, ignore surrounding whitespace, and compare case-insensitively. `*` matches any sequence in `contains` and `equals` values, and `"opt1","opt2"` passes `contains` if any option is present (`not_contains` only if none are). An invalid regex fails both regex operators. Line counts ignore trailing blank lines created only by final newline characters.
 
 ---
 
@@ -98,12 +98,13 @@ Legacy aliases such as `fs_file_exists`, `fs_dir_exists`, `fs_not_exists`, `fs_c
 ```json
 {
   "id": "filesystem-minimal",
-  "type": "filesystem",
+  "type": "composed",
   "title": "Filesystem Minimal",
   "description": "Organise your files.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "filesystem",
       "title": "Create a Documents folder",
       "explainer": "Create a folder called **Documents** in the root folder.",
       "starterFs": { "/": { "type": "dir" } },

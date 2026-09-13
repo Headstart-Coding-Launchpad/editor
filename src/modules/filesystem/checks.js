@@ -1,9 +1,8 @@
 import { normaliseDirPath, normaliseFilePath, parentPath } from './filesystem.js'
 import {
   compareValues,
+  compareText,
   countOutputLines,
-  matchesContainValue,
-  matchesRegex,
   normalizeOutput,
 } from '../../shared/checkHelpers.js'
 
@@ -114,19 +113,12 @@ export function evaluateFsCheck(check, fs, context = {}) {
       const key = fsFindKey(fs, normaliseFilePath(path), 'file')
       if (!key) return false
       const content = fs[key].content ?? ''
-      if (check.operator === 'contains')
-        return matchesContainValue(content, value ?? '', normalizeOutput)
-      if (check.operator === 'not_contains')
-        return !matchesContainValue(content, value ?? '', normalizeOutput)
-      if (check.operator === 'equals')
-        return normalizeOutput(content) === normalizeOutput(value ?? '')
-      if (check.operator === 'not_equals')
-        return normalizeOutput(content) !== normalizeOutput(value ?? '')
-      if (check.operator === 'matches_regex')
-        return matchesRegex(normalizeOutput(content, true), value, check.flags)
-      if (check.operator === 'not_matches_regex')
-        return !matchesRegex(normalizeOutput(content, true), value, check.flags)
-      return false
+      return (
+        compareText(content, check.operator, value ?? '', {
+          normalizeRegex: (text) => normalizeOutput(text, true),
+          flags: check.flags,
+        }) ?? false
+      )
     }
     case 'fs_file_line_count': {
       const key = fsFindKey(fs, normaliseFilePath(path), 'file')

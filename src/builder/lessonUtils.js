@@ -27,13 +27,17 @@ import { validateDraftLessonStructure } from '../shared/draftLesson'
 import {
   getModuleCarrySourceIds,
   getTaskModuleType,
+  LESSON_MODULE_TYPES,
   validateComposedStructure,
 } from '../shared/composedLesson'
+
+const VALID_LESSON_TYPES = [...LESSON_MODULE_TYPES, 'composed']
 import {
   hasValue,
   labelCheckKind,
   validateFilesystemChecks,
   validateElectronicsChecks,
+  validateTurtleChecks,
 } from '../shared/checkAuthoringValidation'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = [
@@ -282,9 +286,16 @@ export function validateLesson(lesson) {
 
   if (!id) errors.push('Lesson ID is required')
   else if (!/^[a-z0-9-]+$/.test(id)) errors.push('Lesson ID must be lowercase with hyphens only')
+  if (!type) errors.push('Lesson type is required')
+  else if (!VALID_LESSON_TYPES.includes(type)) {
+    errors.push(`Lesson type must be one of: ${VALID_LESSON_TYPES.join(', ')}`)
+  }
   if (!title) errors.push('Lesson title is required')
   if (lesson.fork != null) validateLessonFork(lesson, errors)
-  if (!tasks || tasks.length === 0) errors.push('Lesson must have at least one task')
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    errors.push('Lesson must have at least one task')
+    return { errors, warnings }
+  }
   validateDraftLessonStructure(lesson, errors)
   errors.push(...validateComposedStructure(lesson))
 
@@ -490,6 +501,9 @@ export function validateLesson(lesson) {
         }
         if (task.check) validateScratchChecks(task.check, n, errors)
         if (feedbackChecks.length > 0) validateScratchChecks(feedbackChecks, n, errors, 'feedback')
+      } else if (type === 'turtle') {
+        if (task.check) validateTurtleChecks(task.check, n, errors)
+        if (feedbackChecks.length > 0) validateTurtleChecks(feedbackChecks, n, errors, 'feedback')
       } else if (type !== 'filesystem' && type !== 'desktop' && type !== 'electronics') {
         if (task.check)
           validateCodeChecks(task.check, n, errors, { type, interactionMode: task.interactionMode })
@@ -556,7 +570,7 @@ export function validateLesson(lesson) {
           : task.taskType === 'code_arrange'
             ? Array.isArray(task.lines) && task.lines.length > 0
             : type === 'python' || type === 'arcade' || type === 'turtle'
-              ? !!task.starterCode
+              ? !!(getStarterStage(task)?.stage?.code ?? task.starterCode)
               : type === 'scratch'
                 ? !!task.starterBlocks
                 : type === 'filesystem'

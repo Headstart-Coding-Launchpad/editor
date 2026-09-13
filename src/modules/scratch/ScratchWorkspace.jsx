@@ -29,6 +29,11 @@ import {
   CREATE_VARIABLE_CALLBACK_KEY,
 } from './scratch'
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
+import {
+  drawSpriteWithGraphicEffects,
+  hasGraphicEffects,
+  readGraphicEffects,
+} from './graphicEffects.js'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
@@ -351,14 +356,21 @@ function drawEmojiAtOrigin(ctx, emoji, r) {
   ctx.fillText(emoji, 0, 0)
 }
 
-function drawSpriteShape(ctx, s, type, emoji) {
-  const cx = toCanvasX(s.x)
-  const cy = toCanvasY(s.y)
-  const r = Math.max(4, (s.size / 100) * 24)
+// Stage position, radius and rotation for one sprite, honouring its rotation style.
+function spriteTransform(s) {
   const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
   const rs = s.rotationStyle ?? 'all around'
-  const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
-  const flipH = rs === 'left-right' && dir > 90 && dir < 270
+  return {
+    cx: toCanvasX(s.x),
+    cy: toCanvasY(s.y),
+    r: Math.max(4, (s.size / 100) * 24),
+    rot: rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180),
+    flipH: rs === 'left-right' && dir > 90 && dir < 270,
+  }
+}
+
+function drawSpriteShape(ctx, s, type, emoji) {
+  const { cx, cy, r, rot, flipH } = spriteTransform(s)
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate(rot)
@@ -479,13 +491,7 @@ function drawBubble(ctx, s) {
 }
 
 function drawSpriteImage(ctx, s, img) {
-  const cx = toCanvasX(s.x)
-  const cy = toCanvasY(s.y)
-  const r = Math.max(4, (s.size / 100) * 24)
-  const dir = Number.isFinite(Number(s.direction)) ? Number(s.direction) : 90
-  const rs = s.rotationStyle ?? 'all around'
-  const rot = rs === "don't rotate" || rs === 'left-right' ? 0 : (dir - 90) * (Math.PI / 180)
-  const flipH = rs === 'left-right' && dir > 90 && dir < 270
+  const { cx, cy, r, rot, flipH } = spriteTransform(s)
   const drawSize = r * 2
   ctx.save()
   ctx.translate(cx, cy)
@@ -509,15 +515,26 @@ function drawSpriteVisual(
   if (!state?.visible) return
   const costumeEntry =
     costumes?.length > 0 ? (costumes.find((c) => c.name === state.costume) ?? costumes[0]) : null
-  if (costumeEntry?.image) {
-    const url = resolveAssetFileUrl(assetsPath, costumeEntry.image)
-    const img = imageCache[url]
-    if (img) {
-      drawSpriteImage(ctx, state, img)
-      return
-    }
+  const imageUrl = costumeEntry?.image ? resolveAssetFileUrl(assetsPath, costumeEntry.image) : ''
+  const img = imageUrl ? imageCache[imageUrl] : null
+  const emoji = costumeEntry?.emoji || fallbackEmoji
+
+  const effects = readGraphicEffects(state)
+  if (hasGraphicEffects(effects)) {
+    const transform = spriteTransform(state)
+    const drawn = drawSpriteWithGraphicEffects(ctx, effects, transform, (off) => {
+      if (img) off.drawImage(img, -transform.r, -transform.r, transform.r * 2, transform.r * 2)
+      else if (emoji) drawEmojiAtOrigin(off, emoji, transform.r)
+      else drawScratchSpriteAtOrigin(off, fallbackType ?? 'cat', transform.r)
+    })
+    if (drawn) return
   }
-  drawSpriteShape(ctx, state, fallbackType ?? 'cat', costumeEntry?.emoji || fallbackEmoji)
+
+  if (img) {
+    drawSpriteImage(ctx, state, img)
+    return
+  }
+  drawSpriteShape(ctx, state, fallbackType ?? 'cat', emoji)
 }
 
 function spriteRadius(s) {

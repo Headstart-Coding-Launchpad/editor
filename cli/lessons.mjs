@@ -6,19 +6,27 @@ import { buildLessonFork, makeForkLessonId } from '../src/shared/lessonForks.js'
 import { LEVEL_COLLECTION, migrateLessonLevel } from '../src/shared/lessonLevels.js'
 import { getClass } from './classes.mjs'
 import { applyLessonAuditMetadata } from '../src/shared/lessonAudit.js'
+import {
+  decodeLessonBlocksFromFirestore,
+  encodeLessonBlocksForFirestore,
+} from '../src/shared/lessonBlocksCodec.js'
+import { flattenTaskTree } from '../src/shared/taskUtils.js'
 
 export { validateLessonForMcp as validateLesson }
 
-function flattenTasks(tasks) {
-  const result = []
-  for (const item of tasks) {
-    if (item.type === 'group') {
-      for (const sub of item.subtasks ?? []) result.push(sub)
-    } else {
-      result.push(item)
-    }
-  }
-  return result
+// Task indexes in the CLI address the lesson exactly as stored, so this counts every
+// task (including legacy draft tasks the classroom hides), matching findTaskByFlatIndex.
+const flattenTasks = flattenTaskTree
+
+// Scratch block trees and Arcade designs are stored as JSON strings in Firestore (see
+// src/shared/lessonBlocksCodec.js). Every CLI read decodes and every write encodes, so
+// validation and audit comparisons see the same objects the web app does.
+function readLessonDoc(snap) {
+  return decodeLessonBlocksFromFirestore(snap.data())
+}
+
+function writeLessonDoc(id, lesson) {
+  return db.collection('lessons').doc(id).set(encodeLessonBlocksForFirestore(lesson))
 }
 
 function buildSkeletonTaskList(tasks) {
@@ -114,7 +122,7 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
   const existingSnap = migrated.lesson.id
     ? await db.collection('lessons').doc(migrated.lesson.id).get()
     : null
-  const existingLesson = existingSnap?.exists ? existingSnap.data() : null
+  const existingLesson = existingSnap?.exists ? readLessonDoc(existingSnap) : null
   const lessonToPublish =
     existingLesson?.storageAssets && migrated.lesson.storageAssets === undefined
       ? { ...migrated.lesson, storageAssets: existingLesson.storageAssets }
@@ -149,9 +157,9 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
       .set(migrated.level, { merge: true })
   }
   const audited = applyLessonAuditMetadata(existingLesson, lessonToPublish)
-  if (audited.material) await db.collection('lessons').doc(lessonToPublish.id).set(audited.lesson)
+  if (audited.material) await writeLessonDoc(lessonToPublish.id, audited.lesson)
   const snap = await db.collection('lessons').doc(lessonToPublish.id).get()
-  const published = snap.exists ? summarize(snap.id, snap.data()) : null
+  const published = snap.exists ? summarize(snap.id, readLessonDoc(snap)) : null
   return {
     success: true,
     valid,
@@ -211,14 +219,14 @@ export async function listLessons() {
 export async function getLesson(id) {
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  const data = snap.data()
+  const data = readLessonDoc(snap)
   return { id: snap.id, ...data, draft: data.draft === true, version: data.version ?? 0 }
 }
 
 export async function getLessonSkeleton(id) {
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  const data = snap.data()
+  const data = readLessonDoc(snap)
   const { tasks, ...meta } = data
   return {
     id: snap.id,
@@ -233,7 +241,7 @@ export async function getLessonSkeleton(id) {
 export async function getTask(lessonId, taskIndex) {
   const snap = await db.collection('lessons').doc(lessonId).get()
   if (!snap.exists) throw new Error(`Lesson '${lessonId}' not found`)
-  const tasks = snap.data().tasks ?? []
+  const tasks = readLessonDoc(snap).tasks ?? []
   const loc = findTaskByFlatIndex(tasks, taskIndex)
   if (!loc)
     throw new Error(
@@ -247,7 +255,7 @@ export async function getTask(lessonId, taskIndex) {
 export async function upsertTask(lessonId, taskIndex, task) {
   const snap = await db.collection('lessons').doc(lessonId).get()
   if (!snap.exists) throw new Error(`Lesson '${lessonId}' not found`)
-  const lesson = { id: snap.id, ...snap.data() }
+  const lesson = { id: snap.id, ...readLessonDoc(snap) }
   const updatedTasks = replaceTaskAtFlatIndex(lesson.tasks ?? [], taskIndex, task)
   if (!updatedTasks) {
     throw new Error(
@@ -258,7 +266,7 @@ export async function upsertTask(lessonId, taskIndex, task) {
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
   const audited = applyLessonAuditMetadata(lesson, updatedLesson)
-  if (audited.material) await db.collection('lessons').doc(lessonId).set(audited.lesson)
+  if (audited.material) await writeLessonDoc(lessonId, audited.lesson)
   return {
     success: true,
     lessonId,
@@ -272,13 +280,13 @@ export async function upsertTask(lessonId, taskIndex, task) {
 export async function appendTask(lessonId, task, groupTitle) {
   const snap = await db.collection('lessons').doc(lessonId).get()
   if (!snap.exists) throw new Error(`Lesson '${lessonId}' not found`)
-  const lesson = { id: snap.id, ...snap.data() }
+  const lesson = { id: snap.id, ...readLessonDoc(snap) }
   const updatedTasks = appendTaskToList(lesson.tasks ?? [], task, groupTitle)
   const updatedLesson = { ...lesson, tasks: updatedTasks }
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
   const audited = applyLessonAuditMetadata(lesson, updatedLesson)
-  if (audited.material) await db.collection('lessons').doc(lessonId).set(audited.lesson)
+  if (audited.material) await writeLessonDoc(lessonId, audited.lesson)
   return {
     success: true,
     lessonId,
@@ -296,8 +304,11 @@ export async function upsertLesson(lesson) {
 export async function deleteLesson(id) {
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
+  // Match the web app's deletePublishedLesson: session reports and feedback live in
+  // subcollections that Firestore does not remove with the parent document.
+  const cleared = await clearLessonRunData(id)
   await db.collection('lessons').doc(id).delete()
-  return { success: true, id }
+  return { success: true, id, cleared }
 }
 
 const SOLO_ID_SUFFIX = '-solo'

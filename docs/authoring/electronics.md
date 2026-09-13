@@ -4,6 +4,7 @@ Electronics code tasks use an editable breadboard workspace. Students drag parts
 
 ## Composed Lesson and Electronics Module
 
+<!-- example:template -->
 ```yaml
 id: electronics-led-switch
 type: composed

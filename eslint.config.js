@@ -109,6 +109,19 @@ export default [
     },
   },
 
+  // Security rules tests (vitest, Node, Firebase emulators)
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node, ...globals.vitest },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+
   // Node-side config/scripts/CLI tool
   {
     files: ['*.config.js', 'scripts/**/*.mjs', 'cli/**/*.mjs', 'cli/**/*.js'],

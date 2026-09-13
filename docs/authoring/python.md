@@ -131,7 +131,7 @@ Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex
 
 **Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source.
 
-**Wildcards and multi-option contains:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present.
+**Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
 
 ## Feedback Checks
 
@@ -207,15 +207,19 @@ Fields").
 ```json
 {
   "id": "python-minimal",
-  "type": "python",
+  "type": "composed",
   "title": "Python Minimal",
   "description": "A short Python lesson.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "python",
       "title": "Hello",
       "explainer": "Print `Hello`.",
-      "starterCode": "",
+      "codeStages": [
+        { "label": "Starter", "role": "starter", "code": "# Print Hello below\n" },
+        { "label": "Complete", "role": "complete", "code": "print(\"Hello\")\n" }
+      ],
       "check": { "type": "output", "operator": "contains", "value": "Hello" }
     }
   ]

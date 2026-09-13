@@ -18,7 +18,87 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-13
+
+### Check comparisons now behave the same in every module
+
+Text operators (`contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`,
+`not_matches_regex`) now share one implementation across output, quiz answers, file content,
+HTML element checks and Scratch block inputs. Existing checks can change verdict in these cases:
+
+- **`not_contains` with an option list** (`"a","b"`) now passes only when none of the options
+  appear. It used to search for the literal quoted text, so it almost always passed. This affects
+  output, answer and HTML element, attribute and style checks.
+- **An invalid regex** now fails `not_matches_regex` too, instead of passing for every student.
+- **Filesystem `fs_file_content` `equals` / `not_equals`** now support `*` wildcards.
+- **Scratch `fieldValues`** on `block_used`, `block_run` and `blocks_in_order`:
+  - `equals` and `contains` ignore case and surrounding spaces.
+  - `contains` supports `*` and option lists.
+  - Numbers compare numerically (`10` equals `10.0`).
+  - Regex honours `flags`.
+
+Review Scratch checks that relied on case-sensitive field matching, and any `not_contains` check
+written with an option list.
+
+### Scratch graphic effects draw on the stage
+
+`set/change [effect] effect` blocks used to update sprite state without changing how the sprite
+looked. All seven effects now render. `fisheye` and `whirl` are skipped for costume images hosted
+on another site. `motion_setrotationstyle` is now in the default toolbox (it was already in the
+catalog and runtime). See `docs/authoring/scratch.md`.
+
+### CLI reads and writes lessons the same way as the Builder
+
+- `lessons get`, `lessons upsert`, `lessons publish-yaml`, `lessons fork` and the
+  `tasks` commands now decode and encode
+  Scratch block trees and Arcade designs at the Firestore boundary, like the
+  web app. Long Scratch scripts and Arcade sprite art can now be published from
+  the CLI (Firestore rejected them before), and `lessons get` returns blocks as
+  objects rather than JSON strings for lessons saved in the Builder.
+- Scratch `starterBlocks`, `completeBlocks` and stage `blocks` can now be written as plain
+  objects in lesson files. JSON strings still work and are not encoded twice.
+- `lessons delete` also removes the lesson's session reports and feedback, like
+  deleting from Admin. The result includes a `cleared` count.
+- The Builder now rejects an unknown lesson `type`, as the CLI already did.
+- The broken `scripts/yaml-to-json.mjs` script is removed. Use
+  `node cli/cli.mjs lessons yaml-to-json` instead.
+
+### Turtle lessons now validate and publish correctly
+
+- The CLI accepts `type: turtle` and `moduleType: turtle`; it previously
+  rejected every Turtle lesson.
+- The Builder no longer rejects `turtle_position`, `turtle_path_closed`,
+  `turtle_command_used` or `turtle_color_used` with "no check value". Both the
+  Builder and CLI now check each Turtle check's own fields (`x`/`y`, `value`,
+  `command`, `color`) and reject unknown Turtle check types.
+- `turtle_command_used` with `command: backward` now passes when students call
+  `backward()`/`bk()`/`back()`. Before, it could never pass. A backward move
+  still also counts as a `forward` call.
+- Python, Arcade and Turtle tasks whose starter lives only in `codeStages` no
+  longer get a false "no starter code" warning.
+
+See `docs/authoring/turtle.md`.
+
 ## 2026-09-12
+
+### Scratch check fixes that change existing verdicts (backfilled)
+
+These fixes shipped earlier without a changelog entry. Lessons authored while the bugs existed may
+need their checks reviewed.
+
+- **2026-09-11: `fieldValues` now match dropdown fields.** `block_used` and `blocks_in_order`
+  `fieldValues` only read number/text inputs, so a condition on a dropdown (e.g. `motion_goto`
+  `TO`, `looks_switchcostumeto` `COSTUME`) could never pass. It now reads the block's own field
+  first.
+- **2026-09-09: `blocks_in_order` waits for the student.** Starter stacks that connect the
+  surrounding blocks directly (the usual "insert a block between these two" task) were reported as
+  failed before the student did anything. A gap now counts as pending until the wrong block is
+  actually placed.
+- **2026-09-07: `sprite_property_delta` and `sprite_property_changed` work.** The "before run"
+  sprite snapshot was aliased to live state, so the delta was always 0 and "changed" was always
+  false for every task using these checks. If a lesson avoided these check types because they never
+  passed, they are safe to use now.
+
 
 ### New Turtle module task type
 

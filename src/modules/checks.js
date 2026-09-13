@@ -5,15 +5,12 @@ import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics
 import { TURTLE_CHECK_TYPES, evaluateTurtleCheck } from './turtle/checks.js'
 import { DESKTOP_CHECK_TYPES, evaluateDesktopCheck } from './desktop/checks.js'
 import {
-  wildcardContains,
-  wildcardEquals,
   normalizeOutput,
   normalizeExactOutput,
   countOutputLines,
-  matchesContainValue,
-  matchesRegex,
   compareValues,
   evaluateCodeCheck,
+  compareText,
 } from '../shared/checkHelpers.js'
 
 export function substituteTestInputs(value, inputs) {
@@ -294,33 +291,20 @@ export function evaluateSingleCheck(check, output, context = {}) {
   if (check.value == null) return false
 
   if (check.type === 'answer') {
-    const answer = context.answer ?? output
-    if (check.operator === 'contains')
-      return matchesContainValue(answer, check.value, normalizeOutput)
-    if (check.operator === 'not_contains')
-      return !wildcardContains(normalizeOutput(answer), normalizeOutput(check.value))
-    if (check.operator === 'equals')
-      return wildcardEquals(normalizeExactOutput(answer), normalizeExactOutput(check.value))
-    if (check.operator === 'not_equals')
-      return !wildcardEquals(normalizeExactOutput(answer), normalizeExactOutput(check.value))
-    if (check.operator === 'matches_regex') return matchesRegex(answer, check.value, check.flags)
-    if (check.operator === 'not_matches_regex')
-      return !matchesRegex(answer, check.value, check.flags)
+    const result = compareText(context.answer ?? output, check.operator, check.value, {
+      normalizeEquals: normalizeExactOutput,
+      flags: check.flags,
+    })
+    if (result !== null) return result
   }
 
   if (check.type === 'output') {
-    if (check.operator === 'contains')
-      return matchesContainValue(output, check.value, normalizeOutput)
-    if (check.operator === 'not_contains')
-      return !wildcardContains(normalizeOutput(output), normalizeOutput(check.value))
-    if (check.operator === 'equals')
-      return wildcardEquals(normalizeExactOutput(output), normalizeExactOutput(check.value))
-    if (check.operator === 'not_equals')
-      return !wildcardEquals(normalizeExactOutput(output), normalizeExactOutput(check.value))
-    if (check.operator === 'matches_regex')
-      return matchesRegex(normalizeOutput(output, true), check.value, check.flags)
-    if (check.operator === 'not_matches_regex')
-      return !matchesRegex(normalizeOutput(output, true), check.value, check.flags)
+    const result = compareText(output, check.operator, check.value, {
+      normalizeEquals: normalizeExactOutput,
+      normalizeRegex: (value) => normalizeOutput(value, true),
+      flags: check.flags,
+    })
+    if (result !== null) return result
   }
 
   if (check.type === 'output_line_count') {

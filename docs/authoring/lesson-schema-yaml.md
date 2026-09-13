@@ -21,6 +21,7 @@ Lessons live in the Firestore `lessons/` collection. Use `node cli/cli.mjs lesso
 
 ## Lesson Envelope
 
+<!-- example:template -->
 ```yaml
 id: python-for-loops         # required — lowercase slug, used in URLs
 type: composed               # required for new lessons; legacy types still load
@@ -52,7 +53,7 @@ tasks: []                     # required — ordered task list (see below)
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `composed` for new lessons. Legacy `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, and `electronics` lessons remain supported. |
+| `type` | Yes | string | `composed` for new lessons. Legacy `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, and `electronics` lessons remain supported. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `draft` | No | boolean | Enables incomplete real tasks for authoring. Final publishing refuses `true`. |
@@ -108,7 +109,7 @@ tasks:
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class, subject to teacher approval. Off unless set to `true`. Not valid on `quiz` or `information` tasks. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
-| `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
+| `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
 | `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
 | `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task. Always optional, even in Draft. Never student-facing. |
@@ -159,10 +160,13 @@ tasks:
   - title: Add a web heading
     moduleType: html
     moduleId: web-showcase
-    starterFiles: []
+    starterFiles:
+      - name: index.html
+        type: html
+        content: "<!doctype html><title>Showcase</title><h1></h1>"
 ```
 
-Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter` for Python and Arcade Kit; `sandboxStarterFiles` for HTML; `sandboxStarter`, `sandboxToolbox`, `sandboxSprites`, and `sandboxBackdrops` for Scratch; `sandboxStarterFs` for Filesystem; and `sandboxStarterCircuit` for Electronics. If a named module has no authored `sandbox`, its sandbox starts from that module's first code task. A task's `moduleType` and its named module's `type` must agree.
+Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter` for Python, Arcade Kit and Turtle; `sandboxStarterFiles` for HTML; `sandboxStarter`, `sandboxToolbox`, `sandboxSprites`, and `sandboxBackdrops` for Scratch; `sandboxStarterFs` for Filesystem; and `sandboxStarterCircuit` for Electronics. If a named module has no authored `sandbox`, its sandbox starts from that module's first code task. A task's `moduleType` and its named module's `type` must agree.
 
 Carry-through stays inside the same named module: use the existing type-specific carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryDesktopFrom`, or `carryCircuitFrom`) and select an earlier task in that module only.
 

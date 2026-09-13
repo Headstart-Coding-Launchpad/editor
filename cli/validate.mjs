@@ -3,6 +3,7 @@ import {
   checkAllowedForSubmit,
   checkRequiresRun,
   evaluateSingleCheck,
+  normalizeChecks,
 } from '../src/modules/checks.js'
 import { makeForkLessonId } from '../src/shared/lessonForks.js'
 import {
@@ -12,46 +13,25 @@ import {
   STAGE_ROLES,
   getStarterStage,
   canTaskAllowSharing,
+  flattenTasks,
 } from '../src/shared/taskUtils.js'
 import { validateDraftLessonStructure } from '../src/shared/draftLesson.js'
 import {
   getModuleCarrySourceIds,
   getTaskModuleType,
+  LESSON_MODULE_TYPES,
   validateComposedStructure,
 } from '../src/shared/composedLesson.js'
 import {
   validateFilesystemChecks,
   validateElectronicsChecks,
+  validateTurtleChecks,
 } from '../src/shared/checkAuthoringValidation.js'
 import { isValidRecordingUrl } from '../src/shared/youtube.js'
 
-const VALID_TYPES = [
-  'python',
-  'arcade',
-  'html',
-  'scratch',
-  'filesystem',
-  'desktop',
-  'electronics',
-  'composed',
-]
-
-function flattenTasks(tasks) {
-  const result = []
-  for (const item of tasks) {
-    if (item.type === 'group') {
-      for (const sub of Array.isArray(item.subtasks) ? item.subtasks : []) result.push(sub)
-    } else {
-      result.push(item)
-    }
-  }
-  return result
-}
-
-function normalizeChecks(check) {
-  if (!check) return []
-  return Array.isArray(check) ? check : [check]
-}
+// Derived from the shared module list so a newly registered module type can't be
+// rejected by the CLI while the Builder accepts it (turtle was, before this).
+const VALID_TYPES = [...LESSON_MODULE_TYPES, 'composed']
 
 function validateStageMetadata(task, n, errors) {
   if (!Array.isArray(task.codeStages)) return
@@ -295,6 +275,13 @@ export function validateLessonForMcp(lesson) {
     } else if (
       task.taskType !== 'information' &&
       task.taskType !== 'quiz' &&
+      task.taskType !== 'code_arrange' &&
+      taskType === 'turtle'
+    ) {
+      if (task.check) validateTurtleChecks(task.check, n, errors)
+    } else if (
+      task.taskType !== 'information' &&
+      task.taskType !== 'quiz' &&
       taskType === 'scratch'
     ) {
       if (task.check?.type === 'sprite_property') {
@@ -310,8 +297,8 @@ export function validateLessonForMcp(lesson) {
 
     if (!task.taskType) {
       const hasStarter =
-        taskType === 'python' || taskType === 'arcade'
-          ? !!task.starterCode
+        taskType === 'python' || taskType === 'arcade' || taskType === 'turtle'
+          ? !!(getStarterStage(task)?.stage?.code ?? task.starterCode)
           : taskType === 'scratch'
             ? !!task.starterBlocks
             : taskType === 'filesystem'

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
+import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
 import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
@@ -340,12 +341,15 @@ export default function StudentModal({
     isElectronics,
     isArcade,
     isHtml,
+    isTurtle,
     isQuiz,
     isInformation,
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, task, session)
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
-  const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
+  // Turtle edits go through the plain code editor below and commit as { code }.
+  const supportsTeacherEdit =
+    isPython || isScratch || isHtml || isArcade || isElectronics || isTurtle
   const lessonModule = getLessonModule(taskLesson?.type)
   const ModuleTeacherLiveView =
     !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
@@ -436,14 +440,16 @@ export default function StudentModal({
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
 
+  // Read through a ref: the listener is bound once, and handleClose → handleCommitEdit
+  // must see the teacher's latest typed code/files, not the values from when it was bound.
+  const handleCloseRef = useLatestRef(handleClose)
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'Escape') handleClose()
+      if (e.key === 'Escape') handleCloseRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherEditState])
+  }, [handleCloseRef])
 
   return (
     <div
