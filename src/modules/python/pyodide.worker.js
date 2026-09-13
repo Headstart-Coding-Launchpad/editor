@@ -441,7 +441,11 @@ self.onmessage = async ({ data }) => {
       JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : [])
     )
 
-    const turtleResult = () => ({ state: _turtleState, commands: _turtleCommands, calls: _turtleCalls })
+    const turtleResult = () => ({
+      state: _turtleState,
+      commands: _turtleCommands,
+      calls: _turtleCalls,
+    })
 
     try {
       await pyodide.runPythonAsync(WRAPPER)

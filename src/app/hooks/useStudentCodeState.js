@@ -1184,7 +1184,8 @@ export function useStudentCodeState({
         // Arcade's design — so it's synced here alongside writeStudentRun, not only on
         // explicit edits. Lets a teacher open StudentModal and see the student's actual
         // drawing, not just their code.
-        if (lesson.type === 'turtle') writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
+        if (lesson.type === 'turtle')
+          writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
       }
       if (
         !teacherPresentation &&

@@ -454,9 +454,9 @@ describe('StudentView', () => {
 
       render(<StudentView lessonId="python-1-1" />)
 
-      expect(
-        await screen.findByLabelText("Teacher's live code stage reference")
-      ).toHaveTextContent('print("live")')
+      expect(await screen.findByLabelText("Teacher's live code stage reference")).toHaveTextContent(
+        'print("live")'
+      )
     })
 
     it('shows the reference to everyone when the whole-class flag is on', async () => {
@@ -467,9 +467,9 @@ describe('StudentView', () => {
 
       render(<StudentView lessonId="python-1-1" />)
 
-      expect(
-        await screen.findByLabelText("Teacher's live code stage reference")
-      ).toHaveTextContent('print("all")')
+      expect(await screen.findByLabelText("Teacher's live code stage reference")).toHaveTextContent(
+        'print("all")'
+      )
     })
 
     it('does not show a reference for a different task than the one being presented', async () => {
@@ -1187,7 +1187,9 @@ describe('StudentView', () => {
       await user.click(screen.getByRole('button', { name: 'Next' }))
 
       expect(await screen.findByText('Lesson complete!')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Try the Solo Challenge/i })
+      ).not.toBeInTheDocument()
     })
 
     it('offers a linked solo challenge and navigates straight into it in solo mode', async () => {
