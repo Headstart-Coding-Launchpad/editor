@@ -21,7 +21,8 @@ export default defineConfig({
       VITE_FIREBASE_APP_ID: '1:000000000000:web:0000000000000000',
     },
     globals: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**', 'e2e/**'],
+    // tests/rules needs the Firebase emulators; run it with `npm run test:rules`.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**', 'e2e/**', 'tests/rules/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'lcov', 'json-summary'],

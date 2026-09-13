@@ -191,6 +191,27 @@ The weakest large files are the best places to add coverage: `TeacherView.jsx`,
 `ScratchWorkspace.jsx`, `useStudentCodeState.js`, `ScratchTaskSetup.jsx`, `TaskList.jsx`,
 `SharedAssetsPanel.jsx` and `TaskEditorFields.jsx`.
 
+## Security Rules Tests
+
+`tests/rules/` checks `database.rules.json`, `firestore.rules` and `storage.rules` against the
+Firebase emulators using `@firebase/rules-unit-testing`. Each test loads the real rules files,
+so it tests exactly what gets deployed. The emulators use the offline `demo-hsc-rules` project and
+never touch production. The tests cover:
+
+- **Realtime Database:** students can write only their own `students`, `attemptLog`,
+  `carryFallbackLog` and `supportRevealLog` entries. Only teachers and admins can write
+  session fields, overrides and shared-workspace approvals. Only admins can list `sessions`.
+  Pending share snapshots are private to their author and the teacher.
+- **Firestore:** content collections are public to read and admin-only to write. `users` has no
+  client writes. `feedback` and `sessionReports` are for teachers and admins only. Teachers can
+  submit platform feedback but not read it. Anything without a rule is denied.
+- **Storage:** asset folders are public to read and admin-only to write. Other paths are denied.
+
+Run with `npm run test:rules`. This needs `firebase-tools` installed globally and Java 21
+(the emulators are Java). `npm test` excludes these tests. CI runs them in a separate `rules` job.
+
+Add a test whenever you change a rules file.
+
 ## Continuous Integration
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`:
