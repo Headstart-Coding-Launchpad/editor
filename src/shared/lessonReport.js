@@ -292,7 +292,8 @@ function summarizeSupportReveals(perStudent) {
 // the rating is already written to RTDB by the time the report is built.
 function normalizeTaskRating(raw) {
   if (!raw) return null
-  const rating = Number.isInteger(raw.rating) && raw.rating >= 1 && raw.rating <= 5 ? raw.rating : null
+  const rating =
+    Number.isInteger(raw.rating) && raw.rating >= 1 && raw.rating <= 5 ? raw.rating : null
   const whatWorkedWell = String(raw.whatWorkedWell ?? '').trim()
   const whatDidntWork = String(raw.whatDidntWork ?? '').trim()
   if (rating == null && !whatWorkedWell && !whatDidntWork) return null

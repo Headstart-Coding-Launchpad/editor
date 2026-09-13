@@ -50,7 +50,9 @@ describe('SessionEndedScreen', () => {
   it('does not offer the solo challenge or playground when neither is available', () => {
     render(<SessionEndedScreen onContinueSolo={vi.fn()} />)
 
-    expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Try the Solo Challenge/i })
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Open Playground/i })).not.toBeInTheDocument()
   })
 

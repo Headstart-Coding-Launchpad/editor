@@ -13,7 +13,11 @@ import {
   LEVEL_COLLECTION,
   normalizeLevelRecord,
 } from '../../shared/lessonLevels'
-import { getLessonModules, isComposedLesson, getComposedModuleTypes } from '../../shared/composedLesson'
+import {
+  getLessonModules,
+  isComposedLesson,
+  getComposedModuleTypes,
+} from '../../shared/composedLesson'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
