@@ -19,6 +19,16 @@ export function matchesRegex(value, pattern, flags = '') {
   }
 }
 
+export function isValidRegex(pattern, flags = '') {
+  if (pattern == null) return false
+  try {
+    new RegExp(String(pattern), String(flags ?? ''))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function compareValues(actual, operator = 'equals', expected) {
   const a = Number(actual)
   const e = Number(expected)
@@ -123,6 +133,44 @@ export function matchesContainValue(rawValue, checkValue, normalizeFn) {
     return opts.some((opt) => wildcardContains(actual, normalizeFn(opt)))
   }
   return wildcardContains(normalizeFn(rawValue), normalizeFn(checkValue))
+}
+
+// The one definition of the text comparison operators used by checks, so every module
+// means the same thing by them:
+//   contains      any of the options is found (`"a","b"` lists), `*` matches anything
+//   not_contains  none of the options is found
+//   equals        whole value matches, `*` matches anything
+//   not_equals    whole value doesn't match
+//   matches_regex / not_matches_regex   JavaScript regex with optional `flags`
+// Modules pass their own normalisers because "the same text" differs by subject: output
+// ignores case and surrounding whitespace, CSS values reduce url(...) to a filename, and so
+// on. `normalize` is used for contains; `normalizeEquals` (default: normalize) for equals;
+// `normalizeRegex` (default: leave untouched) for the regex operators. Returns null for an
+// operator this helper doesn't handle, so callers can fall through to their own.
+export function compareText(actual, operator, expected, options = {}) {
+  const normalize = options.normalize ?? normalizeOutput
+  const normalizeEquals = options.normalizeEquals ?? normalize
+  const normalizeRegex = options.normalizeRegex ?? ((value) => String(value ?? ''))
+  switch (operator) {
+    case 'contains':
+      return matchesContainValue(actual, expected, normalize)
+    case 'not_contains':
+      return !matchesContainValue(actual, expected, normalize)
+    case 'equals':
+      return wildcardEquals(normalizeEquals(actual), normalizeEquals(expected))
+    case 'not_equals':
+      return !wildcardEquals(normalizeEquals(actual), normalizeEquals(expected))
+    case 'matches_regex':
+    case 'not_matches_regex': {
+      // An invalid pattern is an authoring mistake: fail both operators rather than
+      // letting "does not match" pass for every student.
+      if (!isValidRegex(expected, options.flags)) return false
+      const matched = matchesRegex(normalizeRegex(actual), expected, options.flags)
+      return operator === 'matches_regex' ? matched : !matched
+    }
+    default:
+      return null
+  }
 }
 
 export function parseCheckValue(value) {

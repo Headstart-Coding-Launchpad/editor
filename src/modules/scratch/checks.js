@@ -1,7 +1,7 @@
 // Pure Scratch check evaluation helpers and default sprite state.
 // No Blockly dependency — all inputs are plain JS values or workspace references.
 
-import { wildcardEquals, compareValues } from '../../shared/checkHelpers.js'
+import { compareText, compareValues } from '../../shared/checkHelpers.js'
 
 export const DEFAULT_SPRITES = [
   { id: 'sprite1', name: 'Sprite 1', type: 'cat', x: 0, y: 0, size: 100, direction: 90 },
@@ -55,50 +55,26 @@ function getInputValue(block, inputName) {
   return inputBlock.getFieldValue?.('NUM') ?? inputBlock.getFieldValue?.('TEXT') ?? null
 }
 
+const NUMBER_PATTERN = /^\s*-?(\d+\.?\d*|\.\d+)\s*$/
+
+// Block input and field conditions use the shared operator semantics (see compareText):
+// text ignores case and surrounding spaces, supports * wildcards and "a","b" option lists,
+// and regex honours `flags`. Two numbers compare as numbers, so 10 equals 10.0.
 function fieldConditionMatches(actualValue, expectedConfig) {
-  const actual = String(actualValue)
   const config =
     expectedConfig && typeof expectedConfig === 'object' && !Array.isArray(expectedConfig)
       ? expectedConfig
       : { operator: 'equals', value: expectedConfig }
   const operator = config.operator ?? 'equals'
+  const actual = String(actualValue ?? '')
   const expected = String(config.value ?? '')
-  const actualNumber = Number(actual)
-  const expectedNumber = Number(expected)
-  if (operator === 'contains') return actual.toLowerCase().includes(expected.toLowerCase())
-  if (operator === 'not_contains') return !actual.toLowerCase().includes(expected.toLowerCase())
-  if (operator === 'not_equals') return !wildcardEquals(actual, expected)
-  if (operator === 'greater_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber))
-    return actualNumber > expectedNumber
-  if (
-    operator === 'greater_than_or_equal' &&
-    !Number.isNaN(actualNumber) &&
-    !Number.isNaN(expectedNumber)
-  )
-    return actualNumber >= expectedNumber
-  if (operator === 'less_than' && !Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber))
-    return actualNumber < expectedNumber
-  if (
-    operator === 'less_than_or_equal' &&
-    !Number.isNaN(actualNumber) &&
-    !Number.isNaN(expectedNumber)
-  )
-    return actualNumber <= expectedNumber
-  if (operator === 'matches_regex') {
-    try {
-      return new RegExp(expected).test(actual)
-    } catch {
-      return false
-    }
+  const bothNumbers = NUMBER_PATTERN.test(actual) && NUMBER_PATTERN.test(expected)
+  if (bothNumbers && (operator === 'equals' || operator === 'not_equals')) {
+    return compareValues(actual, operator, expected)
   }
-  if (operator === 'not_matches_regex') {
-    try {
-      return !new RegExp(expected).test(actual)
-    } catch {
-      return false
-    }
-  }
-  return wildcardEquals(actual, expected)
+  const textResult = compareText(actual, operator, expected, { flags: config.flags })
+  if (textResult !== null) return textResult
+  return bothNumbers ? compareValues(actual, operator, expected) : false
 }
 
 function blockMatchesFieldValues(block, fieldValues) {
@@ -133,7 +109,9 @@ function chainContainsBlock(chain, opcode, fieldValues) {
 function blockMatchesOtherSequenceItem(block, normalized, skipIndex) {
   return normalized.some(
     (item, idx) =>
-      idx !== skipIndex && block.type === item.opcode && blockMatchesFieldValues(block, item.fieldValues)
+      idx !== skipIndex &&
+      block.type === item.opcode &&
+      blockMatchesFieldValues(block, item.fieldValues)
   )
 }
 
@@ -147,7 +125,10 @@ function findChainStatus(chain, sequence) {
     // Found sequence start at index i — verify that subsequent blocks continue correctly.
     for (let j = 1; j < normalized.length && i + j < chain.length; j++) {
       const block = chain[i + j]
-      if (block.type === normalized[j].opcode && blockMatchesFieldValues(block, normalized[j].fieldValues))
+      if (
+        block.type === normalized[j].opcode &&
+        blockMatchesFieldValues(block, normalized[j].fieldValues)
+      )
         continue
       // The next required block isn't here. That's only a genuine violation once
       // something is actually wrong — either the block sitting here doesn't belong to

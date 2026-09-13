@@ -208,7 +208,7 @@ feedbackChecks:
 
 `feedbackChecks` are supported by Python, HTML, Filesystem, Electronics, and Scratch tasks and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
 
-**Wildcards:** `*` matches any sequence (including newlines) in `value` for containment/equality checks.
+**Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
 
