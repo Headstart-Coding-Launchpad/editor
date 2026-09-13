@@ -195,7 +195,7 @@ The weakest large files are the best places to add coverage: `TeacherView.jsx`,
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`:
 
-1. `npm ci`
+1. `npm install` (not `npm ci`: the Windows-generated lockfile omits Linux-only optional binaries)
 2. `npm run docs:check`
 3. `npm run lint`: fails on errors, not warnings
 4. `npm run format:check`: Prettier, code only (Markdown is ignored)

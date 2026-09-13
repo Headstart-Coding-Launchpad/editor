@@ -27,8 +27,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # npm install, not npm ci: the lockfile is generated on Windows and omits esbuild's
+      # optional Linux binaries, which makes npm ci fail (same as the deploy workflow).
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Check documentation
         run: npm run docs:check
