@@ -39,7 +39,11 @@ export default function StudentWorkspace({
   // run, or (Phase 3) the broadcast snapshot synced via teacherLive.turtleResult when
   // watching a "Go Live" turtle task. isViewingPrev/isTeacherEditing still show an empty
   // canvas — there's no saved/editable canvas snapshot for those, only code.
-  const turtleResult = isForcedTeacherLive ? displayTurtleResult : !readOnly ? cs.turtleResult : null
+  const turtleResult = isForcedTeacherLive
+    ? displayTurtleResult
+    : !readOnly
+      ? cs.turtleResult
+      : null
   const commands = turtleResult?.commands ?? []
   const background = turtleResult?.state?.background ?? '#ffffff'
 
@@ -163,14 +167,7 @@ export default function StudentWorkspace({
     )
   }
 
-  return (
-    <SplitPane
-      style={s.splitPane}
-      defaultSplit={50}
-      left={editor}
-      right={canvasAndOutput}
-    />
-  )
+  return <SplitPane style={s.splitPane} defaultSplit={50} left={editor} right={canvasAndOutput} />
 }
 
 const s = {

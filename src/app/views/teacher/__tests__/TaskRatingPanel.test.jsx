@@ -5,7 +5,9 @@ import TaskRatingPanel from '../TaskRatingPanel'
 
 describe('TaskRatingPanel', () => {
   it('starts collapsed with no rating shown', () => {
-    render(<TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />)
+    render(
+      <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
+    )
     expect(screen.getByText('Rate This Task — Task One')).toBeInTheDocument()
     expect(screen.queryByLabelText(/Rated \d out of 5 stars/)).not.toBeInTheDocument()
     expect(screen.queryByText("How's this task going?")).not.toBeInTheDocument()
@@ -25,7 +27,9 @@ describe('TaskRatingPanel', () => {
 
   it('expands to reveal the rating form and saves the entered values', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
-    render(<TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={onSave} />)
+    render(
+      <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={onSave} />
+    )
 
     fireEvent.click(screen.getByText('Rate This Task — Task One'))
     fireEvent.click(screen.getByRole('radio', { name: '3 stars' }))
@@ -45,7 +49,9 @@ describe('TaskRatingPanel', () => {
   })
 
   it('keeps the header pinned to the top of the scroll area once expanded', () => {
-    render(<TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />)
+    render(
+      <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
+    )
 
     const header = screen.getByText('Rate This Task — Task One').closest('button')
     // Sticky (not just scrolled-into-view) so the header can't be pushed out of
@@ -86,7 +92,7 @@ describe('TaskRatingPanel', () => {
     expect(screen.getByLabelText('What worked well?')).toHaveValue('Still typing this')
   })
 
-  it('resets the form to the new task\'s rating when taskId changes', () => {
+  it("resets the form to the new task's rating when taskId changes", () => {
     const { rerender } = render(
       <TaskRatingPanel
         taskId={1}

@@ -757,10 +757,16 @@ describe('useSession', () => {
       fireSession({ currentTaskId: 1 })
 
       await act(async () => {
-        await result.current.setTaskRating(1, { rating: null, whatWorkedWell: '', whatDidntWork: '' })
+        await result.current.setTaskRating(1, {
+          rating: null,
+          whatWorkedWell: '',
+          whatDidntWork: '',
+        })
       })
 
-      expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'sessions/lesson-1/taskRatingLog/1' })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/taskRatingLog/1',
+      })
       expect(firebaseMocks.set).not.toHaveBeenCalled()
     })
   })

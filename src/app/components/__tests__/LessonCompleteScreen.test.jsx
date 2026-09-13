@@ -20,7 +20,9 @@ describe('LessonCompleteScreen', () => {
   it('does not show the solo challenge or playground buttons when neither is available', () => {
     render(<LessonCompleteScreen onReplayLesson={vi.fn()} />)
 
-    expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Try the Solo Challenge/i })
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Open Playground/i })).not.toBeInTheDocument()
   })
 
@@ -38,8 +40,12 @@ describe('LessonCompleteScreen', () => {
   })
 
   it('does not offer the solo challenge without a matching handler', () => {
-    render(<LessonCompleteScreen soloCompanion={{ id: 'py-intro-solo', title: 'Python Challenge' }} />)
-    expect(screen.queryByRole('button', { name: /Try the Solo Challenge/i })).not.toBeInTheDocument()
+    render(
+      <LessonCompleteScreen soloCompanion={{ id: 'py-intro-solo', title: 'Python Challenge' }} />
+    )
+    expect(
+      screen.queryByRole('button', { name: /Try the Solo Challenge/i })
+    ).not.toBeInTheDocument()
   })
 
   it('offers the playground when one is available for the lesson type', () => {

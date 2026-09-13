@@ -37,7 +37,10 @@ export function teacherLiveReferenceDisplayState(payload, lessonType) {
     return payload.code ?? ''
   }
   if (lessonType === 'html') {
-    return { files: toTeacherLiveFiles(payload.files), entryFile: payload.activeFile || 'index.html' }
+    return {
+      files: toTeacherLiveFiles(payload.files),
+      entryFile: payload.activeFile || 'index.html',
+    }
   }
   if (lessonType === 'filesystem') {
     try {
