@@ -23,7 +23,10 @@ const stopPython = vi.fn()
 const runPython = vi.fn(() =>
   Promise.resolve({
     status: 'success',
-    turtle: { state: {}, commands: [{ type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }] },
+    turtle: {
+      state: {},
+      commands: [{ type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }],
+    },
   })
 )
 vi.mock('../../python/pyodide', () => ({

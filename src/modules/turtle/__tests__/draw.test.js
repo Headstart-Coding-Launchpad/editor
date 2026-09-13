@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { computeTurtleTransform, toCanvasPoint, drawTurtleCommands, sizeCanvasToDisplay } from '../draw.js'
+import {
+  computeTurtleTransform,
+  toCanvasPoint,
+  drawTurtleCommands,
+  sizeCanvasToDisplay,
+} from '../draw.js'
 
 // jsdom has no real canvas 2D context, and we're not adding the `canvas` npm
 // package to get one (no new dependencies) — so drawTurtleCommands is tested

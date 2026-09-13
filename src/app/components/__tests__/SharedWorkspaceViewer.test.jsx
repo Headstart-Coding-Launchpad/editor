@@ -167,9 +167,9 @@ describe('SharedWorkspaceViewer', () => {
         moduleType: 'scratch',
         snapshot: { code: '{"player":{"blocks":[]}}' },
       })
-      expect(
-        ephemeralStorage.loadSavedCode(shareLessonId, 2, 'shared-workspace-viewer')
-      ).toEqual({ state: { player: { blocks: [] } } })
+      expect(ephemeralStorage.loadSavedCode(shareLessonId, 2, 'shared-workspace-viewer')).toEqual({
+        state: { player: { blocks: [] } },
+      })
     })
 
     it('seeds filesystem state through the fs slot', () => {

@@ -125,7 +125,9 @@ export function evaluateTurtleCheck(check, context = {}) {
     const stateColor = kind === 'fill' ? state?.fillColor : state?.color
     const callName = kind === 'fill' ? 'fillcolor' : 'pencolor'
     if (normalizeColor(stateColor) === target) return true
-    return calls.some((call) => call?.name === callName && normalizeColor(call.args?.[0]) === target)
+    return calls.some(
+      (call) => call?.name === callName && normalizeColor(call.args?.[0]) === target
+    )
   }
 
   if (check.type === 'turtle_stamp_count') {

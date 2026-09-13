@@ -133,7 +133,9 @@ function chainContainsBlock(chain, opcode, fieldValues) {
 function blockMatchesOtherSequenceItem(block, normalized, skipIndex) {
   return normalized.some(
     (item, idx) =>
-      idx !== skipIndex && block.type === item.opcode && blockMatchesFieldValues(block, item.fieldValues)
+      idx !== skipIndex &&
+      block.type === item.opcode &&
+      blockMatchesFieldValues(block, item.fieldValues)
   )
 }
 
@@ -147,7 +149,10 @@ function findChainStatus(chain, sequence) {
     // Found sequence start at index i — verify that subsequent blocks continue correctly.
     for (let j = 1; j < normalized.length && i + j < chain.length; j++) {
       const block = chain[i + j]
-      if (block.type === normalized[j].opcode && blockMatchesFieldValues(block, normalized[j].fieldValues))
+      if (
+        block.type === normalized[j].opcode &&
+        blockMatchesFieldValues(block, normalized[j].fieldValues)
+      )
         continue
       // The next required block isn't here. That's only a genuine violation once
       // something is actually wrong — either the block sitting here doesn't belong to

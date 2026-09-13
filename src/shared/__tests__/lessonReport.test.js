@@ -611,7 +611,7 @@ describe('buildSessionReport', () => {
     })
   })
 
-  it('folds a live per-task teacher rating into that task\'s summary', () => {
+  it("folds a live per-task teacher rating into that task's summary", () => {
     const withTaskRating = {
       ...session,
       taskRatingLog: {

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
-import { CodeWorkspaceTabs, StageMetadataEditor } from '../../builder/components/task-editor/TaskEditorFields'
+import {
+  CodeWorkspaceTabs,
+  StageMetadataEditor,
+} from '../../builder/components/task-editor/TaskEditorFields'
 import { getStageRole } from '../../shared/taskUtils'
 import { initPyodide, runPython, stopPython } from '../python/pyodide'
 import { buildTurtleProgram } from './shim.js'
@@ -98,7 +101,11 @@ export default function BuilderWorkspace({
               onChange={(event) => updateStage({ label: event.target.value })}
               placeholder={`Stage ${stageIndex + 1}`}
             />
-            <StageMetadataEditor stage={stage} showRevealable onChange={(next) => updateStage(next)} />
+            <StageMetadataEditor
+              stage={stage}
+              showRevealable
+              onChange={(next) => updateStage(next)}
+            />
           </div>
         )}
         <CodeEditor
@@ -141,7 +148,13 @@ const s = {
     gap: 10,
     minHeight: 360,
   },
-  stage: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f5f3ff' },
+  stage: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 10px',
+    background: '#f5f3ff',
+  },
   preview: {
     display: 'flex',
     flexDirection: 'column',

@@ -63,7 +63,10 @@ describe('evaluateTurtleCheck', () => {
     ]
     it('passes when the path returns to its start', () => {
       expect(
-        evaluateTurtleCheck({ type: 'turtle_path_closed', tolerance: 2 }, context({ commands: square }))
+        evaluateTurtleCheck(
+          { type: 'turtle_path_closed', tolerance: 2 },
+          context({ commands: square })
+        )
       ).toBe(true)
     })
     it('fails when the path does not close', () => {
@@ -86,7 +89,10 @@ describe('evaluateTurtleCheck', () => {
     ]
     it('defaults to "at least"', () => {
       expect(
-        evaluateTurtleCheck({ type: 'turtle_segment_count', value: 2 }, context({ commands: lines }))
+        evaluateTurtleCheck(
+          { type: 'turtle_segment_count', value: 2 },
+          context({ commands: lines })
+        )
       ).toBe(true)
     })
     it('respects an explicit operator', () => {
@@ -136,7 +142,10 @@ describe('evaluateTurtleCheck', () => {
       ).toBe(true)
     })
     it('passes when the command was called at least minCount times', () => {
-      const calls = [{ name: 'forward', args: [10] }, { name: 'forward', args: [10] }]
+      const calls = [
+        { name: 'forward', args: [10] },
+        { name: 'forward', args: [10] },
+      ]
       expect(
         evaluateTurtleCheck(
           { type: 'turtle_command_used', command: 'forward', minCount: 2 },

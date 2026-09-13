@@ -702,13 +702,19 @@ function LevelLessonGroup({
                     const isChild = isFork || isSolo
                     const hasStockLesson = !isFamilyChild(family.items[0])
                     const forkCount = hasStockLesson ? family.items.filter(isLessonFork).length : 0
-                    const soloCount = hasStockLesson ? family.items.filter(isSoloCompanion).length : 0
+                    const soloCount = hasStockLesson
+                      ? family.items.filter(isSoloCompanion).length
+                      : 0
                     const familyOpen = openFamilyIds.has(family.id)
                     if (isChild && hasStockLesson && !familyOpen) return null
 
                     const familyToggleLabel = [
-                      forkCount > 0 ? `${forkCount} class ${forkCount === 1 ? 'fork' : 'forks'}` : null,
-                      soloCount > 0 ? `${soloCount} solo ${soloCount === 1 ? 'challenge' : 'challenges'}` : null,
+                      forkCount > 0
+                        ? `${forkCount} class ${forkCount === 1 ? 'fork' : 'forks'}`
+                        : null,
+                      soloCount > 0
+                        ? `${soloCount} solo ${soloCount === 1 ? 'challenge' : 'challenges'}`
+                        : null,
                     ]
                       .filter(Boolean)
                       .join(' · ')
@@ -723,7 +729,10 @@ function LevelLessonGroup({
                             <div style={s.lessonTitleCell}>
                               <button
                                 type="button"
-                                style={{ ...s.lessonToggle, ...(isChild ? s.forkLessonToggle : {}) }}
+                                style={{
+                                  ...s.lessonToggle,
+                                  ...(isChild ? s.forkLessonToggle : {}),
+                                }}
                                 onClick={() => handleToggleLesson(lesson.id)}
                                 aria-expanded={lessonOpen}
                               >

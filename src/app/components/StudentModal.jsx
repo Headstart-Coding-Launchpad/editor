@@ -547,7 +547,7 @@ export default function StudentModal({
                         >
                           {teacherLiveReferenceVisible
                             ? '✓ Live ref: your live code (on)'
-                            : "Show your live code"}
+                            : 'Show your live code'}
                         </button>
                       )}
                     {revealableStages.map(({ stage, index }) => {
