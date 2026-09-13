@@ -34,6 +34,7 @@ import {
   labelCheckKind,
   validateFilesystemChecks,
   validateElectronicsChecks,
+  validateTurtleChecks,
 } from '../shared/checkAuthoringValidation'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = [
@@ -468,6 +469,9 @@ export function validateLesson(lesson) {
         }
         if (task.check) validateScratchChecks(task.check, n, errors)
         if (feedbackChecks.length > 0) validateScratchChecks(feedbackChecks, n, errors, 'feedback')
+      } else if (type === 'turtle') {
+        if (task.check) validateTurtleChecks(task.check, n, errors)
+        if (feedbackChecks.length > 0) validateTurtleChecks(feedbackChecks, n, errors, 'feedback')
       } else if (type !== 'filesystem' && type !== 'electronics') {
         if (task.check)
           validateCodeChecks(task.check, n, errors, { type, interactionMode: task.interactionMode })
@@ -533,7 +537,7 @@ export function validateLesson(lesson) {
           : task.taskType === 'code_arrange'
             ? Array.isArray(task.lines) && task.lines.length > 0
             : type === 'python' || type === 'arcade' || type === 'turtle'
-              ? !!task.starterCode
+              ? !!(getStarterStage(task)?.stage?.code ?? task.starterCode)
               : type === 'scratch'
                 ? !!task.starterBlocks
                 : type === 'filesystem'

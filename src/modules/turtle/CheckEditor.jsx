@@ -14,8 +14,8 @@ const CHECK_OPTIONS = [
 ]
 
 const COMMAND_LABELS = {
-  forward: 'Move forward/backward',
-  backward: 'Move forward/backward',
+  forward: 'Move forward (backward moves count too)',
+  backward: 'Move backward (backward/bk/back)',
   turn: 'Turn (left/right)',
   goto: 'Move to position (goto)',
   setheading: 'Set heading',
