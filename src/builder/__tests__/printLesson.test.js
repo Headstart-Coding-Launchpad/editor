@@ -11,6 +11,22 @@ function lesson(type, task) {
 }
 
 describe('buildPrintHtml', () => {
+  it('prints code for tasks in a composed lesson using each task module type', () => {
+    const html = buildPrintHtml({
+      id: 'mixed',
+      title: 'Mixed',
+      type: 'composed',
+      tasks: [
+        { id: 1, moduleType: 'python', title: 'Print', starterCode: 'print("py")' },
+        { id: 2, moduleType: 'turtle', title: 'Draw', starterCode: 'turtle.forward(10)' },
+      ],
+    })
+
+    expect(html).toContain('Type: <strong>Python + Python Turtle</strong>')
+    expect(html).toContain('print(&quot;py&quot;)')
+    expect(html).toContain('turtle.forward(10)')
+  })
+
   it('prints filesystem task state and stages', () => {
     const html = buildPrintHtml(
       lesson('filesystem', {

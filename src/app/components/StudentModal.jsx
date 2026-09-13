@@ -341,12 +341,15 @@ export default function StudentModal({
     isElectronics,
     isArcade,
     isHtml,
+    isTurtle,
     isQuiz,
     isInformation,
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, task, session)
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
-  const supportsTeacherEdit = isPython || isScratch || isHtml || isArcade || isElectronics
+  // Turtle edits go through the plain code editor below and commit as { code }.
+  const supportsTeacherEdit =
+    isPython || isScratch || isHtml || isArcade || isElectronics || isTurtle
   const lessonModule = getLessonModule(taskLesson?.type)
   const ModuleTeacherLiveView =
     !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null

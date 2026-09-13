@@ -2,6 +2,7 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
+import { getEffectiveLessonForTask, getComposedModuleTypes } from '../shared/composedLesson'
 
 function esc(str) {
   if (str == null) return ''
@@ -287,6 +288,8 @@ function renderCheckHtml(check) {
 
 export function buildPrintHtml(lesson) {
   function renderTask(task, taskNumber) {
+    // Composed lessons carry the module type per task, not on the lesson itself.
+    const taskType = getEffectiveLessonForTask(lesson, task)?.type ?? lesson.type
     const parts = []
     parts.push(`<section class="task">`)
     parts.push(
@@ -366,7 +369,7 @@ export function buildPrintHtml(lesson) {
     }
 
     if (!task.taskType) {
-      if (lesson.type === 'python') {
+      if (taskType === 'python' || taskType === 'turtle' || taskType === 'arcade') {
         if (task.carryCodeFrom != null) {
           parts.push(
             `<div class="field"><div class="field-label">Carry Code From</div><div class="field-value">Task ${esc(String(task.carryCodeFrom))}</div></div>`
@@ -400,7 +403,7 @@ export function buildPrintHtml(lesson) {
         }
       }
 
-      if (lesson.type === 'html') {
+      if (taskType === 'html') {
         if (task.carryCodeFrom != null) {
           parts.push(
             `<div class="field"><div class="field-label">Carry Code From</div><div class="field-value">Task ${esc(String(task.carryCodeFrom))}</div></div>`
@@ -453,7 +456,7 @@ export function buildPrintHtml(lesson) {
         }
       }
 
-      if (lesson.type === 'scratch') {
+      if (taskType === 'scratch') {
         if (task.carryBlocksFrom != null) {
           parts.push(
             `<div class="field"><div class="field-label">Carry Blocks From</div><div class="field-value">Task ${esc(String(task.carryBlocksFrom))}</div></div>`
@@ -528,7 +531,7 @@ export function buildPrintHtml(lesson) {
         }
       }
 
-      if (lesson.type === 'filesystem') {
+      if (taskType === 'filesystem') {
         if (task.carryFsFrom != null) {
           parts.push(
             `<div class="field"><div class="field-label">Carry Filesystem From</div><div class="field-value">Task ${esc(String(task.carryFsFrom))}</div></div>`
@@ -549,7 +552,7 @@ export function buildPrintHtml(lesson) {
         }
       }
 
-      if (lesson.type === 'electronics') {
+      if (taskType === 'electronics') {
         if (task.carryCircuitFrom != null) {
           parts.push(
             `<div class="field"><div class="field-label">Carry Circuit From</div><div class="field-value">Task ${esc(String(task.carryCircuitFrom))}</div></div>`
@@ -603,14 +606,20 @@ export function buildPrintHtml(lesson) {
     return parts.join('')
   }
 
+  const TYPE_LABELS = {
+    python: 'Python',
+    turtle: 'Python Turtle',
+    arcade: 'Arcade Kit',
+    html: 'Web (HTML/CSS/JS)',
+    scratch: 'Scratch',
+    filesystem: 'Filesystem',
+    electronics: 'Electronics',
+  }
+  const composedTypes = getComposedModuleTypes(lesson)
   const typeLabel =
-    {
-      python: 'Python',
-      html: 'Web (HTML/CSS/JS)',
-      scratch: 'Scratch',
-      filesystem: 'Filesystem',
-      electronics: 'Electronics',
-    }[lesson.type] || lesson.type
+    composedTypes.length > 0
+      ? composedTypes.map((type) => TYPE_LABELS[type] || type).join(' + ')
+      : TYPE_LABELS[lesson.type] || lesson.type
   let taskNumber = 1
   const taskSections = []
 

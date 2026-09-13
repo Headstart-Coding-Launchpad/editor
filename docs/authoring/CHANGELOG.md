@@ -18,6 +18,24 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-13
+
+### Turtle lessons now validate and publish correctly
+
+- The CLI accepts `type: turtle` and `moduleType: turtle`; it previously
+  rejected every Turtle lesson.
+- The Builder no longer rejects `turtle_position`, `turtle_path_closed`,
+  `turtle_command_used` or `turtle_color_used` with "no check value". Both the
+  Builder and CLI now check each Turtle check's own fields (`x`/`y`, `value`,
+  `command`, `color`) and reject unknown Turtle check types.
+- `turtle_command_used` with `command: backward` now passes when students call
+  `backward()`/`bk()`/`back()`. Before, it could never pass. A backward move
+  still also counts as a `forward` call.
+- Python, Arcade and Turtle tasks whose starter lives only in `codeStages` no
+  longer get a false "no starter code" warning.
+
+See `docs/authoring/turtle.md`.
+
 ## 2026-09-12
 
 ### New Turtle module task type

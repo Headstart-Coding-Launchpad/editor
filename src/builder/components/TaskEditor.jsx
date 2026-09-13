@@ -707,6 +707,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               const icon = {
                 python: '🐍',
                 arcade: '🕹️',
+                turtle: '🐢',
                 html: '🌐',
                 scratch: '🧩',
                 filesystem: '🗂️',
