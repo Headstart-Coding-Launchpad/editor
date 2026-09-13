@@ -7,6 +7,19 @@ export default defineConfig({
     environment: 'jsdom',
     execArgv: nodeHasNativeWebStorage ? ['--no-webstorage'] : [],
     setupFiles: ['./src/test/setup.js'],
+    // Placeholder Firebase config for tests. src/shared/firebase.js initialises the SDK on
+    // import and throws without a database URL, which broke 38 suites in CI (no .env
+    // there). Using a demo project also keeps tests that forget to mock Firebase from
+    // reaching the real project when a local .env is present.
+    env: {
+      VITE_FIREBASE_API_KEY: 'test-api-key',
+      VITE_FIREBASE_AUTH_DOMAIN: 'demo-hsc-test.firebaseapp.com',
+      VITE_FIREBASE_DATABASE_URL: 'https://demo-hsc-test-default-rtdb.firebaseio.com',
+      VITE_FIREBASE_PROJECT_ID: 'demo-hsc-test',
+      VITE_FIREBASE_STORAGE_BUCKET: 'demo-hsc-test.appspot.com',
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '000000000000',
+      VITE_FIREBASE_APP_ID: '1:000000000000:web:0000000000000000',
+    },
     globals: true,
     exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**', 'e2e/**'],
     coverage: {
