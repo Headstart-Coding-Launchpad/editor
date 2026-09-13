@@ -181,8 +181,8 @@ export default function TaskOptionsSection({
                       : 'te-option-choice-text'
                   }
                 >
-                  Students can offer their work to the class. The teacher approves each share
-                  before anyone else sees it.
+                  Students can offer their work to the class. The teacher approves each share before
+                  anyone else sees it.
                 </span>
               </label>
             </Field>

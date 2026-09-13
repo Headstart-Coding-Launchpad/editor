@@ -44,7 +44,10 @@ vi.mock('../OutputPanel', () => ({
     <div data-testid="output-panel">
       {output}
       {inputPrompt !== null && inputPrompt !== undefined && (
-        <div data-testid="output-panel-input-prompt" data-readonly={inputReadOnly ? 'true' : 'false'}>
+        <div
+          data-testid="output-panel-input-prompt"
+          data-readonly={inputReadOnly ? 'true' : 'false'}
+        >
           {mirroredInputValue}
         </div>
       )}
@@ -234,12 +237,7 @@ describe('StudentModal', () => {
   describe('watching a student mid-input()', () => {
     it('mirrors the pending prompt and typed-so-far value as read-only', () => {
       render(
-        <StudentModal
-          {...mkProps(
-            {},
-            { currentInputPrompt: 'Name?', currentInput: 'Jam' }
-          )}
-        />
+        <StudentModal {...mkProps({}, { currentInputPrompt: 'Name?', currentInput: 'Jam' })} />
       )
 
       const mirrored = screen.getByTestId('output-panel-input-prompt')
