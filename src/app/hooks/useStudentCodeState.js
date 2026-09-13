@@ -24,6 +24,7 @@ import {
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
+import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
 import { decodeFileKey } from '../../shared/fileKeys'
 import {
   loadSavedCode,
@@ -33,6 +34,8 @@ import {
   savePersonalSandboxFile,
   loadPersonalSandboxFs,
   savePersonalSandboxFs,
+  loadPersonalSandboxDesktop,
+  savePersonalSandboxDesktop,
   clearEphemeralStorage,
 } from '../studentStorage'
 import {
@@ -121,6 +124,8 @@ export function useStudentCodeState({
   const [scratchActiveStageIndex, setScratchActiveStageIndex] = useState(null)
   const [fsState, setFsState] = useState(DEFAULT_FS)
   const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
+  const [desktopState, setDesktopState] = useState(() => makeDefaultDesktop())
+  const [desktopInteraction, setDesktopInteraction] = useState({ currentDir: '/', openFile: null })
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
   // Runtime error-line highlight (see src/shared/CodeEditor.jsx errorLineField).
@@ -187,6 +192,8 @@ export function useStudentCodeState({
   const fsStateRef = useLatestRef(fsState)
   const activeFileRef = useLatestRef(activeFile)
   const fsInteractionRef = useLatestRef(fsInteraction)
+  const desktopStateRef = useLatestRef(desktopState)
+  const desktopInteractionRef = useLatestRef(desktopInteraction)
 
   // ─── Runtime status ───────────────────────────────────────────────────────
 
@@ -358,6 +365,7 @@ export function useStudentCodeState({
     outputRef,
     runStatusRef,
     fsStateRef,
+    desktopStateRef,
     editorSelectionRef,
     editorActivityRef,
     lesson,
@@ -373,6 +381,7 @@ export function useStudentCodeState({
     checkAttempted,
     checkSuggestion,
     fsState,
+    desktopState,
     iframeStorageAssets: htmlIframeStorageAssets,
     updateTeacherLive,
     setTeacherLiveReference,
@@ -473,6 +482,8 @@ export function useStudentCodeState({
       persistence.saveHtmlFiles(id.anonymousId, taskId, filesRef.current)
     } else if (currentLesson.type === 'filesystem') {
       persistence.saveFs(id.anonymousId, taskId, fsStateRef.current)
+    } else if (currentLesson.type === 'desktop') {
+      persistence.saveDesktop(id.anonymousId, taskId, desktopStateRef.current)
     } else if (currentLesson.type === 'electronics') {
       persistence.savePythonCode(id.anonymousId, taskId, { code: codeRef.current })
     }
@@ -512,6 +523,13 @@ export function useStudentCodeState({
         lessonId,
         id.anonymousId,
         fsStateRef.current,
+        currentLesson.lessonModule?.id ?? null
+      )
+    } else if (currentLesson.type === 'desktop') {
+      savePersonalSandboxDesktop(
+        lessonId,
+        id.anonymousId,
+        desktopStateRef.current,
         currentLesson.lessonModule?.id ?? null
       )
     } else if (currentLesson.type === 'electronics') {
@@ -610,6 +628,35 @@ export function useStudentCodeState({
       const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
       setFsInteraction({
         currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir,
+        openFile: null,
+      })
+      resetCheckFeedback()
+    } else if (lesson.type === 'desktop') {
+      const carryId = task.carryDesktopFrom ?? null
+      const ownSaved = persistence.readSavedDesktop(activeIdentity.anonymousId, taskId)
+      const carried = resolveSavedCarrySource({
+        tasks: lesson.tasks,
+        taskId,
+        carryFromId: carryId,
+        carryField: 'carryDesktopFrom',
+        readSavedState: (sourceTaskId) =>
+          persistence.readSavedDesktop(activeIdentity.anonymousId, sourceTaskId),
+        hasSavedState: (desktop) => desktop != null,
+      })
+      if (ownSaved == null) recordCarryFallback(carried.fallback)
+      const initialDesktop =
+        carryId != null
+          ? (ownSaved ??
+            carried.saved ??
+            task.starterDesktop ??
+            makeDefaultDesktop(task.availableApps))
+          : (ownSaved ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
+      setDesktopState(normaliseDesktop(initialDesktop))
+      const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
+      setDesktopInteraction({
+        currentDir: carryId
+          ? (desktopInteractionRef.current?.currentDir ?? defaultDir)
+          : defaultDir,
         openFile: null,
       })
       resetCheckFeedback()
@@ -770,6 +817,7 @@ export function useStudentCodeState({
     setFiles,
     setActiveFile,
     setFsState,
+    setDesktopState: (desktop) => setDesktopState(normaliseDesktop(desktop)),
     setScratchSandboxProject,
   })
 
@@ -798,6 +846,8 @@ export function useStudentCodeState({
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
     } else if (lesson.type === 'filesystem') {
       writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
+    } else if (lesson.type === 'desktop') {
+      writeStudentCode(identity.anonymousId, JSON.stringify(desktopStateRef.current))
     }
     // code_arrange is a taskType flag layered on python/html, not its own
     // lesson.type, so it needs its own branch here too — without it, a
@@ -836,6 +886,7 @@ export function useStudentCodeState({
     const target = resolveRemoteResetTarget(task, action, lesson.type, {
       fs: DEFAULT_FS,
       circuit: DEFAULT_CIRCUIT,
+      desktop: makeDefaultDesktop(task.availableApps),
     })
     if (!target) return
 
@@ -868,6 +919,9 @@ export function useStudentCodeState({
       setScratchExternalState(target.blocks)
     } else if (lesson.type === 'filesystem') {
       setFsState(target.fs)
+      resetCheckFeedback()
+    } else if (lesson.type === 'desktop') {
+      setDesktopState(normaliseDesktop(target.desktop))
       resetCheckFeedback()
     } else if (lesson.type === 'electronics') {
       setCode(serializeCircuit(target.circuit))
@@ -957,6 +1011,11 @@ export function useStudentCodeState({
     } else if (lesson.type === 'filesystem') {
       const savedFs = loadPersonalSandboxFs(lessonId, id, sandboxModuleId)
       setFsState(savedFs ?? lesson.sandboxStarterFs ?? DEFAULT_FS)
+    } else if (lesson.type === 'desktop') {
+      const savedDesktop = loadPersonalSandboxDesktop(lessonId, id, sandboxModuleId)
+      setDesktopState(
+        normaliseDesktop(savedDesktop ?? lesson.sandboxStarterDesktop ?? makeDefaultDesktop())
+      )
     } else if (lesson.type === 'electronics') {
       const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
       setCode(saved?.code ?? serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
@@ -1724,6 +1783,78 @@ export function useStudentCodeState({
     [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
   )
 
+  // ─── Desktop handlers ───────────────────────────────────────────────────────
+
+  function applyDesktopCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
+    const alreadySolved = isAlreadySolved()
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
+    const evaluation = task?.check
+      ? evaluateCheckWithFeedback(task, '', context, {
+          completionPassed,
+          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+        })
+      : { passed: false, suggestion: '' }
+    const evaluatedPassed = evaluation.passed
+    const passed = alreadySolved ? true : evaluatedPassed
+    const suggestion = passed ? '' : evaluation.suggestion
+    if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) {
+      applyCheckFeedback(evaluatedPassed, suggestion)
+      updateTargetedStageOffer(task, evaluation, evaluatedPassed)
+    }
+    if (
+      !teacherPresentation &&
+      phase === 'lesson' &&
+      !inPersonalSandboxRef.current &&
+      effectiveIdentity?.anonymousId
+    ) {
+      writeStudentRun(effectiveIdentity.anonymousId, {
+        code: JSON.stringify(context.desktop),
+        status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
+        checkPassed: evaluatedPassed,
+      })
+      if (!alreadySolved && task?.check) {
+        logAttempt(effectiveIdentity.anonymousId, currentTaskId, {
+          submission: context.desktop,
+          passed: evaluatedPassed,
+          suggestion,
+        })
+      }
+    }
+  }
+
+  function handleDesktopChange(newDesktop) {
+    setDesktopState(newDesktop)
+    persistence.saveDesktop(effectiveIdentity?.anonymousId, currentTaskId, newDesktop)
+    applyDesktopCheckAndPublish({
+      fs: newDesktop.fs,
+      desktop: newDesktop,
+      ...desktopInteractionRef.current,
+    })
+    scheduleIdleFeedback(() => ({
+      fs: desktopStateRef.current.fs,
+      desktop: desktopStateRef.current,
+      ...desktopInteractionRef.current,
+    }))
+  }
+
+  const handleDesktopInteraction = useCallback(
+    (interaction) => {
+      setDesktopInteraction(interaction)
+      applyDesktopCheckAndPublish(
+        { fs: desktopStateRef.current.fs, desktop: desktopStateRef.current, ...interaction },
+        { suppressFailFeedback: true }
+      )
+      scheduleIdleFeedback(() => ({
+        fs: desktopStateRef.current.fs,
+        desktop: desktopStateRef.current,
+        ...interaction,
+      }))
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
+  )
+
   // ─── Reset/Complete code ───────────────────────────────────────────────────
 
   function handleResetCode() {
@@ -1744,6 +1875,9 @@ export function useStudentCodeState({
         setRunStatus(null)
       } else if (lesson.type === 'filesystem') {
         setFsState(lesson.sandboxStarterFs ?? DEFAULT_FS)
+        resetCheckFeedback()
+      } else if (lesson.type === 'desktop') {
+        setDesktopState(normaliseDesktop(lesson.sandboxStarterDesktop ?? makeDefaultDesktop()))
         resetCheckFeedback()
       } else if (lesson.type === 'electronics') {
         setCode(serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
@@ -1841,6 +1975,10 @@ export function useStudentCodeState({
       const stageFs = stage.fs ?? DEFAULT_FS
       setFsState(stageFs)
       persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, stageFs)
+    } else if (lesson.type === 'desktop') {
+      const stageDesktop = normaliseDesktop(stage.desktop ?? makeDefaultDesktop(task.availableApps))
+      setDesktopState(stageDesktop)
+      persistence.saveDesktop(effectiveIdentity.anonymousId, currentTaskId, stageDesktop)
     } else if (lesson.type === 'electronics') {
       const stageCircuit = serializeCircuit(stage.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
       setCode(stageCircuit)
@@ -2024,6 +2162,13 @@ export function useStudentCodeState({
       setFsState(completeFs)
       applyCheckFeedback(true)
       persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, completeFs)
+    } else if (lesson.type === 'desktop') {
+      const completeDesktop = normaliseDesktop(
+        task.completeDesktop ?? makeDefaultDesktop(task.availableApps)
+      )
+      setDesktopState(completeDesktop)
+      applyCheckFeedback(true)
+      persistence.saveDesktop(effectiveIdentity.anonymousId, currentTaskId, completeDesktop)
     } else if (lesson.type === 'electronics') {
       const completeCircuit = serializeCircuit(
         task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
@@ -2217,6 +2362,8 @@ export function useStudentCodeState({
     scratchActiveStageIndex,
     fsState,
     fsInteraction,
+    desktopState,
+    desktopInteraction,
     editorSelection,
     editorActivity,
     inPersonalSandbox,
@@ -2248,6 +2395,8 @@ export function useStudentCodeState({
     handleScratchCheck,
     handleFsChange,
     handleFsInteraction,
+    handleDesktopChange,
+    handleDesktopInteraction,
     handleInputSubmit,
     handleInputChange,
     handleHtmlRuntimeError,
@@ -2271,6 +2420,10 @@ export function useStudentCodeState({
         : null,
     readSavedTaskFs: (taskId) =>
       effectiveIdentity ? persistence.readSavedFs(effectiveIdentity.anonymousId, taskId) : null,
+    readSavedTaskDesktop: (taskId) =>
+      effectiveIdentity
+        ? persistence.readSavedDesktop(effectiveIdentity.anonymousId, taskId)
+        : null,
     // Generic per-task auxiliary storage (mode-aware, same key format as
     // readSavedTaskFile/saveHtmlFile). Used by task types that need to persist
     // something alongside their code that isn't itself a code file — for

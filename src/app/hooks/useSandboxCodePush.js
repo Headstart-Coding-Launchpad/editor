@@ -25,6 +25,7 @@ export function useSandboxCodePush({
   setFiles,
   setActiveFile,
   setFsState,
+  setDesktopState,
   setScratchSandboxProject,
 }) {
   useEffect(() => {
@@ -40,6 +41,10 @@ export function useSandboxCodePush({
     } else if (type === 'filesystem') {
       try {
         setFsState(JSON.parse(session.sandboxCode))
+      } catch {}
+    } else if (type === 'desktop') {
+      try {
+        setDesktopState?.(JSON.parse(session.sandboxCode))
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

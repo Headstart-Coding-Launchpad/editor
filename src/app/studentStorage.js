@@ -98,6 +98,34 @@ export function saveFsState(lessonId, taskId, anonymousId, fs) {
   localStorage.setItem(studentTaskStorageKey(lessonId, taskId, anonymousId), JSON.stringify({ fs }))
 }
 
+export function loadPersonalSandboxDesktop(lessonId, anonymousId, moduleId = null) {
+  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
+  if (!raw) return null
+  const parsed = JSON.parse(raw)
+  return parsed.desktop ?? null
+}
+
+export function savePersonalSandboxDesktop(lessonId, anonymousId, desktop, moduleId = null) {
+  localStorage.setItem(
+    personalSandboxStorageKey(lessonId, anonymousId, moduleId),
+    JSON.stringify({ desktop })
+  )
+}
+
+export function loadSavedDesktop(lessonId, taskId, anonymousId) {
+  const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
+  if (!raw) return null
+  const parsed = JSON.parse(raw)
+  return parsed.desktop ?? null
+}
+
+export function saveDesktopState(lessonId, taskId, anonymousId, desktop) {
+  localStorage.setItem(
+    studentTaskStorageKey(lessonId, taskId, anonymousId),
+    JSON.stringify({ desktop })
+  )
+}
+
 // ── Layout tab preference ──────────────────────────────────────────────────────
 // A device-level display preference (which compact-layout tab was last active),
 // not lesson/task-specific, so the key is unscoped like `headstart_builder_current`.
@@ -145,4 +173,8 @@ export const ephemeralStorage = {
     ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId))?.fs ?? null,
   saveFsState: (lessonId, taskId, anonymousId, fs) =>
     ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), { fs }),
+  loadSavedDesktop: (lessonId, taskId, anonymousId) =>
+    ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId))?.desktop ?? null,
+  saveDesktopState: (lessonId, taskId, anonymousId, desktop) =>
+    ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), { desktop }),
 }

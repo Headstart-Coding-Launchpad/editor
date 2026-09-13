@@ -19,16 +19,21 @@ const ICON_FILE = '📄'
 const ICON_IMG = '🖼️'
 const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp']
 
-function isImage(path) {
+export function isImage(path) {
   const lower = path.toLowerCase()
   return IMAGE_EXTS.some((ext) => lower.endsWith(ext))
 }
 
-function imagePreviewSrc(path, entry, assetsPath, assets) {
+export function imagePreviewSrc(path, entry, assetsPath, assets) {
   if (entry?.src) return resolveAssetFileUrl(assetsPath, entry.src)
   const name = entryName(path)
   const asset = assets.find((assetPath) => assetPath === name || assetPath.endsWith('/' + name))
-  return asset ? resolveAssetFileUrl(assetsPath, asset) : ''
+  if (asset) return resolveAssetFileUrl(assetsPath, asset)
+  // Runtime-generated images (currently just the Desktop module's Paint app) store a
+  // data: URL directly on the entry's content, rather than pointing at an authored asset.
+  if (typeof entry?.content === 'string' && entry.content.startsWith('data:image/'))
+    return entry.content
+  return ''
 }
 
 // ── Folder Tree ───────────────────────────────────────────────────────────────
@@ -508,6 +513,9 @@ export default function FilesystemTask({
   assets = [],
   disabled = false,
   initialDir = '/',
+  onDeletePath,
+  extraToolbarItems = null,
+  onOpenFile,
 }) {
   const [currentDir, setCurrentDir] = useState(initialDir)
   const [selected, setSelected] = useState(null)
@@ -577,16 +585,17 @@ export default function FilesystemTask({
   function handleSelect(path) {
     setSelected(path)
     setRenamingPath(null)
-    if (!path.endsWith('/') && !isImage(path)) {
-      setOpenFile(path)
-      onInteraction?.({ currentDir, openFile: path })
-    } else if (path.endsWith('/')) {
+    if (path.endsWith('/')) {
       setOpenFile(null)
       onInteraction?.({ currentDir, openFile: null })
-    } else {
-      setOpenFile(path) // image
-      onInteraction?.({ currentDir, openFile: path })
+      return
     }
+    // When onOpenFile is provided (the Desktop module's File Manager app), opening a file
+    // launches a Text Editor/Image Viewer window instead of this component's own inline
+    // preview — local openFile stays null so showEditor/showImage below never render.
+    if (onOpenFile) onOpenFile(path)
+    else setOpenFile(path)
+    onInteraction?.({ currentDir, openFile: path })
   }
 
   function handleNewFolder(name) {
@@ -600,14 +609,19 @@ export default function FilesystemTask({
     setCreating(null)
     if (!applyFsChange(createEntry(fs, newPath, 'file', ''), `"${name}" already exists here.`))
       return
-    setOpenFile(newPath)
     setSelected(newPath)
+    if (onOpenFile) onOpenFile(newPath)
+    else setOpenFile(newPath)
     onInteraction?.({ currentDir, openFile: newPath })
   }
 
   function handleDeletePath(path) {
-    if (!window.confirm(`Delete "${entryName(path)}"?`)) return
-    if (!applyFsChange(deleteEntry(fs, path), `Could not delete "${entryName(path)}".`)) return
+    if (onDeletePath) {
+      onDeletePath(path)
+    } else {
+      if (!window.confirm(`Delete "${entryName(path)}"?`)) return
+      if (!applyFsChange(deleteEntry(fs, path), `Could not delete "${entryName(path)}".`)) return
+    }
     if (selected === path) {
       setSelected(null)
       setOpenFile(null)
@@ -902,6 +916,7 @@ export default function FilesystemTask({
           </>
         )}
         <AddressBar currentDir={currentDir} onNavigate={navigate} />
+        {extraToolbarItems}
       </div>
 
       {statusMessage && (

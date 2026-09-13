@@ -62,6 +62,11 @@ Implemented technical specification for backward-compatible multi-workspace comp
 
 **Load when:** implementing or reviewing composed lessons, module-aware task routing, scoped sandbox persistence, or the first standalone playgrounds.
 
+### [architecture/desktop-module-roadmap.md](architecture/desktop-module-roadmap.md)
+Status and phased roadmap for the `desktop` lesson module (windowed desktop shell + File Manager, replacing/superseding the plain `filesystem` panel for the Digital Literacy Foundations course). Tracks what Phase 1 shipped and what Phases 2–4 (Text Editor/Image Viewer, simulated Browser/search engine, Paint/hints/accessibility) still need.
+
+**Load when:** picking up or planning further Desktop module work, or checking what's built vs. outstanding.
+
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
 
@@ -238,6 +243,11 @@ Filesystem module code-task authoring reference: task fields, flat path-map stat
 Filesystem code task field reference: the flat path-map state model, `starterFs`, `completeFs`, role-based `codeStages`, `carryFsFrom`, and `startsInDir`. Includes a minimal full-lesson example.
 
 **Load when:** authoring or editing a filesystem code task.
+
+### [authoring/desktop.md](authoring/desktop.md)
+Desktop module code-task authoring reference: the windowed desktop shell around the File Manager app, `starterDesktop`/`completeDesktop` state shape (`{ fs, recycleBin, windows }`), Desktop-only check types (`fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side`), and known first-release limitations.
+
+**Load when:** authoring or editing a Desktop module code task.
 
 ### [authoring/electronics.md](authoring/electronics.md)
 Electronics module code-task field reference: editable breadboard circuit shape, `starterCircuit`, `completeCircuit`, role-based `codeStages`, `carryCircuitFrom`, checks, and MicroPython code tab fields.

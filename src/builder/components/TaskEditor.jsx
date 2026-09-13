@@ -110,6 +110,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     !isCodeArrange &&
     ((lesson.type === 'html' && !Array.isArray(task.starterFiles)) ||
       (lesson.type === 'filesystem' && !task.starterFs) ||
+      (lesson.type === 'desktop' && !task.starterDesktop) ||
       (lesson.type === 'electronics' && !task.starterCircuit))
 
   function set(field, value) {
@@ -150,6 +151,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       'starterCircuit',
       'completeCircuit',
       'microcontroller',
+      'starterDesktop',
+      'completeDesktop',
+      'availableApps',
       'arcadeDesign',
       'completeArcadeDesign',
       'arcadeTools',
@@ -157,6 +161,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       'carryCodeFrom',
       'carryBlocksFrom',
       'carryFsFrom',
+      'carryDesktopFrom',
       'carryCircuitFrom',
       'check',
       'feedbackChecks',
@@ -711,6 +716,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                 html: '🌐',
                 scratch: '🧩',
                 filesystem: '🗂️',
+                desktop: '🖥️',
                 electronics: '⚡',
               }[moduleType]
               return (
@@ -729,7 +735,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                       : moduleType[0].toUpperCase() + moduleType.slice(1)}
                   </span>
                   <span className="te-info-type-hint">
-                    {moduleType === 'filesystem' ? 'File manager' : 'Workspace'}
+                    {moduleType === 'filesystem'
+                      ? 'File manager'
+                      : moduleType === 'desktop'
+                        ? 'Windowed desktop'
+                        : 'Workspace'}
                     {moduleType === 'arcade' ? ' · Experimental' : ''}
                   </span>
                 </button>
@@ -956,7 +966,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             ? 'starter files'
             : lesson.type === 'filesystem'
               ? 'starter filesystem'
-              : 'starter breadboard'}{' '}
+              : lesson.type === 'desktop'
+                ? 'starter desktop'
+                : 'starter breadboard'}{' '}
           yet. Choose the Code format above to initialise the standard editor fields, then continue
           editing the task.
         </div>

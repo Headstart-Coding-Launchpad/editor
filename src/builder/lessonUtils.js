@@ -49,7 +49,13 @@ const SCRATCH_STARTER_SPRITE_STATE_FIELDS = [
   'rotationStyle',
   'costume',
 ]
-const TASK_CARRY_FIELDS = ['carryCodeFrom', 'carryBlocksFrom', 'carryFsFrom', 'carryCircuitFrom']
+const TASK_CARRY_FIELDS = [
+  'carryCodeFrom',
+  'carryBlocksFrom',
+  'carryFsFrom',
+  'carryDesktopFrom',
+  'carryCircuitFrom',
+]
 
 function validateStageMetadata(task, n, errors) {
   if (!Array.isArray(task.codeStages)) return
@@ -384,6 +390,22 @@ export function validateLesson(lesson) {
           `Task ${n} references task ${carryFsFrom} for carry-through but that task does not exist`
         )
       }
+    } else if (task.taskType !== 'information' && type === 'desktop') {
+      if (task.codeStages?.length > 0) {
+        task.codeStages.forEach((stage, si) => {
+          if (!stage.label?.trim()) errors.push(`Task ${n} stage ${si + 1} is missing a label`)
+          if (!stage.desktop || typeof stage.desktop !== 'object')
+            errors.push(`Task ${n} stage ${si + 1} has no desktop state`)
+        })
+      }
+      if (task.check) validateFilesystemChecks(task.check, n, errors)
+      if (feedbackChecks.length > 0) validateFilesystemChecks(feedbackChecks, n, errors, 'feedback')
+      const carryDesktopFrom = task.carryDesktopFrom ?? null
+      if (carryDesktopFrom != null && !flat.some((t) => t.id === carryDesktopFrom)) {
+        errors.push(
+          `Task ${n} references task ${carryDesktopFrom} for carry-through but that task does not exist`
+        )
+      }
     } else if (task.taskType !== 'information' && type === 'electronics') {
       const starterCircuit = getStarterStage(task)?.stage?.circuit ?? task.starterCircuit
       if (!starterCircuit || !Array.isArray(starterCircuit.components)) {
@@ -482,7 +504,7 @@ export function validateLesson(lesson) {
       } else if (type === 'turtle') {
         if (task.check) validateTurtleChecks(task.check, n, errors)
         if (feedbackChecks.length > 0) validateTurtleChecks(feedbackChecks, n, errors, 'feedback')
-      } else if (type !== 'filesystem' && type !== 'electronics') {
+      } else if (type !== 'filesystem' && type !== 'desktop' && type !== 'electronics') {
         if (task.check)
           validateCodeChecks(task.check, n, errors, { type, interactionMode: task.interactionMode })
         if (feedbackChecks.length > 0)
@@ -520,6 +542,7 @@ export function validateLesson(lesson) {
       task.taskType === 'information' ||
       task.taskType === 'code_arrange' ||
       type === 'filesystem' ||
+      type === 'desktop' ||
       type === 'electronics'
         ? null
         : type === 'scratch'
@@ -552,10 +575,12 @@ export function validateLesson(lesson) {
                 ? !!task.starterBlocks
                 : type === 'filesystem'
                   ? !!task.starterFs
-                  : type === 'electronics'
-                    ? !!task.starterCircuit
-                    : task.starterFiles?.some((file) => file.content.trim())
-    if (!hasStarter && type !== 'filesystem' && type !== 'electronics')
+                  : type === 'desktop'
+                    ? !!task.starterDesktop
+                    : type === 'electronics'
+                      ? !!task.starterCircuit
+                      : task.starterFiles?.some((file) => file.content.trim())
+    if (!hasStarter && type !== 'filesystem' && type !== 'desktop' && type !== 'electronics')
       warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
 
     if (task.taskType !== 'information' && task.taskType !== 'quiz' && task.check) {
@@ -606,6 +631,24 @@ export function validateLesson(lesson) {
           )
         }
       }
+      if (type === 'desktop' && task.completeDesktop && typeof task.completeDesktop === 'object') {
+        const desktopContext = { fs: task.completeDesktop.fs, desktop: task.completeDesktop }
+        const desktopChecks = allChecks.filter(
+          (c) =>
+            (c.type?.startsWith('fs_') &&
+              c.type !== 'fs_dir_opened' &&
+              c.type !== 'fs_file_opened') ||
+            ['window_state', 'windows_arranged_side_by_side'].includes(c.type)
+        )
+        if (
+          desktopChecks.length > 0 &&
+          desktopChecks.some((c) => !evaluateSingleCheck(c, '', desktopContext))
+        ) {
+          warnings.push(
+            `Task ${n} complete desktop does not satisfy a check — review the complete desktop`
+          )
+        }
+      }
     }
 
     if (
@@ -635,22 +678,24 @@ export function validateLesson(lesson) {
           ? quizHasCheckValue(task)
           : type === 'scratch'
             ? !!task.check
-            : type === 'filesystem'
+            : type === 'desktop'
               ? !!task.check
-              : type === 'electronics'
+              : type === 'filesystem'
                 ? !!task.check
-                : normalizeChecks(task.check).some(
-                    (check) =>
-                      [
-                        'code_no_error',
-                        'output_not_empty',
-                        'output_empty',
-                        'element_exists',
-                        'element_attribute',
-                        'element_style_property',
-                        'variable_exists',
-                      ].includes(check.type) || check.value
-                  )
+                : type === 'electronics'
+                  ? !!task.check
+                  : normalizeChecks(task.check).some(
+                      (check) =>
+                        [
+                          'code_no_error',
+                          'output_not_empty',
+                          'output_empty',
+                          'element_exists',
+                          'element_attribute',
+                          'element_style_property',
+                          'variable_exists',
+                        ].includes(check.type) || check.value
+                    )
     if (checkHasValue && !task._checkTested) {
       warnings.push(
         `Task ${n} has a completion check that hasn't been tested — run the task to verify it`

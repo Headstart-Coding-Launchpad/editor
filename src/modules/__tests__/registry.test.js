@@ -10,6 +10,7 @@ describe('getLessonModule', () => {
     expect(getLessonModule('filesystem')).not.toBeNull()
     expect(getLessonModule('electronics')).not.toBeNull()
     expect(getLessonModule('turtle')).not.toBeNull()
+    expect(getLessonModule('desktop')).not.toBeNull()
   })
 
   it('returns null for an unknown type', () => {
@@ -26,6 +27,7 @@ describe('getLessonModule', () => {
     expect(getLessonModule('filesystem').type).toBe('filesystem')
     expect(getLessonModule('electronics').type).toBe('electronics')
     expect(getLessonModule('turtle').type).toBe('turtle')
+    expect(getLessonModule('desktop').type).toBe('desktop')
   })
 
   it('exposes ordered module labels for admin and authoring UI', () => {
@@ -36,6 +38,7 @@ describe('getLessonModule', () => {
       ['scratch', 'Scratch'],
       ['html', 'HTML'],
       ['filesystem', 'Filesystem'],
+      ['desktop', 'Desktop'],
       ['electronics', 'Electronics'],
     ])
   })

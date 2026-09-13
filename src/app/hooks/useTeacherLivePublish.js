@@ -27,6 +27,7 @@ export function useTeacherLivePublish({
   outputRef,
   runStatusRef,
   fsStateRef,
+  desktopStateRef,
   editorSelectionRef,
   editorActivityRef,
   // Reactive values — used by the sync dep array and payload snapshot
@@ -43,6 +44,7 @@ export function useTeacherLivePublish({
   checkAttempted,
   checkSuggestion,
   fsState,
+  desktopState,
   iframeStorageAssets = null,
   // Callbacks
   updateTeacherLive,
@@ -67,15 +69,17 @@ export function useTeacherLivePublish({
 
   function currentTeacherLivePayload(extra = {}) {
     const isFilesystem = lessonRef.current?.type === 'filesystem'
+    const isDesktop = lessonRef.current?.type === 'desktop'
     // Scratch never routes edits through the generic `code` state (see
     // loadTaskContent's scratch branch in useStudentCodeState.js) — codeRef.current
     // would otherwise still hold whatever an earlier non-Scratch task left behind,
     // or an empty string, wiping out the mirror's blocks the moment a broadcast
     // starts (or the live task changes) until the next real edit resyncs it.
     const isScratch = getTaskModuleType(lessonRef.current, currentTaskIdRef.current) === 'scratch'
-    const filesMap = isFilesystem
-      ? {}
-      : Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
+    const filesMap =
+      isFilesystem || isDesktop
+        ? {}
+        : Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -87,9 +91,11 @@ export function useTeacherLivePublish({
       lessonType: lessonRef.current?.type,
       code: isFilesystem
         ? JSON.stringify(fsStateRef.current)
-        : isScratch
-          ? scratchCodeRef.current
-          : codeRef.current,
+        : isDesktop
+          ? JSON.stringify(desktopStateRef.current)
+          : isScratch
+            ? scratchCodeRef.current
+            : codeRef.current,
       arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
       turtleResult:
         lessonRef.current?.type === 'turtle'
@@ -187,6 +193,7 @@ export function useTeacherLivePublish({
     checkAttempted,
     checkSuggestion,
     fsState,
+    desktopState,
   ])
 
   // Publish the soft support-reference channel whenever Presentation View is open,

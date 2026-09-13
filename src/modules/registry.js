@@ -5,6 +5,7 @@ import filesystemModule from './filesystem/index.js'
 import electronicsModule from './electronics/index.js'
 import arcadeModule from './arcade/index.js'
 import turtleModule from './turtle/index.js'
+import desktopModule from './desktop/index.js'
 
 const MODULES = {
   python: pythonModule,
@@ -14,9 +15,19 @@ const MODULES = {
   electronics: electronicsModule,
   arcade: arcadeModule,
   turtle: turtleModule,
+  desktop: desktopModule,
 }
 
-const MODULE_ORDER = ['python', 'arcade', 'turtle', 'scratch', 'html', 'filesystem', 'electronics']
+const MODULE_ORDER = [
+  'python',
+  'arcade',
+  'turtle',
+  'scratch',
+  'html',
+  'filesystem',
+  'desktop',
+  'electronics',
+]
 const MODULE_LABELS = {
   python: 'Python',
   scratch: 'Scratch',
@@ -25,6 +36,7 @@ const MODULE_LABELS = {
   electronics: 'Electronics',
   arcade: 'Arcade Kit',
   turtle: 'Python Turtle',
+  desktop: 'Desktop',
 }
 
 export function getLessonModules() {

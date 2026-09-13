@@ -236,6 +236,7 @@ function stageForAction(task, action) {
  *   html              { files, entryFile }
  *   scratch           { blocks, stageIndex }   stageIndex is the stage to make active
  *   filesystem        { fs }
+ *   desktop           { desktop }
  *   electronics       { circuit }
  *
  * Returns null for an unknown lesson type. Pure — the caller applies the result.
@@ -287,6 +288,13 @@ export function resolveRemoteResetTarget(task, action, lessonType, defaults = {}
       if (action === 'complete') return { fs: task.completeFs ?? task.starterFs ?? defaults.fs }
       if (action === 'starter') return { fs: task.starterFs ?? defaults.fs }
       return { fs: stage?.fs ?? task.starterFs ?? defaults.fs }
+    }
+    case 'desktop': {
+      if (action === 'complete') {
+        return { desktop: task.completeDesktop ?? task.starterDesktop ?? defaults.desktop }
+      }
+      if (action === 'starter') return { desktop: task.starterDesktop ?? defaults.desktop }
+      return { desktop: stage?.desktop ?? task.starterDesktop ?? defaults.desktop }
     }
     case 'electronics': {
       if (action === 'complete') {

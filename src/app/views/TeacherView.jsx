@@ -31,6 +31,7 @@ import TaskRatingPanel from './teacher/TaskRatingPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
 import { DEFAULT_FS } from '../../modules/filesystem'
 import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
+import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
 import {
   cloneFiles,
   cloneScratchState,
@@ -150,10 +151,17 @@ export default function TeacherView({ lessonId }) {
   const [sandboxStaging, setSandboxStaging] = useState(false)
   const [scratchState, setScratchState] = useState(null)
   const [fsState, setFsState] = useState(DEFAULT_FS)
+  const [desktopState, setDesktopState] = useState(() => makeDefaultDesktop())
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
   const [sandboxModuleId, setSandboxModuleId] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
-  const sandboxDraftRef = useRef({ code: null, files: null, scratchState: null, fs: null })
+  const sandboxDraftRef = useRef({
+    code: null,
+    files: null,
+    scratchState: null,
+    fs: null,
+    desktop: null,
+  })
   const presentationWindowRef = useRef(null)
 
   // Load lesson from Firestore
@@ -222,6 +230,10 @@ export default function TeacherView({ lessonId }) {
       setScratchState(task.starterBlocks ?? null)
     } else if (taskLesson.type === 'filesystem') {
       setFsState(task.starterFs ?? DEFAULT_FS)
+    } else if (taskLesson.type === 'desktop') {
+      setDesktopState(
+        normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
+      )
     } else if (taskLesson.type === 'electronics') {
       setCode(serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT))
     } else {
@@ -260,6 +272,14 @@ export default function TeacherView({ lessonId }) {
         draft.fs ??
           (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ??
           configured
+      )
+    } else if (activeSandboxLesson.type === 'desktop') {
+      setDesktopState(
+        normaliseDesktop(
+          draft.desktop ??
+            (sessionHasCode ? mod.deserializeState(session.sandboxCode) : null) ??
+            configured
+        )
       )
     } else {
       const sessionFiles = isSandbox ? decodeSessionFiles(session?.sandboxFiles, decodeFileKey) : []
@@ -372,6 +392,9 @@ export default function TeacherView({ lessonId }) {
     } else if (activeSandboxLesson.type === 'filesystem') {
       sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
       await enterSandbox({ code: JSON.stringify(fsState), previousTaskId })
+    } else if (activeSandboxLesson.type === 'desktop') {
+      sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(desktopState))
+      await enterSandbox({ code: JSON.stringify(desktopState), previousTaskId })
     } else {
       sandboxDraftRef.current.files = cloneFiles(files)
       await enterSandbox({ files, previousTaskId })
@@ -390,6 +413,9 @@ export default function TeacherView({ lessonId }) {
     } else if (activeSandboxLesson.type === 'filesystem') {
       sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
       await pushSandboxCode(JSON.stringify(fsState))
+    } else if (activeSandboxLesson.type === 'desktop') {
+      sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(desktopState))
+      await pushSandboxCode(JSON.stringify(desktopState))
     } else {
       sandboxDraftRef.current.files = cloneFiles(files)
       await pushSandboxFiles(files)
@@ -414,6 +440,10 @@ export default function TeacherView({ lessonId }) {
       sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(configured))
       setFsState(configured)
       if (isSandbox) await pushSandboxCode(JSON.stringify(configured))
+    } else if (activeSandboxLesson.type === 'desktop') {
+      sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(configured))
+      setDesktopState(normaliseDesktop(configured))
+      if (isSandbox) await pushSandboxCode(JSON.stringify(configured))
     } else {
       const starterFiles = cloneFiles(configured.files ?? [])
       sandboxDraftRef.current.files = starterFiles
@@ -429,6 +459,8 @@ export default function TeacherView({ lessonId }) {
       sandboxDraftRef.current.scratchState = cloneScratchState(scratchState)
     else if (activeSandboxLesson.type === 'filesystem')
       sandboxDraftRef.current.fs = JSON.parse(JSON.stringify(fsState))
+    else if (activeSandboxLesson.type === 'desktop')
+      sandboxDraftRef.current.desktop = JSON.parse(JSON.stringify(desktopState))
     else sandboxDraftRef.current.files = cloneFiles(files)
     setSandboxStaging(false)
     const restoredTaskId = session?.sandboxPreviousTaskId ?? currentTaskId
@@ -574,9 +606,11 @@ export default function TeacherView({ lessonId }) {
         ? scratchState
         : editorLesson?.type === 'filesystem'
           ? fsState
-          : editorLesson?.type === 'electronics'
-            ? code
-            : { files, entryFile: task?.entryFile ?? 'index.html' }
+          : editorLesson?.type === 'desktop'
+            ? desktopState
+            : editorLesson?.type === 'electronics'
+              ? code
+              : { files, entryFile: task?.entryFile ?? 'index.html' }
 
   const onChange = !isInSandbox
     ? undefined
@@ -597,17 +631,22 @@ export default function TeacherView({ lessonId }) {
               setFsState(newFs)
               sandboxDraftRef.current.fs = newFs
             }
-          : editorLesson?.type === 'electronics'
-            ? (value) => {
-                setCode(value)
-                sandboxDraftRef.current.code = value
+          : editorLesson?.type === 'desktop'
+            ? (newDesktop) => {
+                setDesktopState(newDesktop)
+                sandboxDraftRef.current.desktop = newDesktop
               }
-            : (name, content) =>
-                setFiles((prev) => {
-                  const next = prev.map((f) => (f.name === name ? { ...f, content } : f))
-                  sandboxDraftRef.current.files = cloneFiles(next)
-                  return next
-                })
+            : editorLesson?.type === 'electronics'
+              ? (value) => {
+                  setCode(value)
+                  sandboxDraftRef.current.code = value
+                }
+              : (name, content) =>
+                  setFiles((prev) => {
+                    const next = prev.map((f) => (f.name === name ? { ...f, content } : f))
+                    sandboxDraftRef.current.files = cloneFiles(next)
+                    return next
+                  })
 
   if (lessonLoading) {
     return (
@@ -698,6 +737,7 @@ export default function TeacherView({ lessonId }) {
               displayedLesson.type === 'html' ||
               displayedLesson.type === 'scratch' ||
               displayedLesson.type === 'filesystem' ||
+              displayedLesson.type === 'desktop' ||
               displayedLesson.type === 'electronics') &&
             !(currentTask?.check != null && !isInSandbox)
               ? { overflow: 'hidden' }

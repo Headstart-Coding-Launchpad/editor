@@ -752,6 +752,16 @@ export default function StudentView({
           }
         })()
       : cs.fsState
+  const displayDesktop =
+    isForcedTeacherLive && displayedLesson.type === 'desktop'
+      ? (() => {
+          try {
+            return JSON.parse(session?.teacherLive?.code ?? '')
+          } catch {
+            return cs.desktopState
+          }
+        })()
+      : cs.desktopState
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'
@@ -904,9 +914,11 @@ export default function StudentView({
         ? !!task?.completeBlocks
         : displayedLesson.type === 'filesystem'
           ? !!task?.completeFs
-          : displayedLesson.type === 'electronics'
-            ? !!task?.completeCircuit
-            : unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0
+          : displayedLesson.type === 'desktop'
+            ? !!task?.completeDesktop
+            : displayedLesson.type === 'electronics'
+              ? !!task?.completeCircuit
+              : unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0
   const taskCodeStages = task?.codeStages ?? []
   const hasUnifiedCodeStages =
     ['python', 'html'].includes(displayedLesson.type) &&
@@ -954,9 +966,11 @@ export default function StudentView({
           ? !!(activeLesson.sandboxStarter != null)
           : activeLesson.type === 'filesystem'
             ? !!(activeLesson.sandboxStarterFs != null)
-            : activeLesson.type === 'electronics'
-              ? !!(activeLesson.sandboxStarterCircuit != null)
-              : false
+            : activeLesson.type === 'desktop'
+              ? !!(activeLesson.sandboxStarterDesktop != null)
+              : activeLesson.type === 'electronics'
+                ? !!(activeLesson.sandboxStarterCircuit != null)
+                : false
   const canOfferPersonalSandbox =
     (phase === 'lesson' || isSolo) &&
     hasPersonalSandbox &&
@@ -1406,6 +1420,7 @@ export default function StudentView({
             displayOutputCollapsed={displayOutputCollapsed}
             isLiveCopyBlocked={isLiveCopyBlocked}
             displayFs={displayFs}
+            displayDesktop={displayDesktop}
             isTeacherEditing={isTeacherEditing}
             teacherLiveCode={teacherLiveCode}
             teacherLiveFiles={teacherLiveFiles}

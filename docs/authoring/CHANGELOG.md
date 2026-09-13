@@ -185,6 +185,36 @@ A `code_arrange` line can now have zero `slot` parts (all `type: "text"`) — us
 
 `estimatedMinutes` previously had to be a positive whole number; it now accepts any positive number, e.g. `estimatedMinutes: 7.5`. The Builder's task editor input steps by 0.5 minutes. See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md`.
 
+## 2026-08-18 (2)
+
+### Added a Paint app to the Desktop module
+
+New `paint` desktop app: a freehand drawing canvas (Brush/Eraser, 8-colour palette + custom
+colour, three brush sizes, Undo, Clear) with the same explicit Open/Save/Save As model as Text
+Editor. `availableApps` now also accepts `"paint"`. Saved drawings store their image as a
+`data:image/png;...` URL directly on the file entry's `content` — Image Viewer and File Manager
+now fall back to reading that when there's no authored `src`/asset, so a Paint drawing previews
+like any other image with no other authoring change needed. No new check type. See
+`docs/authoring/desktop.md`.
+
+## 2026-08-18 (1)
+
+### Added a simulated Browser + search engine to the Desktop module
+
+New `browser` desktop app: a simulated web browser (Back/Forward/Refresh/Home, editable address
+bar) over a new task field, `siteGraph` — a lesson-authored, read-only set of fake pages with
+content, links, an optional `sponsored` flag, `kind: 'search'` (an inline search box), `kind:
+'broken'` (unreachable pages), and `kind: 'download'` (writes into `/Downloads/` via the existing
+Filesystem `fs` map). `availableApps` now also accepts `"browser"`.
+
+New check types: `browser_visited` (`visited`/`not_visited`, field `pageId`) and `search_query`
+(`contains`/`not_contains`/`equals`, field `text`), backed by two new desktop-state fields —
+`browserVisited` (dedup visit log) and `lastSearchQuery` — alongside the existing `fs`/`recycleBin`/
+`windows`. Downloads reuse `fs_path`/`fs_file_content`; no new check type was needed for them.
+
+`siteGraph` has no visual Builder editor yet — author it as JSON/YAML on the task, the same gap
+`sandboxStarterDesktop` has. See `docs/authoring/desktop.md`.
+
 ## 2026-08-17
 
 ### Corrected Scratch `evaluation` values and documented `sprite_property_delta`/`sprite_property_changed`
@@ -204,6 +234,24 @@ A `prebuiltStacks` (or legacy `predefinedBlocks`) entry now appears in the corre
 This only applies to categorized toolboxes; a minimal/flat toolbox (blocks listed directly under `<xml>`) is unchanged and still requires the stack's root block type to already be present there.
 
 See `docs/authoring/scratch.md#prebuilt-stack-object`.
+
+## 2026-08-04
+
+### Added the Desktop module type
+
+New `desktop` composed-lesson module type: a windowed desktop shell (icon grid, taskbar, draggable/resizable windows) hosting a File Manager app that wraps the Filesystem module's UI plus a Recycle Bin, search, and sort. New task fields: `starterDesktop`/`completeDesktop` (`{ fs, recycleBin, windows }`, reusing the Filesystem module's flat path-map for `fs`), `carryDesktopFrom`, `availableApps` (defaults to `["fileManager"]`), and stage snapshots use a `desktop` key instead of `fs`. `startsInDir` is reused unchanged from the Filesystem module.
+
+New check types: `fs_recycle_bin` (`is_in`/`not_in`), `window_state` (`opened`/`closed`/`minimized`/`maximized`), and `windows_arranged_side_by_side` (a tolerant two-window geometry check). All existing `fs_*` check types work unchanged against a Desktop task's `fs`.
+
+This first release ships File Manager only — Text Editor, Image Viewer, Paint, and a simulated Browser/search engine are planned for later releases. The support-stage reveal ladder is not available for Desktop tasks yet, matching the Filesystem module. See `docs/authoring/desktop.md`.
+
+### Added Text Editor and Image Viewer apps to the Desktop module
+
+Two new Desktop-module apps: **Text Editor** (plain text, no rich formatting yet) and **Image Viewer** (read-only, zoom + next/prev). Opening a file in File Manager now launches the matching app as its own window instead of showing an inline preview, regardless of `availableApps` — `availableApps` (now `fileManager`/`textEditor`/`imageViewer`, with a Builder checkbox picker) only controls which app icons appear on the desktop for standalone launch.
+
+Text Editor is the platform's first explicit-save UI — content lives in a window's local `draftContent` until Save/Save As/Ctrl+S commits it, unlike every other module type's continuous autosave. A window with unsaved changes shows a `•` in its title and asks for confirmation before closing. Window objects gained two optional fields: `filePath` and `draftContent`; several Text Editor windows can now be open at once (windows dedupe by `(appId, filePath)`, not `appId` alone).
+
+No new check types: `window_state` already worked generically by `appId`, and `fs_opened` already worked off the same `openFile` interaction context File Manager uses — both new apps just report through it. See `docs/authoring/desktop.md`.
 
 ## 2026-08-03
 

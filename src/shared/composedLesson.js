@@ -7,6 +7,7 @@ export const LESSON_MODULE_TYPES = [
   'html',
   'scratch',
   'filesystem',
+  'desktop',
   'electronics',
 ]
 
@@ -89,6 +90,8 @@ function sandboxFields(moduleType, fallbackTask) {
     return { sandboxStarter: blocks == null ? null : JSON.stringify(blocks) }
   }
   if (moduleType === 'filesystem') return { sandboxStarterFs: fallbackTask?.starterFs ?? null }
+  if (moduleType === 'desktop')
+    return { sandboxStarterDesktop: fallbackTask?.starterDesktop ?? null }
   if (moduleType === 'electronics')
     return { sandboxStarterCircuit: fallbackTask?.starterCircuit ?? null }
   return {}

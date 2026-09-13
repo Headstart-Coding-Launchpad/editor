@@ -109,6 +109,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has duplicate filenames` | Two starter files share a name. | Rename one. |
 | `Task … has no HTML file to use as entry point` | No `.html` file among the starter files. | Add an HTML file. |
 | `Task … stage … has no filesystem state` | A Filesystem stage has no `fs`. | Add the stage's filesystem map. |
+| `Task … stage … has no desktop state` | A Desktop stage has no `desktop` object. | Add the stage's desktop state (see `desktop.md`). |
 | `Task … has no starter breadboard` | An Electronics task has no `starterCircuit` with `components`. | Add `starterCircuit: { components: [], wires: [] }` at minimum. |
 
 ## Checks
@@ -122,6 +123,9 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has a file line-count … but no expected count` | `fs_file_line_count` has no `value`. | Add a number. |
 | `Task … has a file-location … but no parent folder` | `fs_file_location` has no `dir`. | Add `dir:`. |
 | `Task … has a folder-count … but no expected count` | `fs_folder_count` has no `value`. | Add a number. |
+| `Task … has a filesystem check but no path` | A Desktop task's `fs_*` check has no `path`. | Add `path:`. |
+| `Task … has a file content check but no expected value` | A Desktop `fs_content_contains` check has no `value`. | Add the text to look for. |
+| `Task … has a file-in-dir check but no parent folder` | A Desktop `fs_file_in_dir` check has no `dir`. | Add `dir:`. |
 | `Task … has a part-exists … but no part type or label` | An Electronics part check can't identify a part. | Add `component: { type: led }` or a label/id. |
 | `Task … has a powered-part … but no part type or label` | Same, for powered/unpowered checks. | Identify the part. |
 | `Task … has a control … but no control or controlled part` | `circuit_control_affects_power` is missing one side. | Set both `control` and `component`. |
@@ -146,6 +150,7 @@ docs for each check's required fields.
 | `Task … has output checks — open the Complete tab and run to verify the complete solution` | Output checks need a real run, which the CLI can't do. | Open the task in the Builder and run the complete solution. |
 | `Task … has element/output checks — open the Complete tab and run to verify the complete solution` | Same for HTML element checks. | Run it in the Builder. |
 | `Task … complete filesystem does not satisfy a check — review the complete filesystem` | The complete filesystem fails a check. | Fix the complete state or the check. |
+| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a check. | Fix the complete state or the check. |
 
 ## Class forks
 
