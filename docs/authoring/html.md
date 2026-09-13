@@ -170,12 +170,13 @@ through this same iframe pipeline. Full field reference:
 ```json
 {
   "id": "html-minimal",
-  "type": "html",
+  "type": "composed",
   "title": "HTML Minimal",
   "description": "A short HTML lesson.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "html",
       "title": "Heading",
       "explainer": "Add a heading.",
       "entryFile": "index.html",

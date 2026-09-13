@@ -225,7 +225,7 @@ Each submission captures the teacher's email, the lesson and task context, the f
 
 The Admin Portal's **Feedback** tab still shows three sub-tabs. Lesson and task feedback also appears under each lesson in the **Lessons** tab, with open/total counts and the same resolve/archive action:
 
-- **Platform** — all entries from `platformFeedback`, sorted newest-first; each card shows email, date, lesson/task context, and text; admins can delete individual items
+- **Platform** — all entries from `platformFeedback`, sorted newest-first; each card shows email, date, lesson/task context, and text; admins can archive individual items (archived feedback is hidden, not deleted)
 - **Lesson** — lesson-level entries from across all lesson subcollections (no task ID)
 - **Task** — task-scoped entries from across all lesson subcollections (has task ID)
 
@@ -237,7 +237,7 @@ The builder's **Task Feedback Panel** shows submitted lesson and task feedback f
 
 ### CLI management
 
-The CLI can list, create, delete, and bulk-clear feedback items in both collections. Run `node cli/cli.mjs feedback --help` for the command reference.
+The CLI can list, add, archive, and bulk-archive feedback items in both collections; nothing is hard-deleted. See `docs/authoring/feedback-cli.md`.
 
 ---
 
@@ -247,6 +247,6 @@ The CLI can list, create, delete, and bulk-clear feedback items in both collecti
 - Convert lesson and topic-library YAML to JSON for validation and publishing
 - Test a lesson's source-code completion and feedback checks against named JSON/YAML student-code cases
 - Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
-- Read, create, delete, and bulk-clear platform and per-lesson feedback from Firestore via the CLI
+- Read, add, archive, and bulk-archive platform and per-lesson feedback from Firestore via the CLI
 - Create/list/delete reusable lesson levels with `node cli/cli.mjs levels`
 - Create/archive classes and create/list/inspect lesson forks with `node cli/cli.mjs classes` and `node cli/cli.mjs lessons fork`

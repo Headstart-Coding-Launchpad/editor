@@ -73,7 +73,11 @@ tasks:
     moduleType: python
     title: Hello
     explainer: Print `Hello`.
-    starterCode: ""
+    codeStages:
+      - label: Starter
+        role: starter
+        code: |
+          # Print Hello below
     check:
       type: output
       operator: contains

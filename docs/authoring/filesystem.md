@@ -98,12 +98,13 @@ Legacy aliases such as `fs_file_exists`, `fs_dir_exists`, `fs_not_exists`, `fs_c
 ```json
 {
   "id": "filesystem-minimal",
-  "type": "filesystem",
+  "type": "composed",
   "title": "Filesystem Minimal",
   "description": "Organise your files.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "filesystem",
       "title": "Create a Documents folder",
       "explainer": "Create a folder called **Documents** in the root folder.",
       "starterFs": { "/": { "type": "dir" } },

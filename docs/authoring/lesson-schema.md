@@ -14,7 +14,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
 | `id` | Yes | string | Lowercase slug. Used in URLs and export filename. |
-| `type` | Yes | string | `composed` for new lessons; legacy lessons may use `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `type` | Yes | string | `composed` for new lessons; legacy lessons may use `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `title` | Yes | string | Display title. |
 | `description` | Yes | string | Short entry screen summary. |
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. New lessons should link a reusable level with `levelId`/`levelRef`; legacy scalar values are migrated automatically when published through the app or CLI. |
@@ -103,11 +103,11 @@ Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `comp
 
 New lessons use `type: "composed"`. Every code task then supplies `moduleType`; information and quiz tasks are lesson-wide. When no `modules` array is authored, LaunchPad derives one module instance per `moduleType`.
 
-Use `modules` with task `moduleId` when a lesson needs named or repeated workspace instances. A module object is `{ id, type, title?, sandbox? }`, where `type` is one of `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. The module's optional `sandbox` object uses the ordinary type-specific sandbox fields: `sandboxStarter` (Python/Arcade), `sandboxStarterFiles` (HTML), `sandboxStarter`/`sandboxToolbox`/`sandboxSprites`/`sandboxBackdrops` (Scratch), `sandboxStarterFs` (Filesystem), or `sandboxStarterCircuit` (Electronics). Each sandbox is isolated from the others. Without an authored module sandbox, the first code task in that module supplies the starting sandbox state.
+Use `modules` with task `moduleId` when a lesson needs named or repeated workspace instances. A module object is `{ id, type, title?, sandbox? }`, where `type` is one of `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, or `electronics`. The module's optional `sandbox` object uses the ordinary type-specific sandbox fields: `sandboxStarter` (Python/Arcade/Turtle), `sandboxStarterFiles` (HTML), `sandboxStarter`/`sandboxToolbox`/`sandboxSprites`/`sandboxBackdrops` (Scratch), `sandboxStarterFs` (Filesystem), or `sandboxStarterCircuit` (Electronics). Each sandbox is isolated from the others. Without an authored module sandbox, the first code task in that module supplies the starting sandbox state.
 
 When both `moduleId` and `moduleType` are supplied, they must identify the same workspace type. Carry-through can only reference earlier code tasks in the same named module, including when two modules share a type.
 
-Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`.
+Legacy lessons may retain a single `type` of `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, or `electronics`.
 
 ---
 

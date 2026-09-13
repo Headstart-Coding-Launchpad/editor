@@ -1,13 +1,14 @@
 # Lesson Module Feature Matrix
 
-This is a product-facing overview of the six lesson modules registered in `src/modules/`. It records features that differ by module and clarifies the distinction between a **landing-page playground**, a **lesson sandbox**, and a teacher editing a student's current work.
+This is a product-facing overview of the seven lesson modules registered in `src/modules/`. It records features that differ by module and clarifies the distinction between a **landing-page playground**, a **lesson sandbox**, and a teacher editing a student's current work.
 
 ## At a glance
 
 | Module | Student experience | Landing-page playground | Lesson sandbox | View student work live | Directly edit one student's current work | Teacher-editable shared sandbox | Code stages | Student self-serve stage reference | Automatic completion checks | Carry work to a later task | Share workspace with the class |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Python | Code editor, Run/Stop, console output | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Arcade Kit | Python game editor, pixel-game canvas, Run/Stop | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
+| Arcade Kit | Python game editor, pixel-game canvas, Run/Stop | Yes | Yes | Yes | No | Yes | Yes | No | No | Yes | Yes |
+| Python Turtle | Python editor, turtle-graphics canvas, Run/Stop | No | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | No |
 | HTML/CSS/JS | Multi-file editor and sandboxed webpage preview | No | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes | Yes |
 | Scratch | Block editor, sprites, and stage canvas | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes |
 | Filesystem | Virtual file-manager workspace | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
@@ -22,19 +23,20 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 | Landing-page playground | A standalone, local-only workspace opened from the landing page. The currently available playgrounds are Python, Arcade Kit, Electronics, and Scratch. |
 | Lesson sandbox | A separate freeform workspace inside a lesson. Students can enter a personal sandbox; teachers can also switch a live class to sandbox mode. It is separate from the task workspace and task checks. |
 | View student work live | A teacher can open a student's workspace from the student grid and inspect their current state. Python and HTML additionally support teacher code highlights with an optional note. |
-| Directly edit one student's current work | Python and Scratch support a consent-based teacher edit: the teacher requests access, the student accepts, and the teacher can live-edit then commit that student's code or blocks. Other module views are read-only; teachers can still request a starter/stage/complete state, remotely reset a student, send a message or code highlight, or work in the shared sandbox. |
+| Directly edit one student's current work | Python, Turtle and Scratch support a consent-based teacher edit: the teacher requests access, the student accepts, and the teacher can live-edit then commit that student's code or blocks. Other module views are read-only; teachers can still request a starter/stage/complete state, remotely reset a student, send a message or code highlight, or work in the shared sandbox. |
 | Teacher-editable shared sandbox | In teacher-forced sandbox mode, the teacher can edit module state and push it to the whole class. This edits shared sandbox content, not an individual student's task work. |
 | Code stages | Authors can define starter, support-stage, and complete states. Teachers can inspect stages and send an authored stage to the class. The state format is module-specific: code, files, blocks, filesystem, or circuit. |
 | Student self-serve stage reference | After unsuccessful work, Python and HTML can offer an authored Support stage as a read-only reference. For other modules, stages remain author/teacher tools rather than an automatic student reference panel. |
-| Automatic completion checks | Each module supplies its own check editor and evaluator: Python/code checks, HTML element checks, Scratch block/state checks, filesystem checks, circuit checks, or Arcade code checks. |
+| Automatic completion checks | Each module supplies its own check editor and evaluator: Python/code checks, HTML element checks, Turtle drawing checks, Scratch block/state checks, filesystem checks, or circuit checks. Arcade Kit has a check editor, but Run game does not evaluate checks yet (see `docs/authoring/arcade.md`). |
 | Carry work to a later task | A later task can use a previous task's completed state as its starter: source code for Python/Arcade, files for HTML, blocks for Scratch, filesystem state for Filesystem, and circuit state for Electronics. |
-| Share workspace with the class | On a task authored with `allowSharing`, a student can offer their workspace to the whole class. The teacher previews and approves each share; classmates then open it as a non-destructive copy they can run and edit. Available for every module — quiz and information tasks are excluded because they have no workspace to share. |
+| Share workspace with the class | On a task authored with `allowSharing`, a student can offer their workspace to the whole class. The teacher previews and approves each share; classmates then open it as a non-destructive copy they can run and edit. Available for every module except Python Turtle, which shared workspaces do not support yet. Quiz and information tasks are excluded because they have no workspace to share. |
 
 ## Module-specific notes
 
 | Module | Notable capabilities |
 |---|---|
 | Python | Runs Python through Pyodide; supports `input()`, output, tests, variable checks, downloadable `.launchpad` code files, Support reference stages, and complete-code reference/solution flows. |
+| Python Turtle | Runs real `turtle` module code (a shim over the shared Pyodide worker) and draws the finished picture; checks read the final position, path, commands and colours. Drawings sync live to the teacher. |
 | Arcade Kit | Runs a Python pixel game in an isolated canvas; includes sprite, tilemap, tile-property, and object-spawn editing alongside source code. |
 | HTML/CSS/JS | Supports multiple files and a Blob-backed, sandboxed iframe preview; completion checks can inspect page elements. |
 | Scratch | Supports multi-sprite Blockly workspaces, costumes/backdrops, custom toolbox choices, and an in-browser Scratch-style runtime. |
@@ -43,7 +45,7 @@ This is a product-facing overview of the six lesson modules registered in `src/m
 
 ## Shared lesson and classroom features
 
-All six modules participate in the same lesson builder, teacher dashboard, student progress flow, session controls, session-only task editing, check feedback, personal sandbox flow, and teacher live broadcast infrastructure. The module determines the workspace and state type; the classroom features are shared.
+All seven modules participate in the same lesson builder, teacher dashboard, student progress flow, session controls, session-only task editing, check feedback, personal sandbox flow, and teacher live broadcast infrastructure. The module determines the workspace and state type; the classroom features are shared.
 
 ## Sources of truth
 
