@@ -1,8 +1,9 @@
 import { normalizeChecks } from '../modules/checks.js'
 import { normalizeFsCheck } from '../modules/filesystem/checks.js'
+import { TURTLE_CHECK_TYPES, TURTLE_COMMAND_NAMES } from '../modules/turtle/checks.js'
 
 // Shared between the Builder (src/builder/lessonUtils.js) and the CLI (cli/validate.mjs) so
-// the two publish paths can't validate filesystem/electronics checks differently — before
+// the two publish paths can't validate filesystem/electronics/turtle checks differently — before
 // this was extracted, the CLI only recognised deprecated legacy filesystem check type names
 // and had no electronics check validation at all, so a lesson published via the CLI alone
 // could ship a check the Builder would have flagged as broken.
@@ -92,5 +93,41 @@ export function validateElectronicsChecks(checks, n, errors, kind = 'completion'
     )
   ) {
     errors.push(`Task ${n} has a circuit connection-includes ${label} but no required part`)
+  }
+}
+
+const TURTLE_VALUE_CHECK_TYPES = [
+  'turtle_heading',
+  'turtle_segment_count',
+  'turtle_path_length',
+  'turtle_stamp_count',
+]
+
+// Turtle checks carry their target in type-specific fields (x/y, command, color) rather
+// than a generic `value`, so they can't go through the Builder's generic code-check rules.
+export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
+  const label = labelCheckKind(kind)
+  const normalized = normalizeChecks(checks)
+  const unknown = normalized.find((c) => !TURTLE_CHECK_TYPES.includes(c?.type))
+  if (unknown) {
+    errors.push(`Task ${n} has a turtle ${label} with unknown type "${unknown?.type ?? ''}"`)
+  }
+  if (normalized.some((c) => c.type === 'turtle_position' && (!hasValue(c.x) || !hasValue(c.y)))) {
+    errors.push(`Task ${n} has a turtle position ${label} but no x/y target`)
+  }
+  if (normalized.some((c) => TURTLE_VALUE_CHECK_TYPES.includes(c.type) && !hasValue(c.value))) {
+    errors.push(`Task ${n} has a turtle ${label} but no check value`)
+  }
+  if (
+    normalized.some(
+      (c) => c.type === 'turtle_command_used' && !TURTLE_COMMAND_NAMES.includes(c.command)
+    )
+  ) {
+    errors.push(
+      `Task ${n} has a turtle command ${label} with no valid command (one of: ${TURTLE_COMMAND_NAMES.join(', ')})`
+    )
+  }
+  if (normalized.some((c) => c.type === 'turtle_color_used' && !String(c.color ?? '').trim())) {
+    errors.push(`Task ${n} has a turtle colour ${label} but no colour`)
   }
 }

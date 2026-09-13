@@ -17,9 +17,10 @@ export const TURTLE_CHECK_TYPES = [
 // turtle_command_used check targets one of these, not the raw method name the
 // student typed. left() and right() both record as 'turn' (signed degrees),
 // since they're the same underlying bridge call — can't tell them apart.
-// circle() records itself via a no-op __hsTurtleMarkCommand call (it's built
-// out of forward()/left() calls under the hood, which also record/draw
-// themselves); color() isn't separately recorded — it records as pencolor
+// circle() and backward() record themselves via a no-op __hsTurtleMarkCommand
+// call (they're built out of forward()/left() calls under the hood, which also
+// record/draw themselves — so a backward move also counts as a 'forward' call);
+// color() isn't separately recorded — it records as pencolor
 // and/or fillcolor, whichever it actually changed.
 export const TURTLE_COMMAND_NAMES = [
   'forward',
@@ -125,7 +126,9 @@ export function evaluateTurtleCheck(check, context = {}) {
     const stateColor = kind === 'fill' ? state?.fillColor : state?.color
     const callName = kind === 'fill' ? 'fillcolor' : 'pencolor'
     if (normalizeColor(stateColor) === target) return true
-    return calls.some((call) => call?.name === callName && normalizeColor(call.args?.[0]) === target)
+    return calls.some(
+      (call) => call?.name === callName && normalizeColor(call.args?.[0]) === target
+    )
   }
 
   if (check.type === 'turtle_stamp_count') {

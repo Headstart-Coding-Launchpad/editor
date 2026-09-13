@@ -226,6 +226,7 @@ export function deriveTaskContext(lesson, task, session) {
   const isElectronics = lesson?.type === 'electronics'
   const isArcade = lesson?.type === 'arcade'
   const isHtml = lesson?.type === 'html'
+  const isTurtle = lesson?.type === 'turtle'
   const isQuiz = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'
@@ -236,6 +237,7 @@ export function deriveTaskContext(lesson, task, session) {
     isElectronics,
     isArcade,
     isHtml,
+    isTurtle,
     isQuiz,
     isInformation,
     isSessionSandbox,
@@ -244,6 +246,14 @@ export function deriveTaskContext(lesson, task, session) {
 
 const STAGE_OPTION_METADATA = {
   python: {
+    completeField: 'completeCode',
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
+  arcade: {
+    completeField: 'completeCode',
+    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
+  },
+  turtle: {
     completeField: 'completeCode',
     stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   },

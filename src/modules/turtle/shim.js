@@ -131,6 +131,7 @@ export const TURTLE_SHIM = [
   '        _forward(distance)',
   '    fd = forward',
   '    def backward(self, distance):',
+  '        _mark_command("backward", [distance])',
   '        _forward(-distance)',
   '    bk = backward',
   '    back = backward',

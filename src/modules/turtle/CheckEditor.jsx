@@ -14,8 +14,8 @@ const CHECK_OPTIONS = [
 ]
 
 const COMMAND_LABELS = {
-  forward: 'Move forward/backward',
-  backward: 'Move forward/backward',
+  forward: 'Move forward (backward moves count too)',
+  backward: 'Move backward (backward/bk/back)',
   turn: 'Turn (left/right)',
   goto: 'Move to position (goto)',
   setheading: 'Set heading',
@@ -249,7 +249,13 @@ function CheckFields({ check, onChange }) {
   return null
 }
 
-export default function CheckEditor({ task, onUpdate, checks: checksProp, onChange, feedbackEditor = false }) {
+export default function CheckEditor({
+  task,
+  onUpdate,
+  checks: checksProp,
+  onChange,
+  feedbackEditor = false,
+}) {
   const checks = normalize(checksProp ?? task.check)
 
   function setChecks(next) {
@@ -312,7 +318,10 @@ export default function CheckEditor({ task, onUpdate, checks: checksProp, onChan
         onClick={() =>
           setChecks([
             ...checks,
-            skeleton('turtle_segment_count', feedbackEditor ? { mode: 'blocking', show: 'after_attempt' } : {}),
+            skeleton(
+              'turtle_segment_count',
+              feedbackEditor ? { mode: 'blocking', show: 'after_attempt' } : {}
+            ),
           ])
         }
       >

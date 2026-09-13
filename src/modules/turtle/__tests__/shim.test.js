@@ -6,6 +6,11 @@ import { TURTLE_SHIM, buildTurtleProgram } from '../shim.js'
 // MICROPYTHON_SHIM, which has no equivalent test either). These are structural
 // checks plus a manual-verification reminder for anyone changing it.
 describe('TURTLE_SHIM', () => {
+  it('records backward() as its own command so turtle_command_used can target it', () => {
+    const backward = TURTLE_SHIM.slice(TURTLE_SHIM.indexOf('def backward'))
+    expect(backward.split('\n').slice(0, 3).join('\n')).toContain('_mark_command("backward"')
+  })
+
   it('registers a fake turtle module in sys.modules', () => {
     expect(TURTLE_SHIM).toContain('sys.modules["turtle"] = _module')
   })
