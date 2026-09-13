@@ -873,7 +873,9 @@ export default function ScratchWorkspace({
   const backdropAddWrapRef = useRef(null)
 
   const [internalSelectedSpriteId, setInternalSelectedSpriteId] = useState(
-    remoteSelectedSpriteId ?? selectableSprites[0]?.id ?? (task?.enableStageCode ? '__stage__' : null)
+    remoteSelectedSpriteId ??
+      selectableSprites[0]?.id ??
+      (task?.enableStageCode ? '__stage__' : null)
   )
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
 
@@ -893,7 +895,12 @@ export default function ScratchWorkspace({
     // Sprite property changes already report the selection alongside them (see
     // commitSpriteStates) — this covers the case where the student switches tabs
     // without moving anything, so a teacher watching still sees it change live.
-    onSpriteStatesChangeRef.current?.(spriteStatesRef.current, clonesRef.current, backdropNameRef.current, id)
+    onSpriteStatesChangeRef.current?.(
+      spriteStatesRef.current,
+      clonesRef.current,
+      backdropNameRef.current,
+      id
+    )
   }
 
   const activePaneSurface = forceCompact

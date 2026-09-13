@@ -223,4 +223,3 @@ describe('describeShareError', () => {
     expect(describeShareError(undefined)).toMatch(/try again/i)
   })
 })
-

@@ -49,7 +49,11 @@ export default function SessionEndedScreen({
         Go Through the Lesson Again
       </button>
       {soloCompanion && onTrySoloChallenge && (
-        <button className="btn-ghost-outline" style={s.secondaryButton} onClick={onTrySoloChallenge}>
+        <button
+          className="btn-ghost-outline"
+          style={s.secondaryButton}
+          onClick={onTrySoloChallenge}
+        >
           Try the Solo Challenge
         </button>
       )}

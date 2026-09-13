@@ -36,7 +36,12 @@ describe('OutputPanel input prompt focus', () => {
     const onInputSubmit = vi.fn()
 
     render(
-      <OutputPanel output="Name?" inputPrompt="Name?" onInputSubmit={onInputSubmit} collapsible={false} />
+      <OutputPanel
+        output="Name?"
+        inputPrompt="Name?"
+        onInputSubmit={onInputSubmit}
+        collapsible={false}
+      />
     )
 
     await user.type(screen.getByPlaceholderText('Type your input…'), 'Jamie')
@@ -50,7 +55,12 @@ describe('OutputPanel input prompt focus', () => {
     const onInputSubmit = vi.fn()
 
     render(
-      <OutputPanel output="Name?" inputPrompt="Name?" onInputSubmit={onInputSubmit} collapsible={false} />
+      <OutputPanel
+        output="Name?"
+        inputPrompt="Name?"
+        onInputSubmit={onInputSubmit}
+        collapsible={false}
+      />
     )
 
     await user.type(screen.getByPlaceholderText('Type your input…'), 'Jamie{Enter}')
