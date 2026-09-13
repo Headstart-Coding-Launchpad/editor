@@ -207,15 +207,19 @@ Fields").
 ```json
 {
   "id": "python-minimal",
-  "type": "python",
+  "type": "composed",
   "title": "Python Minimal",
   "description": "A short Python lesson.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "python",
       "title": "Hello",
       "explainer": "Print `Hello`.",
-      "starterCode": "",
+      "codeStages": [
+        { "label": "Starter", "role": "starter", "code": "# Print Hello below\n" },
+        { "label": "Complete", "role": "complete", "code": "print(\"Hello\")\n" }
+      ],
       "check": { "type": "output", "operator": "contains", "value": "Hello" }
     }
   ]

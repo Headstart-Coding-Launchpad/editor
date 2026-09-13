@@ -179,6 +179,16 @@ Durable CLI contract for listing, uploading, and deleting lesson files in Fireba
 
 **Load when:** adding, replacing, listing, or removing a lesson asset.
 
+### [authoring/validation-errors.md](authoring/validation-errors.md)
+Every lesson validation error and warning from the CLI and shared validators, with what it means and how to fix it. A test fails if a validator gains a message that isn't listed.
+
+**Load when:** `lessons validate`, `yaml-to-json`, `upsert` or `publish-yaml` reports errors or warnings.
+
+### [authoring/feedback-cli.md](authoring/feedback-cli.md)
+Reading, adding and archiving teacher feedback (lesson and platform) with the CLI, and a suggested loop for revising a lesson from feedback.
+
+**Load when:** acting on teacher feedback about a lesson.
+
 ### Per-type code task and check references
 Completion and feedback checks are documented inside each lesson-type authoring doc so authors can work from one self-contained page per lesson type.
 
@@ -195,7 +205,7 @@ Arcade Kit module code-task authoring reference: the single-file task model, ass
 **Load when:** authoring or editing an Arcade Kit module code task.
 
 ### [authoring/turtle.md](authoring/turtle.md)
-Turtle module code-task authoring reference: the single-file task model, supported turtle commands, coordinate system, and check types (Phase 1 — see the doc for what's not yet implemented).
+Turtle module code-task authoring reference: the single-file task model, supported turtle commands, coordinate system, and check types, validation rules, and what is not supported.
 
 **Load when:** authoring or editing a Turtle module code task.
 

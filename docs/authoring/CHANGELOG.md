@@ -55,6 +55,8 @@ catalog and runtime). See `docs/authoring/scratch.md`.
   web app. Long Scratch scripts and Arcade sprite art can now be published from
   the CLI (Firestore rejected them before), and `lessons get` returns blocks as
   objects rather than JSON strings for lessons saved in the Builder.
+- Scratch `starterBlocks`, `completeBlocks` and stage `blocks` can now be written as plain
+  objects in lesson files. JSON strings still work and are not encoded twice.
 - `lessons delete` also removes the lesson's session reports and feedback, like
   deleting from Admin. The result includes a `cleared` count.
 - The Builder now rejects an unknown lesson `type`, as the CLI already did.
@@ -78,6 +80,25 @@ catalog and runtime). See `docs/authoring/scratch.md`.
 See `docs/authoring/turtle.md`.
 
 ## 2026-09-12
+
+### Scratch check fixes that change existing verdicts (backfilled)
+
+These fixes shipped earlier without a changelog entry. Lessons authored while the bugs existed may
+need their checks reviewed.
+
+- **2026-09-11: `fieldValues` now match dropdown fields.** `block_used` and `blocks_in_order`
+  `fieldValues` only read number/text inputs, so a condition on a dropdown (e.g. `motion_goto`
+  `TO`, `looks_switchcostumeto` `COSTUME`) could never pass. It now reads the block's own field
+  first.
+- **2026-09-09: `blocks_in_order` waits for the student.** Starter stacks that connect the
+  surrounding blocks directly (the usual "insert a block between these two" task) were reported as
+  failed before the student did anything. A gap now counts as pending until the wrong block is
+  actually placed.
+- **2026-09-07: `sprite_property_delta` and `sprite_property_changed` work.** The "before run"
+  sprite snapshot was aliased to live state, so the delta was always 0 and "changed" was always
+  false for every task using these checks. If a lesson avoided these check types because they never
+  passed, they are safe to use now.
+
 
 ### New Turtle module task type
 

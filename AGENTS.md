@@ -40,7 +40,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 - Do not deviate from Firebase data model, localStorage key formats, URL structure, or session-state semantics.
 - Do not duplicate Pyodide, iframe, CodeMirror, checks, Markdown, file-key, or task utility logic; use shared modules.
 - Do not store Firebase file keys with raw dots; use `encodeFileKey` / `decodeFileKey`.
-- Do not create, copy, or write `.env` inside the repo or a worktree; env lives one level above the repo root.
+- Do not commit `.env` files or credentials. Vite reads `.env` in the repo root and the CLI reads `cli/.env`; both are gitignored. Do not create or copy either into a worktree unless the user asks.
 
 ## Load Only What You Need
 
@@ -65,15 +65,17 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Authoring a Scratch lesson (sprites, opcodes, checks, examples) | `docs/authoring/scratch.md` |
 | Authoring a Filesystem lesson (task fields, fs checks, examples) | `docs/authoring/filesystem.md` |
 | Authoring an Electronics lesson (breadboard fields, circuit checks, examples) | `docs/authoring/electronics.md` |
+| Authoring an Arcade Kit lesson (experimental game module) | `docs/authoring/arcade.md` |
 | Quiz sub-types and quiz check types in detail | `docs/authoring/quiz-tasks.md` |
 | Lesson JSON field reference (cross-cutting schema) | `docs/authoring/lesson-schema.md` |
 | Lesson YAML basics (envelope, common fields, info/group/draft tasks) | `docs/authoring/lesson-schema-yaml.md` |
 | Topic library schema and YAML authoring | `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` |
 | Markdown renderer (explainers, topic cards) | `docs/authoring/markdown-renderer.md` |
-| Agent playbooks (author, edit, review, topics, assets, feedback) | `docs/authoring/skills/` |
-| Reading, creating, or clearing feedback via CLI | `docs/authoring/skills/hsc-feedback.md` |
-| Reviewing a lesson draft against authoring guidelines | `docs/authoring/skills/hsc-review.md` |
-| Authoring guidelines and lesson draft pipeline | `docs/authoring/skills/hsc-authoring.md` |
+| Publishing a lesson with the CLI (convert, validate, publish, verify) | `docs/authoring/AUTHORING_GUIDE.md` Quick Start |
+| What a validation error or warning means and how to fix it | `docs/authoring/validation-errors.md` |
+| Draft lessons (incomplete tasks, intent, clearing draft) | `docs/authoring/AUTHORING_GUIDE.md` Draft lessons |
+| Lesson assets via CLI | `docs/authoring/lesson-assets-cli.md` |
+| Reading, adding, or archiving teacher feedback via CLI | `docs/authoring/feedback-cli.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |
 

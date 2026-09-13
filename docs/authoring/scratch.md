@@ -159,14 +159,14 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
   `math_number` / `NUM`.
 - Join two stack blocks with `next: { block: ... }`. For a nested value or
   statement input, use `inputs.INPUT_NAME.block` instead.
-- **A workspace state is stored as a JSON string, not a nested object.**
-  `starterBlocks`, `completeBlocks`, and `codeStages[].blocks` each take the
-  serialised text of the shape below, not the shape itself. Firestore rejects a
-  document nested deeper than 20 levels, and `next: { block: ... }` costs two
-  levels per joined block — a connected chain of four or more blocks breaks the
-  cap on its own, and the upsert fails with "Input object is deeper than 20
-  levels or contains a cycle." Serialising collapses the whole workspace to a
-  single value, so chain length stops mattering. A toolbox stack
+- **Write a workspace state as the object itself, or as its JSON string.**
+  `starterBlocks`, `completeBlocks`, and `codeStages[].blocks` accept either.
+  Firestore rejects documents nested deeper than 20 levels, and every
+  `next: { block: ... }` costs two levels, so the Builder and the CLI both
+  serialise these fields to JSON strings when they save (since 13 September
+  2026; before that the CLI didn't, and authors had to serialise by hand).
+  Strings you've already serialised are stored as they are, never encoded twice.
+  `lessons get` returns the object form. A toolbox stack
   (`prebuiltStacks[].stack`) is one shallow block and stays a real object.
 
 ### A filled toolbox stack
@@ -237,10 +237,8 @@ the key `__stage__`.
 }
 ```
 
-Serialise that object to a JSON string and use the string as `starterBlocks`,
-`completeBlocks`, or a stage’s `blocks` value. The JSON examples in this
-section show the object shape for readability; what is authored into the lesson
-is its `JSON.stringify` form. For example, this support stage supplies a connected
+Use that object (or its JSON string) as `starterBlocks`, `completeBlocks`, or a
+stage’s `blocks` value; the Builder and CLI serialise it when saving. For example, this support stage supplies a connected
 green-flag-and-say stack for `sprite1`; a `solution` stage uses the identical
 shape and differs only in `role`.
 
@@ -631,15 +629,17 @@ Inline Scratch blocks must use the `scratch:` prefix. Fenced `scratch` code bloc
 ```json
 {
   "id": "scratch-minimal",
-  "type": "scratch",
+  "type": "composed",
   "title": "Scratch Minimal",
   "description": "A short Scratch lesson.",
   "tasks": [
     {
       "id": 1,
+      "moduleType": "scratch",
       "title": "Move",
       "explainer": "Move the sprite to the right.",
       "sprites": [{ "id": "sprite1", "name": "Sprite 1", "type": "cat", "x": 0, "y": 0, "size": 100, "direction": 90 }],
+      "starterBlocks": { "sprite1": { "blocks": { "languageVersion": 0, "blocks": [{ "type": "event_whenflagclicked", "x": 40, "y": 40 }] } } },
       "check": { "type": "sprite_property", "evaluation": "after_run", "spriteName": "Sprite 1", "property": "x", "operator": "greater_than", "value": 50 }
     }
   ]

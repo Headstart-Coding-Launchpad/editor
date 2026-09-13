@@ -96,7 +96,7 @@ Usually changes with:
 - `docs/authoring/lesson-schema-yaml.md`
 - `docs/authoring/AUTHORING_GUIDE.md`
 - relevant `docs/authoring/*.md`
-- relevant `.claude/skills/` workflow
+- relevant authoring workflow doc (`docs/authoring/AUTHORING_GUIDE.md`, `validation-errors.md`, `feedback-cli.md`)
 - `docs/FEATURES.md`
 - builder and CLI validation tests
 
@@ -219,7 +219,7 @@ Usually changes with:
 - `cli/levels.mjs`
 - `cli/feedback.mjs`
 - `docs/agents/project-rules.md`
-- relevant `.claude/skills/` workflow
+- relevant authoring workflow doc (`docs/authoring/AUTHORING_GUIDE.md`, `validation-errors.md`, `feedback-cli.md`)
 - `docs/FEATURES.md`
 - admin component tests
 
@@ -231,7 +231,7 @@ Usually changes with:
 
 - `cli/`
 - `docs/agents/project-rules.md`
-- relevant `.claude/skills/` workflow
+- relevant authoring workflow doc (`docs/authoring/AUTHORING_GUIDE.md`, `validation-errors.md`, `feedback-cli.md`)
 - `docs/authoring/AUTHORING_GUIDE.md`
 - `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`
 - `docs/CODEBASE_MAP.md`

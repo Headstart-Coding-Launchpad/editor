@@ -19,7 +19,7 @@ Load this when a task touches architecture, shared modules, admin, CLI, dependen
 | Code editor | CodeMirror 6 |
 | Markdown | `react-markdown` and `rehype-highlight` |
 | Styling | CSS custom properties in `src/index.css` |
-| Env vars | `.env` one level above repo root; loaded by `envDir: '../'` |
+| Env vars | App: `.env` in the repo root (Vite default). CLI: `cli/.env` (`GOOGLE_APPLICATION_CREDENTIALS`). Both gitignored |
 
 Do not add major dependencies without confirming with the user.
 
@@ -114,8 +114,9 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 - Assets → Firebase Storage under `lessons/{lessonId}/assets/`; `lesson.storageAssets` is optional metadata, not the source-of-truth inventory
 - Lesson-type-wide shared assets (files, Scratch default sprites/backdrops) → Firestore `lessonTypeAssets/{type}`, files in Storage under `shared/{type}/assets/` — same data the admin "Shared Assets" panel manages
 
-**Auth:**
-- Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path.
+**CLI credentials:**
+- Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path, in your shell or in `cli/.env` (gitignored; loaded by `cli/cli.mjs`). A relative path in `cli/.env` resolves from `cli/`.
+- `lessons validate`, `lessons yaml-to-json`, `lessons json-to-yaml` and `lessons test-checks` work **without** credentials. Everything that reads or writes Firestore or Storage needs them, including `lessons preflight`.
 - Download from Firebase Console > Project Settings > Service Accounts.
 - Do not commit or copy service account keys.
 
@@ -125,7 +126,7 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics`
+- `lessons list|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics`
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
@@ -135,7 +136,7 @@ Command groups:
 
 `feedback` never hard-deletes: `archive-lesson`/`archive-platform` (single item) and `clear-lesson`/`clear-platform` (bulk, with optional filters) all set an `archived: true` flag rather than removing the document.
 
-Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. Output is JSON by default; pass `--format yaml` for YAML. Errors go to stderr with exit code 1.
+Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. `tasks upsert`/`append` parse YAML as plain data: the lesson YAML shorthands (`type: quiz`, `answer:`, `checks:`) are not expanded and no task `id` is assigned, so pass JSON-shaped tasks there. Output is JSON by default; pass `--format yaml` for YAML. Validation failures print `{ valid: false, errors, warnings }` as JSON on stdout and exit 1; unexpected errors print to stderr and exit 1. See `docs/authoring/validation-errors.md` for every message.
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.
 
