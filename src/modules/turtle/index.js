@@ -8,7 +8,8 @@ import { scrollLayoutStyles } from '../sharedStyles.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 
-const DEFAULT_STARTER_CODE = 'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
+const DEFAULT_STARTER_CODE =
+  'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
 
 const turtleModule = {
   type: 'turtle',
@@ -49,7 +50,9 @@ const turtleModule = {
 
   initStageTab: null,
 
-  defaultCheck: () => [{ type: 'turtle_segment_count', operator: 'greater_than_or_equal', value: '1' }],
+  defaultCheck: () => [
+    { type: 'turtle_segment_count', operator: 'greater_than_or_equal', value: '1' },
+  ],
 
   carryThroughField: 'carryCodeFrom',
   carryThroughLabel: 'Carry code from task',
