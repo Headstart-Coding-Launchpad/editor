@@ -22,7 +22,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. `scopeType` is `type`, `module`, `course`, or `collection`. |
 | `topicProposals` | No | proposal array | Missing Topic Library entries proposed by the lesson. Each item has `id`, `title`, `description`, and `status` (`proposed` or `deferred`). Task `topicLinks` remain the source of truth for usage. |
 | `modules` | No | `{id, type, title?, sandbox?}[]` | Named workspace instances for a composed lesson. Use `moduleId` on code tasks to select one. |
-| `sandboxStarter` | No | string | Python, Arcade Kit, or Scratch sandbox starter code or state. |
+| `sandboxStarter` | No | string | Python, Arcade Kit, Turtle, or Scratch sandbox starter code or state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
 | `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. |
 | `sandboxSprites` | No | sprite array | Scratch sandbox sprites. |
@@ -86,9 +86,9 @@ Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `comp
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class. Off unless set to `true`. The teacher approves every share before classmates see it, and classmates open it as a non-destructive copy they can run and edit without affecting their own work. Not valid on `quiz` or `information` tasks. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types, or `code_arrange` for a drag-and-drop runnable-code task (see "Code Arrange Task Fields" below). |
-| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics`. |
+| `moduleType` | Required for composed code | string | Workspace for this code task: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, or `electronics`. |
 | `moduleId` | No | string | ID of a named entry in the lesson `modules` array. It distinguishes separate instances of the same workspace type. |
-| `copyCode` | No | string | Python, Arcade Kit, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
+| `copyCode` | No | string | Python, Arcade Kit, Turtle, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
 | `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task (e.g. "Pair-share discussion"). Never shown to students. |
@@ -117,6 +117,7 @@ Legacy lessons may retain a single `type` of `python`, `arcade`, `html`, `scratc
 |---|---|---|---|---|
 | `python` | Python editor + output | Supported | Supported |
 | `arcade` | Python game editor + canvas | Supported | Supported |
+| `turtle` | Python editor + turtle-graphics canvas | Supported | Supported |
 | `html` | Multi-file editor + iframe | Supported | Supported |
 | `scratch` | Scratch blocks + stage | Supported | Supported |
 | `filesystem` | Virtual file manager | Supported | Supported |
@@ -126,7 +127,7 @@ In a composed lesson, every code task chooses one row with `moduleType`; `module
 
 `information` and `quiz` tasks ignore code fields such as `starterCode`, `starterFiles`, `starterBlocks`, `starterCircuit`, and carry-through fields.
 
-Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `role: starter | support | complete`. The first Starter is the default; teachers may apply any Starter to a class or individual learner. Arcade Kit Starter stages carry `code` plus `arcadeDesign` (sprites and tilemaps); Electronics Starter stages carry `circuit`; Scratch Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference: Arcade Kit and Electronics currently show code only, while Scratch uses `markdown` and renders fenced or inline Scratch blocks. Complete stages are revealed read-only before the student or teacher explicitly takes them over, using the same preview-then-replace flow as Support stages. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
+Python, HTML, Arcade Kit, Turtle, Electronics, and Scratch code stages use `role: starter | support | complete`. The first Starter is the default; teachers may apply any Starter to a class or individual learner. Arcade Kit Starter stages carry `code` plus `arcadeDesign` (sprites and tilemaps); Electronics Starter stages carry `circuit`; Scratch Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference: Arcade Kit, Turtle, and Electronics currently show code only, while Scratch uses `markdown` and renders fenced or inline Scratch blocks. Complete stages are revealed read-only before the student or teacher explicitly takes them over, using the same preview-then-replace flow as Support stages. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
 
 ### Code stage runtime behaviour
 
@@ -141,8 +142,8 @@ Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `role: starte
 A student working in **Solo mode** (no teacher/live session) can destructively overwrite their own code with the task's Complete stage, without any teacher involved. This is distinct from the teacher-driven push covered above and from the read-only `copyCode` panel: it actually replaces the student's saved work and immediately marks the task's `check` as passed, the same as a genuine solve.
 
 - Offered only once the student has exhausted any authored Support stages and failed the check (or a run) at least twice (`checkFailCount >= 2`). It is **not available in a live session** — teachers still use the destructive stage push described above for that.
-- Available for every module type that has a Complete stage: Python, HTML, Arcade Kit, Scratch, Filesystem, and Electronics.
-- **Python and HTML** show a read-only "See complete code?" preview first; only after that preview has been opened does a second offer appear to load it into the editor.
+- Available for every module type that has a Complete stage: Python, HTML, Arcade Kit, Turtle, Scratch, Filesystem, and Electronics.
+- **Python, Turtle, and HTML** show a read-only "See complete code?" preview first; only after that preview has been opened does a second offer appear to load it into the editor.
 - **Arcade Kit, Scratch, Filesystem, and Electronics** have no preview step — the single offer to load the complete solution is destructive immediately.
 - There is **no confirmation dialog** before the destructive load (unlike moving to a stage, which does ask the student to confirm) — the button's label ("Load complete code into my editor") is the only warning.
 

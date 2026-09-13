@@ -86,6 +86,7 @@ export default function StudentView({
     writeStudentAnswer,
     writeStudentCode,
     writeStudentArcadeDesign,
+    writeStudentTurtleResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -205,6 +206,7 @@ export default function StudentView({
     writeStudentAnswer,
     writeStudentCode,
     writeStudentArcadeDesign,
+    writeStudentTurtleResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -704,6 +706,7 @@ export default function StudentView({
     displayedTaskId,
     displayCode,
     displayArcadeDesign,
+    displayTurtleResult,
     displaySpriteState,
     displayCursor,
     displayBlockDrag,
@@ -1381,6 +1384,7 @@ export default function StudentView({
             isCodeArrangeTask={isCodeArrangeTask}
             displayCode={displayCode}
             displayArcadeDesign={displayArcadeDesign}
+            displayTurtleResult={displayTurtleResult}
             displaySpriteState={displaySpriteState}
             displayCursor={displayCursor}
             displayBlockDrag={displayBlockDrag}

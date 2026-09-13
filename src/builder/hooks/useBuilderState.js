@@ -43,7 +43,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   }
 
   function defaultTypeFields(prevTask = null, moduleType = lesson.type) {
-    if (moduleType === 'python' || moduleType === 'arcade') {
+    if (moduleType === 'python' || moduleType === 'arcade' || moduleType === 'turtle') {
       return {
         starterCode: prevTask ? (prevTask.completeCode ?? prevTask.starterCode ?? '') : '',
         carryCodeFrom: prevTask?.id ?? null,

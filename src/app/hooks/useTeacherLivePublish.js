@@ -4,6 +4,7 @@ import { flattenTasks } from '../../shared/taskUtils'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
 import { getEffectiveLessonForTask, getTaskModuleType } from '../../shared/composedLesson'
+import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
 
 /**
  * Owns the teacher-live broadcast helpers and the two related effects:
@@ -20,6 +21,7 @@ export function useTeacherLivePublish({
   codeRef,
   scratchCodeRef,
   arcadeDesignRef,
+  turtleResultRef,
   filesRef,
   activeFileRef,
   outputRef,
@@ -89,6 +91,10 @@ export function useTeacherLivePublish({
           ? scratchCodeRef.current
           : codeRef.current,
       arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
+      turtleResult:
+        lessonRef.current?.type === 'turtle'
+          ? compactTurtleResultForSync(turtleResultRef.current)
+          : null,
       files: filesMap,
       activeFile: activeFileRef.current,
       output: outputRef.current,

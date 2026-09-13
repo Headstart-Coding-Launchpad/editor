@@ -12,6 +12,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 |---|---|
 | Python | Write and run Python code; output shown in a console panel |
 | Arcade Kit | Build a small pixel-style Python game with a sandboxed canvas, keyboard input, named/uploaded or pixel-editor assets, tilemaps, and Run/Stop controls |
+| Turtle | Write Python turtle-graphics commands that draw onto a responsive canvas; checks run on the finished drawing |
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
 | Scratch | Drag-and-drop block programming with a live stage canvas |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |

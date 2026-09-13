@@ -22,7 +22,7 @@ import Modal from './Modal'
 import { s } from './styles'
 
 function isPythonLikeType(type) {
-  return type === 'python' || type === 'arcade'
+  return type === 'python' || type === 'arcade' || type === 'turtle'
 }
 
 function getSandboxStarterSummaryForType(lesson) {

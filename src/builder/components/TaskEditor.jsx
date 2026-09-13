@@ -41,9 +41,14 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   // Visible by default while authoring a Draft lesson; collapsed by default once Draft is off,
   // since this section is author-only and adds noise for a lesson ready for full validation.
   const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(() => lesson.draft !== true)
-  const usesUnifiedCodeStages = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(
-    lesson.type
-  )
+  const usesUnifiedCodeStages = [
+    'python',
+    'html',
+    'arcade',
+    'turtle',
+    'electronics',
+    'scratch',
+  ].includes(lesson.type)
   const [codeTab, setCodeTab] = useState(usesUnifiedCodeStages ? 'stage_0' : 'starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
   const { typeStorageAssets } = useTypeAssets(lesson.type)

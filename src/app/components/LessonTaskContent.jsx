@@ -38,11 +38,11 @@ function teacherLiveReferenceStageFrom(teacherLive, lessonType) {
   return { label: "Teacher's live code", [shapeKey]: displayState }
 }
 
-const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'html', 'scratch', 'electronics']
+const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'turtle', 'html', 'scratch', 'electronics']
 // Lesson types whose module StudentWorkspace reports its own visiblePanes (a togglable
 // pane/tab/run-state that's meaningful to show on the teacher's student list) via the
 // generic `modulePanes` state below, rather than the Scratch-specific plumbing.
-const MODULE_PANES_TYPES = ['electronics', 'python', 'arcade', 'html']
+const MODULE_PANES_TYPES = ['electronics', 'python', 'arcade', 'turtle', 'html']
 // Scratch's explainer is a fixed, non-resizable width (no drag-to-resize) rather than a
 // percentage split — Scratch explainers often carry block-pill images/markdown that need
 // real width, and a fixed size is simpler and more predictable than a shrinking one.
@@ -91,6 +91,7 @@ export default function LessonTaskContent({
   isCodeArrangeTask,
   displayCode,
   displayArcadeDesign,
+  displayTurtleResult,
   displaySpriteState,
   displayCursor,
   displayBlockDrag,
@@ -248,9 +249,14 @@ export default function LessonTaskContent({
   }
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
-  const supportsStageReveal = ['python', 'html', 'arcade', 'electronics', 'scratch'].includes(
-    lessonMod?.type ?? lesson.type
-  )
+  const supportsStageReveal = [
+    'python',
+    'html',
+    'arcade',
+    'turtle',
+    'electronics',
+    'scratch',
+  ].includes(lessonMod?.type ?? lesson.type)
   const activeSupportStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
@@ -538,6 +544,7 @@ export default function LessonTaskContent({
           previewMode={previewMode}
           displayCode={displayCode}
           displayArcadeDesign={displayArcadeDesign}
+          displayTurtleResult={displayTurtleResult}
           displaySpriteState={displaySpriteState}
           displayCursor={displayCursor}
           displayBlockDrag={displayBlockDrag}

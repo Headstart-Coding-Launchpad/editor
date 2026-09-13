@@ -27,7 +27,24 @@
  * `line` is only meaningful on a 'stderr' output produced from a caught Python
  * exception (see formatPythonError): it is the innermost `<student>` frame's
  * line number, used by the UI to highlight the failing line in the editor.
+ *
+ * `done` also always carries `turtle: { state, commands, calls }` for Turtle-module
+ * tasks (see ../turtle/shim.js) — `state` is the final position/heading/pen snapshot,
+ * `commands` the drawn-line log (for rendering + path checks), `calls` the raw
+ * command-invocation log (for "command used" checks). Harmless/empty for plain
+ * Python and Electronics tasks, which never call the __hsTurtle* bridge below.
  */
+
+import {
+  createTurtleState,
+  applyTurtleForward,
+  applyTurtleTurn,
+  applyTurtleSetHeading,
+  applyTurtleGoto,
+  applyTurtleHome,
+  applyTurtleSetFillColor,
+  applyTurtleSetBackground,
+} from '../turtle/engine.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
@@ -38,6 +55,11 @@ let _gpioInputs = {}
 let _gpioOutputs = {}
 let _gpioPollId = 0
 const _gpioPollResolvers = new Map()
+let _turtleState = createTurtleState()
+let _turtleCommands = []
+let _turtleCalls = []
+let _turtleFilling = false
+let _turtleFillPoints = []
 
 // Python wrapper — same AST-transform approach as before, but now running in a Worker.
 // `import js as _js` gives access to this worker's globalThis.
@@ -195,6 +217,144 @@ globalThis.__hsGpioSleep = async (seconds) => {
   })
 }
 
+// ─── Turtle bridge (see ../turtle/shim.js and ../turtle/engine.js) ────────────
+// Single default turtle only. Every mutating call is recorded in _turtleCalls
+// (for turtle_command_used checks); forward/backward/goto/home also append a
+// drawn-line segment to _turtleCommands when the pen is down, and (Phase 2) a
+// fill-polygon vertex to _turtleFillPoints while begin_fill()/end_fill() is active.
+
+function _recordTurtleCall(name, args) {
+  _turtleCalls.push({ name, args })
+}
+
+function _trackFillPoint(x, y) {
+  if (_turtleFilling) _turtleFillPoints.push({ x, y })
+}
+
+globalThis.__hsTurtleForward = (distance) => {
+  _recordTurtleCall('forward', [distance])
+  const { nextState, segment } = applyTurtleForward(_turtleState, distance)
+  _turtleState = nextState
+  if (segment) _turtleCommands.push({ type: 'line', ...segment })
+  _trackFillPoint(nextState.x, nextState.y)
+}
+
+globalThis.__hsTurtleTurn = (degrees) => {
+  _recordTurtleCall('turn', [degrees])
+  _turtleState = applyTurtleTurn(_turtleState, degrees)
+}
+
+globalThis.__hsTurtleGoto = (x, y) => {
+  _recordTurtleCall('goto', [x, y])
+  const { nextState, segment } = applyTurtleGoto(_turtleState, x, y)
+  _turtleState = nextState
+  if (segment) _turtleCommands.push({ type: 'line', ...segment })
+  _trackFillPoint(nextState.x, nextState.y)
+}
+
+globalThis.__hsTurtleSetHeading = (degrees) => {
+  _recordTurtleCall('setheading', [degrees])
+  _turtleState = applyTurtleSetHeading(_turtleState, degrees)
+}
+
+globalThis.__hsTurtleHome = () => {
+  _recordTurtleCall('home', [])
+  const { nextState, segment } = applyTurtleHome(_turtleState)
+  _turtleState = nextState
+  if (segment) _turtleCommands.push({ type: 'line', ...segment })
+  _trackFillPoint(nextState.x, nextState.y)
+}
+
+globalThis.__hsTurtleReset = () => {
+  _recordTurtleCall('reset', [])
+  _turtleState = createTurtleState()
+  _turtleCommands = []
+  _turtleFilling = false
+  _turtleFillPoints = []
+}
+
+globalThis.__hsTurtlePenUp = () => {
+  _recordTurtleCall('penup', [])
+  _turtleState = { ..._turtleState, penDown: false }
+}
+
+globalThis.__hsTurtlePenDown = () => {
+  _recordTurtleCall('pendown', [])
+  _turtleState = { ..._turtleState, penDown: true }
+}
+
+globalThis.__hsTurtleSetColor = (color) => {
+  _recordTurtleCall('pencolor', [color])
+  _turtleState = { ..._turtleState, color: String(color) }
+}
+
+globalThis.__hsTurtleGetState = () => JSON.stringify(_turtleState)
+
+// ── Phase 2: fill, circle-detection, stamp, write, background ────────────────
+
+globalThis.__hsTurtleSetFillColor = (color) => {
+  _recordTurtleCall('fillcolor', [color])
+  _turtleState = applyTurtleSetFillColor(_turtleState, color)
+}
+
+globalThis.__hsTurtleSetBackground = (color) => {
+  _recordTurtleCall('bgcolor', [color])
+  _turtleState = applyTurtleSetBackground(_turtleState, color)
+}
+
+globalThis.__hsTurtleBeginFill = () => {
+  _recordTurtleCall('beginfill', [])
+  _turtleFilling = true
+  _turtleFillPoints = [{ x: _turtleState.x, y: _turtleState.y }]
+}
+
+globalThis.__hsTurtleEndFill = () => {
+  _recordTurtleCall('endfill', [])
+  if (_turtleFilling && _turtleFillPoints.length >= 3) {
+    _turtleCommands.push({ type: 'fill', points: _turtleFillPoints, color: _turtleState.fillColor })
+  }
+  _turtleFilling = false
+  _turtleFillPoints = []
+}
+
+globalThis.__hsTurtleStamp = () => {
+  _recordTurtleCall('stamp', [])
+  _turtleCommands.push({
+    type: 'stamp',
+    x: _turtleState.x,
+    y: _turtleState.y,
+    heading: _turtleState.heading,
+    color: _turtleState.color,
+  })
+}
+
+globalThis.__hsTurtleWrite = (text, align, fontSize) => {
+  _recordTurtleCall('write', [text])
+  _turtleCommands.push({
+    type: 'text',
+    x: _turtleState.x,
+    y: _turtleState.y,
+    text: String(text),
+    color: _turtleState.color,
+    align: String(align),
+    fontSize: Number(fontSize) || 8,
+  })
+}
+
+// Records a call (e.g. 'circle') with no drawing/state effect of its own, for
+// turtle_command_used checks — used by shim.js commands built as sugar over
+// existing primitives (circle() draws via repeated forward()/left() calls,
+// which already record + draw themselves).
+globalThis.__hsTurtleMarkCommand = (name, argsJson) => {
+  let args = []
+  try {
+    args = JSON.parse(argsJson)
+  } catch {
+    args = []
+  }
+  _recordTurtleCall(String(name), Array.isArray(args) ? args : [])
+}
+
 self.onmessage = async ({ data }) => {
   if (data.type === 'init') {
     try {
@@ -220,6 +380,11 @@ self.onmessage = async ({ data }) => {
     _lastVariables = {}
     _gpioInputs = normalizeGpioInputs(data.gpioInputs)
     _gpioOutputs = {}
+    _turtleState = createTurtleState()
+    _turtleCommands = []
+    _turtleCalls = []
+    _turtleFilling = false
+    _turtleFillPoints = []
 
     let _stdoutBuf = ''
     let _stderrBuf = ''
@@ -276,16 +441,28 @@ self.onmessage = async ({ data }) => {
       JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : [])
     )
 
+    const turtleResult = () => ({ state: _turtleState, commands: _turtleCommands, calls: _turtleCalls })
+
     try {
       await pyodide.runPythonAsync(WRAPPER)
       flushBuffers()
-      self.postMessage({ type: 'done', status: 'success', variables: _lastVariables })
+      self.postMessage({
+        type: 'done',
+        status: 'success',
+        variables: _lastVariables,
+        turtle: turtleResult(),
+      })
     } catch (err) {
       flushBuffers()
       const raw = String(err).replace(/^PythonError:\s*/, '')
       const { text, line } = formatPythonError(raw)
       self.postMessage({ type: 'output', text: text + '\n', kind: 'stderr', line })
-      self.postMessage({ type: 'done', status: 'error', variables: _lastVariables })
+      self.postMessage({
+        type: 'done',
+        status: 'error',
+        variables: _lastVariables,
+        turtle: turtleResult(),
+      })
     }
     return
   }
