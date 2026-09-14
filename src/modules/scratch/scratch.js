@@ -59,16 +59,18 @@ function costumeDropdownLabel(c) {
 }
 
 // Dropdown option for a sprite target (go to, glide, touching, …): a thumbnail
-// followed by the name in the menu. Blockly renders HTMLElement options as text on
-// the block using `title` first, so the block itself keeps showing the plain name.
+// followed by the name. Blockly reads an HTMLElement option's text from `title`
+// first (and `title` defaults to ""), so it must be set or the block label is blank.
+// `field_sprite_dropdown` draws the same thumbnail beside the name on the block.
 const SPRITE_THUMB_SIZE = 20
+const SPRITE_THUMB_GAP = 6
 export function spriteDropdownLabel(sp) {
   if (!sp.thumbUrl || typeof document === 'undefined') return sp.name
   const label = document.createElement('span')
   label.title = sp.name
   label.style.display = 'inline-flex'
   label.style.alignItems = 'center'
-  label.style.gap = '6px'
+  label.style.gap = `${SPRITE_THUMB_GAP}px`
   const img = document.createElement('img')
   img.src = sp.thumbUrl
   img.alt = ''
@@ -96,7 +98,69 @@ export async function loadBlocklyModules() {
   return { Blockly: _Blockly }
 }
 
+function selectedSpriteThumbSrc(option) {
+  const label = option?.[0]
+  if (typeof HTMLElement === 'undefined' || !(label instanceof HTMLElement)) return null
+  return label.querySelector('img')?.getAttribute('src') || null
+}
+
+// A dropdown that shows the selected sprite's thumbnail beside its name on the block.
+// Stock FieldDropdown renders either an image or text for the selected option, never
+// both; options without a thumbnail ("random position", …) render exactly as stock.
+function registerSpriteDropdownField(Blockly) {
+  if (Blockly.registry.hasItem(Blockly.registry.Type.FIELD, 'field_sprite_dropdown')) return
+  class FieldSpriteDropdown extends Blockly.FieldDropdown {
+    render_() {
+      const thumbSrc = selectedSpriteThumbSrc(this.selectedOption)
+      if (!thumbSrc || !this.imageElement) {
+        super.render_()
+        return
+      }
+      const constants = this.getConstants()
+      const textElement = this.getTextElement()
+      this.getTextContent().nodeValue = this.getDisplayText_()
+      textElement.classList.add('blocklyDropdownText')
+      textElement.setAttribute('text-anchor', 'start')
+
+      const hasBorder = !!this.borderRect_
+      const xPadding = hasBorder ? constants.FIELD_BORDER_RECT_X_PADDING : 0
+      const height = Math.max(
+        hasBorder ? constants.FIELD_DROPDOWN_BORDER_RECT_HEIGHT : 0,
+        constants.FIELD_TEXT_HEIGHT,
+        SPRITE_THUMB_SIZE + Blockly.FieldDropdown.IMAGE_Y_PADDING
+      )
+      const thumbWidth = SPRITE_THUMB_SIZE + SPRITE_THUMB_GAP
+      const textWidth = Blockly.utils.dom.getTextWidth(textElement)
+      const arrowWidth = this.svgArrow
+        ? this.positionSVGArrow(
+            xPadding + thumbWidth + textWidth,
+            height / 2 - constants.FIELD_DROPDOWN_SVG_ARROW_SIZE / 2
+          )
+        : 0
+      this.size_ = new Blockly.utils.Size(
+        thumbWidth + textWidth + arrowWidth + xPadding * 2,
+        height
+      )
+
+      const rtl = this.getSourceBlock()?.RTL
+      this.imageElement.style.display = ''
+      this.imageElement.setAttributeNS(Blockly.utils.dom.XLINK_NS, 'xlink:href', thumbSrc)
+      this.imageElement.setAttribute('width', String(SPRITE_THUMB_SIZE))
+      this.imageElement.setAttribute('height', String(SPRITE_THUMB_SIZE))
+      this.imageElement.setAttribute(
+        'x',
+        String(rtl ? this.size_.width - xPadding - SPRITE_THUMB_SIZE : xPadding)
+      )
+      this.imageElement.setAttribute('y', String(height / 2 - SPRITE_THUMB_SIZE / 2))
+      this.positionTextElement_(xPadding + thumbWidth, textWidth)
+      this.positionBorderRect_()
+    }
+  }
+  Blockly.fieldRegistry.register('field_sprite_dropdown', FieldSpriteDropdown)
+}
+
 function registerScratchFieldExtensions(Blockly) {
+  registerSpriteDropdownField(Blockly)
   if (Blockly.Extensions.isRegistered('scratch_variable_field')) return
   // No-op: kept for compatibility with any serialized workspaces that reference this extension
   Blockly.Extensions.register('scratch_variable_field', function () {})
@@ -266,7 +330,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('motion_goto', 'go to %1'),
         args0: blockArgs('motion_goto', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'TO',
             options: () => [
               ['random position', '_random_'],
@@ -295,7 +359,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         args0: blockArgs('motion_glideto', [
           numberInput('SECS', 1),
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'TO',
             options: () => [
               ['random position', '_random_'],
@@ -537,7 +601,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('control_create_clone_of', 'create a clone of %1'),
         args0: blockArgs('control_create_clone_of', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'CLONE_OPTION',
             options: () => [['myself', '_myself_'], ...spriteDropdownOptions()],
           },
@@ -590,7 +654,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('sensing_touchingobject', 'touching %1?'),
         args0: blockArgs('sensing_touchingobject', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'TOUCHINGOBJECTMENU',
             options: () => [
               ['mouse-pointer', '_mouse_'],
@@ -869,7 +933,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('sensing_distanceto', 'distance to %1'),
         args0: blockArgs('sensing_distanceto', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'DISTANCETOMENU',
             options: () => [['mouse-pointer', '_mouse_'], ...spriteDropdownOptions()],
           },

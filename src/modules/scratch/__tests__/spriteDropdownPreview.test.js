@@ -47,6 +47,9 @@ describe('sprite target dropdowns', () => {
     workspace = new Blockly.Workspace()
     const block = workspace.newBlock(type)
     const dropdown = block.getField(field)
+    // Uses the thumbnail-on-block subclass, still a normal dropdown underneath.
+    expect(dropdown).toBeInstanceOf(Blockly.FieldDropdown)
+    expect(dropdown.constructor).not.toBe(Blockly.FieldDropdown)
 
     const options = dropdown.getOptions(false)
     const cat = options.find(([, value]) => value === 's1')
