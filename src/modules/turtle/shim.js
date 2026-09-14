@@ -15,6 +15,9 @@
 // colormode is handled entirely here via _format_color — the JS bridge and
 // engine.js only ever see final CSS-compatible color strings.
 //
+// hideturtle/ht, showturtle/st and isvisible toggle state.visible, which controls
+// whether the 🐢 marker is drawn (see ../turtle/draw.js drawTurtleMarker).
+//
 // `done`/`mainloop`/`bye` and a no-op `Screen()` are included as harmless stubs
 // since they're near-universal turtle boilerplate that would otherwise crash a
 // script for no visual reason in this headless/instant-draw model.
@@ -68,6 +71,10 @@ export const TURTLE_SHIM = [
   'def _set_background(color):',
   '    if _js is not None:',
   '        _js.__hsTurtleSetBackground(str(color))',
+  '',
+  'def _set_visible(visible):',
+  '    if _js is not None:',
+  '        _js.__hsTurtleSetVisible(bool(visible))',
   '',
   'def _begin_fill():',
   '    if _js is not None:',
@@ -123,6 +130,7 @@ export const TURTLE_SHIM = [
   '            "color": "black",',
   '            "fillColor": "black",',
   '            "background": "white",',
+  '            "visible": True,',
   '        }',
   '    return json.loads(str(_js.__hsTurtleGetState()))',
   '',
@@ -225,6 +233,14 @@ export const TURTLE_SHIM = [
   '        return _get_state()["y"]',
   '    def heading(self):',
   '        return _get_state()["heading"]',
+  '    def hideturtle(self):',
+  '        _set_visible(False)',
+  '    ht = hideturtle',
+  '    def showturtle(self):',
+  '        _set_visible(True)',
+  '    st = showturtle',
+  '    def isvisible(self):',
+  '        return bool(_get_state().get("visible", True))',
   '    def speed(self, *args, **kwargs):',
   '        pass',
   '',

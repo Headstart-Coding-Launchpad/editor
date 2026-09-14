@@ -17,7 +17,7 @@ export function CollapseTabButton({
       title={title}
       aria-label={ariaLabel}
     >
-      {direction === 'left' ? '<' : '>'}
+      {direction === 'left' ? '<' : direction === 'up' ? '^' : direction === 'down' ? 'v' : '>'}
     </button>
   )
 }

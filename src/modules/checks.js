@@ -165,6 +165,23 @@ function feedbackCheckMatchesTiming(check, timing = FEEDBACK_TIMING.AFTER_ATTEMP
   return normalizeFeedbackShow(check?.show) === normalizeFeedbackShow(timing)
 }
 
+// Generic static source-code checks, shared by every code-based module (Python, HTML,
+// Arcade, Turtle, and Electronics' Micro Controller code). They never need a run.
+export const CODE_CHECK_TYPES = [
+  'code',
+  'code_contains',
+  'code_does_not_contain',
+  'code_not_contains',
+  'code_equals',
+  'code_not_equals',
+  'code_matches_regex',
+  'code_not_matches_regex',
+]
+
+export function isCodeCheck(check) {
+  return CODE_CHECK_TYPES.includes(check?.type)
+}
+
 const CHECK_TYPES = {
   RUN_REQUIRED: [
     'output',
@@ -205,16 +222,7 @@ const CHECK_TYPES = {
     'variable_array_equals',
     'variable_array_nth_item',
   ],
-  SUBMIT_ALLOWED: [
-    'code',
-    'code_contains',
-    'code_does_not_contain',
-    'code_not_contains',
-    'code_equals',
-    'code_not_equals',
-    'code_matches_regex',
-    'code_not_matches_regex',
-  ],
+  SUBMIT_ALLOWED: CODE_CHECK_TYPES,
   FS: FS_CHECK_TYPES,
   ELECTRONICS: ELECTRONICS_CHECK_TYPES,
   TURTLE: TURTLE_CHECK_TYPES,

@@ -24,7 +24,7 @@ const runPython = vi.fn(() =>
   Promise.resolve({
     status: 'success',
     turtle: {
-      state: {},
+      state: { x: 10, y: 0, heading: 0, visible: true, background: '#ffeeee' },
       commands: [{ type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }],
     },
   })
@@ -68,9 +68,14 @@ describe('Turtle BuilderWorkspace preview', () => {
     expect(program).toContain(JSON.stringify(TURTLE_SHIM))
 
     await waitFor(() =>
-      expect(drawTurtleCommands).toHaveBeenLastCalledWith(expect.anything(), [
-        { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' },
-      ])
+      expect(drawTurtleCommands).toHaveBeenLastCalledWith(
+        expect.anything(),
+        [{ type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }],
+        expect.objectContaining({
+          background: '#ffeeee',
+          turtle: expect.objectContaining({ x: 10, y: 0, visible: true }),
+        })
+      )
     )
     // Run completed, so the button reverts from Stop back to Run.
     expect(screen.getByText('Run')).toBeTruthy()

@@ -58,10 +58,15 @@ Drawing is instant, not animated: the whole script runs to completion, then
 the canvas draws the finished result in one pass. There is no step-by-step
 turtle animation.
 
+A 🐢 marker shows where the turtle is and which way it is facing. Before any
+run it sits at `(0, 0)` facing east; after a run it sits at the final position
+and heading. Its head points along the heading, and it stays the right way up
+when the turtle faces left. `hideturtle()` hides it, as in real Python turtle.
+
 ### Rendering order
 
 The canvas renders in fixed layers — **fills, then lines, then stamps, then
-text** — rather than strict chronological command order. A filled shape's own
+text, then the 🐢 marker** — rather than strict chronological command order. A filled shape's own
 pen outline always stays visible on top of its fill, which matters because
 `end_fill()` only produces its polygon once the shape is closed, after the
 outline's own line segments were already logged. This is a deliberate
@@ -91,6 +96,9 @@ Single default turtle only — `import turtle; turtle.forward(10)` or
 | `position()` | `pos` | Returns `(x, y)`. |
 | `xcor()` / `ycor()` | | |
 | `heading()` | | |
+| `hideturtle()` | `ht` | Hides the 🐢 marker. Drawing is unaffected. |
+| `showturtle()` | `st` | Shows the 🐢 marker again. `reset()` also shows it. |
+| `isvisible()` | | Returns whether the marker is shown. |
 | `speed(...)` | | Accepted but has no effect — drawing is always instant. |
 
 `turtle.done()`, `turtle.mainloop()`, `turtle.bye()`, and `turtle.Screen()`
@@ -123,8 +131,30 @@ Real turtle colour arguments all work: a name (`"red"`), a hex string
 
 ## Checks
 
-All Turtle checks evaluate the finished run's recorded state, not the
-student's source code — a run is always required.
+A Turtle task can mix two kinds of check in the same `check` (or
+`feedbackChecks`) list. Every check in the list must pass.
+
+- **Turtle checks** (below) evaluate the finished run's recorded state, so a
+  run is always required.
+- **Code checks** use the generic `code` type shared with Python, HTML and
+  Arcade (`operator`: `contains`, `not_contains`, `equals`, `not_equals`,
+  `matches_regex`, `not_matches_regex`, plus `value`). They look at what the
+  student wrote, e.g. "uses a loop", and are evaluated on the same Run. See
+  [python.md](python.md#output-and-code-checks-shared-with-html) for
+  normalisation rules. `contains` trims surrounding spaces from `value`, so
+  `"for "` also matches `forward`. Use a regex such as `for\s+\w+\s+in` to
+  detect a loop.
+
+```yaml
+check:
+  - type: turtle_path_closed
+  - type: code
+    operator: matches_regex
+    value: 'for\s+\w+\s+in\s+range\('
+    hint: Use a for loop to repeat the sides.
+```
+
+### Turtle check types
 
 | Type | Fields | Passes when |
 |---|---|---|
@@ -133,7 +163,7 @@ student's source code — a run is always required.
 | `turtle_path_closed` | `tolerance` (default 2) | The drawn path's start and end points coincide within `tolerance`. |
 | `turtle_segment_count` | `operator`, `value` | The number of drawn line segments compares to `value` (`operator` defaults to "at least"). |
 | `turtle_path_length` | `operator`, `value` | The total length of all drawn segments compares to `value`. |
-| `turtle_command_used` | `command` (one of: `forward`, `backward`, `turn`, `goto`, `setheading`, `home`, `reset`, `penup`, `pendown`, `pencolor`, `fillcolor`, `bgcolor`, `beginfill`, `endfill`, `circle`, `stamp`, `write`), `minCount` (default 1) | That command was called at least `minCount` times. `color()` isn't a canonical name — it records as `pencolor`/`fillcolor`, whichever it actually changed. |
+| `turtle_command_used` | `command` (one of: `forward`, `backward`, `turn`, `goto`, `setheading`, `home`, `reset`, `penup`, `pendown`, `pencolor`, `fillcolor`, `bgcolor`, `beginfill`, `endfill`, `circle`, `stamp`, `write`, `hideturtle`, `showturtle`), `minCount` (default 1) | That command was called at least `minCount` times. `color()` isn't a canonical name — it records as `pencolor`/`fillcolor`, whichever it actually changed. |
 | `turtle_color_used` | `kind` (`"pen"` default, or `"fill"`), `color` | The final pen/fill colour (per `kind`), or any matching `pencolor(...)`/`fillcolor(...)` call, matches `color` as text, ignoring case and surrounding spaces. Colour formats are **not** converted: `"red"`, `"#ff0000"` and `(255, 0, 0)` (stored as `"rgb(255,0,0)"`) don't match each other, so use the same form the task asks students to write. |
 | `turtle_stamp_count` | `operator`, `value` | The number of `stamp()` calls compares to `value` (`operator` defaults to "at least"). |
 
@@ -144,15 +174,18 @@ Feedback/incorrect checks use the same types.
 The Builder and `node cli/cli.mjs lessons validate` apply the same rules to
 Turtle checks and feedback checks:
 
-- The `type` must be one of the eight types above.
+- The `type` must be one of the eight turtle types above, or a generic `code`
+  check (including legacy aliases like `code_contains`).
+- A `code` check needs a `value`.
 - `turtle_position` needs both `x` and `y`.
 - `turtle_heading`, `turtle_segment_count`, `turtle_path_length` and
   `turtle_stamp_count` need a `value`.
 - `turtle_command_used` needs a `command` from the list above.
 - `turtle_color_used` needs a `color`.
 
-`test-checks` can't evaluate Turtle checks, because they need a real run —
-use the Builder preview to confirm a complete solution passes.
+`test-checks` can't evaluate turtle checks, because they need a real run —
+use the Builder preview to confirm a complete solution passes. Code checks
+don't need a run.
 
 ## Runtime notes and limits
 
@@ -163,7 +196,8 @@ use the Builder preview to confirm a complete solution passes.
   reloads — re-running the code regenerates the same drawing from the same
   script.
 - `print()` output still works and appears in a collapsible Output panel
-  alongside the canvas.
+  under the canvas. It opens automatically on Run, and collapses to a slim
+  bar.
 
 ## Teacher live view
 

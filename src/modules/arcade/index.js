@@ -74,6 +74,9 @@ export default {
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: false,
+  // The game runs in its own iframe with no captured text output, so only code checks can
+  // be evaluated (on Run game — see handleArcadeRun in useStudentCodeState.js).
+  supportsOutputChecks: false,
   supportsCopyCode: true,
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],

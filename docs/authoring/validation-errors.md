@@ -131,7 +131,9 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has a control … but no control or controlled part` | `circuit_control_affects_power` is missing one side. | Set both `control` and `component`. |
 | `Task … has a circuit connection … but no source or destination part/pin` | A path check's `from`/`to` is incomplete. | Give both a part and a `pin`. |
 | `Task … has a circuit connection-includes … but no required part` | `circuit_path_includes` has no `includes`. | Add the part the path must go through. |
-| `Task … has a turtle … with unknown type "…"` | Not one of the eight Turtle check types. | See `turtle.md`. |
+| `Task … has an ArcadeKit check that is not a code check — only code checks are evaluated when the game runs` (warning) | An Arcade task has an output, variable or other non-code check. Arcade games run in their own frame with no captured output, so only `code` checks are evaluated (each time the student presses **Run game**). | Replace it with a `code` check, or remove it. |
+| `Task … has a code … but no check value` | A generic `code` check on a Turtle or Electronics task has no `value`. | Add the text (or regex) the student's code should match. |
+| `Task … has a turtle … with unknown type "…"` | Not one of the Turtle check types or a generic `code` check. | See `turtle.md`. |
 | `Task … has a turtle position … but no x/y target` | `turtle_position` needs `x` and `y`. | Add both. |
 | `Task … has a turtle … but no check value` | A heading/count/length check has no `value`. | Add `value:`. |
 | `Task … has a turtle command … with no valid command (one of: …)` | `turtle_command_used` names an unknown command. | Use one of the listed names, e.g. `forward`, `turn`, `circle`. |

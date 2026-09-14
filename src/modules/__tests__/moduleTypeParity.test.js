@@ -81,6 +81,10 @@ describe('turtle validation', () => {
     { type: 'turtle_command_used', command: 'backward', minCount: '1' },
     { type: 'turtle_color_used', kind: 'pen', color: 'red' },
     { type: 'turtle_stamp_count', operator: 'equals', value: '1' },
+    { type: 'turtle_command_used', command: 'hideturtle', minCount: '1' },
+    { type: 'code', operator: 'contains', value: 'for ' },
+    { type: 'code', operator: 'matches_regex', value: 'range\\(4\\)' },
+    { type: 'code_contains', value: 'turtle.left' },
   ]
 
   it.each(validChecks)('the Builder and CLI both accept $type checks', (check) => {
@@ -94,11 +98,30 @@ describe('turtle validation', () => {
     [{ type: 'turtle_command_used', command: 'fly' }, 'no valid command'],
     [{ type: 'turtle_color_used', kind: 'pen', color: ' ' }, 'no colour'],
     [{ type: 'turtle_spin' }, 'unknown type'],
+    [{ type: 'code', operator: 'contains', value: '' }, 'has a code check but no check value'],
   ])('the Builder and CLI both reject %o', (check, message) => {
     const builderErrors = validateLesson(turtleLesson(check)).errors
     const cliErrors = validateLessonForMcp(turtleLesson(check)).errors
     expect(builderErrors.some((error) => error.includes(message))).toBe(true)
     expect(cliErrors.some((error) => error.includes(message))).toBe(true)
+  })
+
+  it('the Builder and CLI both warn about Arcade checks that are never evaluated', () => {
+    const arcadeLesson = (check) => ({
+      id: 'arcade-lesson',
+      type: 'arcade',
+      title: 'Arcade',
+      description: 'Play',
+      tasks: [{ id: 1, title: 'Game', starterCode: 'game.run()', check }],
+    })
+    const message = 'only code checks are evaluated when the game runs'
+    const outputCheck = { type: 'output', operator: 'contains', value: 'hi' }
+    const codeCheck = { type: 'code', operator: 'contains', value: 'game.run' }
+
+    expect(validateLesson(arcadeLesson(outputCheck)).warnings.join('\n')).toContain(message)
+    expect(validateLessonForMcp(arcadeLesson(outputCheck)).warnings.join('\n')).toContain(message)
+    expect(validateLesson(arcadeLesson(codeCheck)).warnings.join('\n')).not.toContain(message)
+    expect(validateLessonForMcp(arcadeLesson(codeCheck)).warnings.join('\n')).not.toContain(message)
   })
 
   it('does not warn about missing starter code when the starter lives in codeStages', () => {

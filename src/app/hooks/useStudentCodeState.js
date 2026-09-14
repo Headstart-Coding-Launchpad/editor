@@ -9,6 +9,7 @@ import {
   normalizeChecks,
   normalizeFeedbackChecks,
   evaluateSingleCheck,
+  isCodeCheck,
   resolveTestCheck,
 } from '../../modules/checks'
 import {
@@ -47,6 +48,7 @@ import {
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
+import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
 import { useSandboxCodePush } from './useSandboxCodePush'
@@ -1177,12 +1179,11 @@ export function useStudentCodeState({
       if (nextCode !== code) setCode(nextCode)
 
       setTurtleResult(result.turtle ?? null)
-      const checkContext = {
+      const checkContext = buildCodeCheckContext(lesson.type, nextCode, {
         status,
-        code: nextCode,
         variables: result.variables ?? {},
         turtle: result.turtle ?? null,
-      }
+      })
       const hasTests = task?.tests?.length > 0
       let passed = alreadySolved
         ? true
@@ -1506,11 +1507,14 @@ export function useStudentCodeState({
       lesson?.type === 'electronics' ||
       lesson?.type === 'turtle'
     ) {
-      scheduleIdleFeedback(() =>
-        lessonRef.current?.type === 'electronics'
-          ? { code: newCode, circuit: newCode }
-          : { code: newCode, status: runStatusRef.current }
-      )
+      scheduleIdleFeedback(() => {
+        const type = lessonRef.current?.type
+        return buildCodeCheckContext(
+          type,
+          newCode,
+          type === 'electronics' ? {} : { status: runStatusRef.current }
+        )
+      })
     }
   }
 
@@ -1533,6 +1537,78 @@ export function useStudentCodeState({
         writeStudentArcadeDesign?.(identity.anonymousId, next)
         arcadeDesignWriteTimerRef.current = null
       }, 600)
+    }
+  }
+
+  // ArcadeKit runs its game inside its own iframe (ArcadePreview), never through handleRun,
+  // and produces no captured text output — so on "Run game" only the task's generic code
+  // checks can be evaluated. Other check types saved on an Arcade task are ignored here
+  // (the Builder warns about them) rather than failing every attempt.
+  function handleArcadeRun(runCode) {
+    const actor = effectiveIdentity
+    if (!actor || lesson?.type !== 'arcade') return
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const alreadySolved = isAlreadySolved()
+    const codeChecks = normalizeChecks(task?.check).filter(isCodeCheck)
+    const checkTask = task
+      ? {
+          ...task,
+          check: codeChecks.length > 0 ? codeChecks : null,
+          feedbackChecks: normalizeFeedbackChecks(task).filter(isCodeCheck),
+          incorrectChecks: null,
+        }
+      : null
+    const hasCheck = !!checkTask?.check
+
+    if (!alreadySolved) resetRunFeedback()
+    setRunStatus('success')
+
+    let passed = alreadySolved
+    let suggestion = ''
+    if (!alreadySolved) {
+      if (hasCheck) {
+        const context = buildCodeCheckContext(lesson.type, runCode, { status: 'success' })
+        const evaluation = evaluateCheckWithFeedback(checkTask, '', context)
+        passed = evaluation.passed
+        suggestion = evaluation.suggestion
+        updateTargetedStageOffer(task, evaluation, passed)
+        applyCheckFeedback(passed, suggestion)
+      }
+      updateSupportStageForAttempt(!hasCheck || passed)
+    }
+
+    if (canPublishTeacherLive()) {
+      publishTeacherLive({
+        code: runCode,
+        runStatus: 'success',
+        checkPassed: passed,
+        checkAttempted: !alreadySolved && hasCheck,
+        checkSuggestion: suggestion,
+      })
+    }
+    persistence.savePythonCode(actor.anonymousId, currentTaskId, {
+      code: runCode,
+      output: outputRef.current,
+      runStatus: 'success',
+      arcadeDesign: arcadeDesignRef.current,
+    })
+    const isWatched = session?.activeStudentView === actor.anonymousId
+    if (
+      !teacherPresentation &&
+      (phaseRef.current === 'lesson' ||
+        phaseRef.current === 'sandbox' ||
+        inPersonalSandboxRef.current ||
+        isWatched)
+    ) {
+      writeStudentRun(actor.anonymousId, {
+        code: runCode,
+        output: '',
+        status: 'success',
+        checkPassed: passed,
+      })
+    }
+    if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && hasCheck) {
+      logAttempt(actor.anonymousId, currentTaskId, { submission: runCode, passed, suggestion })
     }
   }
 
@@ -2193,10 +2269,7 @@ export function useStudentCodeState({
       suggestion = ''
     if (!alreadySolved) {
       const codeForCheck = isHtml ? files.map((f) => f.content).join('\n') : code
-      const checkContext =
-        lesson?.type === 'electronics'
-          ? { code: codeForCheck, circuit: codeForCheck }
-          : { code: codeForCheck }
+      const checkContext = buildCodeCheckContext(lesson?.type, codeForCheck)
       const completionPassed = task?.check
         ? evaluateCheckWithCode(task.check, codeForCheck, checkContext)
         : false
@@ -2381,6 +2454,7 @@ export function useStudentCodeState({
     handleQuizSelect,
     handleCodeChange,
     handleArcadeDesignChange,
+    handleArcadeRun,
     handleFileChange,
     handleFileTabChange,
     handleEditorSelection,

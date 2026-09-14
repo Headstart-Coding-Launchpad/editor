@@ -8,6 +8,9 @@ import { getStageRole } from '../../shared/taskUtils'
 import { initPyodide, runPython, stopPython } from '../python/pyodide'
 import { buildTurtleProgram } from './shim.js'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
+import { createTurtleState } from './engine.js'
+
+const DEFAULT_TURTLE_STATE = createTurtleState()
 
 // Self-contained preview, same approach as Arcade's BuilderWorkspace: the shared
 // builder run flow (useTaskEditorState.js) is hardcoded to the `python` module for
@@ -28,6 +31,7 @@ export default function BuilderWorkspace({
   const [status, setStatus] = useState(null)
   const [output, setOutput] = useState('')
   const [commands, setCommands] = useState([])
+  const [turtleState, setTurtleState] = useState(DEFAULT_TURTLE_STATE)
 
   const match = codeTab.match(/^stage_(\d+)$/)
   const stageIndex = match ? Number(match[1]) : null
@@ -55,8 +59,12 @@ export default function BuilderWorkspace({
     sizeCanvasToDisplay(canvas)
     const ctx = canvas.getContext('2d')
     // jsdom (unit tests) has no real canvas 2D context and returns null.
-    if (ctx) drawTurtleCommands(ctx, commands)
-  }, [commands])
+    if (ctx)
+      drawTurtleCommands(ctx, commands, {
+        background: turtleState.background ?? '#ffffff',
+        turtle: turtleState,
+      })
+  }, [commands, turtleState])
 
   async function handleRunPreview() {
     if (running) {
@@ -68,6 +76,7 @@ export default function BuilderWorkspace({
     setStatus(null)
     setOutput('')
     setCommands([])
+    setTurtleState(DEFAULT_TURTLE_STATE)
     await initPyodide()
     const result = await runPython(buildTurtleProgram(activePythonCode), {
       onOutput: (text) => setOutput((prev) => prev + text),
@@ -76,6 +85,7 @@ export default function BuilderWorkspace({
     if (result.status === 'stopped') return
     setStatus(result.status)
     setCommands(result.turtle?.commands ?? [])
+    setTurtleState({ ...DEFAULT_TURTLE_STATE, ...(result.turtle?.state ?? {}) })
   }
 
   return (

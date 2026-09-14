@@ -224,6 +224,7 @@ export default function TaskOptionsSection({
                     lessonMod?.supportsVariableChecks && task.interactionMode !== 'submit'
                   }
                   allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
+                  allowOutputChecks={lessonMod?.supportsOutputChecks !== false}
                   lessonType={lesson.type}
                   feedbackEditor
                   stages={task.codeStages ?? []}

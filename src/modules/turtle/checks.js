@@ -40,6 +40,8 @@ export const TURTLE_COMMAND_NAMES = [
   'circle',
   'stamp',
   'write',
+  'hideturtle',
+  'showturtle',
 ]
 
 function toNumber(value, fallback = 0) {

@@ -118,6 +118,57 @@ describe('Turtle StudentWorkspace', () => {
     )
   })
 
+  it('passes the turtle marker state, defaulting to the origin before any run', () => {
+    render(<StudentWorkspace task={{}} cs={makeCs()} isMobile={false} />)
+    expect(drawTurtleCommands).toHaveBeenLastCalledWith(
+      expect.anything(),
+      [],
+      expect.objectContaining({
+        turtle: expect.objectContaining({ x: 0, y: 0, heading: 0, visible: true }),
+      })
+    )
+  })
+
+  it("passes the run's final position, heading and visibility to the marker", () => {
+    const cs = makeCs({
+      turtleResult: { state: { x: 30, y: -10, heading: 90, visible: false }, commands: [] },
+    })
+    render(<StudentWorkspace task={{}} cs={cs} isMobile={false} />)
+    expect(drawTurtleCommands).toHaveBeenLastCalledWith(
+      expect.anything(),
+      [],
+      expect.objectContaining({
+        turtle: expect.objectContaining({ x: 30, y: -10, heading: 90, visible: false }),
+      })
+    )
+  })
+
+  it('collapses Output into a slim horizontal bar under the canvas and reopens it', () => {
+    render(<StudentWorkspace task={{}} cs={makeCs()} isMobile={false} />)
+    const rail = screen.getByRole('button', { name: 'Show Output' })
+    // The vertical rail is height: 100%, which swallowed half the pane under the canvas.
+    expect(rail.style.height).toBe('auto')
+    expect(rail.style.flexDirection).toBe('row')
+    fireEvent.click(rail)
+    expect(screen.getByRole('button', { name: 'Collapse Output' }).textContent).toBe('v')
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Output' }))
+    expect(screen.getByRole('button', { name: 'Show Output' })).toBeTruthy()
+  })
+
+  it('redraws onto the new canvas when switching between the mobile and split layouts', () => {
+    const commands = [{ type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }]
+    const cs = makeCs({ turtleResult: { state: {}, commands, calls: [] } })
+    const { container, rerender } = render(<StudentWorkspace task={{}} cs={cs} isMobile={false} />)
+    const desktopCanvas = container.querySelector('canvas')
+    drawTurtleCommands.mockClear()
+
+    rerender(<StudentWorkspace task={{}} cs={cs} isMobile />)
+
+    const mobileCanvas = container.querySelector('canvas')
+    expect(mobileCanvas).not.toBe(desktopCanvas)
+    expect(drawTurtleCommands).toHaveBeenCalledWith(expect.anything(), commands, expect.anything())
+  })
+
   it('disables editing and code changes while viewing previous work', () => {
     const cs = makeCs({ readSavedTaskCode: vi.fn(() => ({ code: 'turtle.left(90)' })) })
     render(<StudentWorkspace task={{}} cs={cs} isMobile={false} isViewingPrev viewingTaskId="t1" />)

@@ -481,6 +481,7 @@ function CheckListEditor({
   interactionMode = 'run',
   allowVariableChecks = false,
   allowDomChecks = false,
+  allowOutputChecks = true,
   lessonType = null,
   output = '',
   code = '',
@@ -488,6 +489,7 @@ function CheckListEditor({
   stages = [],
 }) {
   const submitMode = interactionMode === 'submit'
+  const outputChecksAllowed = allowOutputChecks && !submitMode
 
   function updateCheck(index, updated) {
     onChange(checks.map((c, i) => (i === index ? updated : c)))
@@ -496,7 +498,7 @@ function CheckListEditor({
     onChange(checks.filter((_, i) => i !== index))
   }
   function addCheck() {
-    const check = checkFromSubjectOp(submitMode ? 'code' : 'output', 'contains')
+    const check = checkFromSubjectOp(outputChecksAllowed ? 'output' : 'code', 'contains')
     onChange([
       ...checks,
       feedbackEditor
@@ -543,7 +545,9 @@ function CheckListEditor({
                 value={subject}
                 onChange={(e) => handleSubjectChange(index, e.target.value)}
               >
-                {!submitMode && <option value="output">Output</option>}
+                {(outputChecksAllowed || subject === 'output') && (
+                  <option value="output">Output</option>
+                )}
                 <option value="code">Code</option>
                 {allowVariableChecks && <option value="variable">Variable</option>}
                 {allowDomChecks && <option value="element">Element</option>}

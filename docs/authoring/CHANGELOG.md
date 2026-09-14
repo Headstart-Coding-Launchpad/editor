@@ -20,6 +20,29 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-13
 
+### Code checks on Turtle, Arcade Kit and Electronics
+
+- **Python Turtle** tasks can now mix generic `code` checks (e.g. "uses a
+  `for` loop") with turtle checks in `check` and `feedbackChecks`. The Builder
+  has a new **Code** subject in the Turtle check editor. `lessons validate`
+  accepts `code` checks on Turtle tasks and rejects any with no `value`. See
+  [turtle.md](turtle.md#checks).
+- **Arcade Kit** now evaluates `code` checks every time the student presses
+  **Run game**, so they gate progression and show hints like other code
+  tasks. Output and other non-code checks on Arcade tasks are never
+  evaluated. The check editor no longer offers them, and the Builder and
+  `lessons validate` warn about any already saved. See
+  [arcade.md](arcade.md#runtime-notes-and-limits).
+- **Electronics** `code` checks now read the Micro Controller's MicroPython
+  source after **Run** as well as after **Check**, and a `code` check with no
+  `value` is now a validation error.
+
+### Turtle: 🐢 marker, hideturtle and showturtle
+
+The Turtle canvas now draws a 🐢 at the turtle's position, facing its heading.
+New commands: `hideturtle()`/`ht()`, `showturtle()`/`st()` and `isvisible()`.
+`turtle_command_used` accepts `command: hideturtle` and `command: showturtle`.
+
 ### Check comparisons now behave the same in every module
 
 Text operators (`contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`,

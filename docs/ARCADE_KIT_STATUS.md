@@ -117,9 +117,10 @@ installed or used outside Headstart unchanged.
 
 ### Classroom and authoring gaps
 
-- **No runtime-state completion flow for games.** Existing code checks and
-  stages work, but Arcade Run does not yet report score, collision, or
-  rendered-pixel results to completion checks.
+- **No runtime-state completion flow for games.** Code checks are evaluated on
+  every Run game (September 2026) and stages work, but Arcade Run does not yet
+  report score, collision, runtime-error, or rendered-pixel results to
+  completion checks.
 - **No insert button for uploaded/static assets.** Their names must currently
   be typed or copied into Sprite("…"). Sprites and tilemaps made in the
   Builder's own pixel-editor design tools are unaffected by this — those
@@ -166,9 +167,9 @@ installed or used outside Headstart unchanged.
 
 ## Recommended next milestones
 
-1. Make game completion meaningful: add explicit Arcade checks for code,
-   runtime errors, score/state events, and collision/goal events; show results
-   through the existing student and teacher feedback paths.
+1. Make game completion meaningful: code checks now run on Run game through
+   the existing student and teacher feedback paths; still to add are checks for
+   runtime errors, score/state events, and collision/goal events.
 2. Build an Arcade asset picker that previews images and inserts the exact
    Sprite("relative/path.png") value into the editor.
 3. Add a small official pixel asset pack plus one complete lesson (for example,
@@ -183,5 +184,6 @@ installed or used outside Headstart unchanged.
 
 For now, use small PNG/WebP images, upload them at the lesson level, copy their
 relative name into Sprite, and test in the Builder preview before publishing.
-Do not make task progression depend on an Arcade check until milestone 1 is
-complete.
+Arcade tasks can gate progression on `code` checks, which are evaluated on
+every Run game. Don't rely on output or game-state checks; they are not
+evaluated.
