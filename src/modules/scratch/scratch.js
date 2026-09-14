@@ -58,6 +58,31 @@ function costumeDropdownLabel(c) {
   return c.name
 }
 
+// Dropdown option for a sprite target (go to, glide, touching, …): a thumbnail
+// followed by the name in the menu. Blockly renders HTMLElement options as text on
+// the block using `title` first, so the block itself keeps showing the plain name.
+const SPRITE_THUMB_SIZE = 20
+export function spriteDropdownLabel(sp) {
+  if (!sp.thumbUrl || typeof document === 'undefined') return sp.name
+  const label = document.createElement('span')
+  label.title = sp.name
+  label.style.display = 'inline-flex'
+  label.style.alignItems = 'center'
+  label.style.gap = '6px'
+  const img = document.createElement('img')
+  img.src = sp.thumbUrl
+  img.alt = ''
+  img.width = SPRITE_THUMB_SIZE
+  img.height = SPRITE_THUMB_SIZE
+  img.style.objectFit = 'contain'
+  label.append(img, document.createTextNode(sp.name))
+  return label
+}
+
+function spriteDropdownOptions() {
+  return _currentSprites.map((sp) => [spriteDropdownLabel(sp), sp.id])
+}
+
 export function setVariableContext(variables) {
   _currentVariables = variables ?? []
 }
@@ -246,7 +271,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
             options: () => [
               ['random position', '_random_'],
               ['mouse pointer', '_mouse_'],
-              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+              ...spriteDropdownOptions(),
             ],
           },
         ]),
@@ -275,7 +300,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
             options: () => [
               ['random position', '_random_'],
               ['mouse pointer', '_mouse_'],
-              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+              ...spriteDropdownOptions(),
             ],
           },
         ]),
@@ -514,10 +539,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_dropdown',
             name: 'CLONE_OPTION',
-            options: () => [
-              ['myself', '_myself_'],
-              ..._currentSprites.map((sp) => [sp.name, sp.id]),
-            ],
+            options: () => [['myself', '_myself_'], ...spriteDropdownOptions()],
           },
         ]),
         previousStatement: null,
@@ -573,7 +595,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
             options: () => [
               ['mouse-pointer', '_mouse_'],
               ['edge', '_edge_'],
-              ..._currentSprites.map((sp) => [sp.name, sp.id]),
+              ...spriteDropdownOptions(),
             ],
           },
         ]),
@@ -849,10 +871,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_dropdown',
             name: 'DISTANCETOMENU',
-            options: () => [
-              ['mouse-pointer', '_mouse_'],
-              ..._currentSprites.map((sp) => [sp.name, sp.id]),
-            ],
+            options: () => [['mouse-pointer', '_mouse_'], ...spriteDropdownOptions()],
           },
         ]),
         output: 'Number',

@@ -586,6 +586,35 @@ function drawSpriteThumb(ctx, sprite, state, imageCache, assetsPath, size) {
   ctx.restore()
 }
 
+// Picture for a sprite in block dropdowns (go to, glide, touching, …). Costume images
+// are used directly; emoji and vector-preset sprites are drawn once to a small canvas
+// and cached as a data URL, keyed by what the drawing depends on.
+const DROPDOWN_THUMB_RENDER_SIZE = 40
+const dropdownThumbCache = new Map()
+function spriteDropdownThumbUrl(sprite, assetsPath) {
+  const costumeEntry =
+    sprite.costumes?.find((c) => c.name === sprite.costume) ?? sprite.costumes?.[0] ?? null
+  if (costumeEntry?.image) return resolveAssetFileUrl(assetsPath, costumeEntry.image)
+  const key = `${costumeEntry?.emoji || sprite.emoji || ''}|${sprite.type ?? 'cat'}`
+  if (dropdownThumbCache.has(key)) return dropdownThumbCache.get(key)
+  let url
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = DROPDOWN_THUMB_RENDER_SIZE
+    canvas.height = DROPDOWN_THUMB_RENDER_SIZE
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      const state = { costume: costumeEntry?.name }
+      drawSpriteThumb(ctx, sprite, state, null, assetsPath, DROPDOWN_THUMB_RENDER_SIZE)
+      url = canvas.toDataURL()
+    }
+  } catch {
+    url = undefined
+  }
+  dropdownThumbCache.set(key, url)
+  return url
+}
+
 function SpriteThumb({ sprite, state, imageCache, assetsPath, size = 52, imageVersion }) {
   const canvasRef = useRef(null)
   useEffect(() => {
@@ -995,10 +1024,12 @@ export default function ScratchWorkspace({
 
   // ── Sync Blockly context globals (lazy — only read when dropdowns open) ──────
   useEffect(() => {
-    setSpriteContext(sprites)
+    setSpriteContext(
+      sprites.map((sp) => ({ ...sp, thumbUrl: spriteDropdownThumbUrl(sp, assetsPath) }))
+    )
     setBackdropContext(backdrops)
     setVariableContext(variables)
-  }, [sprites, backdrops, variables])
+  }, [sprites, backdrops, variables, assetsPath])
 
   // ── Report which of Blocks/Stage are actually on screen ──────────────────────
   // Mirrors the rendering conditions above (compact tab switcher, hideStage, and the
