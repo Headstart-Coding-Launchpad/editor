@@ -14,7 +14,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 | Arcade Kit | Build a small pixel-style Python game with a sandboxed canvas, keyboard input, named/uploaded or pixel-editor assets, tilemaps, and Run/Stop controls |
 | Turtle | Write Python turtle-graphics commands that draw onto a responsive canvas; checks run on the finished drawing |
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
-| Scratch | Drag-and-drop block programming with a live stage canvas |
+| Scratch | Drag-and-drop block programming with a live stage canvas; costume and sprite dropdowns (switch costume, go to, glide, touching, distance to, create clone of) show a thumbnail preview of each option, and sprite dropdowns keep the selected sprite's thumbnail beside its name on the block |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |
 | Desktop | A windowed desktop shell (icons, taskbar, draggable/resizable windows) hosting File Manager (with a Recycle Bin, search, and sort), Text Editor, Image Viewer, Paint, and a simulated Browser with a search engine |
 | Electronics | Build and test breadboard-style circuits with guided checks |
