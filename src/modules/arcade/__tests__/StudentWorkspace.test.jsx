@@ -118,6 +118,58 @@ describe('Arcade StudentWorkspace onVisiblePanesChange reporting (teacher live-s
   })
 })
 
+describe('Arcade StudentWorkspace copy code panel', () => {
+  const copyTask = { arcadeTools: 'both', copyCode: 'player = Sprite("cat")' }
+
+  function renderWorkspace(props = {}) {
+    return render(
+      <StudentWorkspace
+        task={copyTask}
+        lessonId="lesson-1"
+        lesson={lesson}
+        cs={cs}
+        isMobile={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+        {...props}
+      />
+    )
+  }
+
+  it('shows the reference code on the Code tab only', () => {
+    renderWorkspace()
+
+    expect(screen.getByLabelText('Python reference code')).toHaveTextContent(
+      'player = Sprite("cat")'
+    )
+
+    fireEvent.click(screen.getByText('Sprites'))
+    expect(screen.queryByLabelText('Python reference code')).toBeNull()
+
+    fireEvent.click(screen.getByText('Code'))
+    expect(screen.getByLabelText('Python reference code')).toBeInTheDocument()
+  })
+
+  it('still shows the reference code in read-only states', () => {
+    renderWorkspace({ isForcedTeacherLive: true, displayCode: '' })
+    expect(screen.getByLabelText('Python reference code')).toBeInTheDocument()
+  })
+
+  it('hides the reference code in the sandbox, personal sandbox, or when blank', () => {
+    const { unmount } = renderWorkspace({ isSandbox: true })
+    expect(screen.queryByLabelText('Python reference code')).toBeNull()
+    unmount()
+
+    const personal = renderWorkspace({ cs: { ...cs, inPersonalSandbox: true } })
+    expect(screen.queryByLabelText('Python reference code')).toBeNull()
+    personal.unmount()
+
+    renderWorkspace({ task: { copyCode: '   ' } })
+    expect(screen.queryByLabelText('Python reference code')).toBeNull()
+  })
+})
+
 describe('Arcade StudentWorkspace code checks', () => {
   it('evaluates the task checks against the code each time Run game is pressed', () => {
     const handleArcadeRun = vi.fn()

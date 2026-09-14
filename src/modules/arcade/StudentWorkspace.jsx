@@ -7,6 +7,7 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { resolveAssetsPath, resolveAssetFileUrl } from '../../shared/assetPaths'
 import ArcadePreview from './ArcadePreview'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
+import CopyCodePanel from '../../app/components/CopyCodePanel'
 import {
   allowsArcadeTool,
   cloneArcadeDesign,
@@ -23,6 +24,7 @@ export default function StudentWorkspace({
   lesson,
   cs,
   isMobile,
+  isSandbox,
   viewingTaskId,
   isViewingPrev,
   isForcedTeacherLive,
@@ -101,6 +103,11 @@ export default function StudentWorkspace({
     () => [...staticAssets, ...storageAssets, ...typeStorageAssets],
     [staticAssets, storageAssets, typeStorageAssets]
   )
+  const showCopyCode =
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    typeof task?.copyCode === 'string' &&
+    !!task.copyCode.trim()
 
   function run() {
     setRunCode(code)
@@ -207,6 +214,11 @@ export default function StudentWorkspace({
               <button className="btn-ghost-outline" style={s.button} onClick={handleResetCode}>
                 Reset
               </button>
+            </div>
+          )}
+          {showCopyCode && (
+            <div style={s.copyCode}>
+              <CopyCodePanel code={task.copyCode} language="python" />
             </div>
           )}
           <PythonEditor
@@ -366,6 +378,7 @@ const s = {
     background: '#f8fafc',
     borderBottom: '1px solid #e5e7eb',
   },
+  copyCode: { display: 'flex', flexDirection: 'column', flexShrink: 0, padding: '8px 8px 0' },
   runButton: { padding: '7px 14px', fontSize: 13 },
   button: { padding: '6px 10px', fontSize: 12 },
   assets: {
