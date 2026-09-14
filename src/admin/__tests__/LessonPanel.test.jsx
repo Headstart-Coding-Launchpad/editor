@@ -642,6 +642,32 @@ describe('LessonPanel', () => {
     ).toBeInTheDocument()
   })
 
+  it('counts only stock lessons in the level header, not forks or solo challenges', () => {
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        PYTHON_LESSON,
+        HTML_LESSON,
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-maple',
+          title: 'Intro to Python - Maple',
+          fork: { sourceLessonId: 'py-intro', classId: 'maple', className: 'Maple' },
+        },
+        {
+          ...PYTHON_LESSON,
+          id: 'py-intro-solo',
+          title: 'Intro to Python - Solo Challenge',
+          companionOf: 'py-intro',
+        },
+      ],
+      classes: [{ id: 'maple', name: 'Maple', archived: false }],
+    })
+
+    expect(screen.getByText('2 lessons')).toBeInTheDocument()
+    expect(screen.queryByText('4 lessons')).not.toBeInTheDocument()
+  })
+
   it('blocks uploaded lessons that fail builder validation', async () => {
     const user = userEvent.setup()
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
