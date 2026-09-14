@@ -133,6 +133,12 @@ function isFamilyChild(lesson) {
   return isLessonFork(lesson) || isSoloCompanion(lesson)
 }
 
+// Level counts show stock lessons only — class forks and solo companions hang off them.
+function formatLessonCount(lessons) {
+  const count = lessons.filter((lesson) => !isFamilyChild(lesson)).length
+  return `${count} ${count === 1 ? 'lesson' : 'lessons'}`
+}
+
 function getFamilySourceId(lesson) {
   return lesson?.fork?.sourceLessonId ?? lesson?.companionOf ?? null
 }
@@ -679,7 +685,7 @@ function LevelLessonGroup({
           <span>{bucket.title}</span>
         </span>
         <span style={s.levelLessonMeta}>
-          {bucket.lessons.length} {bucket.lessons.length === 1 ? 'lesson' : 'lessons'}
+          {formatLessonCount(bucket.lessons)}
           <span style={s.chevron}>{open ? '▾' : '▸'}</span>
         </span>
       </button>
@@ -1076,7 +1082,7 @@ function LevelManager({ levels, lessons, loading }) {
                   <span style={s.levelPreviewText}>
                     <strong style={s.levelPreviewTitle}>{bucket.title}</strong>
                     <span style={s.levelPreviewMeta}>
-                      {bucket.lessons.length} {bucket.lessons.length === 1 ? 'lesson' : 'lessons'}
+                      {formatLessonCount(bucket.lessons)}
                     </span>
                   </span>
                   {bucket.level && (
