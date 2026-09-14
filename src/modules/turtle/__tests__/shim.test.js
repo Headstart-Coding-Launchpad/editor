@@ -57,6 +57,15 @@ describe('TURTLE_SHIM', () => {
     expect(TURTLE_SHIM).toContain('_module.colormode = _colormode')
   })
 
+  it('supports hideturtle/showturtle with their ht/st aliases and isvisible', () => {
+    expect(TURTLE_SHIM).toContain('def hideturtle(self):')
+    expect(TURTLE_SHIM).toContain('ht = hideturtle')
+    expect(TURTLE_SHIM).toContain('def showturtle(self):')
+    expect(TURTLE_SHIM).toContain('st = showturtle')
+    expect(TURTLE_SHIM).toContain('def isvisible(self):')
+    expect(TURTLE_SHIM).toContain('_js.__hsTurtleSetVisible(bool(visible))')
+  })
+
   it('routes colormode entirely through the shim, never crossing into JS as a concept', () => {
     expect(TURTLE_SHIM).toContain('_format_color')
     expect(TURTLE_SHIM).toContain('_colormode_state')

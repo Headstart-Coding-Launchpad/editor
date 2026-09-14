@@ -1,6 +1,22 @@
 import React from 'react'
 import { TURTLE_COMMAND_NAMES } from './checks.js'
-import { CheckFeedbackControls } from '../../builder/components/task-editor/CheckEditors'
+import { isCodeCheck } from '../checks'
+import {
+  CheckFeedbackControls,
+  CheckValueEditor,
+} from '../../builder/components/task-editor/CheckEditors'
+import {
+  subjectOpFromCheck,
+  getOperatorOptions,
+  checkFromSubjectOp,
+} from '../../builder/components/task-editor/check-editors/checkEditorUtils'
+
+// A turtle task can check what was drawn (turtle checks, evaluated after Run) and/or
+// what the student wrote (generic code checks, e.g. "uses a for loop").
+const SUBJECT_OPTIONS = [
+  ['turtle', 'Turtle'],
+  ['code', 'Code'],
+]
 
 const CHECK_OPTIONS = [
   ['turtle_position', 'Final position'],
@@ -31,6 +47,8 @@ const COMMAND_LABELS = {
   circle: 'Draw a circle',
   stamp: 'Stamp',
   write: 'Write text',
+  hideturtle: 'Hide turtle (hideturtle/ht)',
+  showturtle: 'Show turtle (showturtle/st)',
 }
 
 const NUMBER_OPERATORS = [
@@ -270,23 +288,77 @@ export default function CheckEditor({
   return (
     <div style={s.wrap}>
       {checks.map((check, index) => {
-        const knownType = CHECK_OPTIONS.some(([value]) => value === check.type)
+        const codeCheck = isCodeCheck(check)
+        const knownType = codeCheck || CHECK_OPTIONS.some(([value]) => value === check.type)
         const activeCheck = knownType ? check : skeleton('turtle_segment_count')
+        const codeOperator = codeCheck ? subjectOpFromCheck(activeCheck).operator : null
         return (
           <div key={index} style={s.card}>
             {checks.length > 1 && <span style={s.index}>#{index + 1}</span>}
             <select
               className="te-select"
-              value={activeCheck.type}
-              onChange={(e) => updateCheck(index, skeleton(e.target.value, activeCheck))}
+              aria-label="Check subject"
+              value={codeCheck ? 'code' : 'turtle'}
+              onChange={(e) =>
+                updateCheck(
+                  index,
+                  e.target.value === 'code'
+                    ? checkFromSubjectOp('code', 'contains', activeCheck)
+                    : skeleton('turtle_segment_count', activeCheck)
+                )
+              }
             >
-              {CHECK_OPTIONS.map(([value, label]) => (
+              {SUBJECT_OPTIONS.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
             </select>
-            <CheckFields check={activeCheck} onChange={(updated) => updateCheck(index, updated)} />
+            {codeCheck ? (
+              <>
+                <select
+                  className="te-select"
+                  aria-label="Code comparison"
+                  value={codeOperator}
+                  onChange={(e) =>
+                    updateCheck(index, checkFromSubjectOp('code', e.target.value, activeCheck))
+                  }
+                >
+                  {getOperatorOptions('code', codeOperator).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div style={s.codeValue}>
+                  <CheckValueEditor
+                    check={activeCheck}
+                    subject="code"
+                    operator={codeOperator}
+                    onChange={(updated) => updateCheck(index, updated)}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <select
+                  className="te-select"
+                  aria-label="Turtle check"
+                  value={activeCheck.type}
+                  onChange={(e) => updateCheck(index, skeleton(e.target.value, activeCheck))}
+                >
+                  {CHECK_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <CheckFields
+                  check={activeCheck}
+                  onChange={(updated) => updateCheck(index, updated)}
+                />
+              </>
+            )}
             {feedbackEditor && (
               <CheckFeedbackControls
                 check={activeCheck}
@@ -327,6 +399,22 @@ export default function CheckEditor({
       >
         + Add turtle check
       </button>
+      <button
+        type="button"
+        className="btn-ghost te-add-check-btn"
+        onClick={() =>
+          setChecks([
+            ...checks,
+            checkFromSubjectOp(
+              'code',
+              'contains',
+              feedbackEditor ? { mode: 'blocking', show: 'after_attempt' } : {}
+            ),
+          ])
+        }
+      >
+        + Add code check
+      </button>
     </div>
   )
 }
@@ -354,4 +442,5 @@ const s = {
   label: { fontFamily: 'var(--font-body)', fontSize: 12, color: '#475569', fontWeight: 700 },
   feedbackControls: { gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap' },
   hint: { gridColumn: '1 / -1' },
+  codeValue: { gridColumn: '1 / -1', minWidth: 0 },
 }

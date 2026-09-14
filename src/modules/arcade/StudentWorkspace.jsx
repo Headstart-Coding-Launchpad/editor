@@ -106,6 +106,9 @@ export default function StudentWorkspace({
     setRunCode(code)
     setRunning(true)
     setRunId((id) => id + 1)
+    // The game itself runs in ArcadePreview's iframe; the task's code checks are
+    // evaluated against the code that was just run.
+    if (!readOnly) cs.handleArcadeRun?.(code)
   }
   function stop() {
     setRunning(false)

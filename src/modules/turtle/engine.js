@@ -30,6 +30,8 @@ export function createTurtleState() {
     color: DEFAULT_PEN_COLOR,
     fillColor: DEFAULT_FILL_COLOR,
     background: DEFAULT_BACKGROUND,
+    // Whether the 🐢 marker is drawn at the turtle's position (hideturtle/showturtle).
+    visible: true,
   }
 }
 
@@ -76,4 +78,8 @@ export function applyTurtleSetFillColor(state, color) {
 
 export function applyTurtleSetBackground(state, color) {
   return { ...state, background: String(color) }
+}
+
+export function applyTurtleSetVisible(state, visible) {
+  return { ...state, visible: !!visible }
 }

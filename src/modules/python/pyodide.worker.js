@@ -44,6 +44,7 @@ import {
   applyTurtleHome,
   applyTurtleSetFillColor,
   applyTurtleSetBackground,
+  applyTurtleSetVisible,
 } from '../turtle/engine.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
@@ -286,6 +287,11 @@ globalThis.__hsTurtlePenDown = () => {
 globalThis.__hsTurtleSetColor = (color) => {
   _recordTurtleCall('pencolor', [color])
   _turtleState = { ..._turtleState, color: String(color) }
+}
+
+globalThis.__hsTurtleSetVisible = (visible) => {
+  _recordTurtleCall(visible ? 'showturtle' : 'hideturtle', [])
+  _turtleState = applyTurtleSetVisible(_turtleState, visible)
 }
 
 globalThis.__hsTurtleGetState = () => JSON.stringify(_turtleState)

@@ -1,7 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import SplitPane from '../../shared/SplitPane'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
+import { createTurtleState } from './engine.js'
+
+const DEFAULT_TURTLE_STATE = createTurtleState()
 
 // `student` is only present when this renders inside StudentModal (a teacher
 // inspecting one student) — `student.currentTurtleResult` is synced there by
@@ -13,6 +16,10 @@ export default function TeacherLiveView({ displayState, student, readOnly, onCha
   const turtleResult = student?.currentTurtleResult ?? null
   const commands = turtleResult?.commands ?? []
   const background = turtleResult?.state?.background ?? '#ffffff'
+  const turtleState = useMemo(
+    () => ({ ...DEFAULT_TURTLE_STATE, ...(turtleResult?.state ?? {}) }),
+    [turtleResult?.state]
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -21,13 +28,13 @@ export default function TeacherLiveView({ displayState, student, readOnly, onCha
       sizeCanvasToDisplay(canvas)
       const ctx = canvas.getContext('2d')
       // jsdom (unit tests) has no real canvas 2D context and returns null.
-      if (ctx) drawTurtleCommands(ctx, commands, { background })
+      if (ctx) drawTurtleCommands(ctx, commands, { background, turtle: turtleState })
     }
     redraw()
     const observer = new ResizeObserver(redraw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [commands, background])
+  }, [commands, background, turtleState])
 
   const editor = (
     <div style={s.editor}>

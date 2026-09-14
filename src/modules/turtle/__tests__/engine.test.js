@@ -8,10 +8,11 @@ import {
   applyTurtleHome,
   applyTurtleSetFillColor,
   applyTurtleSetBackground,
+  applyTurtleSetVisible,
 } from '../engine.js'
 
 describe('createTurtleState', () => {
-  it('starts at the origin facing east with the pen down', () => {
+  it('starts visible at the origin facing east with the pen down', () => {
     expect(createTurtleState()).toEqual({
       x: 0,
       y: 0,
@@ -20,7 +21,16 @@ describe('createTurtleState', () => {
       color: 'black',
       fillColor: 'black',
       background: '#ffffff',
+      visible: true,
     })
+  })
+})
+
+describe('applyTurtleSetVisible', () => {
+  it('hides and shows the turtle without touching the rest of the state', () => {
+    const hidden = applyTurtleSetVisible({ ...createTurtleState(), x: 5 }, false)
+    expect(hidden).toMatchObject({ visible: false, x: 5 })
+    expect(applyTurtleSetVisible(hidden, true).visible).toBe(true)
   })
 })
 

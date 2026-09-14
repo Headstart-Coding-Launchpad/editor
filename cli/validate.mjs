@@ -26,6 +26,7 @@ import {
   validateFilesystemChecks,
   validateElectronicsChecks,
   validateTurtleChecks,
+  warnArcadeUnevaluatedChecks,
 } from '../src/shared/checkAuthoringValidation.js'
 import { isValidRecordingUrl } from '../src/shared/youtube.js'
 
@@ -293,6 +294,16 @@ export function validateLessonForMcp(lesson) {
       if (task.check?.type === 'block_used' && !task.check.opcode) {
         errors.push(`Task ${n} block-used check is missing a block opcode`)
       }
+    }
+    if (task.taskType !== 'information' && task.taskType !== 'quiz' && taskType === 'arcade') {
+      warnArcadeUnevaluatedChecks(
+        [
+          ...normalizeChecks(task.check),
+          ...normalizeChecks(task.feedbackChecks ?? task.incorrectChecks),
+        ],
+        n,
+        warnings
+      )
     }
 
     if (!task.taskType) {

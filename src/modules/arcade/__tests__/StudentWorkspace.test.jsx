@@ -117,3 +117,24 @@ describe('Arcade StudentWorkspace onVisiblePanesChange reporting (teacher live-s
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code'])
   })
 })
+
+describe('Arcade StudentWorkspace code checks', () => {
+  it('evaluates the task checks against the code each time Run game is pressed', () => {
+    const handleArcadeRun = vi.fn()
+    render(
+      <StudentWorkspace
+        task={{}}
+        lessonId="lesson-1"
+        lesson={lesson}
+        cs={{ ...cs, code: 'game.run()', handleArcadeRun }}
+        isMobile={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    fireEvent.click(screen.getByText('Run game'))
+    expect(handleArcadeRun).toHaveBeenCalledWith('game.run()')
+  })
+})

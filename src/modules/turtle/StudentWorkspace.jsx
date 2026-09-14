@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
 import SplitPane from '../../shared/SplitPane'
@@ -8,6 +8,9 @@ import {
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
+import { createTurtleState } from './engine.js'
+
+const DEFAULT_TURTLE_STATE = createTurtleState()
 
 export default function StudentWorkspace({
   task,
@@ -22,7 +25,10 @@ export default function StudentWorkspace({
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
-  const canvasRef = useRef(null)
+  // The canvas element is tracked in state, not a ref: switching between the mobile and
+  // split layouts re-parents it, so React mounts a new <canvas>. The draw effect must re-run
+  // for that new element, or it stays blank and unsized until the next Run.
+  const [canvas, setCanvas] = useState(null)
   const [outputCollapsed, setOutputCollapsed] = useState(true)
 
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
@@ -46,25 +52,29 @@ export default function StudentWorkspace({
       : null
   const commands = turtleResult?.commands ?? []
   const background = turtleResult?.state?.background ?? '#ffffff'
+  // Before any run the 🐢 marker sits at the origin facing east, like real turtle.
+  const turtleState = useMemo(
+    () => ({ ...DEFAULT_TURTLE_STATE, ...(turtleResult?.state ?? {}) }),
+    [turtleResult?.state]
+  )
 
   useEffect(() => {
     onVisiblePanesChange?.(['code', 'canvas'])
   }, [onVisiblePanesChange])
 
   useEffect(() => {
-    const canvas = canvasRef.current
     if (!canvas) return
     function redraw() {
       sizeCanvasToDisplay(canvas)
       const ctx = canvas.getContext('2d')
       // jsdom (unit tests) has no real canvas 2D context and returns null.
-      if (ctx) drawTurtleCommands(ctx, commands, { background })
+      if (ctx) drawTurtleCommands(ctx, commands, { background, turtle: turtleState })
     }
     redraw()
     const observer = new ResizeObserver(redraw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [commands, background])
+  }, [canvas, commands, background, turtleState])
 
   const showCopyCode =
     !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
@@ -123,7 +133,7 @@ export default function StudentWorkspace({
   const canvasAndOutput = (
     <div style={s.rightPane}>
       <div style={s.canvasWrap}>
-        <canvas ref={canvasRef} style={s.canvas} />
+        <canvas ref={setCanvas} style={s.canvas} />
       </div>
       {!outputCollapsed && (
         <div style={s.outputPane}>
@@ -138,7 +148,7 @@ export default function StudentWorkspace({
             leadingActions={
               <CollapseTabButton
                 onClick={() => setOutputCollapsed(true)}
-                direction="right"
+                direction="down"
                 title="Collapse Output"
                 ariaLabel="Collapse Output"
               />
@@ -147,12 +157,16 @@ export default function StudentWorkspace({
         </div>
       )}
       {outputCollapsed && (
+        // Output sits *below* the canvas here (not beside it like Python), so it must use
+        // the horizontal rail — the vertical one is height: 100% and swallows the pane.
         <CollapsedPanelRail
           onClick={() => setOutputCollapsed(false)}
           label="Output"
-          direction="left"
+          direction="up"
+          orientation="horizontal"
           title="Show Output"
           ariaLabel="Show Output"
+          style={s.outputRail}
         />
       )}
     </div>
@@ -197,15 +211,22 @@ const s = {
   },
   canvasWrap: {
     display: 'flex',
-    flex: '1 1 auto',
-    minHeight: 200,
+    flex: '1 1 0',
+    minHeight: 160,
     background: '#fff',
     border: '1px solid #e5e7eb',
     borderRadius: 8,
     overflow: 'hidden',
   },
   canvas: { width: '100%', height: '100%', display: 'block' },
-  outputPane: { display: 'flex', flexDirection: 'column', flex: '0 0 auto', maxHeight: '35%' },
+  outputPane: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '0 0 35%',
+    minHeight: 120,
+    overflow: 'hidden',
+  },
+  outputRail: { flexShrink: 0, padding: '6px 12px' },
   editorHeader: { flexShrink: 0 },
   editorTitle: {
     fontFamily: 'var(--font-body)',

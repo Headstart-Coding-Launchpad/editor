@@ -62,6 +62,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `studentStorage.js` | Student task/file localStorage key construction and saved-work persistence helpers; personal sandbox load/save helpers |
+| `codeCheckContext.js` | `buildCodeCheckContext()` — the check-evaluation context for code tasks (Run, idle feedback, Check/Submit, Arcade Run game); adds `circuit` for Electronics so code checks read the MicroPython source |
 | `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, per lesson type |
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers; `displayOutputCollapsed` mirrors the broadcast source's output/preview panel collapse state to a forced-live viewer (`null` when not forced-live) |
 | `studentQuizContent.js` | Pure quiz suggestion helpers: maps wrong answers to option/task/check hint feedback |
@@ -351,17 +352,17 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `arcade/design.js` | Portable pixel-sprite and tilemap model, stage selection, generated image data URLs, and Python tilemap snippet creation |
 | `arcade/ArcadeDesignStudio.jsx` | Shared Builder/student sprite editor, tilemap painter, per-tile-property editor, object-spawn list, and generated-asset list |
 | `arcade/runtime.js` | Builds the sandboxed Pyodide game document and exposes `headstart_arcade` (`game`, `Sprite`, `TileMap`, `keys`, `pointer`/`mouse`) to student code |
-| `arcade/CheckEditor.jsx` | Arcade Kit code-check editor wrapper |
+| `arcade/CheckEditor.jsx` | Arcade Kit code-check editor wrapper (Output subject hidden; code checks run on Run game via `handleArcadeRun` in `useStudentCodeState.js`) |
 | `arcade/TeacherLiveView.jsx` | Teacher Arcade source view with read-only inspection of a watched student's art and map snapshot |
 | `turtle/index.js` | Turtle module definition: single-file Python turtle-graphics task schema and classroom capabilities |
 | `turtle/engine.js` | Pure turtle-graphics state machine (forward/turn/goto/home), no DOM/Pyodide — unit tested directly |
 | `turtle/shim.js` | Python-side fake `turtle` module (source-line array + `buildTurtleProgram`), same technique as `electronics`'s `MICROPYTHON_SHIM`, backed by `__hsTurtle*` bridge functions on the shared Pyodide worker |
-| `turtle/draw.js` | Shared canvas renderer: maps the fixed logical turtle world onto a responsive canvas (`drawTurtleCommands`, `sizeCanvasToDisplay`) |
+| `turtle/draw.js` | Shared canvas renderer: maps the fixed logical turtle world onto a responsive canvas (`drawTurtleCommands`, `sizeCanvasToDisplay`) and draws the 🐢 position/heading marker (`turtleMarkerTransform`) |
 | `turtle/checks.js` | `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
 | `turtle/sync.js` | `compactTurtleResultForSync` — rounds coordinates and caps the command log before a run result is synced live to a teacher, shared by both `useTeacherLivePublish.js` and `useSession.js`'s `writeStudentTurtleResult` |
 | `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel |
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
-| `turtle/CheckEditor.jsx` | Turtle check list editor |
+| `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
 | `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult` |
 
 ### Module interface

@@ -1,5 +1,6 @@
 import React from 'react'
 import { COMPONENT_LABELS, COMPONENT_PINS, COMPONENT_TYPES } from './circuit'
+import { CODE_CHECK_TYPES } from '../checks'
 import {
   subjectOpFromCheck,
   getAspectOptions,
@@ -15,19 +16,9 @@ import {
 // Matches controlAffectsComponentPower's own control-type filter in circuit.js.
 const CONTROL_TYPES = ['slide_switch', 'push_button', 'transistor']
 
-// Generic code checks — shared with Python/HTML/Arcade via `evaluateCodeCheck`
-// (see modules/checks.js and modules/electronics/circuit.js). Evaluated against
-// the circuit's Micro Controller MicroPython source, not the raw circuit.
-const CODE_CHECK_TYPES = [
-  'code',
-  'code_contains',
-  'code_does_not_contain',
-  'code_not_contains',
-  'code_equals',
-  'code_not_equals',
-  'code_matches_regex',
-  'code_not_matches_regex',
-]
+// Generic code checks (CODE_CHECK_TYPES) are shared with Python/HTML/Arcade/Turtle via
+// `evaluateCodeCheck` (see modules/checks.js and modules/electronics/circuit.js). Here they
+// are evaluated against the circuit's Micro Controller MicroPython source, not the raw circuit.
 
 const CHECK_OPTIONS = [
   ['circuit_no_short', 'No short circuit'],

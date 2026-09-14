@@ -23,7 +23,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 ## Task Types
 
-- **Code task** — students write code or blocks; automatic completion checks run on each attempt. **Exception: Arcade Kit** — checks are not yet evaluated during gameplay (see `docs/authoring/arcade.md`'s Runtime Notes), so an Arcade Kit task's check editor doesn't currently gate progression the way other module types' do.
+- **Code task** — students write code or blocks; automatic completion checks run on each attempt. **Arcade Kit** evaluates its code checks each time the student presses Run game (game-state checks aren't supported yet — see `docs/authoring/arcade.md`'s Runtime Notes). **Python Turtle** tasks can combine code checks with drawing checks, and show a 🐢 marker at the turtle's position and heading.
 - **Information task** — explainer text only; no editor or check
 - **Quiz** — interactive question; no code editor
 - **Group** — ordered container of subtasks

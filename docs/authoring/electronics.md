@@ -188,6 +188,8 @@ checks:
 
 If a board has more than one `microcontroller` component, code checks evaluate against the first one found.
 
+Code checks read the MicroPython source whether the student presses **Check** or **Run** in the Code tab. Before September 2026, the Run path compared them against the serialized circuit instead, so checks with quotes such as `print("hi")` never matched after a Run.
+
 Selectors use component type and an optional label:
 
 ```yaml

@@ -4,6 +4,8 @@ import {
   toCanvasPoint,
   drawTurtleCommands,
   sizeCanvasToDisplay,
+  turtleMarkerTransform,
+  TURTLE_MARKER_EMOJI,
 } from '../draw.js'
 
 // jsdom has no real canvas 2D context, and we're not adding the `canvas` npm
@@ -24,6 +26,7 @@ function createMockContext(width, height) {
     fill: () => calls.push(['fill']),
     translate: (...args) => calls.push(['translate', ...args]),
     rotate: (...args) => calls.push(['rotate', ...args]),
+    scale: (...args) => calls.push(['scale', ...args]),
     fillText: (...args) => calls.push(['fillText', ...args]),
     set fillStyle(v) {
       calls.push(['fillStyle', v])
@@ -168,6 +171,55 @@ describe('drawTurtleCommands', () => {
     drawTurtleCommands(ctx, commands)
     expect(ctx._calls).toContainEqual(['textAlign', 'center'])
     expect(ctx._calls.some((c) => c[0] === 'fillText' && c[1] === 'hi')).toBe(true)
+  })
+
+  const markerCalls = (ctx) =>
+    ctx._calls.filter((c) => c[0] === 'fillText' && c[1] === TURTLE_MARKER_EMOJI)
+
+  it('draws the 🐢 marker at the turtle position, last so it sits on top', () => {
+    const ctx = createMockContext(400, 400)
+    const commands = [{ type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' }]
+    drawTurtleCommands(ctx, commands, { turtle: { x: 50, y: 25, heading: 0, visible: true } })
+    expect(markerCalls(ctx)).toHaveLength(1)
+    // (50, 25) in turtle space is (250, 175) on a 400x400 canvas.
+    expect(ctx._calls).toContainEqual(['translate', 250, 175])
+    const markerIndex = ctx._calls.findIndex((c) => c[0] === 'fillText')
+    const strokeIndex = ctx._calls.findIndex((c) => c[0] === 'stroke')
+    expect(markerIndex).toBeGreaterThan(strokeIndex)
+  })
+
+  it('does not draw the marker when hidden or when no turtle state is given', () => {
+    const hidden = createMockContext(400, 400)
+    drawTurtleCommands(hidden, [], { turtle: { x: 0, y: 0, heading: 0, visible: false } })
+    expect(markerCalls(hidden)).toHaveLength(0)
+    const none = createMockContext(400, 400)
+    drawTurtleCommands(none, [])
+    expect(markerCalls(none)).toHaveLength(0)
+  })
+})
+
+describe('turtleMarkerTransform', () => {
+  it('mirrors the left-facing emoji when the turtle heads east, with no rotation', () => {
+    const { rotation, mirror } = turtleMarkerTransform(0)
+    expect(mirror).toBe(true)
+    expect(rotation).toBeCloseTo(0)
+  })
+
+  it('rotates counter-clockwise (negative canvas rotation) for a north heading', () => {
+    const { rotation, mirror } = turtleMarkerTransform(90)
+    expect(mirror).toBe(true)
+    expect(rotation).toBeCloseTo(-Math.PI / 2)
+  })
+
+  it('keeps the turtle upright (unmirrored, unrotated) when heading west', () => {
+    const { rotation, mirror } = turtleMarkerTransform(180)
+    expect(mirror).toBe(false)
+    expect(rotation).toBeCloseTo(0)
+  })
+
+  it('normalises negative and >360 headings', () => {
+    expect(turtleMarkerTransform(-90)).toEqual(turtleMarkerTransform(270))
+    expect(turtleMarkerTransform(450)).toEqual(turtleMarkerTransform(90))
   })
 })
 

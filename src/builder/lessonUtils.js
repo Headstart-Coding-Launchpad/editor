@@ -38,6 +38,7 @@ import {
   validateFilesystemChecks,
   validateElectronicsChecks,
   validateTurtleChecks,
+  warnArcadeUnevaluatedChecks,
 } from '../shared/checkAuthoringValidation'
 
 const SCRATCH_STARTER_SPRITE_STATE_FIELDS = [
@@ -513,6 +514,13 @@ export function validateLesson(lesson) {
             interactionMode: task.interactionMode,
             kind: 'feedback',
           })
+        if (type === 'arcade') {
+          warnArcadeUnevaluatedChecks(
+            [...normalizeChecks(task.check), ...feedbackChecks],
+            n,
+            warnings
+          )
+        }
       }
     }
 

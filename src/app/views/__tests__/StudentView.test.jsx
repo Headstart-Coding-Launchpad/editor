@@ -130,7 +130,15 @@ vi.mock('../../../modules/filesystem/FilesystemTask', () => ({
 }))
 
 vi.mock('../../components/CheckFeedbackBanner', () => ({
-  default: () => <div>Feedback</div>,
+  default: ({ passed, suggestion }) => (
+    <div data-testid="check-feedback" data-passed={String(!!passed)} data-suggestion={suggestion}>
+      Feedback
+    </div>
+  ),
+}))
+
+vi.mock('../../../modules/arcade/ArcadePreview', () => ({
+  default: () => <div>arcade-preview</div>,
 }))
 
 vi.mock('../../components/LiveActivityToast', () => ({
@@ -1361,6 +1369,108 @@ describe('StudentView', () => {
 
       expect(stopPython).toHaveBeenCalledTimes(1)
       await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+    })
+
+    it('evaluates code checks alongside turtle checks after a run', async () => {
+      const user = userEvent.setup()
+      runPython.mockImplementation(() =>
+        Promise.resolve({
+          status: 'success',
+          variables: {},
+          turtle: {
+            state: { x: 100, y: 0, heading: 0, penDown: true, color: 'black', visible: true },
+            commands: [{ type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' }],
+            calls: [{ name: 'forward', args: [100] }],
+          },
+        })
+      )
+
+      render(
+        <StudentView
+          lessonId="turtle-code-check-1"
+          forceSolo
+          lesson={{
+            id: 'turtle-code-check-1',
+            title: 'Turtle Code Check',
+            type: 'turtle',
+            tasks: [
+              {
+                id: 1,
+                title: 'Use a loop',
+                starterCode: 'turtle.forward(100)',
+                check: [
+                  { type: 'turtle_segment_count', operator: 'greater_than_or_equal', value: '1' },
+                  { type: 'code', operator: 'contains', value: 'range(', hint: 'Use a for loop' },
+                ],
+              },
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+
+      // The drawing passes, but the code has no loop — so the code check fails the task.
+      await waitFor(() =>
+        expect(screen.getByTestId('check-feedback')).toHaveAttribute(
+          'data-suggestion',
+          'Use a for loop'
+        )
+      )
+      expect(screen.getByTestId('check-feedback')).toHaveAttribute('data-passed', 'false')
+    })
+  })
+
+  describe('arcade code checks', () => {
+    const arcadeLesson = (starterCode) => ({
+      id: `arcade-code-check-${starterCode.length}`,
+      title: 'Arcade Code Check',
+      type: 'arcade',
+      tasks: [
+        {
+          id: 1,
+          title: 'Start the game',
+          starterCode,
+          check: [
+            { type: 'code', operator: 'contains', value: 'game.run()', hint: 'Call game.run()' },
+          ],
+        },
+      ],
+    })
+
+    it('passes the task when Run game is pressed with code that satisfies the checks', async () => {
+      const user = userEvent.setup()
+      const lesson = arcadeLesson('from headstart_arcade import game\ngame.run()\n')
+      render(<StudentView lessonId={lesson.id} forceSolo lesson={lesson} />)
+
+      await waitFor(() =>
+        expect(screen.getByLabelText('code')).toHaveValue(lesson.tasks[0].starterCode)
+      )
+      await user.click(screen.getByRole('button', { name: 'Run game' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('check-feedback')).toHaveAttribute('data-passed', 'true')
+      )
+    })
+
+    it('shows the failing code check hint when the code does not satisfy it', async () => {
+      const user = userEvent.setup()
+      const lesson = arcadeLesson('from headstart_arcade import game\n')
+      render(<StudentView lessonId={lesson.id} forceSolo lesson={lesson} />)
+
+      await waitFor(() =>
+        expect(screen.getByLabelText('code')).toHaveValue(lesson.tasks[0].starterCode)
+      )
+      await user.click(screen.getByRole('button', { name: 'Run game' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('check-feedback')).toHaveAttribute(
+          'data-suggestion',
+          'Call game.run()'
+        )
+      )
+      expect(screen.getByTestId('check-feedback')).toHaveAttribute('data-passed', 'false')
     })
   })
 })

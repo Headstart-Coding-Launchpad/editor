@@ -27,6 +27,54 @@ describe('Turtle CheckEditor', () => {
     )
   })
 
+  it('adds a code check alongside turtle checks', () => {
+    const onUpdate = vi.fn()
+    const task = { check: [{ type: 'turtle_path_closed', tolerance: '2' }] }
+    render(<CheckEditor task={task} onUpdate={onUpdate} />)
+    fireEvent.click(screen.getByText('+ Add code check'))
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: [
+          { type: 'turtle_path_closed', tolerance: '2' },
+          { type: 'code', operator: 'contains', value: '' },
+        ],
+      })
+    )
+  })
+
+  it('switches a check between the Turtle and Code subjects, keeping its hint', () => {
+    const onUpdate = vi.fn()
+    const task = { check: [{ type: 'turtle_segment_count', value: '4', hint: 'Draw 4 sides' }] }
+    render(<CheckEditor task={task} onUpdate={onUpdate} />)
+    fireEvent.change(screen.getByLabelText('Check subject'), { target: { value: 'code' } })
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: [{ type: 'code', operator: 'contains', value: '4', hint: 'Draw 4 sides' }],
+      })
+    )
+  })
+
+  it('edits a code check operator and value with the shared code-check fields', () => {
+    const onUpdate = vi.fn()
+    const task = { check: [{ type: 'code', operator: 'contains', value: 'for' }] }
+    render(<CheckEditor task={task} onUpdate={onUpdate} />)
+    expect(screen.queryByLabelText('Turtle check')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Code comparison'), {
+      target: { value: 'matches_regex' },
+    })
+    expect(onUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        check: [{ type: 'code', operator: 'matches_regex', value: 'for' }],
+      })
+    )
+    fireEvent.change(screen.getByDisplayValue('for'), { target: { value: 'while' } })
+    expect(onUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        check: [expect.objectContaining({ type: 'code', value: 'while' })],
+      })
+    )
+  })
+
   it('removes a check', () => {
     const onUpdate = vi.fn()
     const task = { check: [{ type: 'turtle_position', x: '0', y: '0', tolerance: '2' }] }

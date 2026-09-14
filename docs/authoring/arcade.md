@@ -363,11 +363,20 @@ also relies on), so a blocking `input()` call inside the `update()`/`draw()`
 game loop has no way to receive a value. Do not author a task that relies on
 `input()` inside Arcade Kit.
 
-**`check` is not evaluated by Run game.** Pressing **Run game** never calls the
-completion-check pipeline at all — not because a `check` is absent, but
-because Arcade's Run button doesn't wire into it yet, checked or not. A
-checkless Arcade task therefore behaves identically to a checked one today:
-neither ever auto-passes from gameplay. Don't author a `check` expecting it
-to gate progression on an Arcade task until runtime-state checks land (see
-[ARCADE_KIT_STATUS.md](../ARCADE_KIT_STATUS.md)); a demo task left checkless
-on the required path is safe in the same sense a checked one would be.
+**Only code checks are evaluated, each time the student presses Run game.**
+The game runs in its own frame with no captured text output, so `check` and
+`feedbackChecks` on an Arcade task should use the generic `code` type
+(`contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`,
+`not_matches_regex`). Run game then passes or fails the task and shows hints
+like any other code task. Output, variable and other check types are ignored.
+The Builder and `lessons validate` warn about them. Checks on game state
+(score, collisions, reaching a goal) are not supported yet; see
+[ARCADE_KIT_STATUS.md](../ARCADE_KIT_STATUS.md).
+
+```yaml
+check:
+  - type: code
+    operator: contains
+    value: game.run()
+    hint: Start the game loop with game.run() at the end of your code.
+```

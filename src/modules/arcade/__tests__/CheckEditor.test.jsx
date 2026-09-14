@@ -1,20 +1,42 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import CheckEditor from '../CheckEditor.jsx'
 
-describe('arcade CheckEditor', () => {
-  it('warns that checks are not yet evaluated during gameplay', () => {
-    render(
-      <CheckEditor
-        task={{ check: [] }}
-        lesson={{ type: 'arcade' }}
-        onUpdate={vi.fn()}
-        interactionMode="run"
-        activePythonCode=""
-      />
-    )
+vi.mock('../../../builder/components/ExplainerEditor', () => ({
+  MarkdownFieldEditor: () => <div>markdown-field</div>,
+}))
 
-    expect(screen.getByText(/evaluated when a student plays the game yet/)).toBeInTheDocument()
+function renderEditor(task, onUpdate = vi.fn()) {
+  render(
+    <CheckEditor
+      task={task}
+      lesson={{ type: 'arcade' }}
+      onUpdate={onUpdate}
+      interactionMode="run"
+      activePythonCode=""
+    />
+  )
+  return onUpdate
+}
+
+describe('arcade CheckEditor', () => {
+  it('no longer warns that checks are ignored — code checks now run on Run game', () => {
+    renderEditor({ check: [] })
+    expect(screen.queryByText(/evaluated when a student plays the game yet/)).toBeNull()
+  })
+
+  it('adds code checks, since a game has no text output to check', () => {
+    const onUpdate = renderEditor({ check: [] })
+    fireEvent.click(screen.getByText('+ Add check'))
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ check: [{ type: 'code', operator: 'contains', value: '' }] })
+    )
+  })
+
+  it('does not offer Output as a check subject', () => {
+    renderEditor({ check: [{ type: 'code', operator: 'contains', value: 'game.run' }] })
+    expect(screen.getByRole('option', { name: 'Code' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Output' })).toBeNull()
   })
 })

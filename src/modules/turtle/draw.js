@@ -45,6 +45,9 @@ export function drawTurtleCommands(ctx, commands = [], options = {}) {
     logicalWidth = TURTLE_LOGICAL_WIDTH,
     logicalHeight = TURTLE_LOGICAL_HEIGHT,
     background = '#ffffff',
+    // Final turtle state ({ x, y, heading, visible }) — when given, the 🐢 marker is
+    // drawn on top of everything so students can see where it is and which way it faces.
+    turtle = null,
   } = options
   const canvasWidth = ctx.canvas.width
   const canvasHeight = ctx.canvas.height
@@ -58,7 +61,42 @@ export function drawTurtleCommands(ctx, commands = [], options = {}) {
   drawLines(ctx, commands, transform)
   drawStamps(ctx, commands, transform)
   drawText(ctx, commands, transform)
+  drawTurtleMarker(ctx, turtle, transform)
 
+  ctx.restore()
+}
+
+export const TURTLE_MARKER_EMOJI = '🐢'
+
+/**
+ * Rotation/flip for the 🐢 emoji so its head points along the turtle heading.
+ * The emoji artwork faces left, so a turtle heading anywhere to the right is
+ * mirrored first; one heading left is drawn unmirrored. Either way it stays the
+ * right way up instead of lying on its back when facing west.
+ */
+export function turtleMarkerTransform(heading = 0) {
+  const normalized = ((Number(heading) % 360) + 360) % 360
+  const facesLeft = normalized > 90 && normalized < 270
+  // Canvas rotation is clockwise-positive; turtle heading is counter-clockwise-positive.
+  const rotation = -(facesLeft ? normalized - 180 : normalized) * DEG2RAD
+  return { rotation, mirror: !facesLeft }
+}
+
+function drawTurtleMarker(ctx, turtle, transform) {
+  if (!turtle || turtle.visible === false) return
+  const x = Number(turtle.x)
+  const y = Number(turtle.y)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return
+  const center = toCanvasPoint(x, y, transform)
+  const { rotation, mirror } = turtleMarkerTransform(turtle.heading)
+  ctx.save()
+  ctx.translate(center.x, center.y)
+  ctx.rotate(rotation)
+  if (mirror) ctx.scale(-1, 1)
+  ctx.font = `${Math.max(14, transform.scale * 24)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(TURTLE_MARKER_EMOJI, 0, 0)
   ctx.restore()
 }
 
