@@ -177,6 +177,25 @@ describe('LessonPanel', () => {
     expect(screen.getByText('HTML Basics')).toBeInTheDocument()
   })
 
+  it('orders lessons by id numerically so lesson 10 follows lesson 9', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    const ids = ['py-1-10', 'py-1-2', 'py-1-1', 'py-1-9', 'py-1-11']
+    fireAll({
+      lessons: ids.map((id) => ({ ...PYTHON_LESSON, id, title: `Lesson ${id}` })),
+    })
+
+    await openFirstLevel(user)
+    const titles = screen.getAllByText(/^Lesson py-1-/).map((el) => el.textContent)
+    expect(titles).toEqual([
+      'Lesson py-1-1',
+      'Lesson py-1-2',
+      'Lesson py-1-9',
+      'Lesson py-1-10',
+      'Lesson py-1-11',
+    ])
+  })
+
   it('shows an empty state message when no lessons are loaded', () => {
     render(<LessonPanel />)
     fireAll()
