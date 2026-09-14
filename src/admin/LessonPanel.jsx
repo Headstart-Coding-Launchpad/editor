@@ -54,6 +54,11 @@ const makeBlankLevelForm = () => ({
   icon: DEFAULT_LEVEL_ICON,
 })
 
+// Natural order so "course-1-10" sorts after "course-1-9", not after "course-1-1".
+function compareLessonIds(a, b) {
+  return String(a.id).localeCompare(String(b.id), undefined, { numeric: true })
+}
+
 function makeLevelBuckets(lessons, levels) {
   const lessonBuckets = new Map()
   for (const lesson of lessons) {
@@ -98,7 +103,7 @@ function makeLevelBuckets(lessons, levels) {
     })
     .map((bucket) => ({
       ...bucket,
-      lessons: bucket.lessons.sort((a, b) => String(a.id).localeCompare(String(b.id))),
+      lessons: bucket.lessons.sort(compareLessonIds),
     }))
 }
 
@@ -158,7 +163,7 @@ function makeLessonFamilyGroups(lessons) {
 
   const stockLessons = lessons
     .filter((lesson) => !isFamilyChild(lesson))
-    .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+    .sort(compareLessonIds)
 
   for (const lesson of stockLessons) {
     const children = sortFamilyChildren(childrenBySource.get(lesson.id) ?? [])
