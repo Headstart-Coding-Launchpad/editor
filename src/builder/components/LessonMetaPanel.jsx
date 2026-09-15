@@ -228,25 +228,23 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           </Field>
         )}
 
-        {lesson.fork?.sourceLessonId && (
-          <Field
-            label="Class recording"
-            hint="Unlisted YouTube link for this class's recorded session — not Private, students don't sign in with Google"
-          >
-            <input
-              type="url"
-              style={s.input}
-              value={lesson.recordingUrl ?? ''}
-              onChange={(e) => set('recordingUrl', e.target.value)}
-              placeholder="https://youtu.be/VIDEO_ID"
-            />
-            {lesson.recordingUrl && !isValidRecordingUrl(lesson.recordingUrl) && (
-              <span style={{ ...s.summaryText, color: '#dc2626' }}>
-                Doesn't look like a YouTube link.
-              </span>
-            )}
-          </Field>
-        )}
+        <Field
+          label="Recording"
+          hint="Unlisted YouTube link for this lesson's recorded session — not Private, students don't sign in with Google"
+        >
+          <input
+            type="url"
+            style={s.input}
+            value={lesson.recordingUrl ?? ''}
+            onChange={(e) => set('recordingUrl', e.target.value)}
+            placeholder="https://youtu.be/VIDEO_ID"
+          />
+          {lesson.recordingUrl && !isValidRecordingUrl(lesson.recordingUrl) && (
+            <span style={{ ...s.summaryText, color: '#dc2626' }}>
+              Doesn't look like a YouTube link.
+            </span>
+          )}
+        </Field>
 
         <Field
           label="Level"

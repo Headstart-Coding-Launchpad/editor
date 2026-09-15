@@ -18,6 +18,16 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-15
+
+### `recordingUrl` no longer requires a class fork
+
+- The Builder's **Recording** field (sets `recordingUrl`) is now shown for
+  every lesson, not just class forks (`lesson.fork?.sourceLessonId`).
+  `recordingUrl` was already accepted on any lesson by `lessons validate` and
+  `RecordingWidget`; only the Builder UI gated it to forks. See
+  [lesson-schema.md](lesson-schema.md).
+
 ## 2026-09-13
 
 ### Code checks on Turtle, Arcade Kit and Electronics
