@@ -115,7 +115,7 @@ const blockEntries = [
   {
     opcode: 'motion_turnright',
     category: 'Motion',
-    icon: '↪️',
+    icon: '↩️',
     label: 'turn right',
     sample: 'turn right (15) degrees',
     shape: 'stack',
@@ -124,7 +124,7 @@ const blockEntries = [
   {
     opcode: 'motion_turnleft',
     category: 'Motion',
-    icon: '↩️',
+    icon: '↪️',
     label: 'turn left',
     sample: 'turn left (15) degrees',
     shape: 'stack',
