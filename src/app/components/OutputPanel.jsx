@@ -7,6 +7,33 @@ const CODE_FONT_STYLE = {
   fontFeatureSettings: '"liga" 0, "calt" 0',
 }
 
+// Extended_Pictographic covers emoji-representable code points without also
+// matching plain digits/punctuation that carry the emoji presentation only
+// when followed by U+FE0F (which Extended_Pictographic already accounts for).
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/u
+
+// Exported for unit testing. Splits text into alternating plain/emoji runs
+// (grapheme-cluster aware, so multi-codepoint sequences like flags or
+// ZWJ-joined emoji stay whole) so emoji can be rendered a bit larger than
+// the surrounding monospace text without touching the plain-text runs.
+export function splitEmojiRuns(text) {
+  if (!text || typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') {
+    return [{ text, emoji: false }]
+  }
+  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+  const runs = []
+  for (const { segment } of segmenter.segment(text)) {
+    const isEmoji = EMOJI_PATTERN.test(segment)
+    const last = runs[runs.length - 1]
+    if (last && last.emoji === isEmoji) {
+      last.text += segment
+    } else {
+      runs.push({ text: segment, emoji: isEmoji })
+    }
+  }
+  return runs
+}
+
 export default function OutputPanel({
   title = 'Output',
   output = '',
@@ -117,7 +144,17 @@ export default function OutputPanel({
 
       {!contentCollapsed && (
         <pre ref={preRef} style={s.pre}>
-          {displayedOutput || (
+          {displayedOutput ? (
+            splitEmojiRuns(displayedOutput).map((run, index) =>
+              run.emoji ? (
+                <span key={index} style={s.emoji}>
+                  {run.text}
+                </span>
+              ) : (
+                <React.Fragment key={index}>{run.text}</React.Fragment>
+              )
+            )
+          ) : (
             <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>
           )}
           {showCursor && <span className="terminal-cursor" />}
@@ -225,6 +262,11 @@ const s = {
     background: '#fafafa',
     borderRadius: '0 0 10px 10px',
     minHeight: 0,
+  },
+  emoji: {
+    fontSize: '1.3em',
+    lineHeight: 1,
+    verticalAlign: 'middle',
   },
   inputRow: {
     display: 'flex',

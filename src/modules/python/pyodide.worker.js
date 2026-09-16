@@ -395,6 +395,8 @@ self.onmessage = async ({ data }) => {
     let _stdoutBuf = ''
     let _stderrBuf = ''
     let _flushPending = false
+    const _stdoutDecodeByte = createUtf8ByteDecoder()
+    const _stderrDecodeByte = createUtf8ByteDecoder()
 
     const flushBuffers = () => {
       _flushPending = false
@@ -416,7 +418,8 @@ self.onmessage = async ({ data }) => {
 
     pyodide.setStdout({
       raw: (charCode) => {
-        const ch = String.fromCharCode(charCode)
+        const ch = _stdoutDecodeByte(charCode)
+        if (!ch) return
         _stdoutBuf += ch
         if (ch === '\n') {
           self.postMessage({ type: 'output', text: _stdoutBuf, kind: 'stdout' })
@@ -429,7 +432,8 @@ self.onmessage = async ({ data }) => {
     })
     pyodide.setStderr({
       raw: (charCode) => {
-        const ch = String.fromCharCode(charCode)
+        const ch = _stderrDecodeByte(charCode)
+        if (!ch) return
         _stderrBuf += ch
         if (ch === '\n') {
           self.postMessage({ type: 'output', text: _stderrBuf, kind: 'stderr' })
@@ -491,6 +495,17 @@ self.onmessage = async ({ data }) => {
     }
     return
   }
+}
+
+// Exported for unit testing (see src/modules/python/__tests__/pyodide.worker.test.js).
+// Pyodide's setStdout/setStderr `raw` callback hands over one UTF-8 *byte* at a
+// time, not one character — a multi-byte character (e.g. '£' or an emoji) arrives
+// as several separate calls. Wraps a streaming TextDecoder so those sequences are
+// reassembled correctly instead of each byte becoming its own Latin-1 character
+// (which is what naively calling String.fromCharCode(byte) per call produces).
+export function createUtf8ByteDecoder() {
+  const decoder = new TextDecoder('utf-8')
+  return (byteCode) => decoder.decode(new Uint8Array([byteCode]), { stream: true })
 }
 
 // Exported for unit testing (see src/modules/python/__tests__/pyodide.worker.test.js).

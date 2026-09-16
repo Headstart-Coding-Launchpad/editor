@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import AssetBrowser from '../../shared/AssetBrowser'
+import EmojiPickerButton from '../../shared/EmojiPickerButton'
 
 export default function HtmlEditor({
   files = [],
@@ -21,6 +22,7 @@ export default function HtmlEditor({
   onRunShortcut,
 }) {
   const [showAssets, setShowAssets] = useState(false)
+  const editorRef = useRef(null)
   const current = files.find((f) => f.name === activeFile) ?? files[0]
   const hasAssets = !!(assetsPath && assets?.length) || storageAssets?.length > 0
 
@@ -69,9 +71,15 @@ export default function HtmlEditor({
       )}
 
       {/* Editor */}
+      {current && !readOnly && (
+        <div style={s.symbolBar} role="toolbar" aria-label="Insert emoji">
+          <EmojiPickerButton onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)} />
+        </div>
+      )}
       {current && (
         <CodeEditor
           key={current.name}
+          ref={editorRef}
           value={current.content}
           language={current.type ?? 'html'}
           readOnly={readOnly}
@@ -145,5 +153,12 @@ const s = {
   },
   editorAttachedTop: {
     borderRadius: '0 0 8px 8px',
+  },
+  symbolBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    flexShrink: 0,
+    padding: '6px 0',
   },
 }

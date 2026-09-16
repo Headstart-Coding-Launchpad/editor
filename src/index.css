@@ -354,6 +354,15 @@ select {
   animation: ui-pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* Our global `button { padding: 8px 18px }` reset (below) leaks into any
+   third-party button that doesn't set its own padding — emoji-picker-react's
+   buttons size themselves entirely via their own scoped classes/CSS variables
+   and never expect outside padding, e.g. the skin-tone swatch is meant to be
+   a 15px square and was ballooning into a stray rectangle without this. */
+.EmojiPickerReact button {
+  padding: 0;
+}
+
 .ui-collapsible {
   border: 1px solid var(--ui-border) !important;
   border-radius: var(--ui-radius) !important;

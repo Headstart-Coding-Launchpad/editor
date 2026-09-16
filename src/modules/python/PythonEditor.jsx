@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
+import EmojiPickerButton from '../../shared/EmojiPickerButton'
 
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
@@ -23,7 +24,8 @@ export default function PythonEditor({
 }) {
   const editorRef = useRef(null)
   const isTouchDevice = useIsTouchDevice()
-  const showSymbolBar = isTouchDevice && !readOnly
+  const showSymbolButtons = isTouchDevice && !readOnly
+  const showEmojiButton = !readOnly
 
   return (
     <div style={s.wrap}>
@@ -33,18 +35,22 @@ export default function PythonEditor({
           ⚠️ Python failed to load. Please refresh the page.
         </div>
       )}
-      {showSymbolBar && (
-        <div style={s.symbolBar} role="toolbar" aria-label="Insert Python symbol">
-          {SYMBOL_BUTTONS.map((symbol) => (
-            <button
-              key={symbol}
-              type="button"
-              style={s.symbolBtn}
-              onClick={() => editorRef.current?.insertAtCursor(symbol)}
-            >
-              {symbol}
-            </button>
-          ))}
+      {(showSymbolButtons || showEmojiButton) && (
+        <div style={s.symbolBar} role="toolbar" aria-label="Insert Python symbol or emoji">
+          {showSymbolButtons &&
+            SYMBOL_BUTTONS.map((symbol) => (
+              <button
+                key={symbol}
+                type="button"
+                style={s.symbolBtn}
+                onClick={() => editorRef.current?.insertAtCursor(symbol)}
+              >
+                {symbol}
+              </button>
+            ))}
+          {showEmojiButton && (
+            <EmojiPickerButton onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)} />
+          )}
         </div>
       )}
       <CodeEditor

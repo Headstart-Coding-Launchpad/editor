@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import OutputPanel from '../OutputPanel'
+import OutputPanel, { splitEmojiRuns } from '../OutputPanel'
 
 describe('OutputPanel input prompt focus', () => {
   it('focuses the input when a non-collapsible output panel shows a prompt', () => {
@@ -148,5 +148,32 @@ describe('OutputPanel input prompt focus', () => {
       />
     )
     await waitFor(() => expect(screen.getByText('Hide')).toBeInTheDocument())
+  })
+})
+
+describe('splitEmojiRuns', () => {
+  it('returns a single plain run for text with no emoji', () => {
+    expect(splitEmojiRuns('hello world')).toEqual([{ text: 'hello world', emoji: false }])
+  })
+
+  it('splits emoji into their own run, keeping surrounding text intact', () => {
+    expect(splitEmojiRuns('score: 🎉 nice')).toEqual([
+      { text: 'score: ', emoji: false },
+      { text: '🎉', emoji: true },
+      { text: ' nice', emoji: false },
+    ])
+  })
+
+  it('keeps a multi-codepoint ZWJ emoji sequence as one run', () => {
+    const family = '👨‍👩‍👧‍👦' // adult+adult+child+child joined by ZWJ
+    expect(splitEmojiRuns(family)).toEqual([{ text: family, emoji: true }])
+  })
+
+  it('groups consecutive emoji into a single run', () => {
+    expect(splitEmojiRuns('🎉🎊')).toEqual([{ text: '🎉🎊', emoji: true }])
+  })
+
+  it('returns a single empty plain run for empty text', () => {
+    expect(splitEmojiRuns('')).toEqual([{ text: '', emoji: false }])
   })
 })
