@@ -17,7 +17,6 @@ import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import ExplainerPanel from '../components/ExplainerPanel'
 import StudentGrid from '../components/StudentGrid'
-import LiveActivityToast from '../components/LiveActivityToast'
 import TeacherTimers from '../components/TeacherTimers'
 import TeacherSessionControls from '../components/TeacherSessionControls'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
@@ -154,7 +153,6 @@ export default function TeacherView({ lessonId }) {
   const [desktopState, setDesktopState] = useState(() => makeDefaultDesktop())
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
   const [sandboxModuleId, setSandboxModuleId] = useState(null)
-  const [editorActivity, setEditorActivity] = useState(null)
   const sandboxDraftRef = useRef({
     code: null,
     files: null,
@@ -698,7 +696,6 @@ export default function TeacherView({ lessonId }) {
         }
       />
       <TeacherTimers session={session} task={currentTask} tasks={visibleTasks} />
-      <LiveActivityToast activity={editorActivity} showClicks={false} />
 
       <div
         style={{
@@ -819,7 +816,6 @@ export default function TeacherView({ lessonId }) {
             onSendStageToAll={handleSendStageToAll}
             liveState={liveState}
             onChange={onChange}
-            onActivity={setEditorActivity}
             teacherLiveReference={session?.teacherLiveReference}
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}

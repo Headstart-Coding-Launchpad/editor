@@ -142,10 +142,6 @@ vi.mock('../../../modules/arcade/ArcadePreview', () => ({
   default: () => <div>arcade-preview</div>,
 }))
 
-vi.mock('../../components/LiveActivityToast', () => ({
-  default: () => <div>Activity</div>,
-}))
-
 vi.mock('../../../shared/SplitPane', () => ({
   default: ({ left, right }) => (
     <div>

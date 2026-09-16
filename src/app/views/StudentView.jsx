@@ -29,7 +29,6 @@ import ChoiceScreen from '../components/ChoiceScreen'
 import VideoCallPrompt from '../components/VideoCallPrompt'
 import RecordingWidget from '../components/RecordingWidget'
 import TaskProgressDots from '../components/TaskProgressDots'
-import LiveActivityToast from '../components/LiveActivityToast'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
@@ -720,7 +719,6 @@ export default function StudentView({
     displayCheckAttempted,
     displayCheckSuggestion,
     displaySelection,
-    displayActivity,
     displayOutputCollapsed,
     isLiveCopyBlocked,
   } = deriveStudentLiveDisplay({
@@ -1198,7 +1196,6 @@ export default function StudentView({
         isSolo={teacherPresentation ? undefined : isSolo}
         right={topBarRight}
       />
-      <LiveActivityToast activity={displayActivity} showClicks={isForcedTeacherLive} />
       {!teacherPresentation && (
         <TeacherMessageToast
           message={session?.students?.[identity?.anonymousId]?.teacherMessage}
