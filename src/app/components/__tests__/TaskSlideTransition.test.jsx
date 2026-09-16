@@ -1,7 +1,7 @@
 import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import TaskSlideTransition from '../TaskSlideTransition'
+import TaskSlideTransition, { useIsLeavingTaskSlide } from '../TaskSlideTransition'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -108,5 +108,25 @@ describe('TaskSlideTransition', () => {
     )
     const hiddenPanels = document.querySelectorAll('[aria-hidden="true"]')
     expect(hiddenPanels).toHaveLength(0)
+  })
+
+  it('marks only the leaving panel as leaving via useIsLeavingTaskSlide', () => {
+    function Probe({ label }) {
+      return <span>{`${label}:${useIsLeavingTaskSlide() ? 'leaving' : 'active'}`}</span>
+    }
+    const { rerender } = render(
+      <TaskSlideTransition transitionKey="task-1">
+        <Probe label="one" />
+      </TaskSlideTransition>
+    )
+    expect(screen.getByText('one:active')).toBeInTheDocument()
+
+    rerender(
+      <TaskSlideTransition transitionKey="task-2">
+        <Probe label="two" />
+      </TaskSlideTransition>
+    )
+    expect(screen.getByText('one:leaving')).toBeInTheDocument()
+    expect(screen.getByText('two:active')).toBeInTheDocument()
   })
 })

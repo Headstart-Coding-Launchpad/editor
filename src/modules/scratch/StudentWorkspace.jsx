@@ -7,6 +7,7 @@ import {
   selectScratchToolboxSnippets,
 } from '../../app/studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
+import { useIsLeavingTaskSlide } from '../../app/components/TaskSlideTransition'
 
 export default function StudentWorkspace({
   lesson,
@@ -30,6 +31,10 @@ export default function StudentWorkspace({
   highlightedPanes,
   forcedPaneCommand,
 }) {
+  // Outgoing slide of a task transition: render as a detached snapshot so the remounted
+  // previous-task workspace can't save, broadcast, or report check results onto the new task.
+  const isLeavingSlide = useIsLeavingTaskSlide()
+  const detached = isViewingPrev || isForcedTeacherLive || isTeacherEditing || isLeavingSlide
   const forcedPane = forcedPaneCommand?.panes?.find((p) => p === 'blocks' || p === 'stage') ?? null
   const personalSandboxScratchState = cs.inPersonalSandbox
     ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
@@ -127,46 +132,18 @@ export default function StudentWorkspace({
         unrestricted={isSandbox || cs.inPersonalSandbox}
         assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
         initialState={initialProject}
-        onStateChange={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing
-            ? undefined
-            : cs.handleScratchChange
-        }
-        onActivity={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing
-            ? undefined
-            : cs.handleScratchActivity
-        }
-        onSpriteStatesChange={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing
-            ? undefined
-            : cs.handleScratchSpriteState
-        }
-        onCursorMove={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing
-            ? undefined
-            : cs.handleScratchCursor
-        }
-        onBlockDragMove={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing
-            ? undefined
-            : cs.handleScratchBlockDrag
-        }
-        onCheckResult={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing || cs.inPersonalSandbox
-            ? undefined
-            : cs.handleScratchCheck
-        }
+        onStateChange={detached ? undefined : cs.handleScratchChange}
+        onActivity={detached ? undefined : cs.handleScratchActivity}
+        onSpriteStatesChange={detached ? undefined : cs.handleScratchSpriteState}
+        onCursorMove={detached ? undefined : cs.handleScratchCursor}
+        onBlockDragMove={detached ? undefined : cs.handleScratchBlockDrag}
+        onCheckResult={detached || cs.inPersonalSandbox ? undefined : cs.handleScratchCheck}
         externalState={externalState}
         externalSpriteState={isForcedTeacherLive ? displaySpriteState : null}
         externalCursor={isForcedTeacherLive ? displayCursor : null}
         externalBlockDrag={isForcedTeacherLive ? displayBlockDrag : null}
         syncNowKey={activeStudentView === identityId ? activeStudentView : null}
-        onVisiblePanesChange={
-          isViewingPrev || isForcedTeacherLive || isTeacherEditing
-            ? undefined
-            : onVisiblePanesChange
-        }
+        onVisiblePanesChange={detached ? undefined : onVisiblePanesChange}
         highlightedPanes={highlightedPanes}
         forcedPane={forcedPane}
         forcedPaneToken={forcedPaneCommand?.pushedAt ?? null}
