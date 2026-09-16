@@ -143,13 +143,24 @@ describe('QuizTask multiple choice', () => {
     render(<QuizTask task={IMAGE_QUESTION_TASK} showQuestion />)
 
     const image = screen.getByRole('img', { name: /diagram/i })
-    const questionPanel = screen.getByText('Question').parentElement
+    const questionPanel = screen.getByText('Image question').parentElement
     const questionTextWrap = closestElementWithFontSize(/what does this show/i)
 
     expect(image.style.maxHeight).toBe('min(240px, 32vh)')
     expect(questionPanel.style.maxHeight).toBe('')
     expect(questionPanel.style.flexShrink).toBe('0')
     expect(questionTextWrap.style.fontSize).toBe('17.25px')
+  })
+
+  it('falls back to "Question" in the question bar when the task has no title', () => {
+    render(
+      <QuizTask
+        task={{ ...IMAGE_QUESTION_TASK, title: undefined }}
+        showQuestion
+      />
+    )
+
+    expect(screen.getByText('Question')).toBeInTheDocument()
   })
 
   it('preserves real and escaped newlines in answer option code', () => {
