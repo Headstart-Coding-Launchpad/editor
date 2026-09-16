@@ -1,18 +1,22 @@
 import React, { useEffect } from 'react'
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
+import TaskSlideTransition from '../../../app/components/TaskSlideTransition'
 
 const mountCount = vi.fn()
 const externalStateSpy = vi.fn()
+const mockMountBehaviour = { reportPassOnMount: false }
 vi.mock('../ScratchWorkspace', () => ({
   // Empty-deps effect fires once per actual mount (new `key` => new instance),
   // unlike a call in the render body which would also fire on every re-render.
-  default: function MockScratchWorkspace({ initialState, externalState }) {
+  default: function MockScratchWorkspace({ initialState, externalState, onCheckResult }) {
     useEffect(() => {
       mountCount()
       // Mirror the real component's contract: initialState is a thunk resolved on mount.
       initialState?.()
+      // Mirrors the real mount-time after_block_placed evaluation of already-passing saved blocks.
+      if (mockMountBehaviour.reportPassOnMount) onCheckResult?.(true, {})
     }, [])
     externalStateSpy(externalState)
     return <div>scratch-workspace</div>
@@ -223,5 +227,61 @@ describe('Scratch StudentWorkspace externalState memoization', () => {
     )
     const third = externalStateSpy.mock.calls.at(-1)[0]
     expect(third).not.toBe(first)
+  })
+})
+
+describe('Scratch StudentWorkspace inside a task slide transition', () => {
+  // TaskSlideTransition remounts the previous task's element tree in its leaving panel, with
+  // that task's stale callbacks. A workspace whose saved blocks already pass an
+  // after_block_placed check re-reports "passed" on mount — which previously landed on the
+  // newly-entered task and showed it complete with no action (scratch-1-4 task 18 -> 19).
+  it('does not report check results (or save/broadcast) from the leaving panel', () => {
+    vi.useFakeTimers()
+    mockMountBehaviour.reportPassOnMount = true
+    try {
+      const staleCs = { ...cs, handleScratchCheck: vi.fn(), handleScratchChange: vi.fn() }
+      const nextCs = { ...cs, handleScratchCheck: vi.fn(), handleScratchChange: vi.fn() }
+      const renderTask = (taskId, taskCs) => (
+        <TaskSlideTransition transitionKey={taskId}>
+          <StudentWorkspace
+            lesson={lesson}
+            task={task}
+            cs={taskCs}
+            lessonId="lesson-1"
+            identityId="student-1"
+            activeStudentView={null}
+            viewingTaskId={null}
+            currentTaskId={taskId}
+            isSandbox={false}
+            isViewingPrev={false}
+            isTeacherEditing={false}
+            teacherLiveCode=""
+            displayCode=""
+            displaySpriteState={null}
+            displayCursor={null}
+            displayBlockDrag={null}
+          />
+        </TaskSlideTransition>
+      )
+
+      const { rerender } = render(renderTask('task-18', staleCs))
+      expect(staleCs.handleScratchCheck).toHaveBeenCalledTimes(1)
+      staleCs.handleScratchCheck.mockClear()
+      mountCount.mockClear()
+
+      rerender(renderTask('task-19', nextCs))
+      // Both panels mounted: the leaving (task-18) snapshot and the entering task-19 workspace.
+      expect(mountCount).toHaveBeenCalledTimes(2)
+      expect(staleCs.handleScratchCheck).not.toHaveBeenCalled()
+      expect(nextCs.handleScratchCheck).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        vi.runAllTimers()
+      })
+      expect(staleCs.handleScratchCheck).not.toHaveBeenCalled()
+    } finally {
+      mockMountBehaviour.reportPassOnMount = false
+      vi.useRealTimers()
+    }
   })
 })

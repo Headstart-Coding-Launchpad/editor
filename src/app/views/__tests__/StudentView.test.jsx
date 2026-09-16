@@ -81,6 +81,7 @@ vi.mock('../../components/ExplainerPanel', () => ({
 
 vi.mock('../../components/TaskSlideTransition', () => ({
   default: ({ children }) => <>{children}</>,
+  useIsLeavingTaskSlide: () => false,
 }))
 
 vi.mock('../../components/LoadingScreen', () => ({
@@ -307,6 +308,58 @@ describe('StudentView', () => {
     expect(latestProps.predefinedBlocks).toEqual(predefinedBlocks)
     expect(latestProps.prebuiltStacks).toEqual(prebuiltStacks)
     expect(latestProps.respectStudentEditable).toBe(true)
+  })
+
+  it('clears a passed check banner when navigating from a solved task to the next task', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <StudentView
+        lessonId="scratch-1-1"
+        forceSolo
+        lesson={{
+          id: 'scratch-1-1',
+          title: 'Scratch 1.1',
+          type: 'scratch',
+          tasks: [
+            {
+              id: 1,
+              title: 'Turn the sprite',
+              starterBlocks: null,
+              check: { type: 'sprite_property_changed', property: 'direction', spriteName: 'Lion' },
+            },
+            {
+              id: 2,
+              title: 'Turn and go',
+              starterBlocks: null,
+              check: { type: 'sprite_property_changed', property: 'direction', spriteName: 'Lion' },
+            },
+          ],
+        }}
+      />
+    )
+
+    await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+
+    // Simulate ScratchWorkspace reporting a passed check for task 1, the way it would
+    // after the student runs code that satisfies the check.
+    const firstProps = mocks.scratchWorkspace.mock.calls.at(-1)[0]
+    firstProps.onCheckResult(true, {})
+
+    await waitFor(() =>
+      expect(screen.getByTestId('check-feedback')).toHaveAttribute('data-passed', 'true')
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+
+    await waitFor(() => {
+      const latestProps = mocks.scratchWorkspace.mock.calls.at(-1)[0]
+      expect(latestProps.task.id).toBe(2)
+    })
+
+    // Task 2 has never been run — its check must show as not-yet-attempted, not a
+    // stale "correct" banner carried over from task 1.
+    expect(screen.queryByTestId('check-feedback')).not.toBeInTheDocument()
   })
 
   it('shows the saved workspace when viewing a previous task in another composed module', async () => {

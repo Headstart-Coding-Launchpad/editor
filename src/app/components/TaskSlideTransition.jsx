@@ -1,6 +1,23 @@
-import React, { useEffect, useLayoutEffect, useState, useRef } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useRef,
+} from 'react'
 
 const TASK_TRANSITION_MS = 380
+
+// The leaving panel re-renders the previous task's element tree in a new position, so React
+// remounts it — with that task's stale props and callbacks. Stateful workspaces read this to
+// stay a purely visual snapshot (e.g. a Scratch workspace re-evaluating the previous task's
+// after_block_placed checks on mount would otherwise report "passed" onto the new task).
+const TaskSlideLeavingContext = createContext(false)
+
+export function useIsLeavingTaskSlide() {
+  return useContext(TaskSlideLeavingContext)
+}
 
 export default function TaskSlideTransition({ transitionKey, children, style }) {
   const previousRenderRef = useRef({ key: transitionKey, children })
@@ -37,7 +54,9 @@ export default function TaskSlideTransition({ transitionKey, children, style }) 
           className="task-slide-panel task-slide-panel--leaving"
           aria-hidden="true"
         >
-          {leavingRender.children}
+          <TaskSlideLeavingContext.Provider value={true}>
+            {leavingRender.children}
+          </TaskSlideLeavingContext.Provider>
         </div>
       )}
       <div

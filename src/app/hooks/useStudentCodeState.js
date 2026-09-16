@@ -609,6 +609,7 @@ export function useStudentCodeState({
       setActiveFile('')
       setScratchActiveStageIndex(null)
       scratchCodeRef.current = ''
+      resetCheckFeedback()
     } else if (lesson.type === 'filesystem') {
       const carryId = task.carryFsFrom ?? null
       const ownSaved = persistence.readSavedFs(activeIdentity.anonymousId, taskId)
