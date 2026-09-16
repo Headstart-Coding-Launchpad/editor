@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getTabSize, getLanguageExtension, createBaseExtensions } from '../codemirror.js'
+import { getTabSize, getIndentUnit, getLanguageExtension, createBaseExtensions } from '../codemirror.js'
 
 // ─── getTabSize ───────────────────────────────────────────────────────────────
 
@@ -22,6 +22,30 @@ describe('getTabSize', () => {
 
   it('returns 2 for unknown type', () => {
     expect(getTabSize('markdown')).toBe(2)
+  })
+})
+
+// ─── getIndentUnit ──────────────────────────────────────────────────────────
+
+describe('getIndentUnit', () => {
+  it('returns 4 spaces for python', () => {
+    expect(getIndentUnit('python')).toBe('    ')
+  })
+
+  it('returns 2 spaces for html', () => {
+    expect(getIndentUnit('html')).toBe('  ')
+  })
+
+  it('returns 2 spaces for javascript', () => {
+    expect(getIndentUnit('javascript')).toBe('  ')
+  })
+
+  it('returns 2 spaces for css', () => {
+    expect(getIndentUnit('css')).toBe('  ')
+  })
+
+  it('returns 2 spaces for unknown type', () => {
+    expect(getIndentUnit('markdown')).toBe('  ')
   })
 })
 

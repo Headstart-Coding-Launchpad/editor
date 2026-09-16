@@ -6,13 +6,16 @@
 import React, { useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
+import { indentUnit } from '@codemirror/language'
 import {
   createBaseExtensions,
   readOnlyCompartment,
   languageCompartment,
   tabSizeCompartment,
+  indentUnitCompartment,
   getLanguageExtension,
   getTabSize,
+  getIndentUnit,
 } from './codemirror'
 
 const setRemoteSelection = StateEffect.define()
@@ -258,6 +261,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
       effects: [
         languageCompartment.reconfigure(getLanguageExtension(language)),
         tabSizeCompartment.reconfigure(EditorState.tabSize.of(getTabSize(language))),
+        indentUnitCompartment.reconfigure(indentUnit.of(getIndentUnit(language))),
       ],
     })
   }, [language])
