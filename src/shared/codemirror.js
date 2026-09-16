@@ -13,6 +13,7 @@ import {
   syntaxHighlighting,
   defaultHighlightStyle,
   indentOnInput,
+  indentUnit,
   HighlightStyle,
 } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
@@ -119,6 +120,7 @@ const headstartHighlight = HighlightStyle.define([
 export const readOnlyCompartment = new Compartment()
 export const languageCompartment = new Compartment()
 export const tabSizeCompartment = new Compartment()
+export const indentUnitCompartment = new Compartment()
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -141,6 +143,10 @@ export function getTabSize(type) {
   return type === 'python' ? 4 : 2
 }
 
+export function getIndentUnit(type) {
+  return ' '.repeat(getTabSize(type))
+}
+
 export function createBaseExtensions(type = 'python', readOnly = false) {
   return [
     lineNumbers(),
@@ -158,6 +164,7 @@ export function createBaseExtensions(type = 'python', readOnly = false) {
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     languageCompartment.of(getLanguageExtension(type)),
     tabSizeCompartment.of(EditorState.tabSize.of(getTabSize(type))),
+    indentUnitCompartment.of(indentUnit.of(getIndentUnit(type))),
     readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
   ]
 }
