@@ -158,7 +158,7 @@ export function QuestionPanel({ task }) {
   return React.createElement(
     'div',
     { style: baseStyles.question },
-    React.createElement('div', { style: baseStyles.questionLabel }, 'Question'),
+    React.createElement('div', { style: baseStyles.questionLabel }, task.title || 'Question'),
     React.createElement(
       'div',
       { style: baseStyles.questionBody },
