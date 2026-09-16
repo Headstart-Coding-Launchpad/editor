@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
-import LiveActivityToast from './LiveActivityToast'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import {
@@ -462,7 +461,6 @@ export default function StudentModal({
       aria-modal="true"
     >
       <div style={s.modal}>
-        {isLive && <LiveActivityToast activity={student.currentActivity} style={{ top: 86 }} />}
         {/* Modal header */}
         <div style={s.header}>
           <div style={s.headerLeft}>

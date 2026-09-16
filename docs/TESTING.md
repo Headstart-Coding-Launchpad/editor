@@ -82,7 +82,6 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/components/QuizTask.jsx` | Multiple-choice renders all options; selecting an answer fires callback; match/fill-blank drag interactions |
 | `src/app/components/InformationTask.jsx` | Information/introduction content and duration rendering |
 | `src/app/components/SessionEndedScreen.jsx` | Session-end browser-storage warning and all-code backup action |
-| `src/app/components/LiveActivityToast.jsx` | Activity notification rendering and expiry behaviour |
 | `src/app/components/TeacherTimers.jsx` | Elapsed/countdown rendering and expired task state |
 | `src/app/components/TeacherSessionControls.jsx` | Navigation, share-link callbacks, and state-specific teacher session actions |
 | `src/app/components/EditLessonModal.jsx` | Role-based footer actions (teacher: session-only; admin: session-only + permanent), save validation gate, active-task delete confirmation; builder's `TaskList`/`TaskEditor`/`GroupEditor` are stubbed at the module boundary |

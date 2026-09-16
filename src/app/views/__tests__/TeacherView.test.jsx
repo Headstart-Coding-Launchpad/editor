@@ -44,7 +44,6 @@ vi.mock('../../components/TopBar', () => ({ default: () => null }))
 vi.mock('../../components/StudentGrid', () => ({ default: () => null }))
 vi.mock('../../components/ExplainerPanel', () => ({ default: () => null }))
 vi.mock('../../components/TeacherTimers', () => ({ default: () => null }))
-vi.mock('../../components/LiveActivityToast', () => ({ default: () => null }))
 vi.mock('../teacher/TaskRatingPanel', () => ({ default: () => null }))
 vi.mock('../teacher/CheckConditionsPanel', () => ({ default: () => null }))
 

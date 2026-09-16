@@ -57,10 +57,6 @@ vi.mock('../ExplainerPanel', () => ({
   default: ({ content }) => <div data-testid="explainer-panel">{content}</div>,
 }))
 
-vi.mock('../LiveActivityToast', () => ({
-  default: () => null,
-}))
-
 vi.mock('../../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
 vi.mock('../../../shared/TopicLibraryView', () => ({
   TopicLibraryDialog: () => <div data-testid="topic-library-dialog" />,

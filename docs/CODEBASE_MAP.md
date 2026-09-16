@@ -104,7 +104,6 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |
 | `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link) |
-| `LiveActivityToast.jsx` | Transient live-view notice for editor copy, paste, and click activity |
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
 | `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink` |
