@@ -90,7 +90,9 @@ describe('buildArcadeIframeSrc', () => {
     expect(src).toContain(`const keyAliases = ${JSON.stringify(ARCADE_KEY_ALIASES)};`)
     expect(src).toContain('function keyDown(name) { const aliases = keyAliases[name];')
     // keys.horizontal / keys.vertical are built on the alias-aware pressed().
-    expect(src).toContain("if key == 'horizontal': return int(self.pressed('right')) - int(self.pressed('left'))")
+    expect(src).toContain(
+      "if key == 'horizontal': return int(self.pressed('right')) - int(self.pressed('left'))"
+    )
   })
 })
 

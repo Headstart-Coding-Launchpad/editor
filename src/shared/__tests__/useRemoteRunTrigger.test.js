@@ -6,10 +6,9 @@ describe('useRemoteRunTrigger', () => {
   it('runs once for a pending token and acknowledges it', () => {
     const run = vi.fn()
     const onHandled = vi.fn()
-    const { rerender } = renderHook(
-      ({ token }) => useRemoteRunTrigger(token, run, { onHandled }),
-      { initialProps: { token: 111 } }
-    )
+    const { rerender } = renderHook(({ token }) => useRemoteRunTrigger(token, run, { onHandled }), {
+      initialProps: { token: 111 },
+    })
     expect(run).toHaveBeenCalledTimes(1)
     expect(onHandled).toHaveBeenCalledWith(111)
 

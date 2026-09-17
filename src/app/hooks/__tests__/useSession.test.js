@@ -1082,7 +1082,9 @@ describe('useSession', () => {
         })
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'sessions/lesson-1/attemptLog/student-assisted/5/mockHighlightId' }),
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-assisted/5/mockHighlightId',
+        }),
         expect.objectContaining({ passed: true, teacherAssisted: true })
       )
     })

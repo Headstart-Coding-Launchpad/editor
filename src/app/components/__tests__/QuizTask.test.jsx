@@ -153,12 +153,7 @@ describe('QuizTask multiple choice', () => {
   })
 
   it('falls back to "Question" in the question bar when the task has no title', () => {
-    render(
-      <QuizTask
-        task={{ ...IMAGE_QUESTION_TASK, title: undefined }}
-        showQuestion
-      />
-    )
+    render(<QuizTask task={{ ...IMAGE_QUESTION_TASK, title: undefined }} showQuestion />)
 
     expect(screen.getByText('Question')).toBeInTheDocument()
   })

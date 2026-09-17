@@ -43,9 +43,12 @@ describe('getTaskItemProgress', () => {
   })
 
   it('counts dragged fill-in-the-gaps tiles, including distractors as wrong', () => {
-    expect(getTaskItemProgress(dragBlankTask, { currentAnswer: { b1: 'b1', b2: 'd1' } })).toEqual(
-      { kind: 'fill_blank', filled: 2, total: 2, correct: 1 }
-    )
+    expect(getTaskItemProgress(dragBlankTask, { currentAnswer: { b1: 'b1', b2: 'd1' } })).toEqual({
+      kind: 'fill_blank',
+      filled: 2,
+      total: 2,
+      correct: 1,
+    })
   })
 
   it('ignores blank typed answers and matches typed text case-insensitively', () => {
@@ -69,7 +72,12 @@ describe('getTaskItemProgress', () => {
     const task = {
       taskType: 'code_arrange',
       lines: [
-        { parts: [{ type: 'slot', id: 's1', code: 'print' }, { type: 'text', text: '(' }] },
+        {
+          parts: [
+            { type: 'slot', id: 's1', code: 'print' },
+            { type: 'text', text: '(' },
+          ],
+        },
         { parts: [{ type: 'slot', id: 's2', code: 'x' }] },
       ],
     }

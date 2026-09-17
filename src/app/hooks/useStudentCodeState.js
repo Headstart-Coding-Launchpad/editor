@@ -1162,8 +1162,7 @@ export function useStudentCodeState({
       // always reaches the teacher instead of waiting for the run to end.
       const outputMirror = createThrottledMirrorWriter({
         write: (raw) => {
-          if (canPublishTeacherLive())
-            updateTeacherLive(currentTeacherLivePayload({ output: raw }))
+          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: raw }))
           if (isWatchedNow()) writeStudentOutput(actor.anonymousId, raw)
         },
       })

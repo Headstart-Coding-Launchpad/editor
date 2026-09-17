@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { getTabSize, getIndentUnit, getLanguageExtension, createBaseExtensions } from '../codemirror.js'
+import {
+  getTabSize,
+  getIndentUnit,
+  getLanguageExtension,
+  createBaseExtensions,
+} from '../codemirror.js'
 
 // ─── getTabSize ───────────────────────────────────────────────────────────────
 

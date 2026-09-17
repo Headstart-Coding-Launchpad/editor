@@ -167,9 +167,7 @@ function makeLessonFamilyGroups(lessons) {
     childrenBySource.get(sourceId).push(lesson)
   }
 
-  const stockLessons = lessons
-    .filter((lesson) => !isFamilyChild(lesson))
-    .sort(compareLessonIds)
+  const stockLessons = lessons.filter((lesson) => !isFamilyChild(lesson)).sort(compareLessonIds)
 
   for (const lesson of stockLessons) {
     const children = sortFamilyChildren(childrenBySource.get(lesson.id) ?? [])
@@ -1081,9 +1079,7 @@ function LevelManager({ levels, lessons, loading }) {
                   <span style={s.levelEmoji}>{displayLevelIcon(bucket.icon)}</span>
                   <span style={s.levelPreviewText}>
                     <strong style={s.levelPreviewTitle}>{bucket.title}</strong>
-                    <span style={s.levelPreviewMeta}>
-                      {formatLessonCount(bucket.lessons)}
-                    </span>
+                    <span style={s.levelPreviewMeta}>{formatLessonCount(bucket.lessons)}</span>
                   </span>
                   {bucket.level && (
                     <div style={s.levelPreviewActions}>
