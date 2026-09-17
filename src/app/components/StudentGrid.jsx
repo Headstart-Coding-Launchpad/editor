@@ -38,6 +38,7 @@ export default function StudentGrid({
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onTeacherAnswerEdit,
+  onRemoteRun,
   onReadPendingShare,
   onApproveShare,
   onDeclineShare,
@@ -300,6 +301,7 @@ export default function StudentGrid({
           onSetTeacherLiveReference={onSetTeacherLiveReference}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
           onTeacherAnswerEdit={onTeacherAnswerEdit}
+          onRemoteRun={onRemoteRun}
           onReadPendingShare={onReadPendingShare}
           onApproveShare={onApproveShare}
           onDeclineShare={onDeclineShare}

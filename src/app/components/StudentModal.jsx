@@ -73,6 +73,7 @@ export default function StudentModal({
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onTeacherAnswerEdit,
+  onRemoteRun,
   onReadPendingShare,
   onApproveShare,
   onDeclineShare,
@@ -83,6 +84,7 @@ export default function StudentModal({
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [answerEditing, setAnswerEditing] = useState(false)
+  const [remoteRunSent, setRemoteRunSent] = useState(false)
   // Editing is per student + task: switching student (Prev/Next) or the class
   // moving on must never leave the next board silently editable.
   useEffect(() => {
@@ -358,6 +360,19 @@ export default function StudentModal({
   // Match / Fill in the Gaps / Code Arrange: the teacher can edit the
   // student's answer directly (pushed live, see pushTeacherAnswerEdit).
   const supportsAnswerEdit = !!onTeacherAnswerEdit && !!itemProgress
+  // Runs the student's current code on the student's own device.
+  const supportsRemoteRun =
+    !!onRemoteRun &&
+    !isQuiz &&
+    !isInformation &&
+    task?.interactionMode !== 'submit' &&
+    (isPython || isTurtle || isArcade || isHtml || isScratch || isElectronics)
+
+  function handleRemoteRun() {
+    onRemoteRun?.(student.anonymousId)
+    setRemoteRunSent(true)
+    setTimeout(() => setRemoteRunSent(false), 2000)
+  }
   const teacherAssisted =
     student.teacherAssistedTaskId != null &&
     String(student.teacherAssistedTaskId) === String(session?.currentTaskId)
@@ -646,6 +661,23 @@ export default function StudentModal({
                   declinedNotice={stageDeclinedNotice}
                 />
               ))}
+
+            {supportsRemoteRun && (
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 12px' }}
+                onClick={handleRemoteRun}
+                disabled={!student.online}
+                title={
+                  student.online
+                    ? "Run this student's code on their own screen"
+                    : 'Student is offline'
+                }
+              >
+                {remoteRunSent ? 'Run sent ✓' : '▶ Run on student'}
+              </button>
+            )}
 
             {supportsAnswerEdit && (
               <button

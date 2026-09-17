@@ -924,6 +924,30 @@ describe('useSession', () => {
     })
   })
 
+  describe('pushRemoteRun', () => {
+    it('stamps remoteRunPushedAt and the task it was requested for', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushRemoteRun('student-xyz')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz' },
+        expect.objectContaining({ remoteRunPushedAt: expect.any(Number) })
+      )
+    })
+
+    it('clearRemoteRun consumes the request', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.clearRemoteRun('student-xyz')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/remoteRunPushedAt' },
+        null
+      )
+    })
+  })
+
   describe('pushTeacherAnswerEdit', () => {
     it('mirrors the edited answer and pushes a timestamped edit plus the assisted marker', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

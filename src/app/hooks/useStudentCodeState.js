@@ -108,6 +108,7 @@ export function useStudentCodeState({
   setTeacherLiveReference,
   removeTeacherHighlight,
   clearTeacherAnswerEdit,
+  clearRemoteRun,
 }) {
   const [code, setCode] = useState('')
   const [arcadeDesign, setArcadeDesign] = useState(null)
@@ -160,6 +161,9 @@ export function useStudentCodeState({
   const appliedTeacherAnswerEditAtRef = useRef(null)
   const [teacherCodeArrangeEdit, setTeacherCodeArrangeEdit] = useState(null)
   const [teacherAnswerNoticeAt, setTeacherAnswerNoticeAt] = useState(null)
+  // Bumped when the teacher presses Run for this student; each module
+  // workspace reacts via useRemoteRunTrigger with its own Run action.
+  const [remoteRunToken, setRemoteRunToken] = useState(null)
   const writeAnswerDebounceRef = useRef(null)
   // Latest in-progress input() state, kept regardless of whether a teacher is
   // watching, so opening StudentModal mid-prompt can publish it immediately.
@@ -984,6 +988,20 @@ export function useStudentCodeState({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherAnswerEdit?.at, lesson, phase, currentTaskId])
+
+  // Teacher pressed Run for this student (StudentModal). Consumed (cleared in
+  // Firebase) as soon as it's handed to the workspace, so it runs once.
+  useEffect(() => {
+    const pushedAt = myStudentData?.remoteRunPushedAt
+    if (!pushedAt || teacherPresentation || !lesson || !identity?.anonymousId) return
+    if (phase !== 'lesson' && phase !== 'sandbox') return
+    if (viewingTaskId !== null || currentTaskId == null) return
+    const requestedTaskId = myStudentData?.remoteRunTaskId
+    clearRemoteRun?.(identity.anonymousId)
+    if (requestedTaskId != null && String(requestedTaskId) !== String(currentTaskId)) return
+    setRemoteRunToken(pushedAt)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.remoteRunPushedAt, lesson, phase, currentTaskId, viewingTaskId])
 
   function supersedeTeacherAnswerEdit() {
     if (!identity?.anonymousId || !myStudentData?.teacherAnswerEdit) return
@@ -2536,6 +2554,9 @@ export function useStudentCodeState({
     code,
     teacherCodeArrangeEdit,
     teacherAnswerNoticeAt,
+    remoteRunToken,
+    acknowledgeRemoteRun: (token) =>
+      setRemoteRunToken((current) => (current === token ? null : current)),
     arcadeDesign,
     files,
     activeFile,

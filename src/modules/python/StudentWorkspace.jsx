@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
 import {
   CollapsedPanelRail,
@@ -109,6 +110,14 @@ export default function StudentWorkspace({
     setOutputCollapsed(false)
     cs.handleRun()
   }
+
+  useRemoteRunTrigger(
+    cs.remoteRunToken,
+    () => {
+      if (!cs.running && !cs.runningTests) handleRunClick()
+    },
+    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+  )
 
   function handleRunTestsClick() {
     if (cs.runningTests) return

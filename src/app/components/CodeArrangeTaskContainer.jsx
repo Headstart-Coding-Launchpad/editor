@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import CodeArrangeTask from './CodeArrangeTask'
-import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../shared/codeArrange'
+import {
+  deriveSlotStateFromCode,
+  getCodeArrangeEntryFile,
+  isArrangementComplete,
+} from '../../shared/codeArrange'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 
 // Synthetic filename used to persist the student's own tile arrangement
 // alongside the ordinary per-task saved code, using the exact same
@@ -131,6 +136,15 @@ export default function CodeArrangeTaskContainer({
     handleSlotStateChange(slots, { fromTeacher: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherEditAt])
+
+  // Teacher remote Run: only a complete arrangement has runnable code.
+  useRemoteRunTrigger(
+    cs.remoteRunToken,
+    () => {
+      if (!cs.running && isArrangementComplete(task, slotState)) cs.handleRun()
+    },
+    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+  )
 
   function handleAssembledCodeChange(assembledCode) {
     if (readOnly) return

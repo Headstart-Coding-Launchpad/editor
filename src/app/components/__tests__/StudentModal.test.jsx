@@ -759,4 +759,25 @@ describe('StudentModal item progress', () => {
     render(<StudentModal {...mkProps({ onTeacherAnswerEdit: vi.fn() })} />)
     expect(screen.queryByRole('button', { name: '✏️ Edit answers' })).not.toBeInTheDocument()
   })
+  it('sends a remote Run for an online student and confirms it was sent', () => {
+    const onRemoteRun = vi.fn()
+    render(<StudentModal {...mkProps({ onRemoteRun })} />)
+    fireEvent.click(screen.getByRole('button', { name: '▶ Run on student' }))
+    expect(onRemoteRun).toHaveBeenCalledWith('student-1')
+    expect(screen.getByRole('button', { name: 'Run sent ✓' })).toBeInTheDocument()
+  })
+
+  it('disables remote Run for an offline student and hides it for quizzes', () => {
+    const onRemoteRun = vi.fn()
+    const { unmount } = render(<StudentModal {...mkProps({ onRemoteRun }, { online: false })} />)
+    expect(screen.getByRole('button', { name: '▶ Run on student' })).toBeDisabled()
+    unmount()
+
+    const quizLesson = {
+      type: 'python',
+      tasks: [{ id: 1, title: 'Q', taskType: 'quiz', quizType: 'multiple_choice' }],
+    }
+    render(<StudentModal {...mkProps({ onRemoteRun, lesson: quizLesson })} />)
+    expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
+  })
 })

@@ -6,6 +6,7 @@ import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { resolveAssetsPath, resolveAssetFileUrl } from '../../shared/assetPaths'
 import ArcadePreview from './ArcadePreview'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import {
@@ -120,6 +121,13 @@ export default function StudentWorkspace({
   function stop() {
     setRunning(false)
   }
+  useRemoteRunTrigger(
+    cs.remoteRunToken,
+    () => {
+      if (!running) run()
+    },
+    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+  )
   function handleCodeChange(nextCode) {
     if (running) stop()
     cs.handleCodeChange(nextCode)

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 import { resolveSavedCarrySource } from '../../app/studentTaskContent'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 
 export default function StudentWorkspace({
   lesson,
@@ -53,6 +54,13 @@ export default function StudentWorkspace({
     [raw, task?.starterCircuit]
   )
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
+  useRemoteRunTrigger(
+    cs.remoteRunToken,
+    () => {
+      if (!cs.running) cs.handleRun()
+    },
+    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+  )
   const showCodeTab = task?.microcontroller?.enabled === true
 
   function handleCircuitChange(nextCircuit) {

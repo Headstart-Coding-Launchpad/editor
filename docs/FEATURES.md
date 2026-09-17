@@ -88,6 +88,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Code Arrange tasks show "🧩 4/6 slots filled" (arrangements are marked by running the code, so there is no per-slot correct count)
 - Students never see these counts
 - "✏️ Edit answers" in the student modal lets the teacher drag, type, or move that student's Match / Fill in the Gaps / Code Arrange items directly; changes appear on the student's screen live with a short "Your teacher updated your answer" note
+- "▶ Run on student" in the student modal runs that student's current code on their own device (Python, Turtle, Arcade, HTML, Scratch green flag, Electronics), exactly as if they had pressed Run; the output mirrors back to the teacher
 - A pass reached after a teacher edit looks like a normal pass to the student, but is marked "Teacher assisted" on the student card, in the modal, and in the session report
 
 ### Teacher Editor

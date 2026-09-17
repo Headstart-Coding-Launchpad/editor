@@ -158,6 +158,8 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "remoteResetAction": "starter | complete | stage_0 | stage_1 | ...",
           "remoteResetPushedAt": 1234567890,
           "teacherAnswerEdit": "object | null ({ answer: string | null, codeArrangeSlots: object | null, passed: boolean | null, taskId, at } — teacher's edit of a Match/Fill in the Gaps answer or Code Arrange tiles, applied by the student's tab when `at` changes; the student clears it when they supersede it with their own change)",
+          "remoteRunPushedAt": "number | null (teacher pressed Run for this student in StudentModal; the student's tab runs its current code and clears this back to null)",
+          "remoteRunTaskId": "number | string | null (task the Run was requested for; a request for another task is cleared without running)",
           "teacherAssistedTaskId": "number | string | null (task the teacher last edited this student's answer on; drives the teacher-only Assisted badge)",
           "needsHelp": "true | null",
           "inPersonalSandbox": "true | null",
@@ -231,6 +233,7 @@ Teacher writes:
 Teacher per-student actions:
 
 - Teacher answer edit (`pushTeacherAnswerEdit`) writes `currentAnswer` or `currentCodeArrangeSlots`, `teacherAnswerEdit`, and `teacherAssistedTaskId` in one update. The student's tab applies the edit through its normal answer path (`handleQuizSelect` / Code Arrange slot change) and clears `teacherAnswerEdit` (`clearTeacherAnswerEdit`) the next time the student changes the answer themselves, so a reload never re-applies a superseded edit. Attempts logged on that task afterwards carry `teacherAssisted: true`. `setTaskId` clears both fields.
+- Remote Run (`pushRemoteRun`) writes `remoteRunPushedAt` and `remoteRunTaskId`. The student's tab (lesson or sandbox phase, not reviewing an earlier task) clears `remoteRunPushedAt` (`clearRemoteRun`) and, if the task matches, hands it to the module workspace as `cs.remoteRunToken`. `setTaskId` clears both fields.
 - Remote reset writes `remoteResetAction` and `remoteResetPushedAt`. For Arcade tasks, the student resets both code and the matching Starter/Stage/Complete visual design.
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; a manual pass also writes `overrideLog/{anonymousId}/{taskId}` when the student has no real passing attempt. The per-student visible override fields are cleared by `setTaskId`; `overrideLog` is not, so the end-of-session report can read it.
 - Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.

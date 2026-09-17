@@ -131,6 +131,12 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Student side (`useStudentCodeState.js`): once in the lesson phase on the edit's `taskId`, a quiz edit is applied via `handleQuizSelect(answer, passed, { fromTeacher: true })` — so a complete, correct edit produces the student's normal pass banner, `writeStudentRun`, and attempt log — and a Code Arrange edit via `teacherCodeArrangeEdit` → `CodeArrangeTaskContainer`, which saves and assembles it like a placement. The student sees a brief "✏️ Your teacher updated your answer" notice and nothing else.
 - Teacher side only: attempts logged on that task carry `teacherAssisted`, the report shows "Passed (teacher assisted)" plus a per-task "N teacher assisted" count, and `StudentCard`/`StudentModal` show an Assisted badge while `teacherAssistedTaskId` matches the current task. Any teacher edit on a task marks it assisted for the rest of that task in that tab.
 
+## Teacher Remote Run: `remoteRunPushedAt`
+
+- `StudentModal` shows "▶ Run on student" for Python, Turtle, Arcade, HTML (not submit-mode), Scratch, and Electronics tasks, including Code Arrange; disabled while the student is offline. It writes `remoteRunPushedAt`/`remoteRunTaskId` via `pushRemoteRun`.
+- The program runs on the **student's** device, never in the teacher's browser. `useStudentCodeState` consumes the request (clears it in Firebase first, so a reload never re-runs it) and exposes `remoteRunToken`; each module workspace calls `useRemoteRunTrigger` with the exact action its own Run button uses — Python/Turtle `handleRunClick` (opens the output panel), HTML/Electronics `cs.handleRun`, Arcade `run()`, Scratch the green-flag `handleRun` (via `ScratchWorkspace`'s `runToken` prop), Code Arrange `cs.handleRun` only once the arrangement is complete — and acknowledges the token back to null.
+- A request is ignored if the student is already running, is on a different task than the one requested, or is viewing an earlier task. `input()` prompts appear on the student's screen as normal; output reaches a watching teacher through the usual live mirror.
+
 ## Code Stage Reveal
 
 - Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `starter`, `support`, and `complete` roles. Multiple Starter stages are permitted; the first is the default and teachers can apply another Starter to an individual or the class. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.

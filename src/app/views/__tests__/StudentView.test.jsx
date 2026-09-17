@@ -1748,4 +1748,63 @@ describe('StudentView', () => {
       expect(screen.queryByTestId('teacher-answer-notice')).not.toBeInTheDocument()
     })
   })
+
+  describe('teacher remote run', () => {
+    afterEach(() => {
+      runPython.mockReset()
+    })
+
+    function mkRunSession(studentData, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': { displayName: 'Solo', ...studentData } },
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        clearRemoteRun: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    it("runs the student's own code on their device when the teacher presses Run", async () => {
+      runPython.mockImplementation((code, { onOutput }) => {
+        onOutput('hi\n')
+        return Promise.resolve({ status: 'success' })
+      })
+      const hooks = mkRunSession({ remoteRunPushedAt: 777, remoteRunTaskId: 1 })
+      mocks.useSession.mockReturnValue(hooks)
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(runPython).toHaveBeenCalledTimes(1))
+      expect(runPython.mock.calls[0][0]).toBe('print("hi")')
+      expect(hooks.clearRemoteRun).toHaveBeenCalledWith('student-1')
+    })
+
+    it('consumes but ignores a Run request made for a different task', async () => {
+      const hooks = mkRunSession({ remoteRunPushedAt: 888, remoteRunTaskId: 5 })
+      mocks.useSession.mockReturnValue(hooks)
+
+      render(<StudentView lessonId="python-1-1" />)
+
+      await waitFor(() => expect(hooks.clearRemoteRun).toHaveBeenCalledWith('student-1'))
+      expect(runPython).not.toHaveBeenCalled()
+    })
+  })
 })

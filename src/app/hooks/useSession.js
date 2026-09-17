@@ -241,6 +241,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherEditApplyArcadeDesign`] = null
       updates[`students/${anonymousId}/teacherEditAppliedAt`] = null
       updates[`students/${anonymousId}/teacherAnswerEdit`] = null
+      updates[`students/${anonymousId}/remoteRunPushedAt`] = null
+      updates[`students/${anonymousId}/remoteRunTaskId`] = null
       updates[`students/${anonymousId}/teacherAssistedTaskId`] = null
       updates[`students/${anonymousId}/teacherStageRequestedAt`] = null
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
@@ -495,6 +497,21 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // a reload must not re-apply the teacher's older version (last write wins).
   async function clearTeacherAnswerEdit(anonymousId) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherAnswerEdit`), null)
+  }
+
+  // Teacher presses Run for a student from StudentModal: the student's own
+  // browser runs their current code exactly as if they had pressed Run.
+  // remoteRunTaskId stops a request made for one task running on another.
+  async function pushRemoteRun(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      remoteRunPushedAt: Date.now(),
+      remoteRunTaskId: session?.currentTaskId ?? null,
+    })
+  }
+
+  // Student consumed a remote Run request, so a reload never runs it again.
+  async function clearRemoteRun(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/remoteRunPushedAt`), null)
   }
 
   async function pushResetToStudent(anonymousId, action) {
@@ -1149,6 +1166,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     pushResetToStudent,
     pushTeacherAnswerEdit,
     clearTeacherAnswerEdit,
+    pushRemoteRun,
+    clearRemoteRun,
     overrideStudentCheck,
     recordClassAdvanceOverrides,
     dismissHelp,
