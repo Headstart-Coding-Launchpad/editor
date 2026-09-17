@@ -86,6 +86,12 @@ export default function OutputPanel({
     if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
   }, [displayedOutput, inputPrompt])
 
+  // A run stopped (or finished) mid-prompt must not leave the student's
+  // half-typed answer sitting in the box for the next input() prompt.
+  useEffect(() => {
+    if (inputPrompt === null) setInputValue('')
+  }, [inputPrompt])
+
   useEffect(() => {
     if (inputPrompt !== null && !contentCollapsed && !inputReadOnly) {
       inputRef.current?.focus()

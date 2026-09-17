@@ -820,6 +820,21 @@ describe('useSession', () => {
         { currentInputPrompt: null, currentInput: '' }
       )
     })
+
+    it('writes output in the same update when given, so echo and prompt change together', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentInputState('student-abc', {
+          prompt: null,
+          value: '',
+          output: 'Name? Sam\n',
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { currentInputPrompt: null, currentInput: '', currentOutput: 'Name? Sam\n' }
+      )
+    })
   })
 
   describe('writeStudentCodeArrangeSlots', () => {

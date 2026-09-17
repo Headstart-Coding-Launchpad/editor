@@ -916,11 +916,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // inputPrompt is purely local runtime state, never otherwise synced),
   // currentInput is the value typed so far, per keystroke — same
   // watched-only-while-activeStudentView-matches gating as currentCode.
-  async function writeStudentInputState(anonymousId, { prompt, value } = {}) {
-    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+  // `output`, when given, is written in the same update so an echoed input
+  // line (or a cleared run) and the prompt row change together on the
+  // teacher's screen instead of in two separately-arriving writes.
+  async function writeStudentInputState(anonymousId, { prompt, value, output } = {}) {
+    const updates = {
       currentInputPrompt: prompt ?? null,
       currentInput: value ?? '',
-    })
+    }
+    if (typeof output === 'string') updates.currentOutput = output
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
   }
 
   async function writeStudentInteraction(

@@ -69,6 +69,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
 | `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
+| `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
 
 ---

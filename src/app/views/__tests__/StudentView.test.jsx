@@ -60,7 +60,16 @@ vi.mock('../../../modules/python/PythonEditor', () => ({
 }))
 
 vi.mock('../../components/OutputPanel', () => ({
-  default: ({ output }) => <div>Output{output}</div>,
+  default: ({ output, inputPrompt, onInputSubmit }) => (
+    <div>
+      Output{output}
+      {inputPrompt != null && (
+        <button type="button" onClick={() => onInputSubmit('Sam')}>
+          submit-input
+        </button>
+      )}
+    </div>
+  ),
 }))
 
 vi.mock('../../components/TaskProgressDots', () => ({
@@ -1520,6 +1529,126 @@ describe('StudentView', () => {
         )
       )
       expect(screen.getByTestId('check-feedback')).toHaveAttribute('data-passed', 'false')
+    })
+  })
+
+  describe('live output mirror for a watching teacher', () => {
+    afterEach(() => {
+      runPython.mockReset()
+      stopPython.mockReset()
+    })
+
+    function mkWatchedSession(activeStudentView, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          activeStudentView,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInputState: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    it('clears the last run up front and bundles the input() echo with the prompt clearing', async () => {
+      const user = userEvent.setup()
+      const writeStudentInputState = vi.fn()
+      mocks.useSession.mockReturnValue(mkWatchedSession('student-1', { writeStudentInputState }))
+      runPython.mockImplementation((code, { onOutput, onInputRequired }) => {
+        onOutput('What is your name? ')
+        onInputRequired('What is your name? ')
+        return new Promise(() => {})
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+
+      await waitFor(() =>
+        expect(writeStudentInputState).toHaveBeenCalledWith('student-1', {
+          prompt: 'What is your name? ',
+          value: '',
+          output: 'What is your name? ',
+        })
+      )
+      expect(writeStudentInputState).toHaveBeenCalledWith('student-1', {
+        prompt: null,
+        value: '',
+        output: '',
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'submit-input' }))
+      expect(writeStudentInputState).toHaveBeenLastCalledWith('student-1', {
+        prompt: null,
+        value: '',
+        output: 'What is your name? Sam\n',
+      })
+    })
+
+    it('starts mirroring output when the teacher opens the modal mid-run', async () => {
+      const user = userEvent.setup()
+      let emit
+      runPython.mockImplementation((code, { onOutput }) => {
+        emit = onOutput
+        return new Promise(() => {})
+      })
+      const writeStudentOutput = vi.fn()
+      mocks.useSession.mockReturnValue(mkWatchedSession(null, { writeStudentOutput }))
+
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+      await waitFor(() => expect(emit).toBeTypeOf('function'))
+      emit('before watching\n')
+      expect(writeStudentOutput).not.toHaveBeenCalled()
+
+      mocks.useSession.mockReturnValue(mkWatchedSession('student-1', { writeStudentOutput }))
+      rerender(<StudentView lessonId="python-1-1" />)
+      emit('after watching\n')
+
+      await waitFor(() =>
+        expect(writeStudentOutput).toHaveBeenLastCalledWith(
+          'student-1',
+          'before watching\nafter watching\n'
+        )
+      )
+    })
+
+    it('delivers the tail of a quick burst of output instead of dropping it', async () => {
+      const user = userEvent.setup()
+      const writeStudentOutput = vi.fn()
+      mocks.useSession.mockReturnValue(mkWatchedSession('student-1', { writeStudentOutput }))
+      runPython.mockImplementation((code, { onOutput }) => {
+        onOutput('one\n')
+        onOutput('two\n')
+        onOutput('three\n')
+        return new Promise(() => {})
+      })
+
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Run' }))
+
+      await waitFor(() =>
+        expect(writeStudentOutput).toHaveBeenLastCalledWith('student-1', 'one\ntwo\nthree\n')
+      )
     })
   })
 })

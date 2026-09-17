@@ -51,6 +51,7 @@ import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
+import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
@@ -147,8 +148,15 @@ export function useStudentCodeState({
 
   const iframeRef = useRef(null)
   const appendOutputRef = useRef(null)
+  // Set by handleRun while a program is running: echoes a submitted input()
+  // line into the output and mirrors it in one write (see handleInputSubmit).
+  const submitInputEchoRef = useRef(null)
+  const outputMirrorRef = useRef(null)
   const writeAnswerDebounceRef = useRef(null)
-  const lastOutputWriteRef = useRef(0)
+  // Latest in-progress input() state, kept regardless of whether a teacher is
+  // watching, so opening StudentModal mid-prompt can publish it immediately.
+  const inputPromptRef = useRef(null)
+  const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
   const outputRafIdRef = useRef(null)
   const runtimeCodeRafIdRef = useRef(null)
@@ -839,6 +847,10 @@ export function useStudentCodeState({
     ) {
       writeStudentCode(identity.anonymousId, code)
       writeStudentOutput(identity.anonymousId, output)
+      writeStudentInputState(identity.anonymousId, {
+        prompt: inputPromptRef.current,
+        value: inputPromptRef.current !== null ? inputValueRef.current : '',
+      })
     } else if (lesson.type === 'html') {
       writeStudentFiles(
         identity.anonymousId,
@@ -1053,6 +1065,10 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const mod = getLessonModule(lesson?.type)
     const isWatched = session?.activeStudentView === actor.anonymousId
+    // Checked live on every mirror write, not captured once at run start: a
+    // teacher can open (or close) StudentModal while the program is running.
+    const isWatchedNow = () =>
+      !teacherPresentation && activeStudentViewRef.current === actor.anonymousId
     const alreadySolved = isAlreadySolved()
 
     setRunning(true)
@@ -1065,15 +1081,33 @@ export function useStudentCodeState({
     if (!alreadySolved) resetRunFeedback()
 
     if (lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle') {
-      lastOutputWriteRef.current = 0
       if (outputRafIdRef.current !== null) {
         cancelAnimationFrame(outputRafIdRef.current)
         outputRafIdRef.current = null
       }
+      outputMirrorRef.current?.cancel()
+      inputPromptRef.current = null
+      inputValueRef.current = ''
+      // Clear the previous run's mirrored output/prompt up front — otherwise a
+      // program that asks for input() (or is slow) before printing anything
+      // shows the watching teacher the last run's output under the new run.
+      if (isWatchedNow()) {
+        writeStudentInputState(actor.anonymousId, { prompt: null, value: '', output: '' })
+      }
       let outputBuffer = createStudentOutputBuffer()
-      const echoOutput = (text) => {
+      // Leading + trailing throttle (200ms) so the tail of a burst of output
+      // always reaches the teacher instead of waiting for the run to end.
+      const outputMirror = createThrottledMirrorWriter({
+        write: (raw) => {
+          if (canPublishTeacherLive())
+            updateTeacherLive(currentTeacherLivePayload({ output: raw }))
+          if (isWatchedNow()) writeStudentOutput(actor.anonymousId, raw)
+        },
+      })
+      outputMirrorRef.current = outputMirror
+      const appendLocalOutput = (text) => {
         const nextOutputBuffer = appendStudentOutput(outputBuffer, text)
-        if (nextOutputBuffer === outputBuffer) return
+        if (nextOutputBuffer === outputBuffer) return false
         outputBuffer = nextOutputBuffer
         // Throttle React re-renders to one per animation frame (~60fps max).
         // outputBuffer is a closure var so the RAF always reads the latest value.
@@ -1083,13 +1117,25 @@ export function useStudentCodeState({
             setOutput(outputBuffer.display)
           })
         }
-        // Debounce Firebase writes independently at 200ms
-        const now = Date.now()
-        if (now - lastOutputWriteRef.current >= 200) {
-          lastOutputWriteRef.current = now
-          if (canPublishTeacherLive())
-            updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
-          if (isWatched) writeStudentOutput(actor.anonymousId, outputBuffer.raw)
+        return true
+      }
+      const echoOutput = (text) => {
+        if (appendLocalOutput(text)) outputMirror.push(outputBuffer.raw)
+      }
+      submitInputEchoRef.current = (value) => {
+        appendLocalOutput(value + '\n')
+        outputMirror.markWritten()
+        if (canPublishTeacherLive())
+          updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
+        // One update: the echoed line lands in the output at the same moment
+        // the prompt row disappears, so the teacher never sees the typed text
+        // vanish (or linger) while the echo waits on the throttle.
+        if (isWatchedNow()) {
+          writeStudentInputState(actor.anonymousId, {
+            prompt: null,
+            value: '',
+            output: outputBuffer.raw,
+          })
         }
       }
       let latestRuntimeCode = code
@@ -1133,14 +1179,34 @@ export function useStudentCodeState({
           }
         },
         onInputRequired: (prompt) => {
+          inputPromptRef.current = prompt
+          inputValueRef.current = ''
           setInputPrompt(prompt)
-          if (isWatched) writeStudentInputState(actor.anonymousId, { prompt, value: '' })
+          if (isWatchedNow()) {
+            // Bundle any output still waiting on the throttle (usually the
+            // prompt text itself) with the prompt row appearing.
+            outputMirror.markWritten()
+            if (canPublishTeacherLive())
+              updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
+            writeStudentInputState(actor.anonymousId, {
+              prompt,
+              value: '',
+              output: outputBuffer.raw,
+            })
+          } else {
+            outputMirror.flush()
+          }
         },
         onCodeUpdate: scheduleRuntimeCodeUpdate,
         getRuntimeCode: () => codeRef.current,
       })
+      submitInputEchoRef.current = null
+      outputMirror.cancel()
+      if (outputMirrorRef.current === outputMirror) outputMirrorRef.current = null
+      inputPromptRef.current = null
+      inputValueRef.current = ''
       setInputPrompt(null)
-      if (isWatched) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
+      if (isWatchedNow()) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
 
       // Cancel any pending RAF and sync final output immediately
       if (outputRafIdRef.current !== null) {
@@ -1163,7 +1229,7 @@ export function useStudentCodeState({
           updateTeacherLive(
             currentTeacherLivePayload({ code: latestRuntimeCode, output: outputBuffer.raw })
           )
-        if (isWatched) {
+        if (isWatchedNow()) {
           writeStudentCode(actor.anonymousId, latestRuntimeCode)
           writeStudentOutput(actor.anonymousId, outputBuffer.raw)
         }
@@ -1349,10 +1415,16 @@ export function useStudentCodeState({
   }
 
   function handleInputSubmit(value) {
-    appendOutputRef.current?.(value + '\n')
+    inputPromptRef.current = null
+    inputValueRef.current = ''
     setInputPrompt(null)
-    if (identity && session?.activeStudentView === identity.anonymousId) {
-      writeStudentInputState(identity.anonymousId, { prompt: null, value: '' })
+    if (submitInputEchoRef.current) {
+      submitInputEchoRef.current(value)
+    } else {
+      appendOutputRef.current?.(value + '\n')
+      if (identity && session?.activeStudentView === identity.anonymousId) {
+        writeStudentInputState(identity.anonymousId, { prompt: null, value: '' })
+      }
     }
     getLessonModule(lesson?.type)?.runtime?.provideInput(value)
   }
@@ -1361,6 +1433,7 @@ export function useStudentCodeState({
   // teacher, per keystroke — same activeStudentView gating AGENTS.md
   // requires for any per-keystroke Firebase write (see handleCodeChange).
   function handleInputChange(value) {
+    inputValueRef.current = value
     if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentInputState(identity.anonymousId, { prompt: inputPrompt, value })
     }
