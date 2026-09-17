@@ -149,10 +149,10 @@ def update():
 
 | API | Description |
 |---|---|
-| `keys.left`, `keys.right`, `keys.up`, `keys.down`, `keys.space` | `True` while that key is pressed. |
-| `keys.horizontal` | `-1` for left, `1` for right, otherwise `0`. |
-| `keys.vertical` | `-1` for up, `1` for down, otherwise `0`. |
-| `keys.pressed(name)` | Checks a named key such as `"left"`, `"right"`, `"up"`, `"down"`, or `"space"`. |
+| `keys.left`, `keys.right`, `keys.up`, `keys.down`, `keys.space` | `True` while that key is pressed. The four directions also respond to WASD (`A` left, `D` right, `W` up, `S` down). |
+| `keys.horizontal` | `-1` for left (Left arrow or `A`), `1` for right (Right arrow or `D`), otherwise `0`. |
+| `keys.vertical` | `-1` for up (Up arrow or `W`), `1` for down (Down arrow or `S`), otherwise `0`. |
+| `keys.pressed(name)` | Checks a named key such as `"left"`, `"right"`, `"up"`, `"down"`, or `"space"` (directions include WASD). A single letter such as `keys.pressed("a")` checks only that key. |
 
 Click the game area before using the keyboard controls.
 

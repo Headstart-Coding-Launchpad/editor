@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildArcadeIframeSrc } from '../runtime.js'
+import { ARCADE_KEY_ALIASES, buildArcadeIframeSrc, isArcadeKeyDown } from '../runtime.js'
 
 describe('buildArcadeIframeSrc', () => {
   it('embeds the supplied game code and the small Arcade Kit API', () => {
@@ -83,5 +83,30 @@ describe('buildArcadeIframeSrc', () => {
     expect(src).toContain('globalThis.hsArcadeTileMap')
     expect(src).toContain("source.get('tiles', {})")
     expect(src).toContain('def draw(self, tiles=None):')
+  })
+
+  it('lets direction names answer to WASD as well as the arrow keys', () => {
+    const src = buildArcadeIframeSrc({ code: 'game.run()' })
+    expect(src).toContain(`const keyAliases = ${JSON.stringify(ARCADE_KEY_ALIASES)};`)
+    expect(src).toContain('function keyDown(name) { const aliases = keyAliases[name];')
+    // keys.horizontal / keys.vertical are built on the alias-aware pressed().
+    expect(src).toContain("if key == 'horizontal': return int(self.pressed('right')) - int(self.pressed('left'))")
+  })
+})
+
+describe('isArcadeKeyDown', () => {
+  it('treats W/A/S/D as up/left/down/right', () => {
+    expect(isArcadeKeyDown(new Set(['a']), 'left')).toBe(true)
+    expect(isArcadeKeyDown(new Set(['d']), 'right')).toBe(true)
+    expect(isArcadeKeyDown(new Set(['w']), 'up')).toBe(true)
+    expect(isArcadeKeyDown(new Set(['s']), 'down')).toBe(true)
+    expect(isArcadeKeyDown(new Set(['left']), 'left')).toBe(true)
+    expect(isArcadeKeyDown(new Set(['d']), 'left')).toBe(false)
+  })
+
+  it('keeps single-letter names exact so arrows never count as a letter', () => {
+    expect(isArcadeKeyDown(new Set(['left']), 'a')).toBe(false)
+    expect(isArcadeKeyDown(new Set(['a']), 'a')).toBe(true)
+    expect(isArcadeKeyDown(new Set(['space']), 'space')).toBe(true)
   })
 })

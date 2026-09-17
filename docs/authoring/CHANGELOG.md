@@ -18,6 +18,17 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-17
+
+### Arcade Kit direction keys also respond to WASD
+
+- `keys.left`, `keys.right`, `keys.up`, `keys.down`, `keys.horizontal`,
+  `keys.vertical`, and `keys.pressed("left")` (etc.) now also respond to
+  `A`/`D`/`W`/`S`. Existing lessons need no changes; single-letter checks
+  such as `keys.pressed("a")` still mean only that key, so avoid giving
+  W/A/S/D a separate meaning in a game that also uses the direction names.
+  See [arcade.md](arcade.md).
+
 ## 2026-09-15
 
 ### `recordingUrl` no longer requires a class fork
