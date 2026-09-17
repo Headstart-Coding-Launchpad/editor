@@ -48,6 +48,7 @@ import {
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
+import { parseQuizAnswerState } from '../../shared/quizAnswers'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
@@ -106,6 +107,7 @@ export function useStudentCodeState({
   setTeacherLive,
   setTeacherLiveReference,
   removeTeacherHighlight,
+  clearTeacherAnswerEdit,
 }) {
   const [code, setCode] = useState('')
   const [arcadeDesign, setArcadeDesign] = useState(null)
@@ -152,6 +154,12 @@ export function useStudentCodeState({
   // line into the output and mirrors it in one write (see handleInputSubmit).
   const submitInputEchoRef = useRef(null)
   const outputMirrorRef = useRef(null)
+  // Tasks this tab has had a teacher edit the answer on (StudentModal "Edit
+  // answers"): their logged attempts carry teacherAssisted for the report.
+  const teacherAssistedTaskIdsRef = useRef(new Set())
+  const appliedTeacherAnswerEditAtRef = useRef(null)
+  const [teacherCodeArrangeEdit, setTeacherCodeArrangeEdit] = useState(null)
+  const [teacherAnswerNoticeAt, setTeacherAnswerNoticeAt] = useState(null)
   const writeAnswerDebounceRef = useRef(null)
   // Latest in-progress input() state, kept regardless of whether a teacher is
   // watching, so opening StudentModal mid-prompt can publish it immediately.
@@ -945,6 +953,43 @@ export function useStudentCodeState({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
+  // Apply a teacher's edit to this student's Match / Fill in the Gaps answer or
+  // Code Arrange tiles (StudentModal "Edit answers"). Quiz answers go through
+  // the normal handleQuizSelect path so marking, the Firebase mirror, and the
+  // attempt log behave exactly as if the student had placed them — the only
+  // difference is the teacherAssisted flag on the logged attempt.
+  useEffect(() => {
+    const edit = myStudentData?.teacherAnswerEdit
+    if (!edit?.at || teacherPresentation || !lesson) return
+    // Wait until the student is actually in the lesson on a loaded task —
+    // applying earlier would skip the Firebase/attempt-log writes and then
+    // never retry, since the edit is marked applied below.
+    if (phase !== 'lesson' || currentTaskId == null) return
+    if (appliedTeacherAnswerEditAtRef.current === edit.at) return
+    appliedTeacherAnswerEditAtRef.current = edit.at
+    if (edit.taskId != null && String(edit.taskId) !== String(currentTaskIdRef.current)) return
+    if (viewingTaskId !== null) return
+    const task = findTaskById(lesson.tasks, currentTaskId)
+    if (task?.taskType === 'code_arrange' && edit.codeArrangeSlots) {
+      teacherAssistedTaskIdsRef.current.add(currentTaskId)
+      setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
+      setTeacherAnswerNoticeAt(edit.at)
+    } else if (task?.taskType === 'quiz' && edit.answer != null) {
+      teacherAssistedTaskIdsRef.current.add(currentTaskId)
+      const answer = parseQuizAnswerState(edit.answer)
+      handleQuizSelect(answer, typeof edit.passed === 'boolean' ? edit.passed : null, {
+        fromTeacher: true,
+      })
+      setTeacherAnswerNoticeAt(edit.at)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.teacherAnswerEdit?.at, lesson, phase, currentTaskId])
+
+  function supersedeTeacherAnswerEdit() {
+    if (!identity?.anonymousId || !myStudentData?.teacherAnswerEdit) return
+    clearTeacherAnswerEdit?.(identity.anonymousId)
+  }
+
   // Apply teacher-committed work when teacher finishes a live edit.
   useEffect(() => {
     if (!myStudentData?.teacherEditAppliedAt) return
@@ -1321,7 +1366,12 @@ export function useStudentCodeState({
         !hasTests &&
         task?.check
       ) {
-        logAttempt(actor.anonymousId, currentTaskId, { submission: nextCode, passed, suggestion })
+        logAttempt(actor.anonymousId, currentTaskId, {
+          submission: nextCode,
+          passed,
+          suggestion,
+          teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
+        })
       }
       setRunning(false)
       return
@@ -1403,7 +1453,12 @@ export function useStudentCodeState({
         taskIdAtRunTime === currentTaskIdRef.current
       ) {
         const filesMap = Object.fromEntries(currentFiles.map((f) => [f.name, f.content]))
-        logAttempt(actor.anonymousId, taskIdAtRunTime, { submission: filesMap, passed, suggestion })
+        logAttempt(actor.anonymousId, taskIdAtRunTime, {
+          submission: filesMap,
+          passed,
+          suggestion,
+          teacherAssisted: teacherAssistedTaskIdsRef.current.has(taskIdAtRunTime),
+        })
       }
       persistence.saveHtmlFiles(actor.anonymousId, taskIdAtRunTime, currentFiles)
       setRunning(false)
@@ -1823,9 +1878,10 @@ export function useStudentCodeState({
   // destinations as handleScratchSpriteState/handleScratchCursor above:
   // teacherLive for a Go-Live/presentation broadcast, the student's own
   // currentCodeArrangeSlots record for a teacher passively watching them.
-  function handleCodeArrangeSlotsChange(slotState) {
+  function handleCodeArrangeSlotsChange(slotState, { fromTeacher = false } = {}) {
     codeArrangeSlotStateRef.current = slotState
     if (!identity) return
+    if (!fromTeacher) supersedeTeacherAnswerEdit()
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
     // Written on every tile placement (a discrete action, like a quiz answer
     // — not per keystroke), watched or not, so the teacher's StudentCard can
@@ -2400,9 +2456,10 @@ export function useStudentCodeState({
     }
   }
 
-  async function handleQuizSelect(answer, passedOverride) {
+  async function handleQuizSelect(answer, passedOverride, { fromTeacher = false } = {}) {
     const actor = effectiveIdentity
     if (!actor) return
+    if (!fromTeacher) supersedeTeacherAnswerEdit()
     const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
 
     if (passedOverride === null) {
@@ -2451,6 +2508,7 @@ export function useStudentCodeState({
         submission: buildQuizSubmission(task, answer),
         passed,
         suggestion,
+        teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
       })
     }
   }
@@ -2476,6 +2534,8 @@ export function useStudentCodeState({
   return {
     // State
     code,
+    teacherCodeArrangeEdit,
+    teacherAnswerNoticeAt,
     arcadeDesign,
     files,
     activeFile,

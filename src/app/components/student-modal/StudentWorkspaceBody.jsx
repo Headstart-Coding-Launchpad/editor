@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
 import ScratchTeacherLiveView from '../../../modules/scratch/TeacherLiveView.jsx'
 import CodeArrangeTask from '../CodeArrangeTask'
@@ -8,6 +8,38 @@ import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
 import QuizTask from '../QuizTask'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+
+function answerKey(value) {
+  return typeof value === 'string' ? value : JSON.stringify(value ?? null)
+}
+
+// While the teacher is editing a student's answer, show the teacher's own
+// latest edit immediately instead of waiting for it to round-trip through
+// Firebase (which would make typed Fill in the Gaps answers drop keystrokes).
+// A remote value the teacher didn't push is the student changing it
+// themselves — last write wins, so it replaces the teacher's local copy.
+function useTeacherEditableValue(remoteValue, editing) {
+  const [local, setLocal] = useState(null)
+  const pushedKeysRef = useRef(new Set())
+  useEffect(() => {
+    if (!editing) {
+      setLocal(null)
+      pushedKeysRef.current.clear()
+    }
+  }, [editing])
+  const remoteKey = answerKey(remoteValue)
+  useEffect(() => {
+    if (pushedKeysRef.current.has(remoteKey)) return
+    setLocal(null)
+  }, [remoteKey])
+  function push(value) {
+    const keys = pushedKeysRef.current
+    keys.add(answerKey(value))
+    if (keys.size > 50) keys.delete(keys.values().next().value)
+    setLocal({ value })
+  }
+  return [local ? local.value : remoteValue, push]
+}
 
 export default function StudentWorkspaceBody({
   lesson,
@@ -45,7 +77,18 @@ export default function StudentWorkspaceBody({
   onHighlightNoteChange,
   onSendHighlight,
   onCancelHighlight,
+  answerEditing = false,
+  onEditAnswer,
 }) {
+  const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
+    student.currentAnswer ?? '',
+    answerEditing
+  )
+  const [editableSlots, pushEditableSlots] = useTeacherEditableValue(
+    student.currentCodeArrangeSlots ?? null,
+    answerEditing
+  )
+
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
       <div style={s.highlightEmojiRow}>
@@ -109,10 +152,19 @@ export default function StudentWorkspaceBody({
       <QuizTask
         task={task}
         showQuestion
-        selectedAnswer={student.currentAnswer ?? ''}
+        selectedAnswer={answerEditing ? editableAnswer : (student.currentAnswer ?? '')}
+        onSelectAnswer={
+          answerEditing
+            ? (next, allCorrect) => {
+                const serialized = typeof next === 'string' ? next : JSON.stringify(next)
+                pushEditableAnswer(serialized)
+                onEditAnswer?.({ answer: serialized, passed: allCorrect })
+              }
+            : undefined
+        }
         submitted={student.lastRunStatus === 'submitted'}
         checkPassed={student.checkPassed}
-        disabled
+        disabled={!answerEditing}
         showCorrectAnswer
       />
     )
@@ -128,10 +180,9 @@ export default function StudentWorkspaceBody({
     const code = isHtml
       ? (files.find((f) => f.name === entryFile)?.content ?? '')
       : (student.currentCode ?? '')
+    const liveSlots = answerEditing ? editableSlots : student.currentCodeArrangeSlots
     const selectedAnswer =
-      student.currentCodeArrangeSlots && typeof student.currentCodeArrangeSlots === 'object'
-        ? student.currentCodeArrangeSlots
-        : deriveSlotStateFromCode(task, code)
+      liveSlots && typeof liveSlots === 'object' ? liveSlots : deriveSlotStateFromCode(task, code)
     return (
       <CodeArrangeTask
         task={task}
@@ -142,7 +193,15 @@ export default function StudentWorkspaceBody({
         checkPassed={student.checkPassed}
         iframeSrc={iframeSrc}
         iframeRef={iframeRef}
-        disabled
+        onSelectAnswer={
+          answerEditing
+            ? (next) => {
+                pushEditableSlots(next)
+                onEditAnswer?.({ codeArrangeSlots: next })
+              }
+            : undefined
+        }
+        disabled={!answerEditing}
         showQuestion={false}
       />
     )

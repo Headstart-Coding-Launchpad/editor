@@ -340,6 +340,16 @@ export default function StudentCard({
               👀 {formatVisiblePanes(student.visiblePanes)}
             </span>
           )}
+          {student.teacherAssistedTaskId != null &&
+            String(student.teacherAssistedTaskId) === String(session?.currentTaskId) && (
+              <span
+                style={{ ...s.checkBadge, ...s.checkBadgeView }}
+                title="You edited this student's answer on this task"
+                data-testid="teacher-assisted"
+              >
+                ✏️ Assisted
+              </span>
+            )}
           {itemProgress && (
             <span
               style={{ ...s.checkBadge, ...s.checkBadgeView }}

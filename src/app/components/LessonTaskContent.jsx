@@ -21,6 +21,35 @@ import { useElementSize } from '../../shared/useElementSize'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
+// Brief "your teacher changed your answer" note, shown when a teacher edits
+// this student's quiz answer or Code Arrange tiles from StudentModal.
+function TeacherAnswerNotice({ at }) {
+  const [visibleAt, setVisibleAt] = React.useState(null)
+  React.useEffect(() => {
+    if (!at) return undefined
+    setVisibleAt(at)
+    const timer = setTimeout(() => setVisibleAt(null), 5000)
+    return () => clearTimeout(timer)
+  }, [at])
+  if (!visibleAt) return null
+  return (
+    <div role="status" data-testid="teacher-answer-notice" style={teacherAnswerNoticeStyle}>
+      ✏️ Your teacher updated your answer
+    </div>
+  )
+}
+
+const teacherAnswerNoticeStyle = {
+  margin: '0 0 8px',
+  padding: '6px 12px',
+  borderRadius: 8,
+  background: '#ede9fe',
+  color: '#4c1d95',
+  fontFamily: 'var(--font-body)',
+  fontSize: '0.85rem',
+  fontWeight: 600,
+}
+
 function blockClipboardEvent(event) {
   event.preventDefault()
   event.stopPropagation()
@@ -498,36 +527,42 @@ export default function LessonTaskContent({
       ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
       ) : !isSandbox && isQuizTask ? (
-        <QuizTask
-          task={task}
-          showQuestion
-          selectedAnswer={cs.selectedAnswer}
-          onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
-          submitted={cs.runStatus === 'submitted'}
-          checkPassed={cs.checkPassed}
-          disabled={isViewingPrev}
-          showResult={false}
-        />
+        <>
+          <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
+          <QuizTask
+            task={task}
+            showQuestion
+            selectedAnswer={cs.selectedAnswer}
+            onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
+            submitted={cs.runStatus === 'submitted'}
+            checkPassed={cs.checkPassed}
+            disabled={isViewingPrev}
+            showResult={false}
+          />
+        </>
       ) : !isSandbox && isCodeArrangeTask ? (
-        <CodeArrangeTaskContainer
-          task={task}
-          cs={cs}
-          viewingTaskId={viewingTaskId}
-          currentTaskId={currentTaskId}
-          isViewingPrev={isViewingPrev}
-          isForcedTeacherLive={isForcedTeacherLive}
-          isTeacherEditing={isTeacherEditing}
-          displayCode={displayCode}
-          displayFiles={displayFiles}
-          displayOutput={displayOutput}
-          displayRunStatus={displayRunStatus}
-          displayCheckPassed={displayCheckPassed}
-          displayCheckAttempted={displayCheckAttempted}
-          displayCodeArrangeSlots={displayCodeArrangeSlots}
-          displayCodeArrangeCursor={displayCodeArrangeCursor}
-          teacherLiveCode={teacherLiveCode}
-          teacherLiveFiles={teacherLiveFiles}
-        />
+        <>
+          <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
+          <CodeArrangeTaskContainer
+            task={task}
+            cs={cs}
+            viewingTaskId={viewingTaskId}
+            currentTaskId={currentTaskId}
+            isViewingPrev={isViewingPrev}
+            isForcedTeacherLive={isForcedTeacherLive}
+            isTeacherEditing={isTeacherEditing}
+            displayCode={displayCode}
+            displayFiles={displayFiles}
+            displayOutput={displayOutput}
+            displayRunStatus={displayRunStatus}
+            displayCheckPassed={displayCheckPassed}
+            displayCheckAttempted={displayCheckAttempted}
+            displayCodeArrangeSlots={displayCodeArrangeSlots}
+            displayCodeArrangeCursor={displayCodeArrangeCursor}
+            teacherLiveCode={teacherLiveCode}
+            teacherLiveFiles={teacherLiveFiles}
+          />
+        </>
       ) : StudentWorkspace ? (
         <StudentWorkspace
           lesson={lesson}

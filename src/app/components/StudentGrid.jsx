@@ -37,6 +37,7 @@ export default function StudentGrid({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onTeacherAnswerEdit,
   onReadPendingShare,
   onApproveShare,
   onDeclineShare,
@@ -298,6 +299,7 @@ export default function StudentGrid({
           onRevealSupportStage={onRevealSupportStage}
           onSetTeacherLiveReference={onSetTeacherLiveReference}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
+          onTeacherAnswerEdit={onTeacherAnswerEdit}
           onReadPendingShare={onReadPendingShare}
           onApproveShare={onApproveShare}
           onDeclineShare={onDeclineShare}

@@ -924,6 +924,54 @@ describe('useSession', () => {
     })
   })
 
+  describe('pushTeacherAnswerEdit', () => {
+    it('mirrors the edited answer and pushes a timestamped edit plus the assisted marker', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherAnswerEdit('student-xyz', {
+          answer: '{"p1":"p1"}',
+          passed: true,
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz' },
+        expect.objectContaining({
+          currentAnswer: '{"p1":"p1"}',
+          teacherAnswerEdit: expect.objectContaining({
+            answer: '{"p1":"p1"}',
+            codeArrangeSlots: null,
+            passed: true,
+            at: expect.any(Number),
+          }),
+        })
+      )
+    })
+
+    it('writes code arrange slots without touching currentAnswer', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherAnswerEdit('student-xyz', {
+          codeArrangeSlots: { s1: 's2' },
+        })
+      })
+      const updates = firebaseMocks.update.mock.calls.at(-1)[1]
+      expect(updates.currentCodeArrangeSlots).toEqual({ s1: 's2' })
+      expect(updates).not.toHaveProperty('currentAnswer')
+      expect(updates.teacherAnswerEdit.passed).toBeNull()
+    })
+
+    it('clearTeacherAnswerEdit removes a superseded pending edit', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.clearTeacherAnswerEdit('student-xyz')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherAnswerEdit' },
+        null
+      )
+    })
+  })
+
   describe('pushTeacherHighlight', () => {
     it('encodes the file key and writes a new entry under a push()-generated id', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -997,6 +1045,21 @@ describe('useSession', () => {
           attemptNumber: 1,
           retries: 0,
         })
+      )
+    })
+
+    it('records teacherAssisted on the attempt entry', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-assisted', 5, {
+          submission: { p1: { correct: true } },
+          passed: true,
+          teacherAssisted: true,
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'sessions/lesson-1/attemptLog/student-assisted/5/mockHighlightId' }),
+        expect.objectContaining({ passed: true, teacherAssisted: true })
       )
     })
 

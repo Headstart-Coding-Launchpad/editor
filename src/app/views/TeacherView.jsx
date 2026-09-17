@@ -93,6 +93,7 @@ export default function TeacherView({ lessonId }) {
     renameStudent,
     removeStudent,
     pushResetToStudent,
+    pushTeacherAnswerEdit,
     overrideStudentCheck,
     recordClassAdvanceOverrides,
     dismissHelp,
@@ -866,6 +867,7 @@ export default function TeacherView({ lessonId }) {
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
             onPushTeacherPaneCommand={pushTeacherPaneCommand}
+            onTeacherAnswerEdit={pushTeacherAnswerEdit}
             onReadPendingShare={readPendingShare}
             onApproveShare={approveWorkspaceShare}
             onDeclineShare={declineWorkspaceShare}

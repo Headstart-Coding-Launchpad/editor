@@ -87,6 +87,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Match and Fill in the Gaps tasks show a teacher-only "🧩 3/5 filled · 2 correct" badge on each student card and in the student modal header, updating live as the student works
 - Code Arrange tasks show "🧩 4/6 slots filled" (arrangements are marked by running the code, so there is no per-slot correct count)
 - Students never see these counts
+- "✏️ Edit answers" in the student modal lets the teacher drag, type, or move that student's Match / Fill in the Gaps / Code Arrange items directly; changes appear on the student's screen live with a short "Your teacher updated your answer" note
+- A pass reached after a teacher edit looks like a normal pass to the student, but is marked "Teacher assisted" on the student card, in the modal, and in the session report
 
 ### Teacher Editor
 - Starter and complete code toggle (view reference solution)

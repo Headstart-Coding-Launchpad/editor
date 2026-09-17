@@ -1651,4 +1651,101 @@ describe('StudentView', () => {
       )
     })
   })
+
+  describe('teacher answer edits', () => {
+    const matchLesson = {
+      id: 'python-1-1',
+      title: 'Python 1.1',
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          title: 'Match it',
+          taskType: 'quiz',
+          quizType: 'match',
+          pairs: [
+            { id: 'p1', prompt: 'print', answer: 'shows text' },
+            { id: 'p2', prompt: 'input', answer: 'asks' },
+          ],
+        },
+      ],
+    }
+
+    function mkSession(studentData, hookOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': { displayName: 'Solo', ...studentData } },
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentAnswer: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        logAttempt: vi.fn(),
+        clearTeacherAnswerEdit: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+        ...hookOverrides,
+      }
+    }
+
+    it('applies a completed teacher edit as a normal pass, logged as teacher assisted', async () => {
+      const hooks = mkSession({
+        teacherAnswerEdit: {
+          answer: '{"p1":"p1","p2":"p2"}',
+          codeArrangeSlots: null,
+          passed: true,
+          taskId: 1,
+          at: 111,
+        },
+      })
+      mocks.useSession.mockReturnValue(hooks)
+
+      const { rerender } = render(<StudentView lessonId="python-1-1" lesson={matchLesson} />)
+
+      await waitFor(() =>
+        expect(hooks.writeStudentRun).toHaveBeenCalledWith('student-1', {
+          answer: '{"p1":"p1","p2":"p2"}',
+          status: 'submitted',
+          checkPassed: true,
+        })
+      )
+      expect(hooks.logAttempt).toHaveBeenCalledWith(
+        'student-1',
+        1,
+        expect.objectContaining({ passed: true, teacherAssisted: true })
+      )
+      expect(screen.getByTestId('teacher-answer-notice')).toHaveTextContent(
+        'Your teacher updated your answer'
+      )
+      // Applying the teacher's own edit must not count as the student superseding it.
+      expect(hooks.clearTeacherAnswerEdit).not.toHaveBeenCalled()
+
+      rerender(<StudentView lessonId="python-1-1" lesson={matchLesson} />)
+      expect(hooks.writeStudentRun).toHaveBeenCalledTimes(1)
+    })
+
+    it('ignores a teacher edit made for a different task', async () => {
+      const hooks = mkSession({
+        teacherAnswerEdit: { answer: '{"p1":"p1"}', passed: null, taskId: 9, at: 222 },
+      })
+      mocks.useSession.mockReturnValue(hooks)
+      render(<StudentView lessonId="python-1-1" lesson={matchLesson} />)
+      await waitFor(() => expect(screen.getByText('Quiz')).toBeInTheDocument())
+      expect(hooks.writeStudentRun).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('teacher-answer-notice')).not.toBeInTheDocument()
+    })
+  })
 })

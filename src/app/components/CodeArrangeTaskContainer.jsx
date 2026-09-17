@@ -110,13 +110,27 @@ export default function CodeArrangeTaskContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
-  function handleSlotStateChange(next) {
+  function handleSlotStateChange(next, options) {
     setSlotState(next)
     if (!readOnly) {
       cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, JSON.stringify(next))
-      cs.handleCodeArrangeSlotsChange?.(next)
+      if (options) cs.handleCodeArrangeSlotsChange?.(next, options)
+      else cs.handleCodeArrangeSlotsChange?.(next)
     }
   }
+
+  // A teacher edited this student's tiles from StudentModal ("Edit answers").
+  // Applied like a student placement (saved locally, assembled into code by
+  // CodeArrangeTask) but flagged so it doesn't count as the student
+  // superseding the teacher's edit.
+  const teacherEditAt = cs.teacherCodeArrangeEdit?.at ?? null
+  useEffect(() => {
+    if (!teacherEditAt || readOnly) return
+    const slots = cs.teacherCodeArrangeEdit?.slots
+    if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return
+    handleSlotStateChange(slots, { fromTeacher: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherEditAt])
 
   function handleAssembledCodeChange(assembledCode) {
     if (readOnly) return

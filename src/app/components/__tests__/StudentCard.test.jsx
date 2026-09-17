@@ -421,6 +421,17 @@ describe('StudentCard', () => {
       expect(screen.getByTestId('item-progress')).toHaveTextContent('1/2 slots filled')
     })
 
+    it('shows an Assisted badge only for the task the teacher edited', () => {
+      const { rerender } = render(
+        <StudentCard {...mkProps({ lesson: matchLesson }, { teacherAssistedTaskId: 1 })} />
+      )
+      expect(screen.getByTestId('teacher-assisted')).toHaveTextContent('Assisted')
+      rerender(
+        <StudentCard {...mkProps({ lesson: matchLesson }, { teacherAssistedTaskId: 2 })} />
+      )
+      expect(screen.queryByTestId('teacher-assisted')).not.toBeInTheDocument()
+    })
+
     it('is absent for ordinary code tasks', () => {
       render(<StudentCard {...mkProps()} />)
       expect(screen.queryByTestId('item-progress')).not.toBeInTheDocument()
