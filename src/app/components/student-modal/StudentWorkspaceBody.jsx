@@ -223,7 +223,7 @@ export default function StudentWorkspaceBody({
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
           />
         </div>
-        {task?.interactionMode === 'submit' ? (
+        {task?.interactionMode === 'submit' && !isSessionSandbox ? (
           <div style={s.submitNotice}>
             {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
           </div>
@@ -231,7 +231,7 @@ export default function StudentWorkspaceBody({
           <OutputPanel
             output={student.currentOutput ?? ''}
             runStatus={student.lastRunStatus}
-            hasCheck={!!task?.check}
+            hasCheck={!!task?.check && !isSessionSandbox}
             checkPassed={student.checkPassed}
             inputPrompt={student.currentInputPrompt ?? null}
             inputReadOnly

@@ -731,3 +731,54 @@ describe('LessonTaskContent live copy blocking', () => {
     expect(copyEvent.defaultPrevented).toBe(false)
   })
 })
+
+describe('LessonTaskContent teacher-started sandbox instructions', () => {
+  const sandboxProps = {
+    lesson: { type: 'python' },
+    task: { id: 1, title: 'Lesson task', explainer: 'Lesson task explainer' },
+    cs: { inPersonalSandbox: false },
+    currentTaskId: 1,
+    isSandbox: true,
+    sandboxExplainer: 'Build anything you like',
+    isViewingPrev: false,
+    isForcedTeacherLive: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+  }
+
+  it('shows the pushed instructions in the same collapsible side explainer as a normal task', async () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+    const user = userEvent.setup()
+
+    render(<LessonTaskContent {...sandboxProps} />)
+
+    expect(screen.getAllByText('Build anything you like')).toHaveLength(1)
+    expect(screen.queryByText('Lesson task explainer')).not.toBeInTheDocument()
+    await user.click(screen.getByTitle('Collapse Explainer'))
+    expect(screen.getByTitle('Show Explainer')).toBeInTheDocument()
+  })
+
+  it('keeps the side layout when the session is parked on a quiz task', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(<LessonTaskContent {...sandboxProps} isQuizTask />)
+
+    expect(screen.getByTitle('Collapse Explainer')).toBeInTheDocument()
+    expect(screen.getByText('Workspace')).toBeInTheDocument()
+  })
+
+  it('shows no explainer when the teacher has not pushed any instructions', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+
+    render(<LessonTaskContent {...sandboxProps} sandboxExplainer="" />)
+
+    expect(screen.queryByTitle('Collapse Explainer')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lesson task explainer')).not.toBeInTheDocument()
+  })
+})

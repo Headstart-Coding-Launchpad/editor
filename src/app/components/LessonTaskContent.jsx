@@ -191,21 +191,25 @@ export default function LessonTaskContent({
     taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
+  // A teacher-started sandbox's pushed instructions take the task explainer's place, so
+  // they get the same side-by-side/collapsible layout rather than stacking above the code.
+  const hasSandboxExplainer = isSandbox && !!sandboxExplainer?.trim()
   const hasTaskExplainer =
-    (!!task?.explainer || showsCompleteCode) &&
-    !isSandbox &&
-    !cs.inPersonalSandbox &&
-    !isQuizTask &&
-    !isInformationTask &&
-    !isViewingExplainerSlide &&
-    !isViewingCompletionScreen
+    hasSandboxExplainer ||
+    ((!!task?.explainer || showsCompleteCode) &&
+      !isSandbox &&
+      !cs.inPersonalSandbox &&
+      !isQuizTask &&
+      !isInformationTask &&
+      !isViewingExplainerSlide &&
+      !isViewingCompletionScreen)
+  // Sandbox always shows the code workspace, even when the session is parked on a quiz or
+  // information task, so it keeps the fluid layout those tasks opt out of.
   const useFluidWorkspace =
     supportsSideExplainer &&
     !isMobile &&
-    !isQuizTask &&
-    !isInformationTask &&
-    !isViewingExplainerSlide &&
-    !isViewingCompletionScreen
+    (isSandbox ||
+      (!isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
@@ -404,8 +408,16 @@ export default function LessonTaskContent({
         />
       )}
       <ExplainerPanel
-        title={showsCompleteCode ? 'Complete Code' : task.title}
-        content={showsCompleteCode ? '```python\n' + task.completeCode + '\n```' : task.explainer}
+        title={
+          hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
+        }
+        content={
+          hasSandboxExplainer
+            ? sandboxExplainer
+            : showsCompleteCode
+              ? '```python\n' + task.completeCode + '\n```'
+              : task.explainer
+        }
         topicType={lesson.type}
         showLibrary={!isScratchLesson}
         onTopicOpen={onTopicOpen}
@@ -473,15 +485,6 @@ export default function LessonTaskContent({
 
   const workspaceContent = (
     <>
-      {isSandbox && sandboxExplainer && (
-        <ExplainerPanel
-          title="Instructions"
-          content={sandboxExplainer}
-          topicType={lesson.type}
-          disableCopy
-        />
-      )}
-
       {displayedReferenceStage &&
         (() => {
           const reveal =
