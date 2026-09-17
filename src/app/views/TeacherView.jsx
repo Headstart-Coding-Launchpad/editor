@@ -661,6 +661,20 @@ export default function TeacherView({ lessonId }) {
     )
   }
 
+  // Fill-height module workspaces (Scratch, HTML, etc.) are sized to the centre
+  // column, which clips instead of scrolling. Everything else scrolls the column,
+  // and the editor must then keep its own minimum height rather than collapsing
+  // under the panels below it (TaskRatingPanel, CheckConditionsPanel) — see
+  // TeacherEditorPanel's `fillHeight` prop.
+  const centreFillsHeight =
+    (isInformationTask ||
+      displayedLesson.type === 'html' ||
+      displayedLesson.type === 'scratch' ||
+      displayedLesson.type === 'filesystem' ||
+      displayedLesson.type === 'desktop' ||
+      displayedLesson.type === 'electronics') &&
+    !(currentTask?.check != null && !isInSandbox)
+
   return (
     <div style={s.page}>
       <TopBar
@@ -727,20 +741,7 @@ export default function TeacherView({ lessonId }) {
         </aside>
 
         {/* Centre — Teacher Editor */}
-        <main
-          style={{
-            ...s.centre,
-            ...((isInformationTask ||
-              displayedLesson.type === 'html' ||
-              displayedLesson.type === 'scratch' ||
-              displayedLesson.type === 'filesystem' ||
-              displayedLesson.type === 'desktop' ||
-              displayedLesson.type === 'electronics') &&
-            !(currentTask?.check != null && !isInSandbox)
-              ? { overflow: 'hidden' }
-              : {}),
-          }}
-        >
+        <main style={{ ...s.centre, ...(centreFillsHeight ? { overflow: 'hidden' } : {}) }}>
           {task?.explainer && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
             <ExplainerPanel
               title={task.title}
@@ -819,6 +820,7 @@ export default function TeacherView({ lessonId }) {
             teacherLiveReference={session?.teacherLiveReference}
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}
+            fillHeight={centreFillsHeight}
           />
           {task && !isInformationTask && !isInSandbox && (
             <TaskRatingPanel

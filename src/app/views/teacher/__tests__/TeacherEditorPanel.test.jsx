@@ -67,3 +67,34 @@ describe('TeacherEditorPanel — code_arrange tasks', () => {
     expect(screen.queryByText('print(1)')).not.toBeInTheDocument()
   })
 })
+
+const PYTHON_TASK = { id: 2, title: 'Run the Countdown Twice', starterCode: 'print(1)' }
+const PYTHON_LESSON = { type: 'python', tasks: [PYTHON_TASK] }
+
+describe('TeacherEditorPanel — editor stack sizing', () => {
+  // The stack sits in TeacherView's centre column above TaskRatingPanel. When
+  // that column scrolls, a shrinkable (minHeight: 0) stack collapsed as the
+  // rating panel expanded and the editor spilled out over the panel's fields.
+  it('does not let the editor stack shrink below its content in a scrolling column', () => {
+    const { container } = render(
+      <TeacherEditorPanel
+        {...mkProps({ lesson: PYTHON_LESSON, task: PYTHON_TASK, displayTaskId: 2 })}
+      />
+    )
+    expect(container.firstChild.style.minHeight).toBe('auto')
+  })
+
+  it('lets the editor stack shrink to fit a fill-height centre column', () => {
+    const { container } = render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: PYTHON_LESSON,
+          task: PYTHON_TASK,
+          displayTaskId: 2,
+          fillHeight: true,
+        })}
+      />
+    )
+    expect(container.firstChild.style.minHeight).toBe('0px')
+  })
+})

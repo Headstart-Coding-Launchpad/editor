@@ -28,6 +28,7 @@ export default function TeacherEditorPanel({
   teacherLiveReference,
   teacherLiveReferenceVisibleToAll,
   onToggleLiveReference,
+  fillHeight = false,
 }) {
   const mod = getLessonModule(lesson?.type)
   const usesUnifiedStages = mod?.type === 'python' || mod?.type === 'html'
@@ -73,12 +74,20 @@ export default function TeacherEditorPanel({
       (mod.type === 'desktop' && !!task?.completeDesktop) ||
       (mod.type === 'electronics' && !!task?.completeCircuit))
 
+  // In a scrolling centre column the stack must not shrink below its content:
+  // with `minHeight: 0` it collapsed when TaskRatingPanel expanded, and the
+  // editor (which keeps its own minHeight) spilled out over the panel, hiding
+  // its fields and swallowing their clicks. Only fill-height layouts, whose
+  // centre column clips rather than scrolls, need the stack to shrink to fit.
+  const codeWorkspaceStack = fillHeight
+    ? styles.codeWorkspaceStack
+    : { ...styles.codeWorkspaceStack, minHeight: 'auto' }
   const wrapStyle =
     mod.type === 'scratch' || mod.type === 'html'
       ? isInSandbox
         ? styles.scratchWrap
-        : styles.codeWorkspaceStack
-      : styles.codeWorkspaceStack
+        : codeWorkspaceStack
+      : codeWorkspaceStack
 
   return (
     <div style={wrapStyle}>
