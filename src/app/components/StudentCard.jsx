@@ -5,6 +5,7 @@ import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
+import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 
 const formatLastRun = formatTimeAgo
 
@@ -92,6 +93,7 @@ export default function StudentCard({
       ? getQuizOptionText(currentTask, student.currentAnswer)
       : ''
   const quizSubmitted = isQuiz && student.lastRunStatus === 'submitted'
+  const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
   const confidenceLevel =
     isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
 
@@ -336,6 +338,15 @@ export default function StudentCard({
               title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}
             >
               👀 {formatVisiblePanes(student.visiblePanes)}
+            </span>
+          )}
+          {itemProgress && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeView }}
+              title="Items the student has filled in (and got right, where marked per item)"
+              data-testid="item-progress"
+            >
+              🧩 {formatTaskItemProgress(itemProgress)}
             </span>
           )}
         </div>

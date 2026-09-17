@@ -1827,7 +1827,10 @@ export function useStudentCodeState({
     codeArrangeSlotStateRef.current = slotState
     if (!identity) return
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
-    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+    // Written on every tile placement (a discrete action, like a quiz answer
+    // — not per keystroke), watched or not, so the teacher's StudentCard can
+    // show "X/N slots filled" for the whole class.
+    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
       writeStudentCodeArrangeSlots?.(identity.anonymousId, slotState)
     }
   }

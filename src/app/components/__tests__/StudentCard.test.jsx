@@ -377,4 +377,53 @@ describe('StudentCard', () => {
       expect(screen.queryByTitle('Viewing Alex shared work')).not.toBeInTheDocument()
     })
   })
+
+  describe('item progress badge', () => {
+    const matchLesson = {
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          taskType: 'quiz',
+          quizType: 'match',
+          pairs: [
+            { id: 'p1', prompt: 'a', answer: 'A' },
+            { id: 'p2', prompt: 'b', answer: 'B' },
+            { id: 'p3', prompt: 'c', answer: 'C' },
+          ],
+        },
+      ],
+    }
+
+    it('shows filled and correct counts for a match quiz in progress', () => {
+      render(
+        <StudentCard
+          {...mkProps({ lesson: matchLesson }, { currentAnswer: '{"p1":"p1","p2":"p3"}' })}
+        />
+      )
+      expect(screen.getByTestId('item-progress')).toHaveTextContent('2/3 filled · 1 correct')
+    })
+
+    it('shows a slots-filled count for a code arrange task', () => {
+      const lesson = {
+        type: 'python',
+        tasks: [
+          {
+            id: 1,
+            taskType: 'code_arrange',
+            lines: [{ parts: [{ type: 'slot', id: 's1' }, { type: 'slot', id: 's2' }] }],
+          },
+        ],
+      }
+      render(
+        <StudentCard {...mkProps({ lesson }, { currentCodeArrangeSlots: { s1: 's1' } })} />
+      )
+      expect(screen.getByTestId('item-progress')).toHaveTextContent('1/2 slots filled')
+    })
+
+    it('is absent for ordinary code tasks', () => {
+      render(<StudentCard {...mkProps()} />)
+      expect(screen.queryByTestId('item-progress')).not.toBeInTheDocument()
+    })
+  })
 })

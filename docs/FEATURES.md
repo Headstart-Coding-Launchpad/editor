@@ -83,6 +83,11 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Advance the whole class to any task with one click
 - Previous/Next navigation and Sandbox toggle
 
+### Student Progress Counts
+- Match and Fill in the Gaps tasks show a teacher-only "🧩 3/5 filled · 2 correct" badge on each student card and in the student modal header, updating live as the student works
+- Code Arrange tasks show "🧩 4/6 slots filled" (arrangements are marked by running the code, so there is no per-slot correct count)
+- Students never see these counts
+
 ### Teacher Editor
 - Starter and complete code toggle (view reference solution)
 - Python: editor + output panel + run

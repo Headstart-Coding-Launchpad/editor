@@ -70,6 +70,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
+| `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
 
 ---
@@ -100,7 +101,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
-| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, code/output/quiz snippet, expand button |
+| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output/quiz snippet, expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |

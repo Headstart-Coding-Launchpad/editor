@@ -29,6 +29,7 @@ import PaneFocusDropdown from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
+import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 
 function getModuleDisplayState(module, raw) {
   if (!module) return null
@@ -346,6 +347,7 @@ export default function StudentModal({
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, task, session)
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
+  const itemProgress = isSessionSandbox ? null : getTaskItemProgress(task, student)
   // Turtle edits go through the plain code editor below and commit as { code }.
   const supportsTeacherEdit =
     isPython || isScratch || isHtml || isArcade || isElectronics || isTurtle
@@ -468,6 +470,15 @@ export default function StudentModal({
             <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && <span style={s.checkBadge}>✅</span>}
+            {itemProgress && (
+              <span
+                style={s.overrideBadge}
+                title="Items the student has filled in (and got right, where marked per item)"
+                data-testid="item-progress"
+              >
+                🧩 {formatTaskItemProgress(itemProgress)}
+              </span>
+            )}
             {hasOverride && (
               <span style={s.overrideBadge}>
                 {student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed'}

@@ -705,3 +705,14 @@ describe('pending workspace share', () => {
     expect(screen.queryByTestId('output-panel')).not.toBeInTheDocument()
   })
 })
+
+describe('StudentModal item progress', () => {
+  it('shows the slots-filled count in the header for a code arrange task', () => {
+    render(
+      <StudentModal
+        {...mkProps({ lesson: CODE_ARRANGE_LESSON }, { currentCodeArrangeSlots: { L1: 'L2' } })}
+      />
+    )
+    expect(screen.getByTestId('item-progress')).toHaveTextContent('1/2 slots filled')
+  })
+})
