@@ -103,6 +103,20 @@ describe('StudentGrid', () => {
       expect(screen.getByTitle('Students who failed the completion check')).toHaveTextContent('1')
     })
 
+    it('does not show check count badges during a teacher-started sandbox', () => {
+      render(
+        <StudentGrid
+          {...mkProps({
+            lesson: LESSON_WITH_CHECK,
+            session: { state: 'sandbox', currentTaskId: 1 },
+          })}
+        />
+      )
+      expect(
+        screen.queryByTitle('Students who failed the completion check')
+      ).not.toBeInTheDocument()
+    })
+
     it('does not show check count badges when the task has no check', () => {
       render(<StudentGrid {...mkProps()} />)
       expect(

@@ -767,9 +767,11 @@ export default function StudentView({
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'
-  // Need Help is a persistent, always-accessible control in the top bar during a real live
-  // lesson only — solo/sandbox/presentation have no teacher on the other end to help.
-  const canRequestHelp = phase === 'lesson' && !!identity?.anonymousId
+  // Need Help is a persistent, always-accessible control in the top bar whenever a teacher
+  // is on the other end — a live lesson or the sandbox they started. Solo and presentation
+  // have no teacher to help.
+  const canRequestHelp =
+    (phase === 'lesson' || phase === 'sandbox') && !teacherPresentation && !!identity?.anonymousId
   const myNeedsHelp = !!session?.students?.[identity?.anonymousId]?.needsHelp
   const handleNeedHelp = () => requestHelp(identity.anonymousId)
 
@@ -1098,58 +1100,60 @@ export default function StudentView({
         ))}
       </div>
     </div>
-  ) : isSandbox && activeLesson.type === 'python' ? (
-    <button
-      className="btn-ghost"
-      style={s.downloadCodeBtn}
-      onClick={handleDownloadLessonSandboxCode}
-    >
-      Download sandbox code
-    </button>
   ) : (
-    !isSandbox && (
-      <div style={s.topBarTaskControls}>
-        {canRequestHelp && (
-          <button
-            type="button"
-            className={myNeedsHelp ? 'btn-danger' : 'btn-ghost'}
-            style={s.needHelpBtn}
-            onClick={handleNeedHelp}
-            disabled={myNeedsHelp}
-            title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
-          >
-            {myNeedsHelp ? '✋ Help requested' : '✋ Need Help'}
-          </button>
-        )}
-        {canShareWorkspace && (
-          <button
-            type="button"
-            className="btn-ghost"
-            style={s.needHelpBtn}
-            onClick={sharePending ? handleCancelShare : handleShareWorkspace}
-            title={
-              sharePending
-                ? 'Waiting for your teacher to check it — click to withdraw'
-                : 'Offer your work to the class (your teacher approves it first)'
-            }
-          >
-            {sharePending ? '⏳ Waiting for teacher' : '📤 Share with class'}
-          </button>
-        )}
-        {canSeeSharedWork && (
-          <SharedWorkspacePanel
-            sharedWorkspaces={session?.sharedWorkspaces}
-            viewerId={identity?.anonymousId}
-            onOpen={handleOpenSharedWorkspace}
-          />
-        )}
-        {shareError && (
-          <span style={s.shareError} role="alert">
-            {shareError}
-          </span>
-        )}
-        {taskProgressControl}
-        {!isSolo && !isForcedTeacherLive && currentPythonTask && (
+    <div style={s.topBarTaskControls}>
+      {canRequestHelp && (
+        <button
+          type="button"
+          className={myNeedsHelp ? 'btn-danger' : 'btn-ghost'}
+          style={s.needHelpBtn}
+          onClick={handleNeedHelp}
+          disabled={myNeedsHelp}
+          title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
+        >
+          {myNeedsHelp ? '✋ Help requested' : '✋ Need Help'}
+        </button>
+      )}
+      {canShareWorkspace && (
+        <button
+          type="button"
+          className="btn-ghost"
+          style={s.needHelpBtn}
+          onClick={sharePending ? handleCancelShare : handleShareWorkspace}
+          title={
+            sharePending
+              ? 'Waiting for your teacher to check it — click to withdraw'
+              : 'Offer your work to the class (your teacher approves it first)'
+          }
+        >
+          {sharePending ? '⏳ Waiting for teacher' : '📤 Share with class'}
+        </button>
+      )}
+      {canSeeSharedWork && (
+        <SharedWorkspacePanel
+          sharedWorkspaces={session?.sharedWorkspaces}
+          viewerId={identity?.anonymousId}
+          onOpen={handleOpenSharedWorkspace}
+        />
+      )}
+      {shareError && (
+        <span style={s.shareError} role="alert">
+          {shareError}
+        </span>
+      )}
+      {taskProgressControl}
+      {isSandbox && activeLesson.type === 'python' ? (
+        <button
+          className="btn-ghost"
+          style={s.downloadCodeBtn}
+          onClick={handleDownloadLessonSandboxCode}
+        >
+          Download sandbox code
+        </button>
+      ) : (
+        !isSolo &&
+        !isForcedTeacherLive &&
+        currentPythonTask && (
           <button
             className="btn-ghost"
             style={s.downloadCodeBtn}
@@ -1157,22 +1161,22 @@ export default function StudentView({
           >
             Download code
           </button>
-        )}
-        {isSolo && (
-          <SoloNav
-            flatTasks={flatTasksForNav}
-            currentIndex={currentIndexForNav}
-            displayTotal={
-              flatTasksForNav.length - (completionPseudoTask && !viewingCompletionScreen ? 1 : 0)
-            }
-            cs={cs}
-            canNavigateNextSolo={canNavigateNextSolo}
-            onNavigate={handleSoloNavigate}
-            compact
-          />
-        )}
-      </div>
-    )
+        )
+      )}
+      {isSolo && (
+        <SoloNav
+          flatTasks={flatTasksForNav}
+          currentIndex={currentIndexForNav}
+          displayTotal={
+            flatTasksForNav.length - (completionPseudoTask && !viewingCompletionScreen ? 1 : 0)
+          }
+          cs={cs}
+          canNavigateNextSolo={canNavigateNextSolo}
+          onNavigate={handleSoloNavigate}
+          compact
+        />
+      )}
+    </div>
   )
 
   const transitionKey = `${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`

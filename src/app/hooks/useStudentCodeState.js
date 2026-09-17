@@ -1313,32 +1313,38 @@ export function useStudentCodeState({
         variables: result.variables ?? {},
         turtle: result.turtle ?? null,
       })
-      const hasTests = task?.tests?.length > 0
+      // A teacher-started or personal sandbox is free play: the session still points at a
+      // lesson task, but sandbox code has nothing to do with that task's check, so scoring
+      // it reported a "failed" run to the teacher on every sandbox Run.
+      const isFreePlay = phaseRef.current === 'sandbox' || inPersonalSandboxRef.current
+      const checkTask = isFreePlay ? null : task
+      const hasTests = checkTask?.tests?.length > 0
       let passed = alreadySolved
         ? true
-        : status === 'error' || hasTests
+        : status === 'error' || hasTests || isFreePlay
           ? false
-          : evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext).passed
+          : evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext).passed
       let suggestion = ''
-      if (!alreadySolved) {
+      if (!alreadySolved && !isFreePlay) {
         // Feedback checks can diagnose code even when Python could not run (for
         // example, `print(hello)` raises NameError). Keep completion failed on a
         // runtime error, but still evaluate the feedback checks and their stage
         // offers against the submitted code/output.
         const evaluation =
-          !hasTests && task?.check
-            ? evaluateCheckWithFeedback(task, outputBuffer.raw, checkContext, {
+          !hasTests && checkTask?.check
+            ? evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext, {
                 completionPassed:
-                  status !== 'error' && evaluateCheck(task.check, outputBuffer.raw, checkContext),
+                  status !== 'error' &&
+                  evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
               })
             : null
         if (evaluation) {
           passed = evaluation.passed
           suggestion = evaluation.suggestion
-          updateTargetedStageOffer(task, evaluation, passed)
+          updateTargetedStageOffer(checkTask, evaluation, passed)
         }
-        if (!hasTests && task?.check) applyCheckFeedback(passed, suggestion)
-        updateSupportStageForAttempt(status !== 'error' && (!task?.check || passed))
+        if (!hasTests && checkTask?.check) applyCheckFeedback(passed, suggestion)
+        updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
       }
 
       if (canPublishTeacherLive()) {
@@ -1347,7 +1353,7 @@ export function useStudentCodeState({
           output: outputBuffer.raw,
           runStatus: status,
           checkPassed: passed,
-          checkAttempted: !alreadySolved && !hasTests && !!task?.check,
+          checkAttempted: !alreadySolved && !hasTests && !!checkTask?.check,
           checkSuggestion: suggestion,
         })
       }
@@ -1367,7 +1373,7 @@ export function useStudentCodeState({
           code: nextCode,
           output: outputBuffer.raw,
           status,
-          checkPassed: hasTests ? undefined : passed,
+          checkPassed: hasTests || isFreePlay ? undefined : passed,
         })
         // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
         // Arcade's design — so it's synced here alongside writeStudentRun, not only on
@@ -1381,7 +1387,7 @@ export function useStudentCodeState({
         phaseRef.current === 'lesson' &&
         !alreadySolved &&
         !hasTests &&
-        task?.check
+        checkTask?.check
       ) {
         logAttempt(actor.anonymousId, currentTaskId, {
           submission: nextCode,
@@ -2118,11 +2124,17 @@ export function useStudentCodeState({
       return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-      setCode(getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '')
+      // In a teacher-started sandbox the session still points at a lesson task, but the
+      // student's starting point is what the teacher sent, not that task's starter code.
+      const starterCode =
+        phaseRef.current === 'sandbox' && lesson.type !== 'arcade'
+          ? (session?.sandboxCode ?? lesson.sandboxStarter ?? '')
+          : (getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '')
+      setCode(starterCode)
       if (lesson.type === 'arcade') handleArcadeDesignChange(designForCodeTab(task, 'starter'))
       if (canPublishTeacherLive())
         publishTeacherLive({
-          code: getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '',
+          code: starterCode,
           output: '',
           runStatus: null,
           checkPassed: false,

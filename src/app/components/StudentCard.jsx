@@ -118,8 +118,11 @@ export default function StudentCard({
 
   // Confidence tasks have no pass/fail check — teacher just sees the submitted level
   // For match/fill_blank quizzes, checkPassed comes from internal quiz logic rather than task.check
+  // Sandbox runs aren't scored against the task the session was on, so there is no
+  // pass/fail to show (a stale result from before the sandbox would read as "failed").
   const hasCheck =
     !isConfidence &&
+    !isSessionSandbox &&
     (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const hasActiveOverride = !!student.checkOverridePushedAt

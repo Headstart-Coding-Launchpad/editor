@@ -218,3 +218,36 @@ describe('Python StudentWorkspace forced-live output-collapse lock', () => {
     expect(cs.publishOutputCollapsed).not.toHaveBeenCalled()
   })
 })
+
+describe('Python StudentWorkspace in a teacher-started sandbox', () => {
+  it("ignores the session task's submit mode, tests and check", () => {
+    outputPanelSpy.mockClear()
+    render(
+      <StudentWorkspace
+        task={{
+          interactionMode: 'submit',
+          tests: [{ name: 't1' }],
+          check: { type: 'output_contains', value: 'hi' },
+          copyCode: 'print(1)',
+        }}
+        cs={cs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={true}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+
+    expect(screen.getByText('Run')).toBeInTheDocument()
+    expect(screen.queryByText('Submit')).not.toBeInTheDocument()
+    expect(screen.queryByText('Run Tests')).not.toBeInTheDocument()
+    expect(screen.queryByText('copy-code-panel')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Run'))
+    expect(outputPanelSpy).toHaveBeenLastCalledWith(expect.objectContaining({ hasCheck: false }))
+  })
+})

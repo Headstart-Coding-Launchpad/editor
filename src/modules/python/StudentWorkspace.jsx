@@ -10,7 +10,7 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 
 export default function StudentWorkspace({
-  task,
+  task: lessonTask,
   cs,
   lessonId,
   identityId,
@@ -48,6 +48,10 @@ export default function StudentWorkspace({
       return resolved
     })
   }
+  // Sandbox code is free play: the session still points at a lesson task, but that
+  // task's submit mode, tests, check and copy-code panel don't apply to it.
+  const inSandbox = isSandbox || cs.inPersonalSandbox
+  const task = inSandbox ? null : lessonTask
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
   const code = isForcedTeacherLive
@@ -69,11 +73,7 @@ export default function StudentWorkspace({
   useEffect(() => {
     onVisiblePanesChange?.(shouldShowOutput && !outputCollapsed ? ['code', 'console'] : ['code'])
   }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
-  const showCopyCode =
-    !isSandbox &&
-    !cs.inPersonalSandbox &&
-    typeof task?.copyCode === 'string' &&
-    !!task.copyCode.trim()
+  const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
   const outputProps =
     isForcedTeacherLive || isTeacherEditing
       ? {
@@ -167,7 +167,11 @@ export default function StudentWorkspace({
               style={s.resetBtn}
               onClick={cs.handleResetCode}
               disabled={cs.running}
-              title="Reset code to the starter code for this task"
+              title={
+                inSandbox
+                  ? 'Reset code to the sandbox starter code'
+                  : 'Reset code to the starter code for this task'
+              }
             >
               Reset Code
             </button>

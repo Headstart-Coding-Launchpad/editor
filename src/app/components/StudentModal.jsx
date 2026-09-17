@@ -497,7 +497,7 @@ export default function StudentModal({
             <span style={s.name}>{student.displayName}</span>
             <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
-            {student.checkPassed && <span style={s.checkBadge}>✅</span>}
+            {student.checkPassed && !isSessionSandbox && <span style={s.checkBadge}>✅</span>}
             {teacherAssisted && (
               <span
                 style={s.overrideBadge}

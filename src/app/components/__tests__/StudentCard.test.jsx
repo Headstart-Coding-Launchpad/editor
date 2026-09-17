@@ -102,6 +102,19 @@ describe('StudentCard', () => {
       expect(screen.getByText('Failed')).toBeInTheDocument()
     })
 
+    it('shows no check badge during a teacher-started sandbox, even if the session task has a check', () => {
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: LESSON_WITH_CHECK, session: { state: 'sandbox', currentTaskId: 1 } },
+            { checkPassed: false, lastRunStatus: 'success' }
+          )}
+        />
+      )
+      expect(screen.queryByText('Passed')).not.toBeInTheDocument()
+      expect(screen.queryByText('Failed')).not.toBeInTheDocument()
+    })
+
     it('shows no check badge when the task has no check defined', () => {
       render(<StudentCard {...mkProps({}, { lastRunStatus: 'success', checkPassed: false })} />)
       expect(screen.queryByText('Passed')).not.toBeInTheDocument()

@@ -88,7 +88,7 @@ export default function StudentGrid({
   }
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const hasCheck = currentTask?.check != null
+  const hasCheck = currentTask?.check != null && session?.state !== 'sandbox'
   const passedCount = hasCheck ? students.filter((student) => student.checkPassed).length : 0
   const failedCount = hasCheck
     ? students.filter((student) => student.lastRunStatus != null && !student.checkPassed).length
