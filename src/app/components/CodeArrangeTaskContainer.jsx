@@ -43,10 +43,10 @@ function fileContent(files, name) {
 // currentCursor/currentBlockDrag in useStudentCodeState.js) to two
 // destinations, separate from the assembled code/file sync above which only
 // fires once every blank is filled:
-//   - currentCodeArrangeSlots (gated by activeStudentView) for a teacher
-//     passively watching a student in StudentModal — see
+//   - currentCodeArrangeSlots (written on every placement during a lesson,
+//     watched or not) for a teacher watching a student in StudentModal — see
 //     StudentWorkspaceBody.jsx, which prefers it over deriving from
-//     currentCode/currentFiles.
+//     currentCode/currentFiles — and for StudentCard's "X/N slots filled".
 //   - teacherLive.codeArrangeSlots for an isForcedTeacherLive viewer (Go
 //     Live/presentation), read here as displayCodeArrangeSlots and preferred
 //     over deriving from liveCode. Without either destination, a watcher
