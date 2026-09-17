@@ -8,6 +8,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildIframeSrc } from './iframe'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import { selectHtmlTaskFiles } from '../../app/studentTaskContent'
 
 export default function StudentWorkspace({
@@ -82,6 +83,10 @@ export default function StudentWorkspace({
       ? viewedIframeSrc
       : cs.iframeSrc
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
+  useRemoteRunTrigger(cs.remoteRunToken, () => cs.handleRun(), {
+    enabled: !readOnly && task?.interactionMode !== 'submit',
+    onHandled: cs.acknowledgeRemoteRun,
+  })
   const showCopyCode =
     !isSandbox &&
     !cs.inPersonalSandbox &&

@@ -69,6 +69,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
 | `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
+| `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
+| `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
 
 ---
@@ -99,7 +101,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
-| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, code/output/quiz snippet, expand button |
+| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output/quiz snippet, expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |
@@ -448,6 +450,7 @@ Each `index.js` exports a default object with:
 | `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
+| `useRemoteRunTrigger.js` | `useRemoteRunTrigger(token, run, { enabled, onHandled })` — each module workspace runs its own Run action once per pending teacher remote-Run token (`cs.remoteRunToken`), then acknowledges it so a remount never replays it |
 | `useIsTouchDevice.js` | `useIsTouchDevice() → boolean` — touch-capability hook (`ontouchstart`/`maxTouchPoints`), not a viewport-width check like `useIsMobile` — catches touch devices with a wide viewport (iPad Pro landscape); drives `PythonEditor.jsx`'s on-screen punctuation symbol row (the emoji button is shown regardless of this hook) |
 | `useElementSize.js` | `useElementSize() → [ref, {width, height}]` — `ResizeObserver`-based container-size hook (vs. `useIsMobile`'s viewport-only breakpoint); drives `LessonTaskContent.jsx`'s Scratch compact/tab layout (`ScratchWorkspace.jsx` measures its own container directly, not via this hook). Returns a callback ref, not a plain `useRef` — needed because `TaskSlideTransition.jsx` swaps in a fresh DOM node per task without the owning component remounting; a mount-only effect would silently keep observing the detached old node |
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |

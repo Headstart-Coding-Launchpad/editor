@@ -113,6 +113,8 @@ export default function StudentView({
     acceptTeacherStage,
     declineTeacherStage,
     removeTeacherHighlight,
+    clearTeacherAnswerEdit,
+    clearRemoteRun,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const {
     identity,
@@ -223,6 +225,8 @@ export default function StudentView({
     updateTeacherLive,
     setTeacherLive,
     setTeacherLiveReference,
+    clearTeacherAnswerEdit,
+    clearRemoteRun,
     removeTeacherHighlight,
   })
 

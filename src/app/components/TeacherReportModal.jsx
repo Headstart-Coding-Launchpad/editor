@@ -26,6 +26,7 @@ function formatFinalResult(task) {
   if (task.finalResult === 'not_applicable') return task.completed ? 'Answered' : 'No response'
   if (task.finalResult === 'overridden_failed') return 'Overridden'
   if (task.finalResult === 'overridden_unattempted') return 'Skipped'
+  if (task.completed && task.teacherAssisted) return 'Passed (teacher assisted)'
   return task.completed ? 'Passed' : 'Failed'
 }
 
@@ -53,8 +54,10 @@ function formatSummaryCompletion(task) {
     task.overrideCount > 0
       ? `, ${task.overrideCount} override${task.overrideCount === 1 ? '' : 's'}`
       : ''
+  const assistedLabel =
+    task.teacherAssistedCount > 0 ? `, ${task.teacherAssistedCount} teacher assisted` : ''
   if (typeof task.completionRate === 'number') {
-    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}`
+    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}${assistedLabel}`
   }
   if (typeof task.respondedCount === 'number') {
     return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}`

@@ -83,6 +83,14 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Advance the whole class to any task with one click
 - Previous/Next navigation and Sandbox toggle
 
+### Student Progress Counts
+- Match and Fill in the Gaps tasks show a teacher-only "🧩 3/5 filled · 2 correct" badge on each student card and in the student modal header, updating live as the student works
+- Code Arrange tasks show "🧩 4/6 slots filled" (arrangements are marked by running the code, so there is no per-slot correct count)
+- Students never see these counts
+- "✏️ Edit answers" in the student modal lets the teacher drag, type, or move that student's Match / Fill in the Gaps / Code Arrange items directly; changes appear on the student's screen live with a short "Your teacher updated your answer" note
+- "▶ Run on student" in the student modal runs that student's current code on their own device (Python, Turtle, Arcade, HTML, Scratch green flag, Electronics), exactly as if they had pressed Run; the output mirrors back to the teacher
+- A pass reached after a teacher edit looks like a normal pass to the student, but is marked "Teacher assisted" on the student card, in the modal, and in the session report
+
 ### Teacher Editor
 - Starter and complete code toggle (view reference solution)
 - Python: editor + output panel + run

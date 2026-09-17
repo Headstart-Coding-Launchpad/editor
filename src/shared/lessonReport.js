@@ -462,6 +462,7 @@ export function buildSessionReport({ session, lesson }) {
         finalResult: getFinalResult(task, entries, override),
         timeOnTaskMs,
         ...(override ? { override } : {}),
+        ...(passingEntry?.teacherAssisted ? { teacherAssisted: true } : {}),
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
         distinctAttempts: entries.map((entry) => ({
@@ -571,6 +572,7 @@ export function buildSessionReport({ session, lesson }) {
             : 0,
           avgTimeOnTaskMs,
           commonFailures,
+          teacherAssistedCount: perStudent.filter((t) => t.teacherAssisted).length,
         },
         perStudent
       ),

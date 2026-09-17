@@ -60,70 +60,122 @@ const remoteSelectionField = StateField.define({
 })
 
 // Teacher-authored markup highlights: unlike remoteSelection, this holds
-// any number of ranges at once and each carries an emoji "badge" the
-// student clicks to dismiss.
-const setTeacherHighlights = StateEffect.define()
+// any number of ranges at once. Each range gets an inline background mark,
+// and each highlighted line gets emoji "badges" the student clicks to
+// dismiss. The badges float in the empty space past the end of the line from
+// a zero-width anchor, so they never push code sideways, make the line
+// taller, or cover any of the student's code.
+export const setTeacherHighlights = StateEffect.define()
 
-class TeacherHighlightWidget extends WidgetType {
-  constructor(id, emoji, note) {
+class TeacherHighlightBadgesWidget extends WidgetType {
+  constructor(badges) {
     super()
-    this.id = id
-    this.emoji = emoji
-    this.note = note
+    this.badges = badges
   }
   eq(other) {
-    return other.id === this.id && other.emoji === this.emoji && other.note === this.note
+    return (
+      other.badges.length === this.badges.length &&
+      other.badges.every(
+        (b, i) =>
+          b.id === this.badges[i].id &&
+          b.emoji === this.badges[i].emoji &&
+          b.note === this.badges[i].note
+      )
+    )
   }
   toDOM() {
-    const badge = document.createElement('button')
-    badge.type = 'button'
-    badge.className = 'cm-teacherHighlightBadge'
-    badge.title = this.note ? this.note : 'Dismiss this highlight'
-    badge.dataset.highlightId = this.id
+    const anchor = document.createElement('span')
+    anchor.className = 'cm-teacherHighlightAnchor'
+    const row = document.createElement('span')
+    row.className = 'cm-teacherHighlightBadges'
+    anchor.appendChild(row)
 
-    const emojiSpan = document.createElement('span')
-    emojiSpan.textContent = this.emoji || '★'
-    badge.appendChild(emojiSpan)
+    for (const highlight of this.badges) {
+      const badge = document.createElement('button')
+      badge.type = 'button'
+      badge.className = 'cm-teacherHighlightBadge'
+      badge.title = highlight.note
+        ? `${highlight.note} (click to dismiss)`
+        : 'Dismiss this highlight'
+      badge.setAttribute('aria-label', badge.title)
+      badge.dataset.highlightId = highlight.id
 
-    const labelSpan = document.createElement('span')
-    labelSpan.className = 'cm-teacherHighlightBadgeLabel'
-    labelSpan.textContent = 'Dismiss ✕'
-    badge.appendChild(labelSpan)
+      const emojiSpan = document.createElement('span')
+      emojiSpan.textContent = highlight.emoji || '★'
+      badge.appendChild(emojiSpan)
 
-    return badge
+      const labelSpan = document.createElement('span')
+      labelSpan.className = 'cm-teacherHighlightBadgeLabel'
+      labelSpan.textContent = '✕'
+      badge.appendChild(labelSpan)
+
+      row.appendChild(badge)
+    }
+    return anchor
   }
   ignoreEvent() {
     return false
   }
 }
 
-const teacherHighlightsField = StateField.define({
+function buildTeacherHighlightDecorations(doc, highlights) {
+  const ranges = []
+  const badgesByLineEnd = new Map()
+  for (const h of highlights) {
+    ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(h.from, h.to))
+    // A selection ending at the very start of a line (e.g. a whole line
+    // including its newline) belongs to the previous line.
+    const endsAtLineStart = doc.lineAt(h.to).from === h.to
+    const line = doc.lineAt(endsAtLineStart ? h.to - 1 : h.to)
+    if (!badgesByLineEnd.has(line.to)) badgesByLineEnd.set(line.to, [])
+    badgesByLineEnd.get(line.to).push(h)
+  }
+  for (const [lineEnd, badges] of badgesByLineEnd) {
+    ranges.push(
+      Decoration.widget({ widget: new TeacherHighlightBadgesWidget(badges), side: 1 }).range(
+        lineEnd
+      )
+    )
+  }
+  return Decoration.set(ranges, true)
+}
+
+export const teacherHighlightsField = StateField.define({
   create() {
-    return Decoration.none
+    return { decorations: Decoration.none, highlights: [] }
   },
-  update(marks, transaction) {
-    marks = marks.map(transaction.changes)
+  update(value, transaction) {
+    let highlights = value.highlights
+    let changed = false
+    if (transaction.docChanged && highlights.length > 0) {
+      highlights = highlights
+        .map((h) => ({
+          ...h,
+          from: transaction.changes.mapPos(h.from, 1),
+          to: transaction.changes.mapPos(h.to, -1),
+        }))
+        .filter((h) => h.from < h.to)
+      changed = true
+    }
     for (const effect of transaction.effects) {
       if (!effect.is(setTeacherHighlights)) continue
       const max = transaction.state.doc.length
-      const ranges = []
+      highlights = []
       for (const h of effect.value ?? []) {
         const from = Math.min(Math.max(h.from ?? 0, 0), max)
         const to = Math.min(Math.max(h.to ?? from, 0), max)
         if (from >= to) continue
-        ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(from, to))
-        ranges.push(
-          Decoration.widget({
-            widget: new TeacherHighlightWidget(h.id, h.emoji, h.note),
-            side: 1,
-          }).range(to)
-        )
+        highlights.push({ id: h.id, emoji: h.emoji, note: h.note, from, to })
       }
-      marks = Decoration.set(ranges, true)
+      changed = true
     }
-    return marks
+    if (!changed) return value
+    return {
+      highlights,
+      decorations: buildTeacherHighlightDecorations(transaction.state.doc, highlights),
+    }
   },
-  provide: (field) => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
 })
 
 // Runtime error-line highlight: a single whole-line marker showing where the

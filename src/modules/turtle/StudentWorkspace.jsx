@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import OutputPanel from '../../app/components/OutputPanel'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
 import {
   CollapsedPanelRail,
@@ -87,6 +88,14 @@ export default function StudentWorkspace({
     setOutputCollapsed(false)
     cs.handleRun()
   }
+
+  useRemoteRunTrigger(
+    cs.remoteRunToken,
+    () => {
+      if (!cs.running) handleRunClick()
+    },
+    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+  )
 
   const editor = (
     <div style={s.editorPane}>

@@ -783,4 +783,32 @@ describe('encodeSessionReportForFirestore', () => {
     expect(encodeSessionReportForFirestore(null)).toBe(null)
     expect(encodeSessionReportForFirestore({ sessionId: 'x' })).toEqual({ sessionId: 'x' })
   })
+
+  it('marks a pass reached through a teacher answer edit as teacher assisted', () => {
+    const assistedSession = {
+      ...session,
+      attemptLog: {
+        ...session.attemptLog,
+        bob: {
+          ...(session.attemptLog.bob ?? {}),
+          5: {
+            t1: {
+              submission: '{}',
+              passed: true,
+              teacherAssisted: true,
+              attemptNumber: 1,
+              retries: 0,
+              loggedAt: 1500,
+              passedAt: 1500,
+            },
+          },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: assistedSession, lesson })
+    const bob = studentByLabel(report, 'Student 2')
+    expect(taskById(bob.tasks, 5)).toMatchObject({ completed: true, teacherAssisted: true })
+    expect(taskById(report.taskSummary, 5).teacherAssistedCount).toBe(1)
+    expect(taskById(report.taskSummary, 1).teacherAssistedCount).toBe(0)
+  })
 })

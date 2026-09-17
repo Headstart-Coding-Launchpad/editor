@@ -147,6 +147,8 @@ export default function StudentWorkspace({
         highlightedPanes={highlightedPanes}
         forcedPane={forcedPane}
         forcedPaneToken={forcedPaneCommand?.pushedAt ?? null}
+        runToken={detached ? null : cs.remoteRunToken}
+        onRunTokenHandled={detached ? undefined : cs.acknowledgeRemoteRun}
       />
     </div>
   )

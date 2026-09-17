@@ -62,6 +62,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Stored as a map at `sessions/{lessonId}/students/{anonymousId}/teacherHighlights/{highlightId}` (RTDB `push()` keys, so any number can coexist across files/lines) — written by `pushTeacherHighlight`/`removeTeacherHighlight` in `useSession.js`.
 - Each entry: `{ file (encodeFileKey'd), from, to, emoji, note, createdAt }`. Python tasks use an empty string for `file` (single-file, no tabs).
 - Renders as a `Decoration.mark` + clickable emoji badge (`teacherHighlightsField` in `src/shared/CodeEditor.jsx`) in **both** the teacher's mirror and the student's own editable editor — the same dual-instance path `remoteSelection` already uses.
+- Badges float in the empty space past the end of the highlighted line: one zero-size inline anchor per line (multiple highlights on a line share a pill row) with the pills absolutely positioned, so a highlight never shifts the student's code, changes line height, or covers code. Do not reintroduce an inline-flow widget for the badge.
 - Clicking the emoji badge removes that highlight (`onHighlightDismiss`) — this lets the teacher retract their own highlight from the mirror, or the student dismiss it from their own editor. Either side writes the same RTDB removal.
 - Ranges are character offsets valid for the document as of creation; CodeMirror remaps them through edits within the same browser session, but a highlight can drift if the student reloads after edits happened elsewhere in the file — accepted tradeoff for character-exact (vs line-snapped) precision.
 - Cleared automatically on task advance (`setTaskId` nulls `teacherHighlights` alongside the other per-student teacher-owned fields).
@@ -124,6 +125,18 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
   - Scratch uses `.blocks`, `.predefinedBlocks`, and `.prebuiltStacks`.
   - Electronics uses `.circuit`.
   - Filesystem uses `.fs`.
+
+## Teacher Answer Editing: `teacherAnswerEdit`
+
+- For Match, Fill in the Gaps, and Code Arrange tasks, `StudentModal` shows an "✏️ Edit answers" toggle (only when `taskItemProgress` recognises the task). While on, the mirrored `QuizTask` / `CodeArrangeTask` in `StudentWorkspaceBody.jsx` is interactive and every change calls `pushTeacherAnswerEdit` — the teacher's own latest value is shown locally straight away (`useTeacherEditableValue`), and a remote value the teacher didn't push (the student changing it) replaces it: last write wins. Editing switches off when the modal moves to another student or task.
+- Student side (`useStudentCodeState.js`): once in the lesson phase on the edit's `taskId`, a quiz edit is applied via `handleQuizSelect(answer, passed, { fromTeacher: true })` — so a complete, correct edit produces the student's normal pass banner, `writeStudentRun`, and attempt log — and a Code Arrange edit via `teacherCodeArrangeEdit` → `CodeArrangeTaskContainer`, which saves and assembles it like a placement. The student sees a brief "✏️ Your teacher updated your answer" notice and nothing else.
+- Teacher side only: attempts logged on that task carry `teacherAssisted`, the report shows "Passed (teacher assisted)" plus a per-task "N teacher assisted" count, and `StudentCard`/`StudentModal` show an Assisted badge while `teacherAssistedTaskId` matches the current task. Any teacher edit on a task marks it assisted for the rest of that task in that tab.
+
+## Teacher Remote Run: `remoteRunPushedAt`
+
+- `StudentModal` shows "▶ Run on student" for Python, Turtle, Arcade, HTML (not submit-mode), Scratch, and Electronics tasks, including Code Arrange; disabled while the student is offline. It writes `remoteRunPushedAt`/`remoteRunTaskId` via `pushRemoteRun`.
+- The program runs on the **student's** device, never in the teacher's browser. `useStudentCodeState` consumes the request (clears it in Firebase first, so a reload never re-runs it) and exposes `remoteRunToken`; each module workspace calls `useRemoteRunTrigger` with the exact action its own Run button uses — Python/Turtle `handleRunClick` (opens the output panel), HTML/Electronics `cs.handleRun`, Arcade `run()`, Scratch the green-flag `handleRun` (via `ScratchWorkspace`'s `runToken` prop), Code Arrange `cs.handleRun` only once the arrangement is complete — and acknowledges the token back to null.
+- A request is ignored if the student is already running, is on a different task than the one requested, or is viewing an earlier task. `input()` prompts appear on the student's screen as normal; output reaches a watching teacher through the usual live mirror.
 
 ## Code Stage Reveal
 

@@ -29,10 +29,15 @@ vi.mock('../IframePreview', () => ({
 }))
 
 vi.mock('../QuizTask', () => ({
-  default: ({ task, selectedAnswer }) => (
-    <div data-testid="quiz-task">
+  default: ({ task, selectedAnswer, onSelectAnswer, disabled }) => (
+    <div data-testid="quiz-task" data-disabled={String(!!disabled)}>
       <span>{task?.title}</span>
-      <span>{selectedAnswer}</span>
+      <span data-testid="quiz-selected">{selectedAnswer}</span>
+      {onSelectAnswer && (
+        <button type="button" onClick={() => onSelectAnswer({ b1: 'pri' }, null)}>
+          mock-edit
+        </button>
+      )}
     </div>
   ),
 }))
@@ -703,5 +708,76 @@ describe('pending workspace share', () => {
     )
     expect(screen.getByText(/preparing a share/i)).toBeInTheDocument()
     expect(screen.queryByTestId('output-panel')).not.toBeInTheDocument()
+  })
+})
+
+describe('StudentModal item progress', () => {
+  it('shows the slots-filled count in the header for a code arrange task', () => {
+    render(
+      <StudentModal
+        {...mkProps({ lesson: CODE_ARRANGE_LESSON }, { currentCodeArrangeSlots: { L1: 'L2' } })}
+      />
+    )
+    expect(screen.getByTestId('item-progress')).toHaveTextContent('1/2 slots filled')
+  })
+  it('lets the teacher edit a typed fill-in-the-gaps answer and pushes it to the student', async () => {
+    const onTeacherAnswerEdit = vi.fn()
+    const lesson = {
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          title: 'Blanks',
+          taskType: 'quiz',
+          quizType: 'fill_blank',
+          mode: 'type',
+          text: 'Use ___ to show text',
+          blanks: [{ id: 'b1', answer: 'print' }],
+        },
+      ],
+    }
+    render(<StudentModal {...mkProps({ lesson, onTeacherAnswerEdit })} />)
+    expect(screen.getByTestId('quiz-task')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.queryByRole('button', { name: 'mock-edit' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
+    expect(screen.getByTestId('quiz-task')).toHaveAttribute('data-disabled', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'mock-edit' }))
+
+    expect(onTeacherAnswerEdit).toHaveBeenLastCalledWith('student-1', {
+      answer: '{"b1":"pri"}',
+      passed: null,
+    })
+    // The teacher's own edit shows straight away, before any Firebase echo.
+    expect(screen.getByTestId('quiz-selected')).toHaveTextContent('{"b1":"pri"}')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Done editing' }))
+    expect(screen.getByTestId('quiz-task')).toHaveAttribute('data-disabled', 'true')
+  })
+
+  it('does not offer answer editing for ordinary code tasks', () => {
+    render(<StudentModal {...mkProps({ onTeacherAnswerEdit: vi.fn() })} />)
+    expect(screen.queryByRole('button', { name: '✏️ Edit answers' })).not.toBeInTheDocument()
+  })
+  it('sends a remote Run for an online student and confirms it was sent', () => {
+    const onRemoteRun = vi.fn()
+    render(<StudentModal {...mkProps({ onRemoteRun })} />)
+    fireEvent.click(screen.getByRole('button', { name: '▶ Run on student' }))
+    expect(onRemoteRun).toHaveBeenCalledWith('student-1')
+    expect(screen.getByRole('button', { name: 'Run sent ✓' })).toBeInTheDocument()
+  })
+
+  it('disables remote Run for an offline student and hides it for quizzes', () => {
+    const onRemoteRun = vi.fn()
+    const { unmount } = render(<StudentModal {...mkProps({ onRemoteRun }, { online: false })} />)
+    expect(screen.getByRole('button', { name: '▶ Run on student' })).toBeDisabled()
+    unmount()
+
+    const quizLesson = {
+      type: 'python',
+      tasks: [{ id: 1, title: 'Q', taskType: 'quiz', quizType: 'multiple_choice' }],
+    }
+    render(<StudentModal {...mkProps({ onRemoteRun, lesson: quizLesson })} />)
+    expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
   })
 })

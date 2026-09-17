@@ -38,6 +38,7 @@ import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
 import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import {
   createSpriteFromPreset,
   normalizeSpritePresets,
@@ -815,6 +816,9 @@ export default function ScratchWorkspace({
   highlightedPanes = null,
   forcedPane = null,
   forcedPaneToken = null,
+  // Teacher remote Run request (cs.remoteRunToken): presses the green flag.
+  runToken = null,
+  onRunTokenHandled = null,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -2215,6 +2219,11 @@ export default function ScratchWorkspace({
     for (const s of keySignalsRef.current.values()) s.stopped = true
     keySignalsRef.current.clear()
   }
+
+  useRemoteRunTrigger(runToken, () => handleRun(), {
+    enabled: !readOnly,
+    onHandled: onRunTokenHandled,
+  })
 
   // ── Run / Stop ────────────────────────────────────────────────────────────────
   async function handleRun() {

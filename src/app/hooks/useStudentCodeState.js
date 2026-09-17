@@ -48,9 +48,11 @@ import {
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
+import { parseQuizAnswerState } from '../../shared/quizAnswers'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
+import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
@@ -105,6 +107,8 @@ export function useStudentCodeState({
   setTeacherLive,
   setTeacherLiveReference,
   removeTeacherHighlight,
+  clearTeacherAnswerEdit,
+  clearRemoteRun,
 }) {
   const [code, setCode] = useState('')
   const [arcadeDesign, setArcadeDesign] = useState(null)
@@ -147,8 +151,24 @@ export function useStudentCodeState({
 
   const iframeRef = useRef(null)
   const appendOutputRef = useRef(null)
+  // Set by handleRun while a program is running: echoes a submitted input()
+  // line into the output and mirrors it in one write (see handleInputSubmit).
+  const submitInputEchoRef = useRef(null)
+  const outputMirrorRef = useRef(null)
+  // Tasks this tab has had a teacher edit the answer on (StudentModal "Edit
+  // answers"): their logged attempts carry teacherAssisted for the report.
+  const teacherAssistedTaskIdsRef = useRef(new Set())
+  const appliedTeacherAnswerEditAtRef = useRef(null)
+  const [teacherCodeArrangeEdit, setTeacherCodeArrangeEdit] = useState(null)
+  const [teacherAnswerNoticeAt, setTeacherAnswerNoticeAt] = useState(null)
+  // Bumped when the teacher presses Run for this student; each module
+  // workspace reacts via useRemoteRunTrigger with its own Run action.
+  const [remoteRunToken, setRemoteRunToken] = useState(null)
   const writeAnswerDebounceRef = useRef(null)
-  const lastOutputWriteRef = useRef(0)
+  // Latest in-progress input() state, kept regardless of whether a teacher is
+  // watching, so opening StudentModal mid-prompt can publish it immediately.
+  const inputPromptRef = useRef(null)
+  const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
   const outputRafIdRef = useRef(null)
   const runtimeCodeRafIdRef = useRef(null)
@@ -839,6 +859,10 @@ export function useStudentCodeState({
     ) {
       writeStudentCode(identity.anonymousId, code)
       writeStudentOutput(identity.anonymousId, output)
+      writeStudentInputState(identity.anonymousId, {
+        prompt: inputPromptRef.current,
+        value: inputPromptRef.current !== null ? inputValueRef.current : '',
+      })
     } else if (lesson.type === 'html') {
       writeStudentFiles(
         identity.anonymousId,
@@ -932,6 +956,57 @@ export function useStudentCodeState({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
+
+  // Apply a teacher's edit to this student's Match / Fill in the Gaps answer or
+  // Code Arrange tiles (StudentModal "Edit answers"). Quiz answers go through
+  // the normal handleQuizSelect path so marking, the Firebase mirror, and the
+  // attempt log behave exactly as if the student had placed them — the only
+  // difference is the teacherAssisted flag on the logged attempt.
+  useEffect(() => {
+    const edit = myStudentData?.teacherAnswerEdit
+    if (!edit?.at || teacherPresentation || !lesson) return
+    // Wait until the student is actually in the lesson on a loaded task —
+    // applying earlier would skip the Firebase/attempt-log writes and then
+    // never retry, since the edit is marked applied below.
+    if (phase !== 'lesson' || currentTaskId == null) return
+    if (appliedTeacherAnswerEditAtRef.current === edit.at) return
+    appliedTeacherAnswerEditAtRef.current = edit.at
+    if (edit.taskId != null && String(edit.taskId) !== String(currentTaskIdRef.current)) return
+    if (viewingTaskId !== null) return
+    const task = findTaskById(lesson.tasks, currentTaskId)
+    if (task?.taskType === 'code_arrange' && edit.codeArrangeSlots) {
+      teacherAssistedTaskIdsRef.current.add(currentTaskId)
+      setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
+      setTeacherAnswerNoticeAt(edit.at)
+    } else if (task?.taskType === 'quiz' && edit.answer != null) {
+      teacherAssistedTaskIdsRef.current.add(currentTaskId)
+      const answer = parseQuizAnswerState(edit.answer)
+      handleQuizSelect(answer, typeof edit.passed === 'boolean' ? edit.passed : null, {
+        fromTeacher: true,
+      })
+      setTeacherAnswerNoticeAt(edit.at)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.teacherAnswerEdit?.at, lesson, phase, currentTaskId])
+
+  // Teacher pressed Run for this student (StudentModal). Consumed (cleared in
+  // Firebase) as soon as it's handed to the workspace, so it runs once.
+  useEffect(() => {
+    const pushedAt = myStudentData?.remoteRunPushedAt
+    if (!pushedAt || teacherPresentation || !lesson || !identity?.anonymousId) return
+    if (phase !== 'lesson' && phase !== 'sandbox') return
+    if (viewingTaskId !== null || currentTaskId == null) return
+    const requestedTaskId = myStudentData?.remoteRunTaskId
+    clearRemoteRun?.(identity.anonymousId)
+    if (requestedTaskId != null && String(requestedTaskId) !== String(currentTaskId)) return
+    setRemoteRunToken(pushedAt)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.remoteRunPushedAt, lesson, phase, currentTaskId, viewingTaskId])
+
+  function supersedeTeacherAnswerEdit() {
+    if (!identity?.anonymousId || !myStudentData?.teacherAnswerEdit) return
+    clearTeacherAnswerEdit?.(identity.anonymousId)
+  }
 
   // Apply teacher-committed work when teacher finishes a live edit.
   useEffect(() => {
@@ -1053,6 +1128,10 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const mod = getLessonModule(lesson?.type)
     const isWatched = session?.activeStudentView === actor.anonymousId
+    // Checked live on every mirror write, not captured once at run start: a
+    // teacher can open (or close) StudentModal while the program is running.
+    const isWatchedNow = () =>
+      !teacherPresentation && activeStudentViewRef.current === actor.anonymousId
     const alreadySolved = isAlreadySolved()
 
     setRunning(true)
@@ -1065,15 +1144,33 @@ export function useStudentCodeState({
     if (!alreadySolved) resetRunFeedback()
 
     if (lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle') {
-      lastOutputWriteRef.current = 0
       if (outputRafIdRef.current !== null) {
         cancelAnimationFrame(outputRafIdRef.current)
         outputRafIdRef.current = null
       }
+      outputMirrorRef.current?.cancel()
+      inputPromptRef.current = null
+      inputValueRef.current = ''
+      // Clear the previous run's mirrored output/prompt up front — otherwise a
+      // program that asks for input() (or is slow) before printing anything
+      // shows the watching teacher the last run's output under the new run.
+      if (isWatchedNow()) {
+        writeStudentInputState(actor.anonymousId, { prompt: null, value: '', output: '' })
+      }
       let outputBuffer = createStudentOutputBuffer()
-      const echoOutput = (text) => {
+      // Leading + trailing throttle (200ms) so the tail of a burst of output
+      // always reaches the teacher instead of waiting for the run to end.
+      const outputMirror = createThrottledMirrorWriter({
+        write: (raw) => {
+          if (canPublishTeacherLive())
+            updateTeacherLive(currentTeacherLivePayload({ output: raw }))
+          if (isWatchedNow()) writeStudentOutput(actor.anonymousId, raw)
+        },
+      })
+      outputMirrorRef.current = outputMirror
+      const appendLocalOutput = (text) => {
         const nextOutputBuffer = appendStudentOutput(outputBuffer, text)
-        if (nextOutputBuffer === outputBuffer) return
+        if (nextOutputBuffer === outputBuffer) return false
         outputBuffer = nextOutputBuffer
         // Throttle React re-renders to one per animation frame (~60fps max).
         // outputBuffer is a closure var so the RAF always reads the latest value.
@@ -1083,13 +1180,25 @@ export function useStudentCodeState({
             setOutput(outputBuffer.display)
           })
         }
-        // Debounce Firebase writes independently at 200ms
-        const now = Date.now()
-        if (now - lastOutputWriteRef.current >= 200) {
-          lastOutputWriteRef.current = now
-          if (canPublishTeacherLive())
-            updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
-          if (isWatched) writeStudentOutput(actor.anonymousId, outputBuffer.raw)
+        return true
+      }
+      const echoOutput = (text) => {
+        if (appendLocalOutput(text)) outputMirror.push(outputBuffer.raw)
+      }
+      submitInputEchoRef.current = (value) => {
+        appendLocalOutput(value + '\n')
+        outputMirror.markWritten()
+        if (canPublishTeacherLive())
+          updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
+        // One update: the echoed line lands in the output at the same moment
+        // the prompt row disappears, so the teacher never sees the typed text
+        // vanish (or linger) while the echo waits on the throttle.
+        if (isWatchedNow()) {
+          writeStudentInputState(actor.anonymousId, {
+            prompt: null,
+            value: '',
+            output: outputBuffer.raw,
+          })
         }
       }
       let latestRuntimeCode = code
@@ -1133,14 +1242,34 @@ export function useStudentCodeState({
           }
         },
         onInputRequired: (prompt) => {
+          inputPromptRef.current = prompt
+          inputValueRef.current = ''
           setInputPrompt(prompt)
-          if (isWatched) writeStudentInputState(actor.anonymousId, { prompt, value: '' })
+          if (isWatchedNow()) {
+            // Bundle any output still waiting on the throttle (usually the
+            // prompt text itself) with the prompt row appearing.
+            outputMirror.markWritten()
+            if (canPublishTeacherLive())
+              updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
+            writeStudentInputState(actor.anonymousId, {
+              prompt,
+              value: '',
+              output: outputBuffer.raw,
+            })
+          } else {
+            outputMirror.flush()
+          }
         },
         onCodeUpdate: scheduleRuntimeCodeUpdate,
         getRuntimeCode: () => codeRef.current,
       })
+      submitInputEchoRef.current = null
+      outputMirror.cancel()
+      if (outputMirrorRef.current === outputMirror) outputMirrorRef.current = null
+      inputPromptRef.current = null
+      inputValueRef.current = ''
       setInputPrompt(null)
-      if (isWatched) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
+      if (isWatchedNow()) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
 
       // Cancel any pending RAF and sync final output immediately
       if (outputRafIdRef.current !== null) {
@@ -1163,7 +1292,7 @@ export function useStudentCodeState({
           updateTeacherLive(
             currentTeacherLivePayload({ code: latestRuntimeCode, output: outputBuffer.raw })
           )
-        if (isWatched) {
+        if (isWatchedNow()) {
           writeStudentCode(actor.anonymousId, latestRuntimeCode)
           writeStudentOutput(actor.anonymousId, outputBuffer.raw)
         }
@@ -1255,7 +1384,12 @@ export function useStudentCodeState({
         !hasTests &&
         task?.check
       ) {
-        logAttempt(actor.anonymousId, currentTaskId, { submission: nextCode, passed, suggestion })
+        logAttempt(actor.anonymousId, currentTaskId, {
+          submission: nextCode,
+          passed,
+          suggestion,
+          teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
+        })
       }
       setRunning(false)
       return
@@ -1337,7 +1471,12 @@ export function useStudentCodeState({
         taskIdAtRunTime === currentTaskIdRef.current
       ) {
         const filesMap = Object.fromEntries(currentFiles.map((f) => [f.name, f.content]))
-        logAttempt(actor.anonymousId, taskIdAtRunTime, { submission: filesMap, passed, suggestion })
+        logAttempt(actor.anonymousId, taskIdAtRunTime, {
+          submission: filesMap,
+          passed,
+          suggestion,
+          teacherAssisted: teacherAssistedTaskIdsRef.current.has(taskIdAtRunTime),
+        })
       }
       persistence.saveHtmlFiles(actor.anonymousId, taskIdAtRunTime, currentFiles)
       setRunning(false)
@@ -1349,10 +1488,16 @@ export function useStudentCodeState({
   }
 
   function handleInputSubmit(value) {
-    appendOutputRef.current?.(value + '\n')
+    inputPromptRef.current = null
+    inputValueRef.current = ''
     setInputPrompt(null)
-    if (identity && session?.activeStudentView === identity.anonymousId) {
-      writeStudentInputState(identity.anonymousId, { prompt: null, value: '' })
+    if (submitInputEchoRef.current) {
+      submitInputEchoRef.current(value)
+    } else {
+      appendOutputRef.current?.(value + '\n')
+      if (identity && session?.activeStudentView === identity.anonymousId) {
+        writeStudentInputState(identity.anonymousId, { prompt: null, value: '' })
+      }
     }
     getLessonModule(lesson?.type)?.runtime?.provideInput(value)
   }
@@ -1361,6 +1506,7 @@ export function useStudentCodeState({
   // teacher, per keystroke — same activeStudentView gating AGENTS.md
   // requires for any per-keystroke Firebase write (see handleCodeChange).
   function handleInputChange(value) {
+    inputValueRef.current = value
     if (identity && session?.activeStudentView === identity.anonymousId) {
       writeStudentInputState(identity.anonymousId, { prompt: inputPrompt, value })
     }
@@ -1750,11 +1896,15 @@ export function useStudentCodeState({
   // destinations as handleScratchSpriteState/handleScratchCursor above:
   // teacherLive for a Go-Live/presentation broadcast, the student's own
   // currentCodeArrangeSlots record for a teacher passively watching them.
-  function handleCodeArrangeSlotsChange(slotState) {
+  function handleCodeArrangeSlotsChange(slotState, { fromTeacher = false } = {}) {
     codeArrangeSlotStateRef.current = slotState
     if (!identity) return
+    if (!fromTeacher) supersedeTeacherAnswerEdit()
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
-    if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
+    // Written on every tile placement (a discrete action, like a quiz answer
+    // — not per keystroke), watched or not, so the teacher's StudentCard can
+    // show "X/N slots filled" for the whole class.
+    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
       writeStudentCodeArrangeSlots?.(identity.anonymousId, slotState)
     }
   }
@@ -2324,9 +2474,10 @@ export function useStudentCodeState({
     }
   }
 
-  async function handleQuizSelect(answer, passedOverride) {
+  async function handleQuizSelect(answer, passedOverride, { fromTeacher = false } = {}) {
     const actor = effectiveIdentity
     if (!actor) return
+    if (!fromTeacher) supersedeTeacherAnswerEdit()
     const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
 
     if (passedOverride === null) {
@@ -2375,6 +2526,7 @@ export function useStudentCodeState({
         submission: buildQuizSubmission(task, answer),
         passed,
         suggestion,
+        teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
       })
     }
   }
@@ -2400,6 +2552,11 @@ export function useStudentCodeState({
   return {
     // State
     code,
+    teacherCodeArrangeEdit,
+    teacherAnswerNoticeAt,
+    remoteRunToken,
+    acknowledgeRemoteRun: (token) =>
+      setRemoteRunToken((current) => (current === token ? null : current)),
     arcadeDesign,
     files,
     activeFile,

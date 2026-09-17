@@ -29,6 +29,7 @@ import PaneFocusDropdown from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
+import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 
 function getModuleDisplayState(module, raw) {
   if (!module) return null
@@ -71,6 +72,8 @@ export default function StudentModal({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onTeacherAnswerEdit,
+  onRemoteRun,
   onReadPendingShare,
   onApproveShare,
   onDeclineShare,
@@ -80,6 +83,13 @@ export default function StudentModal({
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
+  const [answerEditing, setAnswerEditing] = useState(false)
+  const [remoteRunSent, setRemoteRunSent] = useState(false)
+  // Editing is per student + task: switching student (Prev/Next) or the class
+  // moving on must never leave the next board silently editable.
+  useEffect(() => {
+    setAnswerEditing(false)
+  }, [student.anonymousId, session?.currentTaskId])
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
 
@@ -346,6 +356,26 @@ export default function StudentModal({
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, task, session)
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
+  const itemProgress = isSessionSandbox ? null : getTaskItemProgress(task, student)
+  // Match / Fill in the Gaps / Code Arrange: the teacher can edit the
+  // student's answer directly (pushed live, see pushTeacherAnswerEdit).
+  const supportsAnswerEdit = !!onTeacherAnswerEdit && !!itemProgress
+  // Runs the student's current code on the student's own device.
+  const supportsRemoteRun =
+    !!onRemoteRun &&
+    !isQuiz &&
+    !isInformation &&
+    task?.interactionMode !== 'submit' &&
+    (isPython || isTurtle || isArcade || isHtml || isScratch || isElectronics)
+
+  function handleRemoteRun() {
+    onRemoteRun?.(student.anonymousId)
+    setRemoteRunSent(true)
+    setTimeout(() => setRemoteRunSent(false), 2000)
+  }
+  const teacherAssisted =
+    student.teacherAssistedTaskId != null &&
+    String(student.teacherAssistedTaskId) === String(session?.currentTaskId)
   // Turtle edits go through the plain code editor below and commit as { code }.
   const supportsTeacherEdit =
     isPython || isScratch || isHtml || isArcade || isElectronics || isTurtle
@@ -468,6 +498,23 @@ export default function StudentModal({
             <PresenceBadge student={student} session={session} />
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && <span style={s.checkBadge}>✅</span>}
+            {teacherAssisted && (
+              <span
+                style={s.overrideBadge}
+                title="You edited this student's answer on this task — the report marks it teacher assisted"
+              >
+                ✏️ Teacher assisted
+              </span>
+            )}
+            {itemProgress && (
+              <span
+                style={s.overrideBadge}
+                title="Items the student has filled in (and got right, where marked per item)"
+                data-testid="item-progress"
+              >
+                🧩 {formatTaskItemProgress(itemProgress)}
+              </span>
+            )}
             {hasOverride && (
               <span style={s.overrideBadge}>
                 {student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed'}
@@ -614,6 +661,35 @@ export default function StudentModal({
                   declinedNotice={stageDeclinedNotice}
                 />
               ))}
+
+            {supportsRemoteRun && (
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 12px' }}
+                onClick={handleRemoteRun}
+                disabled={!student.online}
+                title={
+                  student.online
+                    ? "Run this student's code on their own screen"
+                    : 'Student is offline'
+                }
+              >
+                {remoteRunSent ? 'Run sent ✓' : '▶ Run on student'}
+              </button>
+            )}
+
+            {supportsAnswerEdit && (
+              <button
+                type="button"
+                className={answerEditing ? 'btn-primary' : 'btn-ghost'}
+                style={{ fontSize: 13, padding: '5px 12px' }}
+                onClick={() => setAnswerEditing((editing) => !editing)}
+                title="Change this student's answers — updates their screen live"
+              >
+                {answerEditing ? 'Done editing' : '✏️ Edit answers'}
+              </button>
+            )}
 
             {/* Override dropdown */}
             {onOverrideCheck && task?.check != null && (
@@ -944,6 +1020,8 @@ export default function StudentModal({
                   onHighlightNoteChange={setHighlightNote}
                   onSendHighlight={() => handleSendHighlight(activeFile)}
                   onCancelHighlight={handleCancelHighlight}
+                  answerEditing={supportsAnswerEdit && answerEditing}
+                  onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
                 />
               )}
             </div>

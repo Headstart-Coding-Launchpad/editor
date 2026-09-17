@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import CodeArrangeTask from './CodeArrangeTask'
-import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../shared/codeArrange'
+import {
+  deriveSlotStateFromCode,
+  getCodeArrangeEntryFile,
+  isArrangementComplete,
+} from '../../shared/codeArrange'
+import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 
 // Synthetic filename used to persist the student's own tile arrangement
 // alongside the ordinary per-task saved code, using the exact same
@@ -43,10 +48,10 @@ function fileContent(files, name) {
 // currentCursor/currentBlockDrag in useStudentCodeState.js) to two
 // destinations, separate from the assembled code/file sync above which only
 // fires once every blank is filled:
-//   - currentCodeArrangeSlots (gated by activeStudentView) for a teacher
-//     passively watching a student in StudentModal — see
+//   - currentCodeArrangeSlots (written on every placement during a lesson,
+//     watched or not) for a teacher watching a student in StudentModal — see
 //     StudentWorkspaceBody.jsx, which prefers it over deriving from
-//     currentCode/currentFiles.
+//     currentCode/currentFiles — and for StudentCard's "X/N slots filled".
 //   - teacherLive.codeArrangeSlots for an isForcedTeacherLive viewer (Go
 //     Live/presentation), read here as displayCodeArrangeSlots and preferred
 //     over deriving from liveCode. Without either destination, a watcher
@@ -110,13 +115,36 @@ export default function CodeArrangeTaskContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
-  function handleSlotStateChange(next) {
+  function handleSlotStateChange(next, options) {
     setSlotState(next)
     if (!readOnly) {
       cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, JSON.stringify(next))
-      cs.handleCodeArrangeSlotsChange?.(next)
+      if (options) cs.handleCodeArrangeSlotsChange?.(next, options)
+      else cs.handleCodeArrangeSlotsChange?.(next)
     }
   }
+
+  // A teacher edited this student's tiles from StudentModal ("Edit answers").
+  // Applied like a student placement (saved locally, assembled into code by
+  // CodeArrangeTask) but flagged so it doesn't count as the student
+  // superseding the teacher's edit.
+  const teacherEditAt = cs.teacherCodeArrangeEdit?.at ?? null
+  useEffect(() => {
+    if (!teacherEditAt || readOnly) return
+    const slots = cs.teacherCodeArrangeEdit?.slots
+    if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return
+    handleSlotStateChange(slots, { fromTeacher: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherEditAt])
+
+  // Teacher remote Run: only a complete arrangement has runnable code.
+  useRemoteRunTrigger(
+    cs.remoteRunToken,
+    () => {
+      if (!cs.running && isArrangementComplete(task, slotState)) cs.handleRun()
+    },
+    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+  )
 
   function handleAssembledCodeChange(assembledCode) {
     if (readOnly) return

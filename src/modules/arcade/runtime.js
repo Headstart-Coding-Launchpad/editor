@@ -2,6 +2,21 @@ import { ARCADE_PALETTE } from './design'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
+// Direction names also answer to WASD, so keys.left / keys.horizontal /
+// keys.pressed('left') work for either hand position. Single-letter names
+// (keys.pressed('a')) still mean exactly that key.
+export const ARCADE_KEY_ALIASES = {
+  left: ['left', 'a'],
+  right: ['right', 'd'],
+  up: ['up', 'w'],
+  down: ['down', 's'],
+}
+
+export function isArcadeKeyDown(pressedKeys, name) {
+  const aliases = ARCADE_KEY_ALIASES[name]
+  return aliases ? aliases.some((key) => pressedKeys.has(key)) : pressedKeys.has(name)
+}
+
 function safeJson(value) {
   return JSON.stringify(value).replace(/</g, '\\u003c')
 }
@@ -37,6 +52,7 @@ const source = ${safeJson(code)};
 const assets = ${safeJson(assetMap)};
 const tilemaps = ${safeJson(tilemapData)};
 const palette = ${safeJson(ARCADE_PALETTE)};
+const keyAliases = ${safeJson(ARCADE_KEY_ALIASES)};
 const paletteByName = Object.fromEntries(palette.map(({ name, hex }) => [name, hex]));
 const paletteValues = new Set(palette.map(({ hex }) => hex));
 const canvas = document.getElementById('game');
@@ -114,7 +130,7 @@ function image(name) {
   if (!images.has(name)) { const img = new Image(); img.src = assets[name]; images.set(name, img); }
   return images.get(name);
 }
-function keyDown(name) { return keys.has(name); }
+function keyDown(name) { const aliases = keyAliases[name]; return aliases ? aliases.some(key => keys.has(key)) : keys.has(name); }
 function arcadeColour(value, fallback) {
   const colour = String(value ?? '').trim().toLowerCase();
   return paletteByName[colour] || (paletteValues.has(colour) ? colour : fallback);

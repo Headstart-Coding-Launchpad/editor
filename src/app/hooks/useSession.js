@@ -240,6 +240,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherEditApplyFiles`] = null
       updates[`students/${anonymousId}/teacherEditApplyArcadeDesign`] = null
       updates[`students/${anonymousId}/teacherEditAppliedAt`] = null
+      updates[`students/${anonymousId}/teacherAnswerEdit`] = null
+      updates[`students/${anonymousId}/remoteRunPushedAt`] = null
+      updates[`students/${anonymousId}/remoteRunTaskId`] = null
+      updates[`students/${anonymousId}/teacherAssistedTaskId`] = null
       updates[`students/${anonymousId}/teacherStageRequestedAt`] = null
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
@@ -464,6 +468,50 @@ export function useSession(lessonId, { enabled = true } = {}) {
       await set(ref(db, `sessions/${lessonId}/activeStudentView`), null)
     }
     await remove(ref(db, `sessions/${lessonId}/students/${anonymousId}`))
+  }
+
+  // Teacher edits a student's Match / Fill in the Gaps answer or Code Arrange
+  // tiles from StudentModal. currentAnswer/currentCodeArrangeSlots update
+  // straight away so every teacher view reflects the edit; teacherAnswerEdit
+  // is the push the student's own tab applies (keyed on `at`, same pattern as
+  // remoteResetPushedAt). teacherAssistedTaskId marks the task as assisted on
+  // the teacher side only — the student just sees their normal result.
+  async function pushTeacherAnswerEdit(anonymousId, { answer, codeArrangeSlots, passed } = {}) {
+    const taskId = session?.currentTaskId ?? null
+    const updates = {
+      teacherAnswerEdit: {
+        answer: answer ?? null,
+        codeArrangeSlots: codeArrangeSlots ?? null,
+        passed: typeof passed === 'boolean' ? passed : null,
+        taskId,
+        at: Date.now(),
+      },
+      teacherAssistedTaskId: taskId,
+    }
+    if (answer != null) updates.currentAnswer = answer
+    if (codeArrangeSlots != null) updates.currentCodeArrangeSlots = codeArrangeSlots
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
+  }
+
+  // Student superseded a pending teacher answer edit with their own change, so
+  // a reload must not re-apply the teacher's older version (last write wins).
+  async function clearTeacherAnswerEdit(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherAnswerEdit`), null)
+  }
+
+  // Teacher presses Run for a student from StudentModal: the student's own
+  // browser runs their current code exactly as if they had pressed Run.
+  // remoteRunTaskId stops a request made for one task running on another.
+  async function pushRemoteRun(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      remoteRunPushedAt: Date.now(),
+      remoteRunTaskId: session?.currentTaskId ?? null,
+    })
+  }
+
+  // Student consumed a remote Run request, so a reload never runs it again.
+  async function clearRemoteRun(anonymousId) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/remoteRunPushedAt`), null)
   }
 
   async function pushResetToStudent(anonymousId, action) {
@@ -797,7 +845,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // existing entry instead of creating a new one, and no further attempts are logged
   // once a task has been passed. Safe without an atomic increment because only this
   // student's own tab ever writes to their own attemptLog entries.
-  async function logAttempt(anonymousId, taskId, { submission, passed, suggestion } = {}) {
+  async function logAttempt(
+    anonymousId,
+    taskId,
+    { submission, passed, suggestion, teacherAssisted } = {}
+  ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
     if (cached?.passed) return
@@ -813,6 +865,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
         updates.passed = true
         updates.passedAt = serverTimestamp()
       }
+      if (teacherAssisted) updates.teacherAssisted = true
       await update(ref(db, `${basePath}/${cached.key}`), updates)
       attemptCacheRef.current[cacheKey] = {
         ...cached,
@@ -833,6 +886,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       submission: serialized,
       passed,
       suggestion: suggestion || null,
+      teacherAssisted: teacherAssisted ? true : null,
       attemptNumber,
       retries: 0,
       loggedAt: serverTimestamp(),
@@ -916,11 +970,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // inputPrompt is purely local runtime state, never otherwise synced),
   // currentInput is the value typed so far, per keystroke — same
   // watched-only-while-activeStudentView-matches gating as currentCode.
-  async function writeStudentInputState(anonymousId, { prompt, value } = {}) {
-    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+  // `output`, when given, is written in the same update so an echoed input
+  // line (or a cleared run) and the prompt row change together on the
+  // teacher's screen instead of in two separately-arriving writes.
+  async function writeStudentInputState(anonymousId, { prompt, value, output } = {}) {
+    const updates = {
       currentInputPrompt: prompt ?? null,
       currentInput: value ?? '',
-    })
+    }
+    if (typeof output === 'string') updates.currentOutput = output
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
   }
 
   async function writeStudentInteraction(
@@ -1105,6 +1164,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     renameStudent,
     removeStudent,
     pushResetToStudent,
+    pushTeacherAnswerEdit,
+    clearTeacherAnswerEdit,
+    pushRemoteRun,
+    clearRemoteRun,
     overrideStudentCheck,
     recordClassAdvanceOverrides,
     dismissHelp,
