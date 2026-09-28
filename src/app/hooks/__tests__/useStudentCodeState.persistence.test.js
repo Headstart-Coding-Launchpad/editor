@@ -224,9 +224,9 @@ describe('in-memory persistence — runs', () => {
     })
   })
 
-  // Known bug (plan step 1.5): handleScratchCheck falls back to raw localStorage for
-  // the workspace state, so in builder preview the run write has no code.
-  it.fails('known bug: scratch check in preview falls back to the in-memory store', () => {
+  // Fixed in plan step 1.5: handleScratchCheck fell back to raw localStorage for the
+  // workspace state, so in builder preview the run write had no code.
+  it('scratch check in preview falls back to the in-memory store', () => {
     const h = renderStudentCodeState({
       lesson: scratchLesson(),
       currentTaskId: 't1',
@@ -324,21 +324,19 @@ describe('studentStorage readers with corrupt values', () => {
     expect(localStorage.getItem(taskKey('t1'))).toBe(null)
   })
 
-  // Known bug (plan step 1.5): the desktop readers use bare JSON.parse.
-  it.fails('known bug: loadSavedDesktop returns null for a corrupt value', () => {
+  // Fixed in plan step 1.5: the desktop readers used bare JSON.parse.
+  it('loadSavedDesktop returns null for a corrupt value', () => {
     localStorage.setItem(taskKey('t1'), '{not json')
     expect(loadSavedDesktop(LESSON_ID, 't1', ANON)).toBe(null)
   })
 
-  it.fails('known bug: loadPersonalSandboxDesktop returns null for a corrupt value', () => {
+  it('loadPersonalSandboxDesktop returns null for a corrupt value', () => {
     localStorage.setItem(personalSandboxKey(), '{not json')
     expect(loadPersonalSandboxDesktop(LESSON_ID, ANON)).toBe(null)
   })
 
-  it.fails('known bug: a corrupt desktop save does not break loading the task', () => {
+  it('a corrupt desktop save does not break loading the task', () => {
     localStorage.setItem(taskKey('t1'), '{not json')
-    // React logs the thrown effect error; keep the expected failure quiet.
-    vi.spyOn(console, 'error').mockImplementation(() => {})
     const h = renderStudentCodeState({ lesson: desktopLesson(), currentTaskId: 't1' })
     expect(h.result.current.desktopState).toEqual(normalisedDesktopWith('start.txt'))
   })

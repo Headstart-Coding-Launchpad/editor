@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
+  applySharedWorkspaceCopy,
   buildSharedWorkspaceSnapshot,
   buildShareIndexEntry,
   isSnapshotWithinLimit,
@@ -221,5 +222,54 @@ describe('describeShareError', () => {
   it('falls back to a neutral message for anything else', () => {
     expect(describeShareError(new Error('socket hang up'))).toMatch(/try again/i)
     expect(describeShareError(undefined)).toMatch(/try again/i)
+  })
+})
+
+describe('desktop sharing (plan 1.5)', () => {
+  const desktop = { fs: { '/': { type: 'dir' } }, recycleBin: [], windows: [] }
+
+  it('snapshots desktop state as JSON in code', () => {
+    const snapshot = buildSharedWorkspaceSnapshot({
+      lesson: { type: 'desktop', tasks: [{ id: 1 }] },
+      taskId: 1,
+      code: 'stale code from an earlier task',
+      desktopState: desktop,
+    })
+    expect(snapshot.code).toBe(JSON.stringify(desktop))
+    expect(snapshot.files).toEqual({})
+  })
+})
+
+describe('applySharedWorkspaceCopy', () => {
+  const handlers = () => ({
+    handleFileChange: vi.fn(),
+    handleScratchChange: vi.fn(),
+    handleFsChange: vi.fn(),
+    handleDesktopChange: vi.fn(),
+    handleCodeChange: vi.fn(),
+  })
+
+  it('routes each module to its own change handler', () => {
+    const h = handlers()
+    applySharedWorkspaceCopy({ moduleType: 'desktop', code: '{"windows":[]}' }, h)
+    applySharedWorkspaceCopy({ moduleType: 'filesystem', code: '{"/":{"type":"dir"}}' }, h)
+    applySharedWorkspaceCopy({ moduleType: 'scratch', code: '{"sprites":[]}' }, h)
+    applySharedWorkspaceCopy(
+      { moduleType: 'html', files: [{ name: 'index.html', content: '<p>' }] },
+      h
+    )
+    applySharedWorkspaceCopy({ moduleType: 'python', code: 'print(1)' }, h)
+    expect(h.handleDesktopChange).toHaveBeenCalledWith({ windows: [] })
+    expect(h.handleFsChange).toHaveBeenCalledWith({ '/': { type: 'dir' } })
+    expect(h.handleScratchChange).toHaveBeenCalledWith({ sprites: [] })
+    expect(h.handleFileChange).toHaveBeenCalledWith('index.html', '<p>')
+    expect(h.handleCodeChange).toHaveBeenCalledWith('print(1)')
+  })
+
+  it('ignores unparseable JSON state rather than applying it as code', () => {
+    const h = handlers()
+    applySharedWorkspaceCopy({ moduleType: 'desktop', code: '{not json' }, h)
+    expect(h.handleDesktopChange).not.toHaveBeenCalled()
+    expect(h.handleCodeChange).not.toHaveBeenCalled()
   })
 })

@@ -36,7 +36,7 @@ import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
 import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
-import { describeShareError } from '../sharedWorkspacePayload'
+import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
@@ -46,7 +46,7 @@ import {
 } from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
-import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
+import { decodeSessionFiles } from '../../shared/workspaceData'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -837,18 +837,8 @@ export default function StudentView({
   // The one deliberate bridge from a shared workspace into the student's own
   // work. Routed through the normal change handlers so it persists exactly like
   // their own typing would; everything else in the viewer is throwaway.
-  function handleCopySharedWorkspace({ code, files, moduleType }) {
-    if (moduleType === 'html') {
-      for (const file of files ?? []) cs.handleFileChange(file.name, file.content)
-    } else if (moduleType === 'scratch') {
-      const parsed = parseScratchState(code)
-      if (parsed) cs.handleScratchChange(parsed)
-    } else if (moduleType === 'filesystem') {
-      const parsed = parseScratchState(code)
-      if (parsed) cs.handleFsChange(parsed)
-    } else {
-      cs.handleCodeChange(code ?? '')
-    }
+  function handleCopySharedWorkspace(copy) {
+    applySharedWorkspaceCopy(copy, cs)
     handleCloseSharedWorkspace()
   }
 

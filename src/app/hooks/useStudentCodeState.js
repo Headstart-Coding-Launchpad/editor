@@ -28,7 +28,6 @@ import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/cir
 import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
 import { decodeFileKey } from '../../shared/fileKeys'
 import {
-  loadSavedCode,
   loadPersonalSandboxCode,
   savePersonalSandboxCode,
   loadPersonalSandboxFile,
@@ -869,7 +868,7 @@ export function useStudentCodeState({
         Object.fromEntries(files.map((f) => [f.name, f.content]))
       )
     } else if (lesson.type === 'scratch') {
-      const saved = loadSavedCode(lessonId, currentTaskId, identity.anonymousId)
+      const saved = persistence.readSavedCode(identity.anonymousId, currentTaskId)
       if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
     } else if (lesson.type === 'filesystem') {
       writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
@@ -1133,6 +1132,12 @@ export function useStudentCodeState({
     const isWatchedNow = () =>
       !teacherPresentation && activeStudentViewRef.current === actor.anonymousId
     const alreadySolved = isAlreadySolved()
+    const runsCode =
+      lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle'
+    // Modules with neither a code runtime nor an HTML preview (Arcade, Filesystem, Desktop run
+    // through their own workspace) have nothing to run here; bail out before touching
+    // `running` rather than crashing on a null runtime.
+    if (!runsCode && typeof mod?.runtime?.buildPreviewSrc !== 'function') return
 
     setRunning(true)
     setOutput('')
@@ -1143,7 +1148,7 @@ export function useStudentCodeState({
     setHtmlErrorLocation(null)
     if (!alreadySolved) resetRunFeedback()
 
-    if (lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle') {
+    if (runsCode) {
       if (outputRafIdRef.current !== null) {
         cancelAnimationFrame(outputRafIdRef.current)
         outputRafIdRef.current = null
@@ -1942,7 +1947,7 @@ export function useStudentCodeState({
     ) {
       const states =
         snapshot?.workspaceStates ??
-        loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ??
+        persistence.readSavedCode(identity.anonymousId, currentTaskId)?.state ??
         null
       writeStudentRun(identity.anonymousId, {
         code: states ? JSON.stringify(states) : undefined,
@@ -2358,10 +2363,14 @@ export function useStudentCodeState({
     if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
+    const isArcade = lesson.type === 'arcade'
 
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
+    if (lesson.type === 'python' || isArcade || lesson.type === 'turtle') {
       const completeCode = getCompleteStage(task)?.stage?.code ?? task.completeCode ?? ''
+      // Arcade loads the complete design with the code, like Show stage and remote reset do.
+      const completeDesign = isArcade ? designForCodeTab(task, 'complete') : null
       setCode(completeCode)
+      if (isArcade) setArcadeDesign(completeDesign)
       setOutput('')
       setTurtleResult(null)
       setRunStatus(null)
@@ -2370,6 +2379,7 @@ export function useStudentCodeState({
         code: completeCode,
         output: '',
         runStatus: null,
+        ...(isArcade ? { arcadeDesign: completeDesign } : {}),
       })
     } else if (lesson.type === 'html') {
       const completeStage = getCompleteStage(task)?.stage
@@ -2552,6 +2562,7 @@ export function useStudentCodeState({
       code: codeRef.current,
       scratchCode: scratchCodeRef.current,
       fsState: fsStateRef.current,
+      desktopState: desktopStateRef.current,
       arcadeDesign: arcadeDesignRef.current,
       files: filesRef.current,
       activeFile: activeFileRef.current,

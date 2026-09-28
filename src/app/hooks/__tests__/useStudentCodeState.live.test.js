@@ -153,9 +153,9 @@ describe('watch start (activeStudentView flips to this student)', () => {
     expect(h.writers.writeStudentCode.mock.calls).toEqual([[ANON, 'print("s")']])
   })
 
-  // Known bug (plan step 1.5): watch start reads scratch state straight from
-  // localStorage, bypassing the in-memory store used in builder preview.
-  it.fails('known bug: scratch watch start in preview reads the in-memory store', () => {
+  // Fixed in plan step 1.5: watch start read scratch state straight from localStorage,
+  // bypassing the in-memory store used in builder preview.
+  it('scratch watch start in preview reads the in-memory store', () => {
     const h = renderStudentCodeState({
       lesson: scratchLesson(),
       currentTaskId: 't1',
@@ -568,9 +568,9 @@ describe('buildShareSnapshot', () => {
     })
   })
 
-  // Known bug (plan step 1.5): the snapshot builder has no desktop branch, so a
-  // shared Desktop workspace carries code '' instead of the desktop state.
-  it.fails('known bug: desktop snapshot includes the desktop state', () => {
+  // Fixed in plan step 1.5: the snapshot builder had no desktop branch, so a shared
+  // Desktop workspace carried code '' instead of the desktop state.
+  it('desktop: code is the JSON desktop state', () => {
     const h = renderStudentCodeState({ lesson: desktopLesson(), currentTaskId: 't1' })
     expect(snapshot(h).code).toBe(JSON.stringify(normalisedDesktopWith('start.txt')))
   })

@@ -423,27 +423,19 @@ describe('handleShowCompleteCode', () => {
     expect(h.writers.logAttempt).not.toHaveBeenCalled()
   })
 
-  it('arcade: loads completeCode but saves no design (current behaviour)', () => {
+  // Fixed in plan step 1.5: show-complete used to load the complete code but keep the
+  // starter design and save no design, unlike remote reset 'complete' and Show stage.
+  it('arcade: loads completeCode and sets and saves the complete design', () => {
     const h = renderStudentCodeState({ lesson: arcadeLesson(), currentTaskId: 't1' })
     actSync(() => h.result.current.handleShowCompleteCode())
     expect(h.result.current.code).toBe('player = 2')
-    expect(h.result.current.arcadeDesign).toEqual(normalisedArcadeDesign('starter'))
+    expect(h.result.current.arcadeDesign).toEqual(normalisedArcadeDesign('complete'))
     expect(JSON.parse(localStorage.getItem(taskKey('t1')))).toEqual({
       code: 'player = 2',
       output: '',
       runStatus: null,
+      arcadeDesign: normalisedArcadeDesign('complete'),
     })
-  })
-
-  // Known bug (plan step 1.5): arcade show-complete should load and persist
-  // completeArcadeDesign, like remote reset 'complete' and handleShowCodeStage do.
-  it.fails('known bug: arcade show-complete sets and saves the complete design', () => {
-    const h = renderStudentCodeState({ lesson: arcadeLesson(), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleShowCompleteCode())
-    expect(h.result.current.arcadeDesign).toEqual(normalisedArcadeDesign('complete'))
-    expect(JSON.parse(localStorage.getItem(taskKey('t1'))).arcadeDesign).toEqual(
-      normalisedArcadeDesign('complete')
-    )
   })
 
   it('html: loads and persists completeFiles', () => {
