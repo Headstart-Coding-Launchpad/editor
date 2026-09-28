@@ -198,6 +198,60 @@ export function codeWorkSlot(overrides = {}) {
     taskReset: true,
     teacherSandboxReset: false,
     remoteResetPersists: false,
+    teacherEdit: true,
+    ...overrides,
+  }
+}
+
+// ── Files work (html; plan step 4.5) ─────────────────────────────────────────
+
+const copyFiles = (files) => (files ?? []).map((file) => ({ ...file }))
+
+// The files' contents joined into one string: what a code check reads for a files module.
+export function joinFileContents(files) {
+  return (files ?? []).map((file) => file.content).join('\n')
+}
+
+// A files work value: `{ files, activeFile }`, the active file defaulting to the first file.
+function filesValue(files, activeFile) {
+  return { files, activeFile: activeFile ?? files[0]?.name ?? '' }
+}
+
+/**
+ * The work slot of a files module (html): the value is `{ files, activeFile }` — the `files`
+ * array (`{ name, type, content }`) is the storage / wire work (one `{ content }` record per file,
+ * the `files` wire channel) and `activeFile` the editor tab. `kind: 'code'`: the own save is
+ * restored only in solo and carry-through (`carryCodeFrom`) runs per file (selectHtmlTaskFiles).
+ * Every source copies its files, so an edit never mutates the lesson.
+ */
+export function filesWorkSlot(overrides = {}) {
+  return {
+    kind: 'code',
+    starter: (task) =>
+      filesValue(copyFiles(starterStageOf(task)?.files ?? task?.starterFiles), task?.entryFile),
+    stage: (task, stageIndex) => {
+      const stage = task?.codeStages?.[stageIndex]
+      return filesValue(copyFiles(stage?.files), stage?.entryFile ?? task?.entryFile)
+    },
+    complete: (task) => {
+      const completeStage = getCompleteStage(task)?.stage
+      return filesValue(
+        copyFiles(completeStage?.files ?? task?.completeFiles),
+        completeStage?.entryFile ?? task?.completeEntryFile ?? task?.entryFile
+      )
+    },
+    sandbox: (lesson) => filesValue(copyFiles(lesson?.sandboxStarterFiles)),
+    fromResetTarget: (target) => filesValue(copyFiles(target.files), target.entryFile),
+    empty: () => ({ files: [], activeFile: '' }),
+    normalise: (value) => value,
+    stored: (value) => ({ work: value?.files ?? [], meta: {} }),
+    // Stored files replace the fallback's; the fallback keeps its active file.
+    fromStored: (stored, fallback) =>
+      stored?.work != null ? { files: stored.work, activeFile: fallback.activeFile } : fallback,
+    taskReset: true,
+    teacherSandboxReset: false,
+    remoteResetPersists: false,
+    teacherEdit: true,
     ...overrides,
   }
 }

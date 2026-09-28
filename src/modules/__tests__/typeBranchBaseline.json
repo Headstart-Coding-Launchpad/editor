@@ -11,7 +11,7 @@
   "src/app/components/StudentModal.jsx": 4,
   "src/app/components/SupportStagePanel.jsx": 2,
   "src/app/hooks/useSandboxCodePush.js": 8,
-  "src/app/hooks/useStudentCodeState.js": 27,
+  "src/app/hooks/useStudentCodeState.js": 3,
   "src/app/studentCodeExports.js": 2,
   "src/app/studentLiveDisplay.js": 1,
   "src/app/taskItemProgress.js": 2,
