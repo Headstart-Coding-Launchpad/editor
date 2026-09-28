@@ -25,9 +25,7 @@ export function isComposedLesson(lesson) {
 }
 
 export function isCodeTask(task) {
-  return (
-    task?.taskType !== 'information' && task?.taskType !== 'quiz' && !isHostedActivityTask(task)
-  )
+  return task?.taskType !== 'information' && !isHostedActivityTask(task)
 }
 
 export function getLessonModules(lesson) {

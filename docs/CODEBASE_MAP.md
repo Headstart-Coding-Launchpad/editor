@@ -65,12 +65,12 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `codeCheckContext.js` | `buildCodeCheckContext()` — the check-evaluation context for code tasks (Run, idle feedback, Check/Submit, Arcade Run game); adds `circuit` for Electronics so code checks read the MicroPython source |
 | `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, per lesson type |
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers; `displayOutputCollapsed` mirrors the broadcast source's output/preview panel collapse state to a forced-live viewer (`null` when not forced-live) |
-| `studentQuizContent.js` | Pure quiz suggestion helpers: maps wrong answers to option/task/check hint feedback |
+| `studentQuizContent.js` | Adapter re-exporting the quiz activities' `buildQuizSubmission` / `getQuizSuggestion` (`src/activities/quiz/quizActivity.js`) |
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
 | `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
-| `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
+| `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes (via the quiz activity's `getProgress`) and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
 
 ---
@@ -101,7 +101,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
-| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output/quiz snippet, expand button |
+| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output snippet or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |
@@ -184,7 +184,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
 | `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects; `publishOutputCollapsed(collapsed)` merge-updates just `teacherLive.outputCollapsed`, standalone from the main payload, so a source's output/preview panel collapse state mirrors continuously to forced-live viewers |
-| `useActivityState.js` | State, persistence and live sync for hosted activity tasks (owned by `useStudentCodeState`): loads/saves the `__activity_state__` aux file, discrete changes mirror `currentAnswer` debounced, continuous changes only while `activeStudentView` is this student (throttled, flushed when the teacher starts watching), submit/auto grading → `applyCheckFeedback` + `writeStudentRun` + `logAttempt`, `remoteResetAction` starter/complete, `teacherAnswerEdit`, teacher-live `answer` payload |
+| `useActivityState.js` | State, persistence and live sync for hosted activity and quiz tasks (owned by `useStudentCodeState`): loads/saves the `__activity_state__` aux file, discrete changes mirror `currentAnswer` debounced, continuous changes only while `activeStudentView` is this student (throttled, flushed when the teacher starts watching), submit/auto grading → `applyCheckFeedback` + `writeStudentRun` + `logAttempt`, `remoteResetAction` starter/complete, `teacherAnswerEdit`, teacher-live `answer` payload |
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `setLiftedDragImage` and `removeTileFromState` |
 
 ---
@@ -418,19 +418,27 @@ Each `index.js` exports a default object with the following properties. UI surfa
 
 ## Activities (`src/activities/`)
 
-Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md` and `docs/architecture/activities.md`). New activities (`taskType: 'activity'`) run through `ActivityHost`; quizzes and code_arrange keep their own surfaces until plan steps 2.3b / 4.9.
+Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md` and `docs/architecture/activities.md`). New activities (`taskType: 'activity'`) and legacy quizzes (`taskType: 'quiz'` + `quizType`, one activity per sub-type) run through `ActivityHost`; code_arrange keeps its own surface until plan step 4.9.
 
 | File | Role |
 |---|---|
 | `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, report type fields) |
 | `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`) |
-| `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML type lookup); unknown `activityType` values resolve to the fallback |
+| `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML type lookup, `isHostedActivityTask`, `isLegacyQuizTask`); unknown `activityType` / `quizType` values resolve to the fallback |
+| `quiz/quizActivity.js` | Shared pure logic for the five quiz activities: `defineQuizActivity` (legacy shape, shared validation, `currentAnswer` formats, `{ taskType: 'quiz', quizType }` report fields), attempt submissions (`buildQuizSubmission`), feedback (`getQuizSuggestion`), item progress, report normalisers and per-item failure summaries, print tables |
+| `quiz/QuizActivityViews.jsx` | Quiz activity UI: `QuizActivityStudentView` hosts `QuizTask` (in-progress change → `onChange`, final answer → `onSubmit(answer, { passedOverride })`; teacher variant shows verdict + correct answers) and the StudentCard summaries (`ChoiceCardSummary`, items progress text, short-answer text, confidence badge) |
+| `quiz_multiple_choice/definition.js` | Multiple-choice quiz activity: option-id state, graded by the `answer_equals` check, option feedback, print options table |
+| `quiz_match/definition.js` | Match quiz activity: pair map state, auto-marked when every tile is placed, teacher-editable, item progress, `pairFailures` report summary, print pairs table |
+| `quiz_fill_blank/definition.js` | Fill-in-the-gaps quiz activity: tile-id (drag) or typed-text map, auto-marked (drag) / Submit (type), teacher-editable, item progress, `blankFailures` report summary, print text/blanks/distractors |
+| `quiz_short_answer/definition.js` | Short-answer quiz activity: free text, graded by its `answer_*` check or (ungraded) any non-blank answer |
+| `quiz_confidence/definition.js` | Confidence quiz activity: `"1"`..`"5"` rating, never marked (`completion: 'none'`), `ratingDistribution` report summary |
+| `quiz_*/ui.jsx` | Per-sub-type UI entries: `QuizActivityStudentView`, the matching `CardSummary`, `ownsLayout` (no activity header/frame) |
 | `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
 | `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`; UK layout): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
 | `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
 | `mouse/mouse.js` | Pure Mouse activity logic: stage targets (0-1 positions), click/double-click/right-click/drag/scroll/hover items, touch policy (`equivalent`/`skip`/`block`), grading by the gesture that completed each item |
 | `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
-| `legacyValidation.js` | Pure quiz (`validateQuizTask`) and code_arrange (`validateCodeArrangeTask`) validation plus starter/check-value helpers, looked up by `getLegacyTaskValidation(task)` from `src/shared/lessonValidation.js` until plan steps 2.2 / 4.9 move them into activity definitions |
+| `legacyValidation.js` | Pure quiz (`validateQuizTask`) and code_arrange (`validateCodeArrangeTask`) validation plus starter/check-value helpers, looked up by `getLegacyTaskValidation(task)` from `src/shared/lessonValidation.js`; the quiz activity definitions' `validateTask` wraps the same rules, and code_arrange moves in plan step 4.9 |
 | `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
 | `registry.js` | UI activity registry: merges each pure definition with its `ui.jsx` (`getActivityUi`, `getTaskActivityUi`). Classroom only, never imported by the CLI |
 | `ActivityHost.jsx` | Classroom host for a hosted activity task: picks the student's own state, an earlier task's saved state (review) or the teacher's broadcast (`teacherLive.answer`); applies `requires` / `touchFallback` (on-screen keyboard banner, "needs a mouse" block, touch notice, "I have a keyboard" override); unknown-activity notice. Also exports `ActivityView` (header + StudentView/TeacherLiveView) used by StudentModal and TeacherEditorPanel |

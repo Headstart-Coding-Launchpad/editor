@@ -11,6 +11,13 @@ task type alongside `python`/`html` code tasks, not a quiz sub-type, precisely
 because it needs the code/output check fields this page says quiz tasks must not
 carry.
 
+**Saved answers.** A student's quiz answer is saved on their device as they answer, so it is
+still there after a page reload or when they come back to the task (live lessons and solo
+study; Presentation View and Builder preview keep it in memory only). Only the answer comes
+back: the right/wrong banner and "submitted" state start fresh, and the student can answer
+again. Nothing changes in the lesson format. Quizzes run in the classroom as activities (see
+`docs/architecture/activities.md`); the table there lists how each sub-type is marked.
+
 ---
 
 ## Multiple Choice

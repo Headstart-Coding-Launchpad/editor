@@ -59,8 +59,15 @@ describe.each(getActivityDefinitions().map((a) => [a.id, a]))('activity %s', (id
   it('round-trips its initial state through serialize/deserialize', () => {
     const state = activity.initialState(task)
     expect(activity.deserialize(activity.serialize(state), task)).toEqual(state)
-    expect(activity.deserialize('{not json', task)).toEqual(state)
+    // A free-text answer (short answer) accepts any string, so nothing is malformed for it.
+    if (id !== 'quiz_short_answer') expect(activity.deserialize('{not json', task)).toEqual(state)
     expect(activity.deserialize('', task)).toEqual(state)
+  })
+
+  it('round-trips its solution state', () => {
+    if (!activity.solutionState) return
+    const solution = activity.solutionState(task)
+    expect(activity.deserialize(activity.serialize(solution), task)).toEqual(solution)
   })
 
   it('keeps serialised state small enough for the live answer field', () => {
@@ -102,9 +109,29 @@ describe('resolve', () => {
     )
   })
 
-  it('does not claim legacy quiz tasks before their definitions are registered', () => {
-    expect(getTaskActivity({ taskType: 'quiz', quizType: 'match' })).toBeNull()
+  it('claims legacy quiz tasks, but not code_arrange until it migrates (plan 4.9)', () => {
+    expect(getTaskActivity({ taskType: 'quiz', quizType: 'match' })?.id).toBe('quiz_match')
+    expect(getTaskActivity({ taskType: 'quiz' })?.id).toBe('quiz_multiple_choice')
+    expect(getTaskActivity({ taskType: 'quiz', quizType: 'poll' })?.id).toBe(UNKNOWN_ACTIVITY_ID)
+    expect(getTaskActivity({ taskType: 'code_arrange' })).toBeNull()
     expect(getTaskActivity({ taskType: 'information' })).toBeNull()
+  })
+
+  it('keeps each legacy quiz sub-type on its stored shape', () => {
+    for (const quizType of [
+      'multiple_choice',
+      'match',
+      'fill_blank',
+      'short_answer',
+      'confidence',
+    ]) {
+      const activity = getActivityDefinition(`quiz_${quizType}`)
+      expect(activity.legacy).toEqual({ taskType: 'quiz', quizType })
+      expect(activity.report.typeFields({})).toEqual({ taskType: 'quiz', quizType })
+      expect(activity.storage).toEqual({ persist: true, filename: '__activity_state__' })
+      expect(activity.liveChannel).toBe('answer')
+      expect(activityIdForYamlType('quiz')).toBeNull()
+    }
   })
 })
 

@@ -6,7 +6,6 @@ import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
 import LessonCompleteScreen from './LessonCompleteScreen'
-import QuizTask from './QuizTask'
 import CodeArrangeTaskContainer from './CodeArrangeTaskContainer'
 import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
@@ -113,10 +112,12 @@ export default function LessonTaskContent({
   isForcedTeacherLive,
   isLiveCopyBlocked = false,
   isMobile,
+  // Legacy quiz tasks are hosted activities too (isActivityTask); isQuizTask only keeps their
+  // feedback-banner rule (banner for a check or an auto-evaluated match / fill-in-the-gaps).
   isQuizTask,
   isAutoEvaluatedQuiz,
   isInformationTask,
-  // Hosted activity (taskType 'activity'): a full-width surface like a quiz, rendered by
+  // Hosted activity (taskType 'activity' or a quiz): a full-width surface rendered by
   // ActivityHost. displayAnswer is the teacher's broadcast activity state while forced-live.
   isActivityTask = false,
   displayAnswer = null,
@@ -450,7 +451,8 @@ export default function LessonTaskContent({
     !isSandbox &&
     !cs.inPersonalSandbox &&
     !isForcedTeacherLive &&
-    (((task?.check || isAutoEvaluatedQuiz || isActivityTask) && displayCheckAttempted) ||
+    (((task?.check || isAutoEvaluatedQuiz || (isActivityTask && !isQuizTask)) &&
+      displayCheckAttempted) ||
       cs.offeredSupportStageIndex != null)
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
@@ -550,20 +552,11 @@ export default function LessonTaskContent({
             broadcastAnswer={isForcedTeacherLive ? (displayAnswer ?? null) : undefined}
             reviewing={isViewingPrev}
             lessonType={lesson.type}
-          />
-        </>
-      ) : !isSandbox && isQuizTask ? (
-        <>
-          <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
-          <QuizTask
-            task={task}
-            showQuestion
-            selectedAnswer={cs.selectedAnswer}
-            onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
-            submitted={cs.runStatus === 'submitted'}
-            checkPassed={cs.checkPassed}
-            disabled={isViewingPrev}
-            showResult={false}
+            result={
+              isForcedTeacherLive
+                ? { submitted: displayRunStatus === 'submitted', passed: displayCheckPassed }
+                : { submitted: cs.runStatus === 'submitted', passed: cs.checkPassed }
+            }
           />
         </>
       ) : !isSandbox && isCodeArrangeTask ? (

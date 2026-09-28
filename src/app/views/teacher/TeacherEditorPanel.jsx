@@ -1,6 +1,5 @@
 import React from 'react'
 import InformationTask from '../../components/InformationTask'
-import QuizTask from '../../components/QuizTask'
 import CodeArrangeTask from '../../components/CodeArrangeTask'
 import TeacherCodeTabs from '../../components/TeacherCodeTabs'
 import { getLessonModule } from '../../../modules/registry'
@@ -37,19 +36,24 @@ export default function TeacherEditorPanel({
   const usesUnifiedStages = mod?.type === 'python' || mod?.type === 'html'
 
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
-  if (!isInSandbox && task?.taskType === 'quiz')
-    return <QuizTask task={task} showQuestion disabled />
-  // Activities show their answers read-only, like a quiz shows its question.
-  if (!isInSandbox && isHostedActivityTask(task))
+  // Activities show their answers read-only; quizzes (previewState 'initial') show just the
+  // question, since the teacher's screen is often projected.
+  if (!isInSandbox && isHostedActivityTask(task)) {
+    const activity = getTaskActivity(task)
     return (
       <ActivityView
         task={task}
-        state={solutionOrInitialState(getTaskActivity(task), task)}
+        state={
+          activity.previewState === 'initial'
+            ? activity.initialState(task)
+            : solutionOrInitialState(activity, task)
+        }
         teacher
         readOnly
         lessonType={lesson?.type}
       />
     )
+  }
   // Arrange tasks assemble from drag-and-drop tiles, not starter/stage code —
   // showing the authored solution as a read-only tile board (mirroring how
   // other task types show their Complete state) instead of falling through to

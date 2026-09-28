@@ -7,7 +7,8 @@ import { UNKNOWN_ACTIVITY_ID } from './resolve.js'
 import { deserializeActivityState } from './state.js'
 import { effectiveCapabilities } from './device.js'
 
-// ActivityHost renders a hosted activity task (taskType 'activity') in the classroom. The
+// ActivityHost renders a hosted activity task (taskType 'activity', or a legacy quiz) in the
+// classroom. The
 // state, persistence, live sync, grading, reset and teacher-edit rules live once in
 // useActivityState (src/app/hooks); this component picks which state to show and applies the
 // device rules:
@@ -44,7 +45,10 @@ function ActivityHeader({ task, lessonType }) {
 /**
  * Presentational activity surface: header plus the activity's StudentView (or its
  * TeacherLiveView when `teacher`). Used by ActivityHost, the teacher's StudentModal and the
- * teacher editor panel. `state` is the parsed activity state.
+ * teacher editor panel. `state` is the parsed activity state; `result` ({ submitted, passed })
+ * is the run status and check result of the answer shown, for UIs that display a verdict (the
+ * quizzes). A UI with `ownsLayout` (the quizzes) renders its own question and full-height
+ * layout, so no header or act-host frame is added.
  */
 export function ActivityView({
   task,
@@ -56,6 +60,7 @@ export function ActivityView({
   device = {},
   showHeader = true,
   lessonType = null,
+  result = null,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -67,20 +72,25 @@ export function ActivityView({
     )
   }
   const View = teacher && ui.TeacherLiveView ? ui.TeacherLiveView : ui.StudentView
+  const view = (
+    <View
+      // Remount per task so item navigation and recorders never carry across tasks.
+      key={task?.id}
+      task={task}
+      state={state}
+      onChange={readOnly ? undefined : onChange}
+      onSubmit={readOnly ? undefined : onSubmit}
+      readOnly={readOnly}
+      device={device}
+      teacher={teacher}
+      result={result}
+    />
+  )
+  if (ui.ownsLayout) return view
   return (
     <div className="act-host" data-activity={ui.id}>
       {showHeader && <ActivityHeader task={task} lessonType={lessonType} />}
-      <View
-        // Remount per task so item navigation and recorders never carry across tasks.
-        key={task?.id}
-        task={task}
-        state={state}
-        onChange={readOnly ? undefined : onChange}
-        onSubmit={readOnly ? undefined : onSubmit}
-        readOnly={readOnly}
-        device={device}
-        teacher={teacher}
-      />
+      {view}
     </div>
   )
 }
@@ -130,6 +140,8 @@ function RequirementNotice({ unmet, fallback, onHaveKeyboard }) {
  * - `broadcastAnswer`: teacherLive.answer while a broadcast is forced on this screen
  *   (undefined when not broadcasting).
  * - `reviewing`: the student is looking back at an earlier task (read-only saved state).
+ * - `result`: { submitted, passed } for the state shown (the student's own run status and check
+ *   result, or the broadcast's), for UIs that display a verdict.
  */
 export default function ActivityHost({
   task,
@@ -137,6 +149,7 @@ export default function ActivityHost({
   broadcastAnswer,
   reviewing = false,
   lessonType = null,
+  result = null,
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -180,6 +193,20 @@ export default function ActivityHost({
     )
   }
 
+  const view = (
+    <ActivityView
+      task={task}
+      state={state}
+      onChange={activity?.onChange}
+      onSubmit={activity?.onSubmit}
+      readOnly={readOnly}
+      device={device}
+      lessonType={lessonType}
+      result={reviewing ? null : result}
+    />
+  )
+  // Quizzes have no device requirements and lay themselves out (see ActivityView).
+  if (ui?.ownsLayout) return view
   return (
     <div className="act-host" data-testid="activity-host">
       {!readOnly && ui && ui.id !== UNKNOWN_ACTIVITY_ID && (
@@ -189,15 +216,7 @@ export default function ActivityHost({
           onHaveKeyboard={() => setKeyboardOverride(true)}
         />
       )}
-      <ActivityView
-        task={task}
-        state={state}
-        onChange={activity?.onChange}
-        onSubmit={activity?.onSubmit}
-        readOnly={readOnly}
-        device={device}
-        lessonType={lessonType}
-      />
+      {view}
     </div>
   )
 }

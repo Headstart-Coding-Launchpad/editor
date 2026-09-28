@@ -1,6 +1,10 @@
 import { getStageRole, getStarterStages, getCompleteStage } from './taskStages.js'
 import { getModuleDefinition } from '../modules/definitions.js'
-import { getTaskActivity, isHostedActivityTask } from '../activities/registry.pure.js'
+import {
+  getTaskActivity,
+  isHostedActivityTask,
+  isLegacyQuizTask,
+} from '../activities/registry.pure.js'
 
 export {
   STAGE_ROLES,
@@ -79,7 +83,7 @@ export function getTaskPriority(task) {
 export function canTaskAllowSharing(task) {
   if (!task || typeof task !== 'object') return false
   if (task.type === 'group') return false
-  return task.taskType !== 'quiz' && task.taskType !== 'information' && !isHostedActivityTask(task)
+  return task.taskType !== 'information' && !isHostedActivityTask(task)
 }
 
 export function isSharingAllowed(task) {
@@ -181,11 +185,11 @@ export function deriveTaskContext(lesson, task, session) {
   // moduleType is the registered module type of the (effective, per-task) lesson, or null for
   // anything else (e.g. an unresolved 'composed' lesson). The is<Type> flags are kept for
   // existing callers; prefer moduleType + the module definition for new code.
-  const isQuiz = task?.taskType === 'quiz'
+  const isQuiz = isLegacyQuizTask(task)
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'
-  // Hosted activities (taskType 'activity') have no workspace, so the module flags are all
-  // false on them — except in a session sandbox, where students work in the lesson's
+  // Hosted activities (taskType 'activity' and quizzes) have no workspace, so the module flags
+  // are all false on them — except in a session sandbox, where students work in the lesson's
   // workspace whatever task the session is parked on.
   const isActivity = isHostedActivityTask(task)
   const moduleType =
@@ -219,8 +223,8 @@ function hasLegacyComplete(task, completeField) {
 // Build the ordered list of remote-reset stage options for a task.
 // lessonType: lesson module type, e.g. 'python' | 'html' | 'scratch' | 'filesystem' | 'electronics'
 export function buildStageOptions(task, lessonType) {
-  // Activities reset to their initial setup or jump to the answer (remoteResetAction
-  // 'starter' / 'complete'); they have no code stages.
+  // Activities (quizzes included) reset to their initial setup or jump to the answer
+  // (remoteResetAction 'starter' / 'complete'); they have no code stages.
   if (isHostedActivityTask(task)) {
     const activity = getTaskActivity(task)
     if (!activity?.teacherEditable) return []
@@ -235,7 +239,7 @@ export function buildStageOptions(task, lessonType) {
     ['starter', 'complete'].includes(stage?.role)
   )
   const definition = getModuleDefinition(lessonType)
-  if (definition?.capabilities.unifiedStages && task?.taskType !== 'quiz' && isUnified) {
+  if (definition?.capabilities.unifiedStages && isUnified) {
     const starters = getStarterStages(task)
     const starterOptions =
       starters.length > 0
@@ -256,10 +260,9 @@ export function buildStageOptions(task, lessonType) {
       : starterOptions
   }
 
-  const isQuiz = task?.taskType === 'quiz'
-  const hasComplete = isQuiz ? false : hasLegacyComplete(task, definition?.completeField)
+  const hasComplete = hasLegacyComplete(task, definition?.completeField)
 
-  const codeStages = isQuiz ? [] : (task?.codeStages ?? [])
+  const codeStages = task?.codeStages ?? []
   const starterLabel = definition?.stageLabels.starterLabel ?? 'Starter'
   const completeLabel = definition?.stageLabels.completeLabel ?? 'Complete'
 

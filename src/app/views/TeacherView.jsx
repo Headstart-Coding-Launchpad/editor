@@ -66,11 +66,10 @@ import { describeShareError } from '../sharedWorkspacePayload'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
-  // An activity that is never marked (the unknown-activity fallback) has nothing to advance.
-  if (getTaskActivity(task)?.completion === 'none') return false
-  if (task.taskType === 'quiz' && task.quizType === 'confidence') return false
-  if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null)
-    return false
+  // An activity that is never marked (a confidence rating, an unmarked short answer, the
+  // unknown-activity fallback) has nothing to advance past.
+  const activity = getTaskActivity(task)
+  if (activity && (activity.completion === 'none' || !activity.isGraded(task))) return false
   return true
 }
 
@@ -233,7 +232,7 @@ export default function TeacherView({ lessonId }) {
     const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === taskId)
     if (!task) return
     const taskLesson = getEffectiveLessonForTask(lesson, task)
-    if (task.taskType === 'quiz' || task.taskType === 'information' || isHostedActivityTask(task)) {
+    if (task.taskType === 'information' || isHostedActivityTask(task)) {
       setCode('')
       setFiles([])
       setScratchState(null)
@@ -761,17 +760,13 @@ export default function TeacherView({ lessonId }) {
 
         {/* Centre — Teacher Editor */}
         <main style={{ ...s.centre, ...(centreFillsHeight ? { overflow: 'hidden' } : {}) }}>
-          {task?.explainer &&
-            !isInSandbox &&
-            task?.taskType !== 'quiz' &&
-            !isHostedActivityTask(task) &&
-            !isInformationTask && (
-              <ExplainerPanel
-                title={task.title}
-                content={task.explainer}
-                topicType={displayedLesson.type}
-              />
-            )}
+          {task?.explainer && !isInSandbox && !isHostedActivityTask(task) && !isInformationTask && (
+            <ExplainerPanel
+              title={task.title}
+              content={task.explainer}
+              topicType={displayedLesson.type}
+            />
+          )}
 
           {isPreviewing && (
             <TeacherPreviewBanner
