@@ -35,8 +35,9 @@ export function defineActivity(def) {
     fail(id, `completion must be one of ${COMPLETION_MODES.join(', ')}`)
   }
 
-  // Defaults keep simple activities small; legacy quiz definitions override storage and
-  // liveChannel to match the formats already in use.
+  // Defaults keep simple activities small. Legacy quiz definitions (src/activities/quiz/
+  // quizActivity.js) override serialize/deserialize to keep the currentAnswer formats already
+  // in use.
   const deserialize =
     def.deserialize ??
     ((raw, task) => {
@@ -68,9 +69,19 @@ export function defineActivity(def) {
     getProgress: () => null,
     summarize: () => null,
     teacherEditable: true,
+    // true when the UI decides itself when an answer is final and calls onSubmit(state) (the
+    // quizzes: an option chosen, every tile placed). The host then never auto-submits on
+    // change, and a teacher's edit is marked only on those submits.
+    submitsAnswers: false,
+    // What the teacher's own task panel shows: the answers ('solution') or the blank task
+    // ('initial', for quizzes, whose teacher screen is often projected).
+    previewState: 'solution',
     report: {
       typeFields: () => ({ taskType: 'activity', activityType: id }),
       normalizeSubmission: (task, submission) => submission,
+      // Extra per-task summary fields for the session report (e.g. the confidence rating
+      // distribution, per-blank failures).
+      summaryFields: () => ({}),
     },
     printHtml: null,
     ...def,

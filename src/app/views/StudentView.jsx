@@ -22,7 +22,11 @@ import {
 } from '../../shared/taskUtils'
 import { PLAYGROUND_LESSON_TYPES, getTaskModuleType, isCodeTask } from '../../shared/composedLesson'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
-import { isHostedActivityTask } from '../../activities/registry.pure.js'
+import {
+  getTaskActivity,
+  isHostedActivityTask,
+  isLegacyQuizTask,
+} from '../../activities/registry.pure.js'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
@@ -429,7 +433,6 @@ export default function StudentView({
     phase === 'solo' &&
     activeLesson?.type === 'scratch' &&
     !!explainerPseudoCandidateTask?.explainer &&
-    explainerPseudoCandidateTask?.taskType !== 'quiz' &&
     explainerPseudoCandidateTask?.taskType !== 'information' &&
     !isHostedActivityTask(explainerPseudoCandidateTask) &&
     viewingTaskId === null &&
@@ -855,13 +858,14 @@ export default function StudentView({
       // Withdrawing is best-effort; the teacher can still decline it.
     }
   }
-  const isQuizTask = task?.taskType === 'quiz'
-  const isAutoEvaluatedQuiz =
-    isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
+  // Quizzes are hosted activities; isQuizTask keeps their few quiz-only rules. Match and
+  // fill-in-the-gaps mark themselves when complete (completion 'auto').
+  const isQuizTask = isLegacyQuizTask(task)
+  const isAutoEvaluatedQuiz = isQuizTask && getTaskActivity(task)?.completion === 'auto'
   const isInformationTask = task?.taskType === 'information'
   const isCodeArrangeTask = task?.taskType === 'code_arrange'
-  // Hosted activities (taskType 'activity') are not code tasks: no Run, personal sandbox,
-  // share or carry. ActivityHost renders them (see LessonTaskContent).
+  // Hosted activities (taskType 'activity' and quizzes) are not code tasks: no Run, personal
+  // sandbox, share or carry. ActivityHost renders them (see LessonTaskContent).
   const isActivityTask = isHostedActivityTask(task)
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
   // Also present (bypassing the debounce) whenever the slide is actually being viewed —
@@ -976,7 +980,6 @@ export default function StudentView({
   const canOfferPersonalSandbox =
     (phase === 'lesson' || isSolo) &&
     hasPersonalSandbox &&
-    !isQuizTask &&
     !isActivityTask &&
     displayCheckPassed &&
     !cs.inPersonalSandbox &&

@@ -38,6 +38,19 @@ Use this changelog when a platform or documentation change alters the lesson aut
   including a size limit on a task's saved answers for the new modes.
 - Existing `make_number`, `to_binary`, `to_decimal` and `add` tasks are unchanged.
 
+### Quiz answers are kept after a reload
+
+- Quizzes now run as activities in the classroom (one per quiz sub-type). A student's quiz
+  answer is saved on their device as they answer, so it survives a page reload and is still
+  there when they return to the task. Only the answer comes back — the right/wrong banner
+  starts fresh and the student can answer again. See [quiz-tasks.md](quiz-tasks.md).
+- Nothing changes in the lesson format: keep writing `type: quiz` (`taskType: quiz`) with
+  `quizType`. Validation messages, session reports and printed quizzes are unchanged. Printed
+  lessons now also include each activity's own section (e.g. a Binary task's questions and
+  answers).
+- When the teacher's own Presentation View broadcast is live on a quiz task, students now see
+  the teacher's selected answer (read-only), like other activities.
+
 ### Binary, Keyboard and Mouse activities run in the classroom
 
 - Tasks with `taskType: activity` and `activityType: binary`, `keyboard` or `mouse` now render

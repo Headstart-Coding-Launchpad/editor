@@ -46,8 +46,6 @@ import {
 } from '../studentTaskContent'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
-import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
-import { parseQuizAnswerState } from '../../shared/quizAnswers'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
@@ -125,7 +123,6 @@ export function useStudentCodeState({
   const [runningTests, setRunningTests] = useState(false)
   const [iframeSrc, setIframeSrc] = useState(null)
   const [inputPrompt, setInputPrompt] = useState(null)
-  const [selectedAnswer, setSelectedAnswer] = useState('')
   const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
   const [scratchExternalState, setScratchExternalState] = useState(null)
   const [scratchActiveStageIndex, setScratchActiveStageIndex] = useState(null)
@@ -165,7 +162,6 @@ export function useStudentCodeState({
   // Bumped when the teacher presses Run for this student; each module
   // workspace reacts via useRemoteRunTrigger with its own Run action.
   const [remoteRunToken, setRemoteRunToken] = useState(null)
-  const writeAnswerDebounceRef = useRef(null)
   // Latest in-progress input() state, kept regardless of whether a teacher is
   // watching, so opening StudentModal mid-prompt can publish it immediately.
   const inputPromptRef = useRef(null)
@@ -412,8 +408,8 @@ export function useStudentCodeState({
     setTeacherLiveReference,
   })
 
-  // Hosted activity tasks (taskType 'activity'): state, persistence, live sync, grading, reset
-  // and teacher edits. See useActivityState.js for the write rules.
+  // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
+  // sync, grading, reset and teacher edits. See useActivityState.js for the write rules.
   const activity = useActivityState({
     lesson,
     currentTaskId,
@@ -515,8 +511,8 @@ export function useStudentCodeState({
     if (inPersonalSandboxRef.current) return
 
     const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
-    if (task?.taskType === 'quiz' || task?.taskType === 'information') return
-    // Activities save every change themselves (useActivityState).
+    if (task?.taskType === 'information') return
+    // Activities (quizzes included) save every change themselves (useActivityState).
     if (isHostedActivityTask(task)) return
 
     if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
@@ -618,11 +614,10 @@ export function useStudentCodeState({
     if (!lesson || !activeIdentity) return
     const task = flattenTasks(lesson.tasks).find((t) => t.id === taskId)
     if (!task) return
-    if (task.taskType === 'quiz' || task.taskType === 'information' || isHostedActivityTask(task)) {
+    if (task.taskType === 'information' || isHostedActivityTask(task)) {
       setCode('')
       setFiles([])
       setActiveFile('')
-      setSelectedAnswer('')
       resetCheckFeedback()
       return
     }
@@ -771,7 +766,6 @@ export function useStudentCodeState({
     setTargetedStageOffer(null)
     setTargetedPreviewStageIndex(null)
     targetedStageOfferMatchCountsRef.current = {}
-    setSelectedAnswer('')
     setIframeSrc(null)
     // Clear any pushed scratch state (reset/stage/solution/teacher edit) so it
     // can't overwrite the next task's initial blocks after the workspace remounts.
@@ -882,8 +876,11 @@ export function useStudentCodeState({
     if (!identity?.anonymousId || session?.activeStudentView !== identity.anonymousId) return
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
-    // Activity tasks flush their own state (useActivityState); there is no code to mirror.
-    if (isHostedActivityTask(findTaskById(lesson.tasks, currentTaskId))) return
+    // Activity and quiz tasks flush their own state (useActivityState); there is no code to
+    // mirror. In a session sandbox the student works in the lesson's workspace whatever task
+    // the session is parked on, so its code is still flushed there.
+    if (phase !== 'sandbox' && isHostedActivityTask(findTaskById(lesson.tasks, currentTaskId)))
+      return
 
     if (
       lesson.type === 'python' ||
@@ -993,10 +990,9 @@ export function useStudentCodeState({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
-  // Apply a teacher's edit to this student's Match / Fill in the Gaps answer or
-  // Code Arrange tiles (StudentModal "Edit answers"). Quiz answers go through
-  // the normal handleQuizSelect path so marking, the Firebase mirror, and the
-  // attempt log behave exactly as if the student had placed them — the only
+  // Apply a teacher's edit to this student's Code Arrange tiles (StudentModal "Edit answers").
+  // Quiz and activity answer edits are applied by useActivityState, so marking, the Firebase
+  // mirror and the attempt log behave exactly as if the student had answered — the only
   // difference is the teacherAssisted flag on the logged attempt.
   useEffect(() => {
     const edit = myStudentData?.teacherAnswerEdit
@@ -1013,13 +1009,6 @@ export function useStudentCodeState({
     if (task?.taskType === 'code_arrange' && edit.codeArrangeSlots) {
       teacherAssistedTaskIdsRef.current.add(currentTaskId)
       setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
-      setTeacherAnswerNoticeAt(edit.at)
-    } else if (task?.taskType === 'quiz' && edit.answer != null) {
-      teacherAssistedTaskIdsRef.current.add(currentTaskId)
-      const answer = parseQuizAnswerState(edit.answer)
-      handleQuizSelect(answer, typeof edit.passed === 'boolean' ? edit.passed : null, {
-        fromTeacher: true,
-      })
       setTeacherAnswerNoticeAt(edit.at)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2466,7 +2455,7 @@ export function useStudentCodeState({
     }
   }
 
-  // ─── Submit (HTML submit-mode / quiz) ──────────────────────────────────────
+  // ─── Submit (HTML / Python submit-mode) ──────────────────────────────────────
 
   async function handleSubmit() {
     const actor = effectiveIdentity
@@ -2532,63 +2521,6 @@ export function useStudentCodeState({
     }
   }
 
-  async function handleQuizSelect(answer, passedOverride, { fromTeacher = false } = {}) {
-    const actor = effectiveIdentity
-    if (!actor) return
-    if (!fromTeacher) supersedeTeacherAnswerEdit()
-    const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
-
-    if (passedOverride === null) {
-      setSelectedAnswer(answer)
-      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-        clearTimeout(writeAnswerDebounceRef.current)
-        writeAnswerDebounceRef.current = setTimeout(() => {
-          writeStudentAnswer?.(actor.anonymousId, serializedAnswer)
-        }, 300)
-      }
-      return
-    }
-
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const passed =
-      typeof passedOverride === 'boolean'
-        ? passedOverride
-        : task?.check
-          ? evaluateCheck(task.check, answer, { answer: typeof answer === 'string' ? answer : '' })
-          : task?.quizType === 'short_answer'
-            ? !!(typeof answer === 'string' ? answer.trim() : false)
-            : false
-    const suggestion = passed ? '' : getQuizSuggestion(task, answer)
-
-    setSelectedAnswer(answer)
-    applyCheckFeedback(passed, suggestion)
-    setRunStatus('submitted')
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({
-        answer: serializedAnswer,
-        runStatus: 'submitted',
-        checkPassed: passed,
-        checkAttempted: true,
-        checkSuggestion: suggestion,
-      })
-    }
-    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-      await writeStudentRun(actor.anonymousId, {
-        answer: serializedAnswer,
-        status: 'submitted',
-        checkPassed: passed,
-      })
-    }
-    if (!teacherPresentation && phase === 'lesson') {
-      logAttempt(actor.anonymousId, currentTaskId, {
-        submission: buildQuizSubmission(task, answer),
-        passed,
-        suggestion,
-        teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
-      })
-    }
-  }
-
   // Workspace sharing captures the student's own current state. Built here
   // rather than in the view because the module-specific sources (Scratch's
   // scratchCodeRef, filesystem's fsStateRef) only exist inside this hook.
@@ -2646,7 +2578,6 @@ export function useStudentCodeState({
     teacherLiveReferenceActive,
     targetedStageOffer,
     targetedPreviewStageIndex,
-    selectedAnswer,
     scratchSandboxProject,
     scratchExternalState,
     scratchActiveStageIndex,
@@ -2668,7 +2599,6 @@ export function useStudentCodeState({
     handleStop,
     handleRunTests,
     handleSubmit,
-    handleQuizSelect,
     handleCodeChange,
     handleArcadeDesignChange,
     handleArcadeRun,
@@ -2730,7 +2660,7 @@ export function useStudentCodeState({
     exitPersonalSandbox,
     currentTeacherLivePayload,
     buildShareSnapshot,
-    // Hosted activity task state and handlers (null definition on other tasks).
+    // Activity and quiz task state and handlers (null definition on other tasks).
     activity,
     canPublishTeacherLive,
     publishTeacherLive,

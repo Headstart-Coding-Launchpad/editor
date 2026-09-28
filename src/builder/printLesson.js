@@ -4,6 +4,7 @@ import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
 import { getEffectiveLessonForTask, getComposedModuleTypes } from '../shared/composedLesson'
 import { getModuleLabel } from '../modules/definitions'
+import { getTaskActivity } from '../activities/registry.pure.js'
 
 function esc(str) {
   if (str == null) return ''
@@ -321,53 +322,9 @@ export function buildPrintHtml(lesson) {
       )
     }
 
-    if (task.taskType === 'quiz') {
-      if (task.quizType === 'multiple_choice' && task.options?.length) {
-        parts.push(
-          `<div class="field"><div class="field-label">Options</div><table class="data-table"><tr><th>ID</th><th>Text</th><th>Feedback</th></tr>`
-        )
-        for (const opt of task.options) {
-          parts.push(
-            `<tr><td>${esc(opt.id)}</td><td>${esc(opt.text)}</td><td>${esc(opt.feedback || '')}</td></tr>`
-          )
-        }
-        parts.push(`</table></div>`)
-      }
-      if (task.quizType === 'match' && task.pairs?.length) {
-        parts.push(
-          `<div class="field"><div class="field-label">Pairs</div><table class="data-table"><tr><th>Prompt</th><th>Answer</th></tr>`
-        )
-        for (const p of task.pairs) {
-          parts.push(`<tr><td>${esc(p.prompt)}</td><td>${esc(p.answer)}</td></tr>`)
-        }
-        parts.push(`</table></div>`)
-      }
-      if (task.quizType === 'fill_blank') {
-        if (task.text) {
-          parts.push(
-            `<div class="field"><div class="field-label">Text</div><div class="field-value">${esc(task.text)}</div></div>`
-          )
-        }
-        if (task.blanks?.length) {
-          parts.push(
-            `<div class="field"><div class="field-label">Blanks</div><table class="data-table"><tr><th>ID</th><th>Answer</th></tr>`
-          )
-          for (const b of task.blanks) {
-            parts.push(`<tr><td>${esc(b.id)}</td><td>${esc(b.answer)}</td></tr>`)
-          }
-          parts.push(`</table></div>`)
-        }
-        if (task.distractors?.length) {
-          parts.push(
-            `<div class="field"><div class="field-label">Distractors</div><table class="data-table"><tr><th>ID</th><th>Text</th></tr>`
-          )
-          for (const d of task.distractors) {
-            parts.push(`<tr><td>${esc(d.id)}</td><td>${esc(d.text)}</td></tr>`)
-          }
-          parts.push(`</table></div>`)
-        }
-      }
-    }
+    // Quizzes and activities print their own fields (definition.printHtml).
+    const activityHtml = getTaskActivity(task)?.printHtml?.(task, { esc, mdToHtml })
+    if (activityHtml) parts.push(activityHtml)
 
     if (!task.taskType) {
       if (taskType === 'python' || taskType === 'turtle' || taskType === 'arcade') {

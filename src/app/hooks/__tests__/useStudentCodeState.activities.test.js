@@ -12,13 +12,18 @@ import {
 } from '../../../test/fixtures/legacyActivityTasks'
 
 // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
-// the student-side side effects of answering a quiz (handleQuizSelect), a
-// teacher's "Edit answers" push (teacherAnswerEdit), and code_arrange tile
-// placements (handleCodeArrangeSlotsChange), exercised through the real hook
-// with every session writer replaced by a vi.fn. These pin today's behaviour,
-// including parts the Activity migration will change on purpose (quiz answers
-// are not persisted locally and are cleared on task switch). Step 2.3 deliberately removed
-// student Go Live publishing on quiz tasks (see the broadcast describe block below).
+// the student-side side effects of answering a quiz, a teacher's "Edit answers" push
+// (teacherAnswerEdit), and code_arrange tile placements (handleCodeArrangeSlotsChange),
+// exercised through the real hook with every session writer replaced by a vi.fn.
+//
+// Plan step 2.3b moved quizzes onto the activity host: answers now go through
+// cs.activity (useActivityState) instead of handleQuizSelect. The quiz UI calls
+// onChange(answer) for an in-progress change (was handleQuizSelect(answer, null)) and
+// onSubmit(answer, { passedOverride }) for a final answer (was handleQuizSelect(answer,
+// passedOverride)); the answer shown is cs.activity.state (was cs.selectedAnswer). The
+// writer payloads below are unchanged. Deliberate behaviour changes are marked
+// "Deliberately changed in 2.3b". Step 2.3 removed student Go Live publishing on quiz tasks
+// (see the broadcast describe block below).
 
 vi.mock('../../../shared/useTypeAssets', () => ({
   useTypeAssets: () => ({ typeStorageAssets: [] }),
@@ -124,6 +129,16 @@ function renderCodeState(initial = {}) {
   }
 }
 
+async function submitAnswer(result, answer, passedOverride) {
+  await act(async () => {
+    await result.current.activity.onSubmit(answer, { passedOverride })
+  })
+}
+
+function changeAnswer(result, answer) {
+  act(() => result.current.activity.onChange(answer))
+}
+
 function localStorageValues() {
   const values = []
   for (let i = 0; i < window.localStorage.length; i++) {
@@ -134,23 +149,21 @@ function localStorageValues() {
 
 beforeEach(() => {
   vi.useFakeTimers()
+  // Quiz answers persist per task since 2.3b, so each test starts from clean storage.
+  window.localStorage.clear()
 })
 
 afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('handleQuizSelect — in-progress answers (passedOverride null)', () => {
-  it('keeps the raw answer locally and writes the serialized answer once, 300 ms after the last change', async () => {
+describe('quiz in-progress answers (onChange; was handleQuizSelect with passedOverride null)', () => {
+  it('keeps the answer and writes the serialized answer once, 300 ms after the last change', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 2 })
-    await act(async () => {
-      await result.current.handleQuizSelect({ p1: 'p2' }, null)
-    })
-    await act(async () => {
-      await result.current.handleQuizSelect({ p1: 'p1' }, null)
-    })
-    // selectedAnswer holds the object as given, not its serialization.
-    expect(result.current.selectedAnswer).toEqual({ p1: 'p1' })
+    changeAnswer(result, { p1: 'p2' })
+    changeAnswer(result, { p1: 'p1' })
+    // The state holds the parsed answer, not its serialization.
+    expect(result.current.activity.state).toEqual({ p1: 'p1' })
 
     act(() => vi.advanceTimersByTime(299))
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
@@ -169,39 +182,34 @@ describe('handleQuizSelect — in-progress answers (passedOverride null)', () =>
       currentTaskId: 2,
       session: makeSession({ activeStudentView: 'someone-else' }),
     })
-    await act(async () => {
-      await watched.result.current.handleQuizSelect({ p1: 'p1' }, null)
-    })
+    changeAnswer(watched.result, { p1: 'p1' })
     act(() => vi.advanceTimersByTime(300))
     expect(watched.writers.writeStudentAnswer).toHaveBeenCalledTimes(1)
 
     for (const props of [{ teacherPresentation: true }, { phase: 'solo' }]) {
       const { result, writers } = renderCodeState({ currentTaskId: 2, ...props })
-      await act(async () => {
-        await result.current.handleQuizSelect({ p1: 'p1' }, null)
-      })
+      changeAnswer(result, { p1: 'p1' })
       act(() => vi.advanceTimersByTime(300))
       expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
     }
   })
 
-  it('does nothing without an effective identity', async () => {
+  // Deliberately changed in 2.3b (was: "does nothing without an effective identity", which
+  // also pinned selectedAnswer staying ''): the host still shows the change on screen, but
+  // nothing is written to the session or saved.
+  it('writes and saves nothing without an effective identity', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 2, effectiveIdentity: null })
-    await act(async () => {
-      await result.current.handleQuizSelect({ p1: 'p1' }, null)
-    })
+    changeAnswer(result, { p1: 'p1' })
     act(() => vi.advanceTimersByTime(300))
-    expect(result.current.selectedAnswer).toBe('')
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
+    expect(localStorageValues().filter((value) => value.includes('p1'))).toEqual([])
   })
 })
 
-describe('handleQuizSelect — submissions', () => {
+describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride)', () => {
   it('multiple_choice: evaluates task.check, records the run, and logs the attempt with the option suggestion', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 1 })
-    await act(async () => {
-      await result.current.handleQuizSelect('b')
-    })
+    await submitAnswer(result, 'b')
     expect(writers.writeStudentRun.mock.calls).toEqual([
       ['anon-1', { answer: 'b', status: 'submitted', checkPassed: false }],
     ])
@@ -217,7 +225,7 @@ describe('handleQuizSelect — submissions', () => {
         },
       ],
     ])
-    expect(result.current.selectedAnswer).toBe('b')
+    expect(result.current.activity.state).toBe('b')
     expect(result.current.runStatus).toBe('submitted')
     expect(result.current.checkPassed).toBe(false)
     expect(result.current.checkAttempted).toBe(true)
@@ -226,12 +234,10 @@ describe('handleQuizSelect — submissions', () => {
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
   })
 
-  it('match: trusts the component passedOverride and logs the per-pair submission', async () => {
+  it('match: marks the complete board and logs the per-pair submission', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 2 })
     const answer = { p1: 'p1', p2: 'p2', p3: 'p3' }
-    await act(async () => {
-      await result.current.handleQuizSelect(answer, true)
-    })
+    await submitAnswer(result, answer, true)
     expect(writers.writeStudentRun).toHaveBeenCalledWith('anon-1', {
       answer: JSON.stringify(answer),
       status: 'submitted',
@@ -255,11 +261,9 @@ describe('handleQuizSelect — submissions', () => {
     expect(result.current.checkPassed).toBe(true)
   })
 
-  it('fill_blank: a failing passedOverride suggests the task feedback (empty here)', async () => {
+  it('fill_blank: a wrong answer suggests the task feedback (empty here)', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 3 })
-    await act(async () => {
-      await result.current.handleQuizSelect({ b1: 'b1', b2: 'd1' }, false)
-    })
+    await submitAnswer(result, { b1: 'b1', b2: 'd1' }, false)
     expect(writers.logAttempt).toHaveBeenCalledWith('anon-1', 3, {
       submission: {
         b1: { value: 'print', expected: 'print', correct: true },
@@ -273,18 +277,14 @@ describe('handleQuizSelect — submissions', () => {
 
   it('short_answer: evaluates the answer_* check and suggests its hint on failure', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 5 })
-    await act(async () => {
-      await result.current.handleQuizSelect('It prints')
-    })
+    await submitAnswer(result, 'It prints')
     expect(writers.logAttempt).toHaveBeenLastCalledWith('anon-1', 5, {
       submission: 'It prints',
       passed: false,
       suggestion: 'Mention what print shows.',
       teacherAssisted: false,
     })
-    await act(async () => {
-      await result.current.handleQuizSelect('It shows text')
-    })
+    await submitAnswer(result, 'It shows text')
     expect(writers.writeStudentRun).toHaveBeenLastCalledWith('anon-1', {
       answer: 'It shows text',
       status: 'submitted',
@@ -294,9 +294,7 @@ describe('handleQuizSelect — submissions', () => {
 
   it('open short_answer: passes any non-blank answer', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 6 })
-    await act(async () => {
-      await result.current.handleQuizSelect('I learned loops')
-    })
+    await submitAnswer(result, 'I learned loops')
     expect(writers.logAttempt).toHaveBeenCalledWith('anon-1', 6, {
       submission: 'I learned loops',
       passed: true,
@@ -307,9 +305,7 @@ describe('handleQuizSelect — submissions', () => {
 
   it('confidence: logs the numeric rating and records the raw string answer', async () => {
     const { result, writers } = renderCodeState({ currentTaskId: 7 })
-    await act(async () => {
-      await result.current.handleQuizSelect('4', true)
-    })
+    await submitAnswer(result, '4', true)
     expect(writers.writeStudentRun).toHaveBeenCalledWith('anon-1', {
       answer: '4',
       status: 'submitted',
@@ -325,50 +321,63 @@ describe('handleQuizSelect — submissions', () => {
 
   it('records the run but logs no attempt in sandbox; writes nothing in teacher presentation', async () => {
     const sandbox = renderCodeState({ currentTaskId: 1, phase: 'sandbox' })
-    await act(async () => {
-      await sandbox.result.current.handleQuizSelect('a')
-    })
+    await submitAnswer(sandbox.result, 'a')
     expect(sandbox.writers.writeStudentRun).toHaveBeenCalledTimes(1)
     expect(sandbox.writers.logAttempt).not.toHaveBeenCalled()
 
     const presenter = renderCodeState({ currentTaskId: 1, teacherPresentation: true })
-    await act(async () => {
-      await presenter.result.current.handleQuizSelect('a')
-    })
+    await submitAnswer(presenter.result, 'a')
     expect(presenter.writers.writeStudentRun).not.toHaveBeenCalled()
     expect(presenter.writers.logAttempt).not.toHaveBeenCalled()
     expect(presenter.result.current.checkPassed).toBe(true)
   })
 })
 
-describe('quiz answer persistence (pinned; the Activity migration changes this on purpose)', () => {
-  it('never writes quiz answers to localStorage', async () => {
+// Deliberately changed in 2.3b (user decision, plan "Quiz persistence"). Was pinned as
+// "never writes quiz answers to localStorage" and "clears the selected answer on task switch
+// and does not restore it on return". Quiz answers now persist in the per-task
+// `__activity_state__` aux file, in their currentAnswer string format, and come back on reload
+// or on returning to the task.
+describe('quiz answer persistence', () => {
+  const key = (taskId) => `headstart_${LESSON.id}_${taskId}___activity_state___${ME.anonymousId}`
+
+  it('saves every quiz answer to the task aux file in its currentAnswer format', async () => {
     const { result } = renderCodeState({ currentTaskId: 2 })
-    await act(async () => {
-      await result.current.handleQuizSelect({ p1: 'p3' }, null)
-      await result.current.handleQuizSelect({ p1: 'p3', p2: 'p2', p3: 'p1' }, false)
+    changeAnswer(result, { p1: 'p3' })
+    expect(JSON.parse(window.localStorage.getItem(key(2)))).toEqual({ content: '{"p1":"p3"}' })
+    await submitAnswer(result, { p1: 'p3', p2: 'p2', p3: 'p1' }, false)
+    expect(JSON.parse(window.localStorage.getItem(key(2)))).toEqual({
+      content: '{"p1":"p3","p2":"p2","p3":"p1"}',
     })
-    act(() => vi.advanceTimersByTime(1000))
-    expect(localStorageValues().filter((value) => value.includes('p3'))).toEqual([])
+
+    const mc = renderCodeState({ currentTaskId: 1 })
+    await submitAnswer(mc.result, 'b')
+    expect(JSON.parse(window.localStorage.getItem(key(1)))).toEqual({ content: 'b' })
   })
 
-  it('clears the selected answer on task switch and does not restore it on return', async () => {
-    const { result, rerenderWith } = renderCodeState({ currentTaskId: 1 })
-    await act(async () => {
-      await result.current.handleQuizSelect('b')
-    })
-    expect(result.current.selectedAnswer).toBe('b')
+  it('restores the answer on returning to the task and after a reload', async () => {
+    const { result, rerenderWith, unmount } = renderCodeState({ currentTaskId: 1 })
+    await submitAnswer(result, 'b')
+    expect(result.current.activity.state).toBe('b')
 
     rerenderWith({ currentTaskId: 2 })
-    expect(result.current.selectedAnswer).toBe('')
+    expect(result.current.activity.state).toEqual({})
     rerenderWith({ currentTaskId: 1 })
-    expect(result.current.selectedAnswer).toBe('')
-
-    await act(async () => {
-      await result.current.handleQuizSelect('a')
-    })
+    expect(result.current.activity.state).toBe('b')
     act(() => result.current.resetForTaskChange())
-    expect(result.current.selectedAnswer).toBe('')
+    expect(result.current.activity.state).toBe('b')
+    unmount()
+
+    const reloaded = renderCodeState({ currentTaskId: 1 })
+    expect(reloaded.result.current.activity.state).toBe('b')
+    // Only the answer comes back; the run status and marking start fresh.
+    expect(reloaded.result.current.runStatus).toBeNull()
+  })
+
+  it('keeps presentation answers in memory only', async () => {
+    const { result } = renderCodeState({ currentTaskId: 1, teacherPresentation: true })
+    await submitAnswer(result, 'b')
+    expect(window.localStorage.getItem(key(1))).toBeNull()
   })
 })
 
@@ -381,14 +390,14 @@ describe('teacherAnswerEdit (StudentModal "Edit answers") on the student side', 
     at: 555,
   }
 
-  it('applies a quiz edit through handleQuizSelect, flagged teacherAssisted, without clearing the edit', async () => {
+  it('applies a quiz edit as a submission, flagged teacherAssisted, without clearing the edit', async () => {
     const { result, writers } = renderCodeState({
       currentTaskId: 2,
       session: makeSession({ currentTaskId: 2, me: { teacherAnswerEdit: EDIT } }),
     })
-    // The effect does not await handleQuizSelect; logAttempt follows the awaited run write.
+    // The effect does not await the submission; logAttempt follows the awaited run write.
     await act(async () => {})
-    expect(result.current.selectedAnswer).toEqual({ p1: 'p1', p2: 'p2', p3: 'p3' })
+    expect(result.current.activity.state).toEqual({ p1: 'p1', p2: 'p2', p3: 'p3' })
     expect(result.current.teacherAnswerNoticeAt).toBe(555)
     expect(writers.writeStudentRun).toHaveBeenCalledWith('anon-1', {
       answer: EDIT.answer,
@@ -408,7 +417,7 @@ describe('teacherAnswerEdit (StudentModal "Edit answers") on the student side', 
       currentTaskId: 2,
       session: makeSession({ me: { teacherAnswerEdit: { ...EDIT, passed: null } } }),
     })
-    expect(result.current.selectedAnswer).toEqual({ p1: 'p1', p2: 'p2', p3: 'p3' })
+    expect(result.current.activity.state).toEqual({ p1: 'p1', p2: 'p2', p3: 'p3' })
     act(() => vi.advanceTimersByTime(300))
     expect(writers.writeStudentAnswer).toHaveBeenCalledWith('anon-1', EDIT.answer)
     expect(writers.logAttempt).not.toHaveBeenCalled()
@@ -420,9 +429,7 @@ describe('teacherAnswerEdit (StudentModal "Edit answers") on the student side', 
       session: makeSession({ me: { teacherAnswerEdit: EDIT } }),
     })
     writers.logAttempt.mockClear()
-    await act(async () => {
-      await result.current.handleQuizSelect({ p1: 'p2', p2: 'p1', p3: 'p3' }, false)
-    })
+    await submitAnswer(result, { p1: 'p2', p2: 'p1', p3: 'p3' }, false)
     expect(writers.clearTeacherAnswerEdit).toHaveBeenCalledWith('anon-1')
     expect(writers.logAttempt).toHaveBeenCalledWith(
       'anon-1',
@@ -436,7 +443,7 @@ describe('teacherAnswerEdit (StudentModal "Edit answers") on the student side', 
       currentTaskId: 1,
       session: makeSession({ me: { teacherAnswerEdit: EDIT } }),
     })
-    expect(otherTask.result.current.selectedAnswer).toBe('')
+    expect(otherTask.result.current.activity.state).toBe('')
     expect(otherTask.writers.writeStudentRun).not.toHaveBeenCalled()
 
     const waiting = renderCodeState({
@@ -504,20 +511,34 @@ describe('code_arrange slot mirror (handleCodeArrangeSlotsChange)', () => {
     expect(writers.writeStudentCode).toHaveBeenCalledWith('anon-1', expect.any(String))
   })
 
-  it('a quiz answer is NOT re-flushed when a teacher starts watching', async () => {
+  // Deliberately changed in 2.3b (was: "a quiz answer is NOT re-flushed when a teacher starts
+  // watching", with the generic code mirror writing the empty quiz code). Quizzes flush like
+  // every activity: the latest answer (which may have been restored after a reload) is written
+  // once, and no code is mirrored for a quiz task.
+  it('flushes the quiz answer (not code) once when a teacher starts watching', async () => {
     const { result, writers, rerenderWith } = renderCodeState({ currentTaskId: 2 })
-    await act(async () => {
-      await result.current.handleQuizSelect({ p1: 'p1' }, null)
-    })
+    changeAnswer(result, { p1: 'p1' })
     act(() => vi.advanceTimersByTime(300))
     writers.writeStudentAnswer.mockClear()
     writers.writeStudentCodeArrangeSlots.mockClear()
 
     rerenderWith({ session: makeSession({ activeStudentView: 'anon-1' }) })
-    expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
+    expect(writers.writeStudentAnswer.mock.calls).toEqual([['anon-1', '{"p1":"p1"}']])
     expect(writers.writeStudentCodeArrangeSlots).not.toHaveBeenCalled()
-    // Python lesson: the generic code mirror still fires with the (empty) quiz code.
-    expect(writers.writeStudentCode).toHaveBeenCalledWith('anon-1', '')
+    expect(writers.writeStudentCode).not.toHaveBeenCalled()
+  })
+
+  it('still flushes the sandbox code when the session sandbox is parked on a quiz task', () => {
+    const { writers, rerenderWith } = renderCodeState({ currentTaskId: 2, phase: 'sandbox' })
+    rerenderWith({ session: makeSession({ activeStudentView: 'anon-1' }) })
+    expect(writers.writeStudentCode).toHaveBeenCalledWith('anon-1', expect.any(String))
+    expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
+  })
+
+  it('does not flush an untouched quiz when a teacher starts watching', () => {
+    const { writers, rerenderWith } = renderCodeState({ currentTaskId: 2 })
+    rerenderWith({ session: makeSession({ activeStudentView: 'anon-1' }) })
+    expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
   })
 })
 
@@ -534,12 +555,8 @@ describe('student Go Live broadcast of quiz answers and code_arrange slots', () 
       session: makeSession({ teacherLive: LIVE }),
     })
     writers.updateTeacherLive.mockClear()
-    await act(async () => {
-      await result.current.handleQuizSelect('c', null)
-    })
-    await act(async () => {
-      await result.current.handleQuizSelect('b')
-    })
+    changeAnswer(result, 'c')
+    await submitAnswer(result, 'b')
     expect(writers.updateTeacherLive).not.toHaveBeenCalled()
     // The answer itself is still recorded as normal.
     expect(writers.writeStudentRun).toHaveBeenCalledWith(

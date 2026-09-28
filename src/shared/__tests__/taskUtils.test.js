@@ -671,10 +671,17 @@ describe('buildStageOptions', () => {
     expect(opts[opts.length - 1]).toEqual({ value: 'complete', label: 'Complete' })
   })
 
-  it('returns only [starter] for quiz tasks regardless of other fields', () => {
+  // Deliberately changed in plan step 2.3b (was: "returns only [starter] for quiz tasks"):
+  // quizzes are activities now, so they get the activity options — none for a quiz the teacher
+  // can't edit, "Start again" / "Complete (show answers)" for match and fill-in-the-gaps. The
+  // StudentModal still hides the stage dropdown on quiz tasks, so no teacher sees a change.
+  it('returns activity reset options for quiz tasks, ignoring code fields', () => {
     const task = { taskType: 'quiz', completeCode: 'x', codeStages: [{}] }
-    const opts = buildStageOptions(task, 'python')
-    expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
+    expect(buildStageOptions(task, 'python')).toEqual([])
+    expect(buildStageOptions({ ...task, quizType: 'match' }, 'python')).toEqual([
+      { value: 'starter', label: 'Start again' },
+      { value: 'complete', label: 'Complete (show answers)' },
+    ])
   })
 
   it('handles null task gracefully', () => {

@@ -7,11 +7,21 @@ import { getActivityDefinition, getTaskActivity } from './registry.pure.js'
 import binaryUi from './binary/ui.jsx'
 import keyboardUi from './keyboard/ui.jsx'
 import mouseUi from './mouse/ui.jsx'
+import quizMultipleChoiceUi from './quiz_multiple_choice/ui.jsx'
+import quizMatchUi from './quiz_match/ui.jsx'
+import quizFillBlankUi from './quiz_fill_blank/ui.jsx'
+import quizShortAnswerUi from './quiz_short_answer/ui.jsx'
+import quizConfidenceUi from './quiz_confidence/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
   keyboard: keyboardUi,
   mouse: mouseUi,
+  quiz_multiple_choice: quizMultipleChoiceUi,
+  quiz_match: quizMatchUi,
+  quiz_fill_blank: quizFillBlankUi,
+  quiz_short_answer: quizShortAnswerUi,
+  quiz_confidence: quizConfidenceUi,
 })
 
 const merged = new Map()

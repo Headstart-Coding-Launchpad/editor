@@ -6,7 +6,6 @@ import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../../share
 import ExplainerPanel from '../ExplainerPanel'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
-import QuizTask from '../QuizTask'
 import { ActivityView } from '../../../activities/ActivityHost.jsx'
 import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { readActivityAnswer } from '../../../activities/state.js'
@@ -155,32 +154,36 @@ export default function StudentWorkspaceBody({
       />
     )
 
-  if (isQuiz && !isSessionSandbox)
-    return (
-      <QuizTask
-        task={task}
-        showQuestion
-        selectedAnswer={answerEditing ? editableAnswer : (student.currentAnswer ?? '')}
-        onSelectAnswer={
-          answerEditing
-            ? (next, allCorrect) => {
-                const serialized = typeof next === 'string' ? next : JSON.stringify(next)
-                pushEditableAnswer(serialized)
-                onEditAnswer?.({ answer: serialized, passed: allCorrect })
-              }
-            : undefined
-        }
-        submitted={student.lastRunStatus === 'submitted'}
-        checkPassed={student.checkPassed}
-        disabled={!answerEditing}
-        showCorrectAnswer
-      />
-    )
-
-  if (isActivity) {
+  // Quizzes and activities: the student's mirrored answer, read-only, or editable with
+  // "Edit answers" (pushed live, see pushTeacherAnswerEdit).
+  if ((isQuiz && !isSessionSandbox) || isActivity) {
     const definition = getTaskActivity(task)
-    const shownState = answerEditing ? readActivityAnswer(task, editableAnswer) : activityState
+    const shownState = answerEditing
+      ? readActivityAnswer(task, editableAnswer)
+      : (activityState ?? readActivityAnswer(task, student.currentAnswer ?? ''))
     activityEditRef.current = shownState
+    // A partial edit just updates the student's state, like dragging one quiz tile. It is
+    // marked on the student's screen when it is final: a passing change for activities, or
+    // the verdict the quiz UI gives an answer it submits (`submitsAnswers`: true / false when
+    // every tile is placed, none — so unmarked — for a chosen option).
+    const pushEdit = (update, final, verdict) => {
+      if (!definition) return
+      const prev = activityEditRef.current
+      const next = typeof update === 'function' ? update(prev) : update
+      if (next == null || (!final && next === prev)) return
+      activityEditRef.current = next
+      const serialized = definition.serialize(next)
+      pushEditableAnswer(serialized)
+      let passed = null
+      if (final) passed = verdict
+      else if (
+        !definition.submitsAnswers &&
+        definition.isGraded(task) &&
+        definition.grade(task, next).passed
+      )
+        passed = true
+      onEditAnswer?.({ answer: serialized, passed })
+    }
     return (
       <ActivityView
         task={task}
@@ -188,19 +191,13 @@ export default function StudentWorkspaceBody({
         teacher
         readOnly={!answerEditing}
         lessonType={lesson?.type}
-        onChange={(update) => {
-          if (!definition) return
-          const prev = activityEditRef.current
-          const next = typeof update === 'function' ? update(prev) : update
-          if (next == null || next === prev) return
-          activityEditRef.current = next
-          const serialized = definition.serialize(next)
-          pushEditableAnswer(serialized)
-          // Only a finished (passing) edit is marked on the student's screen; a partial edit
-          // just updates their state, like dragging one quiz tile.
-          const passed = definition.isGraded(task) && definition.grade(task, next).passed
-          onEditAnswer?.({ answer: serialized, passed: passed ? true : null })
-        }}
+        result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
+        onChange={(update) => pushEdit(update, false)}
+        onSubmit={
+          definition?.submitsAnswers
+            ? (next, meta) => pushEdit(next ?? activityEditRef.current, true, meta?.passedOverride)
+            : undefined
+        }
       />
     )
   }

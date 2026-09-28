@@ -1,6 +1,6 @@
 import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
-import { answerTextMatches, parseQuizAnswerState } from './quizAnswers.js'
+import { getTaskActivity } from '../activities/registry.pure.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -12,85 +12,22 @@ function isReportableTask(task) {
   return !!task && task.taskType !== 'information'
 }
 
-function getReportTaskType(task) {
-  if (task?.taskType === 'quiz') return 'quiz'
-  return 'code'
+// Quiz tasks report through their activity definition (report.typeFields, normalizeSubmission,
+// summaryFields), which keeps the stored report shape `{ taskType: 'quiz', quizType }`. Other
+// tasks (code, and for now `taskType: 'activity'`) report as code.
+function getReportActivity(task) {
+  const activity = getTaskActivity(task)
+  return activity?.legacy ? activity : null
 }
 
 function getTypeFields(task) {
-  const fields = { taskType: getReportTaskType(task) }
-  if (task?.taskType === 'quiz') fields.quizType = task.quizType ?? 'multiple_choice'
-  return fields
+  return getReportActivity(task)?.report.typeFields(task) ?? { taskType: 'code' }
 }
 
+// Ungraded quizzes (a confidence rating, an unmarked short answer) are responses, not passes.
 function isNotApplicableTask(task) {
-  return (
-    task?.taskType === 'quiz' &&
-    (task.quizType === 'confidence' || (task.quizType === 'short_answer' && task.check == null))
-  )
-}
-
-function normalizeFillBlankSubmission(task, submission) {
-  const state = parseQuizAnswerState(submission)
-  const hasDetailedShape = (task?.blanks ?? []).some((blank) => {
-    const entry = state[blank.id]
-    return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
-  })
-  if (hasDetailedShape) return state
-
-  const mode = task?.mode ?? 'drag'
-  const tiles = [
-    ...(task?.blanks ?? []).map((blank) => ({ id: blank.id, text: blank.answer })),
-    ...(task?.distractors ?? []).map((distractor) => ({
-      id: distractor.id,
-      text: distractor.text,
-    })),
-  ]
-  return Object.fromEntries(
-    (task?.blanks ?? []).map((blank) => {
-      const rawValue = state[blank.id]
-      const value =
-        mode === 'drag'
-          ? (tiles.find((tile) => tile.id === rawValue)?.text ?? rawValue ?? '')
-          : (rawValue ?? '')
-      const expected = blank.answer ?? ''
-      const correct =
-        mode === 'drag'
-          ? String(value ?? '') === String(expected)
-          : answerTextMatches(value, expected)
-      return [blank.id, { value, expected, correct }]
-    })
-  )
-}
-
-function normalizeMatchSubmission(task, submission) {
-  const state = parseQuizAnswerState(submission)
-  const hasDetailedShape = (task?.pairs ?? []).some((pair) => {
-    const entry = state[pair.id]
-    return entry && typeof entry === 'object' && ('expected' in entry || 'correct' in entry)
-  })
-  if (hasDetailedShape) return state
-
-  return Object.fromEntries(
-    (task?.pairs ?? []).map((pair) => {
-      const placedId = state[pair.id]
-      const placedPair = (task?.pairs ?? []).find((candidate) => candidate.id === placedId)
-      return [
-        pair.id,
-        {
-          prompt: pair.prompt ?? '',
-          value: placedPair?.answer ?? placedId ?? '',
-          expected: pair.answer ?? '',
-          correct: placedId === pair.id,
-        },
-      ]
-    })
-  )
-}
-
-function normalizeConfidenceSubmission(submission) {
-  const rating = Number(submission)
-  return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : submission
+  const activity = getReportActivity(task)
+  return !!activity && !activity.isGraded(task)
 }
 
 // logAttempt now always writes submission as a JSON-safe string (see useSession.js), so an
@@ -108,11 +45,10 @@ function normalizeCodeSubmission(submission) {
 }
 
 function normalizeSubmission(task, submission) {
-  if (task?.taskType !== 'quiz') return normalizeCodeSubmission(submission)
-  if (task.quizType === 'fill_blank') return normalizeFillBlankSubmission(task, submission)
-  if (task.quizType === 'match') return normalizeMatchSubmission(task, submission)
-  if (task.quizType === 'confidence') return normalizeConfidenceSubmission(submission)
-  return submission ?? null
+  const activity = getReportActivity(task)
+  return activity
+    ? activity.report.normalizeSubmission(task, submission)
+    : normalizeCodeSubmission(submission)
 }
 
 // Inverse of normalizeCodeSubmission, applied right at the Firestore write
@@ -314,73 +250,6 @@ function getCompleted(task, entries, override) {
   return entries.some((entry) => entry.passed) || !!override
 }
 
-function countValues(values) {
-  const counts = new Map()
-  for (const value of values) {
-    const key = String(value ?? '')
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .map(([value, count]) => ({ value, count }))
-}
-
-function summarizeFillBlankFailures(task, perStudent) {
-  const failuresByBlank = new Map()
-  for (const t of perStudent) {
-    for (const attempt of t.distinctAttempts) {
-      const submission = normalizeFillBlankSubmission(task, attempt.submission)
-      for (const blank of task.blanks ?? []) {
-        const entry = submission[blank.id]
-        if (!entry || entry.correct) continue
-        const current = failuresByBlank.get(blank.id) ?? {
-          expected: blank.answer ?? '',
-          values: [],
-        }
-        current.values.push(entry.value)
-        failuresByBlank.set(blank.id, current)
-      }
-    }
-  }
-  return Array.from(failuresByBlank.entries())
-    .map(([blankId, info]) => ({
-      blankId,
-      expected: info.expected,
-      count: info.values.length,
-      values: countValues(info.values),
-    }))
-    .sort((a, b) => b.count - a.count)
-}
-
-function summarizeMatchFailures(task, perStudent) {
-  const failuresByPair = new Map()
-  for (const t of perStudent) {
-    for (const attempt of t.distinctAttempts) {
-      const submission = normalizeMatchSubmission(task, attempt.submission)
-      for (const pair of task.pairs ?? []) {
-        const entry = submission[pair.id]
-        if (!entry || entry.correct) continue
-        const current = failuresByPair.get(pair.id) ?? {
-          prompt: pair.prompt ?? '',
-          expected: pair.answer ?? '',
-          values: [],
-        }
-        current.values.push(entry.value)
-        failuresByPair.set(pair.id, current)
-      }
-    }
-  }
-  return Array.from(failuresByPair.entries())
-    .map(([pairId, info]) => ({
-      pairId,
-      prompt: info.prompt,
-      expected: info.expected,
-      count: info.values.length,
-      values: countValues(info.values),
-    }))
-    .sort((a, b) => b.count - a.count)
-}
-
 export function anonymizeSessionReport(report) {
   if (!report) return report
   const students = Array.isArray(report.students)
@@ -489,6 +358,7 @@ export function buildSessionReport({ session, lesson }) {
     const completedCount = perStudent.filter((t) => t.completed).length
     const totalAttempts = perStudent.reduce((sum, t) => sum + t.attempts, 0)
     const typeFields = getTypeFields(task)
+    const reportActivity = getReportActivity(task)
     const teacherRating = normalizeTaskRating(taskRatingLog[task.id])
 
     const failureCounts = new Map()
@@ -508,15 +378,9 @@ export function buildSessionReport({ session, lesson }) {
       ? Math.round(timedStudents.reduce((sum, t) => sum + t.timeOnTaskMs, 0) / timedStudents.length)
       : null
 
-    if (task.taskType === 'quiz' && task.quizType === 'confidence') {
-      const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-      for (const t of perStudent) {
-        const latest = t.distinctAttempts[t.distinctAttempts.length - 1]
-        const rating = Number(latest?.submission)
-        if (Number.isInteger(rating) && rating >= 1 && rating <= 5) {
-          ratingDistribution[rating] += 1
-        }
-      }
+    // Ungraded quizzes report who responded (plus the rating distribution for a confidence
+    // check) instead of completion.
+    if (isNotApplicableTask(task)) {
       return {
         taskId: task.id,
         title: task.title ?? `Task ${task.id}`,
@@ -524,26 +388,7 @@ export function buildSessionReport({ session, lesson }) {
         ...typeFields,
         totalStudents: perStudent.length,
         respondedCount: attemptedStudents.length,
-        ratingDistribution,
-        avgTimeOnTaskMs,
-        commonFailures: [],
-        overrideCount: 0,
-        overriddenFailedCount: 0,
-        overriddenUnattemptedCount: 0,
-        ...summarizeCarryFallbacks(perStudent),
-        ...summarizeSupportReveals(perStudent),
-        ...(teacherRating ? { teacherRating } : {}),
-      }
-    }
-
-    if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null) {
-      return {
-        taskId: task.id,
-        title: task.title ?? `Task ${task.id}`,
-        priority: getTaskPriority(task),
-        ...typeFields,
-        totalStudents: perStudent.length,
-        respondedCount: attemptedStudents.length,
+        ...reportActivity.report.summaryFields(task, perStudent),
         avgTimeOnTaskMs,
         commonFailures: [],
         overrideCount: 0,
@@ -580,13 +425,10 @@ export function buildSessionReport({ session, lesson }) {
       ...summarizeSupportReveals(perStudent),
       ...(teacherRating ? { teacherRating } : {}),
     }
-    if (task.taskType === 'quiz' && task.quizType === 'fill_blank') {
-      summary.blankFailures = summarizeFillBlankFailures(task, perStudent)
-    }
-    if (task.taskType === 'quiz' && task.quizType === 'match') {
-      summary.pairFailures = summarizeMatchFailures(task, perStudent)
-    }
-    return summary
+    // Per-item failures for match (pairFailures) and fill-in-the-gaps (blankFailures).
+    return reportActivity
+      ? { ...summary, ...reportActivity.report.summaryFields(task, perStudent) }
+      : summary
   })
 
   return {

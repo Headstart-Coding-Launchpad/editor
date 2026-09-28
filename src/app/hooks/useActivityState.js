@@ -18,17 +18,21 @@ function storageFileOf(definition) {
 
 /**
  * State, persistence, live sync, grading, remote reset and teacher edits for the current
- * task when it is a hosted activity (taskType 'activity'). Owned by useStudentCodeState so it
+ * task when it is a hosted activity (taskType 'activity', or a legacy quiz task — see
+ * isHostedActivityTask). Owned by useStudentCodeState so it
  * shares the session writers, check feedback and teacher-live publishing with every other task
  * kind. The write rules live here once for every activity:
  *
  * - every change persists to the per-task aux file `__activity_state__` (in-memory store in
  *   presentation/preview, via createStudentPersistence);
- * - discrete changes write `currentAnswer` debounced, always (live lesson only);
+ * - discrete changes write `currentAnswer` debounced, always (live lesson and session sandbox;
+ *   never solo or presentation);
  * - continuous changes write `currentAnswer` throttled, only while activeStudentView is this
  *   student, and the latest state is flushed the moment the teacher starts watching;
  * - submit grades with the definition and reports through applyCheckFeedback,
- *   writeStudentRun({ answer, status, checkPassed }) and logAttempt;
+ *   writeStudentRun({ answer, status, checkPassed }) and (live lesson only) logAttempt;
+ * - an explicit submit (`onSubmit(state)`, the quizzes' "this answer is final") also saves that
+ *   state and supersedes a pending teacher edit, but never writes the debounced mirror;
  * - remoteResetAction 'starter' / 'complete' load initialState / solutionState;
  * - teacherAnswerEdit replaces the state and is marked teacher assisted, like quiz edits;
  * - the teacher's own Go Live broadcast publishes the serialised state as teacherLive.answer.
@@ -108,8 +112,13 @@ export function useActivityState({
     onTeacherAnswerApplied,
   })
 
+  // The session sandbox keeps the quiz rules it always had: answers and runs are mirrored, but
+  // attempts are only logged in the live lesson.
   const writesToSession = () =>
-    !teacherPresentation && phaseRef.current === 'lesson' && !!actorIdRef.current
+    !teacherPresentation &&
+    (phaseRef.current === 'lesson' || phaseRef.current === 'sandbox') &&
+    !!actorIdRef.current
+  const logsAttempts = () => writesToSession() && phaseRef.current === 'lesson'
   const isWatchedNow = () =>
     !teacherPresentation &&
     !!identityIdRef.current &&
@@ -220,13 +229,18 @@ export function useActivityState({
     callbacksRef.current.clearTeacherAnswerEdit?.(id)
   }
 
-  async function submit(stateArg, { fromTeacher = false } = {}) {
+  // `stateArg` is an explicit final answer from the UI (quizzes) or the teacher; without it the
+  // current state is submitted (an activity's Check button). Activities with no completion
+  // ('none') only record explicit responses (a confidence rating), and are never marked wrong.
+  async function submit(stateArg, { fromTeacher = false, supersede = false } = {}) {
     const def = definitionRef.current
     const currentTask = taskRef.current
-    if (!def || !currentTask || def.completion === 'none') return null
+    if (!def || !currentTask) return null
+    if (def.completion === 'none' && stateArg === undefined) return null
+    if (supersede && !fromTeacher) supersedeTeacherAnswerEdit()
+    if (stateArg !== undefined && stateArg !== stateRef.current) commit(stateArg)
     const submitted = stateArg ?? stateRef.current
-    const graded = def.isGraded(currentTask)
-    const result = graded ? def.grade(currentTask, submitted) : { passed: true, suggestion: null }
+    const result = def.grade(currentTask, submitted) ?? {}
     const passed = !!result.passed
     const suggestion = passed ? '' : String(result.suggestion ?? '')
     const cb = callbacksRef.current
@@ -247,12 +261,13 @@ export function useActivityState({
     const taskId = currentTaskIdRef.current
     if (writesToSession()) {
       const actor = actorIdRef.current
+      const logs = logsAttempts()
       await cb.writeStudentRun(actor, {
         answer: serialized,
         status: 'submitted',
         checkPassed: passed,
       })
-      if (graded) {
+      if (logs) {
         cb.logAttempt(actor, taskId, {
           submission: def.buildSubmission(currentTask, submitted),
           passed,
@@ -274,8 +289,10 @@ export function useActivityState({
     commit(next)
     const kind = def.classifyChange(prev, next) === 'continuous' ? 'continuous' : 'discrete'
     sync(kind)
+    // Activities whose UI submits final answers itself (quizzes) are never auto-submitted here.
     if (
       def.completion === 'auto' &&
+      !def.submitsAnswers &&
       kind === 'discrete' &&
       def.grade(taskRef.current, next).passed
     ) {
@@ -288,15 +305,22 @@ export function useActivityState({
   const implRef = useRef(null)
   implRef.current = { handleChange, submit }
   const onChange = useCallback((next) => implRef.current.handleChange(next), [])
-  const onSubmit = useCallback((next) => implRef.current.submit(next), [])
+  const onSubmit = useCallback(
+    (next) => implRef.current.submit(next, { supersede: next !== undefined }),
+    []
+  )
 
   // The teacher opened this student's live view: publish the latest state straight away so a
-  // continuous change made while unwatched is not missing from the modal.
+  // continuous change made while unwatched (or an answer restored after a reload) is not
+  // missing from the modal. An untouched activity has nothing to show.
   useEffect(() => {
     if (!hosted || !isWatchedNow() || viewingTaskId !== null) return
-    if (!writesToSession()) return
+    if (!writesToSession() || phaseRef.current !== 'lesson') return
+    const def = definitionRef.current
+    const serialized = serializeCurrent()
+    if (serialized === def?.serialize(def.initialState(taskRef.current))) return
     cancelPendingWrites()
-    writeAnswer(serializeCurrent())
+    writeAnswer(serialized)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.activeStudentView])
 
@@ -345,8 +369,10 @@ export function useActivityState({
     teacherAssistedTaskIdsRef?.current?.add(currentTaskId)
     const next = deserializeActivityState(definition, task, edit.answer)
     commit(next)
-    // pushTeacherAnswerEdit already wrote currentAnswer; only a marked edit reports a result.
+    // Only a marked edit reports a result. An unmarked (partial) edit is mirrored like the
+    // student's own in-progress change (pushTeacherAnswerEdit has usually written it already).
     if (typeof edit.passed === 'boolean') submit(next, { fromTeacher: true })
+    else sync('discrete')
     callbacksRef.current.onTeacherAnswerApplied?.(edit.at)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherAnswerEdit?.at, key, phase])
