@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { stageToText } from '../../app/components/SupportStagePanel.jsx'
 import { LESSON_MODULE_TYPES, PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
 import { getLessonModules } from '../registry'
 import {
@@ -40,10 +41,6 @@ const MODULES = getLessonModules()
 const KNOWN_GAPS = {
   turtle: {
     PLAYGROUND_LESSON_TYPES: 'Intentional: no /playground/turtle route exists yet.',
-    teacherLiveReferenceDisplayState:
-      'Drift: turtle is in TEACHER_LIVE_REFERENCE_TYPES but the adapter returns null for it.',
-    'SupportStagePanel stageToText':
-      'Drift: turtle stages render no text, so the support reference never shows.',
   },
   html: {
     PLAYGROUND_LESSON_TYPES: 'Intentional: HTML has no playground (see composedLesson.js).',
@@ -73,10 +70,8 @@ const KNOWN_GAPS = {
     MODULE_PANES_TYPES:
       'Drift: desktop windows are not reported as panes to the teacher (StudentWorkspace would need to call onVisiblePanesChange).',
     TEACHER_LIVE_REFERENCE_TYPES:
-      'Drift: a teacher-live desktop snapshot cannot be shown as a support reference (needs a teacherLiveReferenceDisplayState adapter and a stageToText shape).',
+      'Drift: capabilities.teacherLiveReference is off for desktop; the adapter and stageToText handle its state, but the support reference needs a real-browser check before switching it on.',
     teacherLiveReferenceDisplayState: 'Drift: see TEACHER_LIVE_REFERENCE_TYPES.',
-    'SupportStagePanel stageToText':
-      'Drift: desktop stages render no text, so the support reference never shows.',
     CopyCodePanel: 'Intentional: no code to copy.',
     'editorOptions getCodeBlockOptions': 'Intentional: no module language for code blocks.',
   },
@@ -95,7 +90,6 @@ const KNOWN_GAPS = {
 
 const src = (relPath) => ({ relPath, text: readRepoFile(relPath) })
 const TEACHER_VIEW = src('src/app/views/TeacherView.jsx')
-const SUPPORT_STAGE_PANEL = src('src/app/components/SupportStagePanel.jsx')
 
 const comparedIn = (file, fn, identifier) =>
   comparedLiterals(file.text, fn, identifier, file.relPath)
@@ -110,7 +104,13 @@ const CODE_STRING_TYPES = getModuleTypesWhere(
 const TEACHER_SANDBOX_BRANCH_TYPES = [
   ...TEACHER_VIEW.text.matchAll(/activeSandboxLesson\.type\s*===\s*'([^']+)'/g),
 ].map((m) => m[1])
-const SUPPORT_STAGE_TEXT_TYPES = comparedIn(SUPPORT_STAGE_PANEL, 'stageToText', 'lessonType')
+// A stage carrying every module's state shape; a type is covered if stageToText finds text.
+const SAMPLE_STAGE = {
+  code: 'x = 1',
+  fs: { '/': { type: 'dir' } },
+  desktop: { windows: [] },
+  markdown: 'blocks',
+}
 
 const TEACHER_LIVE_SAMPLE = {
   active: true,
@@ -159,7 +159,7 @@ const PARITY_LISTS = {
   'LessonMetaPanel singleModuleLabel': (mod) => !!getModuleLabel(mod.type, 'builderMeta'),
   'printLesson TYPE_LABELS': (mod) => !!getModuleLabel(mod.type, 'print'),
   'SupportStagePanel getLanguageLabel': (mod) => !!getModuleLabel(mod.type, 'stageReference'),
-  'SupportStagePanel stageToText': (mod) => SUPPORT_STAGE_TEXT_TYPES.includes(mod.type),
+  'SupportStagePanel stageToText': (mod) => stageToText(SAMPLE_STAGE, mod.type) !== '',
   // CopyCodePanel is keyed by language, so parity here is "the module opts in and its
   // StudentWorkspace actually renders the panel".
   CopyCodePanel: (mod) =>
@@ -189,11 +189,7 @@ const PARITY_LISTS = {
 
 describe('registry-driven module parity', () => {
   it('reads every private list from source (guards the source-text parser)', () => {
-    for (const list of [
-      TEACHER_SANDBOX_BRANCH_TYPES,
-      SUPPORT_STAGE_TEXT_TYPES,
-      FEATURE_MATRIX_ROW_NAMES,
-    ]) {
+    for (const list of [TEACHER_SANDBOX_BRANCH_TYPES, FEATURE_MATRIX_ROW_NAMES]) {
       expect(list.length).toBeGreaterThan(0)
     }
     expect(LESSON_SCHEMA_MODULE_TYPE_ROW).not.toBe('')

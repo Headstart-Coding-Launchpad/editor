@@ -1,5 +1,5 @@
 import { decodeFileKey } from '../shared/fileKeys'
-import { getModuleTypesWithCapability } from '../modules/definitions'
+import { getModuleDefinition, getModuleTypesWithCapability } from '../modules/definitions'
 
 // Lesson types whose live code is representable as the Presentation View support
 // reference (sessions/{lessonId}/teacherLiveReference) — each module's
@@ -21,30 +21,32 @@ export function toTeacherLiveFiles(files) {
 }
 
 // Adapts a teacherLiveReference payload into the same shape each module's
-// getDisplayState returns for its other tabs (a code string for python/arcade/
-// electronics, {files, entryFile} for html, an fs object for filesystem) — used
-// both for the student-side support-stage reference and the teacher's own
-// read-only "Live" tab. Returns null for an inactive/unsupported payload.
+// getDisplayState returns for its other tabs, chosen by the module's state kind
+// (capabilities.sandboxState): a code string for code modules, {files, entryFile} for
+// html, a parsed object for fs/desktop. Used both for the student-side support-stage
+// reference and the teacher's own read-only "Live" tab. Returns null for an
+// inactive/unsupported payload.
 export function teacherLiveReferenceDisplayState(payload, lessonType) {
   if (!payload || !TEACHER_LIVE_REFERENCE_TYPES.includes(lessonType)) return null
-  if (lessonType === 'python' || lessonType === 'arcade' || lessonType === 'electronics') {
-    return payload.code ?? ''
+  switch (getModuleDefinition(lessonType)?.capabilities?.sandboxState) {
+    case 'code':
+      return payload.code ?? ''
+    case 'files':
+      return {
+        files: toTeacherLiveFiles(payload.files),
+        entryFile: payload.activeFile || 'index.html',
+      }
+    case 'fs':
+    case 'desktop':
+      try {
+        return JSON.parse(payload.code || '{}')
+      } catch {
+        // Malformed/partial snapshot mid-broadcast — show nothing rather than throw.
+        return {}
+      }
+    default:
+      return null
   }
-  if (lessonType === 'html') {
-    return {
-      files: toTeacherLiveFiles(payload.files),
-      entryFile: payload.activeFile || 'index.html',
-    }
-  }
-  if (lessonType === 'filesystem') {
-    try {
-      return JSON.parse(payload.code || '{}')
-    } catch {
-      // Malformed/partial snapshot mid-broadcast — show nothing rather than throw.
-      return {}
-    }
-  }
-  return null
 }
 
 export function deriveStudentLiveDisplay({
