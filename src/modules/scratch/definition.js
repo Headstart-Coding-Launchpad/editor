@@ -24,6 +24,8 @@ export default defineModule({
     teacherLiveReference: false,
     unifiedStages: true,
     sandboxState: 'blocks',
+    // The stage runs inside the workspace, which reports its checks (handleScratchCheck).
+    run: 'workspace',
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

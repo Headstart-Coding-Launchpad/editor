@@ -1,6 +1,7 @@
-// The generic work slot (module contract v2, plan step 4.3): filesystem and desktop keep their
-// work in one `{ moduleType, taskId, value }` slot driven by their definitions' `workSlot` and
-// `checking` groups. The Phase 0 characterisation suites pin the bytes; these tests cover what
+// The generic work slot (module contract v2, plan steps 4.3–4.4): filesystem, desktop and the
+// code modules keep their work in one `{ moduleType, taskId, value }` slot driven by their
+// definitions' `workSlot` and `checking` groups (the code modules are covered in
+// useStudentCodeState.codeWorkSlot.test.js). The Phase 0 characterisation suites pin the bytes; these tests cover what
 // the slot adds — a composed lesson switching modules never publishes, mirrors or saves the
 // previous module's work, and handlers read the work they have just set (workRef), not the
 // last render's.
@@ -70,7 +71,8 @@ describe('generic work slot — composed lesson module switches', () => {
       currentTaskId: 'c1',
       session: makeSession({ teacherLive: studentSourcedTeacherLive() }),
     })
-    expect(h.result.current.work.moduleType).toBe(null)
+    // Python joined the slot in plan step 4.4 (it held no work here before).
+    expect(h.result.current.work).toEqual({ moduleType: 'python', taskId: 'c1', value: 'x = 1' })
 
     goToTask(h, 'c2')
     expect(h.result.current.work).toEqual({

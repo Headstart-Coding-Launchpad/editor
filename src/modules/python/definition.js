@@ -9,9 +9,11 @@ import {
 } from '../moduleTaskValidation.js'
 import { getStarterStage } from '../../shared/taskStages.js'
 import {
+  codeCheckContext,
   codeHasComplete,
   codeResetTarget,
   codeStringWire,
+  codeWorkSlot,
   recordStorage,
 } from '../moduleContract.js'
 
@@ -32,7 +34,10 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'code',
+    run: 'runtime',
   },
+  // Pyodide reports the failing line on stderr; the editor highlights it.
+  runResult: { errorLine: true, turtle: false, liveCode: false },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -130,6 +135,9 @@ export default defineModule({
   },
   storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
   wire: codeStringWire(),
+  // Generic work slot (useStudentCodeState): the code string, checked when it runs.
+  checking: { trigger: 'run', buildContext: codeCheckContext },
+  workSlot: codeWorkSlot({ teacherSandboxReset: true }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {

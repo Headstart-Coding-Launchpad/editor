@@ -9,13 +9,20 @@ import {
 } from '../moduleTaskValidation.js'
 import { normalizeChecks } from '../checks.js'
 import { warnArcadeUnevaluatedChecks } from '../../shared/checkAuthoringValidation.js'
-import { cloneArcadeDesign } from './design.js'
+import { cloneArcadeDesign, designForCodeTab } from './design.js'
 import {
+  codeCheckContext,
   codeHasComplete,
   codeResetTarget,
   codeStringWire,
+  codeWorkSlot,
+  completeCodeOf,
   recordStorage,
+  starterCodeOf,
 } from '../moduleContract.js'
+
+// The work-slot value: the code plus the sprite/sound design that rides alongside it.
+const EMPTY_ARCADE_WORK = Object.freeze({ code: '', arcadeDesign: null })
 
 export default defineModule({
   type: 'arcade',
@@ -35,6 +42,9 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'code',
+    // The game runs in the workspace's own iframe (ArcadePreview), which reports "Run game"
+    // back through handleArcadeRun.
+    run: 'workspace',
   },
   getDisplayState: (task, stage, liveState, tab) =>
     tab === 'complete'
@@ -125,6 +135,44 @@ export default defineModule({
   }),
   wire: codeStringWire({
     liveExtras: ({ arcadeDesign } = {}) => ({ arcadeDesign, turtleResult: null }),
+  }),
+  // Generic work slot (useStudentCodeState): `{ code, arcadeDesign }`. Storage and wire take
+  // the code as the work and the design as the record's `arcadeDesign` field (stored()).
+  checking: { trigger: 'run', buildContext: codeCheckContext },
+  workSlot: codeWorkSlot({
+    starter: (task) => ({
+      code: starterCodeOf(task),
+      arcadeDesign: designForCodeTab(task, 'starter'),
+    }),
+    stage: (task, stageIndex) => ({
+      code: task?.codeStages?.[stageIndex]?.code ?? '',
+      arcadeDesign: designForCodeTab(task, `stage_${stageIndex}`),
+    }),
+    // Show complete loads the complete design with the code, like Show stage and remote reset.
+    complete: (task) => ({
+      code: completeCodeOf(task),
+      arcadeDesign: designForCodeTab(task, 'complete'),
+    }),
+    sandbox: (lesson) => ({ code: lesson?.sandboxStarter ?? '', arcadeDesign: null }),
+    fromResetTarget: (target, task, action) => ({
+      code: target.code,
+      arcadeDesign: designForCodeTab(task, action),
+    }),
+    empty: () => EMPTY_ARCADE_WORK,
+    stored: (value) => ({
+      work: value?.code ?? '',
+      meta: { arcadeDesign: value?.arcadeDesign ?? null },
+    }),
+    // A stored design is cloned; a missing one keeps the fallback's (the starter design on task
+    // load, none in the personal sandbox, the current one for a teacher edit or push).
+    fromStored: (stored, fallback) => ({
+      code: stored?.work ?? fallback.code,
+      arcadeDesign: stored?.meta?.arcadeDesign
+        ? cloneArcadeDesign(stored.meta.arcadeDesign)
+        : fallback.arcadeDesign,
+    }),
+    // The design has no other save on a teacher reset.
+    remoteResetPersists: true,
   }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──

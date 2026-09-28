@@ -189,6 +189,21 @@ export function createStudentPersistence({
     })
   }
 
+  // The record the code editor, a run and a teacher edit write for a code-channel module:
+  // `{ [workKey]: work, ...fields }`, the fields written as given (e.g. `output`, `runStatus`,
+  // then the module's extras such as `arcadeDesign`) whatever the adapter's taskMeta, while the
+  // personal sandbox keeps only the work. This is the shape savePythonCode always wrote (so an
+  // edit saves electronics' output/runStatus, and an Arcade sandbox edit keeps only its code).
+  function saveRunRecord(type, actorId, taskId, work, fields = {}) {
+    const { workKey } = storageFor(type)
+    const data = { [workKey]: work, ...fields }
+    routeSave({
+      toSandbox: () => saveSandboxRecord(actorId, { [workKey]: work }),
+      toEphemeral: () => ephemeralStorage.saveCode(lessonId, taskId, actorId, data),
+      toLocalStorage: () => saveCode(lessonId, taskId, actorId, data),
+    })
+  }
+
   // Task read, from the same store the saves above target. Returns `{ work, meta }` or null.
   // Per-file modules read one file at a time: pass `{ filename }`.
   function readWork(type, actorId, taskId, { filename } = {}) {
@@ -232,6 +247,7 @@ export function createStudentPersistence({
 
   return {
     saveWork,
+    saveRunRecord,
     readWork,
     saveSandboxWork,
     readSandboxWork,
