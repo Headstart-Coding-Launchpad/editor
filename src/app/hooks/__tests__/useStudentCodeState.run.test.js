@@ -500,12 +500,12 @@ describe('handleScratchCheck', () => {
   })
 })
 
-// ── Known bug: handleRun's non-code branch assumes the HTML runtime ───────────
-// arcade/filesystem/desktop have runtime: null, so the fall-through HTML branch calls
-// mod.runtime.buildPreviewSrc on null and handleRun rejects (and `running` is left
-// true). Flip to it() once handleRun guards the runtime (plan step 1.5).
-describe('known bug: handleRun on runtime-less modules', () => {
-  it.fails.each([
+// ── handleRun on runtime-less modules ──────────────────────────────────────────
+// arcade/filesystem/desktop have runtime: null. handleRun used to fall through to the HTML
+// branch and call mod.runtime.buildPreviewSrc on null, leaving `running` true (fixed in
+// plan step 1.5): it is now a no-op for them.
+describe('handleRun on runtime-less modules', () => {
+  it.each([
     ['arcade', arcadeLesson],
     ['filesystem', filesystemLesson],
     ['desktop', desktopLesson],

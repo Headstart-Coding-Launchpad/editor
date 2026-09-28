@@ -79,9 +79,14 @@ export function seedSharedWorkspace({ shareLessonId, taskId, moduleType, snapsho
     if (state) ephemeralStorage.saveCode(shareLessonId, taskId, actor, { state })
     return
   }
-  if (moduleType === 'filesystem') {
-    const fs = parseScratchState(snapshot?.code)
-    if (fs) ephemeralStorage.saveFsState(shareLessonId, taskId, actor, fs)
+  // Filesystem and Desktop snapshots carry their state as a JSON string in `code`.
+  const saveJsonState = {
+    filesystem: ephemeralStorage.saveFsState,
+    desktop: ephemeralStorage.saveDesktopState,
+  }
+  if (Object.hasOwn(saveJsonState, moduleType)) {
+    const state = parseScratchState(snapshot?.code)
+    if (state) saveJsonState[moduleType](shareLessonId, taskId, actor, state)
     return
   }
   ephemeralStorage.saveCode(shareLessonId, taskId, actor, {

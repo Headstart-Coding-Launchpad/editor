@@ -1,4 +1,5 @@
 import { getTaskModuleType } from '../shared/composedLesson'
+import { parseScratchState } from '../shared/workspaceData'
 
 // Workspace sharing captures a frozen snapshot of a student's work at one
 // moment. Live-only interaction state (cursor, block drag, sprite runtime,
@@ -20,6 +21,7 @@ export function buildSharedWorkspaceSnapshot({
   code,
   scratchCode,
   fsState,
+  desktopState,
   arcadeDesign,
   files,
   activeFile,
@@ -29,7 +31,9 @@ export function buildSharedWorkspaceSnapshot({
   // Always resolve the module from the task, never from lesson.type — a
   // composed lesson's tasks can each be a different module.
   const moduleType = getTaskModuleType(lesson, taskId) ?? lesson?.type ?? null
-  const isFilesystem = moduleType === 'filesystem'
+  // Filesystem and Desktop state travels as a JSON string in `code`, like everywhere else.
+  const jsonStateByType = { filesystem: fsState, desktop: desktopState }
+  const isJsonState = Object.hasOwn(jsonStateByType, moduleType)
   // Scratch never routes edits through the generic `code` state, so reading
   // `code` here would capture whatever an earlier non-Scratch task left behind.
   // Same reasoning as currentTeacherLivePayload in useTeacherLivePublish.js.
@@ -38,15 +42,15 @@ export function buildSharedWorkspaceSnapshot({
   return {
     lessonType: moduleType,
     taskId: taskId ?? null,
-    code: isFilesystem
-      ? JSON.stringify(fsState ?? null)
+    code: isJsonState
+      ? JSON.stringify(jsonStateByType[moduleType] ?? null)
       : isScratch
         ? (scratchCode ?? '')
         : (code ?? ''),
     arcadeDesign: moduleType === 'arcade' ? (arcadeDesign ?? null) : null,
     // Raw filenames here; useSession encodes file keys at the write boundary,
     // the same way it does for teacherLive.
-    files: isFilesystem
+    files: isJsonState
       ? {}
       : Object.fromEntries((files ?? []).map((f) => [f.name, f.content ?? ''])),
     activeFile: activeFile ?? '',
@@ -99,4 +103,23 @@ export function describeShareError(err) {
   }
   if (/too large to share/i.test(raw)) return raw
   return 'Could not share this workspace. Try again in a moment.'
+}
+
+// Copy a shared snapshot into the student's own work through their normal change handlers, so
+// it persists exactly like their own edits. Scratch, Filesystem and Desktop carry their state
+// as a JSON string in `code`; HTML carries files; everything else is plain code.
+export function applySharedWorkspaceCopy({ code, files, moduleType }, handlers) {
+  const applyJsonState = {
+    scratch: handlers.handleScratchChange,
+    filesystem: handlers.handleFsChange,
+    desktop: handlers.handleDesktopChange,
+  }
+  if (moduleType === 'html') {
+    for (const file of files ?? []) handlers.handleFileChange(file.name, file.content)
+  } else if (Object.hasOwn(applyJsonState, moduleType)) {
+    const parsed = parseScratchState(code)
+    if (parsed) applyJsonState[moduleType](parsed)
+  } else {
+    handlers.handleCodeChange(code ?? '')
+  }
 }

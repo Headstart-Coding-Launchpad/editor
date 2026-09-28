@@ -99,10 +99,7 @@ export function saveFsState(lessonId, taskId, anonymousId, fs) {
 }
 
 export function loadPersonalSandboxDesktop(lessonId, anonymousId, moduleId = null) {
-  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
-  if (!raw) return null
-  const parsed = JSON.parse(raw)
-  return parsed.desktop ?? null
+  return safeParse(personalSandboxStorageKey(lessonId, anonymousId, moduleId))?.desktop ?? null
 }
 
 export function savePersonalSandboxDesktop(lessonId, anonymousId, desktop, moduleId = null) {
@@ -113,10 +110,7 @@ export function savePersonalSandboxDesktop(lessonId, anonymousId, desktop, modul
 }
 
 export function loadSavedDesktop(lessonId, taskId, anonymousId) {
-  const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
-  if (!raw) return null
-  const parsed = JSON.parse(raw)
-  return parsed.desktop ?? null
+  return safeParse(studentTaskStorageKey(lessonId, taskId, anonymousId))?.desktop ?? null
 }
 
 export function saveDesktopState(lessonId, taskId, anonymousId, desktop) {
