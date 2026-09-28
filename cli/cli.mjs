@@ -189,6 +189,7 @@ const loadClasses = () => import('./classes.mjs')
 const loadValidate = () => import('./validate.mjs')
 const loadYaml = () => import('./yaml-converter.mjs')
 const loadCheckTests = () => import('./check-tests.mjs')
+const loadCapabilities = () => import('./capabilities.mjs')
 
 await yargs(hideBin(process.argv))
   .scriptName('hsc')
@@ -209,6 +210,16 @@ await yargs(hideBin(process.argv))
 
   .command('lessons', 'Manage lessons in Firestore', (yargs) =>
     yargs
+
+      .command(
+        'capabilities',
+        'List lesson modules, activities and check types from the registries (no Firebase)',
+        {},
+        cmd(async () => {
+          const { buildCapabilities } = await loadCapabilities()
+          print(buildCapabilities())
+        })
+      )
 
       .command(
         'list',

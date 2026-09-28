@@ -69,6 +69,9 @@ if (existsSync(docsReadme)) {
   for (const file of markdownFiles) {
     const relativeToDocs = path.relative(path.join(root, 'docs'), file).replaceAll(path.sep, '/')
     if (relativeToDocs === 'README.md') continue
+    // Lesson agents drop individual capability requests here; the folder's README (which is
+    // indexed) lists them, so each request file doesn't need its own docs/README.md entry.
+    if (/^authoring\/authoring-requests\/(?!README\.md$)/.test(relativeToDocs)) continue
     if (!indexText.includes(relativeToDocs)) {
       fail(`docs/README.md does not index ${relativeToDocs}`)
     }
