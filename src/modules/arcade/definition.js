@@ -1,5 +1,14 @@
 // Node-safe half of the Arcade Kit module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import {
+  codeStarterPresent,
+  collectFeedbackChecks,
+  validateCodeChecks,
+  validateTaskChecks,
+  warnCompleteCode,
+} from '../moduleTaskValidation.js'
+import { normalizeChecks } from '../checks.js'
+import { warnArcadeUnevaluatedChecks } from '../../shared/checkAuthoringValidation.js'
 import { cloneArcadeDesign } from './design.js'
 
 export default defineModule({
@@ -95,4 +104,18 @@ export default defineModule({
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
   getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors, warnings }) => {
+    validateTaskChecks(task, (checks, kind) =>
+      validateCodeChecks(checks, n, errors, kind, { interactionMode: task.interactionMode })
+    )
+    warnArcadeUnevaluatedChecks(
+      [...normalizeChecks(task.check), ...collectFeedbackChecks(task)],
+      n,
+      warnings
+    )
+    warnCompleteCode(task, n, warnings)
+  },
+  hasStarterContent: codeStarterPresent,
 })

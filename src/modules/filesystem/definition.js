@@ -1,5 +1,12 @@
 // Node-safe half of the Filesystem module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import {
+  anyCheckHasValue,
+  validateStageStates,
+  validateTaskChecks,
+  warnCompleteFs,
+} from '../moduleTaskValidation.js'
+import { validateFilesystemChecks } from '../../shared/checkAuthoringValidation.js'
 import { DEFAULT_FS } from './filesystem.js'
 
 export default defineModule({
@@ -100,4 +107,14 @@ export default defineModule({
       return DEFAULT_FS
     }
   },
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors, warnings }) => {
+    validateStageStates(task, n, errors, { stateKey: 'fs', stateLabel: 'filesystem' })
+    validateTaskChecks(task, (checks, kind) => validateFilesystemChecks(checks, n, errors, kind))
+    warnCompleteFs(task, n, warnings)
+  },
+  // Students start from a folder tree, not an editor, so there is no empty-editor warning.
+  hasStarterContent: null,
+  hasCheckValue: anyCheckHasValue,
 })

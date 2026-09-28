@@ -1,6 +1,8 @@
 // Node-safe half of the Python Turtle module (see ../defineModule.js). UI and the Pyodide
 // runtime bridge live in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStarterPresent, validateTaskChecks } from '../moduleTaskValidation.js'
+import { validateTurtleChecks } from '../../shared/checkAuthoringValidation.js'
 
 const DEFAULT_STARTER_CODE =
   'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
@@ -95,4 +97,10 @@ export default defineModule({
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors }) => {
+    validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
+  },
+  hasStarterContent: codeStarterPresent,
 })

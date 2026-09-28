@@ -2,6 +2,14 @@
 // runtime bridge live in index.js.
 import { defineModule } from '../defineModule.js'
 import {
+  anyCheckHasValue,
+  validateStageStates,
+  validateTaskChecks,
+  warnCompleteCircuit,
+} from '../moduleTaskValidation.js'
+import { validateElectronicsChecks } from '../../shared/checkAuthoringValidation.js'
+import { getStarterStage } from '../../shared/taskStages.js'
+import {
   DEFAULT_AVAILABLE_COMPONENTS,
   DEFAULT_CIRCUIT,
   cloneCircuit,
@@ -110,4 +118,17 @@ export default defineModule({
     serializeCircuit(lesson?.sandboxStarterCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT),
 
   evaluateCheck: evaluateElectronicsCheck,
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors, warnings }) => {
+    const starterCircuit = getStarterStage(task)?.stage?.circuit ?? task.starterCircuit
+    if (!starterCircuit || !Array.isArray(starterCircuit.components)) {
+      errors.push(`Task ${n} has no starter breadboard`)
+    }
+    validateStageStates(task, n, errors)
+    validateTaskChecks(task, (checks, kind) => validateElectronicsChecks(checks, n, errors, kind))
+    warnCompleteCircuit(task, n, warnings)
+  },
+  hasStarterContent: null,
+  hasCheckValue: anyCheckHasValue,
 })
