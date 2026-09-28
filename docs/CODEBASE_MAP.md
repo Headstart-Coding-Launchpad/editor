@@ -405,6 +405,16 @@ Each `index.js` exports a default object with:
 
 ---
 
+## Activities (`src/activities/`)
+
+Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md`). The activity registry and host arrive in Phase 2; until then these folders hold pure logic only.
+
+| File | Role |
+|---|---|
+| `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
+
+---
+
 ## Shared Modules (`src/shared/`)
 
 | File | Role |
