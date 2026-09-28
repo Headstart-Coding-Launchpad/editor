@@ -47,8 +47,8 @@ describe('validateBinaryTask', () => {
   })
 
   it('reports each authoring mistake', () => {
-    expect(validateBinaryTask({ mode: 'hex' }, 1)).toEqual([
-      'Task 1: binary mode must be one of make_number, to_binary, to_decimal, add.',
+    expect(validateBinaryTask({ mode: 'octal' }, 1)).toEqual([
+      'Task 1: binary mode must be one of make_number, to_binary, to_decimal, add, overflow, hex, ascii, pixels.',
     ])
     expect(validateBinaryTask({ mode: 'make_number', bits: 20, items: [] }, 1)).toEqual([
       'Task 1: binary bits must be a whole number from 1 to 16.',
@@ -77,7 +77,7 @@ describe('validateBinaryTask', () => {
     ).toEqual(['Task 1 item 1: value must be 4 binary digits (0s and 1s).'])
     expect(
       validateBinaryTask({ mode: 'add', bits: 4, items: [{ id: 'a', a: '1000', b: '1000' }] }, 1)
-    ).toEqual(['Task 1 item 1: a + b is too big for 4 bits (overflow comes in a later mode).'])
+    ).toEqual(['Task 1 item 1: a + b is too big for 4 bits (use mode: overflow for that).'])
   })
 })
 
