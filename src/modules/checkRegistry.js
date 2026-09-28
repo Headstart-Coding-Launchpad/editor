@@ -14,7 +14,8 @@
 //     submitAllowed,   // true → allowed in submit-mode (no run) tasks
 //     contextKey?,     // the evaluation-context key the check reads (e.g. 'fs')
 //     evaluate(check, output, ctx) → boolean,
-//     validate?(check, ctx) → string[],
+//     validate?(check, { n, kind, task }) → string[],  // complete authoring messages
+//                      // ("Task N ..."); run for Builder + CLI by lessonValidation.js
 //   }
 
 export const CHECK_TIMINGS = ['on_run', 'on_change', 'on_submit']

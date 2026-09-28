@@ -1,13 +1,27 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // docs/authoring/validation-errors.md explains every validation message to lesson authors
 // (mostly the CLI authoring agent). This keeps it complete: any errors.push()/warnings.push()
 // message in the validators must appear in the doc, with `…` in place of each ${...}.
+// The shared rules live in src/shared/lessonValidation.js and each module definition's
+// validateTask; cli/validate.mjs and src/builder/lessonUtils.js hold only their own extras.
+
+const MODULE_DEFINITION_FILES = readdirSync(resolve(process.cwd(), 'src/modules'), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_'))
+  .map((entry) => `src/modules/${entry.name}/definition.js`)
+  .filter((file) => existsSync(resolve(process.cwd(), file)))
 
 const VALIDATOR_FILES = [
   'cli/validate.mjs',
+  'src/builder/lessonUtils.js',
+  'src/shared/lessonValidation.js',
+  'src/modules/moduleTaskValidation.js',
+  'src/activities/legacyValidation.js',
+  ...MODULE_DEFINITION_FILES,
   'src/shared/checkAuthoringValidation.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',

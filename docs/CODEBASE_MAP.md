@@ -201,7 +201,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `lessonUtils.js` | Pure builder lesson validation and export normalisation rules |
+| `lessonUtils.js` | Builder lesson validation — the shared core (`src/shared/lessonValidation.js`) plus the Builder-only extras (duplicate task-id warnings, browser-only module rules such as Scratch toolbox XML, the untested-check reminder) — and export normalisation rules |
 | `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM) |
 
 ---
@@ -282,6 +282,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `checkRegistry.js` | Pure, Node-safe check-type registry: `createCheckRegistry(defs)` validates definitions (`type`, `owner`, `timing`, `requiresRun`, `submitAllowed`, `evaluate`, optional `aliases`/`subject`/`operators`/`fields`/`contextKey`/`validate`), throws on duplicate type ids or aliases, and provides alias-aware `get`/`has`/`canonicalType`/`typeIds`/`evaluate` |
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
 | `defineModule.js` | Pure: `defineModule(def)` validates a module definition (type, `meta` — `label`, `order`, `shortLabel`, `icon`, `pickerHint`, `language`, `playground`, optional `surfaceLabels` — `capabilities`, required hooks and flags) and freezes it; `defineUiModule(def, ui)` merges the UI half (workspaces, check editors, `getLayoutStyles`, `runtime`) into the object the registry returns |
+| `moduleTaskValidation.js` | Pure building blocks for each module definition's `validateTask`: check-field rules (`validateCodeChecks`, `validateScratchChecks`), stage-state and HTML starter-file rules, Python test rules, complete-solution warnings, starter/check-value helpers, and `validateRegisteredChecks` (calls a check-registry definition's optional `validate`) |
 | `definitions.js` | Pure, Node-safe registry of every `<type>/definition.js`: `MODULE_TYPES` (registry order), `getModuleDefinitions()`, `getModuleDefinition(type)`, plus the derivation helpers core code uses instead of hand-maintained type lists — `getModuleTypesWhere(predicate)`, `getModuleTypesWithCapability(name)`, `CARRY_THROUGH_FIELDS`, `getModuleLabel(type, surface)`; used by `registry.js`, `src/shared/composedLesson.js`, `taskUtils.js` and the CLI |
 | `<type>/definition.js` | Pure, Node-safe half of each module (python, html, scratch, filesystem, electronics, arcade, turtle, desktop): `meta`, authoring/carry-through/state/sandbox/display hooks and capability flags; no JSX, React, DOM or runtimes, and explicit `.js` import extensions. `<type>/index.js` wraps it with `defineUiModule` |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
@@ -406,6 +407,10 @@ Each `index.js` exports a default object with the following properties. UI surfa
 | `serializeState(state)` | `fn \| null` | Optional persistence serializer |
 | `deserializeState(raw)` | `fn \| null` | Optional persistence deserializer |
 | `getSandboxState(lesson, task)` | `fn` | Initial sandbox state |
+| `validateTask(task, { n, lesson, errors, warnings })` | `fn` | Pure type-specific lesson validation shared by the Builder and the CLI (pushes messages); see `src/shared/lessonValidation.js` |
+| `hasStarterContent(task)` | `fn \| null` | Optional: whether the task has starter content (`null` = never warn about an empty editor) |
+| `hasCheckValue(task)` | `fn \| null` | Optional: whether the completion check is worth the Builder's untested-check reminder (`null` = the generic code-check rule) |
+| `validateTaskInBrowser(task, { n, errors, warnings })` | `fn \| null` | Optional Builder-only rules needing browser APIs (Scratch toolbox XML via `DOMParser`); the CLI never calls it |
 | `runtime` | `object \| null` | Optional runtime bridge with `init`, `isReady`, `stop`, and module-specific helpers |
 
 ---
@@ -424,6 +429,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
 | `mouse/mouse.js` | Pure Mouse activity logic: stage targets (0-1 positions), click/double-click/right-click/drag/scroll/hover items, touch policy (`equivalent`/`skip`/`block`), grading by the gesture that completed each item |
 | `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
+| `legacyValidation.js` | Pure quiz (`validateQuizTask`) and code_arrange (`validateCodeArrangeTask`) validation plus starter/check-value helpers, looked up by `getLegacyTaskValidation(task)` from `src/shared/lessonValidation.js` until plan steps 2.2 / 4.9 move them into activity definitions |
 | `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 
@@ -449,7 +455,8 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, `evaluateCodeCheck` (shared `code`-family evaluation reused by both `modules/checks.js` and `electronics/circuit.js`, avoiding a circular import), and related helpers — used by `modules/checks.js` and sub-module evaluators |
-| `checkAuthoringValidation.js` | `validateFilesystemChecks`/`validateElectronicsChecks` (check-field-completeness validation) plus their shared target-selector helpers — imported by both `builder/lessonUtils.js` and `cli/validate.mjs` so the Builder and the CLI publish path can't validate filesystem/electronics checks differently |
+| `checkAuthoringValidation.js` | `validateFilesystemChecks`/`validateElectronicsChecks`/`validateTurtleChecks` (check-field-completeness validation) plus their shared target-selector helpers — called from the module definitions' `validateTask`, so the Builder and the CLI can't validate these checks differently |
+| `lessonValidation.js` | Pure, Node-safe lesson validation core shared by the Builder (`validateLesson`) and the CLI (`validateLessonForMcp`), one wording for both: envelope, groups, task shape, feedback checks, carry-through; delegates type rules by each task's effective module type to the module definition's `validateTask`, `taskType: 'activity'` to the activity registry, and quiz / code_arrange to `activities/legacyValidation.js`. `validateLessonCore(lesson, { envelope, beforeTasks, afterTask })` hooks add each validator's own extras (ADR 0008) |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 | `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
@@ -544,7 +551,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
 | `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight/check-case testing plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
-| `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency) |
+| `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
 | `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue of modules, activities and check types read from the registries, printed by `lessons capabilities` for lesson agents (no Firebase) |
 | `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |

@@ -38,26 +38,20 @@ import {
   codeCheckHasValue,
   collectFeedbackChecks,
   filesStarterPresent,
+  validateRegisteredChecks,
 } from '../modules/moduleTaskValidation.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
-import {
-  codeArrangeHasStarter,
-  isCodeArrangeTask,
-  isLegacyQuizTask,
-  quizHasCheckValue,
-  quizHasStarter,
-  validateCodeArrangeTask,
-  validateQuizTask,
-} from '../activities/legacyValidation.js'
+import { getLegacyTaskValidation } from '../activities/legacyValidation.js'
 
 export const VALID_LESSON_TYPES = Object.freeze([...LESSON_MODULE_TYPES, 'composed'])
 
-// What kind of task this is for validation purposes.
+// What kind of task this is for validation purposes: 'information', 'activity' (the activity
+// registry), 'legacy' (quiz / code_arrange, see getLegacyTaskValidation) or 'module' (a code
+// task validated by its workspace module).
 export function getTaskValidationKind(task) {
   if (task?.taskType === 'information') return 'information'
-  if (isLegacyQuizTask(task)) return 'quiz'
   if (task?.taskType === 'activity') return 'activity'
-  if (isCodeArrangeTask(task)) return 'code_arrange'
+  if (getLegacyTaskValidation(task)) return 'legacy'
   return 'module'
 }
 
@@ -176,22 +170,24 @@ function validateActivityTask(task, n, lesson, errors, warnings) {
   warnings.push(...(result.warnings ?? []))
 }
 
-function taskHasStarter(task, kind, definition) {
+function taskHasStarter(task, { kind, legacy, definition }) {
   if (kind === 'information' || kind === 'activity') return true
-  if (kind === 'quiz') return !!quizHasStarter(task)
-  if (kind === 'code_arrange') return codeArrangeHasStarter(task)
+  if (legacy) return !!legacy.hasStarter(task)
   if (!definition) return filesStarterPresent(task)
   return definition.hasStarterContent ? !!definition.hasStarterContent(task) : true
 }
 
 /**
- * Validates one (flattened) task. Returns the validation context `{ kind, moduleType,
- * definition }` for the validator's own extras, or null when the task was skipped (not an
- * object, or the lesson is a draft).
+ * Validates one (flattened) task. Returns the validation context `{ kind, legacy, usesModule,
+ * moduleType, definition }` for the validator's own extras, or null when the task was skipped
+ * (not an object, or the lesson is a draft). `usesModule` is true when the task runs in a
+ * workspace module (code tasks and code_arrange), so the module's own rules apply to it.
  */
 export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) {
   if (!isPlainObject(task)) return null
   const kind = getTaskValidationKind(task)
+  const legacy = getLegacyTaskValidation(task)
+  const usesModule = kind === 'module' || !!legacy?.hostModule
   const moduleType = getTaskModuleType(lesson, task) ?? lesson.type
   const definition = getModuleDefinition(moduleType)
 
@@ -225,19 +221,19 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   if (lesson.draft === true) return null
 
   validateFeedbackBasics(task, n, errors, warnings)
-  if (kind === 'module' || kind === 'code_arrange') validateStageMetadata(task, n, errors)
+  if (usesModule) validateStageMetadata(task, n, errors)
 
   if (kind === 'information') {
     if (task.informationType !== 'introduction' && !task.explainer?.trim()) {
       errors.push(`Task ${n} is an information task but has no explainer`)
     }
-  } else if (kind === 'quiz') {
-    validateQuizTask(task, { n, errors })
   } else if (kind === 'activity') {
     validateActivityTask(task, n, lesson, errors, warnings)
-  } else {
-    if (kind === 'code_arrange') validateCodeArrangeTask(task, { n, moduleType, errors })
+  }
+  legacy?.validateTask(task, { n, moduleType, errors })
+  if (usesModule) {
     definition?.validateTask(task, { n, lesson, errors, warnings })
+    validateRegisteredChecks(task, n, errors)
   }
 
   if (kind === 'module') {
@@ -252,18 +248,18 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
 
   // Modules whose students don't start in an editor (hasStarterContent: null) never warn.
   const moduleWarnsAboutStarter = !definition || definition.hasStarterContent !== null
-  if (moduleWarnsAboutStarter && !taskHasStarter(task, kind, definition)) {
+  if (moduleWarnsAboutStarter && !taskHasStarter(task, { kind, legacy, definition })) {
     warnings.push(`Task ${n} has no starter code — students will start with an empty editor`)
   }
 
-  return { kind, moduleType, definition }
+  return { kind, legacy, usesModule, moduleType, definition }
 }
 
 // Whether the task has a completion check worth testing (the Builder's untested-check
 // reminder). Information and activity tasks never do.
-export function taskHasCheckValue(task, { kind, definition }) {
+export function taskHasCheckValue(task, { kind, legacy, definition }) {
   if (kind === 'information' || kind === 'activity') return false
-  if (kind === 'quiz') return !!quizHasCheckValue(task)
+  if (legacy?.hasCheckValue) return legacy.hasCheckValue(task)
   if (definition?.hasCheckValue) return !!definition.hasCheckValue(task)
   return codeCheckHasValue(task)
 }
@@ -272,7 +268,8 @@ export function taskHasCheckValue(task, { kind, definition }) {
  * Runs the shared rules over a whole lesson. Hooks add environment-specific extras:
  * - envelope(lesson, errors): extra lesson-level rules (after title, before fork);
  * - beforeTasks({ lesson, flat, errors, warnings }): once, before the per-task rules;
- * - afterTask(task, { n, kind, moduleType, definition, lesson, flat, errors, warnings }):
+ * - afterTask(task, { n, kind, legacy, usesModule, moduleType, definition, lesson, flat,
+ *   errors, warnings }):
  *   after each non-draft task's shared rules.
  */
 export function validateLessonCore(lesson, { envelope, beforeTasks, afterTask } = {}) {

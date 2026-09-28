@@ -16,7 +16,6 @@ const SCRATCH_STARTER_SPRITE_STATE_FIELDS = [
   'costume',
 ]
 
-
 function describeTaskForWarning(task, index) {
   return `task ${index + 1}${task.title ? ` "${task.title}"` : ''}`
 }
@@ -82,10 +81,8 @@ export function validateLesson(lesson) {
   return validateLessonCore(lesson, {
     beforeTasks: ({ flat, warnings }) => warnDuplicateTaskIds(flat, warnings),
     afterTask: (task, context) => {
-      const { n, kind, definition, errors, warnings } = context
-      if (kind === 'module' || kind === 'code_arrange') {
-        definition?.validateTaskInBrowser?.(task, { n, errors, warnings })
-      }
+      const { n, usesModule, definition, errors, warnings } = context
+      if (usesModule) definition?.validateTaskInBrowser?.(task, { n, errors, warnings })
       if (taskHasCheckValue(task, context) && !task._checkTested) {
         warnings.push(
           `Task ${n} has a completion check that hasn't been tested — run the task to verify it`

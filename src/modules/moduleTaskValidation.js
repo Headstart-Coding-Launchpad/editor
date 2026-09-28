@@ -8,6 +8,7 @@ import {
   checkAllowedForSubmit,
   checkRequiresRun,
   evaluateSingleCheck,
+  getCheckDefinition,
   normalizeChecks,
   normalizeFeedbackChecks,
 } from './checks.js'
@@ -29,6 +30,18 @@ export function validateTaskChecks(task, validate) {
   if (task.check) validate(task.check, 'completion')
   const feedbackChecks = collectFeedbackChecks(task)
   if (feedbackChecks.length > 0) validate(feedbackChecks, 'feedback')
+}
+
+// Rules a check type declares itself: the registry definition's optional
+// `validate(check, { n, kind, task })` returns complete messages (starting `Task ${n} `).
+// Runs for the completion check and any feedback checks of a task that uses a module.
+export function validateRegisteredChecks(task, n, errors) {
+  validateTaskChecks(task, (checks, kind) => {
+    for (const check of normalizeChecks(checks)) {
+      const messages = getCheckDefinition(check?.type)?.validate?.(check, { n, kind, task })
+      if (Array.isArray(messages)) errors.push(...messages)
+    }
+  })
 }
 
 // Stage labels, plus (for modules whose stages hold state) the stage's state object.

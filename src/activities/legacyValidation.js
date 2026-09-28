@@ -1,15 +1,7 @@
 // Shared Builder + CLI validation for the legacy activity task formats (`taskType: 'quiz'` +
 // `quizType`, and `taskType: 'code_arrange'`). Pure and Node-safe. Both validators call these
-// through src/shared/lessonValidation.js; plan step 2.2 moves the quiz rules into
+// through src/shared/lessonValidation.js (see getLegacyTaskValidation below); plan step 2.2 moves the quiz rules into
 // src/activities/quiz_*/definition.js and step 4.9 moves code_arrange onto the activity contract.
-
-export function isLegacyQuizTask(task) {
-  return task?.taskType === 'quiz'
-}
-
-export function isCodeArrangeTask(task) {
-  return task?.taskType === 'code_arrange'
-}
 
 // Module types a code-arrange task can run in.
 export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html'])
@@ -116,4 +108,30 @@ export function quizHasCheckValue(task) {
 
 export function codeArrangeHasStarter(task) {
   return Array.isArray(task.lines) && task.lines.length > 0
+}
+
+// How the shared lesson validator (src/shared/lessonValidation.js) handles each legacy
+// activity task format, keyed by taskType. `hostModule` means the task runs inside a workspace
+// module, whose own validateTask then runs too. `hasCheckValue: null` falls back to the host
+// module's rule.
+const LEGACY_TASK_VALIDATION = Object.freeze({
+  quiz: Object.freeze({
+    hostModule: false,
+    validateTask: validateQuizTask,
+    hasStarter: (task) => !!quizHasStarter(task),
+    hasCheckValue: (task) => !!quizHasCheckValue(task),
+  }),
+  code_arrange: Object.freeze({
+    hostModule: true,
+    validateTask: validateCodeArrangeTask,
+    hasStarter: codeArrangeHasStarter,
+    hasCheckValue: null,
+  }),
+})
+
+export function getLegacyTaskValidation(task) {
+  const taskType = task?.taskType
+  return typeof taskType === 'string' && Object.hasOwn(LEGACY_TASK_VALIDATION, taskType)
+    ? LEGACY_TASK_VALIDATION[taskType]
+    : null
 }

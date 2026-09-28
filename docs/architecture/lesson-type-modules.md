@@ -64,6 +64,11 @@ Builder hooks:
 - `initCompleteTab(task, ctx)` and `initStageTab(stage, ctx)` lazily populate builder tabs.
 - `getCarryThroughUpdates(sourceTask)` and `getNewStarterUpdates(task)` keep carry-through logic type-owned.
 
+Validation hooks (pure; shared by the Builder and the CLI through `src/shared/lessonValidation.js`):
+
+- `validateTask(task, { n, lesson, errors, warnings })` pushes the module's own rules (check fields, starter state, stages, complete-solution warnings). It runs for code tasks and for `code_arrange` tasks hosted by the module, looked up by the task's effective module type.
+- `hasStarterContent(task)` (optional; `null` = no empty-editor warning), `hasCheckValue(task)` (optional; the Builder's untested-check reminder) and `validateTaskInBrowser(task, ctx)` (optional; Builder-only rules that need browser APIs).
+
 Capability flags:
 
 - `supportsInteractionMode` controls Run/Submit mode UI.
