@@ -1,6 +1,13 @@
 // Node-safe half of the HTML module (see ../defineModule.js). UI and preview runtime live in
 // index.js.
 import { defineModule } from '../defineModule.js'
+import {
+  filesStarterPresent,
+  validateCodeChecks,
+  validateHtmlStarterFiles,
+  validateTaskChecks,
+  warnCompleteFiles,
+} from '../moduleTaskValidation.js'
 
 const DEFAULT_HTML_FILE = {
   name: 'index.html',
@@ -152,4 +159,17 @@ export default defineModule({
       : (task?.starterFiles ?? [DEFAULT_HTML_FILE]),
     entryFile: task?.entryFile ?? 'index.html',
   }),
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors, warnings }) => {
+    validateHtmlStarterFiles(task, n, errors)
+    validateTaskChecks(task, (checks, kind) =>
+      validateCodeChecks(checks, n, errors, kind, {
+        html: true,
+        interactionMode: task.interactionMode,
+      })
+    )
+    warnCompleteFiles(task, n, warnings)
+  },
+  hasStarterContent: filesStarterPresent,
 })

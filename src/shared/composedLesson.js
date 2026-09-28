@@ -150,6 +150,8 @@ export function validateComposedStructure(lesson) {
   const errors = []
   for (const task of flattenTasks(lesson.tasks ?? [])) {
     if (task?.taskType === 'information' || task?.taskType === 'quiz') continue
+    // Activities sit anywhere in a lesson; they don't belong to a workspace module.
+    if (task?.taskType === 'activity') continue
     const type = getTaskModuleType(lesson, task)
     if (!type)
       errors.push(

@@ -1,5 +1,10 @@
 // Node-safe half of the Scratch module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import {
+  anyCheckHasValue,
+  validateScratchChecks,
+  validateTaskChecks,
+} from '../moduleTaskValidation.js'
 
 export default defineModule({
   type: 'scratch',
@@ -123,5 +128,22 @@ export default defineModule({
       } catch {}
     }
     return task?.starterBlocks ?? null
+  },
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors }) => {
+    validateTaskChecks(task, (checks, kind) => validateScratchChecks(checks, n, errors, kind))
+  },
+  hasStarterContent: (task) => !!task.starterBlocks,
+  hasCheckValue: anyCheckHasValue,
+  // Builder only: the CLI has no XML parser, so the toolbox is checked where DOMParser exists.
+  validateTaskInBrowser: (task, { n, errors }) => {
+    if (!task.toolbox) return
+    try {
+      const parsed = new globalThis.DOMParser().parseFromString(task.toolbox, 'text/xml')
+      if (parsed.querySelector('parsererror')) errors.push(`Task ${n} has invalid toolbox XML`)
+    } catch {
+      errors.push(`Task ${n} has invalid toolbox XML`)
+    }
   },
 })

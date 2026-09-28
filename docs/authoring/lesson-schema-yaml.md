@@ -259,9 +259,9 @@ The legacy `_customTitle` field is no longer needed. Builder saves and exports s
 
 ## Validation Rules
 
-Two separate validators exist and they do not enforce the same rules. `cli lessons validate|upsert|publish-yaml` runs `cli/validate.mjs`; the Lesson Builder runs its browser-side final validation when Draft is cleared or a final lesson is saved. A lesson can pass CLI validation and still trip builder-only rules.
+`cli lessons validate|upsert|publish-yaml` and the Lesson Builder (when Draft is cleared or a final lesson is saved) run the same rules with the same messages. Only a few extras differ: the CLI requires a `description`; the Builder also parses Scratch toolbox XML and warns about duplicate task ids and untested checks.
 
-See `docs/authoring/lesson-schema.md` (**Validation Rules**) for the full list of rules enforced by each validator.
+See `docs/authoring/lesson-schema.md` (**Validation Rules**) for the rules and `docs/authoring/validation-errors.md` for every message.
 
 ---
 
