@@ -5,10 +5,12 @@
 // To add an activity: create src/activities/<id>/definition.js and add one import here (and one
 // in registry.js once it exists). activityInterface.test.js checks every folder is registered.
 import binary from './binary/definition.js'
+import keyboard from './keyboard/definition.js'
+import mouse from './mouse/definition.js'
 import unknown from './unknown/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
-const ACTIVITIES = [binary, unknown]
+const ACTIVITIES = [binary, keyboard, mouse, unknown]
 
 const BY_ID = new Map()
 for (const activity of ACTIVITIES) {
