@@ -1,5 +1,6 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
 import { MODULE_TYPES, getModuleTypesWhere } from '../modules/definitions.js'
+import { isHostedActivityTask } from '../activities/registry.pure.js'
 
 // Membership comes from the module definitions (src/modules/definitions.js), so a new module
 // type is accepted here, by the Builder and by the CLI without editing this file. The order
@@ -24,7 +25,7 @@ export function isComposedLesson(lesson) {
 }
 
 export function isCodeTask(task) {
-  return task?.taskType !== 'information' && task?.taskType !== 'quiz'
+  return task?.taskType !== 'information' && task?.taskType !== 'quiz' && !isHostedActivityTask(task)
 }
 
 export function getLessonModules(lesson) {

@@ -46,6 +46,9 @@ export function useTeacherLivePublish({
   fsState,
   desktopState,
   iframeStorageAssets = null,
+  // Optional ref to a function returning extra payload fields for the current task (the
+  // activity host adds `answer`, the serialised activity state, on activity tasks).
+  extraPayloadRef = null,
   // Callbacks
   updateTeacherLive,
   setTeacherLiveReference,
@@ -110,6 +113,7 @@ export function useTeacherLivePublish({
       checkSuggestion: checkSuggestionRef.current,
       selection: editorSelectionRef.current,
       activity: editorActivityRef.current,
+      ...(extraPayloadRef?.current?.() ?? {}),
       ...extra,
     }
   }

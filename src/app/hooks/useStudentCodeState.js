@@ -56,6 +56,8 @@ import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useActivityState } from './useActivityState'
+import { isHostedActivityTask } from '../../activities/registry.pure.js'
 import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -355,6 +357,7 @@ export function useStudentCodeState({
   } = useCheckFeedback({ myStudentData })
 
   const sandboxModuleId = lesson?.lessonModule?.id ?? null
+  const activityLivePayloadRef = useRef(null)
   const persistence = createStudentPersistence({
     lessonId,
     teacherPresentation,
@@ -404,8 +407,36 @@ export function useStudentCodeState({
     fsState,
     desktopState,
     iframeStorageAssets: htmlIframeStorageAssets,
+    extraPayloadRef: activityLivePayloadRef,
     updateTeacherLive,
     setTeacherLiveReference,
+  })
+
+  // Hosted activity tasks (taskType 'activity'): state, persistence, live sync, grading, reset
+  // and teacher edits. See useActivityState.js for the write rules.
+  const activity = useActivityState({
+    lesson,
+    currentTaskId,
+    viewingTaskId,
+    phase,
+    teacherPresentation,
+    identity,
+    effectiveIdentity,
+    session,
+    myStudentData,
+    persistence,
+    writeStudentAnswer,
+    writeStudentRun,
+    logAttempt,
+    clearTeacherAnswerEdit,
+    applyCheckFeedback,
+    resetCheckFeedback,
+    setRunStatus,
+    canPublishTeacherLive,
+    publishTeacherLive,
+    teacherAssistedTaskIdsRef,
+    onTeacherAnswerApplied: setTeacherAnswerNoticeAt,
+    livePayloadRef: activityLivePayloadRef,
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
@@ -485,6 +516,8 @@ export function useStudentCodeState({
 
     const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
     if (task?.taskType === 'quiz' || task?.taskType === 'information') return
+    // Activities save every change themselves (useActivityState).
+    if (isHostedActivityTask(task)) return
 
     if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
       persistence.savePythonCode(id.anonymousId, taskId, {
@@ -585,7 +618,7 @@ export function useStudentCodeState({
     if (!lesson || !activeIdentity) return
     const task = flattenTasks(lesson.tasks).find((t) => t.id === taskId)
     if (!task) return
-    if (task.taskType === 'quiz' || task.taskType === 'information') {
+    if (task.taskType === 'quiz' || task.taskType === 'information' || isHostedActivityTask(task)) {
       setCode('')
       setFiles([])
       setActiveFile('')
@@ -849,6 +882,8 @@ export function useStudentCodeState({
     if (!identity?.anonymousId || session?.activeStudentView !== identity.anonymousId) return
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
+    // Activity tasks flush their own state (useActivityState); there is no code to mirror.
+    if (isHostedActivityTask(findTaskById(lesson.tasks, currentTaskId))) return
 
     if (
       lesson.type === 'python' ||
@@ -899,6 +934,8 @@ export function useStudentCodeState({
     const action = myStudentData.remoteResetAction
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task || !action) return
+    // Activity resets are applied by useActivityState.
+    if (isHostedActivityTask(task)) return
 
     const revealMatch = action.match(/^reveal_stage_(\d+)$/)
     if (revealMatch) {
@@ -2693,6 +2730,8 @@ export function useStudentCodeState({
     exitPersonalSandbox,
     currentTeacherLivePayload,
     buildShareSnapshot,
+    // Hosted activity task state and handlers (null definition on other tasks).
+    activity,
     canPublishTeacherLive,
     publishTeacherLive,
     updateTeacherLiveFn: updateTeacherLive,

@@ -45,3 +45,18 @@ export function getTaskActivity(task) {
 export function activityIdForYamlType(type) {
   return ACTIVITIES.find((activity) => activity.yaml?.type === type)?.id ?? null
 }
+
+// Tasks rendered by ActivityHost: a full-screen activity surface, never a code task (no Run,
+// personal sandbox, share or carry). Legacy quiz and code_arrange tasks keep their own surfaces
+// until they migrate onto the host (plan 2.3b / 4.9).
+export function isHostedActivityTask(task) {
+  return !!task && task.taskType === 'activity'
+}
+
+// Whether a teacher may broadcast a STUDENT's work to the class ("Go Live for All") on this
+// task. Quiz and activity tasks only allow the teacher's own broadcast; code_arrange keeps
+// student broadcast because its tile board is code the class can learn from.
+export function allowsStudentBroadcast(task) {
+  const id = getActivityId(task)
+  return id === null || id === 'code_arrange'
+}

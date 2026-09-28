@@ -127,6 +127,9 @@ export function deriveStudentLiveDisplay({
       ? (teacherLive.checkSuggestion ?? '')
       : checkSuggestion,
     displaySelection: isForcedTeacherLive ? (teacherLive.selection ?? null) : null,
+    // The broadcast's serialised activity state (teacherLive.answer). Activity tasks render it
+    // read-only through ActivityHost; null when not forced-live (the viewer's own state shows).
+    displayAnswer: isForcedTeacherLive ? (teacherLive.answer ?? null) : null,
     displayActivity: isForcedTeacherLive ? (teacherLive.activity ?? null) : editorActivity,
     // A forced-live viewer's output/preview panel mirrors the source's
     // expanded/collapsed state continuously (locked, not just a one-time

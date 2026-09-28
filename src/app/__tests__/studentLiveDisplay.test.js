@@ -250,11 +250,12 @@ describe('deriveStudentLiveDisplay', () => {
     expect(noBroadcast.isLiveCopyBlocked).toBe(false)
   })
 
-  // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
-  // a student Go Live on a quiz task publishes teacherLive.answer (see
-  // useStudentCodeState handleQuizSelect), but the display model has no answer
-  // field, so a classmate watching the broadcast never sees the quiz answer.
-  it('derives no display field from a broadcast quiz answer', () => {
+  // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3),
+  // deliberately updated in plan 2.3: the broadcast answer is now exposed as
+  // displayAnswer so ActivityHost can render a teacher's activity broadcast. Quiz tasks
+  // still don't render it (and student-source Go Live is no longer offered on quiz or
+  // activity tasks — see allowsStudentBroadcast).
+  it('exposes a broadcast answer only as displayAnswer', () => {
     const quizBroadcast = {
       active: true,
       source: 'student',
@@ -280,6 +281,7 @@ describe('deriveStudentLiveDisplay', () => {
     expect(Object.keys(display).sort()).toEqual([
       'displayActiveFile',
       'displayActivity',
+      'displayAnswer',
       'displayArcadeDesign',
       'displayBlockDrag',
       'displayCheckAttempted',
@@ -304,7 +306,9 @@ describe('deriveStudentLiveDisplay', () => {
       'isTeacherLiveActive',
       'isTeacherLiveViewer',
     ])
-    expect(Object.values(display)).not.toContain(quizBroadcast.answer)
+    expect(display.displayAnswer).toBe(quizBroadcast.answer)
+    const { displayAnswer: _answer, ...others } = display
+    expect(Object.values(others)).not.toContain(quizBroadcast.answer)
     // The marked result does carry through.
     expect(display.displayRunStatus).toBe('submitted')
     expect(display.displayCheckPassed).toBe(true)
