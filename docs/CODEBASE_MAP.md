@@ -526,6 +526,9 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
 | `src/test/setup.js` | Vitest/jsdom shared test setup: jest-dom matchers and browser API mocks used across component and hook tests |
+| `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
+| `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |
+| `src/test/fixtures/studentCodeStateLessons.js` | Per-module-type (and composed) lesson fixtures for the `useStudentCodeState` characterization tests |
 | `package.json` | Dependencies and scripts |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |
