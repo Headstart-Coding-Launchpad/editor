@@ -34,8 +34,10 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
         "sourceStudentName": "Jamie | null",
         "taskId": 1,
         "lessonType": "python",
-        "code": "...",
+        "code": "... (JSON string for Scratch, Filesystem, Desktop and Electronics state)",
         "files": { "index__dot__html": "..." },
+        "arcadeDesign": "object | null (Arcade only; sent as explicit null for other types because teacherLive is an update() merge)",
+        "turtleResult": "object | null (Turtle only, compacted with compactTurtleResultForSync; explicit null for other types)",
         "output": "...",
         "runStatus": "success | error | stopped | submitted | null",
         "checkPassed": true,
@@ -140,6 +142,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "online": true,
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
+          "currentTurtleResult": "object | null (Turtle student's compacted drawing result, written on Run via writeStudentTurtleResult)",
           "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz)",
           "currentCursor": "object | null ({ target: 'stage' | 'workspace', spriteId, x, y, at } — watched Scratch student's throttled live pointer position, ~20Hz; stage coords are origin-centred same as sprite x/y, workspace coords are that sprite's Blockly workspace units)",
           "currentBlockDrag": "object | null ({ spriteId, blockId, x, y, at } — the top block of an in-progress drag, live position in that sprite's Blockly workspace units, cleared to null when the drag ends)",
@@ -179,7 +182,13 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "teacherEditRequestedAt": "number | null",
           "teacherEditAcceptedAt": "number | null",
           "teacherLiveCode": "string | null",
+          "teacherLiveFiles": "object | null (HTML: encodeFileKey'd files the teacher is typing)",
+          "teacherLiveActiveFile": "string | null",
+          "teacherLiveWorkspace": "object | null",
+          "teacherLiveArcadeDesign": "object | null",
           "teacherEditApplyCode": "string | null",
+          "teacherEditApplyFiles": "object | null",
+          "teacherEditApplyArcadeDesign": "object | null",
           "teacherEditAppliedAt": "number | null",
           "teacherStageRequestedAt": "number | null",
           "teacherStagePendingAction": "string | null",
@@ -502,10 +511,13 @@ Do not deviate from these key formats.
 | Key | Value |
 |---|---|
 | `headstart_identity` | `{ anonymousId, displayName, lastSessionTimestamp }` |
-| `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code?, output?, runStatus?, state? }` for Python/Scratch |
+| `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code, output, runStatus }` for Python/Turtle; plus `arcadeDesign` for Arcade; `{ code }` for Electronics (serialised circuit); `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` | `{ content }` for HTML per-file |
-| `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code?, state? }` for personal sandbox Python/Scratch; `{ fs }` for Filesystem |
+| `headstart_{lessonId}_{taskId}___code_arrange_slots___{anonymousId}` | `{ content }` Code Arrange tile placements (a per-task aux file, same shape as an HTML file) |
+| `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code }` for personal sandbox Python/Turtle/Electronics; `{ code, arcadeDesign }` for Arcade; `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` for personal sandbox HTML per-file |
+| `headstart_{lessonId}_module_{moduleId}_sandbox_{anonymousId}` | Composed lessons: the personal sandbox for one lesson module, same value shapes as `personalsandbox` |
+| `headstart_{lessonId}_module_{moduleId}_sandbox_{filename}_{anonymousId}` | Composed lessons: per-file HTML personal sandbox for one lesson module |
 | `headstart_builder_current` | Full lesson JSON object |
 
 ## LaunchPad Code Files

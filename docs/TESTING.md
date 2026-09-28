@@ -211,6 +211,16 @@ Run with `npm run test:rules`. This needs `firebase-tools` installed globally an
 
 Add a test whenever you change a rules file.
 
+## Type-Branch Ratchet
+
+`src/modules/__tests__/typeBranchRatchet.test.js` counts inline lesson-type and task-type
+comparisons (`lesson.type === 'turtle'`, `case 'scratch':`, `['python', 'html'].includes(...)`)
+in `src/` and `cli/` outside the plugin folders (`src/modules/`, `src/activities/`). Each file's
+count may only go down against `typeBranchBaseline.json`. When a PR removes branches, lower the
+baseline in the same PR with `UPDATE_TYPE_BRANCH_BASELINE=1 npx vitest run typeBranchRatchet`.
+Never raise a count: route new behaviour through the module or activity registry. See
+`docs/architecture/modular-activities-plan.md`.
+
 ## Continuous Integration
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`:
