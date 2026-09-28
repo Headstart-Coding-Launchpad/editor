@@ -17,8 +17,8 @@ import {
 // placements (handleCodeArrangeSlotsChange), exercised through the real hook
 // with every session writer replaced by a vi.fn. These pin today's behaviour,
 // including parts the Activity migration will change on purpose (quiz answers
-// are not persisted locally and are cleared on task switch; a student Go Live
-// publishes `answer` that no viewer renders).
+// are not persisted locally and are cleared on task switch). Step 2.3 deliberately removed
+// student Go Live publishing on quiz tasks (see the broadcast describe block below).
 
 vi.mock('../../../shared/useTypeAssets', () => ({
   useTypeAssets: () => ({ typeStorageAssets: [] }),
@@ -524,7 +524,11 @@ describe('code_arrange slot mirror (handleCodeArrangeSlotsChange)', () => {
 describe('student Go Live broadcast of quiz answers and code_arrange slots', () => {
   const LIVE = { active: true, source: 'student', sourceStudentId: 'anon-1', taskId: 1 }
 
-  it('publishes the serialized answer with the marked result on submit only', async () => {
+  // Deliberately changed in plan step 2.3 (was: "publishes the serialized answer with the
+  // marked result on submit only"). Broadcasting a student's quiz or activity answers to the
+  // class was removed; only the teacher's own broadcast is allowed on these tasks. A student
+  // broadcast still running from an earlier code task therefore stops publishing here.
+  it('never publishes a student broadcast on a quiz task', async () => {
     const { result, writers } = renderCodeState({
       currentTaskId: 1,
       session: makeSession({ teacherLive: LIVE }),
@@ -533,25 +537,14 @@ describe('student Go Live broadcast of quiz answers and code_arrange slots', () 
     await act(async () => {
       await result.current.handleQuizSelect('c', null)
     })
-    expect(writers.updateTeacherLive.mock.calls.filter(([payload]) => 'answer' in payload)).toEqual(
-      []
-    )
-
     await act(async () => {
       await result.current.handleQuizSelect('b')
     })
-    expect(writers.updateTeacherLive).toHaveBeenCalledWith(
-      expect.objectContaining({
-        active: true,
-        source: 'student',
-        sourceStudentId: 'anon-1',
-        taskId: 1,
-        answer: 'b',
-        runStatus: 'submitted',
-        checkPassed: false,
-        checkAttempted: true,
-        checkSuggestion: 'input() asks the user a question.',
-      })
+    expect(writers.updateTeacherLive).not.toHaveBeenCalled()
+    // The answer itself is still recorded as normal.
+    expect(writers.writeStudentRun).toHaveBeenCalledWith(
+      'anon-1',
+      expect.objectContaining({ answer: 'b', status: 'submitted', checkPassed: false })
     )
   })
 

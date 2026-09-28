@@ -79,9 +79,7 @@ export function getTaskPriority(task) {
 export function canTaskAllowSharing(task) {
   if (!task || typeof task !== 'object') return false
   if (task.type === 'group') return false
-  return (
-    task.taskType !== 'quiz' && task.taskType !== 'information' && !isHostedActivityTask(task)
-  )
+  return task.taskType !== 'quiz' && task.taskType !== 'information' && !isHostedActivityTask(task)
 }
 
 export function isSharingAllowed(task) {
@@ -183,14 +181,16 @@ export function deriveTaskContext(lesson, task, session) {
   // moduleType is the registered module type of the (effective, per-task) lesson, or null for
   // anything else (e.g. an unresolved 'composed' lesson). The is<Type> flags are kept for
   // existing callers; prefer moduleType + the module definition for new code.
-  const moduleType = getModuleDefinition(lesson?.type) ? lesson.type : null
-  const isModule = (type) => moduleType === type
   const isQuiz = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'
-  // Hosted activities (taskType 'activity') have no workspace: module flags describe the
-  // surrounding lesson, not the task, so callers check isActivity before any module flag.
+  // Hosted activities (taskType 'activity') have no workspace, so the module flags are all
+  // false on them — except in a session sandbox, where students work in the lesson's
+  // workspace whatever task the session is parked on.
   const isActivity = isHostedActivityTask(task)
+  const moduleType =
+    getModuleDefinition(lesson?.type) && !(isActivity && !isSessionSandbox) ? lesson.type : null
+  const isModule = (type) => moduleType === type
   return {
     moduleType,
     isPython: isModule('python'),

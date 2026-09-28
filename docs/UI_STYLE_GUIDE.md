@@ -211,6 +211,7 @@ Current CSS class namespaces:
 | `ui-` | Global primitives: tabs, popovers, collapsibles |
 | `hsc-` | Branded shared app elements, currently loading |
 | `sv-` | Student view extracted components |
+| `act-` | Hosted activities (`src/activities/`): Binary bit tiles, the on-screen keyboard, the Mouse stage. Controls are at least 44px and honour `prefers-reduced-motion` |
 | `te-` | Task editor and builder-style editor components |
 | `teacher-` | Teacher view/session components |
 | `presence-` | Student presence badges |

@@ -6,6 +6,8 @@ import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
+import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
+import { ActivityDeviceBadge } from '../../activities/ActivityHost.jsx'
 
 const formatLastRun = formatTimeAgo
 
@@ -79,8 +81,16 @@ export default function StudentCard({
     isFilesystem,
     isQuiz,
     isInformation,
+    isActivity: isActivityTask,
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, currentTask, session)
+  // Hosted activity: the card shows the activity's own one-line summary of currentAnswer.
+  const isActivity = isActivityTask && !isSessionSandbox
+  const activitySummary = isActivity
+    ? summarizeActivityAnswer(currentTask, student.currentAnswer)
+    : null
+  const activityState = isActivity ? readActivityAnswer(currentTask, student.currentAnswer) : null
+  const activitySubmitted = isActivity && student.lastRunStatus === 'submitted'
   // Python, Arcade and Electronics all run code that prints to a console, so the teacher
   // wants the same first-few-lines-of-output snippet for all three.
   const hasConsoleOutput = isPython || isArcade || isElectronics
@@ -123,7 +133,9 @@ export default function StudentCard({
   const hasCheck =
     !isConfidence &&
     !isSessionSandbox &&
-    (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
+    (currentTask?.check != null ||
+      (isQuiz && quizSubmitted && student.checkPassed != null) ||
+      (activitySubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const hasActiveOverride = !!student.checkOverridePushedAt
   const supportRevealCount = Object.keys(
@@ -193,7 +205,7 @@ export default function StudentCard({
               {student.displayName}
             </span>
           )}
-          {!isQuiz && !isInformation && student.lastRunAt && (
+          {!isQuiz && !isInformation && !isActivity && student.lastRunAt && (
             <span style={s.lastRunLabel} title="Last run">
               ▶ {formatLastRun(student.lastRunAt)}
             </span>
@@ -369,6 +381,20 @@ export default function StudentCard({
       {isInformation ? (
         <div style={s.iframeThumb}>
           <span style={{ color: '#6b7280', fontSize: 12 }}>Information task</span>
+        </div>
+      ) : isActivity ? (
+        <div style={s.quizAnswer} data-testid="activity-summary">
+          <span
+            style={{
+              ...s.matchSummaryText,
+              ...(activitySummary?.tone === 'success'
+                ? { color: 'var(--colour-success-text)' }
+                : null),
+            }}
+          >
+            {activitySummary?.text ?? 'Activity'}
+          </span>
+          <ActivityDeviceBadge state={activityState} />
         </div>
       ) : isQuiz && !isSessionSandbox ? (
         <div style={s.quizAnswer}>

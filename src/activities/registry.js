@@ -19,7 +19,10 @@ const merged = new Map()
 function withUi(definition) {
   if (!definition) return null
   if (!merged.has(definition.id)) {
-    merged.set(definition.id, Object.freeze({ ...definition, ...(ACTIVITY_UIS[definition.id] ?? {}) }))
+    merged.set(
+      definition.id,
+      Object.freeze({ ...definition, ...(ACTIVITY_UIS[definition.id] ?? {}) })
+    )
   }
   return merged.get(definition.id)
 }

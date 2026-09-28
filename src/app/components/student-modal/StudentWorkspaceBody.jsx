@@ -7,6 +7,9 @@ import ExplainerPanel from '../ExplainerPanel'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
 import QuizTask from '../QuizTask'
+import { ActivityView } from '../../../activities/ActivityHost.jsx'
+import { getTaskActivity } from '../../../activities/registry.pure.js'
+import { readActivityAnswer } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 
 function answerKey(value) {
@@ -48,6 +51,8 @@ export default function StudentWorkspaceBody({
   session,
   isInformation,
   isQuiz,
+  isActivity = false,
+  activityState = null,
   isSessionSandbox,
   isPython,
   isScratch,
@@ -88,6 +93,9 @@ export default function StudentWorkspaceBody({
     student.currentCodeArrangeSlots ?? null,
     answerEditing
   )
+  // Teacher edits of an activity chain on the latest edited state, not the last render's, so
+  // an activity UI that updates several times in one event never loses a step.
+  const activityEditRef = useRef(null)
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -168,6 +176,34 @@ export default function StudentWorkspaceBody({
         showCorrectAnswer
       />
     )
+
+  if (isActivity) {
+    const definition = getTaskActivity(task)
+    const shownState = answerEditing ? readActivityAnswer(task, editableAnswer) : activityState
+    activityEditRef.current = shownState
+    return (
+      <ActivityView
+        task={task}
+        state={shownState}
+        teacher
+        readOnly={!answerEditing}
+        lessonType={lesson?.type}
+        onChange={(update) => {
+          if (!definition) return
+          const prev = activityEditRef.current
+          const next = typeof update === 'function' ? update(prev) : update
+          if (next == null || next === prev) return
+          activityEditRef.current = next
+          const serialized = definition.serialize(next)
+          pushEditableAnswer(serialized)
+          // Only a finished (passing) edit is marked on the student's screen; a partial edit
+          // just updates their state, like dragging one quiz tile.
+          const passed = definition.isGraded(task) && definition.grade(task, next).passed
+          onEditAnswer?.({ answer: serialized, passed: passed ? true : null })
+        }}
+      />
+    )
+  }
 
   if (isCodeArrangeTask) {
     // currentCodeArrangeSlots mirrors every tile placement live (see

@@ -25,7 +25,9 @@ export function isComposedLesson(lesson) {
 }
 
 export function isCodeTask(task) {
-  return task?.taskType !== 'information' && task?.taskType !== 'quiz' && !isHostedActivityTask(task)
+  return (
+    task?.taskType !== 'information' && task?.taskType !== 'quiz' && !isHostedActivityTask(task)
+  )
 }
 
 export function getLessonModules(lesson) {
@@ -150,7 +152,8 @@ export function validateComposedStructure(lesson) {
   if (!isComposedLesson(lesson)) return []
   const errors = []
   for (const task of flattenTasks(lesson.tasks ?? [])) {
-    if (task?.taskType === 'information' || task?.taskType === 'quiz') continue
+    // Information, quiz and activity tasks have no workspace module to select.
+    if (!isCodeTask(task)) continue
     const type = getTaskModuleType(lesson, task)
     if (!type)
       errors.push(

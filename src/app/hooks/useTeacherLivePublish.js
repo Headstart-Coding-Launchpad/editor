@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { flattenTasks } from '../../shared/taskUtils'
+import { findTaskById, flattenTasks } from '../../shared/taskUtils'
+import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
 import { getEffectiveLessonForTask, getTaskModuleType } from '../../shared/composedLesson'
@@ -67,7 +68,10 @@ export function useTeacherLivePublish({
     const s = sessionRef.current
     if (!s?.teacherLive?.active) return false
     if (teacherPresentation) return s?.teacherLive?.source !== 'student'
-    return s.teacherLive.sourceStudentId === identityRef.current?.anonymousId
+    if (s.teacherLive.sourceStudentId !== identityRef.current?.anonymousId) return false
+    // Quiz and activity tasks are teacher-only broadcasts: a student's answers are never
+    // pushed to the class, even if a broadcast of their earlier code task is still running.
+    return allowsStudentBroadcast(findTaskById(lessonRef.current?.tasks, currentTaskIdRef.current))
   }
 
   function currentTeacherLivePayload(extra = {}) {

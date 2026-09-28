@@ -4,7 +4,12 @@ import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
-import { flattenTasks, filterTasksByMode, getStarterStage } from '../../shared/taskUtils'
+import {
+  findTaskById,
+  flattenTasks,
+  filterTasksByMode,
+  getStarterStage,
+} from '../../shared/taskUtils'
 import {
   applyLessonOverride,
   publishLessonTasks,
@@ -42,8 +47,14 @@ import {
   getEffectiveLessonForTask,
   getLessonModules,
   getTaskModuleId,
+  isCodeTask,
   isComposedLesson,
 } from '../../shared/composedLesson'
+import {
+  allowsStudentBroadcast,
+  getTaskActivity,
+  isHostedActivityTask,
+} from '../../activities/registry.pure.js'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
@@ -55,6 +66,8 @@ import { describeShareError } from '../sharedWorkspacePayload'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
+  // An activity that is never marked (the unknown-activity fallback) has nothing to advance.
+  if (getTaskActivity(task)?.completion === 'none') return false
   if (task.taskType === 'quiz' && task.quizType === 'confidence') return false
   if (task.taskType === 'quiz' && task.quizType === 'short_answer' && task.check == null)
     return false
@@ -220,7 +233,7 @@ export default function TeacherView({ lessonId }) {
     const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === taskId)
     if (!task) return
     const taskLesson = getEffectiveLessonForTask(lesson, task)
-    if (task.taskType === 'quiz' || task.taskType === 'information') {
+    if (task.taskType === 'quiz' || task.taskType === 'information' || isHostedActivityTask(task)) {
       setCode('')
       setFiles([])
       setScratchState(null)
@@ -377,10 +390,7 @@ export default function TeacherView({ lessonId }) {
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
     const sandboxTask = isComposedLesson(lesson)
       ? flattenTasks(lesson?.tasks ?? []).find(
-          (task) =>
-            getTaskModuleId(lesson, task) === sandboxModuleId &&
-            task.taskType !== 'information' &&
-            task.taskType !== 'quiz'
+          (task) => getTaskModuleId(lesson, task) === sandboxModuleId && isCodeTask(task)
         )
       : null
     if (sandboxTask && sandboxTask.id !== currentTaskId) {
@@ -519,6 +529,9 @@ export default function TeacherView({ lessonId }) {
   }
 
   async function handleGoLiveForAll(student) {
+    // Quiz and activity tasks only allow the teacher's own broadcast (Presentation View).
+    const liveTask = findTaskById(lesson?.tasks, session?.currentTaskId ?? currentTaskId)
+    if (!allowsStudentBroadcast(liveTask)) return
     await setActiveStudentView(student.anonymousId)
     await setTeacherLive(
       buildStudentLivePayload({
@@ -748,13 +761,17 @@ export default function TeacherView({ lessonId }) {
 
         {/* Centre — Teacher Editor */}
         <main style={{ ...s.centre, ...(centreFillsHeight ? { overflow: 'hidden' } : {}) }}>
-          {task?.explainer && !isInSandbox && task?.taskType !== 'quiz' && !isInformationTask && (
-            <ExplainerPanel
-              title={task.title}
-              content={task.explainer}
-              topicType={displayedLesson.type}
-            />
-          )}
+          {task?.explainer &&
+            !isInSandbox &&
+            task?.taskType !== 'quiz' &&
+            !isHostedActivityTask(task) &&
+            !isInformationTask && (
+              <ExplainerPanel
+                title={task.title}
+                content={task.explainer}
+                topicType={displayedLesson.type}
+              />
+            )}
 
           {isPreviewing && (
             <TeacherPreviewBanner

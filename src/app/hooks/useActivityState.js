@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { findTaskById } from '../../shared/taskUtils'
 import { getTaskActivity, isHostedActivityTask } from '../../activities/registry.pure.js'
+import { deserializeActivityState, solutionOrInitialState } from '../../activities/state.js'
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { useLatestRef } from './useLatestRef'
 
@@ -11,21 +12,8 @@ export const ACTIVITY_ANSWER_DEBOUNCE_MS = 300
 // this student (session.activeStudentView), at most this often.
 export const ACTIVITY_CONTINUOUS_THROTTLE_MS = 250
 
-// Tolerant load of a stored/serialised activity state. Definitions' deserialize is already
-// tolerant; this also guards a definition that throws.
-export function deserializeActivityState(definition, task, raw) {
-  if (!definition) return null
-  try {
-    return definition.deserialize(raw ?? '', task) ?? definition.initialState(task)
-  } catch {
-    return definition.initialState(task)
-  }
-}
-
-export function solutionOrInitialState(definition, task) {
-  return definition?.solutionState
-    ? definition.solutionState(task)
-    : (definition?.initialState(task) ?? null)
+function storageFileOf(definition) {
+  return definition?.storage?.persist ? definition.storage.filename : null
 }
 
 /**
@@ -73,11 +61,10 @@ export function useActivityState({
   const hosted = isHostedActivityTask(task)
   const definition = hosted ? getTaskActivity(task) : null
   const actorId = effectiveIdentity?.anonymousId ?? null
-  const storageFile = definition?.storage?.persist ? definition.storage.filename : null
 
   function loadState(forTask, forDefinition) {
-    if (!forDefinition) return null
-    const file = forDefinition.storage?.persist ? forDefinition.storage.filename : null
+    if (!forDefinition || !forTask) return null
+    const file = storageFileOf(forDefinition)
     const raw = file && actorId ? persistence.readSavedFile(actorId, forTask.id, file) : null
     return deserializeActivityState(forDefinition, forTask, raw)
   }
@@ -85,7 +72,10 @@ export function useActivityState({
   // Derived-from-props state: reloaded synchronously when the task (or student) changes so the
   // first render of a new activity task already shows its saved state.
   const key = hosted ? `${actorId ?? ''}:${currentTaskId}:${definition?.id}` : null
-  const [entry, setEntry] = useState(() => ({ key, state: hosted ? loadState(task, definition) : null }))
+  const [entry, setEntry] = useState(() => ({
+    key,
+    state: hosted ? loadState(task, definition) : null,
+  }))
   let current = entry
   if (entry.key !== key) {
     current = { key, state: hosted ? loadState(task, definition) : null }
@@ -95,6 +85,7 @@ export function useActivityState({
   const stateRef = useRef(state)
   stateRef.current = state
 
+  const keyRef = useLatestRef(key)
   const taskRef = useLatestRef(task)
   const definitionRef = useLatestRef(definition)
   const phaseRef = useLatestRef(phase)
@@ -103,7 +94,19 @@ export function useActivityState({
   const actorIdRef = useLatestRef(actorId)
   const identityIdRef = useLatestRef(identity?.anonymousId ?? null)
   const debounceRef = useRef(null)
-  const latestSerializedRef = useRef(null)
+  const persistenceRef = useLatestRef(persistence)
+  const callbacksRef = useLatestRef({
+    writeStudentAnswer,
+    writeStudentRun,
+    logAttempt,
+    clearTeacherAnswerEdit,
+    applyCheckFeedback,
+    resetCheckFeedback,
+    setRunStatus,
+    canPublishTeacherLive,
+    publishTeacherLive,
+    onTeacherAnswerApplied,
+  })
 
   const writesToSession = () =>
     !teacherPresentation && phaseRef.current === 'lesson' && !!actorIdRef.current
@@ -111,6 +114,11 @@ export function useActivityState({
     !teacherPresentation &&
     !!identityIdRef.current &&
     sessionRef.current?.activeStudentView === identityIdRef.current
+  const serializeCurrent = () => definitionRef.current?.serialize(stateRef.current) ?? null
+  const writeAnswer = (serialized) => {
+    if (serialized == null || !writesToSession()) return
+    callbacksRef.current.writeStudentAnswer?.(actorIdRef.current, serialized)
+  }
 
   // Created once; each write re-checks the watch at write time so a trailing throttled write
   // can never land after the teacher stopped watching.
@@ -120,20 +128,25 @@ export function useActivityState({
       continuous: createThrottledMirrorWriter({
         intervalMs: ACTIVITY_CONTINUOUS_THROTTLE_MS,
         write: (serialized) => {
-          if (isWatchedNow() && writesToSession()) {
-            writersRef.current.write(actorIdRef.current, serialized)
-          }
+          if (isWatchedNow()) writeAnswer(serialized)
         },
       }),
       teacherLive: createThrottledMirrorWriter({
         intervalMs: ACTIVITY_CONTINUOUS_THROTTLE_MS,
-        write: (serialized) => writersRef.current.publish(serialized),
+        write: (serialized) => {
+          const cb = callbacksRef.current
+          if (teacherPresentation && cb.canPublishTeacherLive?.()) {
+            cb.publishTeacherLive({ answer: serialized })
+          }
+        },
       }),
     }
   }
-  writersRef.current.write = (id, serialized) => writeStudentAnswer?.(id, serialized)
-  writersRef.current.publish = (serialized) => {
-    if (teacherPresentation && canPublishTeacherLive()) publishTeacherLive({ answer: serialized })
+
+  function cancelPendingWrites() {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = null
+    writersRef.current.continuous.cancel()
   }
 
   // Leaving the task drops any pending mirror write: currentAnswer is per current task, so a
@@ -144,7 +157,6 @@ export function useActivityState({
       debounceRef.current = null
       writersRef.current?.continuous.cancel()
       writersRef.current?.teacherLive.cancel()
-      latestSerializedRef.current = null
     },
     [key]
   )
@@ -160,43 +172,42 @@ export function useActivityState({
 
   function commit(next) {
     stateRef.current = next
-    setEntry((prev) => (prev.key === key ? { key, state: next } : prev))
-    const file = definitionRef.current?.storage?.persist
-      ? definitionRef.current.storage.filename
-      : null
+    const commitKey = keyRef.current
+    setEntry((prev) => (prev.key === commitKey ? { key: commitKey, state: next } : prev))
+    const def = definitionRef.current
+    const file = storageFileOf(def)
     if (file && actorIdRef.current) {
-      persistence.saveHtmlFile(
+      persistenceRef.current.saveHtmlFile(
         actorIdRef.current,
         currentTaskIdRef.current,
         file,
-        definitionRef.current.serialize(next)
+        def.serialize(next)
       )
     }
   }
 
-  function writeDiscrete(serialized) {
-    writersRef.current.continuous.cancel()
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      debounceRef.current = null
-      if (writesToSession()) writersRef.current.write(actorIdRef.current, serialized)
-    }, ACTIVITY_ANSWER_DEBOUNCE_MS)
-  }
-
-  function sync(next, kind) {
-    const def = definitionRef.current
-    const serialized = def.serialize(next)
-    latestSerializedRef.current = serialized
+  function sync(kind) {
+    const serialized = serializeCurrent()
     if (teacherPresentation) writersRef.current.teacherLive.push(serialized)
     if (!writesToSession()) return
-    if (kind === 'discrete') writeDiscrete(serialized)
-    else if (isWatchedNow()) writersRef.current.continuous.push(serialized)
+    if (kind === 'discrete') {
+      // Debounced like a quiz answer. The write sends whatever is latest when the timer fires,
+      // so a continuous change made meanwhile can never be overwritten by an older snapshot.
+      writersRef.current.continuous.cancel()
+      clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null
+        writeAnswer(serializeCurrent())
+      }, ACTIVITY_ANSWER_DEBOUNCE_MS)
+    } else if (isWatchedNow() && debounceRef.current === null) {
+      writersRef.current.continuous.push(serialized)
+    }
   }
 
   function supersedeTeacherAnswerEdit() {
-    if (!identityIdRef.current || !sessionRef.current?.students?.[identityIdRef.current]) return
-    if (!sessionRef.current.students[identityIdRef.current].teacherAnswerEdit) return
-    clearTeacherAnswerEdit?.(identityIdRef.current)
+    const id = identityIdRef.current
+    if (!id || !sessionRef.current?.students?.[id]?.teacherAnswerEdit) return
+    callbacksRef.current.clearTeacherAnswerEdit?.(id)
   }
 
   async function submit(stateArg, { fromTeacher = false } = {}) {
@@ -208,16 +219,14 @@ export function useActivityState({
     const result = graded ? def.grade(currentTask, submitted) : { passed: true, suggestion: null }
     const passed = !!result.passed
     const suggestion = passed ? '' : String(result.suggestion ?? '')
-    applyCheckFeedback(passed, suggestion)
-    setRunStatus?.('submitted')
+    const cb = callbacksRef.current
+    cb.applyCheckFeedback(passed, suggestion)
+    cb.setRunStatus?.('submitted')
     const serialized = def.serialize(submitted)
-    latestSerializedRef.current = serialized
-    clearTimeout(debounceRef.current)
-    debounceRef.current = null
-    writersRef.current.continuous.cancel()
+    cancelPendingWrites()
     writersRef.current.teacherLive.cancel()
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({
+    if (cb.canPublishTeacherLive?.()) {
+      cb.publishTeacherLive({
         answer: serialized,
         runStatus: 'submitted',
         checkPassed: passed,
@@ -228,9 +237,13 @@ export function useActivityState({
     const taskId = currentTaskIdRef.current
     if (writesToSession()) {
       const actor = actorIdRef.current
-      await writeStudentRun(actor, { answer: serialized, status: 'submitted', checkPassed: passed })
+      await cb.writeStudentRun(actor, {
+        answer: serialized,
+        status: 'submitted',
+        checkPassed: passed,
+      })
       if (graded) {
-        logAttempt(actor, taskId, {
+        cb.logAttempt(actor, taskId, {
           submission: def.buildSubmission(currentTask, submitted),
           passed,
           suggestion,
@@ -238,7 +251,7 @@ export function useActivityState({
         })
       }
     }
-    return { passed, suggestion }
+    return { passed, suggestion, itemResults: result.itemResults ?? null }
   }
 
   function handleChange(nextOrUpdater) {
@@ -250,45 +263,64 @@ export function useActivityState({
     supersedeTeacherAnswerEdit()
     commit(next)
     const kind = def.classifyChange(prev, next) === 'continuous' ? 'continuous' : 'discrete'
-    sync(next, kind)
-    if (def.completion === 'auto' && kind === 'discrete' && def.grade(taskRef.current, next).passed) {
+    sync(kind)
+    if (
+      def.completion === 'auto' &&
+      kind === 'discrete' &&
+      def.grade(taskRef.current, next).passed
+    ) {
       submit(next)
     }
   }
+
+  // Stable entry points for the activity UI: they always call the latest implementation, so an
+  // event listener bound once never works on a stale task or state.
+  const implRef = useRef(null)
+  implRef.current = { handleChange, submit }
+  const onChange = useCallback((next) => implRef.current.handleChange(next), [])
+  const onSubmit = useCallback((next) => implRef.current.submit(next), [])
 
   // The teacher opened this student's live view: publish the latest state straight away so a
   // continuous change made while unwatched is not missing from the modal.
   useEffect(() => {
     if (!hosted || !isWatchedNow() || viewingTaskId !== null) return
     if (!writesToSession()) return
-    clearTimeout(debounceRef.current)
-    debounceRef.current = null
-    writersRef.current.continuous.cancel()
-    writersRef.current.write(actorId, definition.serialize(stateRef.current))
+    cancelPendingWrites()
+    writeAnswer(serializeCurrent())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.activeStudentView])
 
   // Teacher reset from StudentModal: 'starter' -> initial setup, 'complete' -> the answer.
+  // remoteResetPushedAt is not cleared between tasks, so the value already present when this
+  // tab first sees its student record is history (an earlier task, or a reset this reload has
+  // already absorbed into the saved state) and is never re-applied.
+  const seenResetAtRef = useRef(undefined)
+  const resetPushedAt = myStudentData?.remoteResetPushedAt ?? null
   useEffect(() => {
-    if (!myStudentData?.remoteResetPushedAt || (phase !== 'lesson' && phase !== 'solo')) return
-    if (!hosted || !definition) return
+    if (!myStudentData) return
+    if (seenResetAtRef.current === undefined) {
+      seenResetAtRef.current = resetPushedAt
+      return
+    }
+    if (!resetPushedAt || resetPushedAt === seenResetAtRef.current) return
+    if (phase !== 'lesson' && phase !== 'solo') return
+    const def = definitionRef.current
+    const currentTask = taskRef.current
+    if (!hosted || !def || !currentTask) return
     const action = myStudentData.remoteResetAction
     if (action !== 'starter' && action !== 'complete') return
+    seenResetAtRef.current = resetPushedAt
     const next =
       action === 'complete'
-        ? solutionOrInitialState(definition, task)
-        : definition.initialState(task)
+        ? solutionOrInitialState(def, currentTask)
+        : def.initialState(currentTask)
     commit(next)
-    resetCheckFeedback()
-    setRunStatus?.(null)
-    const serialized = definition.serialize(next)
-    latestSerializedRef.current = serialized
-    clearTimeout(debounceRef.current)
-    debounceRef.current = null
-    writersRef.current.continuous.cancel()
-    if (writesToSession()) writersRef.current.write(actorId, serialized)
+    callbacksRef.current.resetCheckFeedback()
+    callbacksRef.current.setRunStatus?.(null)
+    cancelPendingWrites()
+    writeAnswer(def.serialize(next))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myStudentData?.remoteResetPushedAt])
+  }, [resetPushedAt, !!myStudentData])
 
   // Teacher "Edit answers" from StudentModal: replace the state and mark it like a quiz edit.
   const appliedTeacherEditAtRef = useRef(null)
@@ -303,9 +335,9 @@ export function useActivityState({
     teacherAssistedTaskIdsRef?.current?.add(currentTaskId)
     const next = deserializeActivityState(definition, task, edit.answer)
     commit(next)
-    latestSerializedRef.current = definition.serialize(next)
+    // pushTeacherAnswerEdit already wrote currentAnswer; only a marked edit reports a result.
     if (typeof edit.passed === 'boolean') submit(next, { fromTeacher: true })
-    onTeacherAnswerApplied?.(edit.at)
+    callbacksRef.current.onTeacherAnswerApplied?.(edit.at)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherAnswerEdit?.at, key, phase])
 
@@ -313,9 +345,8 @@ export function useActivityState({
     task: hosted ? task : null,
     definition,
     state,
-    storageFile,
-    handleChange,
-    submit,
+    onChange,
+    onSubmit,
     // Saved state of any activity task (read-only review of an earlier task).
     readSavedState: (otherTask) =>
       isHostedActivityTask(otherTask) ? loadState(otherTask, getTaskActivity(otherTask)) : null,

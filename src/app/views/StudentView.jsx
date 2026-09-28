@@ -22,6 +22,7 @@ import {
 } from '../../shared/taskUtils'
 import { PLAYGROUND_LESSON_TYPES, getTaskModuleType, isCodeTask } from '../../shared/composedLesson'
 import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
+import { isHostedActivityTask } from '../../activities/registry.pure.js'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
@@ -430,6 +431,7 @@ export default function StudentView({
     !!explainerPseudoCandidateTask?.explainer &&
     explainerPseudoCandidateTask?.taskType !== 'quiz' &&
     explainerPseudoCandidateTask?.taskType !== 'information' &&
+    !isHostedActivityTask(explainerPseudoCandidateTask) &&
     viewingTaskId === null &&
     localVisiblePanes != null &&
     !localVisiblePanes.includes('instructions')
@@ -723,6 +725,7 @@ export default function StudentView({
     displayCheckAttempted,
     displayCheckSuggestion,
     displaySelection,
+    displayAnswer,
     displayOutputCollapsed,
     isLiveCopyBlocked,
   } = deriveStudentLiveDisplay({
@@ -855,6 +858,9 @@ export default function StudentView({
     isQuizTask && (task?.quizType === 'match' || task?.quizType === 'fill_blank')
   const isInformationTask = task?.taskType === 'information'
   const isCodeArrangeTask = task?.taskType === 'code_arrange'
+  // Hosted activities (taskType 'activity') are not code tasks: no Run, personal sandbox,
+  // share or carry. ActivityHost renders them (see LessonTaskContent).
+  const isActivityTask = isHostedActivityTask(task)
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
   // Also present (bypassing the debounce) whenever the slide is actually being viewed —
   // e.g. just after an arrival auto-opened it, before the debounce has had time to settle —
@@ -969,6 +975,7 @@ export default function StudentView({
     (phase === 'lesson' || isSolo) &&
     hasPersonalSandbox &&
     !isQuizTask &&
+    !isActivityTask &&
     displayCheckPassed &&
     !cs.inPersonalSandbox &&
     !isForcedTeacherLive
@@ -1389,6 +1396,8 @@ export default function StudentView({
             isQuizTask={isQuizTask}
             isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
             isInformationTask={isInformationTask}
+            isActivityTask={isActivityTask}
+            displayAnswer={displayAnswer}
             isViewingExplainerSlide={viewingExplainerSlide}
             isViewingCompletionScreen={viewingCompletionScreen}
             onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
