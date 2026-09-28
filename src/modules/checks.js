@@ -6,6 +6,7 @@ import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics
 import { CHECKS as ELECTRONICS_CHECKS } from './electronics/checks.js'
 import { CHECKS as TURTLE_CHECKS, TURTLE_CHECK_TYPES } from './turtle/checks.js'
 import { CHECKS as DESKTOP_CHECKS, DESKTOP_CHECK_TYPES } from './desktop/checks.js'
+import { CHECKS as INPUT_CHECKS, INPUT_CHECK_TYPES } from '../shared/input/checks.js'
 import {
   normalizeOutput,
   normalizeExactOutput,
@@ -283,6 +284,8 @@ export const checkRegistry = createCheckRegistry([
   ...HTML_CHECKS,
   ...ELECTRONICS_CHECKS,
   ...TURTLE_CHECKS,
+  // Owner 'input': "how was it done" checks against ctx.input (src/shared/input/checks.js).
+  ...INPUT_CHECKS,
 ])
 
 // The registered definition for a check type or alias (null when unknown).
@@ -299,6 +302,7 @@ export const CHECK_TYPES = {
   ELECTRONICS: ELECTRONICS_CHECK_TYPES,
   TURTLE: TURTLE_CHECK_TYPES,
   DESKTOP: DESKTOP_CHECK_TYPES,
+  INPUT: INPUT_CHECK_TYPES,
 }
 
 export function checkRequiresRun(check) {

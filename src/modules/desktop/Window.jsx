@@ -99,6 +99,8 @@ export default function Window({
     <div
       role="dialog"
       aria-label={title}
+      data-input-id={`window:${win.id}`}
+      data-input-kind="window"
       style={{
         ...style,
         display: 'flex',

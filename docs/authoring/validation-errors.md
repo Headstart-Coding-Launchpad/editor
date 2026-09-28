@@ -231,6 +231,17 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a turtle … but no check value` | A heading/count/length check has no `value`. | Add `value:`. |
 | `Task … has a turtle command … with no valid command (one of: …)` | `turtle_command_used` names an unknown command. | Use one of the listed names, e.g. `forward`, `turn`, `circle`. |
 | `Task … has a turtle colour … but no colour` | `turtle_color_used` has no `color`. | Add the colour exactly as students will write it. |
+| `Task … has an … …, but … tasks don't record input — input checks work in Desktop tasks` | An `input_gesture`, `input_shortcut` or `input_modifier` check is on a task whose module doesn't record how the student works (only Desktop does). | Move the check to a Desktop task, or check the outcome instead. |
+| `Task … has an … … whose min is not a positive whole number` | An input check's `min` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove `min` (it defaults to 1). |
+| `Task … has an input_gesture … with gesture "…" — use one of: …` | `gesture` is missing or unknown. | Use `click`, `double_click`, `right_click`, `drag`, `scroll` or `hover` (see `desktop.md`). |
+| `Task … has an input_gesture … with … "…" — use one of: …` | `targetKind` or `dropTargetKind` isn't a Desktop target kind. | Use `file`, `folder`, `window` or `icon`, or remove the field to match anything. |
+| `Task … has an input_gesture … with a dropTargetKind but its gesture is not drag` | Only drags have a drop target. | Set `gesture: drag`, or remove `dropTargetKind`. |
+| `Task … has an input_shortcut … but no combo (e.g. ctrl+c)` | `input_shortcut` has no `combo`. | Add `combo: ctrl+c` (`ctrl` and `cmd` both mean Ctrl on Windows/ChromeOS and Cmd on a Mac). |
+| `Task … has an input_shortcut … for "…", which the browser keeps for itself — students can't perform it in a lesson (teach it with a quiz instead)` | The combo is one the browser or OS never passes to a web page (e.g. `ctrl+w`, `ctrl+t`, `ctrl+n`, `alt+f4`, `alt+tab`). | Teach that shortcut with a quiz task, and check a different one here. |
+| `Task … has an input_shortcut … for "…" — a shortcut needs ctrl/cmd or alt (or is F1–F12 or Delete)` | The combo is ordinary typing (e.g. `shift+a`, `enter`). | Add `ctrl`/`alt`, or use `input_modifier` for Shift capitals. |
+| `Task … has an input_shortcut … with via "…" — use one of: …` | Unknown `via`. | Use `keyboard` (default), `menu` or `any`. |
+| `Task … has an input_modifier … with modifier "…" — use one of: …` | `modifier` is missing or unknown. | Use `shift` or `caps_lock`. |
+| `Task … has an input_modifier … that requires Caps Lock and forbids it (notCapsLock)` | `notCapsLock: true` only makes sense with `modifier: shift`. | Remove `notCapsLock`, or use `modifier: shift`. |
 
 See the module docs for each check's required fields.
 

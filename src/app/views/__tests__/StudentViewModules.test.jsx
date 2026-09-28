@@ -681,4 +681,64 @@ describe('StudentView module click-through', () => {
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expectNoErrors()
   })
+
+  it('desktop input_gesture: the folder must be opened by double-clicking, not a single click', async () => {
+    const { session } = renderLesson({
+      id: 'desktop-input',
+      title: 'Desktop input',
+      type: 'desktop',
+      tasks: [
+        {
+          id: 1,
+          title: 'Open Homework',
+          availableApps: ['fileManager'],
+          starterDesktop: {
+            fs: { '/': { type: 'dir' }, '/Homework/': { type: 'dir' } },
+            recycleBin: [],
+            windows: [
+              {
+                id: 'fileManager-1',
+                appId: 'fileManager',
+                x: 0,
+                y: 0,
+                width: 600,
+                height: 400,
+                minimized: false,
+                maximized: false,
+                zIndex: 1,
+              },
+            ],
+          },
+          check: [
+            { type: 'fs_opened', operator: 'is_open', itemType: 'dir', path: '/Homework/' },
+            { type: 'input_gesture', gesture: 'double_click', targetKind: 'folder' },
+          ],
+        },
+      ],
+    })
+    const folderInTree = async () =>
+      (await screen.findAllByText('Homework'))[0].closest('[data-input-id]')
+    // A single click on the folder tree opens the folder: right outcome, wrong method.
+    fireEvent.click(await folderInTree())
+    await waitFor(() =>
+      expect(session.writeStudentRun).toHaveBeenLastCalledWith(
+        'student-1',
+        expect.objectContaining({ checkPassed: false })
+      )
+    )
+    fireEvent.click(screen.getAllByText('/ (root)')[0])
+    const folderInGrid = (await screen.findAllByText('Homework'))
+      .map((el) => el.closest('[data-input-id]'))
+      .find((el) => el.getAttribute('draggable') === 'true')
+    fireEvent.doubleClick(folderInGrid)
+    await waitFor(() =>
+      expect(session.writeStudentRun).toHaveBeenLastCalledWith(
+        'student-1',
+        expect.objectContaining({ status: 'success', checkPassed: true })
+      )
+    )
+    // The input summary is an interaction detail: it never reaches the saved desktop.
+    expect(session.writeStudentRun.mock.lastCall[1].code).not.toContain('double_click')
+    expectNoErrors()
+  })
 })

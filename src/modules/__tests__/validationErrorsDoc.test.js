@@ -36,6 +36,7 @@ const VALIDATOR_FILES = [
   ...MODULE_DEFINITION_FILES,
   ...ACTIVITY_DEFINITION_FILES,
   'src/shared/checkAuthoringValidation.js',
+  'src/shared/input/checks.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
   'src/shared/topicAudit.js',

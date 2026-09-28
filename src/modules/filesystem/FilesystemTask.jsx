@@ -85,6 +85,8 @@ function FolderTreeNode({ fs, path, currentDir, onNavigate, onDrop, onContextMen
           userSelect: 'none',
           outline: dragOver ? '2px dashed var(--colour-primary)' : 'none',
         }}
+        data-input-id={path}
+        data-input-kind="folder"
         onClick={() => onNavigate(path)}
         onContextMenu={onContextMenu ? (e) => onContextMenu(e, path) : undefined}
         onDragOver={handleDragOver}
@@ -294,6 +296,8 @@ function FileGrid({
         return (
           <div
             key={path}
+            data-input-id={path}
+            data-input-kind={isDirectory ? 'folder' : 'file'}
             draggable
             onDragStart={(e) => handleDragStart(e, path)}
             onDragOver={isDirectory ? (e) => handleDirDragOver(e, path) : undefined}
@@ -516,6 +520,10 @@ export default function FilesystemTask({
   onDeletePath,
   extraToolbarItems = null,
   onOpenFile,
+  // Optional: told when a clipboard action runs from a menu or toolbar button (never from its
+  // keyboard shortcut), e.g. onCommand('copy', 'menu') — the Desktop records it as the
+  // shortcut's menu equivalent for input_shortcut checks.
+  onCommand,
 }) {
   const [currentDir, setCurrentDir] = useState(initialDir)
   const [selected, setSelected] = useState(null)
@@ -634,16 +642,19 @@ export default function FilesystemTask({
     handleDeletePath(selected)
   }
 
-  function handleCopy(path) {
+  function handleCopy(path, via = 'menu') {
+    if (via !== 'keyboard') onCommand?.('copy', via)
     setClipboard({ path, mode: 'copy' })
   }
 
-  function handleCut(path) {
+  function handleCut(path, via = 'menu') {
+    if (via !== 'keyboard') onCommand?.('cut', via)
     setClipboard({ path, mode: 'cut' })
   }
 
-  function handlePaste() {
+  function handlePaste(via = 'menu') {
     if (!clipboard) return
+    if (via !== 'keyboard') onCommand?.('paste', via)
     const { path: srcPath, mode } = clipboard
     const failureMessage = `"${entryName(srcPath)}" already exists here.`
     if (mode === 'copy') {
@@ -671,7 +682,7 @@ export default function FilesystemTask({
       ]
       if (clipboard) {
         items.push(null)
-        items.push({ label: '📋 Paste', onClick: handlePaste })
+        items.push({ label: '📋 Paste', onClick: () => handlePaste() })
       }
       return items
     }
@@ -695,7 +706,7 @@ export default function FilesystemTask({
       ]
       if (clipboard) {
         items.push(null)
-        items.push({ label: '📋 Paste', onClick: handlePaste })
+        items.push({ label: '📋 Paste', onClick: () => handlePaste() })
       }
       if (!isRoot) {
         items.push(null)
@@ -713,7 +724,7 @@ export default function FilesystemTask({
       { label: '✂️ Cut', onClick: () => handleCut(targetPath) },
     ]
     if (clipboard) {
-      items.push({ label: '📋 Paste', onClick: handlePaste })
+      items.push({ label: '📋 Paste', onClick: () => handlePaste() })
     }
     items.push(null)
     items.push({ label: '✏️ Rename', onClick: () => setRenamingPath(targetPath) })
@@ -792,15 +803,15 @@ export default function FilesystemTask({
     }
     if (e.ctrlKey && e.key === 'c' && selected && !renamingPath) {
       e.preventDefault()
-      handleCopy(selected)
+      handleCopy(selected, 'keyboard')
     }
     if (e.ctrlKey && e.key === 'x' && selected && !renamingPath) {
       e.preventDefault()
-      handleCut(selected)
+      handleCut(selected, 'keyboard')
     }
     if (e.ctrlKey && e.key === 'v' && clipboard && !renamingPath) {
       e.preventDefault()
-      handlePaste()
+      handlePaste('keyboard')
     }
   }
 
@@ -909,7 +920,7 @@ export default function FilesystemTask({
               className="btn-ghost-outline"
               style={{ fontSize: '0.78rem', padding: '3px 10px' }}
               disabled={!clipboard}
-              onClick={handlePaste}
+              onClick={() => handlePaste()}
             >
               📋 Paste{clipboard ? (clipboard.mode === 'cut' ? ' (move)' : ' (copy)') : ''}
             </button>

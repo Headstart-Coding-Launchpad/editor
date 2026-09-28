@@ -1,6 +1,8 @@
 // Recognise mouse and touch gestures from normalised pointer events (see events.js). Native
 // click/dblclick/contextmenu events are trusted where the browser provides them; drags,
-// long-presses, hovers and scrolls are recognised from pointer timing and movement.
+// long-presses, hovers and scrolls are recognised from pointer timing and movement. HTML5
+// drag-and-drop (dragstart → drop/dragend, which cancels the pointer stream) is a drag too.
+// Gestures carry the target's semantic kind (data-input-kind) when the element declares one.
 // Pure: works on plain event objects.
 
 export const GESTURES = [
@@ -46,10 +48,21 @@ export function recognizeGestures(events, options = {}) {
   const gestures = []
   let down = null
   let suppressClickUntil = -Infinity
+  let nativeDrag = null
   const hoverStart = new Map()
 
   const emit = (gesture, event, extra = {}) =>
-    gestures.push({ gesture, targetId: event.targetId ?? null, at: event.t, ...extra })
+    gestures.push({
+      gesture,
+      targetId: event.targetId ?? null,
+      ...(event.targetKind ? { targetKind: event.targetKind } : {}),
+      at: event.t,
+      ...extra,
+    })
+  const dropTarget = (event) => ({
+    toTargetId: event?.targetId ?? null,
+    ...(event?.targetKind ? { toTargetKind: event.targetKind } : {}),
+  })
 
   for (const event of events) {
     switch (event.kind) {
@@ -66,7 +79,7 @@ export function recognizeGestures(events, options = {}) {
       case 'pointerup':
         if (down) {
           if (down.dragging) {
-            emit('drag', down, { toTargetId: event.targetId ?? null, at: event.t })
+            emit('drag', down, { ...dropTarget(event), at: event.t })
             // Browsers can fire a click after a drag that starts and ends on one element.
             suppressClickUntil = event.t + 50
           } else if (
@@ -80,6 +93,29 @@ export function recognizeGestures(events, options = {}) {
           }
         }
         down = null
+        break
+      case 'pointercancel':
+        down = null
+        break
+      case 'dragstart':
+        // The browser takes over the pointer (pointercancel follows); the source is where the
+        // press started, or the dragstart target when the press wasn't recorded.
+        nativeDrag = down ?? event
+        down = null
+        break
+      case 'drop':
+        if (nativeDrag) {
+          emit('drag', nativeDrag, { ...dropTarget(event), at: event.t })
+          nativeDrag = null
+          suppressClickUntil = event.t + 50
+        }
+        break
+      case 'dragend':
+        // Dropped outside any drop zone (a drop inside one was already counted).
+        if (nativeDrag) {
+          emit('drag', nativeDrag, { ...dropTarget(null), at: event.t })
+          nativeDrag = null
+        }
         break
       case 'click':
         if (event.t > suppressClickUntil) emit(isTouch(event) ? 'tap' : 'click', event)
