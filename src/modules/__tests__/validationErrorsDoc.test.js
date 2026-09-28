@@ -15,6 +15,18 @@ const MODULE_DEFINITION_FILES = readdirSync(resolve(process.cwd(), 'src/modules'
   .map((entry) => `src/modules/${entry.name}/definition.js`)
   .filter((file) => existsSync(resolve(process.cwd(), file)))
 
+// Each activity's pure files (definition.js and its logic module, e.g. binary/binary.js) hold
+// its validateTask messages. UI files (.jsx) are skipped.
+const ACTIVITY_DEFINITION_FILES = readdirSync(resolve(process.cwd(), 'src/activities'), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_') && entry.name !== 'ui')
+  .flatMap((entry) =>
+    readdirSync(resolve(process.cwd(), 'src/activities', entry.name), { withFileTypes: true })
+      .filter((file) => file.isFile() && file.name.endsWith('.js'))
+      .map((file) => `src/activities/${entry.name}/${file.name}`)
+  )
+
 const VALIDATOR_FILES = [
   'cli/validate.mjs',
   'src/builder/lessonUtils.js',
@@ -22,6 +34,7 @@ const VALIDATOR_FILES = [
   'src/modules/moduleTaskValidation.js',
   'src/activities/legacyValidation.js',
   ...MODULE_DEFINITION_FILES,
+  ...ACTIVITY_DEFINITION_FILES,
   'src/shared/checkAuthoringValidation.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
@@ -50,6 +63,14 @@ describe('validation errors doc', () => {
 
   it('finds the validator messages it is meant to check', () => {
     expect(validatorMessages().length).toBeGreaterThan(80)
+    expect(ACTIVITY_DEFINITION_FILES).toEqual(
+      expect.arrayContaining([
+        'src/activities/binary/binary.js',
+        'src/activities/keyboard/keyboard.js',
+        'src/activities/mouse/mouse.js',
+        'src/activities/unknown/definition.js',
+      ])
+    )
   })
 
   it.each(validatorMessages())('documents "%s"', (message) => {

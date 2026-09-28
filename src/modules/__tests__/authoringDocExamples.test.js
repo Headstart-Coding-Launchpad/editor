@@ -10,10 +10,23 @@ import { validateLessonForMcp } from '../../../cli/validate.mjs'
 // deliberate skeleton (e.g. an envelope with `tasks: []`).
 
 const DOCS_DIR = resolve(process.cwd(), 'docs/authoring')
+// Per-activity pages live one level down. (authoring-requests/ is skipped on purpose: request
+// files show the YAML an agent wishes it could write, which may not validate yet.)
+const DOC_SUBDIRS = ['activities']
+
+function docFiles() {
+  const top = readdirSync(DOCS_DIR).filter((name) => name.endsWith('.md'))
+  const nested = DOC_SUBDIRS.flatMap((dir) =>
+    readdirSync(resolve(DOCS_DIR, dir))
+      .filter((name) => name.endsWith('.md'))
+      .map((name) => `${dir}/${name}`)
+  )
+  return [...top, ...nested]
+}
 
 function lessonExamples() {
   const examples = []
-  for (const file of readdirSync(DOCS_DIR).filter((name) => name.endsWith('.md'))) {
+  for (const file of docFiles()) {
     const text = readFileSync(resolve(DOCS_DIR, file), 'utf8').replace(/\r\n/g, '\n')
     const pattern = /(<!--\s*example:template\s*-->\n)?```(yaml|json)\n([\s\S]*?)```/g
     let match
@@ -37,6 +50,10 @@ describe('authoring doc lesson examples', () => {
 
   it('finds the complete lesson examples', () => {
     expect(examples.length).toBeGreaterThanOrEqual(10)
+    for (const activity of ['binary', 'keyboard', 'mouse']) {
+      const page = `activities/${activity}.md:`
+      expect(examples.some((example) => example.name.startsWith(page))).toBe(true)
+    }
   })
 
   it.each(examples)('$name is a valid lesson', ({ lang, body }) => {

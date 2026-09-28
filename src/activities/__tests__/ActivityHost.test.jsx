@@ -113,7 +113,10 @@ describe('ActivityHost', () => {
   it('offers the on-screen keyboard on a touch-only device, with an "I have a keyboard" override', () => {
     useTouchOnlyDevice()
     render(
-      <ActivityHost task={KEYBOARD} activity={activityFor(KEYBOARD, keyboard.initialState(KEYBOARD))} />
+      <ActivityHost
+        task={KEYBOARD}
+        activity={activityFor(KEYBOARD, keyboard.initialState(KEYBOARD))}
+      />
     )
     expect(screen.getByTestId('activity-virtual-keyboard')).toBeInTheDocument()
     expect(screen.getByTestId('on-screen-keyboard')).toBeInTheDocument()
@@ -125,14 +128,21 @@ describe('ActivityHost', () => {
   it('explains touch equivalents when a mouse activity runs without a fine pointer', () => {
     useTouchOnlyDevice()
     const task = { ...MOUSE, ...getActivityUi('mouse').defaultTask({ id: 4, title: 'Mouse' }) }
-    render(<ActivityHost task={task} activity={activityFor(task, getActivityUi('mouse').initialState(task))} />)
+    render(
+      <ActivityHost
+        task={task}
+        activity={activityFor(task, getActivityUi('mouse').initialState(task))}
+      />
+    )
     expect(screen.getByTestId('activity-touch')).toBeInTheDocument()
     expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Tap the star')
   })
 
   it('shows no device notices on read-only views', () => {
     useTouchOnlyDevice()
-    render(<ActivityView task={KEYBOARD} state={keyboard.initialState(KEYBOARD)} readOnly teacher />)
+    render(
+      <ActivityView task={KEYBOARD} state={keyboard.initialState(KEYBOARD)} readOnly teacher />
+    )
     expect(screen.queryByTestId('activity-virtual-keyboard')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
   })

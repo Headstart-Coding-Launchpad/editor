@@ -645,4 +645,40 @@ describe('StudentView module click-through', () => {
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expectNoErrors()
   })
+  it('composed lesson: a binary activity between two python tasks renders and marks', async () => {
+    const lesson = {
+      id: 'composed-activity',
+      title: 'Composed activity',
+      type: 'composed',
+      tasks: [
+        { id: 1, title: 'Say hi', moduleType: 'python', starterCode: 'print("hi")' },
+        {
+          id: 2,
+          title: 'Make 1',
+          taskType: 'activity',
+          activityType: 'binary',
+          mode: 'make_number',
+          bits: 2,
+          items: [{ id: 'a', target: 1 }],
+        },
+        { id: 3, title: 'Say bye', moduleType: 'python', starterCode: 'print("bye")' },
+      ],
+    }
+    const { user, view } = renderLesson(lesson, { currentTaskId: 2 })
+    await user.click(await screen.findByRole('switch', { name: 'Bits 1 column' }))
+    expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Check answers' }))
+    await waitFor(() =>
+      expect(mocks.session.writeStudentRun).toHaveBeenCalledWith(
+        'student-1',
+        expect.objectContaining({ status: 'submitted', checkPassed: true })
+      )
+    )
+
+    mocks.session = makeSession(lesson.id, 3)
+    view.rerender(<StudentView lessonId={lesson.id} lesson={lesson} />)
+    expect(await screen.findByRole('button', { name: 'Run' })).toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expectNoErrors()
+  })
 })

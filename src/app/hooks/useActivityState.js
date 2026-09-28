@@ -161,6 +161,16 @@ export function useActivityState({
     [key]
   )
 
+  // Presentation View arriving on an activity task while broadcasting: publish this task's
+  // state straight away, so viewers never see the previous task's answer (or nothing) until
+  // the teacher's first change.
+  useEffect(() => {
+    if (!hosted || !teacherPresentation) return
+    const cb = callbacksRef.current
+    if (cb.canPublishTeacherLive?.()) cb.publishTeacherLive({ answer: serializeCurrent() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, session?.teacherLive?.active])
+
   // The teacher-live payload (Go Live start and every tracked publish) carries the activity
   // state as `answer` while this tab is on an activity task.
   if (livePayloadRef) {

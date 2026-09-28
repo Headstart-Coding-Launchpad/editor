@@ -31,9 +31,11 @@ function renderMouse(task, options = {}) {
 
 const target = (name) => screen.getByRole('button', { name })
 const originalElementFromPoint = document.elementFromPoint
+const originalElementsFromPoint = document.elementsFromPoint
 
 afterEach(() => {
   document.elementFromPoint = originalElementFromPoint
+  document.elementsFromPoint = originalElementsFromPoint
 })
 
 describe('Mouse UI', () => {
@@ -79,10 +81,46 @@ describe('Mouse UI', () => {
     const { state } = renderMouse(task)
     const box = target('box')
     document.elementFromPoint = () => box
-    fireEvent.pointerDown(target('star'), { pointerId: 1, pointerType: 'mouse', clientX: 10, clientY: 10 })
-    fireEvent.pointerMove(target('star'), { pointerId: 1, pointerType: 'mouse', clientX: 60, clientY: 12 })
-    fireEvent.pointerUp(target('star'), { pointerId: 1, pointerType: 'mouse', clientX: 200, clientY: 12 })
+    fireEvent.pointerDown(target('star'), {
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX: 10,
+      clientY: 10,
+    })
+    fireEvent.pointerMove(target('star'), {
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX: 60,
+      clientY: 12,
+    })
+    fireEvent.pointerUp(target('star'), {
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX: 200,
+      clientY: 12,
+    })
     expect(state().items.a).toEqual({ via: 'drag' })
+  })
+
+  it('finds the drop target under the dragged target (touch drag)', () => {
+    const task = taskWith([{ id: 'a', action: 'drag', target: 'star', to: 'box' }])
+    const { state } = renderMouse(task, { device: { touch: true } })
+    const star = target('star')
+    const box = target('box')
+    // The dragged target is on top at the drop point; the drop target is the one beneath it.
+    document.elementsFromPoint = () => [star.firstChild, star, box, document.body]
+    const touch = { pointerId: 3, pointerType: 'touch' }
+    fireEvent.pointerDown(star, { ...touch, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(star, { ...touch, clientX: 80, clientY: 10 })
+    fireEvent.pointerUp(star, { ...touch, clientX: 200, clientY: 10 })
+    expect(state().items.a.via).toMatch(/drag/)
+    expect(mouse.grade(task, state()).passed).toBe(true)
+  })
+
+  it('records a touch-only device in the state as soon as it opens', () => {
+    const task = taskWith([{ id: 'a', action: 'click', target: 'star' }])
+    const { state } = renderMouse(task, { device: { touch: true } })
+    expect(state().device.touch).toBe(true)
   })
 
   it('does not count a keyboard activation as a click', () => {
@@ -101,8 +139,18 @@ describe('Mouse UI', () => {
     ])
     const { state } = renderMouse(task, { device: { touch: true } })
     expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Tap the star')
-    fireEvent.pointerDown(target('star'), { pointerId: 2, pointerType: 'touch', clientX: 5, clientY: 5 })
-    fireEvent.pointerUp(target('star'), { pointerId: 2, pointerType: 'touch', clientX: 5, clientY: 5 })
+    fireEvent.pointerDown(target('star'), {
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: 5,
+      clientY: 5,
+    })
+    fireEvent.pointerUp(target('star'), {
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: 5,
+      clientY: 5,
+    })
     fireEvent.click(target('star'), { detail: 1 })
     expect(state().device.touch).toBe(true)
     expect(state().items.b).toEqual({ via: 'tap' })

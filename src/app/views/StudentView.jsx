@@ -586,6 +586,8 @@ export default function StudentView({
         checkAttempted: false,
         codeArrangeSlots: null,
         codeArrangeCursor: null,
+        // An activity state belongs to one task; the new task's activity publishes its own.
+        answer: null,
       })
       return
     }

@@ -82,7 +82,11 @@ describe('StudentCard on an activity task', () => {
 
   it('says not started before any answer arrives', () => {
     render(
-      <StudentCard student={{ ...STUDENT, currentAnswer: null }} lesson={LESSON} session={SESSION} />
+      <StudentCard
+        student={{ ...STUDENT, currentAnswer: null }}
+        lesson={LESSON}
+        session={SESSION}
+      />
     )
     expect(screen.getByTestId('activity-summary')).toHaveTextContent('Not started')
   })
@@ -108,7 +112,12 @@ describe('StudentCard on an activity task', () => {
     }
     render(
       <StudentCard
-        student={{ ...STUDENT, currentAnswer: touchAnswer, lastRunStatus: 'submitted', checkPassed: false }}
+        student={{
+          ...STUDENT,
+          currentAnswer: touchAnswer,
+          lastRunStatus: 'submitted',
+          checkPassed: false,
+        }}
         lesson={lesson}
         session={SESSION}
       />

@@ -72,6 +72,17 @@ export function MouseStudentView({
   const latestRef = useRef({})
   latestRef.current = { current, state, touch }
 
+  // A touch-only device is recorded in the state as soon as the activity opens, so grading
+  // (which reads state.device) skips hover items and accepts touch gestures from the start.
+  useEffect(() => {
+    if (readOnly || !device.touch || state?.device?.touch) return
+    onChange?.((prev) => ({
+      ...(prev ?? { v: 1, items: {} }),
+      device: { ...(prev?.device ?? {}), touch: true },
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [device.touch, readOnly])
+
   useEffect(() => {
     const timers = hoverTimersRef.current
     return () => {
@@ -197,17 +208,27 @@ export function MouseStudentView({
     record(fromDom(event, { targetId: target.id }))
   }
 
-  function dropTargetAt(event) {
+  // The target under the pointer when a drag ends, skipping the dragged target itself (it sits
+  // under the cursor/finger). elementsFromPoint lists every layer, so this works for mouse and
+  // touch drags without relying on pointer-events tricks on the captured element.
+  function dropTargetAt(event, draggedId) {
+    const idOf = (element) =>
+      element?.closest?.('[data-input-id]')?.getAttribute('data-input-id') ?? null
+    if (typeof document.elementsFromPoint === 'function') {
+      for (const element of document.elementsFromPoint(event.clientX, event.clientY)) {
+        const id = idOf(element)
+        if (id && id !== draggedId) return id
+      }
+      return null
+    }
     if (typeof document.elementFromPoint !== 'function') return null
-    const element = document.elementFromPoint(event.clientX, event.clientY)
-    return element?.closest?.('[data-input-id]')?.getAttribute('data-input-id') ?? null
+    const id = idOf(document.elementFromPoint(event.clientX, event.clientY))
+    return id === draggedId ? null : id
   }
 
   function onTargetPointerUp(event, target) {
     if (!drag || drag.id !== target.id) return
-    // While dragging, the dragged target ignores the pointer (act-target--dragging), so the
-    // element under the finger/cursor is the drop target.
-    const dropId = drag.moved ? dropTargetAt(event) : target.id
+    const dropId = drag.moved ? dropTargetAt(event, target.id) : target.id
     setDrag(null)
     record(fromDom(event, { targetId: dropId }))
   }

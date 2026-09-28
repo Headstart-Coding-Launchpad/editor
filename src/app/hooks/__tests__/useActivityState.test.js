@@ -9,10 +9,7 @@ import {
   renderStudentCodeState,
   writeStored,
 } from '../../../test/studentCodeStateHarness'
-import {
-  ACTIVITY_ANSWER_DEBOUNCE_MS,
-  ACTIVITY_CONTINUOUS_THROTTLE_MS,
-} from '../useActivityState'
+import { ACTIVITY_ANSWER_DEBOUNCE_MS, ACTIVITY_CONTINUOUS_THROTTLE_MS } from '../useActivityState'
 import binary from '../../../activities/binary/definition.js'
 
 vi.mock('../../../modules/python/pyodide', async () =>
@@ -321,6 +318,23 @@ describe('useActivityState: teacher controls', () => {
       JSON.stringify(bitsState('0101'))
     )
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
+  })
+
+  it("publishes the new task's activity state when the presenting teacher moves task", () => {
+    const { writers, update } = render({
+      currentTaskId: 1,
+      teacherPresentation: true,
+      session: makeSession({ teacherLive: { active: true, source: 'teacher', taskId: 1 } }),
+    })
+    writers.updateTeacherLive.mockClear()
+    update({ currentTaskId: 3 })
+    expect(writers.updateTeacherLive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'teacher',
+        taskId: 3,
+        answer: JSON.stringify(binary.initialState(TO_DECIMAL)),
+      })
+    )
   })
 
   it('never publishes a student broadcast on an activity task', () => {
