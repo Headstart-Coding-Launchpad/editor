@@ -116,6 +116,15 @@ global.URL.revokeObjectURL = vi.fn()
 
 **Coverage target:** 70%+ branch coverage on hooks; 80%+ on components.
 
+#### `useStudentCodeState` characterization suite
+
+`src/app/hooks/__tests__/useStudentCodeState.*.test.js` (`load`, `changes`, `run`, `reset`, `sandbox`, `live`, `persistence`) pins the hook's current behaviour for all eight module types ahead of the module-registry refactor (`docs/architecture/modular-activities-plan.md`, step 0.2): exact localStorage keys and JSON records, and the exact arguments passed to the session writers (`writeStudentRun`, `writeStudentCode`, `logAttempt`, `updateTeacherLive`, …). Treat a failure there as a behaviour change to confirm, not a test to update casually.
+
+- **Harness:** `src/test/studentCodeStateHarness.js` — `renderStudentCodeState({ lesson, currentTaskId, phase, session, teacherPresentation, previewMode, … })` renders the hook with every writer as a `vi.fn` (`h.writers.*`), feeds composed lessons through `getEffectiveLessonForTask` like `StudentView`, and exposes `update` / `updateStudent` / `updateSession` for re-renders; plus storage-key helpers (`taskKey`, `fileKey`, `personalSandboxKey`), `mockModuleRun(type, script)` and `mockHtmlPreview()`.
+- **Module mocks:** `src/test/studentCodeStateMocks.js` holds dependency-free `vi.mock` factories (Pyodide, `useTypeAssets`, `useLessonStorageAssets`); each test file declares the three `vi.mock` calls itself.
+- **Fixtures:** `src/test/fixtures/studentCodeStateLessons.js` — one lesson per module type (starter / stage / complete content all distinct, a carry task) plus a composed lesson.
+- **Known bugs** are recorded with `it.fails(...)`; when a fix lands the test starts passing and Vitest fails it, so flip it to `it(...)` in the same PR.
+
 ---
 
 ### Layer 3 — E2E Tests (Playwright)
