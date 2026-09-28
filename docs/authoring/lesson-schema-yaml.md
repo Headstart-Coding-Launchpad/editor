@@ -88,9 +88,9 @@ tasks:
     priority: core              # optional — core (default) | optional; teacher-facing only
     allowSharing: true          # optional — let students share this workspace with the class (teacher approves)
     taskMode: both              # optional — both (default) | live | solo
-    intent: |                    # required, non-empty Markdown in Draft; author-only
+    intent: >-                   # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
-    taskActivity: Pair-share discussion  # optional plain text; author-only
+    taskActivity: Code Task, Complete Example  # optional plain text; author-only
     # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
     # or `type: code_arrange` (drag-and-drop runnable code — see lesson-schema.md's
     # "Code Arrange Task Fields"); omit it entirely for a normal code task.
@@ -112,7 +112,7 @@ tasks:
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
 | `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
-| `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task. Always optional, even in Draft. Never student-facing. |
+| `taskActivity` | No | string | Author-only plain-text tag. The platform treats it as free text; HSC lesson authoring uses it for the task's canonical type (e.g. `Code Task, Complete Example`, `Quiz, Multiple Choice`), per the content workspace's `guides/Task Intent Format.md`. Always optional to the platform, even in Draft. Never student-facing. |
 | `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
 | `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run, but it also doesn't block advancing to the next task — it just never shows as passed in reports. See `docs/authoring/lesson-schema.md` for the full behaviour, including the Arcade-specific caveat. |

@@ -265,6 +265,8 @@ Groups cannot be nested. Group IDs are auto-generated.
 
 Every Draft task needs a `title`, its normal real task type, and a non-empty Markdown `intent`. `intent` is author-only: LaunchPad stores it but never renders it to students. Draft permits omitted learner-facing and task-specific fields so the task can be completed in Builder; it still rejects malformed field shapes and invalid type values.
 
+Quote a task (or lesson) `title` written as a plain YAML scalar if it contains a colon followed by a space (e.g. `📋 Recap: Lists and Indexing`), or if it pairs a leading emoji with enough following text to make the line long — either can make js-yaml (used by `lessons upsert`/`validate` and `list-lesson-tasks.mjs`) throw `YAMLException: bad indentation of a mapping entry`, with the error pointing at a different line than the actual offending title. Quoting the title (`title: "📋 Recap: Lists and Indexing"`) fixes it with no other change needed.
+
 ```yaml
 id: python-loops-draft
 type: composed
