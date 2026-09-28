@@ -35,6 +35,8 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'files',
+    // Run builds the preview iframe from the files.
+    run: 'preview',
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

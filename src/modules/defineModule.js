@@ -6,6 +6,7 @@
 //   merged in with `defineUiModule` into the object the app consumes via the registry.
 //
 // See docs/architecture/lesson-type-modules.md ("Contract").
+import { fieldWorkSlotHooks } from './moduleContract.js'
 
 const REQUIRED_FUNCTIONS = [
   'getDisplayState',
@@ -60,6 +61,21 @@ const REQUIRED_CAPABILITY_BOOLEANS = [
 // Where the teacher's sandbox work lives in TeacherView state: a single code string, the
 // Scratch project, a filesystem tree, a desktop state, or HTML files.
 export const SANDBOX_STATE_KINDS = Object.freeze(['code', 'blocks', 'fs', 'desktop', 'files'])
+// What the student hook's Run (handleRun) does for the module (plan step 4.4):
+// - 'runtime'   runs the code through the module's runtime (Pyodide, MicroPython): runWithRuntime
+// - 'preview'   builds the HTML preview iframe
+// - 'workspace' the workspace runs the work itself (Arcade's game iframe, Scratch's stage) and
+//               reports back through its own handler; handleRun does nothing
+// - 'none'      nothing to run (filesystem, desktop). A definition may omit `capabilities.run`;
+//               it defaults to 'none'.
+export const RUN_KINDS = Object.freeze(['runtime', 'preview', 'workspace', 'none'])
+// `runResult` (required exactly when `capabilities.run` is 'runtime'): what a runtime run
+// produces beyond output and status:
+// - errorLine: a stderr line number highlights the editor line (python)
+// - turtle:    the run's turtle drawing is written with the run (writeStudentTurtleResult)
+// - liveCode:  the runtime rewrites the work while it runs (onCodeUpdate, electronics), and a
+//              stopped run still saves { code, output }
+export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode'])
 
 // Contract v2 hook groups (see ./moduleContract.js for the shared builders and
 // docs/architecture/lesson-type-modules.md, "Contract v2"). Each group is a frozen object.
@@ -112,8 +128,46 @@ export const CHECKING_HOOKS = Object.freeze(['buildContext'])
 // - empty(task) → the work used when a field is missing (a stable module default).
 // - normalise(work) → the work as the workspace expects it, applied whenever work is restored
 //   (load, reset, stage, complete, sandbox, teacher push) but not to the student's own edits.
+//
+// Plan step 4.4 adds the hook form the code modules use (python, turtle, arcade, electronics).
+// A work slot declares either the three fields above (filesystem, desktop: defineModule derives
+// the source hooks from them with fieldWorkSlotHooks; a slot naming any field must name all
+// three) or, naming none, every one of the source hooks:
+// - starter(task), stage(task, stageIndex), complete(task), sandbox(lesson) -> a work value
+// - fromResetTarget(target, task, action) -> the work for a lifecycle.resetTarget result
+// - stored(value) -> { work, meta }: the value as the storage/wire hooks take it (`work`) plus
+//   the module's extra record fields (Arcade: `{ arcadeDesign }`); fromStored(stored, fallback)
+//   is the inverse, filling whatever `stored` lacks from `fallback`
+// and, in both forms:
+// - kind: 'code' is text code with code stages (python, turtle, arcade). The own save is
+//   restored only in solo and carry-through uses carryCodeFrom; restoring work (stage,
+//   complete, remote reset) clears the run output and saves the cleared run with it; task load
+//   keeps the check feedback. 'state' (the default) is structured state (electronics,
+//   filesystem, desktop). The own save is always restored and carry uses `carryThroughField`;
+//   task load resets the check feedback and clears any HTML files; restoring keeps run output.
+// - taskReset: the Reset button restores the starter outside the personal sandbox (the code
+//   modules and electronics; filesystem and desktop only reset inside the sandbox).
+// - teacherSandboxReset: in a teacher sandbox the Reset button restores the teacher's pushed
+//   code rather than the task starter (python, turtle).
+// - remoteResetPersists: a teacher remote reset saves the restored work and mirrors its extras
+//   while watched (arcade, whose design has no other save on reset).
 export const WORK_SLOT_FIELDS = Object.freeze(['starterField', 'sandboxField', 'stageField'])
 export const WORK_SLOT_HOOKS = Object.freeze(['empty', 'normalise'])
+export const WORK_SLOT_SOURCE_HOOKS = Object.freeze([
+  'starter',
+  'stage',
+  'complete',
+  'sandbox',
+  'fromResetTarget',
+  'stored',
+  'fromStored',
+])
+export const WORK_SLOT_KINDS = Object.freeze(['code', 'state'])
+export const WORK_SLOT_FLAGS = Object.freeze([
+  'taskReset',
+  'teacherSandboxReset',
+  'remoteResetPersists',
+])
 
 // Hooks that may be omitted; they default to null (the app treats null as "not provided").
 // Validation hooks (see src/shared/lessonValidation.js):
@@ -191,6 +245,22 @@ export function defineModule(def) {
   if (!SANDBOX_STATE_KINDS.includes(def.capabilities.sandboxState)) {
     fail(type, `"capabilities.sandboxState" must be one of: ${SANDBOX_STATE_KINDS.join(', ')}`)
   }
+  const runKind = def.capabilities.run ?? 'none'
+  if (!RUN_KINDS.includes(runKind)) {
+    fail(type, `"capabilities.run" must be one of: ${RUN_KINDS.join(', ')}`)
+  }
+  if (runKind === 'runtime') {
+    if (!def.runResult || typeof def.runResult !== 'object') {
+      fail(type, 'a "runtime" module declares "runResult"')
+    }
+    for (const key of RUN_RESULT_FLAGS) {
+      if (typeof def.runResult[key] !== 'boolean') {
+        fail(type, `missing required boolean "runResult.${key}"`)
+      }
+    }
+  } else if (def.runResult != null) {
+    fail(type, '"runResult" is only declared by "runtime" modules')
+  }
   for (const key of REQUIRED_FUNCTIONS) {
     if (typeof def[key] !== 'function') fail(type, `missing required function "${key}"`)
   }
@@ -242,11 +312,23 @@ export function defineModule(def) {
       }
     }
   }
+  let workSlot = null
   if (hasWorkSlot) {
     if (typeof def.workSlot !== 'object') fail(type, '"workSlot" must be an object')
-    for (const key of WORK_SLOT_FIELDS) {
-      if (typeof def.workSlot[key] !== 'string' || !def.workSlot[key]) {
-        fail(type, `missing required string "workSlot.${key}"`)
+    // Field form (the three fields; the source hooks are derived from them) or hook form (every
+    // source hook declared). A slot naming any field is in field form.
+    const hookForm = !WORK_SLOT_FIELDS.some((key) => key in def.workSlot)
+    if (hookForm) {
+      for (const key of WORK_SLOT_SOURCE_HOOKS) {
+        if (typeof def.workSlot[key] !== 'function') {
+          fail(type, `missing required function "workSlot.${key}"`)
+        }
+      }
+    } else {
+      for (const key of WORK_SLOT_FIELDS) {
+        if (typeof def.workSlot[key] !== 'string' || !def.workSlot[key]) {
+          fail(type, `missing required string "workSlot.${key}"`)
+        }
       }
     }
     for (const key of WORK_SLOT_HOOKS) {
@@ -254,10 +336,30 @@ export function defineModule(def) {
         fail(type, `missing required function "workSlot.${key}"`)
       }
     }
+    const kind = def.workSlot.kind ?? 'state'
+    if (!WORK_SLOT_KINDS.includes(kind)) {
+      fail(type, `"workSlot.kind" must be one of: ${WORK_SLOT_KINDS.join(', ')}`)
+    }
+    for (const key of WORK_SLOT_FLAGS) {
+      if (def.workSlot[key] != null && typeof def.workSlot[key] !== 'boolean') {
+        fail(type, `"workSlot.${key}" must be a boolean`)
+      }
+    }
     // The generic slot persists one task record and travels on the code channel.
     if (def.storage.layout !== 'record' || def.wire.sandboxChannel !== 'code') {
       fail(type, '"workSlot" needs a "record" storage layout and the "code" wire channel')
     }
+    workSlot = Object.freeze({
+      ...(hookForm
+        ? {}
+        : fieldWorkSlotHooks(def.workSlot, {
+            completeField: def.completeField,
+            workKey: def.storage.workKey,
+          })),
+      ...def.workSlot,
+      kind,
+      ...Object.fromEntries(WORK_SLOT_FLAGS.map((key) => [key, def.workSlot[key] ?? false])),
+    })
   }
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
@@ -284,12 +386,13 @@ export function defineModule(def) {
         ? { surfaceLabels: Object.freeze({ ...def.meta.surfaceLabels }) }
         : {}),
     }),
-    capabilities: Object.freeze({ ...def.capabilities }),
+    capabilities: Object.freeze({ ...def.capabilities, run: runKind }),
     lifecycle: Object.freeze({ ...def.lifecycle }),
     storage: Object.freeze({ ...def.storage }),
     wire: Object.freeze({ ...def.wire }),
     checking: hasChecking ? Object.freeze({ ...def.checking }) : null,
-    workSlot: hasWorkSlot ? Object.freeze({ ...def.workSlot }) : null,
+    workSlot,
+    runResult: def.runResult ? Object.freeze({ ...def.runResult }) : null,
     // Pre-v2 name, kept so existing callers and module authors keep working.
     getSandboxState: def.lifecycle.sandboxStarter,
   }

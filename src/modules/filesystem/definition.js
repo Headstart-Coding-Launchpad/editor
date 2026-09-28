@@ -42,6 +42,8 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: false,
     sandboxState: 'fs',
+    // Nothing to run: every change is checked (checking.trigger 'change').
+    run: 'none',
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

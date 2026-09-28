@@ -28,9 +28,10 @@ export function useTeacherLivePublish({
   activeFileRef,
   outputRef,
   runStatusRef,
-  // Generic work slot (filesystem, desktop): readWorkValue(moduleType) returns that module's
-  // latest work (or its default when the slot holds another module's work).
-  readWorkValue = () => null,
+  // Generic work slot (python, turtle, arcade, electronics, filesystem, desktop):
+  // readWorkValue(moduleType) returns that module's latest work (or its default when the slot
+  // holds another module's work). Without it, every module publishes from the refs above.
+  readWorkValue = null,
   editorSelectionRef,
   editorActivityRef,
   // Reactive values — used by the sync dep array and payload snapshot
@@ -79,9 +80,10 @@ export function useTeacherLivePublish({
   function currentTeacherLivePayload(extra = {}) {
     const lessonType = lessonRef.current?.type
     const definition = getModuleDefinition(lessonType)
-    // Work-slot modules (filesystem, desktop) publish their work through wire.toCode — a JSON
-    // string in `code` — and no files.
-    const isWorkSlot = definition?.workSlot != null
+    // Work-slot modules publish their work through wire.toCode — the code string, or a JSON
+    // string for filesystem/desktop — with their extras (Arcade's design) and no files.
+    const isWorkSlot = definition?.workSlot != null && readWorkValue != null
+    const stored = isWorkSlot ? definition.workSlot.stored(readWorkValue(lessonType)) : null
     // Scratch never routes edits through the generic `code` state (see
     // loadTaskContent's scratch branch in useStudentCodeState.js) — codeRef.current
     // would otherwise still hold whatever an earlier non-Scratch task left behind,
@@ -93,9 +95,11 @@ export function useTeacherLivePublish({
     // teacherLive is an update() merge, so every module sends both extras (explicit nulls
     // for the ones it doesn't have) — see each definition's wire.liveExtras.
     const { arcadeDesign, turtleResult } = (definition?.wire.liveExtras ?? noLiveExtras)({
-      // Optional refs: only the module that owns an extra ever needed its ref.
+      // Optional refs: only the module that owns an extra ever needed its ref. A work-slot
+      // module's own extras come with its work.
       arcadeDesign: arcadeDesignRef?.current,
       turtleResult: turtleResultRef?.current,
+      ...stored?.meta,
     })
     const filesMap = isWorkSlot
       ? {}
@@ -110,7 +114,7 @@ export function useTeacherLivePublish({
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
       code: isWorkSlot
-        ? definition.wire.toCode(readWorkValue(lessonType))
+        ? definition.wire.toCode(stored.work)
         : isScratch
           ? scratchCodeRef.current
           : codeRef.current,

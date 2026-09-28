@@ -17,7 +17,14 @@ import {
   parseCircuit,
   serializeCircuit,
 } from './circuit.js'
-import { codeStringWire, recordStorage, stageForAction, starterStageOf } from '../moduleContract.js'
+import {
+  codeStringWire,
+  identityFromStored,
+  identityStored,
+  recordStorage,
+  stageForAction,
+  starterStageOf,
+} from '../moduleContract.js'
 
 export default defineModule({
   type: 'electronics',
@@ -36,7 +43,10 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'code',
+    run: 'runtime',
   },
+  // MicroPython drives the circuit while it runs (onCodeUpdate), so the work changes mid-run.
+  runResult: { errorLine: false, turtle: false, liveCode: true },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete')
@@ -140,6 +150,34 @@ export default defineModule({
   // The work is the serialised circuit string, stored under `code` with no run metadata.
   storage: recordStorage({ workKey: 'code' }),
   wire: codeStringWire(),
+  // Generic work slot (useStudentCodeState): the serialised circuit string.
+  checking: {
+    trigger: 'run',
+    // `circuit` routes generic `code` checks to the Micro Controller's MicroPython source
+    // instead of the raw circuit JSON (see the core `code` check).
+    buildContext: (code, extras = {}) => ({ ...extras, code, circuit: code }),
+  },
+  workSlot: {
+    kind: 'state',
+    starter: (task) =>
+      serializeCircuit(
+        getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
+      ),
+    stage: (task, stageIndex) =>
+      serializeCircuit(
+        task?.codeStages?.[stageIndex]?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
+      ),
+    complete: (task) =>
+      serializeCircuit(task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT),
+    sandbox: (lesson) => serializeCircuit(lesson?.sandboxStarterCircuit ?? DEFAULT_CIRCUIT),
+    fromResetTarget: (target) => serializeCircuit(target.circuit),
+    // Before any electronics task has loaded, the circuit is the empty string (as `code` was).
+    empty: () => '',
+    normalise: (code) => code,
+    stored: identityStored,
+    fromStored: identityFromStored,
+    taskReset: true,
+  },
 
   evaluateCheck: evaluateElectronicsCheck,
 

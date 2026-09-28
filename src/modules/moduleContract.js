@@ -150,6 +150,77 @@ export function jsonWire(overrides = {}) {
   }
 }
 
+// ── Checking + work slot (plan steps 4.3–4.4) ──────────────────────────────────
+
+// The check context for a code-string module: the run extras ({ status, variables, turtle }
+// after a run, { status } for idle feedback) plus the code. Mirrors the old
+// buildCodeCheckContext in src/app/codeCheckContext.js key for key.
+export function codeCheckContext(code, extras = {}) {
+  return { ...extras, code }
+}
+
+// Work slots whose value already is the storage/wire work (everything except Arcade, whose
+// value also carries its design).
+export function identityStored(value) {
+  return { work: value, meta: {} }
+}
+
+export function identityFromStored(stored, fallback) {
+  return stored?.work ?? fallback
+}
+
+// The task starter code: a starter stage's code, else the legacy starterCode.
+export function starterCodeOf(task) {
+  return starterStageOf(task)?.code ?? task?.starterCode ?? ''
+}
+
+// The complete code: a complete-role stage's code, else the legacy completeCode.
+export function completeCodeOf(task) {
+  return getCompleteStage(task)?.stage?.code ?? task?.completeCode ?? ''
+}
+
+/**
+ * The work slot shared by the plain code-string modules (python, turtle): the value is the code
+ * string itself. `kind: 'code'` — see WORK_SLOT_KINDS in ./defineModule.js.
+ */
+export function codeWorkSlot(overrides = {}) {
+  return {
+    kind: 'code',
+    starter: starterCodeOf,
+    stage: (task, stageIndex) => task?.codeStages?.[stageIndex]?.code ?? '',
+    complete: completeCodeOf,
+    sandbox: (lesson) => lesson?.sandboxStarter ?? '',
+    fromResetTarget: (target) => target.code,
+    empty: () => '',
+    normalise: (value) => value,
+    stored: identityStored,
+    fromStored: identityFromStored,
+    taskReset: true,
+    teacherSandboxReset: false,
+    remoteResetPersists: false,
+    ...overrides,
+  }
+}
+
+/**
+ * The hooks a field-declared work slot (`starterField` / `sandboxField` / `stageField`, e.g.
+ * filesystem and desktop) gets from defineModule: every source reads the named field, falling
+ * back to `empty`. `completeField` is the module's top-level complete field and `workKey` its
+ * storage work key (the field a remote-reset target carries the work in).
+ */
+export function fieldWorkSlotHooks(workSlot, { completeField, workKey }) {
+  const { starterField, sandboxField, stageField, empty } = workSlot
+  return {
+    starter: (task) => task?.[starterField] ?? empty(task),
+    stage: (task, stageIndex) => task?.codeStages?.[stageIndex]?.[stageField] ?? empty(task),
+    complete: (task) => task?.[completeField] ?? empty(task),
+    sandbox: (lesson) => lesson?.[sandboxField] ?? empty(),
+    fromResetTarget: (target) => target[workKey],
+    stored: identityStored,
+    fromStored: identityFromStored,
+  }
+}
+
 // The work travels as a `{ filename: content }` map on the files channel (html).
 export function filesWire(overrides = {}) {
   const toFilesMap = (files) => Object.fromEntries((files ?? []).map((f) => [f.name, f.content]))

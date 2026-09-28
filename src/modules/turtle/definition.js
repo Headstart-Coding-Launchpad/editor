@@ -4,9 +4,11 @@ import { defineModule } from '../defineModule.js'
 import { codeStarterPresent, validateTaskChecks } from '../moduleTaskValidation.js'
 import { validateTurtleChecks } from '../../shared/checkAuthoringValidation.js'
 import {
+  codeCheckContext,
   codeHasComplete,
   codeResetTarget,
   codeStringWire,
+  codeWorkSlot,
   recordStorage,
 } from '../moduleContract.js'
 import { compactTurtleResultForSync } from './sync.js'
@@ -32,7 +34,10 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'code',
+    run: 'runtime',
   },
+  // The run's drawing is synced with the run (a run result, like output).
+  runResult: { errorLine: false, turtle: true, liveCode: false },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -119,6 +124,9 @@ export default defineModule({
       turtleResult: compactTurtleResultForSync(turtleResult),
     }),
   }),
+  // Generic work slot (useStudentCodeState): the code string, checked when it runs.
+  checking: { trigger: 'run', buildContext: codeCheckContext },
+  workSlot: codeWorkSlot({ teacherSandboxReset: true }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors }) => {
