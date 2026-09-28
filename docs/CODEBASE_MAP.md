@@ -420,6 +420,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`) |
 | `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML type lookup); unknown `activityType` values resolve to the fallback |
 | `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
+| `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`; UK layout): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
+| `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
+| `mouse/mouse.js` | Pure Mouse activity logic: stage targets (0-1 positions), click/double-click/right-click/drag/scroll/hover items, touch policy (`equivalent`/`skip`/`block`), grading by the gesture that completed each item |
+| `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
 | `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 
