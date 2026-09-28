@@ -189,6 +189,11 @@ Durable CLI contract for listing, uploading, and deleting lesson files in Fireba
 
 **Load when:** adding, replacing, listing, or removing a lesson asset.
 
+### [authoring/authoring-requests/README.md](authoring/authoring-requests/README.md)
+Intake for capability requests from lesson agents and people: when a lesson needs a new activity, module, check type or activity mode. Includes the request template and how requests move from open to shipped. Individual request files live in the same folder.
+
+**Load when:** a lesson needs something `lessons capabilities` doesn't list, or you are picking up a request to build.
+
 ### [authoring/validation-errors.md](authoring/validation-errors.md)
 Every lesson validation error and warning from the CLI and shared validators, with what it means and how to fix it. A test fails if a validator gains a message that isn't listed.
 
