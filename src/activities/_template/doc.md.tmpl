@@ -1,0 +1,70 @@
+# Template Activity Activity
+
+<!-- TODO(new-activity): rewrite this page for the real activity. The example lesson below must
+stay complete and valid: authoringDocExamples.test.js parses and validates it. -->
+
+A Template Activity task is an **activity**: a bounded exercise that can sit anywhere in a
+lesson, between code tasks of any module. There is no Run button, no personal sandbox, no
+sharing and no carry-through. Progress is saved on the device, mirrored to the teacher's student
+card, and marked when the student presses **Check answers**.
+
+Set `taskType: activity` and `activityType: template_activity` on the task. The task's `title` and
+`description` / `explainer` show above the activity.
+
+## Complete example
+
+```yaml
+id: template-activity-example
+type: python
+title: "Template Activity example"
+description: A short lesson using the Template Activity activity.
+tasks:
+  - title: Answer the questions
+    taskType: activity
+    activityType: template_activity
+    description: Type your answer, then press Check answers.
+    items:
+      - id: a
+        prompt: What is 2 + 2?
+        answer: "4"
+      - id: b
+        prompt: What colour is grass?
+        answer: green
+```
+
+## Task fields
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `taskType` | Yes | `activity` |
+| `activityType` | Yes | `template_activity` |
+| `items` | Yes | One or more questions. Each needs a unique `id` (keeps saved progress attached to the right question). |
+
+## Item fields
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `id` | Yes | Short unique id (`a`, `b`, …). |
+| `prompt` | Yes | The question shown to the student. |
+| `answer` | Yes | The expected answer. Marking ignores capitals and spaces at either end. |
+
+## Marking and hints
+
+- **Check answers** marks every question. The task passes when all are right.
+- Wrong answers get a short hint that never gives the answer away. The hint shows in the usual
+  feedback banner.
+- Typing is a *continuous* change: it only streams to the teacher while they are watching that
+  student.
+
+## Teacher tools
+
+- The student card shows `n/m correct`; the student modal shows the student's answers read-only.
+- **Edit answers** in the modal lets the teacher change the student's answers; an edit that
+  makes every question right is marked as passed (teacher assisted).
+- **Stage → Start again** clears the student's answers; **Complete (show answers)** fills them in.
+- Go Live on an activity task is teacher-only: a student's answers are never broadcast.
+
+## Validation
+
+Every Template Activity validation message is listed under "Activity tasks" in
+[validation-errors.md](../validation-errors.md).

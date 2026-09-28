@@ -119,13 +119,48 @@ reaches students from a lesson authored against a newer version.
 
 ## Adding an activity
 
-1. `src/activities/<id>/definition.js` (+ pure logic module) and one import in
-   `registry.pure.js`; `activityInterface.test.js` checks the contract.
-2. `src/activities/<id>/ui.jsx` and one import in `registry.js`. Keep controls ≥ 44px, keyboard
-   accessible, and honour `prefers-reduced-motion` (`act-` CSS namespace, `docs/UI_STYLE_GUIDE.md`).
-3. Classify changes carefully: anything per-keystroke or per-pointer-move must be
-   `'continuous'`.
-4. Tests: UI tests with `src/test/activityUiHarness.jsx`; a `StudentView` click-through.
-5. `docs/authoring/activities/<id>.md` with a complete example (validated by
-   `authoringDocExamples.test.js`), its messages in `validation-errors.md`, a CHANGELOG entry.
-6. Verify pointer, drag, keyboard and touch behaviour in a real browser — jsdom can't.
+Start from the kit rather than by hand. Claude Code's `new-activity` skill
+(`.claude/skills/new-activity/SKILL.md`) walks the whole loop, from an authoring request to the
+real-browser checks.
+
+```bash
+npm run new:activity -- <id> "<Label>" [--category computing|digital_skills|quiz|code] [--dry-run]
+```
+
+`scripts/new-activity.mjs` copies `src/activities/_template/` into `src/activities/<id>/`,
+replacing the placeholders (`template_activity`, `TemplateActivity`, `Template Activity`), and:
+
+- adds the definition import to `registry.pure.js` (before the `unknown` fallback in
+  `ACTIVITIES`) and the UI import to `registry.js` (`ACTIVITY_UIS`);
+- writes `docs/authoring/activities/<id>.md` from `_template/doc.md.tmpl`, with a complete
+  example lesson that passes CLI validation;
+- adds the `docs/README.md` index entry, `docs/CODEBASE_MAP.md` rows and a `### <Label>`
+  section in `docs/authoring/validation-errors.md` for the starter messages;
+- prints the next steps.
+
+It validates the id (lowercase identifier, not reserved, not already used), refuses to
+overwrite any file, works out every edit before writing anything, and `--dry-run` prints the plan
+(created files, and the lines added to each updated file) without writing. The untouched
+scaffold is a working "type the answer" activity, so `npm test`, `npm run docs:check`, ESLint,
+`npm run format:check` and `npx vite build` pass straight after it runs; every place to change
+is marked `TODO(new-activity)`. `_`-prefixed folders are skipped by the registry, interface and
+validation-doc tests, and the template's StudentView click-through skips itself until the
+activity is registered. The generator is tested by `scripts/__tests__/newActivity.test.mjs`.
+
+Then, in the new folder:
+
+1. `<id>.js` (pure logic: validation, solutions, grading, hints) and `definition.js` (the
+   contract above; `activityInterface.test.js` checks it). Classify changes carefully: anything
+   per-keystroke or per-pointer-move must be `'continuous'`. Set `requires` / `touchFallback`.
+2. `ui.jsx`: keep controls ≥ 44px, keyboard accessible, and honour `prefers-reduced-motion`
+   (`act-` CSS namespace, `docs/UI_STYLE_GUIDE.md`).
+3. Tests: pure tests, UI tests with `src/test/activityUiHarness.jsx`, and the real `StudentView`
+   click-through (`__tests__/studentView.test.jsx`).
+4. Rewrite `docs/authoring/activities/<id>.md` (keep a complete example; validated by
+   `authoringDocExamples.test.js`) and the activity's rows in `validation-errors.md`; add a
+   CHANGELOG entry.
+5. Verify pointer, drag, keyboard and touch behaviour, and the teacher surfaces, in a real
+   browser — jsdom can't.
+
+Workspace modules have no scaffold yet (plan step 4.8); `.claude/skills/new-module/SKILL.md`
+holds the manual checklist.
