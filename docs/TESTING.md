@@ -124,6 +124,7 @@ global.URL.revokeObjectURL = vi.fn()
 - **Module mocks:** `src/test/studentCodeStateMocks.js` holds dependency-free `vi.mock` factories (Pyodide, `useTypeAssets`, `useLessonStorageAssets`); each test file declares the three `vi.mock` calls itself.
 - **Fixtures:** `src/test/fixtures/studentCodeStateLessons.js` — one lesson per module type (starter / stage / complete content all distinct, a carry task) plus a composed lesson.
 - **Known bugs** are recorded with `it.fails(...)`; when a fix lands the test starts passing and Vitest fails it, so flip it to `it(...)` in the same PR.
+- **Generic work slot:** `useStudentCodeState.workSlot.test.js` covers what the slot adds on top of the pinned bytes (plan step 4.3): a composed lesson switching python → filesystem → desktop → filesystem never publishes, mirrors or shares the previous module's work, and handlers read the work they have just set (`workRef`), e.g. Desktop's change-then-interaction in one event. `src/modules/__tests__/moduleWorkSlot.test.js` holds the `checking` / `workSlot` definition groups to their `defineModule` rules.
 
 #### Module parity and click-through safety net
 

@@ -84,7 +84,29 @@ Three required, frozen hook groups on every definition, validated by `defineModu
 - `liveExtras({ arcadeDesign, turtleResult })` — always returns both teacherLive extras, explicit `null` for the ones the module lacks (teacherLive is an `update()` merge). Arcade passes its design; Turtle compacts its result with `compactTurtleResultForSync`.
 - `submission(work)` — the value logged with an attempt (the work itself; html a filename → content map).
 
-Call sites using the hooks today: `studentTaskContent.resolveRemoteResetTarget`, `StudentView` (`hasCompleteSolution`), `TeacherEditorPanel` (Complete tab), `TeacherView` (`lifecycle.sandboxStarter`), `composedLesson.getEffectiveLessonForModule`, `useTeacherLivePublish` (live extras and the fs/desktop code string), and `sharedWorkspacePayload` (snapshot code/arcade design and share copy, keyed by `capabilities.sandboxState`). The `useStudentCodeState` per-type slots and TeacherView's sandbox branches move in steps 4.3–4.6.
+Call sites using the hooks today: `studentTaskContent.resolveRemoteResetTarget`, `StudentView` (`hasCompleteSolution`), `TeacherEditorPanel` (Complete tab), `TeacherView` (`lifecycle.sandboxStarter`), `composedLesson.getEffectiveLessonForModule`, `useTeacherLivePublish` (live extras and the work-slot code string), and `sharedWorkspacePayload` (snapshot code/arcade design and share copy, keyed by `capabilities.sandboxState`). The remaining `useStudentCodeState` per-type slots and TeacherView's sandbox branches move in steps 4.4–4.6.
+
+### Contract v2: checking and the generic work slot (plan step 4.3)
+
+Two optional groups put a module on `useStudentCodeState`'s generic work slot. A module declares both or neither (`defineModule` rejects one without the other; absent groups are `null`), and the slot needs a `'record'` storage layout and the `'code'` wire channel. Filesystem and desktop are on it; python, turtle, arcade and electronics follow in step 4.4, html and scratch in 4.5.
+
+`checking` — when and how the task check runs against the work:
+
+- `trigger` — `'change'` (every edit and every workspace interaction; filesystem, desktop), `'run'`, `'submit'` or `'workspace'` (the workspace evaluates and reports its own checks). Only `'change'` is wired so far.
+- `buildContext(work, interaction)` — the context handed to the check evaluators: filesystem `{ fs, ...interaction }`, desktop `{ fs: desktop.fs, desktop, ...interaction }`.
+
+`workSlot` — where the work comes from, for the generic loaders:
+
+- `starterField`, `sandboxField`, `stageField` — the task, lesson and code-stage fields holding starting work (`starterFs` / `sandboxStarterFs` / `fs`; `starterDesktop` / `sandboxStarterDesktop` / `desktop`). The complete value is the module's `completeField`; carry-through uses `carryThroughField`.
+- `empty(task)` — the fallback when a field is missing (`DEFAULT_FS`; `makeDefaultDesktop(task?.availableApps)`).
+- `normalise(work)` — applied whenever work is restored (task load, remote reset, show stage, show complete, personal sandbox, teacher sandbox push), never to the student's own edits (identity for filesystem, `normaliseDesktop` for desktop).
+
+In `useStudentCodeState` the slot is one `work` state, `{ moduleType, taskId, value }`, plus an `interactions` map keyed by module type (`{ currentDir, openFile }`; a carrying task keeps the previous directory). `workRef` / `interactionsRef` are updated synchronously on every set, so a handler that runs straight after another in the same event reads what was just set. Readers go through `workValueFor(moduleType)`, which returns the module's stable default when the slot holds another module's work, so a composed lesson switching modules never publishes, saves, mirrors or shares a leftover value. One pipeline replaces the per-module handlers:
+
+- `handleWorkChange(next, { moduleType, interaction, suppressFailFeedback })` — set work (and/or interaction) → `persistence.saveWork` → teacherLive (published by `useTeacherLivePublish`'s effect, which tracks the work value) → checking per `checking.trigger` → idle feedback. An interaction-only call (`next` undefined) re-checks with fail feedback suppressed.
+- `evaluateAndReport({ moduleType, work, context }, { suppressFailFeedback })` — evaluates the task check, applies local feedback, and in a live lesson outside the personal sandbox writes the run (`code` = `wire.toCode(work)`) and, while unsolved, the attempt (`wire.submission(work)`).
+
+Loading (own save, carry, starter), `saveCurrentWork`, the personal sandbox, remote reset, show stage / complete, watch-start writes, the teacherLive payload and the share snapshot all read the definition instead of branching on the type. `cs.work`, `cs.handleWorkChange` and `cs.readSavedTaskWork(moduleType, taskId)` are exposed; the per-module names the workspaces use (`fsState`, `desktopState`, `fsInteraction`, `desktopInteraction`, `handleFsChange`, `handleDesktopChange`, `handleFsInteraction`, `handleDesktopInteraction`, `readSavedTaskFs`, `readSavedTaskDesktop`) remain as thin aliases, as do `useSandboxCodePush`'s and `buildSharedWorkspaceSnapshot`'s per-kind parameters until step 4.6.
 
 Builder hooks:
 

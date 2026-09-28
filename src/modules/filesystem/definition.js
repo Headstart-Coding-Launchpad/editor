@@ -123,6 +123,18 @@ export default defineModule({
   },
   storage: recordStorage({ workKey: 'fs' }),
   wire: jsonWire(),
+  // Generic work slot (useStudentCodeState): the tree is re-checked on every change.
+  checking: {
+    trigger: 'change',
+    buildContext: (fs, interaction) => ({ fs, ...interaction }),
+  },
+  workSlot: {
+    starterField: 'starterFs',
+    sandboxField: 'sandboxStarterFs',
+    stageField: 'fs',
+    empty: () => DEFAULT_FS,
+    normalise: (fs) => fs,
+  },
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {
