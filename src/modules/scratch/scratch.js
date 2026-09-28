@@ -48,12 +48,11 @@ export function setCostumeContext(costumes) {
   _currentCostumes = costumes ?? []
 }
 
-// Human-readable dropdown option for a costume: a thumbnail image when one is
-// available, otherwise the emoji (already visual) or plain name as a fallback.
-const COSTUME_THUMB_SIZE = 20
-function costumeDropdownLabel(c) {
-  if (c.imageUrl)
-    return { src: c.imageUrl, width: COSTUME_THUMB_SIZE, height: COSTUME_THUMB_SIZE, alt: c.name }
+// Human-readable dropdown option for a costume: the thumbnail beside the name when an
+// image is available (drawn on the block by `field_sprite_dropdown`), otherwise the
+// emoji and name, or the plain name.
+export function costumeDropdownLabel(c) {
+  if (c.imageUrl) return spriteDropdownLabel({ name: c.name, thumbUrl: c.imageUrl })
   if (c.emoji) return `${c.emoji} ${c.name}`
   return c.name
 }
@@ -466,7 +465,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('looks_switchcostumeto', 'switch costume to %1'),
         args0: blockArgs('looks_switchcostumeto', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'COSTUME',
             options: () =>
               _currentCostumes.length

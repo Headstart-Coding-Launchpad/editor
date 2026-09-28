@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest'
-import { loadBlocklyModules, setSpriteContext, spriteDropdownLabel } from '../scratch'
+import {
+  costumeDropdownLabel,
+  loadBlocklyModules,
+  setCostumeContext,
+  setSpriteContext,
+  spriteDropdownLabel,
+} from '../scratch'
 
 // Sprite target dropdowns (go to, glide, touching, distance to, create clone of) show
 // a thumbnail beside the sprite name in the menu, while the block keeps the plain name.
@@ -60,5 +66,44 @@ describe('sprite target dropdowns', () => {
 
     dropdown.setValue('s1')
     expect(dropdown.getText()).toBe('Cat')
+  })
+})
+
+describe('switch costume dropdown', () => {
+  let Blockly
+  let workspace
+
+  beforeAll(async () => {
+    ;({ Blockly } = await loadBlocklyModules())
+  })
+
+  afterEach(() => {
+    workspace?.dispose()
+    setCostumeContext([])
+  })
+
+  it('labels image costumes with the thumbnail and the name', () => {
+    const label = costumeDropdownLabel({ name: 'walk', imageUrl: 'walk.png' })
+    expect(label).toBeInstanceOf(HTMLElement)
+    expect(label.title).toBe('walk')
+    expect(label.querySelector('img').getAttribute('src')).toBe('walk.png')
+    expect(label.textContent).toBe('walk')
+  })
+
+  it('falls back to emoji and name, or the plain name', () => {
+    expect(costumeDropdownLabel({ name: 'happy', emoji: '😀' })).toBe('😀 happy')
+    expect(costumeDropdownLabel({ name: 'plain' })).toBe('plain')
+  })
+
+  it('shows the costume name on the block, not just the picture', () => {
+    setCostumeContext([
+      { name: 'walk', imageUrl: 'walk.png' },
+      { name: 'jump', imageUrl: 'jump.png' },
+    ])
+    workspace = new Blockly.Workspace()
+    const dropdown = workspace.newBlock('looks_switchcostumeto').getField('COSTUME')
+    expect(dropdown.constructor).not.toBe(Blockly.FieldDropdown)
+    dropdown.setValue('jump')
+    expect(dropdown.getText()).toBe('jump')
   })
 })
