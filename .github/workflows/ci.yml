@@ -45,6 +45,12 @@ jobs:
       - name: Test with coverage
         run: npm run test:coverage
 
+      # Production build, so a PR can't pass CI and then break the deploy (Rollup rejects a
+      # missing named export that Vitest resolves to undefined). Runs vite directly to skip the
+      # `prebuild` test run, which the step above already covers.
+      - name: Build
+        run: npx vite build
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
