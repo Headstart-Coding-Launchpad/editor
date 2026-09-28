@@ -32,7 +32,7 @@ import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
 import { readActivityAnswer } from '../../activities/state.js'
-import { ActivityDeviceBadge } from '../../activities/ActivityHost.jsx'
+import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 
 function getModuleDisplayState(module, raw) {
   if (!module) return null

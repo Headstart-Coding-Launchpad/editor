@@ -7,7 +7,7 @@ import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
-import { ActivityDeviceBadge } from '../../activities/ActivityHost.jsx'
+import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 
 const formatLastRun = formatTimeAgo
 

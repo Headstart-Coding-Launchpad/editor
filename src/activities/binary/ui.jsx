@@ -19,10 +19,13 @@ function itemStateOf(state, item, bits, mode) {
   return {
     bits:
       typeof saved?.bits === 'string' && saved.bits.length === bits ? saved.bits : '0'.repeat(bits),
+    // Only addition uses the carry row; other modes keep whatever was stored ('' initially).
     carries:
-      typeof saved?.carries === 'string' && saved.carries.length === bits
-        ? saved.carries
-        : '0'.repeat(bits),
+      mode !== 'add'
+        ? (saved?.carries ?? '')
+        : typeof saved?.carries === 'string' && saved.carries.length === bits
+          ? saved.carries
+          : '0'.repeat(bits),
   }
 }
 

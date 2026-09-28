@@ -5,7 +5,7 @@ import { useInputCapabilities } from '../shared/input/useInputCapabilities.js'
 import { getTaskActivityUi } from './registry.js'
 import { UNKNOWN_ACTIVITY_ID } from './resolve.js'
 import { deserializeActivityState } from './state.js'
-import { describeActivityDevice, effectiveCapabilities } from './device.js'
+import { effectiveCapabilities } from './device.js'
 
 // ActivityHost renders a hosted activity task (taskType 'activity') in the classroom. The
 // state, persistence, live sync, grading, reset and teacher-edit rules live once in
@@ -28,16 +28,6 @@ export function UnavailableActivityNotice() {
       🧩 This activity isn't available in this version of Headstart. Try reloading the page, or ask
       your teacher to help you move on to the next task.
     </div>
-  )
-}
-
-export function ActivityDeviceBadge({ state }) {
-  const device = describeActivityDevice(state)
-  if (!device) return null
-  return (
-    <span className="act-badge" title={`Done on: ${device.label}`} data-testid="activity-device">
-      {device.icon} {device.label}
-    </span>
   )
 }
 
