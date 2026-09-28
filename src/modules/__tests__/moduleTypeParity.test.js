@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LESSON_MODULE_TYPES, PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
 import { getLessonModules } from '../registry'
+import { getModuleDefinition } from '../definitions.js'
 import { resolveRemoteResetTarget } from '../../app/studentTaskContent'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
@@ -118,7 +119,6 @@ const LESSON_TASK_CONTENT = src('src/app/components/LessonTaskContent.jsx')
 const TEACHER_VIEW = src('src/app/views/TeacherView.jsx')
 const TASK_UTILS = src('src/shared/taskUtils.js')
 const LESSON_UTILS = src('src/builder/lessonUtils.js')
-const REGISTRY = src('src/modules/registry.js')
 const INFORMATION_TASK = src('src/app/components/InformationTask.jsx')
 const LESSON_META_PANEL = src('src/builder/components/LessonMetaPanel.jsx')
 const PRINT_LESSON = src('src/builder/printLesson.js')
@@ -137,7 +137,6 @@ const TEACHER_SANDBOX_BRANCH_TYPES = [
 ].map((m) => m[1])
 const STAGE_OPTION_METADATA_KEYS = keysIn(TASK_UTILS, 'STAGE_OPTION_METADATA')
 const TASK_CARRY_FIELDS = arrayIn(LESSON_UTILS, 'TASK_CARRY_FIELDS')
-const REGISTRY_LABEL_KEYS = keysIn(REGISTRY, 'MODULE_LABELS')
 const INFORMATION_TASK_LABELS = comparedIn(INFORMATION_TASK, 'singleTypeLabel', 'type')
 const LESSON_META_LABELS = comparedIn(LESSON_META_PANEL, 'singleModuleLabel', 'type')
 const PRINT_TYPE_LABELS = keysIn(PRINT_LESSON, 'TYPE_LABELS')
@@ -180,7 +179,8 @@ const PARITY_LISTS = {
     CODE_STRING_TYPES.includes(mod.type) || TEACHER_SANDBOX_BRANCH_TYPES.includes(mod.type),
   STAGE_OPTION_METADATA: (mod) => STAGE_OPTION_METADATA_KEYS.includes(mod.type),
   TASK_CARRY_FIELDS: (mod) => TASK_CARRY_FIELDS.includes(mod.carryThroughField),
-  'registry MODULE_LABELS': (mod) => REGISTRY_LABEL_KEYS.includes(mod.type),
+  // Labels live on each module's definition (meta.label) since plan 1.1.
+  'definition meta.label': (mod) => typeof getModuleDefinition(mod.type)?.meta?.label === 'string',
   'InformationTask singleTypeLabel': (mod) => INFORMATION_TASK_LABELS.includes(mod.type),
   'LessonMetaPanel singleModuleLabel': (mod) => LESSON_META_LABELS.includes(mod.type),
   'printLesson TYPE_LABELS': (mod) => PRINT_TYPE_LABELS.includes(mod.type),
@@ -222,7 +222,6 @@ describe('registry-driven module parity', () => {
       TEACHER_SANDBOX_BRANCH_TYPES,
       STAGE_OPTION_METADATA_KEYS,
       TASK_CARRY_FIELDS,
-      REGISTRY_LABEL_KEYS,
       INFORMATION_TASK_LABELS,
       LESSON_META_LABELS,
       PRINT_TYPE_LABELS,
