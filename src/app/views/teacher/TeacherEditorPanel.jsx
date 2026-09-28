@@ -83,14 +83,8 @@ export default function TeacherEditorPanel({
     : mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
   const readOnly = !isInSandbox
   const LiveView = mod.TeacherLiveView
-  const showCompleteTab =
-    !usesUnifiedStages &&
-    (mod.type === 'python' ||
-      mod.type === 'html' ||
-      (mod.type === 'scratch' && task?.completeBlocks != null) ||
-      (mod.type === 'filesystem' && !!task?.completeFs) ||
-      (mod.type === 'desktop' && !!task?.completeDesktop) ||
-      (mod.type === 'electronics' && !!task?.completeCircuit))
+  // Modules whose complete solution lives in the unified code stages answer false.
+  const showCompleteTab = mod.lifecycle.teacherCompleteTab(task)
 
   // In a scrolling centre column the stack must not shrink below its content:
   // with `minHeight: 0` it collapsed when TaskRatingPanel expanded, and the

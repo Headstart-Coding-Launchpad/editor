@@ -1,5 +1,6 @@
 import { findTaskById, getStarterStage } from '../shared/taskUtils'
 import { isCodeTask } from '../shared/composedLesson'
+import { getModuleDefinition } from '../modules/definitions.js'
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {
   if (!carryFromId) return false
@@ -216,20 +217,10 @@ export function selectScratchToolboxSnippets({ task, activeStageIndex = null, di
 
 // ─── Teacher remote reset ───────────────────────────────────────────────────
 
-// A teacher can push this student's editor back to a known state. The action names the
-// state: 'starter', 'complete', or 'stage_<n>' for one of the task's authored code stages.
-// ('reveal_stage_<n>' is handled separately — it reveals a stage rather than replacing
-// the student's work.)
-function stageForAction(task, action) {
-  const match = String(action ?? '').match(/^stage_(\d+)$/)
-  if (!match) return { stage: null, stageIndex: null }
-  const stageIndex = parseInt(match[1], 10)
-  return { stage: (task?.codeStages ?? [])[stageIndex] ?? null, stageIndex }
-}
-
 /**
- * Resolves what a remote-reset action should put in front of the student, as the shape
- * that lesson type's workspace holds:
+ * Resolves what a remote-reset action ('starter', 'complete' or 'stage_<n>') should put in
+ * front of the student, as the shape that lesson type's workspace holds. Each module declares
+ * this as `lifecycle.resetTarget` in its definition.js:
  *
  *   python / arcade / turtle   { code }
  *   html              { files, entryFile }
@@ -238,73 +229,12 @@ function stageForAction(task, action) {
  *   desktop           { desktop }
  *   electronics       { circuit }
  *
- * Returns null for an unknown lesson type. Pure — the caller applies the result.
+ * ('reveal_stage_<n>' is handled separately — it reveals a stage rather than replacing the
+ * student's work.) Returns null for an unknown lesson type. Pure — the caller applies the
+ * result.
  */
 export function resolveRemoteResetTarget(task, action, lessonType, defaults = {}) {
   if (!task || !action) return null
-  const { stage } = stageForAction(task, action)
-  const starter = getStarterStage(task)?.stage
-
-  switch (lessonType) {
-    case 'python':
-    case 'arcade':
-    case 'turtle': {
-      if (action === 'complete') return { code: task.completeCode ?? '' }
-      if (action === 'starter') return { code: starter?.code ?? task.starterCode ?? '' }
-      return { code: stage?.code ?? starter?.code ?? task.starterCode ?? '' }
-    }
-    case 'html': {
-      if (action === 'complete') {
-        return {
-          files: task.completeFiles ?? [],
-          entryFile: task.completeEntryFile ?? task.entryFile,
-        }
-      }
-      if (action === 'starter') {
-        return {
-          files: starter?.files ?? task.starterFiles ?? [],
-          entryFile: starter?.entryFile ?? task.entryFile,
-        }
-      }
-      return {
-        files: stage?.files ?? starter?.files ?? task.starterFiles ?? [],
-        entryFile: stage?.entryFile ?? starter?.entryFile ?? task.entryFile,
-      }
-    }
-    case 'scratch': {
-      // Only a stage reset leaves a stage active; starter and complete clear it.
-      if (action === 'complete') return { blocks: task.completeBlocks ?? null, stageIndex: null }
-      if (action === 'starter') {
-        return { blocks: starter?.blocks ?? task.starterBlocks ?? null, stageIndex: null }
-      }
-      const { stage: staged, stageIndex } = stageForAction(task, action)
-      return {
-        blocks: staged?.blocks ?? task.starterBlocks ?? null,
-        stageIndex: staged ? stageIndex : null,
-      }
-    }
-    case 'filesystem': {
-      if (action === 'complete') return { fs: task.completeFs ?? task.starterFs ?? defaults.fs }
-      if (action === 'starter') return { fs: task.starterFs ?? defaults.fs }
-      return { fs: stage?.fs ?? task.starterFs ?? defaults.fs }
-    }
-    case 'desktop': {
-      if (action === 'complete') {
-        return { desktop: task.completeDesktop ?? task.starterDesktop ?? defaults.desktop }
-      }
-      if (action === 'starter') return { desktop: task.starterDesktop ?? defaults.desktop }
-      return { desktop: stage?.desktop ?? task.starterDesktop ?? defaults.desktop }
-    }
-    case 'electronics': {
-      if (action === 'complete') {
-        return { circuit: task.completeCircuit ?? task.starterCircuit ?? defaults.circuit }
-      }
-      if (action === 'starter') {
-        return { circuit: starter?.circuit ?? task.starterCircuit ?? defaults.circuit }
-      }
-      return { circuit: stage?.circuit ?? task.starterCircuit ?? defaults.circuit }
-    }
-    default:
-      return null
-  }
+  const definition = getModuleDefinition(lessonType)
+  return definition ? definition.lifecycle.resetTarget(task, action, defaults) : null
 }

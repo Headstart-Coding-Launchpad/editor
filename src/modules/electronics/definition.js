@@ -17,6 +17,7 @@ import {
   parseCircuit,
   serializeCircuit,
 } from './circuit.js'
+import { codeStringWire, recordStorage, stageForAction, starterStageOf } from '../moduleContract.js'
 
 export default defineModule({
   type: 'electronics',
@@ -114,8 +115,31 @@ export default defineModule({
   serializeState: (state) => (typeof state === 'string' ? state : serializeCircuit(state)),
   deserializeState: (raw) => serializeCircuit(parseCircuit(raw, DEFAULT_CIRCUIT)),
 
-  getSandboxState: (lesson, task) =>
-    serializeCircuit(lesson?.sandboxStarterCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT),
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: (task, action, ctx = {}) => {
+      const { stage } = stageForAction(task, action)
+      if (action === 'complete') {
+        return { circuit: task.completeCircuit ?? task.starterCircuit ?? ctx.circuit }
+      }
+      if (action === 'starter') {
+        return {
+          circuit: starterStageOf(task)?.circuit ?? task.starterCircuit ?? ctx.circuit,
+        }
+      }
+      return { circuit: stage?.circuit ?? task.starterCircuit ?? ctx.circuit }
+    },
+    hasComplete: (task) => !!task?.completeCircuit,
+    teacherCompleteTab: (task) => !!task?.completeCircuit,
+    sandboxStarter: (lesson, task) =>
+      serializeCircuit(lesson?.sandboxStarterCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT),
+    composedSandboxFields: (firstTask) => ({
+      sandboxStarterCircuit: firstTask?.starterCircuit ?? null,
+    }),
+  },
+  // The work is the serialised circuit string, stored under `code` with no run metadata.
+  storage: recordStorage({ workKey: 'code' }),
+  wire: codeStringWire(),
 
   evaluateCheck: evaluateElectronicsCheck,
 

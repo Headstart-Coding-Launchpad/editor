@@ -3,6 +3,13 @@
 import { defineModule } from '../defineModule.js'
 import { codeStarterPresent, validateTaskChecks } from '../moduleTaskValidation.js'
 import { validateTurtleChecks } from '../../shared/checkAuthoringValidation.js'
+import {
+  codeHasComplete,
+  codeResetTarget,
+  codeStringWire,
+  recordStorage,
+} from '../moduleContract.js'
+import { compactTurtleResultForSync } from './sync.js'
 
 const DEFAULT_STARTER_CODE =
   'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
@@ -95,8 +102,23 @@ export default defineModule({
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────────
-  getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: codeResetTarget,
+    hasComplete: codeHasComplete,
+    teacherCompleteTab: () => false,
+    sandboxStarter: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+    // Composed lessons have never derived a turtle sandbox starter from the first task.
+    composedSandboxFields: () => ({}),
+  },
+  storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
+  // The drawing is a run result; it is compacted before it travels on teacherLive.
+  wire: codeStringWire({
+    liveExtras: ({ turtleResult } = {}) => ({
+      arcadeDesign: null,
+      turtleResult: compactTurtleResultForSync(turtleResult),
+    }),
+  }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors }) => {

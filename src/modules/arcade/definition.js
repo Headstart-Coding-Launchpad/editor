@@ -10,6 +10,12 @@ import {
 import { normalizeChecks } from '../checks.js'
 import { warnArcadeUnevaluatedChecks } from '../../shared/checkAuthoringValidation.js'
 import { cloneArcadeDesign } from './design.js'
+import {
+  codeHasComplete,
+  codeResetTarget,
+  codeStringWire,
+  recordStorage,
+} from '../moduleContract.js'
 
 export default defineModule({
   type: 'arcade',
@@ -103,7 +109,23 @@ export default defineModule({
   initialState: (task) => task.starterCode ?? '',
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
-  getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: codeResetTarget,
+    hasComplete: codeHasComplete,
+    teacherCompleteTab: () => false,
+    sandboxStarter: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+    composedSandboxFields: (firstTask) => ({ sandboxStarter: firstTask?.starterCode ?? '' }),
+  },
+  // The sprite/sound design rides alongside the code in both records.
+  storage: recordStorage({
+    workKey: 'code',
+    taskMeta: ['output', 'runStatus', 'arcadeDesign'],
+    sandboxMeta: ['arcadeDesign'],
+  }),
+  wire: codeStringWire({
+    liveExtras: ({ arcadeDesign } = {}) => ({ arcadeDesign, turtleResult: null }),
+  }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {

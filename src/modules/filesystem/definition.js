@@ -8,6 +8,21 @@ import {
 } from '../moduleTaskValidation.js'
 import { validateFilesystemChecks } from '../../shared/checkAuthoringValidation.js'
 import { DEFAULT_FS } from './filesystem.js'
+import { jsonWire, recordStorage, stageForAction } from '../moduleContract.js'
+
+function sandboxStarterFs(lesson, task) {
+  if (lesson?.sandboxStarterFs != null) {
+    try {
+      return JSON.parse(JSON.stringify(lesson.sandboxStarterFs))
+    } catch {}
+  }
+  const fs = task?.starterFs ?? DEFAULT_FS
+  try {
+    return JSON.parse(JSON.stringify(fs))
+  } catch {
+    return DEFAULT_FS
+  }
+}
 
 export default defineModule({
   type: 'filesystem',
@@ -93,20 +108,21 @@ export default defineModule({
     }
   },
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────────
-  getSandboxState: (lesson, task) => {
-    if (lesson?.sandboxStarterFs != null) {
-      try {
-        return JSON.parse(JSON.stringify(lesson.sandboxStarterFs))
-      } catch {}
-    }
-    const fs = task?.starterFs ?? DEFAULT_FS
-    try {
-      return JSON.parse(JSON.stringify(fs))
-    } catch {
-      return DEFAULT_FS
-    }
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: (task, action, ctx = {}) => {
+      const { stage } = stageForAction(task, action)
+      if (action === 'complete') return { fs: task.completeFs ?? task.starterFs ?? ctx.fs }
+      if (action === 'starter') return { fs: task.starterFs ?? ctx.fs }
+      return { fs: stage?.fs ?? task.starterFs ?? ctx.fs }
+    },
+    hasComplete: (task) => !!task?.completeFs,
+    teacherCompleteTab: (task) => !!task?.completeFs,
+    sandboxStarter: sandboxStarterFs,
+    composedSandboxFields: (firstTask) => ({ sandboxStarterFs: firstTask?.starterFs ?? null }),
   },
+  storage: recordStorage({ workKey: 'fs' }),
+  wire: jsonWire(),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {
