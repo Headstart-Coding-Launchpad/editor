@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
+import { getModuleTypesWithCapability } from '../../modules/definitions'
 import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
@@ -67,11 +68,14 @@ function teacherLiveReferenceStageFrom(teacherLive, lessonType) {
   return { label: "Teacher's live code", [shapeKey]: displayState }
 }
 
-const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'turtle', 'html', 'scratch', 'electronics']
+// Lesson types whose explainer renders as a side rail beside the workspace (others use the
+// accordion above it) — each module's `capabilities.sideExplainer`.
+const SIDE_EXPLAINER_TYPES = getModuleTypesWithCapability('sideExplainer')
 // Lesson types whose module StudentWorkspace reports its own visiblePanes (a togglable
 // pane/tab/run-state that's meaningful to show on the teacher's student list) via the
-// generic `modulePanes` state below, rather than the Scratch-specific plumbing.
-const MODULE_PANES_TYPES = ['electronics', 'python', 'arcade', 'turtle', 'html']
+// generic `modulePanes` state below, rather than the Scratch-specific plumbing — each
+// module's `capabilities.modulePanes`.
+const MODULE_PANES_TYPES = getModuleTypesWithCapability('modulePanes')
 // Scratch's explainer is a fixed, non-resizable width (no drag-to-resize) rather than a
 // percentage split — Scratch explainers often carry block-pill images/markdown that need
 // real width, and a fixed size is simpler and more predictable than a shrinking one.

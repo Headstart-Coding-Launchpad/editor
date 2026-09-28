@@ -6,6 +6,16 @@ import { fetchLessonList } from '../shared/lessonService'
 import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
+import { LESSON_MODULE_TYPES } from '../shared/composedLesson'
+import { getModuleLabel } from '../modules/definitions'
+
+// "Python, Arcade Kit, …, or Electronics" — every registered module, in picker order.
+const MODULE_LABEL_LIST = (() => {
+  const labels = LESSON_MODULE_TYPES.map((type) => getModuleLabel(type))
+  return labels.length > 1
+    ? `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`
+    : (labels[0] ?? '')
+})()
 
 const LS_KEY = 'headstart_builder_current'
 
@@ -218,8 +228,7 @@ function LessonTypeChooser({ onChoose, onUpload }) {
             <button style={s.choiceButton} onClick={onChoose}>
               <span style={s.choiceName}>Create composed lesson</span>
               <span style={s.choiceDescription}>
-                Start with an empty lesson, then add Python, Scratch, Arcade Kit, HTML, Filesystem,
-                or Electronics modules.
+                Start with an empty lesson, then add {MODULE_LABEL_LIST} modules.
               </span>
             </button>
           </div>

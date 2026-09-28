@@ -12,7 +12,22 @@ import {
 
 export default defineModule({
   type: 'electronics',
-  meta: { label: 'Electronics', order: 7 },
+  meta: {
+    label: 'Electronics',
+    order: 7,
+    shortLabel: 'Electronics',
+    icon: '⚡',
+    pickerHint: 'Workspace',
+    language: 'python',
+    playground: true,
+  },
+  capabilities: {
+    sideExplainer: true,
+    modulePanes: true,
+    teacherLiveReference: true,
+    unifiedStages: true,
+    sandboxState: 'code',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete')
@@ -58,6 +73,7 @@ export default defineModule({
   defaultCheck: () => [{ type: 'circuit_no_short' }],
 
   carryThroughField: 'carryCircuitFrom',
+  completeField: 'completeCircuit',
   carryThroughLabel: 'Carry circuit from task',
   // Also patches codeStages[0].circuit (see python/definition.js's getCarryThroughUpdates for
   // why).
@@ -83,6 +99,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter board', completeLabel: 'Complete board' },
   explainerInlineCodeLanguages: ['python'],
+  explainerCodeBlockLanguages: ['python'],
 
   defaultState: serializeCircuit(DEFAULT_CIRCUIT),
   initialState: (task) => serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),

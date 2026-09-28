@@ -29,6 +29,7 @@ import {
   warnArcadeUnevaluatedChecks,
 } from '../src/shared/checkAuthoringValidation.js'
 import { isValidRecordingUrl } from '../src/shared/youtube.js'
+import { CARRY_THROUGH_FIELDS } from '../src/modules/definitions.js'
 
 // Derived from the shared module list so a newly registered module type can't be
 // rejected by the CLI while the Builder accepts it (turtle was, before this).
@@ -93,13 +94,7 @@ export function validateLessonForMcp(lesson) {
     if (!task || typeof task !== 'object' || Array.isArray(task)) return
     const taskType = getTaskModuleType(lesson, task) ?? type
     const allowedCarrySources = getModuleCarrySourceIds(lesson, task)
-    for (const field of [
-      'carryCodeFrom',
-      'carryBlocksFrom',
-      'carryFsFrom',
-      'carryDesktopFrom',
-      'carryCircuitFrom',
-    ]) {
+    for (const field of CARRY_THROUGH_FIELDS) {
       if (
         task[field] != null &&
         allowedCarrySources &&

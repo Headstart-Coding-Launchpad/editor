@@ -1,10 +1,25 @@
 // Node-safe half of the Python module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
-import { getStarterStage } from '../../shared/taskUtils.js'
+import { getStarterStage } from '../../shared/taskStages.js'
 
 export default defineModule({
   type: 'python',
-  meta: { label: 'Python', order: 0 },
+  meta: {
+    label: 'Python',
+    order: 0,
+    shortLabel: 'Python',
+    icon: '🐍',
+    pickerHint: 'Workspace',
+    language: 'python',
+    playground: true,
+  },
+  capabilities: {
+    sideExplainer: true,
+    modulePanes: true,
+    teacherLiveReference: true,
+    unifiedStages: true,
+    sandboxState: 'code',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -49,6 +64,7 @@ export default defineModule({
       : [{ type: 'output_contains', value: '' }],
 
   carryThroughField: 'carryCodeFrom',
+  completeField: 'completeCode',
   carryThroughLabel: 'Carry code from task',
   // Also patches codeStages[0].code so the carried code actually shows up in the Builder's
   // Starter tab once a task has stages — the legacy starterCode field alone is no longer
@@ -77,6 +93,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],
+  explainerCodeBlockLanguages: ['python'],
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: '',

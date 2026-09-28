@@ -3,6 +3,7 @@ import remarkParse from 'remark-parse'
 import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
 import { getEffectiveLessonForTask, getComposedModuleTypes } from '../shared/composedLesson'
+import { getModuleLabel } from '../modules/definitions'
 
 function esc(str) {
   if (str == null) return ''
@@ -606,20 +607,12 @@ export function buildPrintHtml(lesson) {
     return parts.join('')
   }
 
-  const TYPE_LABELS = {
-    python: 'Python',
-    turtle: 'Python Turtle',
-    arcade: 'Arcade Kit',
-    html: 'Web (HTML/CSS/JS)',
-    scratch: 'Scratch',
-    filesystem: 'Filesystem',
-    electronics: 'Electronics',
-  }
+  const printTypeLabel = (type) => getModuleLabel(type, 'print') ?? type
   const composedTypes = getComposedModuleTypes(lesson)
   const typeLabel =
     composedTypes.length > 0
-      ? composedTypes.map((type) => TYPE_LABELS[type] || type).join(' + ')
-      : TYPE_LABELS[lesson.type] || lesson.type
+      ? composedTypes.map(printTypeLabel).join(' + ')
+      : printTypeLabel(lesson.type)
   let taskNumber = 1
   const taskSections = []
 

@@ -48,6 +48,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getLessonModule } from '../../modules/registry'
+import { getModuleTypesWhere } from '../../modules/definitions'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
@@ -61,8 +62,11 @@ function canRecordAdvanceOverride(task) {
 }
 
 // Lesson types whose teacher sandbox work is a single code string (electronics serialises
-// its circuit to JSON in the same slot). Everything else keeps its own shape below.
-const CODE_STRING_TYPES = ['python', 'arcade', 'electronics', 'turtle']
+// its circuit to JSON in the same slot) — `capabilities.sandboxState === 'code'`. Everything
+// else keeps its own shape below.
+const CODE_STRING_TYPES = getModuleTypesWhere(
+  (definition) => definition.capabilities.sandboxState === 'code'
+)
 function holdsCodeString(type) {
   return CODE_STRING_TYPES.includes(type)
 }

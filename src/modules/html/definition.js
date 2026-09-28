@@ -10,7 +10,23 @@ const DEFAULT_HTML_FILE = {
 
 export default defineModule({
   type: 'html',
-  meta: { label: 'HTML', order: 4 },
+  meta: {
+    label: 'HTML',
+    order: 4,
+    shortLabel: 'HTML',
+    icon: '🌐',
+    pickerHint: 'Workspace',
+    language: 'html',
+    playground: false,
+    surfaceLabels: { lessonIntro: 'Web Dev', builderMeta: 'Web', print: 'Web (HTML/CSS/JS)' },
+  },
+  capabilities: {
+    sideExplainer: true,
+    modulePanes: true,
+    teacherLiveReference: true,
+    unifiedStages: true,
+    sandboxState: 'files',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete')
@@ -81,6 +97,7 @@ export default defineModule({
       : [{ type: 'output_contains', value: '' }],
 
   carryThroughField: 'carryCodeFrom',
+  completeField: 'completeFiles',
   carryThroughLabel: 'Carry code from task',
   // Also patches codeStages[0].files/entryFile — see python/definition.js's
   // getCarryThroughUpdates for why the legacy starterFiles field alone isn't enough once a
@@ -117,6 +134,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['html', 'javascript', 'css'],
+  explainerCodeBlockLanguages: ['html', 'css', 'javascript'],
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: [DEFAULT_HTML_FILE],

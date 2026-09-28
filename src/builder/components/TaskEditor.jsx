@@ -26,6 +26,7 @@ import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
 import { getLessonModule } from '../../modules/registry'
+import { getModuleDefinition } from '../../modules/definitions'
 import { LESSON_MODULE_TYPES } from '../../shared/composedLesson'
 import {
   AnimatedPanelShell,
@@ -709,16 +710,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
           <div className="te-info-type-grid">
             {(isCodeArrange ? ['python', 'html'] : LESSON_MODULE_TYPES).map((moduleType) => {
               const active = task.moduleType === moduleType
-              const icon = {
-                python: '🐍',
-                arcade: '🕹️',
-                turtle: '🐢',
-                html: '🌐',
-                scratch: '🧩',
-                filesystem: '🗂️',
-                desktop: '🖥️',
-                electronics: '⚡',
-              }[moduleType]
+              const { icon, shortLabel, pickerHint } = getModuleDefinition(moduleType).meta
               return (
                 <button
                   key={moduleType}
@@ -729,19 +721,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                   onClick={() => handleModuleChange(moduleType)}
                 >
                   <span className="te-info-type-label">
-                    {icon}{' '}
-                    {moduleType === 'arcade'
-                      ? 'Arcade Kit'
-                      : moduleType[0].toUpperCase() + moduleType.slice(1)}
+                    {icon} {shortLabel}
                   </span>
-                  <span className="te-info-type-hint">
-                    {moduleType === 'filesystem'
-                      ? 'File manager'
-                      : moduleType === 'desktop'
-                        ? 'Windowed desktop'
-                        : 'Workspace'}
-                    {moduleType === 'arcade' ? ' · Experimental' : ''}
-                  </span>
+                  <span className="te-info-type-hint">{pickerHint}</span>
                 </button>
               )
             })}

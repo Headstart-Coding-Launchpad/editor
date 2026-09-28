@@ -4,6 +4,7 @@ import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
 import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
 import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
+import { getModuleLabel } from '../../modules/definitions'
 
 const PLAYGROUND_TYPES = new Set(PLAYGROUND_LESSON_TYPES)
 
@@ -39,14 +40,7 @@ function makeLesson(type) {
               starterCode: '',
             }
 
-  const playgroundTitle =
-    type === 'arcade'
-      ? 'Arcade Kit'
-      : type === 'electronics'
-        ? 'Electronics'
-        : type === 'scratch'
-          ? 'Scratch'
-          : 'Python'
+  const playgroundTitle = getModuleLabel(type) ?? 'Python'
 
   return {
     // This is intentionally not a valid lesson ID. Playground work must never

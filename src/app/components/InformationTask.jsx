@@ -2,15 +2,10 @@ import React from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import ExplainerPanel from './ExplainerPanel'
 import { isComposedLesson, getComposedModuleTypes } from '../../shared/composedLesson'
+import { getModuleLabel } from '../../modules/definitions'
 
 function singleTypeLabel(type) {
-  if (type === 'python') return 'Python'
-  if (type === 'scratch') return 'Scratch'
-  if (type === 'html') return 'Web Dev'
-  if (type === 'filesystem') return 'Filesystem'
-  if (type === 'electronics') return 'Electronics'
-  if (type === 'arcade') return 'Arcade Kit'
-  return type || 'Lesson'
+  return getModuleLabel(type, 'lessonIntro') ?? (type || 'Lesson')
 }
 
 // A composed lesson's own `.type` is just 'composed' — describe it by the

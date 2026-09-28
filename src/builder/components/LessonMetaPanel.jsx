@@ -18,6 +18,7 @@ import {
   isComposedLesson,
   getComposedModuleTypes,
 } from '../../shared/composedLesson'
+import { getModuleLabel } from '../../modules/definitions'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -343,13 +344,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
 }
 
 function singleModuleLabel(type) {
-  if (type === 'python') return 'Python'
-  if (type === 'arcade') return 'Arcade Kit'
-  if (type === 'scratch') return 'Scratch'
-  if (type === 'filesystem') return 'Files & Folders'
-  if (type === 'desktop') return 'Desktop'
-  if (type === 'electronics') return 'Electronics'
-  return 'Web'
+  return getModuleLabel(type, 'builderMeta') ?? 'Web'
 }
 
 // A composed lesson's own `.type` is just 'composed' — describe it by the
