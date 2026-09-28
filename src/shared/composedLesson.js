@@ -1,14 +1,16 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
+import { MODULE_TYPES } from '../modules/definitions.js'
+
+// Membership comes from the module definitions (src/modules/definitions.js), so a new module
+// type is accepted here, by the Builder and by the CLI without editing this file. The order
+// (Builder composed-module picker, CLI "type must be one of" message) predates the registry
+// order and differs only in html/scratch; it is kept to stay behaviour-neutral. Unlisted types
+// append in registry order.
+const LEGACY_PICKER_ORDER = ['python', 'arcade', 'turtle', 'html', 'scratch']
 
 export const LESSON_MODULE_TYPES = [
-  'python',
-  'arcade',
-  'turtle',
-  'html',
-  'scratch',
-  'filesystem',
-  'desktop',
-  'electronics',
+  ...LEGACY_PICKER_ORDER.filter((type) => MODULE_TYPES.includes(type)),
+  ...MODULE_TYPES.filter((type) => !LEGACY_PICKER_ORDER.includes(type)),
 ]
 
 // Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx).
