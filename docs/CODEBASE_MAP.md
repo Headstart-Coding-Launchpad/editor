@@ -278,13 +278,14 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
-| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks` — delegates filesystem, Python variable, HTML element, and electronics `circuit_*` checks to their module evaluators; also routes generic `code` checks to the electronics evaluator when `context.circuit` is present, so they run against Micro Controller MicroPython source instead of raw circuit JSON |
+| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`. Builds `checkRegistry` from `CORE_CHECKS` + every module's `CHECKS`; `evaluateSingleCheck` normalises core aliases then does a registry lookup + call, and `CHECK_TYPES.RUN_REQUIRED` / `SUBMIT_ALLOWED` are derived from the definitions. The core `code` definition routes to the electronics evaluator when `context.circuit` is present, so it runs against Micro Controller MicroPython source instead of raw circuit JSON |
+| `checkRegistry.js` | Pure, Node-safe check-type registry: `createCheckRegistry(defs)` validates definitions (`type`, `owner`, `timing`, `requiresRun`, `submitAllowed`, `evaluate`, optional `aliases`/`subject`/`operators`/`fields`/`contextKey`/`validate`), throws on duplicate type ids or aliases, and provides alias-aware `get`/`has`/`canonicalType`/`typeIds`/`evaluate` |
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
 | `defineModule.js` | Pure: `defineModule(def)` validates a module definition (type, `meta.label`/`meta.order`, required hooks and flags) and freezes it; `defineUiModule(def, ui)` merges the UI half (workspaces, check editors, `getLayoutStyles`, `runtime`) into the object the registry returns |
 | `definitions.js` | Pure, Node-safe registry of every `<type>/definition.js`: `MODULE_TYPES` (registry order), `getModuleDefinitions()`, `getModuleDefinition(type)`; used by `registry.js` and `src/shared/composedLesson.js` (so the CLI) |
 | `<type>/definition.js` | Pure, Node-safe half of each module (python, html, scratch, filesystem, electronics, arcade, turtle, desktop): `meta`, authoring/carry-through/state/sandbox/display hooks and capability flags; no JSX, React, DOM or runtimes, and explicit `.js` import extensions. `<type>/index.js` wraps it with `defineUiModule` |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
-| `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
+| `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck`, registry `CHECKS` — all `variable_*` types |
 | `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status; shows a tap-to-insert row of common Python symbols above the editor on touch devices (`useIsTouchDevice`) plus an always-visible `EmojiPickerButton`, both while interactive, inserting via `CodeEditor`'s `insertAtCursor` ref API. Shared by Turtle, Arcade, and Electronics student/live views since they reuse this component for their Python/MicroPython code |
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
@@ -292,7 +293,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
 | `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming (via `createUtf8ByteDecoder()`, a streaming UTF-8 decoder — Pyodide's raw callbacks deliver one byte at a time, so multi-byte characters like emoji or `£` must be reassembled rather than decoded byte-by-byte); `formatPythonError()` parses the failing `<student>` line for the error-line highlight |
 | `html/index.js` | HTML module definition |
-| `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck` — all `element_*` types |
+| `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck`, registry `CHECKS` (canonical `html_*` types own the legacy `element_*` ids as aliases) |
 | `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection; `resolveIframeErrorLocation()` maps a reported runtime error back to `{ file, line }` for the error-line highlight |
 | `html/HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer; shows an `EmojiPickerButton` above the editor while interactive |
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
@@ -310,7 +311,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
 | `filesystem/index.js` | Filesystem module definition |
-| `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `evaluateFsCheck` — all `fs_*` types |
+| `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `FS_CHECK_DEFINITIONS`, `evaluateFsCheck`, registry `CHECKS` — all `fs_*` types |
 | `filesystem/filesystem.js` | Virtual filesystem engine: flat path-map state, CRUD helpers, path normalization, and parent/child lookup |
 | `filesystem/filesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` visual starter/complete editor and `FsCheckListEditor` filesystem check builder |
 | `filesystem/FilesystemTask.jsx` | Student-facing Windows Explorer-style virtual filesystem UI: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor |
@@ -319,7 +320,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
 | `desktop/index.js` | Desktop module definition |
 | `desktop/desktopState.js` | Desktop state shape (`{ fs, recycleBin, windows }`), window CRUD helpers (`openWindow` — dedupes by `(appId, filePath)`, `moveWindow`, `resizeWindow`, `setWindowMinimized`, `setWindowMaximized`, `closeWindow`, `focusWindow`, `arrangeSideBySide`, `isWindowDirty`), serialize/deserialize |
-| `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `evaluateDesktopCheck` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
+| `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `DESKTOP_CHECK_DEFINITIONS`, `evaluateDesktopCheck`, registry `CHECKS` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
 | `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*` and desktop-specific check definitions |
 | `desktop/Desktop.jsx` | Desktop shell: background, app icon grid, taskbar with clock and open-window buttons |
 | `desktop/WindowManager.jsx` | Renders open windows for the current desktop state, wires drag/resize/minimize/maximize/close/focus to `desktopState.js` |
@@ -337,6 +338,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `desktop/CheckEditor.jsx` | `DesktopCheckListEditor` wrapper |
 | `desktop/TeacherLiveView.jsx` | Reuses `Desktop` read-only or sandbox-editable against `displayState` |
 | `electronics/index.js` | Electronics module definition: breadboard state helpers, builder/student/teacher workspaces, checks, carry-through, sandbox state, and MicroPython runtime bridge |
+| `electronics/checks.js` | Electronics registry `CHECKS` for the `circuit_*` check types (evaluators live in `circuit.js`) |
 | `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, `circuit_*` check evaluation, and generic `code`-family check evaluation against the Micro Controller's MicroPython source |
 | `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI shell: board state, selection, drag/drop, wiring interaction, fit-to-pane zoom, tabs, MicroPython Code tab, and output panel - draws on the five modules below |
 | `electronics/Inspector.jsx` | Right-hand panel for the selected wire or part: electrical readout, part properties, runtime controls, Micro Controller GPIO editing; handlers arrive bundled as `actions` |
@@ -362,7 +364,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `turtle/engine.js` | Pure turtle-graphics state machine (forward/turn/goto/home), no DOM/Pyodide — unit tested directly |
 | `turtle/shim.js` | Python-side fake `turtle` module (source-line array + `buildTurtleProgram`), same technique as `electronics`'s `MICROPYTHON_SHIM`, backed by `__hsTurtle*` bridge functions on the shared Pyodide worker |
 | `turtle/draw.js` | Shared canvas renderer: maps the fixed logical turtle world onto a responsive canvas (`drawTurtleCommands`, `sizeCanvasToDisplay`) and draws the 🐢 position/heading marker (`turtleMarkerTransform`) |
-| `turtle/checks.js` | `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
+| `turtle/checks.js` | Registry `CHECKS` + `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
 | `turtle/sync.js` | `compactTurtleResultForSync` — rounds coordinates and caps the command log before a run result is synced live to a teacher, shared by both `useTeacherLivePublish.js` and `useSession.js`'s `writeStudentTurtleResult` |
 | `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel |
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |

@@ -140,3 +140,16 @@ export function evaluateTurtleCheck(check, context = {}) {
 
   return false
 }
+
+// Check-type registry definitions (see ../checkRegistry.js). Turtle checks read the
+// drawing captured by a run (`context.turtle`) but have never been in the
+// RUN_REQUIRED list, so `requiresRun` stays false to keep checkRequiresRun unchanged.
+export const CHECKS = TURTLE_CHECK_TYPES.map((type) => ({
+  type,
+  owner: 'module:turtle',
+  timing: 'on_run',
+  requiresRun: false,
+  submitAllowed: false,
+  contextKey: 'turtle',
+  evaluate: (check, _output, context = {}) => evaluateTurtleCheck(check, context),
+}))

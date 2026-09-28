@@ -129,3 +129,20 @@ export function evaluateHtmlCheck(check, output, context = {}) {
 
   return false
 }
+
+// Check-type registry definitions (see ../checkRegistry.js). The canonical html_*
+// types own the legacy element_* ids as aliases; evaluateHtmlCheck normalises them.
+export const CHECKS = HTML_CHECK_TYPES.filter((type) => !HTML_LEGACY_CHECK_ALIASES[type]).map(
+  (type) => ({
+    type,
+    owner: 'module:html',
+    aliases: Object.keys(HTML_LEGACY_CHECK_ALIASES).filter(
+      (alias) => HTML_LEGACY_CHECK_ALIASES[alias].type === type
+    ),
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'iframeDoc',
+    evaluate: evaluateHtmlCheck,
+  })
+)
