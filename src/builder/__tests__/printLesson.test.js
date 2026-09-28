@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { buildPrintHtml } from '../printLesson'
+import {
+  ALL_LEGACY_ACTIVITY_TASKS,
+  MULTIPLE_CHOICE_TASK,
+  legacyActivityLesson,
+} from '../../test/fixtures/legacyActivityTasks'
 
 function lesson(type, task) {
   return {
@@ -145,5 +150,47 @@ describe('buildPrintHtml', () => {
     expect(html).toContain('Carry Circuit From')
     expect(html).not.toContain('"components":')
     expect(html).not.toContain('Main <battery>')
+  })
+})
+
+// Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+// the printed section for each quiz sub-type and code_arrange task. Pinned
+// as-is, including the gaps: code_arrange prints no lines/tiles/files, and a
+// multiple-choice quiz that omits quizType prints no options table.
+describe('characterisation: buildPrintHtml for legacy quiz + code_arrange tasks', () => {
+  function taskSections(html) {
+    return html.match(/<section class="task">[\s\S]*?<\/section>/g)
+  }
+
+  it('prints each fixture task section', () => {
+    const names = Object.keys(ALL_LEGACY_ACTIVITY_TASKS)
+    const sections = taskSections(
+      buildPrintHtml(legacyActivityLesson(Object.values(ALL_LEGACY_ACTIVITY_TASKS)))
+    )
+    expect(sections).toHaveLength(names.length)
+    expect(Object.fromEntries(names.map((name, i) => [name, sections[i]]))).toMatchInlineSnapshot(`
+      {
+        "code_arrange_html": "<section class="task"><h3 class="task-title"><span class="task-num">9</span> Arrange a heading and paragraph</h3><div class="badges"><span class="badge badge-type">code_arrange</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>Build the page by arranging the lines.</p></div></div><div class="field"><div class="field-label">Check</div><div class="check-item"><strong>html_element</strong> — selector: <code>h1</code> — operator: exists</div></div></section>",
+        "code_arrange_python": "<section class="task"><h3 class="task-title"><span class="task-num">8</span> Print the first five even numbers</h3><div class="badges"><span class="badge badge-type">code_arrange</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>Arrange the lines to print 0 2 4 6 8.</p></div></div><div class="field"><div class="field-label">Check</div><div class="check-item"><strong>output</strong> — value: <code>0
+      2
+      4
+      6
+      8</code> — operator: equals</div></div></section>",
+        "confidence": "<section class="task"><h3 class="task-title"><span class="task-num">7</span> How confident are you?</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">confidence</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>Rate how confident you feel about print().</p></div></div></section>",
+        "fill_blank_drag": "<section class="task"><h3 class="task-title"><span class="task-num">3</span> Fill the gaps (drag)</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">fill_blank</span></div><div class="field"><div class="field-label">Text</div><div class="field-value">Use ___ to show text and ___ to ask a question.</div></div><div class="field"><div class="field-label">Blanks</div><table class="data-table"><tr><th>ID</th><th>Answer</th></tr><tr><td>b1</td><td>print</td></tr><tr><td>b2</td><td>input</td></tr></table></div><div class="field"><div class="field-label">Distractors</div><table class="data-table"><tr><th>ID</th><th>Text</th></tr><tr><td>d1</td><td>len</td></tr></table></div></section>",
+        "fill_blank_type": "<section class="task"><h3 class="task-title"><span class="task-num">4</span> Fill the gap (typed)</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">fill_blank</span></div><div class="field"><div class="field-label">Text</div><div class="field-value">A ___ repeats code.</div></div><div class="field"><div class="field-label">Blanks</div><table class="data-table"><tr><th>ID</th><th>Answer</th></tr><tr><td>t1</td><td>Loop</td></tr></table></div></section>",
+        "match": "<section class="task"><h3 class="task-title"><span class="task-num">2</span> Match each function</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">match</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>Match each function to what it does.</p></div></div><div class="field"><div class="field-label">Pairs</div><table class="data-table"><tr><th>Prompt</th><th>Answer</th></tr><tr><td>print()</td><td>Shows text</td></tr><tr><td>input()</td><td>Asks a question</td></tr><tr><td>len()</td><td>Counts items</td></tr></table></div></section>",
+        "multiple_choice": "<section class="task"><h3 class="task-title"><span class="task-num">1</span> Pick the output function</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">multiple_choice</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>Which function shows text on the screen?</p></div></div><div class="field"><div class="field-label">Options</div><table class="data-table"><tr><th>ID</th><th>Text</th><th>Feedback</th></tr><tr><td>a</td><td>print()</td><td>Yes - print shows text.</td></tr><tr><td>b</td><td>input()</td><td>input() asks the user a question.</td></tr><tr><td>c</td><td>len()</td><td></td></tr></table></div><div class="field"><div class="field-label">Check</div><div class="check-item"><strong>answer_equals</strong> — value: <code>a</code></div></div></section>",
+        "short_answer": "<section class="task"><h3 class="task-title"><span class="task-num">5</span> Explain print</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">short_answer</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>What does print() do?</p></div></div><div class="field"><div class="field-label">Check</div><div class="check-item"><strong>answer_contains</strong> — value: <code>text</code></div></div></section>",
+        "short_answer_open": "<section class="task"><h3 class="task-title"><span class="task-num">6</span> Reflect</h3><div class="badges"><span class="badge badge-type">quiz</span><span class="badge">short_answer</span></div><div class="field"><div class="field-label">Explainer</div><div class="field-value markdown"><p>What did you learn today?</p></div></div></section>",
+      }
+    `)
+  })
+
+  it('prints no options for a multiple-choice quiz that relies on the default quizType', () => {
+    const { quizType: _omit, ...task } = MULTIPLE_CHOICE_TASK
+    const [section] = taskSections(buildPrintHtml(legacyActivityLesson([task])))
+    expect(section).not.toContain('Options')
+    expect(section).toContain('<strong>answer_equals</strong>')
   })
 })

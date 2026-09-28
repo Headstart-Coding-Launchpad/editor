@@ -880,6 +880,139 @@ describe('useSession', () => {
     })
   })
 
+  // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+  // the exact per-student wipe list on task change, including the quiz /
+  // code_arrange mirrors (currentAnswer, currentCodeArrangeSlots) and the
+  // teacher answer edit, so a new Activity state field can't silently survive
+  // (or a required one silently vanish from) a task switch.
+  describe('characterisation: setTaskId wipe list', () => {
+    it('writes exactly these session and per-student fields', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 1,
+        isPaused: false,
+        students: { s1: { displayName: 'Jamie', currentAnswer: '{"p1":"p1"}' } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const [target, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(target).toEqual({ path: 'sessions/lesson-1' })
+      const student = Object.fromEntries(
+        Object.entries(updates)
+          .filter(([key]) => key.startsWith('students/s1/'))
+          .map(([key, value]) => [key.slice('students/s1/'.length), value])
+      )
+      const session = Object.fromEntries(
+        Object.entries(updates).filter(([key]) => !key.startsWith('students/'))
+      )
+      expect(session).toEqual({
+        currentTaskId: 2,
+        currentTaskStartedAt: expect.any(Number),
+        explainerShowComplete: false,
+        teacherClassPaneCommand: null,
+        'taskStartTimes/2': session.currentTaskStartedAt,
+      })
+      expect(student).toEqual({
+        checkPassed: null,
+        lastRunStatus: null,
+        currentOutput: '',
+        currentCode: '',
+        currentArcadeDesign: null,
+        currentSpriteState: null,
+        currentCursor: null,
+        currentBlockDrag: null,
+        currentCodeArrangeSlots: null,
+        currentFiles: null,
+        currentAnswer: null,
+        currentSelection: null,
+        currentActivity: null,
+        currentActiveFile: null,
+        checkOverridePassed: null,
+        checkOverrideHint: null,
+        checkOverridePushedAt: null,
+        needsHelp: null,
+        currentTopicId: null,
+        sentToTopicId: null,
+        sentToTopicPushedAt: null,
+        teacherMessage: null,
+        teacherMessagePushedAt: null,
+        teacherEditRequestedAt: null,
+        teacherEditAcceptedAt: null,
+        teacherLiveCode: null,
+        teacherLiveFiles: null,
+        teacherLiveActiveFile: null,
+        teacherLiveWorkspace: null,
+        teacherLiveArcadeDesign: null,
+        teacherEditApplyCode: null,
+        teacherEditApplyFiles: null,
+        teacherEditApplyArcadeDesign: null,
+        teacherEditAppliedAt: null,
+        teacherAnswerEdit: null,
+        remoteRunPushedAt: null,
+        remoteRunTaskId: null,
+        teacherAssistedTaskId: null,
+        teacherStageRequestedAt: null,
+        teacherStagePendingAction: null,
+        teacherStageAcceptedAt: null,
+        teacherHighlights: null,
+        teacherPaneCommand: null,
+        shareRequestedAt: null,
+        shareRequestTaskId: null,
+        shareRequestOrigin: null,
+        shareSnapshotRequestedAt: null,
+      })
+      // Not wiped today: the Turtle result mirror and the input() prompt mirror.
+      expect(student).not.toHaveProperty('currentTurtleResult')
+      expect(student).not.toHaveProperty('currentInputPrompt')
+      expect(student).not.toHaveProperty('currentInput')
+    })
+
+    it('writes no per-student keys when the session has no students', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'active', currentTaskId: 1, isPaused: false })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(Object.keys(updates).some((key) => key.startsWith('students/'))).toBe(false)
+    })
+  })
+
+  describe('characterisation: quiz answer writes', () => {
+    it('writeStudentAnswer sets currentAnswer verbatim', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentAnswer('s1', '{"p1":"p1"}')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/s1/currentAnswer' },
+        '{"p1":"p1"}'
+      )
+    })
+
+    it('writeStudentRun merges the submitted answer with run status and result', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentRun('s1', {
+          answer: 'b',
+          status: 'submitted',
+          checkPassed: false,
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/s1' },
+        {
+          lastRunStatus: 'submitted',
+          lastRunAt: expect.any(Number),
+          checkPassed: false,
+          currentAnswer: 'b',
+        }
+      )
+    })
+  })
+
   // ─── Remote reset ───────────────────────────────────────────────────────────
 
   describe('recordStudentCarryFallback', () => {

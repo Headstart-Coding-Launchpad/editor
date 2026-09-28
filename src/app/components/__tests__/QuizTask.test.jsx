@@ -1,8 +1,9 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
+import * as legacy from '../../../test/fixtures/legacyActivityTasks'
 import {
   fitScratchQuizScale,
   OPTION_COLOURS,
@@ -459,5 +460,107 @@ describe('QuizTask multiple choice answer colours', () => {
     )
     expect(byLetter.a).toBe('var(--colour-success-edge)')
     expect(byLetter.b).toBe('var(--colour-error-edge)')
+  })
+})
+
+// Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+// the exact onSelectAnswer(answer, passedOverride) arguments each sub-type emits.
+// passedOverride: undefined = "evaluate task.check", null = "in progress, just
+// mirror it", boolean = the component already marked it. useStudentCodeState's
+// handleQuizSelect branches on exactly these three shapes.
+describe('characterisation: QuizTask onSelectAnswer per legacy fixture', () => {
+  it('multiple_choice emits only the option id', async () => {
+    const user = userEvent.setup()
+    const onSelectAnswer = vi.fn()
+    render(<QuizTask task={legacy.MULTIPLE_CHOICE_TASK} onSelectAnswer={onSelectAnswer} />)
+    await user.click(screen.getByRole('radio', { name: /input\(\)/ }))
+    expect(onSelectAnswer.mock.calls).toEqual([['b']])
+  })
+
+  it('match emits (state, null) while incomplete and (state, allCorrect) once every pair is placed', async () => {
+    const user = userEvent.setup()
+    const onSelectAnswer = vi.fn()
+    const { rerender } = render(
+      <QuizTask
+        task={legacy.MATCH_TASK}
+        selectedAnswer='{"p1":"p1"}'
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: 'Counts items' }))
+    await user.click(screen.getAllByText('Tap to place')[0])
+    expect(onSelectAnswer).toHaveBeenLastCalledWith({ p1: 'p1', p2: 'p3' }, null)
+
+    rerender(
+      <QuizTask
+        task={legacy.MATCH_TASK}
+        selectedAnswer={{ p1: 'p1', p2: 'p2' }}
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: 'Counts items' }))
+    await user.click(screen.getByText('Tap to place'))
+    expect(onSelectAnswer).toHaveBeenLastCalledWith({ p1: 'p1', p2: 'p2', p3: 'p3' }, true)
+  })
+
+  it('fill_blank drag emits tile ids, with allCorrect false once full but wrong', async () => {
+    const user = userEvent.setup()
+    const onSelectAnswer = vi.fn()
+    render(
+      <QuizTask
+        task={legacy.FILL_BLANK_DRAG_TASK}
+        selectedAnswer={{ b1: 'b1' }}
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: 'len' }))
+    await user.click(screen.getByText('Tap to place'))
+    expect(onSelectAnswer.mock.calls).toEqual([[{ b1: 'b1', b2: 'd1' }, false]])
+  })
+
+  it('fill_blank type emits (state, null) per edit and (state, allCorrect) on Submit', async () => {
+    const onSelectAnswer = vi.fn()
+    const { rerender } = render(
+      <QuizTask
+        task={legacy.FILL_BLANK_TYPE_TASK}
+        selectedAnswer=""
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+    fireEvent.change(screen.getByPlaceholderText('...'), { target: { value: 'LOOP ' } })
+    expect(onSelectAnswer).toHaveBeenLastCalledWith({ t1: 'LOOP ' }, null)
+
+    rerender(
+      <QuizTask
+        task={legacy.FILL_BLANK_TYPE_TASK}
+        selectedAnswer='{"t1":"LOOP "}'
+        onSelectAnswer={onSelectAnswer}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSelectAnswer).toHaveBeenLastCalledWith({ t1: 'LOOP ' }, true)
+  })
+
+  it('short_answer emits the trimmed text only, with no passedOverride', async () => {
+    const user = userEvent.setup()
+    const onSelectAnswer = vi.fn()
+    render(<QuizTask task={legacy.SHORT_ANSWER_TASK} onSelectAnswer={onSelectAnswer} />)
+    await user.type(screen.getByPlaceholderText('Type your answer here…'), '  It shows text  ')
+    // Typing is local state only: nothing is emitted until Submit.
+    expect(onSelectAnswer).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Submit Answer' }))
+    expect(onSelectAnswer.mock.calls).toEqual([['It shows text']])
+  })
+
+  it('confidence emits the level as a string with passedOverride true', async () => {
+    const user = userEvent.setup()
+    const onSelectAnswer = vi.fn()
+    render(
+      <QuizTask task={legacy.CONFIDENCE_TASK} selectedAnswer="2" onSelectAnswer={onSelectAnswer} />
+    )
+    expect(screen.getByTitle('Confidence level 2')).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByTitle('Confidence level 4'))
+    expect(onSelectAnswer.mock.calls).toEqual([['4', true]])
   })
 })

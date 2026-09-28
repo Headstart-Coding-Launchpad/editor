@@ -421,3 +421,56 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(screen.queryByPlaceholderText('Type your input…')).not.toBeInTheDocument()
   })
 })
+
+// Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+// a teacher "Edit answers" push reaches the workspace as cs.teacherCodeArrangeEdit
+// and is applied like a student placement (saved locally, mirrored), flagged fromTeacher.
+describe('CodeArrangeTaskContainer — teacher answer edit (characterisation)', () => {
+  it('saves and mirrors the teacher-edited slots with { fromTeacher: true }', () => {
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => null),
+      teacherCodeArrangeEdit: { slots: { L1: 'L1', L2: 'D1' }, at: 5 },
+    })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    expect(cs.saveTaskAuxFile).toHaveBeenCalledWith(
+      1,
+      '__code_arrange_slots__',
+      '{"L1":"L1","L2":"D1"}'
+    )
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith(
+      { L1: 'L1', L2: 'D1' },
+      { fromTeacher: true }
+    )
+    expect(screen.getByText('print("wrong")')).toBeInTheDocument()
+  })
+
+  it('ignores a teacher edit while showing a read-only live mirror', () => {
+    const cs = makeCs({ teacherCodeArrangeEdit: { slots: { L1: 'L1' }, at: 5 } })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive
+        isTeacherEditing={false}
+        displayCode=""
+      />
+    )
+
+    expect(cs.saveTaskAuxFile).not.toHaveBeenCalled()
+    expect(cs.handleCodeArrangeSlotsChange).not.toHaveBeenCalled()
+  })
+})
