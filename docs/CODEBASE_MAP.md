@@ -464,6 +464,20 @@ Each `index.js` exports a default object with:
 | `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
 
+### Input Recorder (`src/shared/input/`)
+
+Pure, Node-safe input library for the Keyboard and Mouse activities and, later, Desktop checks (plan: `docs/architecture/modular-activities-plan.md`, Phase 3). Raw events stay on the device; only summaries are checked or synced.
+
+| File | Role |
+|---|---|
+| `index.js` | Re-exports the whole library |
+| `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
+| `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
+| `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag, scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
+| `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `summarizeInput` (small serialisable counts), `typingStats` (accuracy, WPM) |
+| `recorder.js` | `createInputRecorder`: bounded in-memory event ring buffer, never persisted |
+| `capabilities.js` | `detectInputCapabilities` (fine pointer, hover, touch), `withKeyEvidence` (physical keyboard learned from a hardware keydown), `unmetRequirements` |
+
 ---
 
 ## Cloud Functions (`functions/`)
