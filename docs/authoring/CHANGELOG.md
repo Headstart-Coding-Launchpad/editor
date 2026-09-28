@@ -20,6 +20,24 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-28
 
+### Binary activity: overflow, hex, ASCII and pixels modes
+
+- Four new Binary `mode`s (see [activities/binary.md](activities/binary.md), which has a
+  complete example lesson):
+  - `overflow`: items `a`, `b` whose sum does **not** fit in `bits`; students set the bits that
+    are left and answer "Did it overflow?".
+  - `hex`: items `value`, `from`, `to` (`binary` / `hex` / `decimal`, different); binary is shown
+    in groups of 4 bits and hex answers are marked ignoring case.
+  - `ascii`: items `text` (1–16 printable ASCII characters) and `direction` (`encode` /
+    `decode`); task options `codeFormat` (`binary` default, or `decimal`) and `showTable`.
+  - `pixels`: task `width` / `height` (1–16), items `rows` (quoted bit strings) and
+    `direction` (`draw` / `encode`).
+- `requireCarries` now also applies to `overflow`.
+- The `add` message for a sum that is too big now reads "a + b is too big for … bits (use mode:
+  overflow for that)." New messages are listed in [validation-errors.md](validation-errors.md),
+  including a size limit on a task's saved answers for the new modes.
+- Existing `make_number`, `to_binary`, `to_decimal` and `add` tasks are unchanged.
+
 ### Binary, Keyboard and Mouse activities run in the classroom
 
 - Tasks with `taskType: activity` and `activityType: binary`, `keyboard` or `mouse` now render

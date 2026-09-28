@@ -110,13 +110,24 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: binary mode must be one of ….` | `mode` is missing or unknown. | Use `make_number`, `to_binary`, `to_decimal` or `add`. |
+| `Task …: binary mode must be one of ….` | `mode` is missing or unknown. | Use `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii` or `pixels`. |
 | `Task …: binary bits must be a whole number from … to ….` | `bits` is outside 1–16. | Use a whole number from 1 to 16 (default 8). |
 | `Task …: binary task needs at least one item.` | `items` is empty. | Add at least one item. |
 | `Task … item …: target must be a whole number from 0 to ….` | A `make_number` / `to_binary` target doesn't fit in `bits`. | Lower the target or raise `bits` (4 bits → 0–15, 8 bits → 0–255). |
-| `Task … item …: value must be … binary digits (0s and 1s).` | A `to_decimal` `value` isn't exactly `bits` long, or has other characters. | Pad with leading zeros to the full width, e.g. `"0101"` for 4 bits. Quote it in YAML. |
-| `Task … item …: a and b must each be … binary digits (0s and 1s).` | An `add` item's `a` / `b` isn't exactly `bits` long. | Pad both to the full width and quote them in YAML. |
-| `Task … item …: a + b is too big for … bits (overflow comes in a later mode).` | The sum doesn't fit in `bits`. | Pick smaller numbers or raise `bits`. |
+| `Task … item …: value must be … binary digits (0s and 1s).` | A `to_decimal` value (or a `hex` value with `from: binary`) isn't exactly `bits` long, or has other characters. | Pad with leading zeros to the full width, e.g. `"0101"` for 4 bits. Quote it in YAML. |
+| `Task … item …: a and b must each be … binary digits (0s and 1s).` | An `add` / `overflow` item's `a` / `b` isn't exactly `bits` long. | Pad both to the full width and quote them in YAML. |
+| `Task … item …: a + b is too big for … bits (use mode: overflow for that).` | An `add` sum doesn't fit in `bits`. | Pick smaller numbers, raise `bits`, or make it an `overflow` task. |
+| `Task … item …: a + b fits in … bits, so it does not overflow.` | An `overflow` item's sum fits, so there is no overflow to spot. | Pick bigger numbers (the sum must be more than 2^bits − 1), or make it an `add` task. |
+| `Task … item …: from and to must be two different bases: binary, hex or decimal.` | A `hex` item's `from` / `to` is missing, unknown, or the same. | Set `from` and `to` to two different values out of `binary`, `hex` and `decimal`. |
+| `Task … item …: value must be a hex number (0-9, A-F) from 0 to ….` | A `hex` item with `from: hex` has other characters, or is too big for `bits` (8 bits → at most `FF`). | Use only 0-9 and A-F, quote it in YAML, and keep it within `bits`. |
+| `Task … item …: value must be a whole number from 0 to ….` | A `hex` item with `from: decimal` isn't a whole number, or doesn't fit in `bits`. | Lower the value or raise `bits`. |
+| `Task …: binary codeFormat must be binary or decimal.` | An `ascii` task's `codeFormat` is something else. | Use `binary` (default) or `decimal`. |
+| `Task … item …: text must be 1 to … printable ASCII characters (letters, digits, spaces and symbols).` | An `ascii` item's `text` is empty, too long (over 16), or has characters outside codes 32–126 (accents, emoji, tabs, new lines). | Shorten it and use plain keyboard characters only. |
+| `Task … item …: ascii direction must be encode or decode.` | An `ascii` item's `direction` is missing or unknown. | Use `encode` (type the codes) or `decode` (type the text). |
+| `Task …: binary pixels width and height must be whole numbers from 1 to ….` | A `pixels` task has no `width` / `height`, or one is over 16. | Set both on the task, each from 1 to 16. |
+| `Task … item …: pixels direction must be draw or encode.` | A `pixels` item's `direction` is missing or unknown. | Use `draw` (click the squares) or `encode` (type the bits). |
+| `Task … item …: rows must be … rows of … binary digits (0s and 1s).` | A `pixels` item doesn't have exactly `height` rows, or a row isn't exactly `width` 0s and 1s. | Give one quoted string per row, each exactly `width` long. |
+| `Task …: binary task has too much to save (… characters of answers, limit …). Use fewer or smaller items.` | An `overflow` / `hex` / `ascii` / `pixels` task's finished answers are too big to sync to the teacher (roughly more than four 16 × 16 pictures). | Split the items across two tasks, or use smaller pictures / shorter text. |
 
 ### Keyboard ([activities/keyboard.md](activities/keyboard.md))
 
