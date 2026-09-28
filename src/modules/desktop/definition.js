@@ -9,7 +9,22 @@ import {
 
 export default defineModule({
   type: 'desktop',
-  meta: { label: 'Desktop', order: 6 },
+  meta: {
+    label: 'Desktop',
+    order: 6,
+    shortLabel: 'Desktop',
+    icon: '🖥️',
+    pickerHint: 'Windowed desktop',
+    language: null,
+    playground: false,
+  },
+  capabilities: {
+    sideExplainer: false,
+    modulePanes: false,
+    teacherLiveReference: false,
+    unifiedStages: false,
+    sandboxState: 'desktop',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeDesktop ?? makeDefaultDesktop(task?.availableApps)
@@ -39,6 +54,7 @@ export default defineModule({
   defaultCheck: () => [{ type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }],
 
   carryThroughField: 'carryDesktopFrom',
+  completeField: 'completeDesktop',
   carryThroughLabel: 'Carry desktop from task',
   getCarryThroughUpdates: (sourceTask) => ({
     starterDesktop:
@@ -59,6 +75,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: [],
+  explainerCodeBlockLanguages: [],
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: makeDefaultDesktop(),

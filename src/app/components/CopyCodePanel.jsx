@@ -1,19 +1,12 @@
 import React from 'react'
-
-function getLanguageLabel(language) {
-  if (language === 'python') return 'Python'
-  if (language === 'html') return 'HTML'
-  if (language === 'css') return 'CSS'
-  if (language === 'javascript') return 'JavaScript'
-  return 'Code'
-}
+import { getCodeLanguageLabel } from '../../shared/codeLanguages'
 
 export default function CopyCodePanel({ code, language = 'python' }) {
   const text = typeof code === 'string' ? code : ''
 
   if (!text.trim()) return null
 
-  const languageLabel = getLanguageLabel(language)
+  const languageLabel = getCodeLanguageLabel(language)
 
   return (
     <section

@@ -22,6 +22,7 @@ import {
   ELECTRONICS_CHECK_TYPES,
 } from '../modules/electronics/circuit'
 import { normalizeHtmlCheck } from '../modules/html/checks'
+import { CARRY_THROUGH_FIELDS } from '../modules/definitions'
 import { normalizeSequenceItem } from '../modules/scratch/checks'
 import { validateDraftLessonStructure } from '../shared/draftLesson'
 import {
@@ -49,13 +50,6 @@ const SCRATCH_STARTER_SPRITE_STATE_FIELDS = [
   'visible',
   'rotationStyle',
   'costume',
-]
-const TASK_CARRY_FIELDS = [
-  'carryCodeFrom',
-  'carryBlocksFrom',
-  'carryFsFrom',
-  'carryDesktopFrom',
-  'carryCircuitFrom',
 ]
 
 function validateStageMetadata(task, n, errors) {
@@ -753,7 +747,7 @@ export function renumberTasks(tasks) {
         return { ...item, subtasks: updateCarryReferences(item.subtasks ?? []) }
       }
       const next = { ...item }
-      for (const field of TASK_CARRY_FIELDS) {
+      for (const field of CARRY_THROUGH_FIELDS) {
         if (next[field] == null) continue
         const mapped = idMap.get(String(next[field]))
         if (mapped != null) next[field] = mapped

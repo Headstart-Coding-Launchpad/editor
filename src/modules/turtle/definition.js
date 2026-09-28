@@ -7,7 +7,23 @@ const DEFAULT_STARTER_CODE =
 
 export default defineModule({
   type: 'turtle',
-  meta: { label: 'Python Turtle', order: 2 },
+  meta: {
+    label: 'Python Turtle',
+    order: 2,
+    shortLabel: 'Turtle',
+    icon: '🐢',
+    pickerHint: 'Workspace',
+    language: 'python',
+    playground: false,
+    surfaceLabels: { stageReference: 'Python' },
+  },
+  capabilities: {
+    sideExplainer: true,
+    modulePanes: true,
+    teacherLiveReference: true,
+    unifiedStages: true,
+    sandboxState: 'code',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -44,6 +60,7 @@ export default defineModule({
   ],
 
   carryThroughField: 'carryCodeFrom',
+  completeField: 'completeCode',
   carryThroughLabel: 'Carry code from task',
   getCarryThroughUpdates: (sourceTask, targetTask) => {
     const code = sourceTask.completeCode ?? sourceTask.starterCode ?? ''
@@ -68,6 +85,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],
+  explainerCodeBlockLanguages: ['python'],
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: '',

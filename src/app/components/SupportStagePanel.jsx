@@ -1,13 +1,9 @@
 import React from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
+import { getModuleLabel } from '../../modules/definitions'
 
-function getLanguageLabel(language) {
-  if (language === 'python') return 'Python'
-  if (language === 'html') return 'HTML'
-  if (language === 'filesystem') return 'Filesystem'
-  if (language === 'scratch') return 'Scratch'
-  if (language === 'electronics') return 'Electronics'
-  return 'Code'
+function getLanguageLabel(lessonType) {
+  return getModuleLabel(lessonType, 'stageReference') ?? 'Code'
 }
 
 function stageToText(stage, lessonType) {

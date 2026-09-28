@@ -4,7 +4,23 @@ import { cloneArcadeDesign } from './design.js'
 
 export default defineModule({
   type: 'arcade',
-  meta: { label: 'Arcade Kit', order: 1 },
+  meta: {
+    label: 'Arcade Kit',
+    order: 1,
+    shortLabel: 'Arcade Kit',
+    icon: '🕹️',
+    pickerHint: 'Workspace · Experimental',
+    language: 'python',
+    playground: true,
+    surfaceLabels: { stageReference: 'Python' },
+  },
+  capabilities: {
+    sideExplainer: true,
+    modulePanes: true,
+    teacherLiveReference: true,
+    unifiedStages: true,
+    sandboxState: 'code',
+  },
   getDisplayState: (task, stage, liveState, tab) =>
     tab === 'complete'
       ? (task?.completeCode ?? '')
@@ -49,6 +65,7 @@ export default defineModule({
   initStageTab: null,
   defaultCheck: () => [{ type: 'code_contains', value: '' }],
   carryThroughField: 'carryCodeFrom',
+  completeField: 'completeCode',
   carryThroughLabel: 'Carry code from task',
   // Also patches codeStages[0].code (see python/definition.js's getCarryThroughUpdates for why).
   getCarryThroughUpdates: (source, targetTask) => {
@@ -72,6 +89,7 @@ export default defineModule({
   supportsCopyCode: true,
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['python'],
+  explainerCodeBlockLanguages: ['python'],
   defaultState: '',
   initialState: (task) => task.starterCode ?? '',
   serializeState: (state) => state,

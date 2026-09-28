@@ -4,7 +4,23 @@ import { DEFAULT_FS } from './filesystem.js'
 
 export default defineModule({
   type: 'filesystem',
-  meta: { label: 'Filesystem', order: 5 },
+  meta: {
+    label: 'Filesystem',
+    order: 5,
+    shortLabel: 'Filesystem',
+    icon: '🗂️',
+    pickerHint: 'File manager',
+    language: null,
+    playground: false,
+    surfaceLabels: { builderMeta: 'Files & Folders' },
+  },
+  capabilities: {
+    sideExplainer: false,
+    modulePanes: false,
+    teacherLiveReference: true,
+    unifiedStages: false,
+    sandboxState: 'fs',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeFs ?? DEFAULT_FS
@@ -30,6 +46,7 @@ export default defineModule({
   defaultCheck: () => [{ type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }],
 
   carryThroughField: 'carryFsFrom',
+  completeField: 'completeFs',
   carryThroughLabel: 'Carry filesystem from task',
   // Also patches codeStages[0].fs (see python/definition.js's getCarryThroughUpdates for why).
   getCarryThroughUpdates: (sourceTask, targetTask) => {
@@ -55,6 +72,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: [],
+  explainerCodeBlockLanguages: [],
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: DEFAULT_FS,

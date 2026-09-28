@@ -1,4 +1,6 @@
 import { SCRATCH_MARKDOWN_BLOCK_CATEGORIES } from '../scratchBlockCatalog'
+import { getModuleDefinition } from '../../modules/definitions'
+import { CODE_LANGUAGE_LABELS } from '../codeLanguages'
 
 export const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 
@@ -14,42 +16,20 @@ export function isInsideScratchCodeBlock(text) {
   return inScratch
 }
 
+// Code-block menu for an explainer, from the module definition's
+// `explainerCodeBlockLanguages`; a generic block when the module declares none.
 export function getCodeBlockOptions(lessonType) {
-  if (lessonType === 'python') return [{ label: 'Python', action: 'code-block:python' }]
-  if (lessonType === 'html') {
-    return [
-      { label: 'HTML', action: 'code-block:html' },
-      { label: 'CSS', action: 'code-block:css' },
-      { label: 'JavaScript', action: 'code-block:javascript' },
-    ]
-  }
-  if (lessonType === 'scratch') {
-    return [
-      { label: 'Scratch', action: 'code-block:scratch' },
-      { label: 'HTML', action: 'code-block:html' },
-      { label: 'CSS', action: 'code-block:css' },
-      { label: 'JavaScript', action: 'code-block:javascript' },
-    ]
-  }
-  return [{ label: 'Code block', action: 'code-block:' }]
+  const languages = getModuleDefinition(lessonType)?.explainerCodeBlockLanguages ?? []
+  if (languages.length === 0) return [{ label: 'Code block', action: 'code-block:' }]
+  return languages.map((lang) => ({
+    label: CODE_LANGUAGE_LABELS[lang] ?? lang,
+    action: `code-block:${lang}`,
+  }))
 }
 
 export function getInlineCodeOptions(lessonType, inlineCodeLanguages) {
-  const labels = {
-    python: 'Python',
-    html: 'HTML',
-    css: 'CSS',
-    javascript: 'JS',
-    scratch: 'Scratch',
-  }
-  const fallback =
-    lessonType === 'python'
-      ? ['python']
-      : lessonType === 'html'
-        ? ['html', 'javascript', 'css']
-        : lessonType === 'scratch'
-          ? ['scratch']
-          : []
+  const labels = { ...CODE_LANGUAGE_LABELS, javascript: 'JS' }
+  const fallback = getModuleDefinition(lessonType)?.explainerInlineCodeLanguages ?? []
 
   const languages =
     Array.isArray(inlineCodeLanguages) && inlineCodeLanguages.length

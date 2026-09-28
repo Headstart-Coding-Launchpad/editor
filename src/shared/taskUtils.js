@@ -1,3 +1,18 @@
+import { getStageRole, getStarterStages, getCompleteStage } from './taskStages.js'
+import { getModuleDefinition } from '../modules/definitions.js'
+
+export {
+  STAGE_ROLES,
+  isValidStageRole,
+  getStageRole,
+  isRevealableStage,
+  getRevealableStages,
+  getStarterStages,
+  getStarterStage,
+  getCompleteStage,
+  getNextRevealableStage,
+} from './taskStages.js'
+
 export function isLegacyDraftTask(task) {
   return task?.taskType === 'draft'
 }
@@ -68,64 +83,6 @@ export function canTaskAllowSharing(task) {
 
 export function isSharingAllowed(task) {
   return task?.allowSharing === true && canTaskAllowSharing(task)
-}
-
-// Code stages now have one purpose each. `core`, `extension`, and `solution`
-// remain understood so existing lessons keep loading, but the builder only
-// creates the three roles below.
-export const STAGE_ROLES = ['starter', 'support', 'complete']
-const LEGACY_STAGE_ROLE_ALIASES = {
-  core: 'support',
-  extension: 'support',
-  solution: 'complete',
-}
-
-export function isValidStageRole(role) {
-  return (
-    STAGE_ROLES.includes(role) ||
-    Object.prototype.hasOwnProperty.call(LEGACY_STAGE_ROLE_ALIASES, role)
-  )
-}
-
-export function getStageRole(stage) {
-  if (LEGACY_STAGE_ROLE_ALIASES[stage?.role]) return LEGACY_STAGE_ROLE_ALIASES[stage.role]
-  return isValidStageRole(stage?.role) ? stage.role : 'support'
-}
-
-export function isRevealableStage(stage) {
-  return getStageRole(stage) === 'support'
-}
-
-export function getRevealableStages(task) {
-  return (task?.codeStages ?? [])
-    .map((stage, index) => ({ stage, index }))
-    .filter(({ stage }) => isRevealableStage(stage))
-}
-
-function getStagesByRole(task, role) {
-  return (task?.codeStages ?? [])
-    .map((stage, index) => ({ stage, index }))
-    .filter(({ stage }) => getStageRole(stage) === role)
-}
-
-export function getStarterStages(task) {
-  return getStagesByRole(task, 'starter')
-}
-
-export function getStarterStage(task) {
-  return getStarterStages(task)[0] ?? null
-}
-
-export function getCompleteStage(task) {
-  return getStagesByRole(task, 'complete')[0] ?? null
-}
-
-// Returns the next Support stage after the latest stage already shown. This
-// keeps support references progressing in authored stage order.
-export function getNextRevealableStage(task, revealedStageIndexes = []) {
-  const revealed = revealedStageIndexes.map(Number).filter(Number.isInteger)
-  const latestRevealedIndex = revealed.length ? Math.max(...revealed) : -1
-  return getRevealableStages(task).find(({ index }) => index > latestRevealedIndex) ?? null
 }
 
 export function getTaskPriorityCounts(tasks) {
@@ -220,63 +177,35 @@ export function getProgressItems(tasks) {
 // Derive boolean task-type flags from lesson and task objects.
 // Pass the optional session to include isSessionSandbox in the result.
 export function deriveTaskContext(lesson, task, session) {
-  const isPython = lesson?.type === 'python'
-  const isScratch = lesson?.type === 'scratch'
-  const isFilesystem = lesson?.type === 'filesystem'
-  const isElectronics = lesson?.type === 'electronics'
-  const isArcade = lesson?.type === 'arcade'
-  const isHtml = lesson?.type === 'html'
-  const isTurtle = lesson?.type === 'turtle'
+  // moduleType is the registered module type of the (effective, per-task) lesson, or null for
+  // anything else (e.g. an unresolved 'composed' lesson). The is<Type> flags are kept for
+  // existing callers; prefer moduleType + the module definition for new code.
+  const moduleType = getModuleDefinition(lesson?.type) ? lesson.type : null
+  const isModule = (type) => moduleType === type
   const isQuiz = task?.taskType === 'quiz'
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'
   return {
-    isPython,
-    isScratch,
-    isFilesystem,
-    isElectronics,
-    isArcade,
-    isHtml,
-    isTurtle,
+    moduleType,
+    isPython: isModule('python'),
+    isScratch: isModule('scratch'),
+    isFilesystem: isModule('filesystem'),
+    isElectronics: isModule('electronics'),
+    isArcade: isModule('arcade'),
+    isHtml: isModule('html'),
+    isTurtle: isModule('turtle'),
+    isDesktop: isModule('desktop'),
     isQuiz,
     isInformation,
     isSessionSandbox,
   }
 }
 
-const STAGE_OPTION_METADATA = {
-  python: {
-    completeField: 'completeCode',
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
-  arcade: {
-    completeField: 'completeCode',
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
-  turtle: {
-    completeField: 'completeCode',
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
-  scratch: {
-    completeField: 'completeBlocks',
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
-  filesystem: {
-    completeField: 'completeFs',
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
-  desktop: {
-    completeField: 'completeDesktop',
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
-  electronics: {
-    completeField: 'completeCircuit',
-    stageLabels: { starterLabel: 'Starter board', completeLabel: 'Complete board' },
-  },
-  html: {
-    hasComplete: (task) => task?.completeFiles?.length > 0,
-    stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
-  },
+// A task has a legacy (non-stage) Complete to reset to when the module's `completeField`
+// holds a value — for array fields (HTML's completeFiles), a non-empty array.
+function hasLegacyComplete(task, completeField) {
+  const value = completeField ? task?.[completeField] : null
+  return Array.isArray(value) ? value.length > 0 : !!value
 }
 
 // Build the ordered list of remote-reset stage options for a task.
@@ -287,11 +216,8 @@ export function buildStageOptions(task, lessonType) {
   const isUnified = (task?.codeStages ?? []).some((stage) =>
     ['starter', 'complete'].includes(stage?.role)
   )
-  if (
-    ['python', 'html', 'arcade', 'turtle', 'electronics', 'scratch'].includes(lessonType) &&
-    task?.taskType !== 'quiz' &&
-    isUnified
-  ) {
+  const definition = getModuleDefinition(lessonType)
+  if (definition?.capabilities.unifiedStages && task?.taskType !== 'quiz' && isUnified) {
     const starters = getStarterStages(task)
     const starterOptions =
       starters.length > 0
@@ -312,20 +238,12 @@ export function buildStageOptions(task, lessonType) {
       : starterOptions
   }
 
-  const metadata = STAGE_OPTION_METADATA[lessonType]
   const isQuiz = task?.taskType === 'quiz'
-
-  const hasComplete = isQuiz
-    ? false
-    : metadata?.hasComplete
-      ? metadata.hasComplete(task)
-      : metadata?.completeField
-        ? !!task?.[metadata.completeField]
-        : false
+  const hasComplete = isQuiz ? false : hasLegacyComplete(task, definition?.completeField)
 
   const codeStages = isQuiz ? [] : (task?.codeStages ?? [])
-  const starterLabel = metadata?.stageLabels?.starterLabel ?? 'Starter'
-  const completeLabel = metadata?.stageLabels?.completeLabel ?? 'Complete'
+  const starterLabel = definition?.stageLabels.starterLabel ?? 'Starter'
+  const completeLabel = definition?.stageLabels.completeLabel ?? 'Complete'
 
   const opts = [{ value: 'starter', label: starterLabel }]
   codeStages.forEach((stage, i) => {

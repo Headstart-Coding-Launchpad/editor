@@ -1,17 +1,11 @@
 import { decodeFileKey } from '../shared/fileKeys'
+import { getModuleTypesWithCapability } from '../modules/definitions'
 
 // Lesson types whose live code is representable as the Presentation View support
-// reference (sessions/{lessonId}/teacherLiveReference). Scratch's live "code" is a
-// serialized Blockly project, not text, so it's excluded — see
-// docs/agents/classroom-behaviours.md.
-export const TEACHER_LIVE_REFERENCE_TYPES = [
-  'python',
-  'html',
-  'arcade',
-  'turtle',
-  'electronics',
-  'filesystem',
-]
+// reference (sessions/{lessonId}/teacherLiveReference) — each module's
+// `capabilities.teacherLiveReference`. Scratch's live "code" is a serialized Blockly
+// project, not text, so it's excluded — see docs/agents/classroom-behaviours.md.
+export const TEACHER_LIVE_REFERENCE_TYPES = getModuleTypesWithCapability('teacherLiveReference')
 
 export function toTeacherLiveFiles(files) {
   return files

@@ -3,7 +3,22 @@ import { defineModule } from '../defineModule.js'
 
 export default defineModule({
   type: 'scratch',
-  meta: { label: 'Scratch', order: 3 },
+  meta: {
+    label: 'Scratch',
+    order: 3,
+    shortLabel: 'Scratch',
+    icon: '🧩',
+    pickerHint: 'Workspace',
+    language: null,
+    playground: true,
+  },
+  capabilities: {
+    sideExplainer: true,
+    modulePanes: false,
+    teacherLiveReference: false,
+    unifiedStages: true,
+    sandboxState: 'blocks',
+  },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeBlocks ?? null
@@ -48,6 +63,7 @@ export default defineModule({
   defaultCheck: () => [{ type: 'block_used', evaluation: 'after_run', opcode: 'motion_movesteps' }],
 
   carryThroughField: 'carryBlocksFrom',
+  completeField: 'completeBlocks',
   carryThroughLabel: 'Carry blocks from task',
   // Also patches codeStages[0].blocks (see python/definition.js's getCarryThroughUpdates for
   // why) and carries enableStageCode across — without it, a carried __stage__ blocks entry has
@@ -81,6 +97,7 @@ export default defineModule({
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['scratch'],
+  explainerCodeBlockLanguages: ['scratch', 'html', 'css', 'javascript'],
 
   // ── State helpers ────────────────────────────────────────────────────────────
   defaultState: null,

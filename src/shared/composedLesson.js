@@ -1,5 +1,5 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
-import { MODULE_TYPES } from '../modules/definitions.js'
+import { MODULE_TYPES, getModuleTypesWhere } from '../modules/definitions.js'
 
 // Membership comes from the module definitions (src/modules/definitions.js), so a new module
 // type is accepted here, by the Builder and by the CLI without editing this file. The order
@@ -13,9 +13,11 @@ export const LESSON_MODULE_TYPES = [
   ...MODULE_TYPES.filter((type) => !LEGACY_PICKER_ORDER.includes(type)),
 ]
 
-// Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx).
-// HTML and Filesystem lessons have no playground today.
-export const PLAYGROUND_LESSON_TYPES = ['python', 'arcade', 'electronics', 'scratch']
+// Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx),
+// declared by each definition's `meta.playground`.
+export const PLAYGROUND_LESSON_TYPES = Object.freeze(
+  getModuleTypesWhere((definition) => definition.meta.playground)
+)
 
 export function isComposedLesson(lesson) {
   return lesson?.type === 'composed'

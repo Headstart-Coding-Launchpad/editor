@@ -18,6 +18,16 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-28
+
+### Explainer code-block menu offers Python for Arcade Kit, Python Turtle and Electronics
+
+- The Builder explainer editor's code-block button now inserts a ```` ```python ```` fence
+  for Arcade Kit, Python Turtle and Electronics tasks (it previously only offered an
+  unlabelled generic block there). Existing Markdown is unaffected. The same change makes
+  the Builder label Python Turtle lessons correctly (they were shown as "Web") and prints
+  Desktop lessons as "Desktop". See [markdown-renderer.md](markdown-renderer.md).
+
 ## 2026-09-17
 
 ### Arcade Kit direction keys also respond to WASD
