@@ -67,6 +67,11 @@ Status and phased roadmap for the `desktop` lesson module (windowed desktop shel
 
 **Load when:** picking up or planning further Desktop module work, or checking what's built vs. outstanding.
 
+### [architecture/modular-activities-plan.md](architecture/modular-activities-plan.md)
+Accepted phased plan for making lesson capabilities modular: an Activity plugin tier (quiz sub-types, code_arrange, Binary, Keyboard, Mouse), a shared check-type registry and input recorder, workspace module contract v2, the scaffold/skill kit Claude uses to build new activities and modules, and the `docs/authoring/authoring-requests/` intake for lesson agents.
+
+**Load when:** building a new activity or module, working on any phase of the plan, or deciding whether an idea should be an Activity or a workspace module.
+
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
 
