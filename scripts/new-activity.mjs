@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Scaffolds a new activity from src/activities/_template/ (plan step 2.5, "the kit").
 //
 //   npm run new:activity -- <id> "<Label>" [--category computing|digital_skills|quiz|code] [--dry-run]
