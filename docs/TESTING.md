@@ -221,9 +221,16 @@ Add a test whenever you change a rules file.
 4. `npm run format:check`: Prettier, code only (Markdown is ignored)
 5. `npm run test:coverage`: fails if a coverage floor is missed; the report is uploaded as
    the `coverage` artifact
+6. `npx vite build`: the production build, so a PR can't pass CI and then break the deploy.
+   Rollup rejects a missing named export that Vitest silently resolves to `undefined`.
+
+`src/modules/__tests__/nodeEsmImports.test.js` covers the same gap from the test suite: it loads
+every pure `cli/*.mjs` file, `src/modules/checks.js`, each `src/modules/<type>/checks.js` and the
+shared validation modules in a real Node process, so a broken import in the CLI's graph fails
+`npm test`.
 
 The deploy workflow still runs `vitest run` through `prebuild` before building.
 
 ---
 
-*Last updated: September 2026: coverage floors now match the measured suite, and CI runs on pushes to main.*
+*Last updated: September 2026: CI now runs the production build, and a Node ESM import test guards the CLI's import graph.*
