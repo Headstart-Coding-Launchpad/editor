@@ -125,6 +125,13 @@ global.URL.revokeObjectURL = vi.fn()
 - **Fixtures:** `src/test/fixtures/studentCodeStateLessons.js` — one lesson per module type (starter / stage / complete content all distinct, a carry task) plus a composed lesson.
 - **Known bugs** are recorded with `it.fails(...)`; when a fix lands the test starts passing and Vitest fails it, so flip it to `it(...)` in the same PR.
 
+#### Module parity and click-through safety net
+
+Both suites iterate the module registry (`getLessonModules()`), so registering a new module type makes them fail until the rest of the app knows about it.
+
+- `src/modules/__tests__/moduleTypeParity.test.js` checks every registered type against each hand-maintained type list/map outside the registry (`LESSON_MODULE_TYPES`, `PLAYGROUND_LESSON_TYPES`, `SIDE_EXPLAINER_TYPES`, `MODULE_PANES_TYPES`, `TEACHER_LIVE_REFERENCE_TYPES`, TeacherView sandbox branches, `STAGE_OPTION_METADATA`, `TASK_CARRY_FIELDS`, label maps, `editorOptions`, `deriveTaskContext` flags) and the per-module docs. A type missing from a list must have an entry in the `KNOWN_GAPS` allowlist at the top of the file (`Drift:`, `Intentional:` or `Implicit:` plus a reason); an entry that is no longer a gap also fails, so the allowlist only shrinks. Private (non-exported) literals are read from source text with `src/modules/__tests__/helpers/sourceLiterals.js`, not by exporting them. `moduleInterface.test.js` holds every registered module to the module contract.
+- `src/app/views/__tests__/StudentViewModules.test.jsx` renders the real `StudentView` for each module plus a composed Python → Filesystem lesson and clicks the primary action (Run/Stop for Python, Turtle, Electronics and Arcade; Run for HTML; New Folder for Filesystem and Desktop; the green flag for Scratch). It asserts the `writeStudentRun` payload and that no error, unhandled rejection or React error was raised. Only the Pyodide worker, the HTML/Arcade iframe builders and Firebase-backed hooks are mocked; module `StudentWorkspace`s, `useStudentCodeState` and Blockly are real, and jsdom's missing Range rects and canvas 2D context are shimmed. It catches the "passed unit tests, crashed on the first Run click" class of bug, such as a module falling into the wrong `handleRun` branch.
+
 ---
 
 ### Layer 3 — E2E Tests (Playwright)
