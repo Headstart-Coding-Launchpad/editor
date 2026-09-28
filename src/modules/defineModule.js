@@ -95,6 +95,26 @@ export const STORAGE_HOOKS = Object.freeze([
 export const WIRE_CHANNELS = Object.freeze(['code', 'files'])
 export const WIRE_HOOKS = Object.freeze(['toCode', 'fromCode', 'liveExtras', 'submission'])
 
+// Optional contract v2 groups for modules on useStudentCodeState's generic work slot (plan step
+// 4.3; filesystem and desktop so far). A module declares both or neither; absent groups are null.
+//
+// checking — when and how the student hook evaluates the task check against the module's work:
+// - trigger: 'change' (every edit and interaction; filesystem, desktop), 'run', 'submit' or
+//   'workspace' (the workspace evaluates and reports its own checks).
+// - buildContext(work, interaction) → the context handed to the check evaluators.
+export const CHECK_TRIGGERS = Object.freeze(['change', 'run', 'submit', 'workspace'])
+export const CHECKING_HOOKS = Object.freeze(['buildContext'])
+// workSlot — where the module's work comes from, for the generic loaders (task load, carry,
+// stages, complete, personal sandbox):
+// - starterField / sandboxField / stageField: the task, lesson and code-stage fields holding a
+//   starting work value (e.g. `starterFs`, `sandboxStarterFs`, `fs`); the complete value is the
+//   module's `completeField` and carry uses `carryThroughField`.
+// - empty(task) → the work used when a field is missing (a stable module default).
+// - normalise(work) → the work as the workspace expects it, applied whenever work is restored
+//   (load, reset, stage, complete, sandbox, teacher push) but not to the student's own edits.
+export const WORK_SLOT_FIELDS = Object.freeze(['starterField', 'sandboxField', 'stageField'])
+export const WORK_SLOT_HOOKS = Object.freeze(['empty', 'normalise'])
+
 // Hooks that may be omitted; they default to null (the app treats null as "not provided").
 // Validation hooks (see src/shared/lessonValidation.js):
 // - hasStarterContent(task) → boolean; null = no "empty editor" warning for this module.
@@ -206,6 +226,39 @@ export function defineModule(def) {
   for (const key of WIRE_HOOKS) {
     if (typeof def.wire[key] !== 'function') fail(type, `missing required function "wire.${key}"`)
   }
+  const hasChecking = def.checking != null
+  const hasWorkSlot = def.workSlot != null
+  if (hasChecking !== hasWorkSlot) {
+    fail(type, '"checking" and "workSlot" are declared together (the generic work slot)')
+  }
+  if (hasChecking) {
+    if (typeof def.checking !== 'object') fail(type, '"checking" must be an object')
+    if (!CHECK_TRIGGERS.includes(def.checking.trigger)) {
+      fail(type, `"checking.trigger" must be one of: ${CHECK_TRIGGERS.join(', ')}`)
+    }
+    for (const key of CHECKING_HOOKS) {
+      if (typeof def.checking[key] !== 'function') {
+        fail(type, `missing required function "checking.${key}"`)
+      }
+    }
+  }
+  if (hasWorkSlot) {
+    if (typeof def.workSlot !== 'object') fail(type, '"workSlot" must be an object')
+    for (const key of WORK_SLOT_FIELDS) {
+      if (typeof def.workSlot[key] !== 'string' || !def.workSlot[key]) {
+        fail(type, `missing required string "workSlot.${key}"`)
+      }
+    }
+    for (const key of WORK_SLOT_HOOKS) {
+      if (typeof def.workSlot[key] !== 'function') {
+        fail(type, `missing required function "workSlot.${key}"`)
+      }
+    }
+    // The generic slot persists one task record and travels on the code channel.
+    if (def.storage.layout !== 'record' || def.wire.sandboxChannel !== 'code') {
+      fail(type, '"workSlot" needs a "record" storage layout and the "code" wire channel')
+    }
+  }
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
   }
@@ -235,6 +288,8 @@ export function defineModule(def) {
     lifecycle: Object.freeze({ ...def.lifecycle }),
     storage: Object.freeze({ ...def.storage }),
     wire: Object.freeze({ ...def.wire }),
+    checking: hasChecking ? Object.freeze({ ...def.checking }) : null,
+    workSlot: hasWorkSlot ? Object.freeze({ ...def.workSlot }) : null,
     // Pre-v2 name, kept so existing callers and module authors keep working.
     getSandboxState: def.lifecycle.sandboxStarter,
   }

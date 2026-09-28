@@ -126,6 +126,19 @@ export default defineModule({
   },
   storage: recordStorage({ workKey: 'desktop' }),
   wire: jsonWire(),
+  // Generic work slot (useStudentCodeState): the desktop is re-checked on every change; fs
+  // checks see the desktop's own tree.
+  checking: {
+    trigger: 'change',
+    buildContext: (desktop, interaction) => ({ fs: desktop.fs, desktop, ...interaction }),
+  },
+  workSlot: {
+    starterField: 'starterDesktop',
+    sandboxField: 'sandboxStarterDesktop',
+    stageField: 'desktop',
+    empty: (task) => makeDefaultDesktop(task?.availableApps),
+    normalise: normaliseDesktop,
+  },
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {
