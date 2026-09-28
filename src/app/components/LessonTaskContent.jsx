@@ -8,6 +8,7 @@ import InformationTask from './InformationTask'
 import LessonCompleteScreen from './LessonCompleteScreen'
 import QuizTask from './QuizTask'
 import CodeArrangeTaskContainer from './CodeArrangeTaskContainer'
+import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
@@ -23,7 +24,7 @@ import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
 // Brief "your teacher changed your answer" note, shown when a teacher edits
-// this student's quiz answer or Code Arrange tiles from StudentModal.
+// this student's quiz answer, activity or Code Arrange tiles from StudentModal.
 function TeacherAnswerNotice({ at }) {
   const [visibleAt, setVisibleAt] = React.useState(null)
   React.useEffect(() => {
@@ -115,6 +116,10 @@ export default function LessonTaskContent({
   isQuizTask,
   isAutoEvaluatedQuiz,
   isInformationTask,
+  // Hosted activity (taskType 'activity'): a full-width surface like a quiz, rendered by
+  // ActivityHost. displayAnswer is the teacher's broadcast activity state while forced-live.
+  isActivityTask = false,
+  displayAnswer = null,
   isViewingExplainerSlide,
   isViewingCompletionScreen,
   onOpenPlayground,
@@ -179,6 +184,9 @@ export default function LessonTaskContent({
   // generic `modulePanes` state instead — see MODULE_PANES_TYPES above.
   const [scratchCodePanes, setScratchCodePanes] = useState(['blocks', 'stage'])
   const [modulePanes, setModulePanes] = useState([])
+  // Quizzes and activities share the no-workspace layout: no explainer rail, no stage
+  // references, no module StudentWorkspace.
+  const isQuizLike = isQuizTask || isActivityTask
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -203,7 +211,7 @@ export default function LessonTaskContent({
     ((!!task?.explainer || showsCompleteCode) &&
       !isSandbox &&
       !cs.inPersonalSandbox &&
-      !isQuizTask &&
+      !isQuizLike &&
       !isInformationTask &&
       !isViewingExplainerSlide &&
       !isViewingCompletionScreen)
@@ -213,7 +221,7 @@ export default function LessonTaskContent({
     supportsSideExplainer &&
     !isMobile &&
     (isSandbox ||
-      (!isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
+      (!isQuizLike && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
@@ -298,7 +306,7 @@ export default function LessonTaskContent({
   const activeSupportStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -316,7 +324,7 @@ export default function LessonTaskContent({
   const teacherLiveReferenceStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -331,7 +339,7 @@ export default function LessonTaskContent({
   const completeReferenceStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -353,7 +361,7 @@ export default function LessonTaskContent({
   const targetedReferenceStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -377,14 +385,14 @@ export default function LessonTaskContent({
       : null
 
   const taskContentStyle =
-    !isSandbox && isQuizTask
+    !isSandbox && isQuizLike
       ? s.taskContentQuiz
       : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
         ? s.taskContentInfo
         : (modStyles.taskContentStyle ?? s.taskContentFallback)
 
   const editorAreaStyle =
-    !isSandbox && isQuizTask
+    !isSandbox && isQuizLike
       ? s.editorAreaQuiz
       : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
         ? s.editorAreaInfo
@@ -442,7 +450,7 @@ export default function LessonTaskContent({
     !isSandbox &&
     !cs.inPersonalSandbox &&
     !isForcedTeacherLive &&
-    (((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) ||
+    (((task?.check || isAutoEvaluatedQuiz || isActivityTask) && displayCheckAttempted) ||
       cs.offeredSupportStageIndex != null)
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
@@ -451,7 +459,7 @@ export default function LessonTaskContent({
       // re-render of this component.
       key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}`}
       passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
-      failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
+      failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
       onShowCodeStage={
         targetedOfferStage
@@ -533,6 +541,17 @@ export default function LessonTaskContent({
         />
       ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
+      ) : !isSandbox && isActivityTask ? (
+        <>
+          <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
+          <ActivityHost
+            task={task}
+            activity={cs.activity}
+            broadcastAnswer={isForcedTeacherLive ? (displayAnswer ?? null) : undefined}
+            reviewing={isViewingPrev}
+            lessonType={lesson.type}
+          />
+        </>
       ) : !isSandbox && isQuizTask ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />

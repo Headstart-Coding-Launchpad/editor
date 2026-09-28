@@ -1,9 +1,10 @@
 import { flattenTasks } from '../shared/taskUtils'
 import { loadSavedCode } from './studentStorage'
-import { getTaskModuleType } from '../shared/composedLesson'
+import { getTaskModuleType, isCodeTask } from '../shared/composedLesson'
 
+// Code tasks only: information, quiz and hosted activity tasks have no code to download.
 export function isPythonCodeTask(task) {
-  return task?.taskType !== 'information' && task?.taskType !== 'quiz'
+  return isCodeTask(task)
 }
 
 // Shared traversal for both getSavedPythonTasks and getSavedNonPythonTaskCount below:

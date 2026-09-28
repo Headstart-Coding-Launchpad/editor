@@ -30,6 +30,9 @@ import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
+import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
+import { readActivityAnswer } from '../../activities/state.js'
+import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 
 function getModuleDisplayState(module, raw) {
   if (!module) return null
@@ -353,13 +356,21 @@ export default function StudentModal({
     isTurtle,
     isQuiz,
     isInformation,
+    isActivity: isActivityTask,
+    activity,
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, task, session)
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
+  // Hosted activity tasks show the activity (read-only, or editable via Edit answers) in place
+  // of a workspace; quiz-like everywhere else in the header (no reveal, pane focus or share).
+  const isActivity = isActivityTask && !isSessionSandbox
+  const isQuizLike = isQuiz || isActivity
+  const activityState = isActivity ? readActivityAnswer(task, student.currentAnswer) : null
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(task, student)
   // Match / Fill in the Gaps / Code Arrange: the teacher can edit the
   // student's answer directly (pushed live, see pushTeacherAnswerEdit).
-  const supportsAnswerEdit = !!onTeacherAnswerEdit && !!itemProgress
+  const supportsAnswerEdit =
+    !!onTeacherAnswerEdit && (!!itemProgress || (isActivity && !!activity?.teacherEditable))
   // Runs the student's current code on the student's own device.
   const supportsRemoteRun =
     !!onRemoteRun &&
@@ -459,9 +470,9 @@ export default function StudentModal({
     taskLesson?.type === 'electronics' ||
     taskLesson?.type === 'scratch'
   const revealableStages =
-    !isInformation && !isQuiz && supportsStageReveal ? getRevealableStages(task) : []
+    !isInformation && !isQuizLike && supportsStageReveal ? getRevealableStages(task) : []
   const completeStage =
-    !isInformation && !isQuiz && supportsStageReveal ? getCompleteStage(task) : null
+    !isInformation && !isQuizLike && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
 
   const supportsTeacherLiveReference = TEACHER_LIVE_REFERENCE_TYPES.includes(taskLesson?.type)
@@ -506,6 +517,7 @@ export default function StudentModal({
                 ✏️ Teacher assisted
               </span>
             )}
+            {isActivity && <ActivityDeviceBadge state={activityState} />}
             {itemProgress && (
               <span
                 style={s.overrideBadge}
@@ -571,14 +583,14 @@ export default function StudentModal({
             {((onRevealSupportStage && revealableStages.length > 0) ||
               (onSetTeacherLiveReference &&
                 !isInformation &&
-                !isQuiz &&
+                !isQuizLike &&
                 supportsTeacherLiveReference)) && (
               <DropdownMenu label="Reveal" buttonClassName="btn-ghost">
                 {(close) => (
                   <>
                     {onSetTeacherLiveReference &&
                       !isInformation &&
-                      !isQuiz &&
+                      !isQuizLike &&
                       supportsTeacherLiveReference && (
                         <button
                           style={sTo.toolBtn}
@@ -697,7 +709,7 @@ export default function StudentModal({
             )}
 
             {/* Highlight/force a tab or the Instructions pane on this student's screen */}
-            {onPushTeacherPaneCommand && !isInformation && !isQuiz && (
+            {onPushTeacherPaneCommand && !isInformation && !isQuizLike && (
               <PaneFocusDropdown
                 lessonType={taskLesson?.type}
                 onHighlight={(panes) =>
@@ -780,7 +792,7 @@ export default function StudentModal({
                 const hasShare =
                   !!onRequestShareSnapshot &&
                   !isInformation &&
-                  !isQuiz &&
+                  !isQuizLike &&
                   student.shareRequestedAt == null &&
                   student.shareSnapshotRequestedAt == null
                 const hasFullscreen = !!onRequestFullscreen
@@ -870,10 +882,12 @@ export default function StudentModal({
                 )
               })()}
 
-            {/* Go Live for All / Stop Live */}
+            {/* Go Live for All / Stop Live. Broadcasting a student's work is not offered on
+                quiz or activity tasks (teacher-only broadcasts there); a broadcast already
+                running can always be stopped. */}
             {!isInformation &&
-              !isQuiz &&
               teacherEditState === 'idle' &&
+              (isLiveForAll || allowsStudentBroadcast(task)) &&
               (isLiveForAll ? (
                 <button
                   className="btn-danger"
@@ -923,7 +937,7 @@ export default function StudentModal({
               style={
                 isInformation
                   ? s.bodyInformation
-                  : isQuiz && !isSessionSandbox
+                  : (isQuiz && !isSessionSandbox) || isActivity
                     ? s.bodyQuiz
                     : isCodeArrangeTask
                       ? s.bodyCodeArrange
@@ -991,6 +1005,8 @@ export default function StudentModal({
                   session={session}
                   isInformation={isInformation}
                   isQuiz={isQuiz}
+                  isActivity={isActivity}
+                  activityState={activityState}
                   isSessionSandbox={isSessionSandbox}
                   isPython={isPython}
                   isScratch={isScratch}

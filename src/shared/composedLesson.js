@@ -1,5 +1,6 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
 import { MODULE_TYPES, getModuleTypesWhere } from '../modules/definitions.js'
+import { isHostedActivityTask } from '../activities/registry.pure.js'
 
 // Membership comes from the module definitions (src/modules/definitions.js), so a new module
 // type is accepted here, by the Builder and by the CLI without editing this file. The order
@@ -24,7 +25,9 @@ export function isComposedLesson(lesson) {
 }
 
 export function isCodeTask(task) {
-  return task?.taskType !== 'information' && task?.taskType !== 'quiz'
+  return (
+    task?.taskType !== 'information' && task?.taskType !== 'quiz' && !isHostedActivityTask(task)
+  )
 }
 
 export function getLessonModules(lesson) {
@@ -149,9 +152,8 @@ export function validateComposedStructure(lesson) {
   if (!isComposedLesson(lesson)) return []
   const errors = []
   for (const task of flattenTasks(lesson.tasks ?? [])) {
-    if (task?.taskType === 'information' || task?.taskType === 'quiz') continue
-    // Activities sit anywhere in a lesson; they don't belong to a workspace module.
-    if (task?.taskType === 'activity') continue
+    // Information, quiz and activity tasks have no workspace module to select.
+    if (!isCodeTask(task)) continue
     const type = getTaskModuleType(lesson, task)
     if (!type)
       errors.push(

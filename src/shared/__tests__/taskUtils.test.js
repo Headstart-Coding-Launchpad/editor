@@ -539,8 +539,19 @@ describe('deriveTaskContext', () => {
       isDesktop: false,
       isQuiz: false,
       isInformation: false,
+      isActivity: false,
+      activity: null,
       isSessionSandbox: false,
     })
+  })
+
+  it('turns module flags off on a hosted activity task, except in a session sandbox', () => {
+    const task = { id: 3, taskType: 'activity', activityType: 'binary', mode: 'make_number' }
+    const ctx = deriveTaskContext({ type: 'python' }, task)
+    expect(ctx).toMatchObject({ moduleType: null, isPython: false, isActivity: true })
+    expect(ctx.activity?.id).toBe('binary')
+    const sandbox = deriveTaskContext({ type: 'python' }, task, { state: 'sandbox' })
+    expect(sandbox).toMatchObject({ moduleType: 'python', isPython: true, isActivity: true })
   })
 })
 

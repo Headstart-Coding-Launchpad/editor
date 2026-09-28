@@ -1,10 +1,10 @@
 import { findTaskById, getStarterStage } from '../shared/taskUtils'
+import { isCodeTask } from '../shared/composedLesson'
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {
   if (!carryFromId) return false
   const sourceTask = findTaskById(tasks, carryFromId)
-  if (!sourceTask || sourceTask.taskType === 'quiz' || sourceTask.taskType === 'information')
-    return false
+  if (!sourceTask || !isCodeTask(sourceTask)) return false
   return sourceTask.id !== currentTaskId
 }
 
@@ -48,8 +48,7 @@ export function resolveSavedCarrySource({
   while (resolveId != null && !seen.has(resolveId)) {
     seen.add(resolveId)
     const sourceTask = findTaskById(tasks, resolveId)
-    if (!sourceTask || sourceTask.taskType === 'quiz' || sourceTask.taskType === 'information')
-      break
+    if (!sourceTask || !isCodeTask(sourceTask)) break
 
     const saved = readSavedState(resolveId)
     if (hasSavedState(saved)) {

@@ -5,6 +5,9 @@ import CodeArrangeTask from '../../components/CodeArrangeTask'
 import TeacherCodeTabs from '../../components/TeacherCodeTabs'
 import { getLessonModule } from '../../../modules/registry'
 import { buildSolutionSlotState } from '../../../shared/codeArrange'
+import { ActivityView } from '../../../activities/ActivityHost.jsx'
+import { getTaskActivity, isHostedActivityTask } from '../../../activities/registry.pure.js'
+import { solutionOrInitialState } from '../../../activities/state.js'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
@@ -36,6 +39,17 @@ export default function TeacherEditorPanel({
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
   if (!isInSandbox && task?.taskType === 'quiz')
     return <QuizTask task={task} showQuestion disabled />
+  // Activities show their answers read-only, like a quiz shows its question.
+  if (!isInSandbox && isHostedActivityTask(task))
+    return (
+      <ActivityView
+        task={task}
+        state={solutionOrInitialState(getTaskActivity(task), task)}
+        teacher
+        readOnly
+        lessonType={lesson?.type}
+      />
+    )
   // Arrange tasks assemble from drag-and-drop tiles, not starter/stage code —
   // showing the authored solution as a read-only tile board (mirroring how
   // other task types show their Complete state) instead of falling through to

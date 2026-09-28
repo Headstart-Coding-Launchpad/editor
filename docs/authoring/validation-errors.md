@@ -99,6 +99,57 @@ Tasks with `taskType: activity` are checked by their activity's own rules (messa
 |---|---|---|
 | `` Task …: unknown activityType "…". Run `lessons capabilities` to list activities. `` | `activityType` is missing or isn't an activity this version knows. | Fix the `activityType`. |
 
+Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mouse targets too):
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … item …: needs an id.` / `Task … target …: needs an id.` | An item (or Mouse target) has no `id`. Ids keep each student's saved progress attached to the right item. | Give every item a short unique `id` (`a`, `b`, …). |
+| `Task … item …: id "…" is used more than once.` | Two items (or two targets) share an id. | Make the ids unique. |
+
+### Binary ([activities/binary.md](activities/binary.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: binary mode must be one of ….` | `mode` is missing or unknown. | Use `make_number`, `to_binary`, `to_decimal` or `add`. |
+| `Task …: binary bits must be a whole number from … to ….` | `bits` is outside 1–16. | Use a whole number from 1 to 16 (default 8). |
+| `Task …: binary task needs at least one item.` | `items` is empty. | Add at least one item. |
+| `Task … item …: target must be a whole number from 0 to ….` | A `make_number` / `to_binary` target doesn't fit in `bits`. | Lower the target or raise `bits` (4 bits → 0–15, 8 bits → 0–255). |
+| `Task … item …: value must be … binary digits (0s and 1s).` | A `to_decimal` `value` isn't exactly `bits` long, or has other characters. | Pad with leading zeros to the full width, e.g. `"0101"` for 4 bits. Quote it in YAML. |
+| `Task … item …: a and b must each be … binary digits (0s and 1s).` | An `add` item's `a` / `b` isn't exactly `bits` long. | Pad both to the full width and quote them in YAML. |
+| `Task … item …: a + b is too big for … bits (overflow comes in a later mode).` | The sum doesn't fit in `bits`. | Pick smaller numbers or raise `bits`. |
+
+### Keyboard ([activities/keyboard.md](activities/keyboard.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols` or `shortcuts`. |
+| `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
+| `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
+| `Task …: targetWpm must be a positive number.` | `targetWpm` is zero, negative or not a number. | Use a positive number, or remove it to skip the speed goal. |
+| `Task …: keyboard task needs at least one item.` | `items` is empty. | Add at least one item. |
+| `Task … item …: text is required.` | A `type_text` item has no `text`. | Add the line to type. |
+| `Task … item …: text must be at most … characters.` | A `type_text` line is over 200 characters. | Split it into several items. |
+| `Task … item …: can't be typed on a … keyboard: …` | The text has characters with no key on the layout (listed at the end), such as curly quotes or emoji. | Replace them with plain keyboard characters. |
+| `Task … item …: key must be a character or one of ….` | A `find_key` `key` is neither a typeable character nor a named key. | Use one character (`a`, `7`, `?`) or a named key such as `Enter`, `Space`, `Backspace`, `Shift`. |
+| `Task … item …: char must be one character that can be typed on a … keyboard.` | A `symbols` `char` is empty, longer than one character or not on the layout. | Use a single symbol such as `@`, `£` or `"`. |
+| `Task … item …: combo must be a shortcut like "Ctrl+C".` | A `shortcuts` `combo` is missing or has no modifier. | Write it as `Ctrl+C`, `Ctrl+Shift+Z`, … (`Ctrl` also means Cmd on a Mac). |
+| `Task … item …: "…" is kept by the browser, so students can't press it here. Teach it with a quiz question instead.` | The browser handles that shortcut itself (Ctrl+W, Ctrl+T, Ctrl+N, Ctrl+Q, Ctrl+Tab, Ctrl+Shift+T/N, Alt+F4), so the page never sees it. | Use a different shortcut, or ask about it in a quiz task. |
+| `Task … item …: add a prompt telling students what the shortcut does.` (warning) | A `shortcuts` item has no `prompt`; students only see the keys. | Add `prompt:` such as "Copy the selected word". |
+
+### Mouse ([activities/mouse.md](activities/mouse.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: mouse task needs at least one target.` | `targets` is empty. | Add targets to the stage. |
+| `Task … target …: x and y must be between 0 and 1 (fractions of the stage).` | A target position is missing or outside the stage. | Use fractions: `x: 0.5, y: 0.5` is the middle. |
+| `Task … target …: size must be one of ….` | Unknown `size`. | Use `large`, `medium` or `small` (default `large`). |
+| `Task …: touch must be one of ….` | Unknown `touch` policy. | Use `equivalent`, `skip` or `block`. |
+| `Task …: mouse task needs at least one item.` | `items` is empty. | Add at least one item. |
+| `Task … item …: action must be one of ….` | Unknown `action`. | Use `click`, `double_click`, `right_click`, `drag`, `scroll` or `hover`. |
+| `Task … item …: target "…" is not on the stage.` | The item's `target` isn't the `id` of any target. | Use a target `id` from `targets`. |
+| `Task … item …: a drag needs a "to" target that is on the stage.` | A `drag` item has no `to`, or `to` isn't a target id. | Add `to:` with the id of the drop target. |
+| `Task … item …: touch screens can't hover, so this item is skipped on touch devices.` (warning) | Hover items are skipped for students on tablets when `touch` is `equivalent`. | Fine if other items cover the skill; set `touch: block` if hovering is essential. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

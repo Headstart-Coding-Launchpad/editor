@@ -20,6 +20,25 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-28
 
+### Binary, Keyboard and Mouse activities run in the classroom
+
+- Tasks with `taskType: activity` and `activityType: binary`, `keyboard` or `mouse` now render
+  as full-screen activities for students, anywhere in a lesson (any lesson type, including
+  composed lessons). They have no Run button, personal sandbox, sharing or carry-through.
+  Progress is saved on the device and shown on the teacher's student card; the teacher can
+  view, edit, reset ("Start again") or complete ("Complete (show answers)") a student's
+  activity from the student modal.
+- New authoring pages with complete, validated example lessons:
+  [activities/binary.md](activities/binary.md), [activities/keyboard.md](activities/keyboard.md),
+  [activities/mouse.md](activities/mouse.md). Every Binary / Keyboard / Mouse validation message
+  is now listed in [validation-errors.md](validation-errors.md). Write `taskType: activity` +
+  `activityType: …` in YAML; the `type: binary` shorthand arrives with the Builder activity
+  gallery.
+- Go Live: on quiz and activity tasks the teacher can no longer broadcast a *student's* answers
+  to the class ("Go Live for All" is hidden there). The teacher's own Presentation View
+  broadcast of an activity now shows the class the teacher's activity state. Lessons need no
+  changes.
+
 ### Builder and CLI validation share one rule set and one wording
 
 - `lessons validate` (and `yaml-to-json`, `upsert`, `publish-yaml`) now runs the same rules as
