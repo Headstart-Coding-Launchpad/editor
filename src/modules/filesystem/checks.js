@@ -211,3 +211,22 @@ export function evaluateFsCheck(check, fs, context = {}) {
       return false
   }
 }
+
+// Check-type registry definitions (see ../checkRegistry.js). Built from
+// FS_CHECK_DEFINITIONS + FS_LEGACY_CHECK_ALIASES so every id in FS_CHECK_TYPES has
+// exactly one owner; evaluateFsCheck normalises the legacy aliases itself.
+export const CHECKS = Object.entries(FS_CHECK_DEFINITIONS).map(([type, def]) => ({
+  type,
+  owner: 'module:filesystem',
+  subject: def.subject,
+  operators: def.operators,
+  fields: def.fields,
+  aliases: Object.keys(FS_LEGACY_CHECK_ALIASES).filter(
+    (alias) => FS_LEGACY_CHECK_ALIASES[alias].type === type
+  ),
+  timing: def.evaluate,
+  requiresRun: false,
+  submitAllowed: false,
+  contextKey: 'fs',
+  evaluate: (check, _output, context = {}) => evaluateFsCheck(check, context.fs, context),
+}))

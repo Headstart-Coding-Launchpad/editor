@@ -139,3 +139,22 @@ export function evaluateDesktopCheck(check, desktop, context = {}) {
       return false
   }
 }
+
+// Check-type registry definitions (see ../checkRegistry.js). fs_* checks used in
+// Desktop lessons are owned by the filesystem module's CHECKS.
+export const CHECKS = DESKTOP_CHECK_TYPES.map((type) => {
+  const def = DESKTOP_CHECK_DEFINITIONS[type] ?? {}
+  return {
+    type,
+    owner: 'module:desktop',
+    subject: def.subject,
+    operators: def.operators,
+    fields: def.fields,
+    timing: def.evaluate ?? 'on_change',
+    requiresRun: false,
+    submitAllowed: false,
+    contextKey: 'desktop',
+    evaluate: (check, _output, context = {}) =>
+      evaluateDesktopCheck(check, context.desktop, context),
+  }
+})

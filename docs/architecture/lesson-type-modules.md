@@ -57,6 +57,21 @@ flowchart TD
   Builder --> Stages["makeNewStage / initCompleteTab"]
 ```
 
+## Check-Type Registry
+
+Check evaluation is registry-driven. `src/modules/checkRegistry.js` (pure, Node-safe) exports `createCheckRegistry(defs)`; `src/modules/checks.js` builds one `checkRegistry` from `CORE_CHECKS` plus each module's exported `CHECKS` array (`filesystem`, `desktop`, `python`, `html`, `electronics`, `turtle`). A definition is:
+
+`{ type, owner, subject?, operators?, fields?, aliases?, timing, requiresRun, submitAllowed, contextKey?, evaluate(check, output, ctx), validate?(check, ctx) }`
+
+- `owner` is `core`, `module:<type>`, and later `activity:<id>` or `input`. Every canonical type and alias has exactly one owner; registering a duplicate id throws.
+- `aliases` are legacy ids that resolve to the definition (`output_contains` → `output`, `element_value_equals` → `html_element_value`, `fs_content_contains` → `fs_file_content`). Core aliases are rewritten by `normalizeCheckShape` before lookup; module evaluators normalise their own aliases.
+- `evaluateSingleCheck` normalises core aliases, looks the type up, and calls `evaluate`; unknown types return `false`. The electronics override (a generic `code` check reads the Micro Controller's MicroPython source when `ctx.circuit` is set) lives in the core `code` definition.
+- `CHECK_TYPES.RUN_REQUIRED` and `SUBMIT_ALLOWED` (used by `checkRequiresRun` / `checkAllowedForSubmit`, the Builder and the CLI) are derived from `requiresRun` / `submitAllowed`, including aliases.
+- Scratch checks are not registered: they are evaluated inside the Scratch workspace by `evaluateScratchCheck`.
+- `validate` is reserved for per-type authoring validation (still in `src/shared/checkAuthoringValidation.js`); Builder check editors do not yet render from `fields`.
+
+To add a check type, add a definition to the owning module's `CHECKS`. `src/modules/__tests__/checkRegistryParity.test.js` asserts ownership and parity with the frozen pre-registry dispatcher (`legacyCheckDispatcher.js`).
+
 ## Usually Changes With
 
 When this contract changes, also check:
@@ -74,7 +89,7 @@ When this contract changes, also check:
 ## Adding A New Type
 
 1. Add `src/modules/<type>/index.js`, `StudentWorkspace.jsx`, `BuilderWorkspace.jsx`, and `CheckEditor.jsx`.
-2. Add type-specific `checks.js` if the type needs custom checks.
+2. Add type-specific `checks.js` if the type needs custom checks, exporting `CHECKS` definitions and adding them to `checkRegistry` in `src/modules/checks.js`.
 3. Register the module in `src/modules/registry.js`.
 4. Add authoring documentation and examples.
 5. Add module contract tests and focused behavior tests.
