@@ -177,6 +177,7 @@ export default defineModule({
     stored: identityStored,
     fromStored: identityFromStored,
     taskReset: true,
+    teacherEdit: true,
   },
 
   evaluateCheck: evaluateElectronicsCheck,

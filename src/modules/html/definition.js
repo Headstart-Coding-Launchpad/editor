@@ -8,7 +8,15 @@ import {
   validateTaskChecks,
   warnCompleteFiles,
 } from '../moduleTaskValidation.js'
-import { filesWire, perFileStorage, stageForAction, starterStageOf } from '../moduleContract.js'
+import {
+  codeCheckContext,
+  filesWire,
+  filesWorkSlot,
+  joinFileContents,
+  perFileStorage,
+  stageForAction,
+  starterStageOf,
+} from '../moduleContract.js'
 import { getCompleteStage } from '../../shared/taskStages.js'
 
 const DEFAULT_HTML_FILE = {
@@ -194,6 +202,15 @@ export default defineModule({
   },
   storage: perFileStorage(),
   wire: filesWire(),
+  // Generic work slot (useStudentCodeState, plan step 4.5): `{ files, activeFile }`, stored one
+  // `{ content }` record per file and sent as a filename → content map on the files channel.
+  // Checked when Run builds the preview (and on Submit in submit mode): a code check reads the
+  // files' contents joined; the preview adds `iframeDoc` (element checks), idle feedback `output`.
+  checking: {
+    trigger: 'run',
+    buildContext: (files, extras = {}) => codeCheckContext(joinFileContents(files), extras),
+  },
+  workSlot: filesWorkSlot(),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {

@@ -111,13 +111,15 @@ export const STORAGE_HOOKS = Object.freeze([
 export const WIRE_CHANNELS = Object.freeze(['code', 'files'])
 export const WIRE_HOOKS = Object.freeze(['toCode', 'fromCode', 'liveExtras', 'submission'])
 
-// Optional contract v2 groups for modules on useStudentCodeState's generic work slot (plan step
-// 4.3; filesystem and desktop so far). A module declares both or neither; absent groups are null.
+// Optional contract v2 groups for modules on useStudentCodeState's generic work slot (plan steps
+// 4.3–4.5; every module since 4.5). A module declares both or neither; absent groups are null.
 //
 // checking — when and how the student hook evaluates the task check against the module's work:
-// - trigger: 'change' (every edit and interaction; filesystem, desktop), 'run', 'submit' or
-//   'workspace' (the workspace evaluates and reports its own checks).
-// - buildContext(work, interaction) → the context handed to the check evaluators.
+// - trigger: 'change' (every edit and interaction; filesystem, desktop), 'run' (python, turtle,
+//   arcade, electronics, html), 'submit' or 'workspace' (the workspace evaluates the checks
+//   itself and reports the outcome through the hook's reportRun; scratch).
+// - buildContext(work, interaction) → the context handed to the check evaluators. Optional for a
+//   'workspace' trigger, whose checks the hook never evaluates.
 export const CHECK_TRIGGERS = Object.freeze(['change', 'run', 'submit', 'workspace'])
 export const CHECKING_HOOKS = Object.freeze(['buildContext'])
 // workSlot — where the module's work comes from, for the generic loaders (task load, carry,
@@ -151,6 +153,16 @@ export const CHECKING_HOOKS = Object.freeze(['buildContext'])
 //   code rather than the task starter (python, turtle).
 // - remoteResetPersists: a teacher remote reset saves the restored work and mirrors its extras
 //   while watched (arcade, whose design has no other save on reset).
+// - teacherEdit: a teacher's live edit (teacherEditApplyCode, or teacherEditApplyFiles on the
+//   'files' channel) replaces the work (every module except filesystem and desktop).
+// - workspaceOwned: the workspace loads its own work (own save, carry, starter) and receives
+//   restored work (reset, stage, complete, teacher edit and push) as pushed state; the slot holds
+//   only what the workspace last reported (scratch, whose Blockly workspace owns its state).
+//   Needs the 'workspace' checking trigger.
+//
+// Plan step 4.5 adds per-file slots (html): a slot on the 'files' wire channel stores per file
+// (storage layout 'perFile') and its value is `{ files, activeFile }` (filesWorkSlot in
+// ./moduleContract.js); every other slot stores one record and travels on the 'code' channel.
 export const WORK_SLOT_FIELDS = Object.freeze(['starterField', 'sandboxField', 'stageField'])
 export const WORK_SLOT_HOOKS = Object.freeze(['empty', 'normalise'])
 export const WORK_SLOT_SOURCE_HOOKS = Object.freeze([
@@ -167,6 +179,8 @@ export const WORK_SLOT_FLAGS = Object.freeze([
   'taskReset',
   'teacherSandboxReset',
   'remoteResetPersists',
+  'teacherEdit',
+  'workspaceOwned',
 ])
 
 // Hooks that may be omitted; they default to null (the app treats null as "not provided").
@@ -307,6 +321,7 @@ export function defineModule(def) {
       fail(type, `"checking.trigger" must be one of: ${CHECK_TRIGGERS.join(', ')}`)
     }
     for (const key of CHECKING_HOOKS) {
+      if (def.checking.trigger === 'workspace' && def.checking[key] == null) continue
       if (typeof def.checking[key] !== 'function') {
         fail(type, `missing required function "checking.${key}"`)
       }
@@ -345,9 +360,16 @@ export function defineModule(def) {
         fail(type, `"workSlot.${key}" must be a boolean`)
       }
     }
-    // The generic slot persists one task record and travels on the code channel.
-    if (def.storage.layout !== 'record' || def.wire.sandboxChannel !== 'code') {
-      fail(type, '"workSlot" needs a "record" storage layout and the "code" wire channel')
+    // A slot stores one record and travels on the code channel, or (html) stores per file and
+    // travels on the files channel.
+    if ((def.storage.layout === 'perFile') !== (def.wire.sandboxChannel === 'files')) {
+      fail(
+        type,
+        '"workSlot" needs a "record" storage layout on the "code" wire channel, or "perFile" on "files"'
+      )
+    }
+    if (def.workSlot.workspaceOwned && def.checking.trigger !== 'workspace') {
+      fail(type, 'a "workSlot.workspaceOwned" module uses the "workspace" checking trigger')
     }
     workSlot = Object.freeze({
       ...(hookForm

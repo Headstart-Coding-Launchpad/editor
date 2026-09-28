@@ -8,9 +8,11 @@ import { getModuleDefinition } from '../modules/definitions.js'
 // src/modules/moduleContract.js): electronics stores the whole serialized circuit in `code`,
 // so it also adds `circuit`, which routes generic `code` checks to the Micro Controller's
 // MicroPython source instead of matching against the raw circuit JSON. Other code (HTML) gets
-// the plain `{ ...extras, code }`.
+// the plain `{ ...extras, code }` (its own builder takes the files, not a code string).
 export function buildCodeCheckContext(lessonType, code, extras = {}) {
-  const checking = getModuleDefinition(lessonType)?.checking
-  if (checking && checking.trigger !== 'change') return checking.buildContext(code, extras)
+  const definition = getModuleDefinition(lessonType)
+  if (definition?.checking?.trigger === 'run' && definition.wire.sandboxChannel === 'code') {
+    return definition.checking.buildContext(code, extras)
+  }
   return { ...extras, code }
 }

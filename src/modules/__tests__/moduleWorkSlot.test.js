@@ -5,19 +5,30 @@ import { CHECK_TRIGGERS, defineModule } from '../defineModule.js'
 import { MODULE_TYPES, getModuleDefinition } from '../definitions.js'
 import filesystemDefinition from '../filesystem/definition.js'
 import htmlDefinition from '../html/definition.js'
+import scratchDefinition from '../scratch/definition.js'
+import { perFileStorage } from '../moduleContract.js'
 import { DEFAULT_FS } from '../filesystem/filesystem.js'
 import { makeDefaultDesktop, normaliseDesktop } from '../desktop/desktopState.js'
 
 // Plan step 4.3 put filesystem and desktop on the slot (checked on every change); step 4.4
-// adds the code modules (checked on Run). html and scratch follow in step 4.5.
+// added the code modules (checked on Run); step 4.5 html (per file, checked on Run) and scratch
+// (its workspace checks and reports).
 const CHANGE_CHECKED_TYPES = ['filesystem', 'desktop']
-const RUN_CHECKED_TYPES = ['python', 'turtle', 'arcade', 'electronics']
-const WORK_SLOT_TYPES = [...CHANGE_CHECKED_TYPES, ...RUN_CHECKED_TYPES]
+const RUN_CHECKED_TYPES = ['python', 'turtle', 'arcade', 'electronics', 'html']
+const WORKSPACE_CHECKED_TYPES = ['scratch']
+const WORK_SLOT_TYPES = [...CHANGE_CHECKED_TYPES, ...RUN_CHECKED_TYPES, ...WORKSPACE_CHECKED_TYPES]
+const triggerOf = (type) =>
+  CHANGE_CHECKED_TYPES.includes(type)
+    ? 'change'
+    : WORKSPACE_CHECKED_TYPES.includes(type)
+      ? 'workspace'
+      : 'run'
 
 describe('work-slot definitions', () => {
-  it('every module except html and scratch is on the generic work slot', () => {
+  it('every module is on the generic work slot', () => {
     const onSlot = MODULE_TYPES.filter((type) => getModuleDefinition(type).workSlot != null)
     expect(onSlot.sort()).toEqual([...WORK_SLOT_TYPES].sort())
+    expect(onSlot.sort()).toEqual([...MODULE_TYPES].sort())
     for (const type of MODULE_TYPES) {
       const definition = getModuleDefinition(type)
       expect(definition.checking == null, type).toBe(definition.workSlot == null)
@@ -28,7 +39,7 @@ describe('work-slot definitions', () => {
     const definition = getModuleDefinition(type)
     expect(Object.isFrozen(definition.checking)).toBe(true)
     expect(Object.isFrozen(definition.workSlot)).toBe(true)
-    expect(definition.checking.trigger).toBe(CHANGE_CHECKED_TYPES.includes(type) ? 'change' : 'run')
+    expect(definition.checking.trigger).toBe(triggerOf(type))
     expect(CHECK_TRIGGERS).toContain(definition.checking.trigger)
   })
 
@@ -85,7 +96,12 @@ describe('defineModule — checking / workSlot validation', () => {
   })
 
   it('defaults both groups to null when absent', () => {
-    const result = defineModule({ ...htmlDefinition, meta: { ...htmlDefinition.meta } })
+    const result = defineModule({
+      ...htmlDefinition,
+      meta: { ...htmlDefinition.meta },
+      checking: undefined,
+      workSlot: undefined,
+    })
     expect(result.checking).toBeNull()
     expect(result.workSlot).toBeNull()
   })
@@ -115,15 +131,26 @@ describe('defineModule — checking / workSlot validation', () => {
     }
   )
 
-  it('rejects a work slot on a per-file module', () => {
+  it('rejects a per-file slot on the code channel', () => {
+    expect(() => defineModule(withSlot({ storage: perFileStorage() }))).toThrow(
+      /"record" storage layout on the "code" wire channel, or "perFile" on "files"/
+    )
+  })
+
+  it('accepts a missing buildContext only for a workspace trigger', () => {
+    const scratch = { ...scratchDefinition, meta: { ...scratchDefinition.meta } }
+    expect(defineModule(scratch).checking).toEqual({ trigger: 'workspace' })
     expect(() =>
-      defineModule({
-        ...htmlDefinition,
-        meta: { ...htmlDefinition.meta },
-        checking: { ...filesystemDefinition.checking },
-        workSlot: { ...filesystemDefinition.workSlot },
-      })
-    ).toThrow(/record/)
+      defineModule({ ...scratch, checking: { trigger: 'run' }, getSandboxState: undefined })
+    ).toThrow(/scratch.*"checking\.buildContext"/)
+  })
+
+  it('a workspace-owned slot needs the workspace trigger', () => {
+    expect(() =>
+      defineModule(
+        withSlot({ workSlot: { ...filesystemDefinition.workSlot, workspaceOwned: true } })
+      )
+    ).toThrow(/workspaceOwned.*"workspace" checking trigger/)
   })
 })
 
@@ -223,5 +250,108 @@ describe('code-module work slots (plan step 4.4)', () => {
     expect(() => withPythonSlot({ ...python.workSlot, taskReset: 'yes' })).toThrow(
       /workSlot\.taskReset/
     )
+  })
+})
+
+describe('html and scratch work slots (plan step 4.5)', () => {
+  const file = (name, content) => ({ name, type: 'html', content })
+
+  it('html: { files, activeFile }, every source copying its files', () => {
+    const { workSlot, checking, storage, wire } = getModuleDefinition('html')
+    expect(storage.layout).toBe('perFile')
+    expect(wire.sandboxChannel).toBe('files')
+    expect(workSlot).toMatchObject({
+      kind: 'code',
+      taskReset: true,
+      teacherEdit: true,
+      workspaceOwned: false,
+      teacherSandboxReset: false,
+      remoteResetPersists: false,
+    })
+    const starterFiles = [file('index.html', '<p>a</p>'), file('style.css', 'p {}')]
+    const task = {
+      entryFile: 'index.html',
+      starterFiles,
+      completeFiles: [file('index.html', '<h1>done</h1>')],
+      completeEntryFile: 'index.html',
+      codeStages: [
+        { role: 'starter', files: [file('main.html', 'stage starter')] },
+        { role: 'support', files: [file('b.html', 'support')], entryFile: 'b.html' },
+      ],
+    }
+    const starter = workSlot.starter(task)
+    expect(starter).toEqual({
+      files: [file('main.html', 'stage starter')],
+      activeFile: 'index.html',
+    })
+    expect(starter.files[0]).not.toBe(task.codeStages[0].files[0])
+    expect(workSlot.starter({ starterFiles })).toEqual({
+      files: starterFiles,
+      activeFile: 'index.html',
+    })
+    expect(workSlot.stage(task, 1)).toEqual({
+      files: [file('b.html', 'support')],
+      activeFile: 'b.html',
+    })
+    expect(workSlot.complete(task).files[0].content).toBe('<h1>done</h1>')
+    expect(workSlot.sandbox({ sandboxStarterFiles: [file('s.html', 's')] })).toEqual({
+      files: [file('s.html', 's')],
+      activeFile: 's.html',
+    })
+    expect(workSlot.fromResetTarget({ files: starterFiles, entryFile: 'style.css' })).toEqual({
+      files: starterFiles,
+      activeFile: 'style.css',
+    })
+    expect(workSlot.empty()).toEqual({ files: [], activeFile: '' })
+    expect(workSlot.stored(starter)).toEqual({ work: starter.files, meta: {} })
+    expect(workSlot.fromStored({ work: starterFiles, meta: {} }, starter)).toEqual({
+      files: starterFiles,
+      activeFile: 'index.html',
+    })
+    expect(workSlot.fromStored(null, starter)).toBe(starter)
+    // A code check reads the files' contents joined; the preview adds its document.
+    expect(checking.buildContext(starterFiles, { iframeDoc: 'doc' })).toEqual({
+      iframeDoc: 'doc',
+      code: '<p>a</p>\np {}',
+    })
+  })
+
+  it('scratch: workspace-owned states, checked by the workspace', () => {
+    const { workSlot, checking } = getModuleDefinition('scratch')
+    expect(checking).toEqual({ trigger: 'workspace' })
+    expect(workSlot).toMatchObject({
+      kind: 'state',
+      workspaceOwned: true,
+      taskReset: true,
+      teacherEdit: true,
+    })
+    const blocks = (id) => ({ cat: { id } })
+    const task = {
+      starterBlocks: blocks('starter'),
+      completeBlocks: blocks('complete'),
+      codeStages: [{ role: 'starter', blocks: blocks('stage') }],
+    }
+    // The Reset button's starter has always been starterBlocks.
+    expect(workSlot.starter(task)).toEqual(blocks('starter'))
+    expect(workSlot.stage(task, 0)).toEqual(blocks('stage'))
+    expect(workSlot.stage(task, 3)).toBe(null)
+    expect(workSlot.complete(task)).toEqual(blocks('complete'))
+    expect(workSlot.sandbox({ sandboxStarter: JSON.stringify(blocks('sb')) })).toEqual(blocks('sb'))
+    expect(workSlot.sandbox({ sandboxStarter: 'not json' })).toBe(null)
+    expect(workSlot.fromResetTarget({ blocks: blocks('reset'), stageIndex: 0 })).toEqual(
+      blocks('reset')
+    )
+    expect(workSlot.empty()).toBe(null)
+  })
+
+  it.each(['filesystem', 'desktop'])('%s never takes a teacher edit', (type) => {
+    expect(getModuleDefinition(type).workSlot.teacherEdit).toBe(false)
+  })
+
+  it.each(['python', 'turtle', 'arcade', 'electronics'])('%s takes teacher edits', (type) => {
+    expect(getModuleDefinition(type).workSlot).toMatchObject({
+      teacherEdit: true,
+      workspaceOwned: false,
+    })
   })
 })

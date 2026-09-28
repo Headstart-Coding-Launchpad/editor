@@ -28,9 +28,9 @@ export function useTeacherLivePublish({
   activeFileRef,
   outputRef,
   runStatusRef,
-  // Generic work slot (python, turtle, arcade, electronics, filesystem, desktop):
-  // readWorkValue(moduleType) returns that module's latest work (or its default when the slot
-  // holds another module's work). Without it, every module publishes from the refs above.
+  // Generic work slot (every module since plan step 4.5): readWorkValue(moduleType) returns
+  // that module's latest work (or its default when the slot holds another module's work).
+  // Without it, every module publishes from the refs above.
   readWorkValue = null,
   editorSelectionRef,
   editorActivityRef,
@@ -80,15 +80,17 @@ export function useTeacherLivePublish({
   function currentTeacherLivePayload(extra = {}) {
     const lessonType = lessonRef.current?.type
     const definition = getModuleDefinition(lessonType)
-    // Work-slot modules publish their work through wire.toCode — the code string, or a JSON
-    // string for filesystem/desktop — with their extras (Arcade's design) and no files.
+    // Work-slot modules publish their work through the wire: on the code channel as
+    // wire.toCode — the code string, or a JSON string for scratch/filesystem/desktop ('' while
+    // Scratch has reported nothing) — with their extras (Arcade's design) and no files; on the
+    // files channel (html) as a filename → content map with an empty code.
     const isWorkSlot = definition?.workSlot != null && readWorkValue != null
     const stored = isWorkSlot ? definition.workSlot.stored(readWorkValue(lessonType)) : null
-    // Scratch never routes edits through the generic `code` state (see
-    // loadTaskContent's scratch branch in useStudentCodeState.js) — codeRef.current
-    // would otherwise still hold whatever an earlier non-Scratch task left behind,
-    // or an empty string, wiping out the mirror's blocks the moment a broadcast
-    // starts (or the live task changes) until the next real edit resyncs it.
+    const onFilesChannel = isWorkSlot && definition.wire.sandboxChannel === 'files'
+    // Without a work slot (readWorkValue), Scratch publishes scratchCodeRef — codeRef.current
+    // would otherwise still hold whatever an earlier non-Scratch task left behind, or an empty
+    // string, wiping out the mirror's blocks the moment a broadcast starts (or the live task
+    // changes) until the next real edit resyncs it.
     const isScratch =
       getModuleDefinition(getTaskModuleType(lessonRef.current, currentTaskIdRef.current))
         ?.capabilities.sandboxState === 'blocks'
@@ -101,9 +103,16 @@ export function useTeacherLivePublish({
       turtleResult: turtleResultRef?.current,
       ...stored?.meta,
     })
-    const filesMap = isWorkSlot
-      ? {}
-      : Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
+    const filesMap = !isWorkSlot
+      ? Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
+      : onFilesChannel
+        ? definition.wire.toFilesMap(stored.work)
+        : {}
+    const slotCode = !isWorkSlot
+      ? null
+      : onFilesChannel || stored.work == null
+        ? ''
+        : definition.wire.toCode(stored.work)
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -113,15 +122,16 @@ export function useTeacherLivePublish({
       sourceStudentName,
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
-      code: isWorkSlot
-        ? definition.wire.toCode(stored.work)
-        : isScratch
-          ? scratchCodeRef.current
-          : codeRef.current,
+      code: isWorkSlot ? slotCode : isScratch ? scratchCodeRef?.current : codeRef.current,
       arcadeDesign,
       turtleResult,
       files: filesMap,
-      activeFile: activeFileRef.current,
+      // A files module's own active file; no other module has one (never a leftover).
+      activeFile: !isWorkSlot
+        ? activeFileRef.current
+        : onFilesChannel
+          ? (readWorkValue(lessonType)?.activeFile ?? '')
+          : '',
       output: outputRef.current,
       runStatus: runStatusRef.current,
       checkPassed: checkPassedRef.current,

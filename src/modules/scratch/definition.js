@@ -5,7 +5,14 @@ import {
   validateScratchChecks,
   validateTaskChecks,
 } from '../moduleTaskValidation.js'
-import { jsonWire, recordStorage, stageForAction, starterStageOf } from '../moduleContract.js'
+import {
+  identityFromStored,
+  identityStored,
+  jsonWire,
+  recordStorage,
+  stageForAction,
+  starterStageOf,
+} from '../moduleContract.js'
 
 export default defineModule({
   type: 'scratch',
@@ -158,6 +165,37 @@ export default defineModule({
   },
   storage: recordStorage({ workKey: 'state' }),
   wire: jsonWire(),
+  // Generic work slot (useStudentCodeState, plan step 4.5): the Blockly workspace states. The
+  // Scratch workspace owns them: it loads the task's own save, carry (carryBlocksFrom) or starter
+  // itself (selectScratchInitialProject), evaluates the checks on the stage and reports them
+  // (handleScratchCheck → reportRun). Restored blocks (reset, stage, complete, teacher edit) are
+  // pushed to it as external state; the slot holds what it last reported (null until then).
+  checking: { trigger: 'workspace' },
+  workSlot: {
+    kind: 'state',
+    workspaceOwned: true,
+    // The Reset button has always restored `starterBlocks` (the workspace's own loader prefers a
+    // starter stage's blocks).
+    starter: (task) => task?.starterBlocks ?? null,
+    stage: (task, stageIndex) => task?.codeStages?.[stageIndex]?.blocks ?? null,
+    complete: (task) => task?.completeBlocks ?? null,
+    // The personal sandbox is read by the workspace itself; this is the lesson's starter.
+    sandbox: (lesson) => {
+      if (lesson?.sandboxStarter == null) return null
+      try {
+        return JSON.parse(lesson.sandboxStarter)
+      } catch {
+        return null
+      }
+    },
+    fromResetTarget: (target) => target.blocks,
+    empty: () => null,
+    normalise: (states) => states,
+    stored: identityStored,
+    fromStored: identityFromStored,
+    taskReset: true,
+    teacherEdit: true,
+  },
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors }) => {
