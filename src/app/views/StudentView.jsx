@@ -11,7 +11,6 @@ import {
   flattenTasks,
   filterTasksByMode,
   findTaskById,
-  getCompleteStage,
   getRevealableStages,
   makeExplainerPseudoTask,
   isExplainerPseudoTaskId,
@@ -51,6 +50,7 @@ import {
 } from '../studentCodeExports'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
+import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 
 export default function StudentView({
@@ -910,21 +910,11 @@ export default function StudentView({
   function handleOpenPlayground() {
     window.location.hash = `#/playground/${lastCodeTaskType}`
   }
-  const unifiedCompleteStage = getCompleteStage(task)?.stage
-  const hasCompleteSolution =
-    displayedLesson.type === 'python' ||
-    displayedLesson.type === 'arcade' ||
-    displayedLesson.type === 'turtle'
-      ? !!(unifiedCompleteStage?.code ?? task?.completeCode)
-      : displayedLesson.type === 'scratch'
-        ? !!task?.completeBlocks
-        : displayedLesson.type === 'filesystem'
-          ? !!task?.completeFs
-          : displayedLesson.type === 'desktop'
-            ? !!task?.completeDesktop
-            : displayedLesson.type === 'electronics'
-              ? !!task?.completeCircuit
-              : unifiedCompleteStage?.files?.length > 0 || task?.completeFiles?.length > 0
+  // Each module's lifecycle.hasComplete decides; a non-module type (e.g. a composed lesson's
+  // information task) keeps the historical files-based rule, which is HTML's.
+  const hasCompleteSolution = (
+    getModuleDefinition(displayedLesson.type) ?? getModuleDefinition('html')
+  ).lifecycle.hasComplete(task)
   const taskCodeStages = task?.codeStages ?? []
   const hasUnifiedCodeStages =
     ['python', 'html'].includes(displayedLesson.type) &&

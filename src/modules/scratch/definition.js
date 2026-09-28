@@ -5,6 +5,7 @@ import {
   validateScratchChecks,
   validateTaskChecks,
 } from '../moduleTaskValidation.js'
+import { jsonWire, recordStorage, stageForAction, starterStageOf } from '../moduleContract.js'
 
 export default defineModule({
   type: 'scratch',
@@ -120,15 +121,41 @@ export default defineModule({
     return raw
   },
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────────
-  getSandboxState: (lesson, task) => {
-    if (lesson?.sandboxStarter != null) {
-      try {
-        return JSON.parse(lesson.sandboxStarter)
-      } catch {}
-    }
-    return task?.starterBlocks ?? null
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    // Only a stage reset leaves a stage active; starter and complete clear it.
+    resetTarget: (task, action) => {
+      if (action === 'complete') return { blocks: task.completeBlocks ?? null, stageIndex: null }
+      if (action === 'starter') {
+        return {
+          blocks: starterStageOf(task)?.blocks ?? task.starterBlocks ?? null,
+          stageIndex: null,
+        }
+      }
+      const { stage, stageIndex } = stageForAction(task, action)
+      return {
+        blocks: stage?.blocks ?? task.starterBlocks ?? null,
+        stageIndex: stage ? stageIndex : null,
+      }
+    },
+    hasComplete: (task) => !!task?.completeBlocks,
+    teacherCompleteTab: (task) => task?.completeBlocks != null,
+    sandboxStarter: (lesson, task) => {
+      if (lesson?.sandboxStarter != null) {
+        try {
+          return JSON.parse(lesson.sandboxStarter)
+        } catch {}
+      }
+      return task?.starterBlocks ?? null
+    },
+    // Lesson-level Scratch sandbox starters are stored as a JSON string.
+    composedSandboxFields: (firstTask) => {
+      const blocks = firstTask?.starterBlocks ?? null
+      return { sandboxStarter: blocks == null ? null : JSON.stringify(blocks) }
+    },
   },
+  storage: recordStorage({ workKey: 'state' }),
+  wire: jsonWire(),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors }) => {

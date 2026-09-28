@@ -8,6 +8,12 @@ import {
   warnCompleteCode,
 } from '../moduleTaskValidation.js'
 import { getStarterStage } from '../../shared/taskStages.js'
+import {
+  codeHasComplete,
+  codeResetTarget,
+  codeStringWire,
+  recordStorage,
+} from '../moduleContract.js'
 
 export default defineModule({
   type: 'python',
@@ -113,8 +119,17 @@ export default defineModule({
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────────
-  getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: codeResetTarget,
+    hasComplete: codeHasComplete,
+    // Complete lives in the unified code stages, not a separate teacher tab.
+    teacherCompleteTab: () => false,
+    sandboxStarter: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+    composedSandboxFields: (firstTask) => ({ sandboxStarter: firstTask?.starterCode ?? '' }),
+  },
+  storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
+  wire: codeStringWire(),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {

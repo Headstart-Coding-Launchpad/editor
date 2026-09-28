@@ -8,6 +8,8 @@ import {
   validateTaskChecks,
   warnCompleteFiles,
 } from '../moduleTaskValidation.js'
+import { filesWire, perFileStorage, stageForAction, starterStageOf } from '../moduleContract.js'
+import { getCompleteStage } from '../../shared/taskStages.js'
 
 const DEFAULT_HTML_FILE = {
   name: 'index.html',
@@ -152,13 +154,44 @@ export default defineModule({
   serializeState: null,
   deserializeState: null,
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────────
-  getSandboxState: (lesson, task) => ({
-    files: lesson?.sandboxStarterFiles?.length
-      ? lesson.sandboxStarterFiles
-      : (task?.starterFiles ?? [DEFAULT_HTML_FILE]),
-    entryFile: task?.entryFile ?? 'index.html',
-  }),
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: (task, action) => {
+      const { stage } = stageForAction(task, action)
+      const starter = starterStageOf(task)
+      if (action === 'complete') {
+        return {
+          files: task.completeFiles ?? [],
+          entryFile: task.completeEntryFile ?? task.entryFile,
+        }
+      }
+      if (action === 'starter') {
+        return {
+          files: starter?.files ?? task.starterFiles ?? [],
+          entryFile: starter?.entryFile ?? task.entryFile,
+        }
+      }
+      return {
+        files: stage?.files ?? starter?.files ?? task.starterFiles ?? [],
+        entryFile: stage?.entryFile ?? starter?.entryFile ?? task.entryFile,
+      }
+    },
+    hasComplete: (task) =>
+      getCompleteStage(task)?.stage?.files?.length > 0 || task?.completeFiles?.length > 0,
+    // Complete lives in the unified code stages, not a separate teacher tab.
+    teacherCompleteTab: () => false,
+    sandboxStarter: (lesson, task) => ({
+      files: lesson?.sandboxStarterFiles?.length
+        ? lesson.sandboxStarterFiles
+        : (task?.starterFiles ?? [DEFAULT_HTML_FILE]),
+      entryFile: task?.entryFile ?? 'index.html',
+    }),
+    composedSandboxFields: (firstTask) => ({
+      sandboxStarterFiles: firstTask?.starterFiles ?? [],
+    }),
+  },
+  storage: perFileStorage(),
+  wire: filesWire(),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {

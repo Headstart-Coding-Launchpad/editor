@@ -1,5 +1,5 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
-import { MODULE_TYPES, getModuleTypesWhere } from '../modules/definitions.js'
+import { MODULE_TYPES, getModuleDefinition, getModuleTypesWhere } from '../modules/definitions.js'
 import { isHostedActivityTask } from '../activities/registry.pure.js'
 
 // Membership comes from the module definitions (src/modules/definitions.js), so a new module
@@ -86,20 +86,10 @@ function firstCodeTask(lesson, moduleId) {
   )
 }
 
+// Lesson-level sandbox starter fields a composed lesson's module derives from its first code
+// task (each module's `lifecycle.composedSandboxFields`); an authored `module.sandbox` wins.
 function sandboxFields(moduleType, fallbackTask) {
-  if (moduleType === 'python' || moduleType === 'arcade')
-    return { sandboxStarter: fallbackTask?.starterCode ?? '' }
-  if (moduleType === 'html') return { sandboxStarterFiles: fallbackTask?.starterFiles ?? [] }
-  if (moduleType === 'scratch') {
-    const blocks = fallbackTask?.starterBlocks ?? null
-    return { sandboxStarter: blocks == null ? null : JSON.stringify(blocks) }
-  }
-  if (moduleType === 'filesystem') return { sandboxStarterFs: fallbackTask?.starterFs ?? null }
-  if (moduleType === 'desktop')
-    return { sandboxStarterDesktop: fallbackTask?.starterDesktop ?? null }
-  if (moduleType === 'electronics')
-    return { sandboxStarterCircuit: fallbackTask?.starterCircuit ?? null }
-  return {}
+  return getModuleDefinition(moduleType)?.lifecycle.composedSandboxFields(fallbackTask) ?? {}
 }
 
 export function getEffectiveLessonForModule(lesson, moduleId) {

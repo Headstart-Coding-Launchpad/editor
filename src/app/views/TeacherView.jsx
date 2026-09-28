@@ -271,7 +271,7 @@ export default function TeacherView({ lessonId }) {
       moduleId ?? getTaskModuleId(lesson, task) ?? getLessonModules(lesson)[0]?.id ?? null
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, resolvedModuleId) ?? lesson
     const mod = getLessonModule(activeSandboxLesson.type)
-    const configured = mod.getSandboxState(activeSandboxLesson, task)
+    const configured = mod.lifecycle.sandboxStarter(activeSandboxLesson, task)
     const draft = sandboxDraftRef.current
     const sessionHasCode = session?.state === 'sandbox' && session.sandboxCode != null
 
@@ -439,7 +439,7 @@ export default function TeacherView({ lessonId }) {
     const activeSandboxLesson = getEffectiveLessonForModule(lesson, sandboxModuleId) ?? lesson
     const mod = getLessonModule(activeSandboxLesson.type)
     const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === currentTaskId)
-    const configured = mod.getSandboxState(activeSandboxLesson, task)
+    const configured = mod.lifecycle.sandboxStarter(activeSandboxLesson, task)
 
     if (holdsCodeString(activeSandboxLesson.type)) {
       sandboxDraftRef.current.code = configured

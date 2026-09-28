@@ -5,7 +5,8 @@ import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
 import { getEffectiveLessonForTask, getTaskModuleType } from '../../shared/composedLesson'
-import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
+import { getModuleDefinition } from '../../modules/definitions.js'
+import { noLiveExtras } from '../../modules/moduleContract.js'
 
 /**
  * Owns the teacher-live broadcast helpers and the two related effects:
@@ -75,14 +76,25 @@ export function useTeacherLivePublish({
   }
 
   function currentTeacherLivePayload(extra = {}) {
-    const isFilesystem = lessonRef.current?.type === 'filesystem'
-    const isDesktop = lessonRef.current?.type === 'desktop'
+    const definition = getModuleDefinition(lessonRef.current?.type)
+    const stateKind = definition?.capabilities.sandboxState
+    const isFilesystem = stateKind === 'fs'
+    const isDesktop = stateKind === 'desktop'
     // Scratch never routes edits through the generic `code` state (see
     // loadTaskContent's scratch branch in useStudentCodeState.js) — codeRef.current
     // would otherwise still hold whatever an earlier non-Scratch task left behind,
     // or an empty string, wiping out the mirror's blocks the moment a broadcast
     // starts (or the live task changes) until the next real edit resyncs it.
-    const isScratch = getTaskModuleType(lessonRef.current, currentTaskIdRef.current) === 'scratch'
+    const isScratch =
+      getModuleDefinition(getTaskModuleType(lessonRef.current, currentTaskIdRef.current))
+        ?.capabilities.sandboxState === 'blocks'
+    // teacherLive is an update() merge, so every module sends both extras (explicit nulls
+    // for the ones it doesn't have) — see each definition's wire.liveExtras.
+    const { arcadeDesign, turtleResult } = (definition?.wire.liveExtras ?? noLiveExtras)({
+      // Optional refs: only the module that owns an extra ever needed its ref.
+      arcadeDesign: arcadeDesignRef?.current,
+      turtleResult: turtleResultRef?.current,
+    })
     const filesMap =
       isFilesystem || isDesktop
         ? {}
@@ -97,17 +109,14 @@ export function useTeacherLivePublish({
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
       code: isFilesystem
-        ? JSON.stringify(fsStateRef.current)
+        ? definition.wire.toCode(fsStateRef.current)
         : isDesktop
-          ? JSON.stringify(desktopStateRef.current)
+          ? definition.wire.toCode(desktopStateRef.current)
           : isScratch
             ? scratchCodeRef.current
             : codeRef.current,
-      arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
-      turtleResult:
-        lessonRef.current?.type === 'turtle'
-          ? compactTurtleResultForSync(turtleResultRef.current)
-          : null,
+      arcadeDesign,
+      turtleResult,
       files: filesMap,
       activeFile: activeFileRef.current,
       output: outputRef.current,

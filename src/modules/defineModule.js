@@ -15,7 +15,6 @@ const REQUIRED_FUNCTIONS = [
   'getCarryThroughUpdates',
   'getNewStarterUpdates',
   'initialState',
-  'getSandboxState',
   // Shared Builder + CLI validation for this module's tasks:
   // validateTask(task, { n, lesson, errors, warnings }) pushes messages. Pure / Node-safe.
   'validateTask',
@@ -61,6 +60,40 @@ const REQUIRED_CAPABILITY_BOOLEANS = [
 // Where the teacher's sandbox work lives in TeacherView state: a single code string, the
 // Scratch project, a filesystem tree, a desktop state, or HTML files.
 export const SANDBOX_STATE_KINDS = Object.freeze(['code', 'blocks', 'fs', 'desktop', 'files'])
+
+// Contract v2 hook groups (see ./moduleContract.js for the shared builders and
+// docs/architecture/lesson-type-modules.md, "Contract v2"). Each group is a frozen object.
+//
+// lifecycle:
+// - resetTarget(task, action, ctx) → the state a remote reset puts in front of the student,
+//   in the module's own shape ({ code } | { files, entryFile } | { blocks, stageIndex } |
+//   { fs } | { desktop } | { circuit }); ctx carries defaults ({ fs, circuit, desktop }).
+// - hasComplete(task) → whether the task has a complete solution to offer the student.
+// - teacherCompleteTab(task) → whether the teacher editor shows a separate Complete tab (false
+//   for modules whose complete solution lives in the unified code stages).
+// - sandboxStarter(lesson, task) → the teacher sandbox starter (getSandboxState is its alias).
+// - composedSandboxFields(firstTask) → the lesson-level sandbox fields a composed lesson's
+//   module derives from its first code task.
+export const LIFECYCLE_HOOKS = Object.freeze([
+  'resetTarget',
+  'hasComplete',
+  'teacherCompleteTab',
+  'sandboxStarter',
+  'composedSandboxFields',
+])
+// storage: record adapters onto today's localStorage shapes (docs/agents/runtime-model.md).
+export const STORAGE_LAYOUTS = Object.freeze(['record', 'perFile'])
+export const STORAGE_HOOKS = Object.freeze([
+  'toTaskRecord',
+  'fromTaskRecord',
+  'toSandboxRecord',
+  'fromSandboxRecord',
+])
+// wire: Realtime Database codec — toCode/fromCode (the `currentCode` / `sandboxCode` string),
+// liveExtras (teacherLive `arcadeDesign` / `turtleResult`, explicit nulls), submission (the
+// value logged with an attempt).
+export const WIRE_CHANNELS = Object.freeze(['code', 'files'])
+export const WIRE_HOOKS = Object.freeze(['toCode', 'fromCode', 'liveExtras', 'submission'])
 
 // Hooks that may be omitted; they default to null (the app treats null as "not provided").
 // Validation hooks (see src/shared/lessonValidation.js):
@@ -141,6 +174,38 @@ export function defineModule(def) {
   for (const key of REQUIRED_FUNCTIONS) {
     if (typeof def[key] !== 'function') fail(type, `missing required function "${key}"`)
   }
+  if (!def.lifecycle || typeof def.lifecycle !== 'object') {
+    fail(type, 'missing required object "lifecycle"')
+  }
+  for (const key of LIFECYCLE_HOOKS) {
+    if (typeof def.lifecycle[key] !== 'function') {
+      fail(type, `missing required function "lifecycle.${key}"`)
+    }
+  }
+  if (def.getSandboxState != null && def.getSandboxState !== def.lifecycle.sandboxStarter) {
+    fail(type, '"getSandboxState" is an alias of "lifecycle.sandboxStarter"; declare only that')
+  }
+  if (!def.storage || typeof def.storage !== 'object') {
+    fail(type, 'missing required object "storage"')
+  }
+  if (!STORAGE_LAYOUTS.includes(def.storage.layout)) {
+    fail(type, `"storage.layout" must be one of: ${STORAGE_LAYOUTS.join(', ')}`)
+  }
+  for (const key of STORAGE_HOOKS) {
+    if (typeof def.storage[key] !== 'function') {
+      fail(type, `missing required function "storage.${key}"`)
+    }
+  }
+  if (!def.wire || typeof def.wire !== 'object') fail(type, 'missing required object "wire"')
+  if (!WIRE_CHANNELS.includes(def.wire.sandboxChannel)) {
+    fail(type, `"wire.sandboxChannel" must be one of: ${WIRE_CHANNELS.join(', ')}`)
+  }
+  if ((def.wire.sandboxChannel === 'files') !== (def.capabilities.sandboxState === 'files')) {
+    fail(type, '"wire.sandboxChannel" is "files" exactly when "capabilities.sandboxState" is')
+  }
+  for (const key of WIRE_HOOKS) {
+    if (typeof def.wire[key] !== 'function') fail(type, `missing required function "wire.${key}"`)
+  }
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
   }
@@ -167,6 +232,11 @@ export function defineModule(def) {
         : {}),
     }),
     capabilities: Object.freeze({ ...def.capabilities }),
+    lifecycle: Object.freeze({ ...def.lifecycle }),
+    storage: Object.freeze({ ...def.storage }),
+    wire: Object.freeze({ ...def.wire }),
+    // Pre-v2 name, kept so existing callers and module authors keep working.
+    getSandboxState: def.lifecycle.sandboxStarter,
   }
   for (const key of OPTIONAL_FUNCTIONS) {
     if (!(key in result)) result[key] = null

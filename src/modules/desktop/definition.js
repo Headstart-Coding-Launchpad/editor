@@ -13,6 +13,7 @@ import {
   serializeDesktop,
   deserializeDesktop,
 } from './desktopState.js'
+import { jsonWire, recordStorage, stageForAction } from '../moduleContract.js'
 
 export default defineModule({
   type: 'desktop',
@@ -93,21 +94,38 @@ export default defineModule({
   serializeState: (state) => serializeDesktop(state),
   deserializeState: (raw) => deserializeDesktop(raw),
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────────
-  getSandboxState: (lesson, task) => {
-    if (lesson?.sandboxStarterDesktop != null) {
+  // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  lifecycle: {
+    resetTarget: (task, action, ctx = {}) => {
+      const { stage } = stageForAction(task, action)
+      if (action === 'complete') {
+        return { desktop: task.completeDesktop ?? task.starterDesktop ?? ctx.desktop }
+      }
+      if (action === 'starter') return { desktop: task.starterDesktop ?? ctx.desktop }
+      return { desktop: stage?.desktop ?? task.starterDesktop ?? ctx.desktop }
+    },
+    hasComplete: (task) => !!task?.completeDesktop,
+    teacherCompleteTab: (task) => !!task?.completeDesktop,
+    sandboxStarter: (lesson, task) => {
+      if (lesson?.sandboxStarterDesktop != null) {
+        try {
+          return normaliseDesktop(JSON.parse(JSON.stringify(lesson.sandboxStarterDesktop)))
+        } catch {}
+      }
+      const desktop =
+        task?.starterDesktop ?? makeDefaultDesktop(task?.availableApps ?? ['fileManager'])
       try {
-        return normaliseDesktop(JSON.parse(JSON.stringify(lesson.sandboxStarterDesktop)))
-      } catch {}
-    }
-    const desktop =
-      task?.starterDesktop ?? makeDefaultDesktop(task?.availableApps ?? ['fileManager'])
-    try {
-      return normaliseDesktop(JSON.parse(JSON.stringify(desktop)))
-    } catch {
-      return makeDefaultDesktop()
-    }
+        return normaliseDesktop(JSON.parse(JSON.stringify(desktop)))
+      } catch {
+        return makeDefaultDesktop()
+      }
+    },
+    composedSandboxFields: (firstTask) => ({
+      sandboxStarterDesktop: firstTask?.starterDesktop ?? null,
+    }),
   },
+  storage: recordStorage({ workKey: 'desktop' }),
+  wire: jsonWire(),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {

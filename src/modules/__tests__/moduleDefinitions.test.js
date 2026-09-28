@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { defineModule, defineUiModule } from '../defineModule.js'
+import {
+  LIFECYCLE_HOOKS,
+  STORAGE_HOOKS,
+  STORAGE_LAYOUTS,
+  WIRE_CHANNELS,
+  WIRE_HOOKS,
+  defineModule,
+  defineUiModule,
+} from '../defineModule.js'
 import { MODULE_TYPES, getModuleDefinition, getModuleDefinitions } from '../definitions.js'
 import { getLessonModule, getLessonModules } from '../registry.js'
 import { LESSON_MODULE_TYPES } from '../../shared/composedLesson.js'
@@ -63,6 +71,24 @@ describe('module definitions', () => {
         }
       })
 
+      it('defines every contract v2 lifecycle, storage and wire hook', () => {
+        for (const key of LIFECYCLE_HOOKS) {
+          expect(typeof definition.lifecycle[key], `lifecycle.${key}`).toBe('function')
+        }
+        expect(STORAGE_LAYOUTS).toContain(definition.storage.layout)
+        for (const key of STORAGE_HOOKS) {
+          expect(typeof definition.storage[key], `storage.${key}`).toBe('function')
+        }
+        expect(WIRE_CHANNELS).toContain(definition.wire.sandboxChannel)
+        for (const key of WIRE_HOOKS) {
+          expect(typeof definition.wire[key], `wire.${key}`).toBe('function')
+        }
+        for (const group of ['lifecycle', 'storage', 'wire']) {
+          expect(Object.isFrozen(definition[group]), group).toBe(true)
+        }
+        expect(definition.getSandboxState).toBe(definition.lifecycle.sandboxStarter)
+      })
+
       it('keeps UI-only surfaces out of the definition', () => {
         for (const key of [
           'StudentWorkspace',
@@ -98,7 +124,7 @@ describe('defineModule', () => {
     expect(() => defineModule(def)).toThrow(/meta\.label/)
   })
 
-  it.each(['getDisplayState', 'makeCodeTaskFields', 'getSandboxState', 'initialState'])(
+  it.each(['getDisplayState', 'makeCodeTaskFields', 'initialState'])(
     'throws for a missing required hook %s',
     (key) => {
       const def = valid()
@@ -106,6 +132,31 @@ describe('defineModule', () => {
       expect(() => defineModule(def)).toThrow(new RegExp(`python.*"${key}"`))
     }
   )
+
+  it.each([
+    ['lifecycle', 'sandboxStarter'],
+    ['lifecycle', 'resetTarget'],
+    ['storage', 'toTaskRecord'],
+    ['wire', 'liveExtras'],
+  ])('throws for a missing contract v2 hook %s.%s', (group, key) => {
+    const def = valid()
+    def[group] = { ...def[group] }
+    delete def[group][key]
+    expect(() => defineModule(def)).toThrow(new RegExp(`python.*"${group}\\.${key}"`))
+  })
+
+  it('derives getSandboxState from lifecycle.sandboxStarter and rejects a divergent one', () => {
+    const def = valid()
+    delete def.getSandboxState
+    expect(defineModule(def).getSandboxState).toBe(def.lifecycle.sandboxStarter)
+    expect(() => defineModule({ ...def, getSandboxState: () => '' })).toThrow(/alias/)
+  })
+
+  it('rejects a files sandbox channel on a module whose sandbox state is not files', () => {
+    const def = valid()
+    def.wire = { ...def.wire, sandboxChannel: 'files' }
+    expect(() => defineModule(def)).toThrow(/sandboxChannel/)
+  })
 
   it('throws for a missing capability flag', () => {
     const def = valid()
