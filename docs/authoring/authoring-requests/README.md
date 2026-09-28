@@ -56,3 +56,14 @@ Anything else: age range, links to course plans, screenshots.
 1. The builder applies the **workspace module vs activity** test from `docs/architecture/modular-activities-plan.md`: if a later task builds on what the student made, a teacher would demo freely in it, or there's a real free-play mode, it's a module; otherwise it's an activity.
 2. Status moves `open` → `planned` (with the PR link) → `shipped` (with docs link), or `declined` with a reason.
 3. Shipped capabilities appear in `lessons capabilities` and get an authoring doc under `docs/authoring/`.
+
+### How a request becomes an activity
+
+Claude Code's `new-activity` skill (`.claude/skills/new-activity/SKILL.md`) does this; people can follow the same steps.
+
+1. Read the request, apply the test above, and check `lessons capabilities` for a closer fit (a new *mode* of an existing activity is built in that activity's folder, not scaffolded). Set **Status** to `planned`.
+2. Scaffold: `npm run new:activity -- <id> "<Label>" --category …` (try `--dry-run` first). This creates `src/activities/<id>/`, registers it, and writes `docs/authoring/activities/<id>.md` with a valid example, so every check passes from the start. See "Adding an activity" in [activities.md](../../architecture/activities.md).
+3. Implement the request's **Example task**, **Checks wanted** and **Devices** in the scaffold: the task fields and validation, grading with hints for ages 8–14, the student UI (with `requires` / `touchFallback` for the device needs), tests including a real StudentView click-through, the authoring page, `validation-errors.md` rows and a CHANGELOG entry.
+4. When the checks and a real-browser pass are done, fill in **Resolution** (PR, activity id, docs link) and set **Status** to `shipped` once merged. The blocked lessons can now use `taskType: activity` + `activityType: <id>`.
+
+Workspace modules can't be scaffolded yet (plan step 4.8); the `new-module` skill lists the manual checklist.

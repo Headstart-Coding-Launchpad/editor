@@ -443,6 +443,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `ui/ItemNav.jsx` | Shared "Question n of m" item navigation with per-item done/wrong markers |
 | `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
+| `_template/definition.js`, `_template/template_activity.js`, `_template/ui.jsx` | Activity scaffold copied by `npm run new:activity` (`scripts/new-activity.mjs`): a working "type the answer" activity with `TODO(new-activity)` markers, its tests (pure, UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; the registry, interface and validation-doc tests skip `_`-prefixed folders |
 
 ---
 
@@ -540,6 +541,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and, later, 
 |---|---|
 | `scripts/download-scratch-sprites.mjs` | One-off tool: downloads Scratch's official sprite/costume assets from the Scratch CDN into `public/scratch-assets/sprites/` |
 | `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
+| `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
 
 ---
 
