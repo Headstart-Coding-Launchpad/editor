@@ -82,14 +82,20 @@ export function isReservedCombo(combo) {
   return RESERVED_COMBOS.has(normalizeCombo(combo))
 }
 
-function closestInputId(target) {
+// The nearest element tagged with data-input-id, and its optional semantic data-input-kind
+// (e.g. 'file', 'folder', 'window', 'icon' on the Desktop).
+function closestInputTarget(target) {
   const el = target?.closest?.('[data-input-id]')
-  return el?.getAttribute?.('data-input-id') ?? null
+  return {
+    id: el?.getAttribute?.('data-input-id') ?? null,
+    kind: el?.getAttribute?.('data-input-kind') ?? null,
+  }
 }
 
 // rect is the bounding box of the activity's root element, used to store positions as 0-1
 // fractions so replay and teacher views are resolution independent.
 export function normalizePointerEvent(e, rect = null, now = Date.now()) {
+  const target = closestInputTarget(e.target)
   const x = rect?.width ? (e.clientX - rect.left) / rect.width : null
   const y = rect?.height ? (e.clientY - rect.top) / rect.height : null
   return {
@@ -97,7 +103,8 @@ export function normalizePointerEvent(e, rect = null, now = Date.now()) {
     kind: e.type,
     pointerType: e.pointerType || 'mouse',
     button: typeof e.button === 'number' ? e.button : 0,
-    targetId: e.targetId ?? closestInputId(e.target),
+    targetId: e.targetId ?? target.id,
+    targetKind: e.targetKind ?? target.kind,
     px: typeof e.clientX === 'number' ? e.clientX : null,
     py: typeof e.clientY === 'number' ? e.clientY : null,
     x,

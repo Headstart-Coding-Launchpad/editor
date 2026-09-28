@@ -14,6 +14,7 @@ import {
   deserializeDesktop,
 } from './desktopState.js'
 import { jsonWire, recordStorage, stageForAction } from '../moduleContract.js'
+import { INPUT_CHECK_TYPES } from '../../shared/input/checks.js'
 
 export default defineModule({
   type: 'desktop',
@@ -127,11 +128,20 @@ export default defineModule({
   storage: recordStorage({ workKey: 'desktop' }),
   wire: jsonWire(),
   // Generic work slot (useStudentCodeState): the desktop is re-checked on every change; fs
-  // checks see the desktop's own tree.
+  // checks see the desktop's own tree. `interaction.input` is the in-memory input summary the
+  // Desktop workspace records (src/shared/input/targetSummary.js) for the input_* checks.
   checking: {
     trigger: 'change',
-    buildContext: (desktop, interaction) => ({ fs: desktop.fs, desktop, ...interaction }),
+    buildContext: (desktop, interaction) => ({
+      fs: desktop.fs,
+      desktop,
+      ...interaction,
+      input: interaction?.input ?? null,
+    }),
   },
+  // The Desktop records how the student works (gestures, shortcuts, Shift vs Caps Lock), so its
+  // tasks can use the shared input_* checks.
+  inheritsCheckTypes: INPUT_CHECK_TYPES,
   workSlot: {
     starterField: 'starterDesktop',
     sandboxField: 'sandboxStarterDesktop',

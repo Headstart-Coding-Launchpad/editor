@@ -26,7 +26,10 @@ function describeModule(def) {
     ...(def.capabilities ? { capabilities: def.capabilities } : {}),
     checkTypes: checkRegistry
       .list()
-      .filter((check) => check.owner === `module:${def.type}`)
+      .filter(
+        (check) =>
+          check.owner === `module:${def.type}` || def.inheritsCheckTypes?.includes(check.type)
+      )
       .map((check) => check.type),
   }
 }

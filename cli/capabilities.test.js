@@ -21,6 +21,16 @@ describe('lessons capabilities', () => {
     expect(python.checkTypes).not.toContain('fs_path')
   })
 
+  it('lists inherited input_* check types on the modules that record input', () => {
+    const desktop = capabilities.modules.find((m) => m.type === 'desktop')
+    expect(desktop.checkTypes).toEqual(
+      expect.arrayContaining(['window_state', 'input_gesture', 'input_shortcut', 'input_modifier'])
+    )
+    const python = capabilities.modules.find((m) => m.type === 'python')
+    expect(python.checkTypes).not.toContain('input_gesture')
+    expect(capabilities.checkTypes.find((c) => c.type === 'input_gesture').owner).toBe('input')
+  })
+
   it('tells agents how to author each activity and where to ask for more', () => {
     const binary = capabilities.activities.find((a) => a.id === 'binary')
     expect(binary).toMatchObject({

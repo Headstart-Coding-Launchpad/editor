@@ -20,6 +20,18 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-28
 
+### Desktop input checks (`input_gesture`, `input_shortcut`, `input_modifier`)
+
+- Desktop tasks can now check **how** the student did something: `input_gesture` (click,
+  double-click, right-click, drag, scroll, hover — optionally on a `file`, `folder`, `window` or
+  desktop `icon`, and for drags onto a `dropTargetKind`), `input_shortcut` (`combo: ctrl+c`,
+  `via: keyboard | menu | any`) and `input_modifier` (Shift vs Caps Lock capitals). Put them in a
+  `check` list next to an outcome check. Only Desktop tasks record input; the validator rejects
+  them elsewhere, and rejects browser-reserved shortcuts such as `ctrl+w`. Only counts are
+  recorded, in memory, for the current attempt. See
+  [desktop.md](desktop.md#input-checks-how-it-was-done) and the new rows in
+  [validation-errors.md](validation-errors.md#checks).
+
 ### Activities in YAML (`type: binary`) and in the Builder
 
 - YAML shorthand: `type: binary`, `type: keyboard` or `type: mouse` on a task (any activity's

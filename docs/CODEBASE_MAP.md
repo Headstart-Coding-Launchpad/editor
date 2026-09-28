@@ -327,7 +327,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `desktop/index.js` | Desktop module definition |
 | `desktop/desktopState.js` | Desktop state shape (`{ fs, recycleBin, windows }`), window CRUD helpers (`openWindow` — dedupes by `(appId, filePath)`, `moveWindow`, `resizeWindow`, `setWindowMinimized`, `setWindowMaximized`, `closeWindow`, `focusWindow`, `arrangeSideBySide`, `isWindowDirty`), serialize/deserialize |
 | `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `DESKTOP_CHECK_DEFINITIONS`, `evaluateDesktopCheck`, registry `CHECKS` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
-| `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*` and desktop-specific check definitions |
+| `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*`, desktop-specific and `input_*` check definitions (gesture/target/drop-target/combo/via/modifier/min fields) |
 | `desktop/Desktop.jsx` | Desktop shell: background, app icon grid, taskbar with clock and open-window buttons |
 | `desktop/WindowManager.jsx` | Renders open windows for the current desktop state, wires drag/resize/minimize/maximize/close/focus to `desktopState.js` |
 | `desktop/Window.jsx` | Window chrome: draggable title bar, resize handle, minimize/maximize/close controls |
@@ -339,7 +339,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `desktop/apps/browser/BrowserApp.jsx` | Browser "app": simulated browser chrome (Back/Forward/Refresh/Home, address bar), search engine, and downloads over a lesson-authored `siteGraph` |
 | `desktop/apps/browser/siteGraph.js` | Pure helpers for the Browser's lesson-authored site graph: normalise, page lookup, free-text search ranking, URL lookup |
 | `desktop/apps/paint/PaintApp.jsx` | Paint "app": freehand canvas (brush/eraser, palette, sizes, undo, clear) with Text Editor's explicit Open/Save/Save As model; saves a PNG `data:` URL onto the file entry's `content` |
-| `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler |
+| `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler; when the task has `input_*` checks, records input on the surface (`useSurfaceInputRecorder`) and sends the summary as `interaction.input` (in memory only) |
 | `desktop/BuilderWorkspace.jsx` | Re-export of `DesktopTaskWorkspace` |
 | `desktop/CheckEditor.jsx` | `DesktopCheckListEditor` wrapper |
 | `desktop/TeacherLiveView.jsx` | Reuses `Desktop` read-only or sandbox-editable against `displayState` |
@@ -531,16 +531,19 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 
 ### Input Recorder (`src/shared/input/`)
 
-Pure, Node-safe input library for the Keyboard and Mouse activities and, later, Desktop checks (plan: `docs/architecture/modular-activities-plan.md`, Phase 3). Raw events stay on the device; only summaries are checked or synced.
+Pure, Node-safe input library for the Keyboard and Mouse activities and the Desktop's `input_*` checks (plan: `docs/architecture/modular-activities-plan.md`, Phases 3 and 5). Raw events stay on the device; only summaries are checked or synced.
 
 | File | Role |
 |---|---|
 | `index.js` | Re-exports the whole library |
 | `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
-| `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
-| `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag, scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
+| `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets plus their `data-input-kind`, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
+| `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag (pointer or HTML5 drag-and-drop, with source/drop target kinds), scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
 | `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `summarizeInput` (small serialisable counts), `typingStats` (accuracy, WPM) |
 | `recorder.js` | `createInputRecorder`: bounded in-memory event ring buffer, never persisted |
+| `targetSummary.js` | `summarizeTargetedInput` / `createInputTally`: capped, serialisable per-surface summary for `input_*` checks — gestures per target kind (`file`/`folder`/`window`/`icon`), drags by source>drop kind, shortcuts by keyboard vs menu, Shift/Caps Lock capitals; the tally folds finished segments into running totals so the ring buffer never loses gestures |
+| `checks.js` | Owner-`input` check types `input_gesture`, `input_shortcut`, `input_modifier` (registered in `src/modules/checks.js`): evaluate against `ctx.input`; `validate()` rejects modules without them in `inheritsCheckTypes`, browser-reserved combos, unknown gestures/kinds; `inputChecksOf` / `inputSummaryCapFor` |
+| `useSurfaceInputRecorder.js` | React hook: capture-phase key/pointer/drag listeners on a surface element feeding a tally; calls `onSummary` only when the capped summary changes; returns `recordCommand(combo, via)` for menu equivalents (used by Desktop `StudentWorkspace`) |
 | `useInputCapabilities.js` | React hook over `detectInputCapabilities`, upgraded when a hardware keydown proves a physical keyboard (kept out of `index.js` so the library stays Node-safe) |
 | `capabilities.js` | `detectInputCapabilities` (fine pointer, hover, touch), `withKeyEvidence` (physical keyboard learned from a hardware keydown), `unmetRequirements` |
 

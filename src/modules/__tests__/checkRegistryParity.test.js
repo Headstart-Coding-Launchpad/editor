@@ -26,6 +26,7 @@ import { CHECKS as HTML_CHECKS, HTML_CHECK_TYPES } from '../html/checks.js'
 import { CHECKS as ELECTRONICS_CHECKS } from '../electronics/checks.js'
 import { ELECTRONICS_CHECK_TYPES } from '../electronics/circuit.js'
 import { CHECKS as TURTLE_CHECKS, TURTLE_CHECK_TYPES } from '../turtle/checks.js'
+import { CHECKS as INPUT_CHECKS, INPUT_CHECK_TYPES } from '../../shared/input/checks.js'
 import {
   LEGACY_RUN_REQUIRED,
   LEGACY_SUBMIT_ALLOWED,
@@ -316,6 +317,7 @@ describe('check registry — ownership', () => {
     ...HTML_CHECKS,
     ...ELECTRONICS_CHECKS,
     ...TURTLE_CHECKS,
+    ...INPUT_CHECKS,
   ]
   const EXPECTED_OWNERS = [
     ['module:filesystem', FS_CHECK_TYPES],
@@ -325,6 +327,7 @@ describe('check registry — ownership', () => {
     ['module:electronics', ELECTRONICS_CHECK_TYPES],
     ['module:turtle', TURTLE_CHECK_TYPES],
     ['core', CODE_CHECK_TYPES],
+    ['input', INPUT_CHECK_TYPES],
   ]
 
   it('gives every type in any *_CHECK_TYPES list exactly one owner', () => {

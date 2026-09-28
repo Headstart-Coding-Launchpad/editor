@@ -275,6 +275,15 @@ export function defineModule(def) {
   for (const key of ['explainerInlineCodeLanguages', 'explainerCodeBlockLanguages']) {
     if (!Array.isArray(def[key])) fail(type, `missing required array "${key}"`)
   }
+  // Optional: check types owned elsewhere (e.g. owner 'input') that this module's tasks may use.
+  // Those types' validate() reject tasks whose module doesn't list them.
+  if (
+    def.inheritsCheckTypes != null &&
+    (!Array.isArray(def.inheritsCheckTypes) ||
+      def.inheritsCheckTypes.some((id) => typeof id !== 'string' || !id))
+  ) {
+    fail(type, '"inheritsCheckTypes" must be an array of check type ids')
+  }
 
   const result = {
     ...def,
@@ -290,6 +299,7 @@ export function defineModule(def) {
     wire: Object.freeze({ ...def.wire }),
     checking: hasChecking ? Object.freeze({ ...def.checking }) : null,
     workSlot: hasWorkSlot ? Object.freeze({ ...def.workSlot }) : null,
+    inheritsCheckTypes: Object.freeze([...(def.inheritsCheckTypes ?? [])]),
     // Pre-v2 name, kept so existing callers and module authors keep working.
     getSandboxState: def.lifecycle.sandboxStarter,
   }

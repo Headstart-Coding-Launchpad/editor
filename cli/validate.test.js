@@ -519,3 +519,62 @@ describe('CLI lesson validation', () => {
     )
   })
 })
+
+describe('input_* checks (Desktop records input)', () => {
+  const desktopLesson = (check, extra = {}) => ({
+    id: 'desktop-input',
+    type: 'desktop',
+    title: 'Desktop input',
+    description: 'How it was done.',
+    tasks: [
+      {
+        id: 1,
+        title: 'Open by double-clicking',
+        starterDesktop: { fs: { '/': { type: 'dir' } }, recycleBin: [], windows: [] },
+        check,
+        ...extra,
+      },
+    ],
+  })
+
+  it('accepts input checks on Desktop tasks in both the Builder and the CLI', () => {
+    const lesson = desktopLesson(
+      [
+        { type: 'input_gesture', gesture: 'drag', targetKind: 'file', dropTargetKind: 'folder' },
+        { type: 'input_shortcut', combo: 'ctrl+c', via: 'keyboard' },
+        { type: 'input_modifier', modifier: 'shift', notCapsLock: true },
+      ],
+      { feedbackChecks: [{ type: 'input_shortcut', combo: 'ctrl+c', via: 'menu', hint: 'Keys!' }] }
+    )
+    expect(validateLessonForMcp(lesson).errors).toEqual([])
+    expect(validateLesson(lesson).errors).toEqual([])
+  })
+
+  it('rejects them on modules that do not record input, and a reserved combo', () => {
+    const python = {
+      id: 'py-input',
+      type: 'python',
+      title: 'Python input',
+      description: 'Nope.',
+      tasks: [
+        {
+          id: 1,
+          title: 'Say hi',
+          starterCode: 'print("hi")',
+          check: { type: 'input_gesture', gesture: 'click' },
+        },
+      ],
+    }
+    const message =
+      "Task 1 has an input_gesture check, but Python tasks don't record input — input checks work in Desktop tasks"
+    expect(validateLessonForMcp(python).errors).toContain(message)
+    expect(validateLesson(python).errors).toContain(message)
+
+    const reserved = desktopLesson({ type: 'input_shortcut', combo: 'ctrl+w' })
+    const cli = validateLessonForMcp(reserved).errors
+    expect(cli).toEqual([
+      'Task 1 has an input_shortcut check for "ctrl+w", which the browser keeps for itself — students can\'t perform it in a lesson (teach it with a quiz instead)',
+    ])
+    expect(validateLesson(reserved).errors).toEqual(cli)
+  })
+})

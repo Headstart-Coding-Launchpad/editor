@@ -40,6 +40,7 @@ export default function FileManagerApp({
   disabled,
   onInteraction,
   onOpenFile,
+  onCommand,
   assetsPath,
   assets,
   startsInDir = '/',
@@ -188,6 +189,7 @@ export default function FileManagerApp({
             onInteraction={disabled ? undefined : handleInteraction}
             onDeletePath={disabled ? undefined : handleDeletePath}
             onOpenFile={disabled ? undefined : onOpenFile}
+            onCommand={disabled ? undefined : onCommand}
             assetsPath={assetsPath}
             assets={assets}
             disabled={disabled}

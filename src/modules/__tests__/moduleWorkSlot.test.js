@@ -54,7 +54,11 @@ describe('work-slot definitions', () => {
       desktop,
       currentDir: '/',
       openFile: '/a.txt',
+      input: null,
     })
+    // The recorded input summary rides on the interaction into ctx.input.
+    const input = { gestures: { double_click: { any: 1 } } }
+    expect(checking.buildContext(desktop, { currentDir: '/', input }).input).toBe(input)
     expect(workSlot).toMatchObject({
       starterField: 'starterDesktop',
       sandboxField: 'sandboxStarterDesktop',

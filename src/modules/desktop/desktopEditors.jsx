@@ -1,7 +1,46 @@
 import { FS_CHECK_DEFINITIONS } from '../filesystem/checks.js'
 import { DESKTOP_CHECK_DEFINITIONS } from './checks.js'
+import {
+  INPUT_CHECK_DEFINITIONS,
+  INPUT_GESTURES,
+  INPUT_MODIFIERS,
+  INPUT_SHORTCUT_VIA,
+} from '../../shared/input/checks.js'
+import { INPUT_TARGET_KINDS } from '../../shared/input/targetSummary.js'
 
-const CHECK_DEFINITIONS = { ...FS_CHECK_DEFINITIONS, ...DESKTOP_CHECK_DEFINITIONS }
+const CHECK_DEFINITIONS = {
+  ...FS_CHECK_DEFINITIONS,
+  ...DESKTOP_CHECK_DEFINITIONS,
+  ...INPUT_CHECK_DEFINITIONS,
+}
+
+// Starting fields when an author switches a check to an input_* type.
+const INPUT_CHECK_DEFAULTS = {
+  input_gesture: { gesture: 'double_click' },
+  input_shortcut: { combo: 'ctrl+c', via: 'keyboard' },
+  input_modifier: { modifier: 'shift' },
+}
+
+const GESTURE_LABELS = {
+  click: 'Click',
+  double_click: 'Double-click',
+  right_click: 'Right-click',
+  drag: 'Drag',
+  scroll: 'Scroll',
+  hover: 'Hover',
+}
+const TARGET_KIND_LABELS = {
+  file: 'File',
+  folder: 'Folder',
+  window: 'Window',
+  icon: 'Desktop icon',
+}
+const VIA_LABELS = {
+  keyboard: 'Keyboard only',
+  menu: 'Menu or toolbar only',
+  any: 'Keyboard or menu',
+}
+const MODIFIER_LABELS = { shift: 'Shift for capitals', caps_lock: 'Caps Lock for capitals' }
 const CHECK_TYPE_OPTIONS = Object.keys(CHECK_DEFINITIONS).map((type) => ({
   value: type,
   label: CHECK_DEFINITIONS[type].subject,
@@ -55,9 +94,11 @@ function DesktopSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = 
   }
 
   function changeType(nextType) {
+    const operator = operatorsFor(nextType)[0]
     onChange({
       type: nextType,
-      operator: operatorsFor(nextType)[0],
+      ...(operator ? { operator } : {}),
+      ...(INPUT_CHECK_DEFAULTS[nextType] ?? {}),
       ...(fieldsFor(nextType).includes('itemType') ? { itemType: 'file' } : {}),
       ...(fieldsFor(nextType).includes('appIds') ? { appIds: ['', ''] } : {}),
       hint: check.hint,
@@ -218,6 +259,162 @@ function DesktopSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = 
               />
             </label>
           </div>
+        )}
+
+        {fields.includes('gesture') && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Gesture
+            <select
+              aria-label="Gesture"
+              value={check.gesture ?? 'double_click'}
+              onChange={(e) =>
+                onChange({
+                  ...check,
+                  gesture: e.target.value,
+                  ...(e.target.value === 'drag' ? {} : { dropTargetKind: undefined }),
+                })
+              }
+              style={{ ...s.input, fontSize: '0.82rem' }}
+            >
+              {INPUT_GESTURES.map((gesture) => (
+                <option key={gesture} value={gesture}>
+                  {GESTURE_LABELS[gesture]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {fields.includes('targetKind') && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            On
+            <select
+              aria-label="Gesture target"
+              value={check.targetKind ?? ''}
+              onChange={(e) => setField('targetKind', e.target.value || undefined)}
+              style={{ ...s.input, fontSize: '0.82rem' }}
+            >
+              <option value="">Anything</option>
+              {INPUT_TARGET_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {TARGET_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {fields.includes('dropTargetKind') && check.gesture === 'drag' && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Dropped onto
+            <select
+              aria-label="Drop target"
+              value={check.dropTargetKind ?? ''}
+              onChange={(e) => setField('dropTargetKind', e.target.value || undefined)}
+              style={{ ...s.input, fontSize: '0.82rem' }}
+            >
+              <option value="">Anywhere</option>
+              {INPUT_TARGET_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {TARGET_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {fields.includes('combo') && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Shortcut
+            <input
+              aria-label="Shortcut"
+              value={check.combo ?? ''}
+              onChange={(e) => setField('combo', e.target.value)}
+              placeholder="ctrl+c"
+              style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
+            />
+          </label>
+        )}
+
+        {fields.includes('via') && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Used from
+            <select
+              aria-label="Shortcut used from"
+              value={check.via ?? 'keyboard'}
+              onChange={(e) => setField('via', e.target.value)}
+              style={{ ...s.input, fontSize: '0.82rem' }}
+            >
+              {INPUT_SHORTCUT_VIA.map((via) => (
+                <option key={via} value={via}>
+                  {VIA_LABELS[via]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {fields.includes('modifier') && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Key
+            <select
+              aria-label="Modifier"
+              value={check.modifier ?? 'shift'}
+              onChange={(e) =>
+                onChange({
+                  ...check,
+                  modifier: e.target.value,
+                  ...(e.target.value === 'shift' ? {} : { notCapsLock: undefined }),
+                })
+              }
+              style={{ ...s.input, fontSize: '0.82rem' }}
+            >
+              {INPUT_MODIFIERS.map((modifier) => (
+                <option key={modifier} value={modifier}>
+                  {MODIFIER_LABELS[modifier]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {fields.includes('notCapsLock') && (check.modifier ?? 'shift') === 'shift' && (
+          <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="checkbox"
+              checked={!!check.notCapsLock}
+              onChange={(e) => setField('notCapsLock', e.target.checked || undefined)}
+            />
+            Fail if Caps Lock was used for a capital
+          </label>
+        )}
+
+        {fields.includes('strict') && (
+          <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="checkbox"
+              checked={!!check.strict}
+              onChange={(e) => setField('strict', e.target.checked || undefined)}
+            />
+            Mouse only (no touch-screen equivalent)
+          </label>
+        )}
+
+        {fields.includes('min') && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            At least (times)
+            <input
+              aria-label="At least (times)"
+              type="number"
+              min={1}
+              value={check.min ?? ''}
+              onChange={(e) =>
+                setField('min', e.target.value === '' ? undefined : Number(e.target.value))
+              }
+              placeholder="1"
+              style={{ ...s.input, fontSize: '0.82rem' }}
+            />
+          </label>
         )}
 
         {feedbackEditor && (

@@ -33,12 +33,19 @@ export function validateTaskChecks(task, validate) {
 }
 
 // Rules a check type declares itself: the registry definition's optional
-// `validate(check, { n, kind, task })` returns complete messages (starting `Task ${n} `).
-// Runs for the completion check and any feedback checks of a task that uses a module.
-export function validateRegisteredChecks(task, n, errors) {
+// `validate(check, { n, kind, task, moduleDefinition })` returns complete messages (starting
+// `Task ${n} `). `moduleDefinition` is the task's effective module (null when unknown), so a
+// check type can reject modules that can't evaluate it. Runs for the completion check and any
+// feedback checks of a task that uses a module.
+export function validateRegisteredChecks(task, n, errors, { moduleDefinition = null } = {}) {
   validateTaskChecks(task, (checks, kind) => {
     for (const check of normalizeChecks(checks)) {
-      const messages = getCheckDefinition(check?.type)?.validate?.(check, { n, kind, task })
+      const messages = getCheckDefinition(check?.type)?.validate?.(check, {
+        n,
+        kind,
+        task,
+        moduleDefinition,
+      })
       if (Array.isArray(messages)) errors.push(...messages)
     }
   })
