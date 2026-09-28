@@ -1,25 +1,31 @@
 import React from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
-import { getModuleLabel } from '../../modules/definitions'
+import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 
 function getLanguageLabel(lessonType) {
   return getModuleLabel(lessonType, 'stageReference') ?? 'Code'
 }
 
-function stageToText(stage, lessonType) {
+// Text for a revealed stage, by the module's state kind (capabilities.sandboxState).
+export function stageToText(stage, lessonType) {
   if (!stage) return ''
-  if (lessonType === 'python') return stage.code ?? ''
-  if (lessonType === 'arcade') return stage.code ?? ''
-  if (lessonType === 'html') {
-    if (stage.code != null) return stage.code
-    return (stage.files ?? [])
-      .map((file) => `/* ${file.name} */\n${file.content ?? ''}`)
-      .join('\n\n')
+  switch (getModuleDefinition(lessonType)?.capabilities?.sandboxState) {
+    case 'code':
+      return stage.code ?? ''
+    case 'files':
+      if (stage.code != null) return stage.code
+      return (stage.files ?? [])
+        .map((file) => `/* ${file.name} */\n${file.content ?? ''}`)
+        .join('\n\n')
+    case 'fs':
+      return JSON.stringify(stage.fs ?? {}, null, 2)
+    case 'desktop':
+      return JSON.stringify(stage.desktop ?? {}, null, 2)
+    case 'blocks':
+      return stage.markdown ?? ''
+    default:
+      return ''
   }
-  if (lessonType === 'filesystem') return JSON.stringify(stage.fs ?? {}, null, 2)
-  if (lessonType === 'scratch') return stage.markdown ?? ''
-  if (lessonType === 'electronics') return stage.code ?? ''
-  return ''
 }
 
 export default function SupportStagePanel({ stage, lessonType, revealed, sourceLabel }) {

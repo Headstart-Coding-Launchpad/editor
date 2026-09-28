@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
+import {
+  deriveStudentLiveDisplay,
+  teacherLiveReferenceDisplayState,
+  toTeacherLiveFiles,
+} from '../studentLiveDisplay'
 
 const localWorkspace = {
   code: 'local code',
@@ -304,5 +308,17 @@ describe('deriveStudentLiveDisplay', () => {
     // The marked result does carry through.
     expect(display.displayRunStatus).toBe('submitted')
     expect(display.displayCheckPassed).toBe(true)
+  })
+})
+
+describe('teacherLiveReferenceDisplayState by state kind (plan 1.5)', () => {
+  it('shows a Turtle broadcast as code, like Python', () => {
+    expect(teacherLiveReferenceDisplayState({ code: 'forward(50)' }, 'turtle')).toBe('forward(50)')
+  })
+
+  it('still returns null for types without a live reference', () => {
+    expect(teacherLiveReferenceDisplayState({ code: '{}' }, 'scratch')).toBeNull()
+    expect(teacherLiveReferenceDisplayState({ code: '{}' }, 'desktop')).toBeNull()
+    expect(teacherLiveReferenceDisplayState(null, 'python')).toBeNull()
   })
 })
