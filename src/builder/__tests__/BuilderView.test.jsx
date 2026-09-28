@@ -107,7 +107,9 @@ describe('BuilderView Firestore save', () => {
 
     expect(mocks.setDoc).not.toHaveBeenCalled()
     expect(window.alert).toHaveBeenCalledOnce()
-    expect(window.alert.mock.calls[0][0]).toContain('taskType must be information or quiz')
+    expect(window.alert.mock.calls[0][0]).toContain(
+      'taskType must be information, quiz, code_arrange or activity'
+    )
     expect(window.confirm).not.toHaveBeenCalled()
     expect(onMarkSaved).not.toHaveBeenCalled()
     expect(mocks.navigate).not.toHaveBeenCalled()

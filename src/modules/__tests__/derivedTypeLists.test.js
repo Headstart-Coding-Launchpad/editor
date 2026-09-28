@@ -268,7 +268,9 @@ describe('consumers read the derived values (no hand-written lists left)', () =>
     ['src/shared/taskUtils.js', 'capabilities.unifiedStages'],
     ['src/shared/taskUtils.js', 'definition?.completeField'],
     ['src/builder/lessonUtils.js', 'CARRY_THROUGH_FIELDS'],
-    ['cli/validate.mjs', 'CARRY_THROUGH_FIELDS'],
+    // Both validators get the carry-through rule from the shared core.
+    ['src/shared/lessonValidation.js', 'CARRY_THROUGH_FIELDS'],
+    ['cli/validate.mjs', 'validateLessonCore'],
     ['src/app/components/InformationTask.jsx', "getModuleLabel(type, 'lessonIntro')"],
     ['src/builder/components/LessonMetaPanel.jsx', "getModuleLabel(type, 'builderMeta')"],
     ['src/builder/printLesson.js', "getModuleLabel(type, 'print')"],

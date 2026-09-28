@@ -16,6 +16,9 @@ const REQUIRED_FUNCTIONS = [
   'getNewStarterUpdates',
   'initialState',
   'getSandboxState',
+  // Shared Builder + CLI validation for this module's tasks:
+  // validateTask(task, { n, lesson, errors, warnings }) pushes messages. Pure / Node-safe.
+  'validateTask',
 ]
 
 const REQUIRED_BOOLEANS = [
@@ -60,7 +63,21 @@ const REQUIRED_CAPABILITY_BOOLEANS = [
 export const SANDBOX_STATE_KINDS = Object.freeze(['code', 'blocks', 'fs', 'desktop', 'files'])
 
 // Hooks that may be omitted; they default to null (the app treats null as "not provided").
-const OPTIONAL_FUNCTIONS = ['initCompleteTab', 'initStageTab', 'serializeState', 'deserializeState']
+// Validation hooks (see src/shared/lessonValidation.js):
+// - hasStarterContent(task) → boolean; null = no "empty editor" warning for this module.
+// - hasCheckValue(task) → boolean for the Builder's untested-check reminder; null = the generic
+//   code-check rule.
+// - validateTaskInBrowser(task, { n, errors, warnings }) → Builder-only rules needing browser
+//   APIs (e.g. DOMParser); the CLI never calls it.
+const OPTIONAL_FUNCTIONS = [
+  'initCompleteTab',
+  'initStageTab',
+  'serializeState',
+  'deserializeState',
+  'hasStarterContent',
+  'hasCheckValue',
+  'validateTaskInBrowser',
+]
 
 // Keys the UI half must provide. A value may be null where the app already allows it
 // (e.g. TeacherLiveView, runtime), but it must be present and not undefined.

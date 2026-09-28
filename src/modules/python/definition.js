@@ -1,5 +1,12 @@
 // Node-safe half of the Python module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import {
+  codeStarterPresent,
+  validateCodeChecks,
+  validatePythonTests,
+  validateTaskChecks,
+  warnCompleteCode,
+} from '../moduleTaskValidation.js'
 import { getStarterStage } from '../../shared/taskStages.js'
 
 export default defineModule({
@@ -108,4 +115,14 @@ export default defineModule({
 
   // ── Sandbox ──────────────────────────────────────────────────────────────────
   getSandboxState: (lesson, task) => lesson?.sandboxStarter ?? task?.starterCode ?? '',
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors, warnings }) => {
+    validateTaskChecks(task, (checks, kind) =>
+      validateCodeChecks(checks, n, errors, kind, { interactionMode: task.interactionMode })
+    )
+    validatePythonTests(task, n, errors, warnings)
+    warnCompleteCode(task, n, warnings)
+  },
+  hasStarterContent: codeStarterPresent,
 })

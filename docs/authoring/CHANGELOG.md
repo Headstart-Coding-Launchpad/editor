@@ -20,6 +20,34 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-28
 
+### Builder and CLI validation share one rule set and one wording
+
+- `lessons validate` (and `yaml-to-json`, `upsert`, `publish-yaml`) now runs the same rules as
+  the Builder, with the same messages. Lessons that only passed the CLI before may now get:
+  feedback-check errors (`… has feedback checks but no completion check`, priority and
+  stage-offer rules) and the `blocking feedback check with no hint` warning; the full Scratch
+  check rules; Python/HTML/Arcade check-field rules (`… but no CSS selector`,
+  `… enabled but no check value`, submit mode with run-only checks, …); Python `tests` rules;
+  `… references task … for carry-through but that task does not exist`; the
+  `complete breadboard` warning; and the empty-editor warning for quiz and code-arrange tasks.
+  The Builder now also checks `recordingUrl`, Electronics stage labels, and `browser_visited` /
+  `search_query` checks against the complete Desktop state.
+- Reworded messages (one wording for both): Builder full stops dropped from quiz and
+  code-arrange messages (`… has an empty option text field.` → `… has an empty option text`);
+  Builder envelope/fork messages now use the CLI wording (`Lesson ID is required` →
+  `id is required`, `Lesson must have at least one task` → `tasks is required and must be an
+  array` / `tasks must contain at least one task or group`, `Forked lesson ID must be …` →
+  `forked lesson id must be '…'`, …); the Builder's `may only carry work from an earlier task`
+  → `Task … carryCodeFrom must reference an earlier task in the same lesson module`; the CLI's
+  Scratch and Desktop check messages now use the Builder wording (`sprite check is missing a
+  property` → `has a Scratch sprite-property check with missing property, operator, or value`,
+  `file-in-dir check but no parent folder` → `file-location check but no parent folder`, …);
+  `Group "…" has no subtasks — add at least one subtask` in both.
+- `taskType: activity` (with `activityType`) is accepted and validated by the activity's own
+  rules; an unknown `activityType` is an error. Still-builder-only: invalid Scratch toolbox XML,
+  duplicate task ids and the untested-check reminder. CLI-only: `description is required`.
+  See [validation-errors.md](validation-errors.md).
+
 ### Explainer code-block menu offers Python for Arcade Kit, Python Turtle and Electronics
 
 - The Builder explainer editor's code-block button now inserts a ```` ```python ```` fence

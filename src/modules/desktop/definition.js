@@ -1,6 +1,13 @@
 // Node-safe half of the Desktop module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
 import {
+  anyCheckHasValue,
+  validateStageStates,
+  validateTaskChecks,
+  warnCompleteDesktop,
+} from '../moduleTaskValidation.js'
+import { validateFilesystemChecks } from '../../shared/checkAuthoringValidation.js'
+import {
   makeDefaultDesktop,
   normaliseDesktop,
   serializeDesktop,
@@ -101,4 +108,13 @@ export default defineModule({
       return makeDefaultDesktop()
     }
   },
+
+  // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
+  validateTask: (task, { n, errors, warnings }) => {
+    validateStageStates(task, n, errors, { stateKey: 'desktop', stateLabel: 'desktop' })
+    validateTaskChecks(task, (checks, kind) => validateFilesystemChecks(checks, n, errors, kind))
+    warnCompleteDesktop(task, n, warnings)
+  },
+  hasStarterContent: null,
+  hasCheckValue: anyCheckHasValue,
 })

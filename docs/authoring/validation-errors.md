@@ -1,8 +1,10 @@
 # Validation Errors and Warnings
 
 What each message from `node cli/cli.mjs lessons validate`, `yaml-to-json`, `upsert` and
-`publish-yaml` means, and how to fix it. The Builder shows the same messages for the rules both
-share.
+`publish-yaml` means, and how to fix it. The Builder and the CLI run the same rules with the same
+wording (`src/shared/lessonValidation.js` plus each module's `validateTask`; see
+[ADR 0008](../adr/0008-split-cli-and-builder-validation.md)). A few rows are marked
+**CLI only** or **Builder only**: those depend on where the lesson is being validated.
 
 - **Errors** block publishing. **Warnings** don't, but usually point at something students
   will notice.
@@ -24,7 +26,7 @@ isn't listed here, so add a row whenever you add a message.
 | `type is required` | No lesson `type`. | New lessons use `type: composed`. |
 | `type must be one of: …` | Unknown lesson type. | Use `composed`, or a legacy single-module type from the list. |
 | `title is required` | No lesson `title`. | Add a title. |
-| `description is required` | No `description` (shown on the entry screen). | Add a one-sentence description. |
+| `description is required` (**CLI only**) | No `description` (shown on the entry screen). | Add a one-sentence description. |
 | `recordingUrl must be a YouTube link (youtube.com or youtu.be)` | `recordingUrl` isn't a YouTube URL. | Use an unlisted YouTube link, or remove the field. |
 | `tasks is required and must be an array` | `tasks` is missing or not a list. | Add `tasks:` with at least one task. |
 | `tasks must contain at least one task or group` | `tasks` is empty. | Add a task. |
@@ -36,7 +38,7 @@ isn't listed here, so add a row whenever you add a message.
 | Message | Meaning | Fix |
 |---|---|---|
 | `Group … is missing a title` | A `type: group` item has no title. | Add `title:` to the group. |
-| `Group "…" has no subtasks` | The group's `subtasks` list is empty. | Add subtasks or remove the group. |
+| `Group "…" has no subtasks — add at least one subtask` | The group's `subtasks` list is empty. | Add subtasks or remove the group. |
 | `Group … subtasks must be an array` | `subtasks` isn't a list. | Write `subtasks:` as a YAML list. |
 
 ## Task shape
@@ -45,7 +47,7 @@ isn't listed here, so add a row whenever you add a message.
 |---|---|---|
 | `Task … is missing a title` / `… is missing a title` | A task has no `title`. | Add a title. |
 | `… must be an object` | A task entry is not a mapping (e.g. a bare string). | Write each task as `- title: …` with fields under it. |
-| `… taskType must be information or quiz when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
+| `… taskType must be information, quiz, code_arrange or activity when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`, `activity`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
 | `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz` or `group`, or omit it for a code task. |
 | `… has an invalid quiz type` | `quizType` isn't one of the five quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer` or `confidence`. |
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
@@ -61,6 +63,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
+| `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |
 
 ## Composed lessons and carry-through
 
@@ -69,7 +72,8 @@ isn't listed here, so add a row whenever you add a message.
 | `Code task "…" must select a workspace module` | A code task in a composed lesson has no `moduleType` (or `moduleId`). | Add `moduleType: python` (or `turtle`, `html`, `scratch`, …). |
 | `Code task "…" has an unknown workspace module` | `moduleType`/`moduleId` doesn't match a module. | Use a supported module type, or define the module in `modules:`. |
 | `Code task "…" has a module ID and module type that do not match` | Both are set and they disagree. | Remove one, or make them agree. |
-| `Task … … must reference an earlier task in the same lesson module` | A `carryCodeFrom`/`carryBlocksFrom`/`carryFsFrom`/`carryCircuitFrom` points at a later task or a task using a different module. | Carry only from an earlier task with the same `moduleType`. |
+| `Task … … must reference an earlier task in the same lesson module` | A `carryCodeFrom`/`carryBlocksFrom`/`carryFsFrom`/`carryCircuitFrom`/`carryDesktopFrom` points at a later task or a task using a different module. | Carry only from an earlier task with the same `moduleType`. |
+| `Task … references task … for carry-through but that task does not exist` | The task's module carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryCircuitFrom` or `carryDesktopFrom`) names a task id that isn't in the lesson. | Use the id of an earlier task, or remove the field. |
 
 ## Information and quiz tasks
 
@@ -85,6 +89,15 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a fill-in-the-blank quiz but has no blank answers` | `blanks` is empty. | Add an answer per blank. |
 | `Task … is a fill-in-the-blank quiz but has an empty answer` | A blank has no answer. | Fill it in. |
 | `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`. | Add the expected answer, or remove the check for an ungraded question. |
+
+## Activity tasks
+
+Tasks with `taskType: activity` are checked by their activity's own rules (messages start
+`Task …:`).
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `` Task …: unknown activityType "…". Run `lessons capabilities` to list activities. `` | `activityType` is missing or isn't an activity this version knows. | Fix the `activityType`. |
 
 ## Code-arrange tasks
 
@@ -108,24 +121,42 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has no files` | An HTML task has no `starterFiles` (or starter stage files). | Add at least `index.html`. |
 | `Task … has duplicate filenames` | Two starter files share a name. | Rename one. |
 | `Task … has no HTML file to use as entry point` | No `.html` file among the starter files. | Add an HTML file. |
-| `Task … stage … has no filesystem state` | A Filesystem stage has no `fs`. | Add the stage's filesystem map. |
-| `Task … stage … has no desktop state` | A Desktop stage has no `desktop` object. | Add the stage's desktop state (see `desktop.md`). |
+| `Task … stage … has no … state` | A Filesystem stage has no `fs` (`… has no filesystem state`), or a Desktop stage has no `desktop` object (`… has no desktop state`). | Add the stage's filesystem map, or its desktop state (see `desktop.md`). |
 | `Task … has no starter breadboard` | An Electronics task has no `starterCircuit` with `components`. | Add `starterCircuit: { components: [], wires: [] }` at minimum. |
 
 ## Checks
 
+Check rules apply to the completion `check` and to `feedbackChecks`; for a feedback check the
+message says `feedback check` where it would say `check` (that part is shown as `…`).
+
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task … sprite check is missing a property` / `Task … sprite check is missing an operator` / `Task … sprite check is missing a value` | A Scratch `sprite_property` check is incomplete. | Set `property`, `operator` and `value`. |
-| `Task … block-used check is missing a block opcode` | A Scratch `block_used` check has no `opcode`. | Add `opcode:` (see `scratch.md` for opcodes). |
-| `Task … has a filesystem … but no path` | A Filesystem check has no `path`. | Add `path:`. |
-| `Task … has a file-content … but no expected value` | `fs_file_content` has no `value`. | Add the text to compare. |
+| `Task … has feedback checks but no completion check` | `feedbackChecks` are set but `check` isn't. | Add the completion `check`. |
+| `Task … has a blocking feedback check with no hint` (warning) | A blocking feedback check has no `hint`, so students are stopped without being told why. | Add a `hint`, or make the check non-blocking. |
+| `Task … feedback check … priority must be a positive whole number` | `priority` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove it. |
+| `Task … feedback check … references a code stage that does not exist` | `stageOffer.stageIndex` is outside `codeStages`. | Point it at an existing stage (0-based). |
+| `Task … feedback check … stage offer action must be preview or replace` | Unknown `stageOffer.action`. | Use `preview` or `replace`. |
+| `Task … feedback check … stage offer threshold must be a positive whole number` | `stageOffer.afterMatches` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove it. |
+| `Task … uses submit mode but has a … that requires running the code` | `interactionMode: submit` tasks never run, so output/variable/element checks can't pass. | Use code checks, or remove submit mode. |
+| `Task … has an element … but no CSS selector` | An HTML element check has no `selector`. | Add `selector:`. |
+| `Task … has an element attribute … but no attribute name` | `html_element_attribute` has no `attribute`. | Add `attribute:`. |
+| `Task … has an element style … but no CSS property` | `html_element_style_property` has no `property`. | Add `property:`. |
+| `Task … has a variable … but no variable name` | A Python variable check has no `name`. | Add `name:`. |
+| `Task … has a dictionary key-value … but no key` | `variable_dict_key_value` has no `key`. | Add `key:`. |
+| `Task … has an array N-th item … but no valid index` | `variable_array_nth_item` has no (or a negative) `index`. | Add a 0-based `index`. |
+| `Task … has a … enabled but no check value` | A Python, HTML or Arcade check that compares against a value has no `value`. | Add `value:`. |
+| `Task … has a Scratch … but no block opcode` | `block_used`, `block_run` or `block_count` has no `opcode`. | Add `opcode:` (see `scratch.md` for opcodes). |
+| `Task … has a Scratch block-order … but no block sequence` / `Task … has a Scratch block-order … with an empty block opcode` | `blocks_in_order` has no `sequence`, or an entry has no opcode. | List the opcodes in order. |
+| `Task … has a Scratch sprite-property … with missing property, operator, or value` | A `sprite_property` or `sprite_property_delta` check is incomplete. | Set `property`, `operator` and `value`. |
+| `Task … has a Scratch sprite-changed … but no property` | `sprite_property_changed` has no `property`. | Add `property:`. |
+| `Task … has a Scratch variable … but no variable name` / `Task … has a Scratch variable … but no expected value` / `Task … has a Scratch variable … but no operator` | A Scratch `variable_equals` / `variable_compare` check is incomplete. | Set `variableName`, `value` and (for compare) `operator`. |
+| `Task … has a Scratch costume … but no costume name` | `costume_is` has no `value`. | Add the costume name. |
+| `Task … has invalid toolbox XML` (**Builder only**) | A Scratch task's `toolbox` isn't well-formed XML. | Fix the XML (see `scratch-toolbox-xml.md`). |
+| `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
+| `Task … has a file-content … but no expected value` | `fs_file_content` (or legacy `fs_content_contains`) has no `value`. | Add the text to compare. |
 | `Task … has a file line-count … but no expected count` | `fs_file_line_count` has no `value`. | Add a number. |
-| `Task … has a file-location … but no parent folder` | `fs_file_location` has no `dir`. | Add `dir:`. |
+| `Task … has a file-location … but no parent folder` | `fs_file_location` (or legacy `fs_file_in_dir`) has no `dir`. | Add `dir:`. |
 | `Task … has a folder-count … but no expected count` | `fs_folder_count` has no `value`. | Add a number. |
-| `Task … has a filesystem check but no path` | A Desktop task's `fs_*` check has no `path`. | Add `path:`. |
-| `Task … has a file content check but no expected value` | A Desktop `fs_content_contains` check has no `value`. | Add the text to look for. |
-| `Task … has a file-in-dir check but no parent folder` | A Desktop `fs_file_in_dir` check has no `dir`. | Add `dir:`. |
 | `Task … has a part-exists … but no part type or label` | An Electronics part check can't identify a part. | Add `component: { type: led }` or a label/id. |
 | `Task … has a powered-part … but no part type or label` | Same, for powered/unpowered checks. | Identify the part. |
 | `Task … has a control … but no control or controlled part` | `circuit_control_affects_power` is missing one side. | Set both `control` and `component`. |
@@ -139,8 +170,15 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has a turtle command … with no valid command (one of: …)` | `turtle_command_used` names an unknown command. | Use one of the listed names, e.g. `forward`, `turn`, `circle`. |
 | `Task … has a turtle colour … but no colour` | `turtle_color_used` has no `color`. | Add the colour exactly as students will write it. |
 
-Python, HTML and code checks with missing values are validated in the Builder. See the module
-docs for each check's required fields.
+See the module docs for each check's required fields.
+
+## Python tests
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … test … has no inputs — consider adding at least one input` (warning) | A `tests` entry has no `inputs`. | Add inputs, or drop the test. |
+| `Task … test … has an input with no name — it can still run, but {placeholder} substitution won't work` (warning) | An input has no `name`. | Name it so `{name}` placeholders in the check are replaced. |
+| `Task … test … has no check — add an output check for this test case` | A `tests` entry has no `check`. | Add a `check`, usually on output. |
 
 ## Warnings about the solution
 
@@ -153,6 +191,8 @@ docs for each check's required fields.
 | `Task … has element/output checks — open the Complete tab and run to verify the complete solution` | Same for HTML element checks. | Run it in the Builder. |
 | `Task … complete filesystem does not satisfy a check — review the complete filesystem` | The complete filesystem fails a check. | Fix the complete state or the check. |
 | `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a check. | Fix the complete state or the check. |
+| `Task … complete breadboard does not satisfy a check — review the complete circuit` | The complete Electronics circuit fails a circuit check. | Fix the complete circuit or the check. |
+| `Task … has a completion check that hasn't been tested — run the task to verify it` (**Builder only**) | The check hasn't been run against the task since it was edited. | Run the task in the Builder. |
 
 ## Class forks
 
