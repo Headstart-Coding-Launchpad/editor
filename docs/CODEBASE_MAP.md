@@ -273,13 +273,16 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 ## Lesson Type Modules (`src/modules/`)
 
-Each lesson type is a self-contained module folder. Adding a new type requires only a new folder and one line in the registry.
+Each lesson type is a self-contained module folder. Adding a new type requires only a new folder plus one line each in `definitions.js` and `registry.js`.
 
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
 | `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks` — delegates filesystem, Python variable, HTML element, and electronics `circuit_*` checks to their module evaluators; also routes generic `code` checks to the electronics evaluator when `context.circuit` is present, so they run against Micro Controller MicroPython source instead of raw circuit JSON |
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
+| `defineModule.js` | Pure: `defineModule(def)` validates a module definition (type, `meta.label`/`meta.order`, required hooks and flags) and freezes it; `defineUiModule(def, ui)` merges the UI half (workspaces, check editors, `getLayoutStyles`, `runtime`) into the object the registry returns |
+| `definitions.js` | Pure, Node-safe registry of every `<type>/definition.js`: `MODULE_TYPES` (registry order), `getModuleDefinitions()`, `getModuleDefinition(type)`; used by `registry.js` and `src/shared/composedLesson.js` (so the CLI) |
+| `<type>/definition.js` | Pure, Node-safe half of each module (python, html, scratch, filesystem, electronics, arcade, turtle, desktop): `meta`, authoring/carry-through/state/sandbox/display hooks and capability flags; no JSX, React, DOM or runtimes, and explicit `.js` import extensions. `<type>/index.js` wraps it with `defineUiModule` |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
 | `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status; shows a tap-to-insert row of common Python symbols above the editor on touch devices (`useIsTouchDevice`) plus an always-visible `EmojiPickerButton`, both while interactive, inserting via `CodeEditor`'s `insertAtCursor` ref API. Shared by Turtle, Arcade, and Electronics student/live views since they reuse this component for their Python/MicroPython code |
@@ -368,7 +371,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 
 ### Module interface
 
-Each `index.js` exports a default object with:
+Each `index.js` exports a default object with the following properties. UI surfaces (`StudentWorkspace`, `BuilderWorkspace`, `CheckEditor`, `FeedbackCheckEditor`, `TeacherLiveView`, `getLayoutStyles`, `runtime`) are declared in `index.js`; everything else comes from `definition.js` (plus `meta: { label, order }`).
 
 | Property | Type | Purpose |
 |---|---|---|
