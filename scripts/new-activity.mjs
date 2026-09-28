@@ -184,7 +184,11 @@ export function editPureRegistry(source, names) {
     .filter(Boolean)
   const fallback = entries.indexOf('unknown')
   entries.splice(fallback === -1 ? entries.length : fallback, 0, variable)
-  out = out.replace(list[0], `const ACTIVITIES = [${entries.join(', ')}]`)
+  // Keep the list's existing layout: one entry per line once it has outgrown a single line.
+  const listed = list[1].includes('\n')
+    ? `const ACTIVITIES = [\n${entries.map((entry) => `  ${entry},`).join('\n')}\n]`
+    : `const ACTIVITIES = [${entries.join(', ')}]`
+  out = out.replace(list[0], listed)
   return out
 }
 

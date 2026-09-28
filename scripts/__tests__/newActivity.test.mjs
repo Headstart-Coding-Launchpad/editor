@@ -134,7 +134,7 @@ describe('planNewActivity', () => {
 
     const pure = byPath['src/activities/registry.pure.js'].content
     expect(pure).toContain("import demoWidget from './demo_widget/definition.js'")
-    expect(pure).toMatch(/const ACTIVITIES = \[[^\]]*demoWidget, unknown\]/)
+    expect(pure).toMatch(/const ACTIVITIES = \[[^\]]*demoWidget,\s*unknown,?\s*\]/)
     const ui = byPath['src/activities/registry.js'].content
     expect(ui).toContain("import demoWidgetUi from './demo_widget/ui.jsx'")
     expect(ui).toMatch(/demo_widget: demoWidgetUi,\n\}\)/)
